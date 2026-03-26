@@ -63,6 +63,12 @@ path = "../../shared_crates/type_system/integrity_core_types"
 [dependencies.base_types]
 path = "../../shared_crates/type_system/base_types"
 
+[dependencies.map_commands_contract]
+path = "../../host/crates/map_commands_contract"
+
+[dependencies.map_commands_runtime]
+path = "../../host/crates/map_commands_runtime"
+
 [dev-dependencies.holons_trust_channel]
 path = "../../shared_crates/holons_trust_channel"
 

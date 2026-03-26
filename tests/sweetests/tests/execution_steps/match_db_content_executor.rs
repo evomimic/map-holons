@@ -1,29 +1,29 @@
-use holons_test::{TestExecutionState, TestHolonState};
-use pretty_assertions::assert_eq;
-use std::sync::Arc;
-use tracing::{debug, info};
+use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestHolonState};
+use tracing::info;
 
 use holons_prelude::prelude::*;
 
-use holons_core::{core_shared_objects::ReadableHolonState, dances::ResponseBody}; // TODO: Eliminate this dependency
-// use holons_guest_integrity::HolonNode;
-
-/// This function iterates through the expected_holons vector supplied as a parameter
-/// and for each holon: builds and dances a `get_holon_by_id` DanceRequest,
-/// then confirms that the Holon returned matches the expected
+/// Iterates through recorded saved holons and compares each saved execution
+/// reference directly against its expected snapshot.
+///
+/// SmartReferences from the commit executor carry the committed transaction's context
+/// handle, which may have stale cache state. We rebind them to a fresh assertion
+/// context so that `all_related_holons()` can fetch relationship data from the DHT.
 
 pub async fn execute_match_db_content(state: &mut TestExecutionState) {
     info!("--- TEST STEP: Ensuring database matches expected holons ---");
 
-    let context = state.context();
+    let context = state
+        .open_assertion_context("match_db_content")
+        .await
+        .expect("failed to open assertion transaction for match_db_content");
 
-    // Iterate through all created holons and verify them in the database, panic if resolved reference does not match expected state
     for (id, resolved_reference) in state.holons().by_snapshot_id.clone() {
         if resolved_reference.expected_snapshot.state() == TestHolonState::Saved {
             let holon_reference = resolved_reference
                 .execution_handle
                 .get_holon_reference()
-                .expect("HolonReference must be Live, cannot be in a deleted state");
+                .expect("HolonReference must be live for saved snapshots");
             if !matches!(holon_reference, HolonReference::Smart(_)) {
                 panic!(
                     "Expected execution_reference for id: {:?} to be Smart, but got {:?}",
@@ -31,34 +31,27 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
                 );
             }
 
-            let holon_id = holon_reference.holon_id()
-.expect("Failed to get HolonId");
+            // Rebind SmartReference to assertion context for fresh cache/DHT access
+            let rebound_reference = match &holon_reference {
+                HolonReference::Smart(smart_ref) => {
+                    let context_handle = TransactionContextHandle::new(context.clone());
+                    HolonReference::Smart(SmartReference::new_from_id(
+                        context_handle,
+                        smart_ref.holon_id(),
+                    ))
+                }
+                other => other.clone(),
+            };
 
-            // 2. BUILD — get_holon_by_id DanceRequest
-            let request = build_get_holon_by_id_dance_request(holon_id.clone())
-                .expect("Failed to build get_holon_by_id request");
-            debug!("Dance Request: {:#?}", request);
-
-            // 3. CALL — the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-
-            // 4. VALIDATE - Ensure response contains the expected Holon
-            if let ResponseBody::Holon(actual_holon) = response.body {
-                assert_eq!(
-                    resolved_reference.expected_snapshot.essential_content()
-.unwrap(),
-                    actual_holon.essential_content(),
-                );
-                info!(
-                    "SUCCESS! DB fetched holon matched expected for: \n {:?}",
-                    actual_holon.summarize()
-                );
-            } else {
-                panic!(
-                    "Expected get_holon_by_id to return a Holon response for id: {:?}, but got {:?}",
-                    holon_id, response.body
-                );
-            }
+            let rebound_exec_ref = ExecutionReference {
+                expected_snapshot: resolved_reference.expected_snapshot.clone(),
+                execution_handle: ExecutionHandle::from(rebound_reference.clone()),
+            };
+            rebound_exec_ref.assert_essential_content_eq();
+            info!(
+                "SUCCESS! DB fetched holon matched expected for: \n {:?}",
+                rebound_reference.summarize()
+            );
         }
     }
 }

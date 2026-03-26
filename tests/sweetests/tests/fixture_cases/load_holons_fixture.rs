@@ -41,8 +41,8 @@ use std::sync::Arc;
 
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
-    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
-    PERSON_TO_BOOK_REL_INVERSE,
+    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_REL_INVERSE,
+    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
 };
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
@@ -309,7 +309,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut declared_rel_descriptor,
-        CoreRelationshipTypeName::SourceType.as_relationship_name().0 .0.as_str(),
+        CoreRelationshipTypeName::SourceType.as_relationship_name().0.0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         BOOK_TO_PERSON_RELATIONSHIP_KEY,
         &[BOOK_DESCRIPTOR_KEY],
@@ -317,7 +317,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut declared_rel_descriptor,
-        CoreRelationshipTypeName::TargetType.as_relationship_name().0 .0.as_str(),
+        CoreRelationshipTypeName::TargetType.as_relationship_name().0.0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         BOOK_TO_PERSON_RELATIONSHIP_KEY,
         &[PERSON_DESCRIPTOR_KEY],
@@ -325,7 +325,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut inverse_rel_descriptor,
-        CoreRelationshipTypeName::InverseOf.as_relationship_name().0 .0.as_str(),
+        CoreRelationshipTypeName::InverseOf.as_relationship_name().0.0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
         &[BOOK_TO_PERSON_RELATIONSHIP_KEY],
@@ -336,7 +336,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut book_loader,
-        described_by.0 .0.as_str(),
+        described_by.0.0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         book_instance_key,
         &[BOOK_DESCRIPTOR_KEY],
@@ -344,7 +344,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut person_loader,
-        described_by.0 .0.as_str(),
+        described_by.0.0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         person_instance_key,
         &[PERSON_DESCRIPTOR_KEY],
@@ -447,6 +447,10 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(n_nodes as i64), // total_loader_holons
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin new transaction before declared-link load".to_string()),
+    )?;
 
     // D) Declared relationship happy path (no type graph).
     let (declared_bundle, node_count, links_created) = build_declared_links_bundle(
@@ -472,6 +476,10 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     test_case
         .add_ensure_database_count_step(MapInteger(1 + n_nodes as i64 + node_count as i64), None)?;
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin new transaction before inverse-link load".to_string()),
+    )?;
 
     // E) Inverse LRR bundle: Person Authors Book → writes declared AuthoredBy(Book→Person).
     // Use a distinct book key to avoid colliding with the earlier Book instance.
@@ -503,6 +511,10 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // 1 (space) + n_nodes (3) + node_count (2) + inv_nodes (6) = 12
     let post_inverse_db_count = 1 + n_nodes as i64 + node_count as i64 + inv_nodes as i64;
     test_case.add_ensure_database_count_step(MapInteger(post_inverse_db_count), None)?;
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin new transaction before multi-bundle load".to_string()),
+    )?;
 
     // F) Multi-bundle happy path:
     //
@@ -552,6 +564,10 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     // 12 (post-inverse) + 2 (multi-bundle Book + Person) = 14
     let post_multi_db_count = post_inverse_db_count + multi_bundle_nodes_total;
     test_case.add_ensure_database_count_step(MapInteger(post_multi_db_count), None)?;
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin new transaction before duplicate-key load".to_string()),
+    )?;
 
     // G) Multi-bundle duplicate-key failure:
     //

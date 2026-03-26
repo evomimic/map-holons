@@ -106,6 +106,99 @@ pub enum HolonError {
 //   }
 //}
 
+/// Payload-free discriminant of [`HolonError`].
+///
+/// Useful for asserting on error *kind* without matching on runtime-specific
+/// payloads (strings, tx ids, etc.).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum HolonErrorKind {
+    CacheError,
+    CommitFailure,
+    ConductorError,
+    CrossTransactionReference,
+    DeletionNotAllowed,
+    DowncastFailure,
+    DuplicateError,
+    EmptyField,
+    FailedToBorrow,
+    FailedToAcquireLock,
+    HashConversion,
+    HolonNotFound,
+    IndexOutOfRange,
+    InvalidHolonReference,
+    InvalidWireFormat,
+    InvalidState,
+    InvalidTransition,
+    InvalidTransactionTransition,
+    InvalidType,
+    InvalidParameter,
+    InvalidRelationship,
+    InvalidUpdate,
+    LoaderParsingError,
+    Misc,
+    MissingStagedCollection,
+    NotAccessible,
+    NotImplemented,
+    RecordConversion,
+    ReferenceBindingFailed,
+    ReferenceResolutionFailed,
+    ServiceNotAvailable,
+    TransactionAlreadyCommitted,
+    TransactionCommitInProgress,
+    TransactionNotOpen,
+    UnableToAddHolons,
+    UnexpectedValueType,
+    Utf8Conversion,
+    ValidationError,
+    WasmError,
+}
+
+impl From<&HolonError> for HolonErrorKind {
+    fn from(error: &HolonError) -> Self {
+        match error {
+            HolonError::CacheError(_) => Self::CacheError,
+            HolonError::CommitFailure(_) => Self::CommitFailure,
+            HolonError::ConductorError(_) => Self::ConductorError,
+            HolonError::CrossTransactionReference { .. } => Self::CrossTransactionReference,
+            HolonError::DeletionNotAllowed(_) => Self::DeletionNotAllowed,
+            HolonError::DowncastFailure(_) => Self::DowncastFailure,
+            HolonError::DuplicateError(_, _) => Self::DuplicateError,
+            HolonError::EmptyField(_) => Self::EmptyField,
+            HolonError::FailedToBorrow(_) => Self::FailedToBorrow,
+            HolonError::FailedToAcquireLock(_) => Self::FailedToAcquireLock,
+            HolonError::HashConversion(_, _) => Self::HashConversion,
+            HolonError::HolonNotFound(_) => Self::HolonNotFound,
+            HolonError::IndexOutOfRange(_) => Self::IndexOutOfRange,
+            HolonError::InvalidHolonReference(_) => Self::InvalidHolonReference,
+            HolonError::InvalidWireFormat { .. } => Self::InvalidWireFormat,
+            HolonError::InvalidState(_) => Self::InvalidState,
+            HolonError::InvalidTransition(_) => Self::InvalidTransition,
+            HolonError::InvalidTransactionTransition { .. } => Self::InvalidTransactionTransition,
+            HolonError::InvalidType(_) => Self::InvalidType,
+            HolonError::InvalidParameter(_) => Self::InvalidParameter,
+            HolonError::InvalidRelationship(_, _) => Self::InvalidRelationship,
+            HolonError::InvalidUpdate(_) => Self::InvalidUpdate,
+            HolonError::LoaderParsingError(_) => Self::LoaderParsingError,
+            HolonError::Misc(_) => Self::Misc,
+            HolonError::MissingStagedCollection(_) => Self::MissingStagedCollection,
+            HolonError::NotAccessible(_, _) => Self::NotAccessible,
+            HolonError::NotImplemented(_) => Self::NotImplemented,
+            HolonError::RecordConversion(_) => Self::RecordConversion,
+            HolonError::ReferenceBindingFailed { .. } => Self::ReferenceBindingFailed,
+            HolonError::ReferenceResolutionFailed { .. } => Self::ReferenceResolutionFailed,
+            HolonError::ServiceNotAvailable(_) => Self::ServiceNotAvailable,
+            HolonError::TransactionAlreadyCommitted { .. } => Self::TransactionAlreadyCommitted,
+            HolonError::TransactionCommitInProgress { .. } => Self::TransactionCommitInProgress,
+            HolonError::TransactionNotOpen { .. } => Self::TransactionNotOpen,
+            HolonError::UnableToAddHolons(_) => Self::UnableToAddHolons,
+            HolonError::UnexpectedValueType(_, _) => Self::UnexpectedValueType,
+            HolonError::Utf8Conversion(_, _) => Self::Utf8Conversion,
+            HolonError::ValidationError(_) => Self::ValidationError,
+            HolonError::WasmError(_) => Self::WasmError,
+        }
+    }
+}
+
 impl HolonError {
     pub fn combine_errors(errors: Vec<HolonError>) -> String {
         let mut combined = String::new();

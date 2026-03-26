@@ -1,66 +1,65 @@
-use holon_dance_builders::remove_properties_dance::build_remove_properties_dance_request;
 use holons_prelude::prelude::*;
 use holons_test::{
     ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
 };
+use map_commands_contract::{
+    HolonAction, HolonCommand, MapCommand, MapResult, WritableHolonAction,
+};
 use tracing::{debug, info};
 
-/// This function builds and dances a `remove_properties` DanceRequest for the supplied Holon
-/// To pass this test, all the following must be true:
-/// 1) remove_properties dance returns with a Success
-/// 2) the returned HolonReference refers to a Holon's essential_content that matches the expected
-///
-
+/// Removes properties from a holon via `WritableHolonAction::RemovePropertyValue`
+/// dispatched through the Runtime. Each property is dispatched as a separate command.
 pub async fn execute_remove_properties(
     state: &mut TestExecutionState,
     step_token: TestReference,
     properties: PropertyMap,
-    expected_response: ResponseStatusCode
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — resolve source token
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // 2. BUILD — remove_properties DanceRequest
-    let request = build_remove_properties_dance_request(source_reference, properties.clone())
-        .expect("Failed to build remove_properties request");
-    debug!("Dance Request: {:#?}", request);
+    // 2. DISPATCH — one RemovePropertyValue command per property
+    for (name, _value) in &properties {
+        let command = MapCommand::Holon(HolonCommand {
+            context: context.clone(),
+            target: source_reference.clone(),
+            action: HolonAction::Write(WritableHolonAction::RemovePropertyValue {
+                name: name.clone(),
+            }),
+        });
+        let result = state.dispatch_command(command, "remove_property_value").await;
+        debug!("remove_property_value({:?}) result: {:?}", name, &result);
 
-    // 3. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    debug!("Dance Response: {:#?}", response.clone());
-
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_response,
-        "remove_properties request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! remove_properties DanceResponse matched expected");
-
-    if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT — updated holon's essential content matches expected
-        let response_holon_reference = match response.body {
-            ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => {
-                panic!("expected ResponseBody::HolonReference, got {:?}", other);
+        match result {
+            Ok(MapResult::None) => {}
+            Err(e) => {
+                let actual = HolonErrorKind::from(&e);
+                assert_eq!(
+                    Some(actual),
+                    expected_error,
+                    "remove_property_value: unexpected error {:?}",
+                    e,
+                );
+                return; // error path — stop processing
             }
-        };
-
-        // Build execution handle from runtime result
-        let execution_handle = ExecutionHandle::from(response_holon_reference);
-
-        // Canonical construction: token + execution outcome
-        let execution_reference =
-            ExecutionReference::from_token_execution(&step_token, execution_handle);
-
-        // Validate expected vs execution-time content
-        execution_reference.assert_essential_content_eq();
-        info!("Success! Updated holon's essential content matched expected");
-
-        // 6. RECORD — make this execution result available for downstream steps
-        state.record(&step_token, execution_reference).unwrap();
+            Ok(other) => panic!("remove_property_value: expected None, got {:?}", other),
+        }
     }
+
+    assert!(
+        expected_error.is_none(),
+        "remove_properties: all writes succeeded but expected {:?}",
+        expected_error,
+    );
+
+    // 3. VALIDATE + RECORD
+    let execution_handle = ExecutionHandle::from(source_reference);
+    let execution_reference =
+        ExecutionReference::from_token_execution(&step_token, execution_handle);
+    execution_reference.assert_essential_content_eq();
+    info!("Success! Updated holon's essential content matched expected");
+    state.record(&step_token, execution_reference).unwrap();
 }

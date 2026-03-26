@@ -5,30 +5,35 @@
 use crate::harness::fixtures_support::TestReference;
 use core_types::ContentSet;
 use holons_prelude::prelude::*;
+use integrity_core_types::HolonErrorKind;
 
 /// Internal step representation used by executors at runtime.
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
+    BeginTransaction {
+        expected_error: Option<HolonErrorKind>,
+        description: String,
+    },
     AbandonStagedChanges {
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     AddRelatedHolons {
         step_token: TestReference,
         relationship_name: RelationshipName,
         holons_to_add: Vec<TestReference>,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     Commit {
         saved_tokens: Vec<TestReference>, // Used to match expected
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     DeleteHolon {
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     EnsureDatabaseCount {
@@ -58,51 +63,51 @@ pub enum DanceTestStep {
         step_token: TestReference,
         properties: PropertyMap,
         key: Option<MapString>,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     PrintDatabase,
     QueryRelationships {
         step_token: TestReference,
         query_expression: QueryExpression,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     RemoveProperties {
         step_token: TestReference,
         properties: PropertyMap,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     RemoveRelatedHolons {
         step_token: TestReference,
         relationship_name: RelationshipName,
         holons_to_remove: Vec<TestReference>,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     StageHolon {
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     StageNewFromClone {
         step_token: TestReference,
         new_key: MapString,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     StageNewVersion {
         step_token: TestReference,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         version_count: MapInteger,
-        expected_failure_code: Option<ResponseStatusCode>,
+        expected_staging_error: Option<HolonErrorKind>,
         description: String,
     },
     WithProperties {
         step_token: TestReference,
         properties: PropertyMap,
-        expected_status: ResponseStatusCode,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
 }
@@ -110,37 +115,34 @@ pub enum DanceTestStep {
 impl core::fmt::Display for DanceTestStep {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            DanceTestStep::AbandonStagedChanges { step_token, expected_status, description } => {
-                write!(
-                    f,
-                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
-                )
+            DanceTestStep::BeginTransaction { expected_error, description } => {
+                write!(f, "{description} [expected_error: {expected_error:?}]")
+            }
+            DanceTestStep::AbandonStagedChanges { step_token, expected_error, description } => {
+                write!(f, "{description} [token: {step_token}, expected_error: {expected_error:?}]")
             }
             DanceTestStep::AddRelatedHolons {
                 step_token,
                 relationship_name,
                 holons_to_add,
-                expected_status,
+                expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [token: {step_token}, relationship: {relationship_name}, targets: {}, expected_status: {expected_status:?}]",
+                    "{description} [token: {step_token}, relationship: {relationship_name}, targets: {}, expected_error: {expected_error:?}]",
                     holons_to_add.len()
                 )
             }
-            DanceTestStep::Commit { saved_tokens, expected_status, description } => {
+            DanceTestStep::Commit { saved_tokens, expected_error, description } => {
                 write!(
                     f,
-                    "{description} [saved_tokens: {}, expected_status: {expected_status:?}]",
+                    "{description} [saved_tokens: {}, expected_error: {expected_error:?}]",
                     saved_tokens.len()
                 )
             }
-            DanceTestStep::DeleteHolon { step_token, expected_status, description } => {
-                write!(
-                    f,
-                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
-                )
+            DanceTestStep::DeleteHolon { step_token, expected_error, description } => {
+                write!(f, "{description} [token: {step_token}, expected_error: {expected_error:?}]")
             }
             DanceTestStep::EnsureDatabaseCount { expected_count, description } => {
                 write!(f, "{description} [expected_count: {}]", expected_count.0)
@@ -187,12 +189,12 @@ impl core::fmt::Display for DanceTestStep {
                 step_token,
                 properties,
                 key,
-                expected_status,
+                expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [token: {step_token}, properties: {}, key: {:?}, expected_status: {expected_status:?}]",
+                    "{description} [token: {step_token}, properties: {}, key: {:?}, expected_error: {expected_error:?}]",
                     properties.len(),
                     key
                 )
@@ -203,23 +205,20 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::QueryRelationships {
                 step_token,
                 query_expression: _query_expression,
-                expected_status,
+                expected_error,
                 description,
             } => {
-                write!(
-                    f,
-                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
-                )
+                write!(f, "{description} [token: {step_token}, expected_error: {expected_error:?}]")
             }
             DanceTestStep::RemoveProperties {
                 step_token,
                 properties,
-                expected_status,
+                expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [token: {step_token}, properties: {}, expected_status: {expected_status:?}]",
+                    "{description} [token: {step_token}, properties: {}, expected_error: {expected_error:?}]",
                     properties.len()
                 )
             }
@@ -227,55 +226,52 @@ impl core::fmt::Display for DanceTestStep {
                 step_token,
                 relationship_name,
                 holons_to_remove,
-                expected_status,
+                expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [token: {step_token}, relationship: {relationship_name}, targets: {}, expected_status: {expected_status:?}]",
+                    "{description} [token: {step_token}, relationship: {relationship_name}, targets: {}, expected_error: {expected_error:?}]",
                     holons_to_remove.len()
                 )
             }
-            DanceTestStep::StageHolon { step_token, expected_status, description } => {
-                write!(
-                    f,
-                    "{description} [token: {step_token}, expected_status: {expected_status:?}]"
-                )
+            DanceTestStep::StageHolon { step_token, expected_error, description } => {
+                write!(f, "{description} [token: {step_token}, expected_error: {expected_error:?}]")
             }
             DanceTestStep::StageNewVersion {
                 step_token,
-                expected_status,
+                expected_error,
                 version_count,
-                expected_failure_code,
+                expected_staging_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [token: {step_token}, version_count: {}, expected_status: {expected_status:?}, expected_failure: {:?}]",
+                    "{description} [token: {step_token}, version_count: {}, expected_error: {expected_error:?}, expected_failure: {:?}]",
                     version_count.0,
-                    expected_failure_code
+                    expected_staging_error
                 )
             }
             DanceTestStep::StageNewFromClone {
                 step_token,
                 new_key,
-                expected_status,
+                expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [token: {step_token}, new_key: {new_key}, expected_status: {expected_status:?}]"
+                    "{description} [token: {step_token}, new_key: {new_key}, expected_error: {expected_error:?}]"
                 )
             }
             DanceTestStep::WithProperties {
                 step_token,
                 properties,
-                expected_status,
+                expected_error,
                 description,
             } => {
                 write!(
                     f,
-                    "{description} [token: {step_token}, properties: {}, expected_status: {expected_status:?}]",
+                    "{description} [token: {step_token}, properties: {}, expected_error: {expected_error:?}]",
                     properties.len()
                 )
             }
@@ -286,7 +282,7 @@ impl core::fmt::Display for DanceTestStep {
 // impl fmt::Debug for DanceTestStep {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         match self {
-//             DanceTestStep::AbandonStagedChanges { step_token, expected_status, description } => f
+//             DanceTestStep::AbandonStagedChanges { step_token, expected_error, description } => f
 //                 .debug_struct("AbandonStagedChanges")
 //                 .field("description", description)
 //                 .field("step_token", step_token)
@@ -296,7 +292,7 @@ impl core::fmt::Display for DanceTestStep {
 //                     step_token,
 //                     relationship_name,
 //                     holons_to_add,
-//                     expected_status,
+//                     expected_error,
 //                     description,
 //                 } => f
 //                     .debug_struct("AddRelatedHolons")
@@ -307,13 +303,13 @@ impl core::fmt::Display for DanceTestStep {
 //                     .field("expected_status", expected_status)
 //                     .finish(),
 //             },
-//             DanceTestStep::Commit { saved_tokens, expected_status, description } =>
+//             DanceTestStep::Commit { saved_tokens, expected_error, description } =>
 //                 f.debug_struct("Commit")
 //                 .field("description", description)
 //                 .field("saved_tokens", saved_tokens)
 //                 .field("expected_status", expected_status)
 //                 .finish(),
-//             DanceTestStep::DeleteHolon { step_token, expected_status, description } => f
+//             DanceTestStep::DeleteHolon { step_token, expected_error, description } => f
 //                 .debug_struct("DeleteHolon")
 //                 .field("description", description)
 //                 .field("step_token", step_token)
@@ -362,7 +358,7 @@ impl core::fmt::Display for DanceTestStep {
 //                 step_token,
 //                 properties: _properties,
 //                 key,
-//                 expected_status,
+//                 expected_error,
 //                 description,
 //             },
 //             DanceTestStep::PrintDatabase => f
@@ -371,40 +367,40 @@ impl core::fmt::Display for DanceTestStep {
 //             DanceTestStep::QueryRelationships {
 //                 step_token,
 //                 query_expression,
-//                 expected_status,
+//                 expected_error,
 //                 description,
 //             },
 //             DanceTestStep::RemoveProperties {
 //                 step_token,
 //                 properties,
-//                 expected_status,
+//                 expected_error,
 //                 description,
 //             },
 //             DanceTestStep::RemoveRelatedHolons {
 //                 step_token,
 //                 relationship_name,
 //                 holons_to_remove,
-//                 expected_status,
+//                 expected_error,
 //                 description,
 //             },
-//             DanceTestStep::StageHolon { step_token, expected_status, description },
+//             DanceTestStep::StageHolon { step_token, expected_error, description },
 //             DanceTestStep::StageNewVersion {
 //                 step_token,
-//                 expected_status,
+//                 expected_error,
 //                 version_count: _version_count,
-//                 expected_failure_code,
+//                 expected_staging_error,
 //                 description,
 //             },
 //             DanceTestStep::StageNewFromClone {
 //                 step_token,
 //                 new_key,
-//                 expected_status,
+//                 expected_error,
 //                 description,
 //             },
 //             DanceTestStep::WithProperties {
 //                 step_token,
 //                 properties,
-//                 expected_status,
+//                 expected_error,
 //                 description,
 //             },
 //         }

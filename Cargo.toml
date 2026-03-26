@@ -48,6 +48,8 @@ holons_guest_integrity = { path = "happ/crates/holons_guest_integrity" }
 #holochain_receptor = { path = "host/crates/holochain_receptor" }
 #holons_receptor = { path = "host/crates/holons_receptor" }
 #holons_loader_client = { path = "host/crates/holons_loader_client" }
+map_commands_contract = { path = "host/crates/map_commands_contract" }
+map_commands_runtime = { path = "host/crates/map_commands_runtime" }
 
 
 # Shared

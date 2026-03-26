@@ -1,68 +1,72 @@
-use base_types::MapString;
-use holon_dance_builders::stage_new_from_clone_dance::build_stage_new_from_clone_dance_request;
-use holons_core::{
-    dances::{ResponseBody, ResponseStatusCode},
-    HolonReference,
-};
+use holons_prelude::prelude::*;
 use holons_test::{
     ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
 };
-use tracing::info;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+use tracing::{debug, info};
 
-/// Execute the StageNewFromClone step:
-///  1) LOOKUP: convert the fixture `TestReference` into a runtime `HolonReference`
-///  2) BUILD: construct the dance request with the source and `new_key`
-///  3) CALL: perform the dance via the context-owned service
-///  4) ASSERT: check `expected_status` and essential-content equality
-///  5) RECORD: store the realized `StagedReference` in `ExecutionHolons` for downstream steps
+/// Stages a clone of an existing holon via `TransactionAction::StageNewFromClone`.
 pub async fn execute_stage_new_from_clone(
     state: &mut TestExecutionState,
     step_token: TestReference,
     new_key: MapString,
-    expected_status: ResponseStatusCode
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the clone source
-    //    (enforces Saved ≙ Staged(Committed(LocalId)); no nursery fallback)
+    // 1. LOOKUP — resolve source token
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // 2. BUILD — dance request to stage a new holon cloned from `source_reference`
-    let request = build_stage_new_from_clone_dance_request(source_reference, new_key)
-        .expect("Failed to build stage_new_from_clone request");
+    // Rebind SmartReferences to the current context to avoid cross-transaction errors.
+    // SmartReferences from a prior commit carry the old transaction's context handle.
+    let rebound_reference = match &source_reference {
+        HolonReference::Smart(smart_ref) => {
+            let context_handle = TransactionContextHandle::new(context.clone());
+            HolonReference::Smart(SmartReference::new_from_id(
+                context_handle,
+                smart_ref.holon_id(),
+            ))
+        }
+        other => other.clone(),
+    };
 
-    // 3. CALL — use the context-owned call service
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
+    // 2. BUILD + DISPATCH
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::StageNewFromClone { original: rebound_reference, new_key },
+    });
+    let result = state.dispatch_command(command, "stage_new_from_clone").await;
+    debug!("stage_new_from_clone result: {:?}", &result);
 
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_status,
-        "stage_new_from_clone request failed: {}",
-        response.description
-    );
-    info!("Success! stage_new_from_clone DanceResponse matched expected");
+    // 3. VALIDATE
+    match result {
+        Ok(MapResult::Reference(HolonReference::Staged(staged_ref))) => {
+            assert!(
+                expected_error.is_none(),
+                "stage_new_from_clone succeeded but expected {:?}",
+                expected_error,
+            );
 
-    if expected_status == ResponseStatusCode::OK {
-        // 5. ASSERT — on success, the body must be a HolonReference
-        let response_holon_reference = match response.body {
-            ResponseBody::HolonReference(hr) => hr,
-            other => {
-                panic!("expected ResponseBody::HolonReference, got {:?}", other);
-            }
-        };
-
-        // Build execution handle from runtime result
-        let execution_handle = ExecutionHandle::from(response_holon_reference);
-
-        // Canonical construction: token + execution outcome
-        let execution_reference =
-            ExecutionReference::from_token_execution(&step_token, execution_handle);
-
-        // Validate expected vs execution-time content
-        execution_reference.assert_essential_content_eq();
-
-        // 6. RECORD — make execution result available for downstream steps
-        state.record(&step_token, execution_reference).unwrap();
+            let holon_ref = HolonReference::Staged(staged_ref);
+            let execution_handle = ExecutionHandle::from(holon_ref);
+            let execution_reference =
+                ExecutionReference::from_token_execution(&step_token, execution_handle);
+            execution_reference.assert_essential_content_eq();
+            info!("Success! Cloned holon's essential content matched expected");
+            state.record(&step_token, execution_reference).unwrap();
+        }
+        Err(e) => {
+            let actual = HolonErrorKind::from(&e);
+            assert_eq!(
+                Some(actual),
+                expected_error,
+                "stage_new_from_clone: unexpected error {:?}",
+                e,
+            );
+        }
+        Ok(other) => {
+            panic!("stage_new_from_clone: expected Staged reference, got {:?}", other)
+        }
     }
 }

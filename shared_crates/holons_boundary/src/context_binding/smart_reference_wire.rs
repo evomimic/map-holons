@@ -1,8 +1,8 @@
+use core_types::{HolonId, PropertyMap};
 use holons_core::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle, TxId,
 };
 use holons_core::{HolonError, SmartReference};
-use core_types::{HolonId, PropertyMap};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 

@@ -4,9 +4,7 @@ use base_types::{BaseValue, MapString};
 use core_types::{ExternalId, HolonError, HolonId, OutboundProxyId};
 use hdi::prelude::*;
 use hdk::prelude::*;
-use holons_core::{
-    core_shared_objects::holon::key_from_property_map,
-};
+use holons_core::core_shared_objects::holon::key_from_property_map;
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use holons_integrity::*;

@@ -1,68 +1,96 @@
+use holons_prelude::prelude::*;
+use holons_test::{
+    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
+};
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
-use holons_prelude::prelude::*;
-
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference, ResolveBy};
-
-/// This function builds and dances an `abandon_staged_changes` DanceRequest.
-/// If the `ResponseStatusCode` returned by the dance != `expected_status`, panic to fail the test.
-/// Otherwise, if the dance returns an `OK` response,
-///     confirm the Holon is in an `Abandoned` state and attempt various operations
-///     that should be `NotAccessible` for holons an `Abandoned` state. If any of them do NOT
-///     return a `NotAccessible` error, then panic to fail the test
-/// Log a `info` level message marking the test step as Successful and return
+/// Abandons staged changes on a holon.
 ///
+/// **Temporary dance fallback:** There is no native `TransactionAction::AbandonStagedChanges`
+/// variant yet. This executor wraps the dance request inside `TransactionAction::Dance(...)`,
+/// routing it through the Runtime while preserving the existing dance choreography.
+///
+/// TODO: Add a native `TransactionAction::AbandonStagedChanges` variant and migrate.
 pub async fn execute_abandon_staged_changes(
     state: &mut TestExecutionState,
     step_token: TestReference,
-    expected_status: ResponseStatusCode
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — resolve source token
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // 2. BUILD — dance request to abandon holon
-    let request = build_abandon_staged_changes_dance_request(source_reference)
+    // 2. BUILD — wrap existing dance request in TransactionAction::Dance
+    let dance_request = build_abandon_staged_changes_dance_request(source_reference)
         .expect("Failed to build abandon_staged_changes request");
-    debug!("Dance Request: {:#?}", request);
+    debug!("Dance Request (via TransactionAction::Dance): {:#?}", dance_request);
 
-    // 3. CALL — use the context-owned call service
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::Dance(dance_request),
+    });
 
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_status,
-        "abandon_staged_changes request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! abandon_staged_changes DanceResponse matched expected");
+    // 3. DISPATCH
+    let result = state.dispatch_command(command, "abandon_staged_changes").await;
+    debug!("abandon_staged_changes result: {:?}", &result);
 
-    if response.status_code == ResponseStatusCode::OK {
-        let mut response_holon_reference = match response.body {
-            ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
-        };
+    // 4. VALIDATE — extract DanceResponse from MapResult
+    match result {
+        Ok(MapResult::DanceResponse(response)) => {
+            if expected_error.is_none() {
+                assert_eq!(
+                    response.status_code,
+                    ResponseStatusCode::OK,
+                    "abandon_staged_changes: unexpected status: {}",
+                    response.description,
+                );
+            } else {
+                assert_ne!(
+                    response.status_code,
+                    ResponseStatusCode::OK,
+                    "abandon_staged_changes expected failure but got OK",
+                );
+                return;
+            }
+            info!("Success! abandon_staged_changes completed");
 
-        let execution_handle = ExecutionHandle::from(response_holon_reference.clone());
-        let execution_reference =
-            ExecutionReference::from_token_execution(&step_token, execution_handle);
+            let mut response_holon_reference = match response.body {
+                ResponseBody::HolonReference(ref hr) => hr.clone(),
+                other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
+            };
 
-        execution_reference.assert_essential_content_eq();
+            let execution_handle = ExecutionHandle::from(response_holon_reference.clone());
+            let execution_reference =
+                ExecutionReference::from_token_execution(&step_token, execution_handle);
+            execution_reference.assert_essential_content_eq();
 
-        assert_eq!(
-            response_holon_reference.with_property_value(
-                PropertyName(MapString("some_name".to_string())),
-                BaseValue::BooleanValue(MapBoolean(true))
-            ),
-            Err(HolonError::NotAccessible(
-                format!("{:?}", AccessType::Write),
-                "Immutable".to_string()
-            ))
-        );
+            // Verify abandoned holon is immutable
+            assert_eq!(
+                response_holon_reference.with_property_value(
+                    PropertyName(MapString("some_name".to_string())),
+                    BaseValue::BooleanValue(MapBoolean(true))
+                ),
+                Err(HolonError::NotAccessible(
+                    format!("{:?}", AccessType::Write),
+                    "Immutable".to_string()
+                ))
+            );
 
-        state.record(&step_token, execution_reference).unwrap();
+            state.record(&step_token, execution_reference).unwrap();
+        }
+        Err(e) => {
+            let actual = HolonErrorKind::from(&e);
+            assert_eq!(
+                Some(actual),
+                expected_error,
+                "abandon_staged_changes: unexpected error {:?}",
+                e,
+            );
+        }
+        Ok(other) => panic!("abandon_staged_changes: expected DanceResponse, got {:?}", other),
     }
 }

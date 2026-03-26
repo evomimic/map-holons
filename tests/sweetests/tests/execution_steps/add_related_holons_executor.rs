@@ -1,69 +1,68 @@
+use holons_prelude::prelude::*;
 use holons_test::{
-    ExecutionHandle, ExecutionReference, ResolveBy, TestReference, harness::prelude::TestExecutionState
+    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
 };
-use pretty_assertions::assert_eq;
+use map_commands_contract::{
+    HolonAction, HolonCommand, MapCommand, MapResult, WritableHolonAction,
+};
 use tracing::{debug, info};
 
-use holons_prelude::prelude::*;
-
-/// This function builds and dances a `add_related_holons` DanceRequest for the supplied relationship
-/// and holon references. Accepting holons as TestReferences allows the target holons to
-/// be either StagedHolons or SavedHolons. In the latter case, the executor needs to resolve
-/// the TestReference's key into a HolonReference
-///
+/// Adds related holons to a target via `WritableHolonAction::AddRelatedHolons`
+/// dispatched through the Runtime.
 pub async fn execute_add_related_holons(
     state: &mut TestExecutionState,
     step_token: TestReference,
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
-    expected_status: ResponseStatusCode
+    expected_error: Option<HolonErrorKind>,
 ) {
-
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — resolve source and target holons
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
     let holons_to_add: Vec<HolonReference> =
-        state.resolve_execution_references(&context, ResolveBy::Expected,&holons).unwrap();
+        state.resolve_execution_references(&context, ResolveBy::Expected, &holons).unwrap();
 
-    // 2. BUILD — dance request to add related holons
-    let request = build_add_related_holons_dance_request(
-        source_reference.clone(),
-        relationship_name,
-        holons_to_add.clone(),
-    )
-    .expect("Failed to build add_related_holons request");
-    debug!("Dance Request: {:#?}", request);
+    // 2. DISPATCH
+    let command = MapCommand::Holon(HolonCommand {
+        context: context.clone(),
+        target: source_reference.clone(),
+        action: HolonAction::Write(WritableHolonAction::AddRelatedHolons {
+            name: relationship_name,
+            holons: holons_to_add,
+        }),
+    });
+    let result = state.dispatch_command(command, "add_related_holons").await;
+    debug!("add_related_holons result: {:?}", &result);
 
-    // 3. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    debug!("Dance Response: {:#?}", response.clone());
+    // 3. VALIDATE
+    match result {
+        Ok(MapResult::None) => {
+            assert!(
+                expected_error.is_none(),
+                "add_related_holons succeeded but expected {:?}",
+                expected_error,
+            );
+            info!("Success! add_related_holons completed");
 
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_status,
-        "add_related_holons request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! add_related_holons DanceResponse status matched expected");
-
-    if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT — execution-time content matches fixture expectation
-        let response_holon_reference = match response.body {
-            ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
-        };
-
-        let execution_handle = ExecutionHandle::from(response_holon_reference);
-
-        let execution_reference =
-            ExecutionReference::from_token_execution(&step_token, execution_handle);
-
-        execution_reference.assert_essential_content_eq();
-        info!("Success! Updated holon's essential content matched expected");
-
-        // 6. RECORD — make available for downstream resolution
-        state.record(&step_token, execution_reference).unwrap();
+            // 4. RECORD — source_reference reflects mutation in-place
+            let execution_handle = ExecutionHandle::from(source_reference);
+            let execution_reference =
+                ExecutionReference::from_token_execution(&step_token, execution_handle);
+            execution_reference.assert_essential_content_eq();
+            info!("Success! Updated holon's essential content matched expected");
+            state.record(&step_token, execution_reference).unwrap();
+        }
+        Err(e) => {
+            let actual = HolonErrorKind::from(&e);
+            assert_eq!(
+                Some(actual),
+                expected_error,
+                "add_related_holons: unexpected error {:?}",
+                e,
+            );
+        }
+        Ok(other) => panic!("add_related_holons: expected None, got {:?}", other),
     }
 }

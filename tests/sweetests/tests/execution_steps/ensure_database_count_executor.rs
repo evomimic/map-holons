@@ -1,47 +1,37 @@
+use holons_prelude::prelude::*;
 use holons_test::TestExecutionState;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use pretty_assertions::assert_eq;
 use tracing::{debug, info};
 
-use holons_prelude::prelude::*;
-
-/// This function builds and dances a `get_all_holons` DanceRequest and confirms that the number
-/// of holons returned matches the expected_count of holons provided.
-///
-
+/// Verifies the database holon count via `TransactionAction::GetAllHolons`.
 pub async fn execute_ensure_database_count(
     state: &mut TestExecutionState,
-    expected_count: MapInteger
+    expected_count: MapInteger,
 ) {
-    let context = state.context();
+    let context = state
+        .open_assertion_context("ensure_database_count")
+        .await
+        .expect("failed to open assertion transaction");
 
-    // 1. BUILD - the get_all_holons DanceRequest
-    let request =
-        build_get_all_holons_dance_request().expect("Failed to build get_all_holons request");
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::GetAllHolons,
+    });
+    let result =
+        state.dispatch_command(command, "get_all_holons").await.expect("get_all_holons failed");
 
-    // 2. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    debug!("Dance Response: {:#?}", response.clone());
-
-    // 3. VALIDATE - response contains Holons
-    assert_eq!(
-        response.status_code,
-        ResponseStatusCode::OK,
-        "get_all_holons returned unexpected status: {}",
-        response.description
-    );
-
-    let holon_collection = match response.body {
-        ResponseBody::HolonCollection(collection) => collection,
-        other => panic!("Expected get_all_holons to return HolonCollection, got {:?}", other),
+    let collection = match result {
+        MapResult::Collection(c) => c,
+        other => panic!("Expected Collection, got {:?}", other),
     };
 
-    let actual_count = holon_collection.get_count();
+    let actual_count = collection.get_count();
     debug!(
-        "--- TEST STEP ensure_db_count: Expected: {:?}, Retrieved: {:?} Holons ---",
+        "--- ensure_db_count: Expected: {:?}, Retrieved: {:?} ---",
         expected_count, actual_count.0
     );
 
-    // 4. ASSERT - that the expected count matches actual count
     assert_eq!(expected_count, actual_count);
     info!("Success! DB count matched expected");
 }

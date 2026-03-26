@@ -1,6 +1,6 @@
-use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_KEY;
+use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
@@ -35,19 +35,19 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
         book_transient_reference,
         properties,
         Some(book_key),
-        ResponseStatusCode::OK,
+        None,
         Some("Creating book holon... ".to_string()),
     )?;
 
     test_case.add_stage_holon_step(
         &mut fixture_holons,
         book_step_token.clone(),
-        ResponseStatusCode::OK,
+        None,
         Some("Staging book holon...".to_string()),
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK, None)?;
+    test_case.add_commit_step(&mut fixture_holons, None, None)?;
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;

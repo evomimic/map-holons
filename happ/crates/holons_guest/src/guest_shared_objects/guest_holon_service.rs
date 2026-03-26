@@ -1,6 +1,9 @@
 use std::any::Any;
 use std::collections::HashMap;
-use std::{fmt, sync::{Arc, RwLock}};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 
 use hdk::prelude::*;
 use holons_core::core_shared_objects::SavedHolon;
@@ -21,9 +24,7 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
-    core_shared_objects::{
-        transactions::TransactionContext, Holon, HolonCollection,
-    },
+    core_shared_objects::{transactions::TransactionContext, Holon, HolonCollection},
     reference_layer::{
         HolonCollectionApi, HolonReference, HolonServiceApi, SmartReference, WritableHolon,
     },

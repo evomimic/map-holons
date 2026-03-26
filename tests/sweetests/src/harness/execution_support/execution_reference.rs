@@ -131,22 +131,20 @@ impl ExecutionReference {
             ));
         }
 
-        let expected_relationship_map =
-            match expected.all_related_holons() {
-                Ok(map) => Some(map),
-                Err(HolonError::NotImplemented(_)) => None,
-                Err(e) => {
-                    return Err(format!("Failed to get expected all_related_holons: {:?}", e));
-                }
-            };
-        let actual_relationship_map =
-            match actual.all_related_holons() {
-                Ok(map) => Some(map),
-                Err(HolonError::NotImplemented(_)) => None,
-                Err(e) => {
-                    return Err(format!("Failed to get actual all_related_holons: {:?}", e));
-                }
-            };
+        let expected_relationship_map = match expected.all_related_holons() {
+            Ok(map) => Some(map),
+            Err(HolonError::NotImplemented(_)) => None,
+            Err(e) => {
+                return Err(format!("Failed to get expected all_related_holons: {:?}", e));
+            }
+        };
+        let actual_relationship_map = match actual.all_related_holons() {
+            Ok(map) => Some(map),
+            Err(HolonError::NotImplemented(_)) => None,
+            Err(e) => {
+                return Err(format!("Failed to get actual all_related_holons: {:?}", e));
+            }
+        };
 
         // Some references (notably SmartReference on client side) cannot fetch
         // related holons yet. In that case, compare essential content only.
@@ -154,8 +152,8 @@ impl ExecutionReference {
             return Ok(());
         }
 
-        let expected_relationship_map = expected_relationship_map
-            .expect("checked above: expected_relationship_map is Some");
+        let expected_relationship_map =
+            expected_relationship_map.expect("checked above: expected_relationship_map is Some");
         let actual_relationship_map =
             actual_relationship_map.expect("checked above: actual_relationship_map is Some");
 
@@ -172,9 +170,9 @@ impl ExecutionReference {
         }
 
         for (relationship_name, expected_collection_arc) in expected_relationship_map.iter() {
-            let expected_collection = expected_collection_arc
-                .read()
-                .map_err(|e| format!("Failed to acquire read lock for expected collection: {}", e))?;
+            let expected_collection = expected_collection_arc.read().map_err(|e| {
+                format!("Failed to acquire read lock for expected collection: {}", e)
+            })?;
             let expected_members = expected_collection.get_members().clone();
 
             let actual_collection_arc = actual_relationship_map
@@ -261,16 +259,8 @@ impl ExecutionReference {
 
     fn pair_key(expected: &HolonReference, actual: &HolonReference) -> (String, String) {
         (
-            format!(
-                "{}:{}",
-                expected.reference_kind_string(),
-                expected.reference_id_string()
-            ),
-            format!(
-                "{}:{}",
-                actual.reference_kind_string(),
-                actual.reference_id_string()
-            ),
+            format!("{}:{}", expected.reference_kind_string(), expected.reference_id_string()),
+            format!("{}:{}", actual.reference_kind_string(), actual.reference_id_string()),
         )
     }
 }

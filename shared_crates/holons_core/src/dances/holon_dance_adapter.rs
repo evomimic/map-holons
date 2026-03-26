@@ -14,21 +14,26 @@
 //! - Error mapping to `DanceResponse` status codes is handled by the dancer/dispatch layer;
 //!   adapters return `Result<ResponseBody, HolonError>`.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::{debug, info};
-use std::collections::BTreeMap;
 
 use crate::core_shared_objects::transactions::TransactionContext;
+use crate::query_layer::{Node, NodeCollection, QueryPathMap};
 use crate::reference_layer::TransientReference;
-use crate::{dances::{
-    dance_request::{DanceType, RequestBody},
-    dance_response::ResponseBody,
-    DanceRequest,
-}, query_layer::evaluate_query, reference_layer::{writable_holon::WritableHolon, HolonReference, SmartReference}, ReadableHolon};
+use crate::{
+    dances::{
+        dance_request::{DanceType, RequestBody},
+        dance_response::ResponseBody,
+        DanceRequest,
+    },
+    query_layer::evaluate_query,
+    reference_layer::{writable_holon::WritableHolon, HolonReference, SmartReference},
+    ReadableHolon,
+};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, PropertyName};
 use type_names::CorePropertyTypeName;
-use crate::query_layer::{Node, NodeCollection, QueryPathMap};
 
 /// Abandon staged changes
 ///

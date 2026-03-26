@@ -38,7 +38,6 @@ pub enum TransactionAction {
     Query(QueryExpression),
 
     // ── Lookup actions (LookupFacade) ────────────────────────────────
-
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
@@ -64,7 +63,6 @@ pub enum TransactionAction {
     TransientCount,
 
     // ── Mutation actions (MutationFacade) ─────────────────────────────
-
     /// `new_holon(key)` → `TransientReference`
     NewHolon { key: Option<MapString> },
 
@@ -72,10 +70,7 @@ pub enum TransactionAction {
     StageNewHolon { source: TransientReference },
 
     /// `stage_new_from_clone(original, new_key)` → `StagedReference`
-    StageNewFromClone {
-        original: HolonReference,
-        new_key: MapString,
-    },
+    StageNewFromClone { original: HolonReference, new_key: MapString },
 
     /// `stage_new_version(current_version)` → `StagedReference`
     StageNewVersion { current_version: SmartReference },

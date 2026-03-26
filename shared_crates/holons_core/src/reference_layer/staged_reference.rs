@@ -107,10 +107,8 @@ impl StagedReference {
     ///
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get NurseryAccess
-        let nursery_access = self
-            .context_handle
-            .context()
-            .nursery_access(StagedRefAccessKey::new());
+        let nursery_access =
+            self.context_handle.context().nursery_access(StagedRefAccessKey::new());
 
         // Retrieve the holon by its temporaryId
         let rc_holon = nursery_access.get_holon_by_id(&self.id)?;
@@ -123,7 +121,6 @@ impl StagedReference {
         _context: &Arc<TransactionContext>,
         check_state: StagedState,
     ) -> Result<bool, HolonError> {
-
         let rc_holon = self.get_rc_holon()?;
 
         let holon = rc_holon

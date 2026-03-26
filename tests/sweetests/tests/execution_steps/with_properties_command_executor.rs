@@ -1,68 +1,67 @@
+use holons_prelude::prelude::*;
 use holons_test::{
     ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
 };
-use pretty_assertions::assert_eq;
+use map_commands_contract::{
+    HolonAction, HolonCommand, MapCommand, MapResult, WritableHolonAction,
+};
 use tracing::{debug, info};
 
-use holons_prelude::prelude::*;
-
-/// This function builds and dances a `with_properties` DanceRequest for the supplied Holon
-/// To pass this test, all the following must be true:
-/// 1) with_properties dance returns with a Success
-/// 2) the returned HolonReference refers to a Holon's essential_content that matches the expected
-///
-
+/// Applies properties to a holon via `WritableHolonAction::WithPropertyValue` dispatched
+/// through the Runtime. Each property is dispatched as a separate command.
 pub async fn execute_with_properties(
     state: &mut TestExecutionState,
     step_token: TestReference,
     properties: PropertyMap,
-    expected_response: ResponseStatusCode
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — resolve source token
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // 2. BUILD — with_properties DanceRequest
+    // 2. DISPATCH — one WithPropertyValue command per property
+    for (name, value) in &properties {
+        let command = MapCommand::Holon(HolonCommand {
+            context: context.clone(),
+            target: source_reference.clone(),
+            action: HolonAction::Write(WritableHolonAction::WithPropertyValue {
+                name: name.clone(),
+                value: value.clone(),
+            }),
+        });
+        let result = state.dispatch_command(command, "with_property_value").await;
+        debug!("with_property_value({:?}) result: {:?}", name, &result);
 
-    let request = build_with_properties_dance_request(source_reference.clone(), properties.clone())
-        .expect("Failed to build with_properties request");
-
-    debug!("Dance Request: {:#?}", request);
-
-    // 3. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    debug!("Dance Response: {:#?}", response.clone());
-
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_response,
-        "with_properties request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! with_properties DanceResponse matched expected");
-
-    if response.status_code != ResponseStatusCode::OK {
-        return;
+        match result {
+            Ok(MapResult::None) => {}
+            Err(e) => {
+                let actual = HolonErrorKind::from(&e);
+                assert_eq!(
+                    Some(actual),
+                    expected_error,
+                    "with_property_value: unexpected error {:?}",
+                    e,
+                );
+                return; // error path — stop processing
+            }
+            Ok(other) => panic!("with_property_value: expected None, got {:?}", other),
+        }
     }
 
-    // Success only after this point
+    // If we expected an error but all properties succeeded
+    assert!(
+        expected_error.is_none(),
+        "with_properties: all writes succeeded but expected {:?}",
+        expected_error,
+    );
 
-    // 5. ASSERT — essential content matches expected
-    let response_holon_reference = match response.body {
-        ResponseBody::HolonReference(ref hr) => hr.clone(),
-        other => panic!("expected ResponseBody::HolonReference, got {:?}", other),
-    };
-
-    let execution_handle = ExecutionHandle::from(response_holon_reference);
-
+    // 3. VALIDATE + RECORD — the source_reference reflects mutations in-place
+    let execution_handle = ExecutionHandle::from(source_reference);
     let execution_reference =
         ExecutionReference::from_token_execution(&step_token, execution_handle);
-
     execution_reference.assert_essential_content_eq();
     info!("Success! Updated holon's essential content matched expected");
-
-    // 6. RECORD — make this execution result available downstream
     state.record(&step_token, execution_reference).unwrap();
 }

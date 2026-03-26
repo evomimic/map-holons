@@ -47,11 +47,11 @@ impl DanceInitiator for TrustChannel {
         };
 
         // --- Inbound envelope -> runtime -------------------------------------
-        let response = match DanceEnvelopeAdapter::bind_response_envelope(&context, response_envelope)
-        {
-            Ok(response) => response,
-            Err(error) => return DanceResponse::from_error(error),
-        };
+        let response =
+            match DanceEnvelopeAdapter::bind_response_envelope(&context, response_envelope) {
+                Ok(response) => response,
+                Err(error) => return DanceResponse::from_error(error),
+            };
 
         debug!("TrustChannel::initiate_dance() — got response: {:?}", response.summarize());
         response

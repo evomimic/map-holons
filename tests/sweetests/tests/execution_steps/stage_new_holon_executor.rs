@@ -1,68 +1,56 @@
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference, ResolveBy};
-use pretty_assertions::assert_eq;
+use holons_prelude::prelude::*;
+use holons_test::{
+    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
+};
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::{debug, info};
 
-use holons_prelude::prelude::*;
-
-/// This function stages a new holon. It builds and dances a `stage_new_holon` DanceRequest for the
-/// supplied Holon and confirms a Success response
-///
+/// Stages a transient holon into the nursery via `TransactionAction::StageNewHolon`.
 pub async fn execute_stage_new_holon(
     state: &mut TestExecutionState,
     step_token: TestReference,
-    expected_status: ResponseStatusCode
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — resolve source token to a TransientReference
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // Can only stage Transient
     let transient_reference = match source_reference {
         HolonReference::Transient(tr) => tr,
-        other => {
-            panic!("{}", format!("expected lookup to return TransientReference, got {:?}", other));
-        }
+        other => panic!("expected TransientReference, got {:?}", other),
     };
-    // 2. BUILD - the stage_new_holon DanceRequest
-    let request = build_stage_new_holon_dance_request(transient_reference)
-        .expect("Failed to build stage_new_holon request");
-    debug!("Dance Request: {:#?}", request);
 
-    // 3. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    info!("Dance Response: {}", response.summarize());
+    // 2. BUILD + DISPATCH
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::StageNewHolon { source: transient_reference },
+    });
+    let result = state.dispatch_command(command, "stage_new_holon").await;
+    debug!("stage_new_holon result: {:?}", &result);
 
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_status,
-        "stage_new_holon request failed: {}",
-        response.description
-    );
-    info!("Success! stage_new_holon DanceResponse matched expected");
+    // 3. VALIDATE
+    match result {
+        Ok(MapResult::Reference(HolonReference::Staged(staged_ref))) => {
+            assert!(
+                expected_error.is_none(),
+                "stage_new_holon succeeded but expected {:?}",
+                expected_error,
+            );
 
-    if response.status_code == ResponseStatusCode::OK {
-        // 5. ASSERT — on success, the body must be a HolonReference
-        let response_holon_reference = match response.body {
-            ResponseBody::HolonReference(ref hr) => hr.clone(),
-            other => {
-                panic!("expected ResponseBody::HolonReference, got {:?}", other);
-            }
-        };
-
-        // Build execution handle from runtime result
-        let execution_handle = ExecutionHandle::from(response_holon_reference);
-
-        // Canonical construction: token + execution outcome
-        let execution_reference =
-            ExecutionReference::from_token_execution(&step_token, execution_handle);
-
-        // Validate expected vs execution-time content
-        execution_reference.assert_essential_content_eq();
-        info!("Success! Staged holon's essential content matched expected");
-
-        // 6. RECORD — make execution result available for downstream steps
-        state.record(&step_token, execution_reference).unwrap();
+            let holon_ref = HolonReference::Staged(staged_ref);
+            let execution_handle = ExecutionHandle::from(holon_ref);
+            let execution_reference =
+                ExecutionReference::from_token_execution(&step_token, execution_handle);
+            execution_reference.assert_essential_content_eq();
+            info!("Success! Staged holon's essential content matched expected");
+            state.record(&step_token, execution_reference).unwrap();
+        }
+        Err(e) => {
+            let actual = HolonErrorKind::from(&e);
+            assert_eq!(Some(actual), expected_error, "stage_new_holon: unexpected error {:?}", e,);
+        }
+        Ok(other) => panic!("stage_new_holon: expected Staged reference, got {:?}", other),
     }
 }
