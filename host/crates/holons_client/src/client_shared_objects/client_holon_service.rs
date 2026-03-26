@@ -107,10 +107,7 @@ impl HolonServiceApi for ClientHolonService {
             run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         if response.status_code != ResponseStatusCode::OK {
-            return Err(HolonError::Misc(format!(
-                "DeleteHolon dance failed: {:?} — {}",
-                response.status_code, response.description.0
-            )));
+            return Err(map_dance_error("DeleteHolon", &response));
         }
 
         match response.body {
@@ -317,6 +314,38 @@ impl HolonServiceApi for ClientHolonService {
                 other
             ))),
         }
+    }
+}
+
+/// Maps a non-OK `DanceResponse` to a structured `HolonError`, preserving the
+/// error kind where a 1-to-1 `ResponseStatusCode` → `HolonError` variant exists.
+///
+/// Only `NotFound` and `NotImplemented` have unambiguous reverse mappings:
+///   - `NotFound`       → `HolonError::HolonNotFound`
+///   - `NotImplemented` → `HolonError::NotImplemented`
+///
+/// All other status codes (`BadRequest`, `Conflict`, `ServerError`, etc.) are
+/// many-to-one: multiple `HolonError` variants collapse into the same status
+/// code on the guest side (see `From<HolonError> for ResponseStatusCode`), so
+/// there is no reliable way to reconstruct the original variant. These fall
+/// through to `HolonError::Misc` until the dance bridge is replaced by native
+/// command dispatch.
+fn map_dance_error(
+    operation: &str,
+    response: &holons_core::dances::DanceResponse,
+) -> HolonError {
+    let description = &response.description.0;
+    match response.status_code {
+        ResponseStatusCode::NotFound => {
+            HolonError::HolonNotFound(format!("{operation}: {description}"))
+        }
+        ResponseStatusCode::NotImplemented => {
+            HolonError::NotImplemented(format!("{operation}: {description}"))
+        }
+        _ => HolonError::Misc(format!(
+            "{operation} dance failed: {:?} — {description}",
+            response.status_code
+        )),
     }
 }
 

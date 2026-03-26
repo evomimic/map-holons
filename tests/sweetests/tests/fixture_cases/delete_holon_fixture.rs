@@ -60,12 +60,10 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_delete_holon_step(&mut fixture_holons, staged_token.clone(), None, None)?;
 
     // ADD STEP: DELETE HOLON - Invalid //
-    // The client's delete_holon_internal wraps non-OK dance responses as HolonError::Misc,
-    // so the original HolonNotFound variant is lost in the string wrapper.
     test_case.add_delete_holon_step(
         &mut fixture_holons,
         staged_token,
-        Some(HolonErrorKind::Misc),
+        Some(HolonErrorKind::HolonNotFound),
         Some("Attempting invalid delete...".to_string()),
     )?;
 
