@@ -560,8 +560,11 @@ impl DancesTestCase {
             new_snapshot.with_property_value(property, value)?;
         }
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
-        // Advance head snapshot for the FixtureHolon
-        fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+        // Only advance fixture state on expected success — prevents fixture/runtime
+        // divergence when the step is expected to be rejected (e.g., committed tx).
+        if expected_error.is_none() {
+            fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
+        }
         // Mint
         let new_token = fixture_holons.mint_test_reference(new_source, expected);
 

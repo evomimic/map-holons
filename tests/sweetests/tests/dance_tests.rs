@@ -59,6 +59,7 @@ use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
 use fixture_cases::stage_new_from_clone_fixture::*;
 use fixture_cases::stage_new_version_fixture::*;
+use fixture_cases::transaction_lifecycle_fixture::*;
 
 use self::execution_steps::execute_print_database;
 use holons_test::execution_state::TestExecutionState;
@@ -102,6 +103,7 @@ use holons_prelude::prelude::*;
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[case::load_holons_client_test(loader_client_fixture())]
+#[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 // TODO: Support for relationships to be finished in issue 382
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
@@ -132,9 +134,6 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
         info!("========== STARTING STEP: {}", step);
 
         match step {
-            DanceTestStep::BeginTransaction { expected_error, .. } => {
-                execute_begin_transaction(&mut test_execution_state, expected_error).await
-            }
             DanceTestStep::AbandonStagedChanges { step_token, expected_error, .. } => {
                 execute_abandon_staged_changes(
                     &mut test_execution_state,
@@ -158,6 +157,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expected_error,
                 )
                 .await
+            }
+            DanceTestStep::BeginTransaction { expected_error, .. } => {
+                execute_begin_transaction(&mut test_execution_state, expected_error).await
             }
             DanceTestStep::Commit { saved_tokens, expected_error, .. } => {
                 execute_commit(&mut test_execution_state, saved_tokens, expected_error).await

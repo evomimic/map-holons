@@ -10,10 +10,6 @@ use integrity_core_types::HolonErrorKind;
 /// Internal step representation used by executors at runtime.
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
-    BeginTransaction {
-        expected_error: Option<HolonErrorKind>,
-        description: String,
-    },
     AbandonStagedChanges {
         step_token: TestReference,
         expected_error: Option<HolonErrorKind>,
@@ -23,6 +19,10 @@ pub enum DanceTestStep {
         step_token: TestReference,
         relationship_name: RelationshipName,
         holons_to_add: Vec<TestReference>,
+        expected_error: Option<HolonErrorKind>,
+        description: String,
+    },
+    BeginTransaction {
         expected_error: Option<HolonErrorKind>,
         description: String,
     },

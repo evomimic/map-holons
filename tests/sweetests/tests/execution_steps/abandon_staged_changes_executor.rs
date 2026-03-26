@@ -9,10 +9,10 @@ use tracing::{debug, info};
 /// Abandons staged changes on a holon.
 ///
 /// **Temporary dance fallback:** There is no native `TransactionAction::AbandonStagedChanges`
-/// variant yet. This executor wraps the dance request inside `TransactionAction::Dance(...)`,
+/// variant. This executor wraps the dance request inside `TransactionAction::Dance(...)`,
 /// routing it through the Runtime while preserving the existing dance choreography.
 ///
-/// TODO: Add a native `TransactionAction::AbandonStagedChanges` variant and migrate.
+/// TODO: Decide if there should be a native `TransactionAction::AbandonStagedChanges` variant.
 pub async fn execute_abandon_staged_changes(
     state: &mut TestExecutionState,
     step_token: TestReference,

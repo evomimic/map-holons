@@ -10,5 +10,6 @@ pub mod simple_add_remove_related_holons_fixture;
 pub mod simple_create_holon_fixture;
 pub mod stage_new_from_clone_fixture;
 pub mod stage_new_version_fixture;
+pub mod transaction_lifecycle_fixture;
 
 pub use setup_book_and_authors_fixture::*;

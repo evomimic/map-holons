@@ -67,7 +67,7 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         Some(dance_initiator),
         holon_service,
-        None,
+        None, // No local space holon initially
         ServiceRoutingPolicy::Combined,
     ));
 
