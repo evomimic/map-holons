@@ -194,7 +194,7 @@ impl FixtureHolons {
 
             let mut changed = false;
             for (relationship_name, collection_arc) in relationship_map.iter() {
-                let refs_to_remove: Vec<_> = collection_arc
+                let existing_members = collection_arc
                     .read()
                     .map_err(|e| {
                         HolonError::FailedToAcquireLock(format!(
@@ -203,13 +203,14 @@ impl FixtureHolons {
                         ))
                     })?
                     .get_members()
-                    .iter()
-                    .filter(|reference| Self::references_same_temporary_id(reference, &abandoned_temp_id))
-                    .cloned()
-                    .collect();
+                    .clone();
 
-                if !refs_to_remove.is_empty() {
-                    updated_snapshot.remove_related_holons(&relationship_name, refs_to_remove)?;
+                let contains_abandoned_target = existing_members.iter().any(|reference| {
+                    Self::references_same_temporary_id(reference, &abandoned_temp_id)
+                });
+
+                if contains_abandoned_target {
+                    updated_snapshot.remove_related_holons(&relationship_name, existing_members)?;
                     changed = true;
                 }
             }

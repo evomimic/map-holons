@@ -445,8 +445,14 @@ fn commit_relationship(
     Ok(())
 }
 
-/// This method creates smartlinks from the specified source_id for the specified relationship name
-/// to each holon in its collection that has a holon_id.
+/// Creates SmartLinks from `source_id` to each member in `collection`.
+///
+/// Current behavior is fail-fast at the collection level: if any member cannot
+/// resolve a persisted `holon_id` or key metadata, this function returns that
+/// error immediately and no later members in the same collection are processed.
+/// In practice, an abandoned staged target can therefore prevent otherwise
+/// valid sibling links in the same relationship collection from being
+/// persisted during this commit pass.
 fn save_smartlinks_for_collection(
     _context: &Arc<TransactionContext>,
     source_id: LocalId,
