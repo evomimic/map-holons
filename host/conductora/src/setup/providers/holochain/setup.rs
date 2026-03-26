@@ -1,36 +1,35 @@
-use std::sync::{Arc, Mutex, RwLock};
-
-use crate::config::providers::holochain::*;
+use std::sync::{Arc, Mutex};
+use crate::setup::common_setup::{register_receptor, serialize_props};
+use crate::config::providers::holochain::{CellDetail, HolochainConfig};
 use crate::config::StorageProvider;
+use crate::runtime::RuntimeInitiatorState;
+use crate::setup::providers::holochain::runtime::{hc_dev_mode_enabled, load_happ_bundle};
 use holons_client::shared_types::base_receptor::BaseReceptor;
+use holons_trust_channel::TrustChannel;
 use tauri::{AppHandle, Manager, Theme};
 use holochain_client::{AdminWebsocket, AppWebsocket, AppInfo};
 use holochain_receptor::HolochainConductorClient;
-use crate::setup::receptor_config_registry::ReceptorConfigRegistry;
 use tauri_plugin_holochain::{HolochainExt, AppBundle};
 use async_trait::async_trait;
 use crate::setup::window_setup::ProviderWindowSetup;
 use tauri_plugin_holochain::AgentPubKey;
 
-/// Tauri-managed state that holds the conductor client created during
-/// Holochain setup. The Runtime retrieves it to construct its own
-/// `TrustChannel` → `DanceInitiator` → `HolonSpaceManager`.
-pub type ConductorClientState = RwLock<Option<Arc<HolochainConductorClient>>>;
-
-
 pub struct HolochainSetup;
 
 impl HolochainSetup {
     /// Main setup function for Holochain integration
-    pub async fn setup(handle: AppHandle, provider: &StorageProvider) -> anyhow::Result<()> {
+       pub async fn setup(
+        handle: AppHandle,
+        name: &str,
+        provider: &StorageProvider,
+    ) -> anyhow::Result<()> {
         let t_setup = std::time::Instant::now();
         tracing::info!("[HOLOCHAIN SETUP] Starting Holochain setup.");
         let StorageProvider::Holochain(hc_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };
         let app_id = &hc_cfg.app_id;
-        let dev_mode = crate::config::app_config::hc_dev_mode_enabled();
-        //let dev_mode = hc_cfg.dev_mode == Some(true);
+        let dev_mode = hc_dev_mode_enabled();
 
         // Load and validate happ bundle early
         let happ = match load_happ_bundle(hc_cfg) {
@@ -59,7 +58,7 @@ impl HolochainSetup {
             // The existing running app is sufficient for dev purposes.
             tracing::warn!("[HOLOCHAIN SETUP] Dev mode: app '{}' already installed (wipe may have been skipped on this run). Skipping update check.", app_id);
         } else if dev_mode {
-            // Dev mode: conductor state (except wasm.db) was wiped before the
+            // Dev mode: conductor state (except wasm.db) wiped before the
             // conductor started (see clean_dev_conductor_state in launch.rs), so
             // there is no stale app record.  Install fresh with an ephemeral key.
             Self::handle_new_app_installation(
@@ -89,16 +88,22 @@ impl HolochainSetup {
 
         // After successful setup, build and register the receptor
         let t_receptor = std::time::Instant::now();
-        let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, hc_cfg).await?;
-        Self::register_receptor(&handle, receptor_cfg).await?;
+        let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, &handle, name, hc_cfg).await?;
+        register_receptor(&handle, receptor_cfg).await?;
         tracing::info!("[HOLOCHAIN SETUP] Base receptor built in {:.1}s", t_receptor.elapsed().as_secs_f64());
         tracing::info!("[HOLOCHAIN SETUP] Total setup time: {:.1}s", t_setup.elapsed().as_secs_f64());
 
 
-        // Store the conductor client for Runtime construction
-        if let Some(state) = handle.try_state::<ConductorClientState>() {
-            let mut guard = state.write().expect("ConductorClientState lock poisoned");
-            *guard = Some(client);
+        // Store the runtime initiator for Runtime construction
+        if let Some(state) = handle.try_state::<RuntimeInitiatorState>() {
+            let initiator: Arc<dyn holons_core::dances::DanceInitiator> =
+                Arc::new(TrustChannel::new(client));
+            let mut guard = state.write().expect("RuntimeInitiatorState lock poisoned");
+            *guard = Some(initiator);
+        } else {
+            tracing::warn!(
+                "[HOLOCHAIN SETUP] RuntimeInitiatorState missing; runtime will not initialize."
+            );
         }
 
         Ok(())
@@ -172,6 +177,8 @@ impl HolochainSetup {
     async fn build_receptor(
         app_ws: AppWebsocket,
         admin_ws: AdminWebsocket,
+        _handle: &AppHandle,
+        _name: &str,
         hc_cfg: &HolochainConfig,
     ) -> anyhow::Result<(BaseReceptor, Arc<HolochainConductorClient>)> {
             let agent = app_ws.my_pub_key.clone();
@@ -180,73 +187,47 @@ impl HolochainSetup {
                 return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
             }
             let client = Self::setup_holochain_client(app_ws.clone(), admin_ws.clone(), cell_details[0].clone(), agent).await;
-
-            // Dynamically collect all properties from HolochainConfig
-            let props = match serde_json::to_value(hc_cfg)? {
-                serde_json::Value::Object(map) => {
-                    map.into_iter()
-                        .map(|(k, v)| {
-                            let value_str = match v {
-                                serde_json::Value::String(s) => s,
-                                serde_json::Value::Number(n) => n.to_string(),
-                                serde_json::Value::Bool(b) => b.to_string(),
-                                serde_json::Value::Null => String::new(),
-                                _ => v.to_string(),
-                            };
-                            (k, value_str)
-                        })
-                        .collect::<std::collections::HashMap<String, String>>()
-                }
-                _ => std::collections::HashMap::new(),
-            };
+           // let snapshot_store: Option<Arc<dyn RecoveryStore>> =
+           // create_snapshot_store(handle, hc_cfg, name)
+           //     .await?
+          //      .map(|s| s as Arc<dyn RecoveryStore>);
+            let props = serialize_props(hc_cfg);
 
             let receptor = BaseReceptor {
                 receptor_id: None,
                 receptor_type: "holochain".to_string(),
                 client_handler: Some(client.clone() as Arc<dyn std::any::Any + Send + Sync>),
+               // snapshot_store,
                 properties: props,
             };
 
             Ok((receptor, client))
         }
 
-        /// Initialize the receptor factory with websockets and load configuration
-        /// Register the built receptor config into the application state
-        async fn register_receptor(
-            handle: &AppHandle,
-            receptor_cfg: BaseReceptor,
-        ) -> anyhow::Result<()> {
-            // Get the registry from app state and register the new config
-            let registry = handle.state::<ReceptorConfigRegistry>();
-            registry.register(receptor_cfg);
-            Ok(())
-        }
+    async fn setup_holochain_client(
+        app_ws: AppWebsocket,
+        admin_ws: AdminWebsocket,
+        cell_detail: CellDetail,
+        agent: AgentPubKey,
+        //cell_id: CellId,
+    ) -> Arc<HolochainConductorClient> {
 
-        //TODO: this should be done by the receptor setup code (basereceptor properties) and include ROLENAME, ZOMENAME etc
-        pub async fn setup_holochain_client(
-            app_ws: AppWebsocket,
-            admin_ws: AdminWebsocket,
-            cell_detail: CellDetail,
-            agent: AgentPubKey,
-            //cell_id: CellId,
-        ) -> Arc<HolochainConductorClient> {
+        let app_ws_arc = Arc::new(Mutex::new(Some(app_ws)));
+        let admin_ws_arc = Arc::new(Mutex::new(Some(admin_ws)));
+        let rolename = cell_detail.role_name;
+        let zomename = cell_detail.zome_name;
+        let zomefunction = cell_detail.zome_function;
 
-            let app_ws_arc = Arc::new(Mutex::new(Some(app_ws)));
-            let admin_ws_arc = Arc::new(Mutex::new(Some(admin_ws)));
-            let rolename = cell_detail.role_name;
-            let zomename = cell_detail.zome_name;
-            let zomefunction = cell_detail.zome_function;
-
-            Arc::new(HolochainConductorClient {
-                app_ws: app_ws_arc,
-                admin_ws: admin_ws_arc,
-                rolename,
-                zomename,
-                zomefunction,
-                agent,
-                //cell_id,
-            })
-        }
+        Arc::new(HolochainConductorClient {
+            app_ws: app_ws_arc,
+            admin_ws: admin_ws_arc,
+            rolename,
+            zomename,
+            zomefunction,
+            agent,
+            //cell_id,
+        })
+    }
 
 }
 

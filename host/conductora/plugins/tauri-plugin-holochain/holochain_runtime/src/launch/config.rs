@@ -58,20 +58,20 @@ pub fn conductor_config(
             network_config.signal_url = local_signal_url;
         } else {
             let local_only_signal = Url2::parse(DEV_SIGNAL_PLACEHOLDER_URL);
-            tracing::warn!(
+            tracing::debug!(
                 "[LAUNCH] DEV MODE: no local signal override provided; forcing local-only signal_url {}",
                 local_only_signal.as_str()
             );
             network_config.signal_url = local_only_signal;
         }
         let local_only_bootstrap = Url2::parse(DEV_BOOTSTRAP_PLACEHOLDER_URL);
-        tracing::info!(
+        tracing::debug!(
             "[LAUNCH] DEV MODE: forcing local-only bootstrap_url {}",
             local_only_bootstrap.as_str()
         );
         network_config.bootstrap_url = local_only_bootstrap;
         network_config.target_arc_factor = 0;
-        tracing::info!(
+        tracing::debug!(
             "[LAUNCH] DEV MODE: target_arc_factor set to 0 (leech mode, minimal network participation)"
         );
 
@@ -88,13 +88,13 @@ pub fn conductor_config(
         network_config.advanced = Some(advanced_config);
     } else {
         if let Some(local_signal_url) = local_signal_url {
-            tracing::info!(
+            tracing::debug!(
                 "[LAUNCH] Normal mode: overriding network signal_url with local runtime URL {}",
                 local_signal_url.as_str()
             );
             network_config.signal_url = local_signal_url;
         } else {
-            tracing::info!(
+            tracing::debug!(
                 "[LAUNCH] Normal mode: no local signal override provided; using configured/default signal_url {}",
                 network_config.signal_url.as_str()
             );
