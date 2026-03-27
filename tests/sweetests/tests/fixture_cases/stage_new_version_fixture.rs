@@ -64,10 +64,9 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         book_staged_token.clone(),
         None,
         version_count.clone(),
-        Some(HolonErrorKind::DuplicateError),
+        None,
         Some(
-            "Stage New Version -- first clone from book; currently expecting Conflict from stale Nursery lookup after commit"
-                .to_string(),
+            "Stage New Version -- first clone from book into fresh transaction".to_string(),
         ),
     )?;
 
@@ -119,22 +118,23 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         book_staged_token.clone(),
         None,
         version_count.clone(),
-        Some(HolonErrorKind::DuplicateError),
+        None,
         Some(
-            "Stage New Version --- second version; currently expecting Conflict from duplicate staged holons after commit"
+            "Stage New Version --- second version; first in this transaction, no duplicate"
                 .to_string(),
         ),
     )?;
 
-    version_count.0 += 1;
+    // Third version in same transaction — now 2 staged holons share the base key
+    let staged_in_this_tx = MapInteger(2);
 
     let _version_3_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token,
         None,
-        version_count.clone(),
+        staged_in_this_tx,
         Some(HolonErrorKind::DuplicateError),
-        Some("Stage New Version --- third version, expecting Conflict for duplicate return of get_staged_holon_by_base_key".to_string()),
+        Some("Stage New Version --- third version, expecting DuplicateError from get_staged_holon_by_base_key".to_string()),
     )?;
 
     // Finalize
