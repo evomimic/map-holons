@@ -47,8 +47,10 @@ impl HolonCollectionWire {
         Ok(HolonCollection::from_parts(self.state, members, self.keyed_index))
     }
 
-    /// Rebinds all collection members to the supplied transaction context,
-    /// ignoring any original tx_id embedded in the wire payload.
+    /// Rebinds all collection members to a different transaction context,
+    /// bypassing tx_id validation. Delegates to each member's
+    /// [`HolonReferenceWire::rebind`]. The caller is responsible for ensuring
+    /// that the referenced identities are valid in the target context.
     pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<HolonCollection, HolonError> {
         for (key, index) in &self.keyed_index {
             if *index >= self.members.len() {

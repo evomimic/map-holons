@@ -14,6 +14,7 @@ pub enum HolonWire {
 }
 
 impl HolonWire {
+    /// Binds this holon's nested references to a TransactionContext, validating tx_id.
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<Holon, HolonError> {
         Ok(match self {
             HolonWire::Transient(holon) => Holon::Transient(holon.bind(context)?),
@@ -22,6 +23,8 @@ impl HolonWire {
         })
     }
 
+    /// Rebinds this holon's nested references to a different transaction
+    /// context, bypassing tx_id validation. Delegates to the variant's `rebind`.
     pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<Holon, HolonError> {
         Ok(match self {
             HolonWire::Transient(holon) => Holon::Transient(holon.rebind(context)?),

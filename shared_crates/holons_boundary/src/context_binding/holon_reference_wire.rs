@@ -26,8 +26,10 @@ impl HolonReferenceWire {
         }
     }
 
-    /// Rebinds a wire reference enum to the supplied transaction context,
-    /// ignoring any original tx_id embedded in the wire payload.
+    /// Rebinds this wire reference to a different transaction context, bypassing
+    /// tx_id validation. Delegates to the variant's `rebind`. See
+    /// [`TransientReferenceWire::rebind`], [`StagedReferenceWire::rebind`], or
+    /// [`SmartReferenceWire::rebind`] for safety requirements.
     pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<HolonReference, HolonError> {
         match self {
             HolonReferenceWire::Transient(transient) => {

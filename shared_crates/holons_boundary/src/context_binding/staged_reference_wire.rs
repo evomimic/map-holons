@@ -27,8 +27,17 @@ impl StagedReferenceWire {
         Ok(StagedReference::from_temporary_id(context_handle, &self.id))
     }
 
-    /// Rebinds a wire reference to the supplied transaction context, ignoring the
-    /// original tx_id and preserving only the referenced TemporaryId.
+    /// Rebinds this wire reference to a different transaction context, bypassing
+    /// the tx_id validation that [`bind`](Self::bind) performs.
+    ///
+    /// Unlike `bind`, which enforces that the wire's embedded tx_id matches the
+    /// target context (catching accidental use of stale references), `rebind`
+    /// intentionally discards the original tx_id and preserves only the
+    /// TemporaryId. The caller is responsible for ensuring that the target
+    /// context's nursery contains a staged holon with this TemporaryId.
+    ///
+    /// Primary use case: re-importing serialized fixture or session data into a
+    /// newly opened transaction.
     pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<StagedReference, HolonError> {
         let context_handle = TransactionContextHandle::new(Arc::clone(context));
         Ok(StagedReference::from_temporary_id(context_handle, &self.id))

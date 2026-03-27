@@ -18,6 +18,7 @@ pub struct TransientHolonWire {
 }
 
 impl TransientHolonWire {
+    /// Binds this holon's nested references to a TransactionContext, validating tx_id.
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<TransientHolon, HolonError> {
         Ok(TransientHolon::from_parts(
             self.version,
@@ -29,6 +30,8 @@ impl TransientHolonWire {
         ))
     }
 
+    /// Rebinds this holon's nested references to a different transaction
+    /// context, bypassing tx_id validation. See [`TransientRelationshipMapWire::rebind`].
     pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<TransientHolon, HolonError> {
         Ok(TransientHolon::from_parts(
             self.version,

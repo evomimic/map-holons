@@ -27,6 +27,8 @@ impl TransientRelationshipMapWire {
         Ok(TransientRelationshipMap::new(map))
     }
 
+    /// Rebinds all nested collection references to a different transaction
+    /// context, bypassing tx_id validation. See [`HolonCollectionWire::rebind`].
     pub fn rebind(
         self,
         context: &Arc<TransactionContext>,

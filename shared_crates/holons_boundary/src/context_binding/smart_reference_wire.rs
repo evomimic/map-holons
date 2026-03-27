@@ -39,8 +39,17 @@ impl SmartReferenceWire {
         }
     }
 
-    /// Rebinds a wire reference to the supplied transaction context, ignoring the
-    /// original tx_id and preserving the referenced HolonId and cached smart props.
+    /// Rebinds this wire reference to a different transaction context, bypassing
+    /// the tx_id validation that [`bind`](Self::bind) performs.
+    ///
+    /// Unlike `bind`, which enforces that the wire's embedded tx_id matches the
+    /// target context (catching accidental use of stale references), `rebind`
+    /// intentionally discards the original tx_id and preserves the HolonId and
+    /// any cached smart property values. The resulting SmartReference will
+    /// resolve against the target context's cache and DHT.
+    ///
+    /// Primary use case: re-importing serialized fixture or session data into a
+    /// newly opened transaction.
     pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<SmartReference, HolonError> {
         let context_handle = TransactionContextHandle::new(Arc::clone(context));
         match self.smart_property_values {
