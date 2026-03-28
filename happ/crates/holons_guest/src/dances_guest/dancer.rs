@@ -46,10 +46,8 @@ impl Dancer {
         dispatch_table.insert("add_related_holons", add_related_holons_dance as DanceFunction);
         dispatch_table.insert("commit", commit_dance as DanceFunction);
         dispatch_table.insert("delete_holon", delete_holon_dance as DanceFunction);
-        dispatch_table.insert(
-            "fetch_all_related_holons",
-            fetch_all_related_holons_dance as DanceFunction,
-        );
+        dispatch_table
+            .insert("fetch_all_related_holons", fetch_all_related_holons_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
@@ -107,9 +105,7 @@ impl Dancer {
 /// * `description` holds the error message associated with the HolonError
 /// * `body` and `descriptor` are set to None
 ///
-fn process_dispatch_result(
-    dispatch_result: Result<ResponseBody, HolonError>,
-) -> DanceResponse {
+fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) -> DanceResponse {
     match dispatch_result {
         Ok(body) => DanceResponse {
             status_code: ResponseStatusCode::OK,

@@ -1,10 +1,12 @@
+use crate::shared_types::{
+    holon_space::SpaceInfo, map_request::MapRequest, map_response::MapResponse,
+};
 use async_trait::async_trait;
-use core_types::{HolonError};
-use std::{any::Any, fmt::Debug, sync::Arc};
-use crate::shared_types::{holon_space::SpaceInfo, map_request::MapRequest, map_response::MapResponse};
+use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::{any::Any, fmt::Debug, sync::Arc};
 
 #[async_trait]
 pub trait ReceptorBehavior: Debug + Send + Sync {

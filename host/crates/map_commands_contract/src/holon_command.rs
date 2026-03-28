@@ -30,9 +30,7 @@ pub enum HolonAction {
 impl HolonAction {
     pub fn descriptor(&self) -> CommandDescriptor {
         match self {
-            HolonAction::Read(ReadableHolonAction::CloneHolon) => {
-                CommandDescriptor::mutating()
-            }
+            HolonAction::Read(ReadableHolonAction::CloneHolon) => CommandDescriptor::mutating(),
             HolonAction::Read(_) => CommandDescriptor::holon_read_only(),
             HolonAction::Write(_) => CommandDescriptor::mutating(),
         }

@@ -28,10 +28,7 @@ pub trait WritableHolonImpl {
         property: PropertyName,
     ) -> Result<&mut Self, HolonError>;
 
-    fn with_descriptor_impl(
-        &mut self,
-        descriptor: HolonReference,
-    ) -> Result<(), HolonError>;
+    fn with_descriptor_impl(&mut self, descriptor: HolonReference) -> Result<(), HolonError>;
 
     fn with_predecessor_impl(
         &mut self,

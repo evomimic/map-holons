@@ -1,6 +1,8 @@
+use core_types::TemporaryId;
 use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_prelude::prelude::*;
 use holons_test::TestExecutionState;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::info;
 
 /// Read an integer property from a transient response holon.
@@ -16,30 +18,11 @@ fn read_integer_property(
         ))),
     }
 }
-/// Dump the `EssentialHolonContent` for any holon-like reference (including
-/// `TransientReference`, `StagedReference`, or `SavedReference`) in a stable,
-/// human-readable format.
-///
-/// This helper is used primarily by sweetests during holon-loader testing,
-/// where TypeDescriptors are not yet available, and we cannot rely on
-/// `property_value()` calls using known property names.
-///
-/// Instead of querying individual properties, `essential_content()` returns:
-///   * the complete `property_map` (all properties discovered on the holon),
-///   * the holon’s key, if present,
-///   * accumulated read-path errors for debugging.
-///
-/// The output is alphabetically sorted for stable diffs and easy debugging.
-///
-/// This function should **never** be used by production code; it is strictly
-/// a test/sweetest debugging aid for introspecting holons before descriptors
-/// exist or during early-bootstrapping scenarios.
-fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl ReadableHolon) -> String {
-    // Attempt to get essential content (properties, key, errors)
-    let essential_content_result = holon_reference.essential_content();
 
-    // Early return if reading essential content failed
-    let essential_content = match essential_content_result {
+/// Dump the `EssentialHolonContent` for any holon-like reference in a stable,
+/// human-readable format (test debugging aid).
+fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl ReadableHolon) -> String {
+    let essential_content = match holon_reference.essential_content() {
         Ok(content) => content,
         Err(error) => {
             return format!("<error reading essential content: {:?}>", error);
@@ -49,7 +32,6 @@ fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl Readab
     let mut output = String::new();
     output.push_str("\n==== EssentialContent ===\n");
 
-    // Sort properties by property name
     let mut sorted_entries: Vec<_> = essential_content.property_map.iter().collect();
     sorted_entries.sort_by(|(name_a, _), (name_b, _)| name_a.0 .0.cmp(&name_b.0 .0));
 
@@ -57,12 +39,10 @@ fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl Readab
         output.push_str(&format!("  {} = {:?}\n", property_name.0 .0, property_value));
     }
 
-    // Include optional key
     if let Some(key_value) = essential_content.key.clone() {
         output.push_str(&format!("  (key) = {}\n", key_value.0));
     }
 
-    // Include any validation or resolver errors
     if !essential_content.errors.is_empty() {
         output.push_str("  errors:\n");
         for error in essential_content.errors {
@@ -74,16 +54,12 @@ fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl Readab
     output
 }
 
-/// Utility: dump all properties (name + value) on the HolonLoadResponse holon,
-/// plus the important fields like response_status_code, error_count, etc.
+/// Dump the full HolonLoadResponse holon for debugging.
 fn dump_full_response(state: &mut TestExecutionState, response: &TransientReference) -> String {
     let mut out = String::new();
     out.push_str("\n===== HolonLoadResponse dump =====\n");
-
-    // 1. Full essential-content dump (sorted, complete property map)
     out.push_str(&dump_essential(state, response));
 
-    // 2. Pull out common loader-specific properties (best-effort)
     out.push_str("----- important (best-effort loader fields) -----\n");
     for p_name in [
         CorePropertyTypeName::ErrorCount.as_property_name(),
@@ -105,23 +81,19 @@ fn dump_full_response(state: &mut TestExecutionState, response: &TransientRefere
     out
 }
 
-/// Utility: if the response holon has **error holons** attached via
-/// `HasLoadError`, print each one’s properties. This is what will tell us the
-/// *actual* Pass-2 resolver error.
+/// Dump error holons attached via `HasLoadError` relationship.
 fn dump_error_holons_from_response(
     state: &mut TestExecutionState,
     response_reference: &TransientReference,
 ) -> String {
     let mut output = String::new();
 
-    // Try to follow the HasLoadError relationship.
     let relationship_name = CoreRelationshipTypeName::HasLoadError;
     let collection_handle = match response_reference.related_holons(&relationship_name) {
         Ok(collection) => collection,
-        Err(_) => return output, // No error holons present.
+        Err(_) => return output,
     };
 
-    // Get members from the collection.
     let members = match collection_handle.read() {
         Ok(guard) => guard.get_members().clone(),
         Err(_) => {
@@ -137,7 +109,6 @@ fn dump_error_holons_from_response(
     output.push_str("\n===== Loader Error Holons (HasLoadError) =====\n");
 
     for (index, holon_reference) in members.into_iter().enumerate() {
-        // Clone the holon so we can read its properties safely.
         let transient_reference = match holon_reference.clone_holon() {
             Ok(reference) => reference,
             Err(error) => {
@@ -151,7 +122,6 @@ fn dump_error_holons_from_response(
 
         output.push_str(&format!("  --- error holon #{} ---\n", index + 1));
 
-        // Use unified essential-content dump
         let essential_dump = dump_essential(state, &transient_reference);
         for line in essential_dump.lines() {
             output.push_str("    ");
@@ -164,15 +134,11 @@ fn dump_error_holons_from_response(
     output
 }
 
-/// Execute the `LoadHolons` step by initiating the LoadHolons dance (test → guest via TrustChannel),
+/// Execute the `LoadHolons` step via `TransactionAction::LoadHolons`,
 /// then assert each response property on the returned response holon.
-///
-/// We also now *always* print any error holons that were attached via `HasLoadError`,
-/// because the controller attaches real resolver errors there and it is the fastest
-/// way to see *why* Pass-2 said `UnprocessableEntity`.
 pub async fn execute_load_holons(
     test_state: &mut TestExecutionState,
-    load_set_reference: TransientReference,
+    load_set_id: TemporaryId,
     expect_staged: MapInteger,
     expect_committed: MapInteger,
     expect_links_created: MapInteger,
@@ -183,27 +149,32 @@ pub async fn execute_load_holons(
     info!("--- TEST STEP: Load Holons ---");
     let context = test_state.context();
 
-    // Build the DanceRequest for the loader.
-    let request = build_load_holons_dance_request(load_set_reference)
-        .unwrap_or_else(|e| panic!("build_load_holons_dance_request() failed: {e:?}"));
+    // Reconstruct the load-set reference inside the active transaction using the
+    // fixture-time TemporaryId. The active transaction has already been seeded
+    // with the fixture transient pool by the harness.
+    let context_handle = TransactionContextHandle::new(context.clone());
+    let rebound_set_reference = TransientReference::from_temporary_id(context_handle, &load_set_id);
 
-    // Initiate the dance using the context-owned initiation path.
-    let dance_response = context.initiate_dance(request).await.expect("dance should succeed");
+    // Dispatch via TransactionAction::LoadHolons
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::LoadHolons {
+            bundle: HolonReference::Transient(rebound_set_reference),
+        },
+    });
+    let result =
+        test_state.dispatch_command(command, "load_holons").await.expect("load_holons failed");
 
-    // Convert the DanceResponse into a TransientReference for property assertions.
-    let response_reference: TransientReference = match dance_response.body {
-        ResponseBody::HolonReference(HolonReference::Transient(t)) => t,
-        ResponseBody::HolonReference(other_ref) => {
-            // If we got a non-transient HolonReference (e.g. staged/saved),
-            // clone it into a transient so we can read properties the same way.
-            other_ref.clone_holon().unwrap_or_else(|e| {
-                panic!("LoadHolons returned non-transient reference and clone_holon failed: {e:?}")
-            })
-        }
-        other => panic!("LoadHolons: expected ResponseBody::HolonReference, got {:?}", other),
+    // Extract the response TransientReference
+    let response_reference: TransientReference = match result {
+        MapResult::Reference(HolonReference::Transient(t)) => t,
+        MapResult::Reference(other_ref) => other_ref.clone_holon().unwrap_or_else(|e| {
+            panic!("LoadHolons returned non-transient reference and clone_holon failed: {e:?}")
+        }),
+        other => panic!("LoadHolons: expected Reference(Transient), got {:?}", other),
     };
 
-    // Read response properties from the returned HolonLoadResponse holon.
+    // Read response properties
     let actual_staged =
         read_integer_property(&response_reference, CorePropertyTypeName::HolonsStaged)
             .unwrap_or_else(|e| panic!("read HolonsStaged failed: {e:?}")) as i64;
@@ -223,7 +194,7 @@ pub async fn execute_load_holons(
         read_integer_property(&response_reference, CorePropertyTypeName::TotalLoaderHolons)
             .unwrap_or_else(|e| panic!("read TotalLoaderHolons failed: {e:?}")) as i64;
 
-    // Always print any attached error holons if there are any.
+    // Always dump error holons if present
     if actual_error_count > 0 {
         info!(
             "[loader-test] response reported {} error(s); dumping attached error holons...",
@@ -232,14 +203,13 @@ pub async fn execute_load_holons(
         info!("{}", dump_error_holons_from_response(test_state, &response_reference));
     }
 
-    // If *anything* is off, dump the whole response to make debugging fast.
+    // Dump full response if any expectation is off
     if actual_staged != expect_staged.0
         || actual_committed != expect_committed.0
         || actual_links_created != expect_links_created.0
         || actual_error_count != expect_errors.0
         || actual_total_bundles != expect_total_bundles.0
         || actual_total_loader_holons != expect_total_loader_holons.0
-    // || true // "true" forces dump even if no missed expectations
     {
         info!(
             "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
@@ -250,7 +220,6 @@ pub async fn execute_load_holons(
             actual_staged, actual_committed, actual_links_created, actual_error_count, actual_total_bundles, actual_total_loader_holons
         );
         info!("{}", dump_full_response(test_state, &response_reference));
-        // we already printed error holons above if any existed
     }
 
     // Final assertions

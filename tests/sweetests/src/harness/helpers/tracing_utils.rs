@@ -2,7 +2,6 @@ use std::sync::Once;
 use tracing::warn;
 use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
 
-
 static INIT: Once = Once::new();
 const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::WARN;
 

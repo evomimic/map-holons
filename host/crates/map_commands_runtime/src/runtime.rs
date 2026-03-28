@@ -33,10 +33,7 @@ impl Runtime {
     }
 
     /// Enforce lifecycle policy and route a bound domain command to its handler.
-    pub async fn execute_command(
-        &self,
-        command: MapCommand,
-    ) -> Result<MapResult, HolonError> {
+    pub async fn execute_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
         let descriptor = command.descriptor();
 
         // Extract context for lifecycle checks (Transaction and Holon commands have one)

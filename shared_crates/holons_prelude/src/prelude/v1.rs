@@ -37,7 +37,7 @@ pub use base_types::{
 };
 pub use core_types::HolonId;
 pub use integrity_core_types::{
-    HolonError, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+    HolonError, HolonErrorKind, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 
 pub use holon_dance_builders::*;

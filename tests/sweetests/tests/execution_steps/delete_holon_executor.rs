@@ -2,68 +2,62 @@ use holons_prelude::prelude::*;
 use holons_test::{
     ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
 };
-use pretty_assertions::assert_eq;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::{debug, info};
 
-/// This function builds and dances a `delete_holon` DanceRequest for the supplied Holon
-/// and matches the expected response
+/// Deletes a staged holon via `TransactionAction::DeleteHolon`.
 ///
+/// On success, records `ExecutionHandle::Deleted` so downstream steps treat this
+/// token as deleted. No follow-up verification dance is performed — the success
+/// of `DeleteHolon` is sufficient.
 pub async fn execute_delete_holon(
     state: &mut TestExecutionState,
     step_token: TestReference,
-    expected_status: ResponseStatusCode
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — resolve source token to extract LocalId
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
     let HolonId::Local(local_id) = source_reference.holon_id().expect("Failed to get HolonId")
     else {
-        panic!("Expected LocalId");
+        panic!("Expected LocalId for delete");
     };
 
-    // 2. BUILD - dance request to commit
-    let request = build_delete_holon_dance_request(local_id.clone())
-        .expect("Failed to build delete_holon request");
-    debug!("Dance Request: {:#?}", request);
+    // 2. BUILD + DISPATCH
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::DeleteHolon { local_id },
+    });
+    let result = state.dispatch_command(command, "delete_holon").await;
+    debug!("delete_holon result: {:?}", &result);
 
-    // 3. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    debug!("Dance Response: {:#?}", response.clone());
-
-    // 4. VALIDATE - response status
-    assert_eq!(
-        response.status_code, expected_status,
-        "delete_holon request returned unexpected status: {}",
-        response.description
-    );
-    info!("Success! Confirmed DanceResponse matched expected {:?}...", expected_status);
-
-    if response.status_code == ResponseStatusCode::OK {
-        // Confirm that the Holon has been successfully deleted
-        let get_request = build_get_holon_by_id_dance_request(HolonId::Local(local_id))
-            .expect("Failed to build get_holon_by_id request");
-        let get_response = context.initiate_dance(get_request).await.expect("dance should succeed");
-        assert_eq!(
-            get_response.status_code,
-            ResponseStatusCode::NotFound,
-            "Holon should be deleted but was found"
-        );
-        info!("Confirmed Holon deletion!");
+    // 3. VALIDATE
+    match result {
+        Ok(MapResult::None) => {
+            assert!(
+                expected_error.is_none(),
+                "delete_holon succeeded but expected {:?}",
+                expected_error,
+            );
+            info!("Success! Holon deleted");
+        }
+        Err(e) => {
+            let actual = HolonErrorKind::from(&e);
+            assert_eq!(Some(actual), expected_error, "delete_holon: unexpected error {:?}", e,);
+        }
+        Ok(other) => panic!("delete_holon: expected None, got {:?}", other),
     }
 
-    // 5. RECORD — Register an ExecutionHolon reflecting the execution outcome
-
-    let execution_handle = if response.status_code == ResponseStatusCode::OK {
+    // 4. RECORD
+    let execution_handle = if expected_error.is_none() {
         ExecutionHandle::Deleted
     } else {
         ExecutionHandle::from(source_reference)
     };
-
     let execution_reference =
         ExecutionReference::from_token_execution(&step_token, execution_handle);
-
     state.record(&step_token, execution_reference).unwrap();
 }

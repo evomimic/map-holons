@@ -34,10 +34,7 @@ fn transaction_action_descriptors() {
         CommandDescriptor::mutating()
     );
     assert_eq!(
-        TransactionAction::DeleteHolon {
-            local_id: LocalId(vec![]),
-        }
-        .descriptor(),
+        TransactionAction::DeleteHolon { local_id: LocalId(vec![]) }.descriptor(),
         CommandDescriptor::mutating()
     );
 }

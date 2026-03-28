@@ -2,7 +2,9 @@ use base_types::{BaseValue, MapString};
 use core_types::HolonError;
 use holons_core::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
 
-use map_commands_contract::{HolonAction, HolonCommand, MapResult, ReadableHolonAction, WritableHolonAction};
+use map_commands_contract::{
+    HolonAction, HolonCommand, MapResult, ReadableHolonAction, WritableHolonAction,
+};
 
 /// Handles holon-scoped commands.
 pub async fn handle_holon(command: HolonCommand) -> Result<MapResult, HolonError> {

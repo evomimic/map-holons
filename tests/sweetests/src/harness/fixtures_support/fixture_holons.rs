@@ -1,15 +1,17 @@
-
+use crate::harness::fixtures_support::{TestHolonState, TestReference};
 use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
-use tracing::debug;
-use crate::harness::fixtures_support::{TestHolonState, TestReference};
+use holons_core::TransientReference;
+use holons_core::HolonReference;
+use holons_core::WritableHolon;
 use std::collections::BTreeMap;
+use tracing::debug;
 
+use super::{ExpectedSnapshot, SnapshotId, SourceSnapshot};
+use holons_core::ReadableHolon;
 use sha2::{Digest, Sha256};
 use uuid::{Builder, Uuid};
-use holons_core::ReadableHolon;
-use super::{ExpectedSnapshot, SnapshotId, SourceSnapshot};
 
 /// Hashes the TemporaryId of the first source snapshot token minted
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -160,6 +162,75 @@ impl FixtureHolons {
         Ok(new_source)
     }
 
+    /// Removes relationships from staged head snapshots that target the supplied
+    /// abandoned fixture snapshot. This keeps expected commit results aligned with
+    /// persisted graph semantics after an abandon.
+    pub fn remove_relationship_targets_for_staged_holons(
+        &mut self,
+        abandoned_reference: &TransientReference,
+    ) -> Result<(), HolonError> {
+        let abandoned_temp_id = abandoned_reference.temporary_id();
+        let fixture_ids: Vec<_> = self.holons.keys().cloned().collect();
+
+        for fixture_id in fixture_ids {
+            let Some(existing_holon) = self.holons.get(&fixture_id).cloned() else {
+                continue;
+            };
+
+            if existing_holon.head_snapshot.state() != TestHolonState::Staged {
+                continue;
+            }
+
+            if existing_holon.head_snapshot.snapshot().temporary_id() == abandoned_temp_id {
+                continue;
+            }
+
+            let mut updated_snapshot = existing_holon.head_snapshot.snapshot().clone_holon()?;
+            let relationship_map = match updated_snapshot.all_related_holons() {
+                Ok(map) => map,
+                Err(HolonError::NotImplemented(_)) => continue,
+                Err(e) => return Err(e),
+            };
+
+            let mut changed = false;
+            for (relationship_name, collection_arc) in relationship_map.iter() {
+                let existing_members = collection_arc
+                    .read()
+                    .map_err(|e| {
+                        HolonError::FailedToAcquireLock(format!(
+                            "Failed to read relationship collection while updating abandon expectations: {}",
+                            e
+                        ))
+                    })?
+                    .get_members()
+                    .clone();
+
+                let contains_abandoned_target = existing_members.iter().any(|reference| {
+                    Self::references_same_temporary_id(reference, &abandoned_temp_id)
+                });
+
+                if contains_abandoned_target {
+                    updated_snapshot.remove_related_holons(&relationship_name, existing_members)?;
+                    changed = true;
+                }
+            }
+
+            if changed {
+                let updated_expected =
+                    ExpectedSnapshot::new(updated_snapshot, existing_holon.head_snapshot.state());
+                let holon = self
+                    .holons
+                    .get_mut(&fixture_id)
+                    .expect("fixture id collected from self.holons must still exist");
+                self.snapshot_to_fixture_holon
+                    .insert(updated_expected.id(), fixture_id.clone());
+                holon.head_snapshot = updated_expected;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Retrieves the FixtureHolon that is keyed by the given SnapshotId.
     fn get_fixture_holon_by_snapshot(&self, id: &SnapshotId) -> Result<&FixtureHolon, HolonError> {
         let fixture_id =
@@ -173,14 +244,22 @@ impl FixtureHolons {
         Ok(holon)
     }
 
+    fn references_same_temporary_id(
+        reference: &HolonReference,
+        temporary_id: &TemporaryId,
+    ) -> bool {
+        match reference {
+            HolonReference::Transient(transient) => transient.temporary_id() == *temporary_id,
+            HolonReference::Staged(staged) => staged.temporary_id() == *temporary_id,
+            HolonReference::Smart(_) => false,
+        }
+    }
+
     // =====  COMMIT  ======  //
 
     /// Mint tokens with expected state Saved.
     /// Returned tokens are *only* used for resolution of expected during the execution, and never passed to an add step.
-    pub fn commit(
-        &mut self,
-
-    ) -> Result<Vec<TestReference>, HolonError> {
+    pub fn commit(&mut self) -> Result<Vec<TestReference>, HolonError> {
         let mut saved_tokens = Vec::new();
 
         for holon in self.holons.clone().values() {

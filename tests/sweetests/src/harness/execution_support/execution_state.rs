@@ -1,15 +1,15 @@
 //! Minimal execution-time state for running a test case.
 //!
 //! `TestExecutionState` is the single runtime hub executors use to:
+//! - **dispatch** commands through `Runtime::execute_command()`
 //! - **record** new realizations (e.g., a freshly staged holon), and
 //! - **look up** previously realized handles using fixture tokens as snapshot carriers
 //!
-//! It intentionally **does not** own services; those come from the provided
-//! `context` (per Issue #308). This keeps executors focused on the loop:
-//! **resolve → execute → validate → record**.
+//! It owns a `Runtime` and tracks the currently active transaction via `active_tx_id`.
+//! The `context()` accessor resolves the active transaction on demand from the session.
 //!
 //! Despite the name, this is **not** an enum of lifecycle phases (Running, Done, …).
-//! It’s a thin container around [`ExecutionHolons`] so we can grow execution-time
+//! It's a thin container around [`ExecutionHolons`] so we can grow execution-time
 //! concerns later (diagnostics, metrics, history) without changing executor APIs.
 
 use std::sync::Arc;
@@ -18,26 +18,35 @@ use crate::harness::{
     execution_support::{ExecutionHolons, ExecutionReference, ResolveBy},
     fixtures_support::TestReference,
 };
+use holons_boundary::SerializableHolonPool;
 use holons_prelude::prelude::*;
+
+use holons_core::core_shared_objects::transactions::TxId;
+use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
+use map_commands_runtime::Runtime;
+use tracing::debug;
 
 #[derive(Clone, Debug)]
 pub struct TestExecutionState {
-    pub context: Arc<TransactionContext>,
-    // Registry of realized references keyed by source token’s `TemporaryId`.
-    pub execution_holons: ExecutionHolons,
+    runtime: Runtime,
+    active_tx_id: TxId,
+    fixture_transient_holons: SerializableHolonPool,
+    // Registry of realized references keyed by source token's `TemporaryId`.
+    execution_holons: ExecutionHolons,
 }
 
 impl TestExecutionState {
-    /// Creates a new `DanceTestExecutionState`.
-    ///
-    /// # Arguments
-    /// - `test_context`: The test execution context.
-    /// - `dance_call_service`: The `DanceCallService` instance for managing dance calls.
-    ///
-    /// # Returns
-    /// A new `DanceTestExecutionState` instance.
-    pub fn new(test_context: Arc<TransactionContext>) -> Self {
-        TestExecutionState { context: test_context, execution_holons: ExecutionHolons::default() }
+    pub fn new(
+        runtime: Runtime,
+        tx_id: TxId,
+        fixture_transient_holons: SerializableHolonPool,
+    ) -> Self {
+        TestExecutionState {
+            runtime,
+            active_tx_id: tx_id,
+            fixture_transient_holons,
+            execution_holons: ExecutionHolons::default(),
+        }
     }
 
     /// Reset the state (clears all recorded holons).
@@ -45,8 +54,93 @@ impl TestExecutionState {
         self.execution_holons = ExecutionHolons::new();
     }
 
+    /// Returns the active transaction context, resolved on demand from the session.
     pub fn context(&self) -> Arc<TransactionContext> {
-        self.context.clone()
+        self.runtime
+            .session()
+            .get_transaction(&self.active_tx_id)
+            .expect("active transaction must exist in session")
+    }
+
+    pub fn runtime(&self) -> &Runtime {
+        &self.runtime
+    }
+
+    pub fn active_tx_id(&self) -> TxId {
+        self.active_tx_id
+    }
+
+    pub fn set_active_tx_id(&mut self, tx_id: TxId) {
+        self.active_tx_id = tx_id;
+    }
+
+    /// Makes a newly opened transaction active and imports fixture transients into it.
+    pub fn activate_transaction(&mut self, tx_id: TxId) -> Result<(), HolonError> {
+        let context = self.runtime.session().get_transaction(&tx_id)?;
+        self.import_fixture_transient_holons(&context)?;
+        self.active_tx_id = tx_id;
+        Ok(())
+    }
+
+    fn import_fixture_transient_holons(
+        &self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<(), HolonError> {
+        if self.fixture_transient_holons.holons.is_empty() {
+            return Ok(());
+        }
+
+        let bound_transient_holons = self.fixture_transient_holons.clone().rebind(context)?;
+        context.import_transient_holons(bound_transient_holons)
+    }
+
+    /// Returns an open transaction context for assertion-style helper steps.
+    /// This allows for db inspection after commit, bypassing transaction lifecycle checks.
+    ///
+    /// If the active transaction is still open, reuse it. If it has already
+    /// been committed, open a fresh observer transaction without changing the
+    /// harness's active transaction lifecycle.
+    pub async fn open_assertion_context(
+        &self,
+        step_name: &str,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        let context = self.context();
+        if context.is_open() {
+            return Ok(context);
+        }
+
+        let result = self
+            .dispatch_command(
+                MapCommand::Space(SpaceCommand::BeginTransaction),
+                &format!("{step_name}: begin_assertion_transaction"),
+            )
+            .await?;
+
+        match result {
+            MapResult::TransactionCreated { tx_id } => {
+                let context = self.runtime.session().get_transaction(&tx_id)?;
+                self.import_fixture_transient_holons(&context)?;
+                Ok(context)
+            }
+            other => Err(HolonError::InvalidParameter(format!(
+                "{step_name}: expected TransactionCreated, got {:?}",
+                other
+            ))),
+        }
+    }
+
+    /// Dispatch a MapCommand through the runtime.
+    ///
+    /// Thin pass-through with logging. Executors own their own result validation.
+    pub async fn dispatch_command(
+        &self,
+        command: MapCommand,
+        step_name: &str,
+    ) -> Result<MapResult, HolonError> {
+        debug!("Dispatching {}: {:?}", step_name, command);
+        let result = self.runtime.execute_command(command).await;
+        debug!("{} result: {:?}", step_name, &result);
+        result
     }
 
     /// Borrow the registry (read-only).

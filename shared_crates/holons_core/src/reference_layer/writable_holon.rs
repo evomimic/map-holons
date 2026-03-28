@@ -27,11 +27,7 @@ pub trait WritableHolon: WritableHolonImpl {
         name: T,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
-        WritableHolonImpl::add_related_holons_impl(
-            self,
-            name.to_relationship_name(),
-            holons,
-        )
+        WritableHolonImpl::add_related_holons_impl(self, name.to_relationship_name(), holons)
     }
 
     /// Removes one or more related holons under the given relationship.
@@ -50,11 +46,7 @@ pub trait WritableHolon: WritableHolonImpl {
         name: T,
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
-        WritableHolonImpl::remove_related_holons_impl(
-            self,
-            name.to_relationship_name(),
-            holons,
-        )
+        WritableHolonImpl::remove_related_holons_impl(self, name.to_relationship_name(), holons)
     }
 
     /// Sets or updates a property value for this holon.
@@ -98,10 +90,7 @@ pub trait WritableHolon: WritableHolonImpl {
     ///
     /// This is a plain forwarder; no ergonomic conversion is applied.
     #[inline]
-    fn with_descriptor(
-        &mut self,
-        descriptor: HolonReference,
-    ) -> Result<(), HolonError> {
+    fn with_descriptor(&mut self, descriptor: HolonReference) -> Result<(), HolonError> {
         WritableHolonImpl::with_descriptor_impl(self, descriptor)
     }
 
@@ -109,10 +98,7 @@ pub trait WritableHolon: WritableHolonImpl {
     ///
     /// This is a plain forwarder; no ergonomic conversion is applied.
     #[inline]
-    fn with_predecessor(
-        &mut self,
-        predecessor: Option<HolonReference>,
-    ) -> Result<(), HolonError> {
+    fn with_predecessor(&mut self, predecessor: Option<HolonReference>) -> Result<(), HolonError> {
         WritableHolonImpl::with_predecessor_impl(self, predecessor)
     }
 }

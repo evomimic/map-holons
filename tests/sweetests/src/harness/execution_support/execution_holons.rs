@@ -18,7 +18,11 @@ use crate::harness::{
     fixtures_support::{SnapshotId, TestHolonState, TestReference},
 };
 use core_types::{LocalId, TemporaryId};
-use holons_core::core_shared_objects::holon::StagedState;
+use holons_core::core_shared_objects::{
+    holon::StagedState,
+    transactions::TransactionContextHandle,
+};
+use holons_core::reference_layer::SmartReference;
 use holons_prelude::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -143,7 +147,21 @@ impl ExecutionHolons {
                         )))
                     }
                     (TestHolonState::Saved, HolonReference::Smart(smart_reference)) => {
-                        Ok(HolonReference::Smart(smart_reference.clone()))
+                        let context_handle = TransactionContextHandle::new(context.clone());
+                        let rebound_reference =
+                            match smart_reference.smart_property_values().cloned() {
+                                Some(properties) => SmartReference::new_with_properties(
+                                    context_handle,
+                                    smart_reference.holon_id(),
+                                    properties,
+                                ),
+                                None => SmartReference::new_from_id(
+                                    context_handle,
+                                    smart_reference.holon_id(),
+                                ),
+                            };
+
+                        Ok(HolonReference::Smart(rebound_reference))
                     }
                     (TestHolonState::Saved, other) => Err(HolonError::InvalidHolonReference(
                         format!("ExecutionHolons::lookup: expected SAVED, got: {:?}", other),

@@ -347,8 +347,7 @@ mod tests {
         drop(space_manager);
 
         // Step 3: Accessing space-backed context state should still work.
-        let _ = transaction
-            .get_space_holon()
-            .expect("space-backed lookup should remain accessible");
+        let _ =
+            transaction.get_space_holon().expect("space-backed lookup should remain accessible");
     }
 }

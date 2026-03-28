@@ -26,9 +26,7 @@ use crate::{Runtime, RuntimeSession};
 struct TestHolonService;
 
 fn unreachable_in_handler_tests<T>() -> Result<T, HolonError> {
-    Err(HolonError::NotImplemented(
-        "TestHolonService".to_string(),
-    ))
+    Err(HolonError::NotImplemented("TestHolonService".to_string()))
 }
 
 impl HolonServiceApi for TestHolonService {
@@ -229,9 +227,7 @@ async fn new_holon_then_transient_count() {
     let cmd = tx_cmd(
         &runtime,
         &tx_id,
-        TransactionAction::NewHolon {
-            key: Some(MapString::from("test-key")),
-        },
+        TransactionAction::NewHolon { key: Some(MapString::from("test-key")) },
     );
     let result = runtime.execute_command(cmd).await.expect("execute_command should succeed");
     match &result {
@@ -259,9 +255,7 @@ async fn new_holon_stage_then_staged_count() {
     let cmd = tx_cmd(
         &runtime,
         &tx_id,
-        TransactionAction::NewHolon {
-            key: Some(MapString::from("stage-test")),
-        },
+        TransactionAction::NewHolon { key: Some(MapString::from("stage-test")) },
     );
     let result = runtime.execute_command(cmd).await.expect("execute_command should succeed");
     let transient_ref = match result {
@@ -270,11 +264,7 @@ async fn new_holon_stage_then_staged_count() {
     };
 
     // StageNewHolon using the transient ref directly
-    let cmd = tx_cmd(
-        &runtime,
-        &tx_id,
-        TransactionAction::StageNewHolon { source: transient_ref },
-    );
+    let cmd = tx_cmd(&runtime, &tx_id, TransactionAction::StageNewHolon { source: transient_ref });
     let result = runtime.execute_command(cmd).await.expect("execute_command should succeed");
     match &result {
         MapResult::Reference(HolonReference::Staged(_)) => {}

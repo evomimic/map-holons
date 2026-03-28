@@ -70,10 +70,8 @@ impl TransientReference {
     ///
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Get TransientManagerAccess
-        let transient_manager_access = self
-            .context_handle
-            .context()
-            .transient_manager_access(TransientRefAccessKey::new());
+        let transient_manager_access =
+            self.context_handle.context().transient_manager_access(TransientRefAccessKey::new());
 
         // Retrieve the holon by its TemporaryId
         let rc_holon = transient_manager_access.get_holon_by_id(&self.id)?;

@@ -9,7 +9,7 @@
 //! - [`TestSessionState`], which captures transient holon state produced during
 //!   fixture setup and injects it into the test execution context.
 
-use crate::{FixtureBindings, FixtureHolons, init_fixture_context};
+use crate::{init_fixture_context, FixtureBindings, FixtureHolons};
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use std::sync::Arc;
