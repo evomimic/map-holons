@@ -1,5 +1,5 @@
 pub mod setup;
 pub mod provider;
-pub mod runtime;
+pub mod plugins;
 
 pub use provider::HolochainProvider;

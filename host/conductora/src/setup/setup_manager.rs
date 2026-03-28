@@ -1,226 +1,128 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::{
     config::{
         providers::ProviderRuntimeSelection,
-        storage_manager::{StorageManager, StorageProvider},
+        storage_manager::StorageManager,
     },
-    runtime,
     setup::{
         provider_registry::ProviderRegistry,
-        receptor_config_registry::ReceptorConfigRegistry,
         window_setup::{DefaultWindowSetup, ProviderWindowSetup},
     },
 };
-use futures::future::join_all;
-use holons_receptor::ReceptorFactory;
+use futures::channel::oneshot;
+use futures::future::select_all;
 use tauri::{AppHandle, Listener, Manager};
 
 pub struct SetupManager;
 
+type ReadySender = Arc<Mutex<Option<oneshot::Sender<anyhow::Result<()>>>>>;
+
 impl SetupManager {
-    pub fn resolve_runtime_selection(
-        storage_manager: &StorageManager,
-    ) -> Result<ProviderRuntimeSelection, String> {
-        storage_manager.resolve_runtime_selection()
-    }
+    fn resolve_ready(ready_sender: &ReadySender, result: anyhow::Result<()>) {
+        let sender = ready_sender
+            .lock()
+            .expect("ready sender lock poisoned")
+            .take();
 
-    /// Apply provider-specific plugins based on runtime provider selection.
-    pub fn apply_plugins(
-        mut builder: tauri::Builder<tauri::Wry>,
-        storage_cfg: &StorageManager,
-        runtime_selection: &ProviderRuntimeSelection,
-        registry: &ProviderRegistry,
-    ) -> tauri::Builder<tauri::Wry> {
-        tracing::debug!(
-            "[SETUP MANAGER] Loading provider plugins: {:?}",
-            runtime_selection.runtime_provider_keys
-        );
-
-        builder = builder.plugin(tauri_plugin_fs::init());
-
-        let (runtime_provider_entries, resolution_warnings) =
-            storage_cfg.runtime_provider_entries(runtime_selection);
-        Self::log_resolution_warnings(&resolution_warnings);
-
-        for (provider_name, provider) in runtime_provider_entries {
-            let provider_type = provider.provider_type();
-            if let Some(integration) = registry.get(provider_type) {
-                builder = integration.apply_plugins(builder, &provider_name, &provider);
-            } else {
-                tracing::warn!(
-                    "[SETUP MANAGER] Unknown provider type '{}' for provider '{}'",
-                    provider_type,
-                    provider_name
-                );
+        if let Some(sender) = sender {
+            if sender.send(result).is_err() {
+                tracing::warn!("[SETUP MANAGER] Readiness receiver dropped before completion.");
             }
         }
-        builder
     }
 
-    /// Setup handler for application initialization.
-    pub fn setup_handler(app: &mut tauri::App<tauri::Wry>) -> Result<(), Box<dyn std::error::Error>> {
-        let handle = app.handle().clone();
-        let storage_cfg = app.state::<StorageManager>().inner().clone();
-        let registry = app.state::<ProviderRegistry>();
-        let runtime_selection =
-            storage_cfg.resolve_runtime_selection().map_err(|e| anyhow::anyhow!(e))?;
-
-        if runtime_selection.runtime_provider_keys.is_empty() {
-            return Err(anyhow::anyhow!(
-                "at least one storage provider must be enabled"
-            )
-            .into());
-        }
-
-        let (runtime_provider_entries, resolution_warnings) =
-            storage_cfg.runtime_provider_entries(&runtime_selection);
-        Self::log_resolution_warnings(&resolution_warnings);
-
-        let enabled_providers: Vec<&str> = runtime_provider_entries
-            .iter()
-            .map(|(_, provider)| provider.provider_type())
-            .collect();
-        tracing::debug!(
-            "[SETUP MANAGER] Setting up providers: {:#?}",
-            enabled_providers
-        );
-        let setup_events = Self::enabled_setup_events(&runtime_provider_entries, registry.inner());
-
-        if setup_events.is_empty() {
-            tracing::info!("[SETUP MANAGER] No async provider setup event required.");
-            let runtime_selection = runtime_selection.clone();
-            tauri::async_runtime::spawn(async move {
-                Self::run_complete_setup(&handle, &storage_cfg, &runtime_selection).await;
-            });
-        } else {
-            use std::collections::HashSet;
-            use std::sync::Mutex;
-            use std::sync::atomic::{AtomicBool, Ordering};
-
-            tracing::debug!(
-                "[SETUP MANAGER] Waiting for async setup events from enabled providers: {:?}",
-                setup_events
-            );
-
-            let pending =
-                Arc::new(Mutex::new(setup_events.iter().cloned().collect::<HashSet<String>>()));
-            let started = Arc::new(AtomicBool::new(false));
-
-            for event_name in setup_events {
-                let pending = Arc::clone(&pending);
-                let started = Arc::clone(&started);
-                let handle = handle.clone();
-                let storage_cfg = storage_cfg.clone();
-                let runtime_selection = runtime_selection.clone();
-                let event_for_remove = event_name.clone();
-
-                app.handle().listen(event_name, move |_event| {
-                    tracing::debug!("[SETUP MANAGER] Received '{}' event.", event_for_remove);
-
-                    let should_start = {
-                        let mut guard = pending.lock().expect("pending setup events lock poisoned");
-                        guard.remove(&event_for_remove);
-                        guard.is_empty()
-                    };
-
-                    if should_start && !started.swap(true, Ordering::SeqCst) {
-                        let handle_for_setup = handle.clone();
-                        let storage_cfg_for_setup = storage_cfg.clone();
-                        let runtime_selection_for_setup = runtime_selection.clone();
-                        tauri::async_runtime::spawn(async move {
-                            Self::run_complete_setup(
-                                &handle_for_setup,
-                                &storage_cfg_for_setup,
-                                &runtime_selection_for_setup,
-                            )
-                            .await;
-                        });
-                    }
-                });
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Collect unique setup events required by selected runtime providers.
-    fn enabled_setup_events(
-        runtime_provider_entries: &[(String, StorageProvider)],
-        registry: &ProviderRegistry,
-    ) -> Vec<String> {
-        let mut events = std::collections::BTreeSet::new();
-
-        for (name, provider) in runtime_provider_entries {
-            let provider_type = provider.provider_type();
-            if let Some(integration) = registry.get(provider_type) {
-                if let Some(event) = integration.setup_event() {
-                    events.insert(event.to_string());
-                }
-            } else {
-                tracing::warn!(
-                    "[SETUP MANAGER] Unknown provider type '{}' for provider '{}'",
-                    provider_type,
-                    name
-                );
-            }
-        }
-
-        events.into_iter().collect()
-    }
-
-    /// Run provider setup, then receptor loading, runtime init, then window creation.
-    async fn run_complete_setup(
+    async fn wait_for_provider_ready(
         handle: &AppHandle,
-        storage_cfg: &StorageManager,
-        runtime_selection: &ProviderRuntimeSelection,
-    ) {
-        tracing::debug!("[SETUP MANAGER] Running complete setup.");
+        provider_name: &str,
+        integration: &Arc<dyn crate::setup::provider_integration::ProviderIntegration>,
+    ) -> anyhow::Result<()> {
+        let Some(success_event) = integration.setup_event() else {
+            return Ok(());
+        };
 
-        if let Err(e) = Self::apply_setups(handle, storage_cfg, runtime_selection).await {
-            tracing::error!("[SETUP MANAGER] Provider setup failed: {}", e);
+        if integration.is_ready(handle) {
+            return Ok(());
         }
 
-        if let Err(e) = Self::load_receptor_configs(handle).await {
-            tracing::error!("[SETUP MANAGER] Failed to load receptor configs: {}", e);
-            return;
-        }
+        tracing::debug!(
+            "[SETUP MANAGER] Waiting for provider '{}' readiness event '{}'.",
+            provider_name,
+            success_event
+        );
 
-        runtime::init_from_state(handle);
+        let (tx, rx) = oneshot::channel();
+        let ready_sender = Arc::new(Mutex::new(Some(tx)));
+        let provider_name = provider_name.to_string();
+        let provider_name_for_wait_error = provider_name.clone();
 
-        if let Err(e) = Self::create_window(handle, storage_cfg, runtime_selection).await {
-            tracing::error!("[SETUP MANAGER] Window creation failed: {}", e);
-            return;
-        }
+        let success_event_name = success_event.to_string();
+        let success_sender = Arc::clone(&ready_sender);
+        let success_id = handle.once(success_event_name.clone(), move |_event| {
+            tracing::debug!(
+                "[SETUP MANAGER] Received '{}' readiness event.",
+                success_event_name
+            );
+            Self::resolve_ready(&success_sender, Ok(()));
+        });
 
-        tracing::info!("[SETUP MANAGER] Setup completed successfully.");
-    }
+        let failure_id = integration.setup_failed_event().map(|failure_event| {
+            let failure_event_name = failure_event.to_string();
+            let failure_sender = Arc::clone(&ready_sender);
+            let provider_name = provider_name.clone();
+            handle.once(failure_event_name.clone(), move |_event| {
+                tracing::error!(
+                    "[SETUP MANAGER] Received '{}' failure event.",
+                    failure_event_name
+                );
+                Self::resolve_ready(
+                    &failure_sender,
+                    Err(anyhow::anyhow!(
+                        "Provider '{}' emitted startup failure event '{}'",
+                        provider_name,
+                        failure_event_name
+                    )),
+                );
+            })
+        });
 
-    async fn load_receptor_configs(handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        if let Some(registry) = handle.try_state::<ReceptorConfigRegistry>() {
-            let configs = registry.all();
-            if let Some(factory) = handle.try_state::<ReceptorFactory>() {
-                factory.load_from_configs(configs).await?;
-                tracing::debug!("[SETUP MANAGER] ReceptorFactory loaded from configs.");
+        if integration.is_ready(handle) {
+            handle.unlisten(success_id);
+            if let Some(failure_id) = failure_id {
+                handle.unlisten(failure_id);
             }
+            Self::resolve_ready(&ready_sender, Ok(()));
         }
-        Ok(())
+
+        let result = match rx.await {
+            Ok(result) => result,
+            Err(_) => Err(anyhow::anyhow!(
+                "provider '{}' readiness channel closed unexpectedly",
+                provider_name_for_wait_error
+            )),
+        };
+
+        handle.unlisten(success_id);
+        if let Some(failure_id) = failure_id {
+            handle.unlisten(failure_id);
+        }
+
+        result
     }
 
     /// Run provider-specific setup routines for each selected runtime provider.
-    async fn apply_setups(
+    pub async fn apply_setups(
         handle: &AppHandle,
         storage_cfg: &StorageManager,
         runtime_selection: &ProviderRuntimeSelection,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let registry =
-            handle.try_state::<ProviderRegistry>().ok_or("Missing ProviderRegistry in state")?;
+    ) -> anyhow::Result<()> {
+        let registry = handle
+            .try_state::<ProviderRegistry>()
+            .ok_or_else(|| anyhow::anyhow!("Missing ProviderRegistry in state"))?;
 
-        let (runtime_provider_entries, resolution_warnings) =
-            storage_cfg.runtime_provider_entries(runtime_selection);
-        Self::log_resolution_warnings(&resolution_warnings);
+        let (runtime_provider_entries, _) = storage_cfg.runtime_provider_entries(runtime_selection);
 
-        let tasks: Vec<_> = runtime_provider_entries
+        let mut tasks: Vec<_> = runtime_provider_entries
             .into_iter()
             .filter_map(|(name, provider)| {
                 let handle = handle.clone();
@@ -238,38 +140,47 @@ impl SetupManager {
                 };
                 tracing::info!("[SETUP MANAGER] Running {} setup for '{}'", provider_type, name);
                 Some(tauri::async_runtime::spawn(async move {
+                    Self::wait_for_provider_ready(&handle, &name, &integration).await?;
                     integration
                         .setup(handle, &name, &provider)
                         .await
-                        .map_err(|e| format!("{}/{}: {}", provider_type, name, e))
+                        .map_err(|e| anyhow::anyhow!("{}/{}: {}", provider_type, name, e))
                 }))
             })
             .collect();
 
-        let results = join_all(tasks).await;
-        for result in results {
-            result
-                .map_err(|e| anyhow::anyhow!("Provider setup task panicked: {}", e))?
-                .map_err(|e| anyhow::anyhow!(e))?;
+        while !tasks.is_empty() {
+            let (result, _index, remaining) = select_all(tasks).await;
+            tasks = remaining;
+
+            match result {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => {
+                    for task in &tasks {
+                        task.abort();
+                    }
+                    return Err(anyhow::anyhow!(e));
+                }
+                Err(e) => {
+                    for task in &tasks {
+                        task.abort();
+                    }
+                    return Err(anyhow::anyhow!("Provider setup task panicked: {}", e));
+                }
+            }
         }
 
         Ok(())
     }
 
-    fn log_resolution_warnings(warnings: &[String]) {
-        for warning in warnings {
-            tracing::warn!("[SETUP MANAGER] {}", warning);
-        }
-    }
-
     /// Create the main application window, using provider-specific window if configured.
-    async fn create_window(
+    pub async fn create_window(
         handle: &AppHandle,
         storage_cfg: &StorageManager,
         runtime_selection: &ProviderRuntimeSelection,
     ) -> anyhow::Result<()> {
         if handle.get_webview_window("main").is_some() {
-            tracing::info!("[SETUP MANAGER] Main window already exists, skipping creation.");
+            tracing::debug!("[SETUP MANAGER] Main window already exists, skipping creation.");
             return Ok(());
         }
 

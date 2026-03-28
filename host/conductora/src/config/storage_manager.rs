@@ -30,7 +30,7 @@ pub enum StorageProvider {
 
 impl StorageManager {
     //discover and load the storage config file
-    pub fn load_storage_config() -> Result<StorageManager, Box<dyn std::error::Error>> {
+    pub fn load_storage_config() -> anyhow::Result<StorageManager> {
         if let Ok(config_path) = std::env::var("STORAGE_CONFIG_PATH") {
             return Self::from_file(&config_path); // hard fail — they asked for a specific file
         }
@@ -42,15 +42,14 @@ impl StorageManager {
             return Self::from_file(config_path.to_str().unwrap());
         }
 
-        Err(format!(
-            "No storage config found. Expected at '{:?}' or set STORAGE_CONFIG_PATH env var.",
-            config_path
-        )
-        .into())
+        Err(anyhow::anyhow!(
+            "No storage config found. Expected at '{}' or set STORAGE_CONFIG_PATH env var.",
+            config_path.display()
+        ))
     }
 
     /// Load configuration from file
-    fn from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    fn from_file(path: &str) -> anyhow::Result<Self> {
         let content = std::fs::read_to_string(path)?;
         let config: StorageManager = serde_json::from_str(&content)?;
         Ok(config)
@@ -110,7 +109,7 @@ impl StorageManager {
     }
 
     /// Resolve runtime provider keys, window provider key, and selection warnings.
-    pub fn resolve_runtime_selection(&self) -> Result<ProviderRuntimeSelection, String> {
+    pub fn resolve_runtime_selection(&self) -> anyhow::Result<ProviderRuntimeSelection> {
         let holochain_entries: Vec<(&str, &HolochainConfig)> = self
             .storage_providers
             .iter()
@@ -143,21 +142,21 @@ impl StorageManager {
             Some(name) => {
                 let (_, provider) = self
                     .get_provider_entry(name)
-                    .ok_or_else(|| format!("window_provider '{}' not found in providers", name))?;
+                    .ok_or_else(|| anyhow::anyhow!("window_provider '{}' not found in providers", name))?;
                 if !provider.is_enabled() {
-                    return Err(format!("window_provider '{}' is disabled", name));
+                    return Err(anyhow::anyhow!("window_provider '{}' is disabled", name));
                 }
 
                 if provider.provider_type() == HolochainSelector::PROVIDER_TYPE {
                     let active = selected_holochain_keys.first().ok_or_else(|| {
-                        format!(
+                        anyhow::anyhow!(
                             "window_provider '{}' points to holochain, but no enabled holochain provider is available",
                             name
                         )
                     })?;
 
                     if active != name {
-                        return Err(format!(
+                        return Err(anyhow::anyhow!(
                             "window_provider '{}' is not the active holochain provider '{}'",
                             name, active
                         ));

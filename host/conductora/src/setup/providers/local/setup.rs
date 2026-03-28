@@ -1,11 +1,7 @@
-//use std::sync::Arc;
-//use crate::config::providers::ProviderConfig;
 use crate::config::providers::local::LocalConfig;
 use crate::config::StorageProvider;
 use crate::setup::common_setup::{register_receptor, serialize_props};
-//use core_types::HolonError;
 use holons_client::shared_types::base_receptor::BaseReceptor;
-//use holons_recovery::{RecoveryStore, TransactionRecoveryStore};
 use tauri::{AppHandle};
 
 pub struct LocalSetup;

@@ -25,8 +25,8 @@ impl ProviderIntegration for LocalProvider {
         builder: tauri::Builder<tauri::Wry>,
         _provider_key: &str,
         _provider: &StorageProvider,
-    ) -> tauri::Builder<tauri::Wry> {
-        builder
+    ) -> anyhow::Result<tauri::Builder<tauri::Wry>> {
+        Ok(builder)
     }
 
     async fn setup(

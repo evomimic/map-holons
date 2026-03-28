@@ -13,7 +13,7 @@ pub async fn install_app(
     agent_key: Option<AgentPubKey>,
     network_seed: Option<NetworkSeed>,
 ) -> crate::Result<AppInfo> {
-    tracing::info!("Installing app {}", app_id);
+    tracing::debug!("Installing app {}", app_id);
 
     let app_info = admin_ws
         .install_app(InstallAppPayload {
@@ -27,14 +27,14 @@ pub async fn install_app(
         })
         .await
         .map_err(|err| crate::Error::ConductorApiError(err))?;
-    tracing::info!("Installed app {app_info:?}");
+    tracing::debug!("Installed app {app_info:?}");
 
     let response = admin_ws
         .enable_app(app_id.clone())
         .await
         .map_err(|err| crate::Error::ConductorApiError(err))?;
 
-    tracing::info!("Enabled app {app_id:?}");
+    tracing::debug!("Enabled app {app_id:?}");
 
     Ok(response.app)
 }

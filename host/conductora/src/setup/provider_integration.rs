@@ -13,13 +13,23 @@ pub trait ProviderIntegration: Send + Sync {
         None
     }
 
+    /// Optional event that indicates startup failure before provider setup can run.
+    fn setup_failed_event(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// Whether this provider is already ready to run setup.
+    fn is_ready(&self, _handle: &AppHandle) -> bool {
+        self.setup_event().is_none()
+    }
+
     /// Apply provider-specific plugins to the Tauri builder.
     fn apply_plugins(
         &self,
         builder: tauri::Builder<tauri::Wry>,
         provider_key: &str,
         provider: &StorageProvider,
-    ) -> tauri::Builder<tauri::Wry>;
+    ) -> anyhow::Result<tauri::Builder<tauri::Wry>>;
 
     /// Provider-specific setup routine.
     async fn setup(

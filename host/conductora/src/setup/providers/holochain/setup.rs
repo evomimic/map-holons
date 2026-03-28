@@ -3,7 +3,7 @@ use crate::setup::common_setup::{register_receptor, serialize_props};
 use crate::config::providers::holochain::{CellDetail, HolochainConfig};
 use crate::config::StorageProvider;
 use crate::runtime::RuntimeInitiatorState;
-use crate::setup::providers::holochain::runtime::{hc_dev_mode_enabled, load_happ_bundle};
+use crate::setup::providers::holochain::plugins::{hc_dev_mode_enabled};
 use holons_client::shared_types::base_receptor::BaseReceptor;
 use holons_trust_channel::TrustChannel;
 use tauri::{AppHandle, Manager, Theme};
@@ -24,7 +24,7 @@ impl HolochainSetup {
         provider: &StorageProvider,
     ) -> anyhow::Result<()> {
         let t_setup = std::time::Instant::now();
-        tracing::info!("[HOLOCHAIN SETUP] Starting Holochain setup.");
+        tracing::info!("[HOLOCHAIN SETUP] Installing Holochain App.");
         let StorageProvider::Holochain(hc_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };
@@ -39,11 +39,11 @@ impl HolochainSetup {
                 return Err(anyhow::anyhow!("Failed to load happ bundle: {}", e));
             }
         };
-        tracing::info!("[HOLOCHAIN SETUP] happ bundle loaded in {:.1}s", t_setup.elapsed().as_secs_f64());
+        tracing::debug!("[HOLOCHAIN SETUP] happ bundle loaded in {:.1}s", t_setup.elapsed().as_secs_f64());
 
         let t_admin = std::time::Instant::now();
         let admin_ws = handle.holochain()?.admin_websocket().await?;
-        tracing::info!("[HOLOCHAIN SETUP] Admin websocket obtained in {:.1}s", t_admin.elapsed().as_secs_f64());
+        tracing::debug!("[HOLOCHAIN SETUP] Admin websocket obtained in {:.1}s", t_admin.elapsed().as_secs_f64());
 
         let installed_apps = admin_ws
             .list_apps(None)
@@ -84,17 +84,15 @@ impl HolochainSetup {
         tracing::info!("[HOLOCHAIN SETUP] App install/update done in {:.1}s", t_install.elapsed().as_secs_f64());
         let t_appws = std::time::Instant::now();
         let app_ws = handle.holochain()?.app_websocket(app_id.clone()).await?;
-        tracing::info!("[HOLOCHAIN SETUP] App websocket obtained in {:.1}s", t_appws.elapsed().as_secs_f64());
+        tracing::debug!("[HOLOCHAIN SETUP] App websocket obtained in {:.1}s", t_appws.elapsed().as_secs_f64());
 
         // After successful setup, build and register the receptor
-        let t_receptor = std::time::Instant::now();
         let (receptor_cfg, client) = Self::build_receptor(app_ws, admin_ws, &handle, name, hc_cfg).await?;
         register_receptor(&handle, receptor_cfg).await?;
-        tracing::info!("[HOLOCHAIN SETUP] Base receptor built in {:.1}s", t_receptor.elapsed().as_secs_f64());
-        tracing::info!("[HOLOCHAIN SETUP] Total setup time: {:.1}s", t_setup.elapsed().as_secs_f64());
 
 
         // Store the runtime initiator for Runtime construction
+        // this is a global state write for holochain conductor client, hard to abstract right now
         if let Some(state) = handle.try_state::<RuntimeInitiatorState>() {
             let initiator: Arc<dyn holons_core::dances::DanceInitiator> =
                 Arc::new(TrustChannel::new(client));
@@ -105,6 +103,7 @@ impl HolochainSetup {
                 "[HOLOCHAIN SETUP] RuntimeInitiatorState missing; runtime will not initialize."
             );
         }
+        tracing::info!("[HOLOCHAIN SETUP] Total setup time: {:.1}s", t_setup.elapsed().as_secs_f64());
 
         Ok(())
     }
@@ -154,7 +153,7 @@ impl HolochainSetup {
         app_id:String,
         dev_mode: bool
     ) -> anyhow::Result<()> {
-                tracing::info!("[HOLOCHAIN SETUP] App '{}' not found. Installing...", app_id);
+                tracing::debug!("[HOLOCHAIN SETUP] App '{}' not found. Installing...", app_id);
 
         // In dev mode DangerTestKeystore has no device_seed_lair_tag, so holochain
         // cannot auto-derive an agent key. Generate one explicitly.
@@ -229,6 +228,53 @@ impl HolochainSetup {
         })
     }
 
+}
+
+/// Load and validate the happ bundle from filesystem
+pub fn load_happ_bundle(
+    holochain_config: &HolochainConfig,
+) -> anyhow::Result<AppBundle> {
+    // Get the path from HolochainConfig or use a sensible default
+    let happ_relative = holochain_config.happ_path.clone().unwrap_or_else(|| {
+        let default = "happ/workdir/map-holons.happ".to_string();
+        tracing::warn!("[HAPP LOADER] ⚠️  happ_path not set in config, using default: {}", default);
+        default
+    });
+
+    tracing::debug!("[HAPP LOADER] ✅ Using happ_path from config: {}", happ_relative);
+
+    // Resolve relative to the workspace root, not current_dir
+    let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|p| p.parent())
+        .ok_or_else(|| anyhow::anyhow!("Failed to determine workspace root"))?;
+
+    let happ_path = workspace_root.join(&happ_relative);
+
+    tracing::debug!("[HAPP LOADER] Workspace root: {:?}", workspace_root);
+    tracing::debug!("[HAPP LOADER] Loading happ from: {:?}", happ_path);
+    tracing::debug!("[HAPP LOADER] Current directory: {:?}", std::env::current_dir());
+
+    // Check if file exists
+    if !happ_path.exists() {
+        tracing::error!("[HAPP LOADER] ❌ File not found: {:?}", happ_path);
+        return Err(anyhow::anyhow!(format!("Happ file not found at: {:?}", happ_path)));
+    }
+
+    tracing::debug!("[HAPP LOADER] ✅ File found");
+
+    // Read file
+    let bytes =
+        std::fs::read(&happ_path).map_err(|e| anyhow::anyhow!("Failed to read happ file: {}", e))?;
+
+    tracing::debug!("[HOLOCHAIN SETUP] Happ file loaded successfully ({} bytes)", bytes.len());
+
+    // Decode bundle
+    let bundle =
+        AppBundle::decode(&bytes).map_err(|e| anyhow::anyhow!("Failed to decode happ bundle: {}", e))?;
+
+    tracing::debug!("[HOLOCHAIN SETUP] Happ bundle decoded successfully");
+    Ok(bundle)
 }
 
 // Holochain window setup

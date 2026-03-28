@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use tauri::AppHandle;
+use tauri_plugin_holochain::HolochainExt;
 
 use crate::config::StorageProvider;
 use crate::setup::provider_integration::ProviderIntegration;
 use crate::setup::window_setup::ProviderWindowSetup;
 
-use super::runtime::holochain_plugin;
+use super::plugins::holochain_plugin;
 use super::setup::{HolochainSetup, HolochainWindowSetup};
 
 pub struct HolochainProvider;
@@ -26,27 +27,35 @@ impl ProviderIntegration for HolochainProvider {
         Some("holochain://setup-completed")
     }
 
+    fn setup_failed_event(&self) -> Option<&'static str> {
+        Some("holochain://setup-failed")
+    }
+
+    fn is_ready(&self, handle: &AppHandle) -> bool {
+        handle.holochain().is_ok()
+    }
+
     fn apply_plugins(
         &self,
         mut builder: tauri::Builder<tauri::Wry>,
         provider_key: &str,
         provider: &StorageProvider,
-    ) -> tauri::Builder<tauri::Wry> {
+    ) -> anyhow::Result<tauri::Builder<tauri::Wry>> {
         let StorageProvider::Holochain(cfg) = provider else {
-            tracing::error!("[APP BUILDER] Invalid storage provider config for Holochain plugin");
-            return builder;
+            tracing::error!("[PLUGIN MANAGER] Invalid storage provider config for Holochain plugin");
+            return Ok(builder)
         };
 
         match holochain_plugin(provider_key, cfg) {
             Ok(plugin) => {
-                tracing::info!("[APP BUILDER] Loaded Holochain plugin");
+                tracing::debug!("[PLUGIN MANAGER] Loading Holochain plugin");
                 builder = builder.plugin(plugin);
             }
             Err(e) => {
-                tracing::error!("[APP BUILDER] Failed to load Holochain plugin: {}", e);
+                tracing::error!("[PLUGIN MANAGER] Failed to load Holochain plugin: {}", e);
             }
         }
-        builder
+        Ok(builder)
     }
 
     async fn setup(
