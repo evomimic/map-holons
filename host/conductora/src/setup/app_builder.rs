@@ -107,9 +107,7 @@ impl AppBuilder {
                         .await
                         .context("load_receptor_configs failed")?;
                     if !runtime::init_from_state(&handle) {
-                        tracing::warn!(
-                            "[APP BUILDER] Runtime initiator unavailable; continuing without MAP Commands runtime."
-                        );
+                        anyhow::bail!("MAP Commands runtime initialization failed");
                     }
                     SetupManager::create_window(&handle, &storage_cfg, &runtime_selection)
                         .await
@@ -120,12 +118,12 @@ impl AppBuilder {
                     Ok::<(), anyhow::Error>(())
                 }
                 .await;
-                tracing::info!("[APP BUILDER] App builder done, Ready event emitted.");
-
+    
                 if let Err(e) = startup_result {
                     tracing::error!("[APP BUILDER] startup failed: {}", e);
                     std::process::exit(1);
                 }
+                tracing::info!("[APP BUILDER] App builder done, Startup complete.");
             });
 
             Ok(())
