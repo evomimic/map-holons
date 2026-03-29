@@ -1,14 +1,15 @@
 import { inject, Injectable, OnDestroy } from "@angular/core";
 import { invoke } from '@tauri-apps/api/core';
+import { once, type UnlistenFn } from '@tauri-apps/api/event';
 import { HolonSpace, mockContentSpace, mockMetaSpace, ProtoAgentSpace, SpaceType } from "../models/interface.space";
 import { ApiService } from "./api.service";
 import { environment } from "../../environments/environment";
 import { SpacesStore } from "../stores/spaces.store";
 import { MapRequest } from "../models/map.request";
-import { map } from "rxjs";
 
 // Helper function to check if the app is running in a Tauri window
 const isTauri = () => !!(window as any).__TAURI__;
+const STARTUP_READY_EVENT = 'startup:ready';
 
 @Injectable({
   providedIn: "root"
@@ -17,7 +18,34 @@ export class MultiPlexService extends ApiService implements OnDestroy {
 
     private readonly spacesStore = inject(SpacesStore);
 
-    async init(): Promise<boolean> {
+    async waitForStartupReady(): Promise<void> {
+        if (environment.mock || !isTauri()) {
+            return;
+        }
+
+        let resolveReady!: () => void;
+        const readyPromise = new Promise<void>((resolve) => {
+            resolveReady = resolve;
+        });
+        const unlisten: UnlistenFn = await once(STARTUP_READY_EVENT, () => {
+            resolveReady();
+        });
+
+        try {
+            const isReady = await invoke<boolean>('is_service_ready');
+            if (isReady) {
+                console.log("Backend service already ready.");
+                return;
+            }
+
+            console.log("Waiting for backend startup event...");
+            await readyPromise;
+        } finally {
+            unlisten();
+        }
+    }
+
+    async init(): Promise<void> {
         if (environment.mock || !isTauri()) {
           console.log("Running in mock mode...");
             sessionStorage.setItem("status", "mock");
@@ -25,36 +53,25 @@ export class MultiPlexService extends ApiService implements OnDestroy {
            // await new Promise(resolve => setTimeout(resolve, 3000));
 
             this.loadMockSpaces();
-            return true;
+            return;
         }
         sessionStorage.clear();
-        // 1. Perform the lightweight readiness check first (non-receptor specific).
-        const isReady = await invoke<boolean>('is_service_ready');
-        //return await invoke('plugin:holochain|is_holochain_ready');
-
-        // 2. If not ready, return false. The app.config.ts loop will retry.
-        if (!isReady) {
-            console.log("Backend service not ready yet...");
-            return false;
-        }
         try {
             console.log("Connecting to the MAP SDK...");
             this.spacesStore.setLoading(true); // Tell the space store we are loading
             const spacesData = await invoke<any>('all_spaces');
             console.log("Spaces JSON received:", spacesData);
             this.processAndStoreSpaces(spacesData);
-            return true;
         } catch (error) {
             this.spacesStore.setLoading(false);
             console.error("Error during SDK initialization:", error);
             if (error instanceof Error && error.message.includes("invoke")) {
                 console.log("Fallback to mock");
                 sessionStorage.setItem("status", "mock:init_error");
-                return true
+                this.loadMockSpaces();
+                return;
             }
-            console.log("service connection error, trying again:");
-            return false;
-            // Don't block app startup, but indicate error
+            throw error;
         }
 
     }

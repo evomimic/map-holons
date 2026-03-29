@@ -75,13 +75,13 @@ pub(crate) async fn launch_holochain_runtime(
             tracing::warn!(
                 "HOLOCHAIN DEV MODE ENABLED: ephemeral keystore, no signal networking, disposable conductor state"
             );
-            tracing::info!(
+            tracing::debug!(
                 "[LAUNCH] DEV MODE: skipping all signal setup (no local signal server launch, no WAN reachability check)"
             );
         }
         SignalLaunchPolicy::PreferLocalWhenSignalUrlMissing => {
-            tracing::debug!(
-                "[LAUNCH] Normal mode with signal_url missing/null in config: attempting local signal server startup"
+            tracing::info!(
+                "[LAUNCH] PRODUCTION MODE: with signal_url missing/null in config: attempting local signal server startup"
             );
             let my_local_ip = get_local_ip_address();
             let port = portpicker::pick_unused_port().expect("No ports free");
@@ -103,8 +103,8 @@ pub(crate) async fn launch_holochain_runtime(
             }
         }
         SignalLaunchPolicy::CheckWanWhenSignalUrlConfigured => {
-            tracing::debug!(
-                "[LAUNCH] Normal mode with configured signal_url={}; checking WAN signal server reachability",
+            tracing::info!(
+                "[LAUNCH] PRODUCTION MODE: with configured signal_url={}; checking WAN signal server reachability",
                 configured_signal_url.as_str()
             );
             let connect_result = can_connect_to_signal_server(configured_signal_url.clone()).await;
@@ -153,7 +153,7 @@ pub(crate) async fn launch_holochain_runtime(
 
     let local_signal_url_for_config = maybe_local_signal_server.as_ref().map(|s| s.0.clone());
     if dev_mode && local_signal_url_for_config.is_none() {
-        tracing::debug!(
+        tracing::info!(
             "[LAUNCH] DEV MODE: no local signal server handle; conductor_config will use local-only placeholder URLs"
         );
     }

@@ -26,6 +26,7 @@ tempdir = "0.3.7"
 anyhow = "1"
 serde_json = "1.0"
 async-trait = "0.1"
+futures = "0.3"
 #hex = "0.4"
 #sha2 = "0.10"
 #log = "0.4"
@@ -43,8 +44,9 @@ map_commands = { path = "../crates/map_commands" }
 core_types = { path = "../../shared_crates/type_system/core_types" }
 
 #holochain dependencies
-holochain_client = { version = "0.7.0"}
+holochain_client = { version = "0.7.1"}
 tauri-plugin-holochain = { path = "plugins/tauri-plugin-holochain" }
+tokio = { version = "1.5", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies] # for unit tests
 #tauri = { version = "2", features = ["test"] } #"devtools"
