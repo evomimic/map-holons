@@ -92,9 +92,5 @@ fn handle_write(
             target.with_descriptor(descriptor)?;
             Ok(MapResult::None)
         }
-        WritableHolonAction::WithPredecessor { predecessor } => {
-            target.with_predecessor(predecessor)?;
-            Ok(MapResult::None)
-        }
     }
 }

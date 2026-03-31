@@ -77,9 +77,6 @@ pub enum WritableHolonActionWire {
 
     /// `with_descriptor(descriptor)`
     WithDescriptor { descriptor: HolonReferenceWire },
-
-    /// `with_predecessor(predecessor)`
-    WithPredecessor { predecessor: Option<HolonReferenceWire> },
 }
 
 // ── Binding ─────────────────────────────────────────────────────────
@@ -150,10 +147,6 @@ impl WritableHolonActionWire {
             }
             WritableHolonActionWire::WithDescriptor { descriptor } => {
                 Ok(WritableHolonAction::WithDescriptor { descriptor: descriptor.bind(context)? })
-            }
-            WritableHolonActionWire::WithPredecessor { predecessor } => {
-                let bound = predecessor.map(|p| p.bind(context)).transpose()?;
-                Ok(WritableHolonAction::WithPredecessor { predecessor: bound })
             }
         }
     }
