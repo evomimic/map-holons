@@ -1,0 +1,22 @@
+{
+  "request_id": 8,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "DeleteHolon": {
+          "local_id": [
+            51,
+            52,
+            53
+          ]
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "delete holon",
+    "snapshot_after": true
+  }
+}

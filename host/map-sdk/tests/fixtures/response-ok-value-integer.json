@@ -1,0 +1,10 @@
+{
+  "request_id": 109,
+  "result": {
+    "Ok": {
+      "Value": {
+        "IntegerValue": 7
+      }
+    }
+  }
+}

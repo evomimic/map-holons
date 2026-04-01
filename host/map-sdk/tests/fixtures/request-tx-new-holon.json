@@ -1,0 +1,18 @@
+{
+  "request_id": 3,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "NewHolon": {
+          "key": "alpha"
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "new holon",
+    "snapshot_after": true
+  }
+}

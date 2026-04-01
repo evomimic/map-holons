@@ -1,0 +1,29 @@
+{
+  "request_id": 22,
+  "command": {
+    "Holon": {
+      "tx_id": 41,
+      "target": {
+        "Staged": {
+          "tx_id": 41,
+          "id": "22222222-2222-2222-2222-222222222222"
+        }
+      },
+      "action": {
+        "Write": {
+          "WithPropertyValue": {
+            "name": "title",
+            "value": {
+              "StringValue": "Fixture title"
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "write property",
+    "snapshot_after": true
+  }
+}

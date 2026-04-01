@@ -1,0 +1,29 @@
+{
+  "request_id": 20,
+  "command": {
+    "Holon": {
+      "tx_id": 41,
+      "target": {
+        "Smart": {
+          "tx_id": 41,
+          "holon_id": {
+            "Local": [
+              71,
+              72,
+              73
+            ]
+          },
+          "smart_property_values": null
+        }
+      },
+      "action": {
+        "Read": "CloneHolon"
+      }
+    }
+  },
+  "options": {
+    "gesture_id": null,
+    "gesture_label": null,
+    "snapshot_after": false
+  }
+}

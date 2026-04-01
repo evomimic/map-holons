@@ -1,0 +1,28 @@
+{
+  "request_id": 106,
+  "result": {
+    "Ok": {
+      "References": [
+        {
+          "Staged": {
+            "tx_id": 41,
+            "id": "22222222-2222-2222-2222-222222222222"
+          }
+        },
+        {
+          "Smart": {
+            "tx_id": 41,
+            "holon_id": {
+              "Local": [
+                101,
+                102,
+                103
+              ]
+            },
+            "smart_property_values": null
+          }
+        }
+      ]
+    }
+  }
+}

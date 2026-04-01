@@ -1,0 +1,21 @@
+{
+  "request_id": 4,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "StageNewHolon": {
+          "source": {
+            "tx_id": 41,
+            "id": "11111111-1111-1111-1111-111111111111"
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "stage new holon",
+    "snapshot_after": true
+  }
+}

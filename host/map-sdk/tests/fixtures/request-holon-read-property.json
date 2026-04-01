@@ -1,0 +1,26 @@
+{
+  "request_id": 16,
+  "command": {
+    "Holon": {
+      "tx_id": 41,
+      "target": {
+        "Staged": {
+          "tx_id": 41,
+          "id": "22222222-2222-2222-2222-222222222222"
+        }
+      },
+      "action": {
+        "Read": {
+          "PropertyValue": {
+            "name": "title"
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": null,
+    "gesture_label": null,
+    "snapshot_after": false
+  }
+}

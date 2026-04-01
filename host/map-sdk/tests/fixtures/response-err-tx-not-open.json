@@ -1,0 +1,11 @@
+{
+  "request_id": 115,
+  "result": {
+    "Err": {
+      "TransactionNotOpen": {
+        "tx_id": 41,
+        "state": "Committed"
+      }
+    }
+  }
+}

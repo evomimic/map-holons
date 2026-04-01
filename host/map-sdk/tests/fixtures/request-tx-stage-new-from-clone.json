@@ -1,0 +1,44 @@
+{
+  "request_id": 5,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "StageNewFromClone": {
+          "original": {
+            "Smart": {
+              "tx_id": 41,
+              "holon_id": {
+                "Local": [
+                  11,
+                  12,
+                  13
+                ]
+              },
+              "smart_property_values": {
+                "published": {
+                  "BooleanValue": true
+                },
+                "rank": {
+                  "IntegerValue": 3
+                },
+                "status": {
+                  "EnumValue": "Active"
+                },
+                "title": {
+                  "StringValue": "Fixture title"
+                }
+              }
+            }
+          },
+          "new_key": "alpha-v2"
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "stage clone",
+    "snapshot_after": true
+  }
+}

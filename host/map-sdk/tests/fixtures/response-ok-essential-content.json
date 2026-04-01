@@ -1,0 +1,35 @@
+{
+  "request_id": 111,
+  "result": {
+    "Ok": {
+      "EssentialContent": {
+        "property_map": {
+          "published": {
+            "BooleanValue": true
+          },
+          "rank": {
+            "IntegerValue": 3
+          },
+          "status": {
+            "EnumValue": "Active"
+          },
+          "title": {
+            "StringValue": "Fixture title"
+          }
+        },
+        "key": "alpha",
+        "errors": [
+          {
+            "EmptyField": "description"
+          },
+          {
+            "InvalidRelationship": [
+              "children",
+              "Descriptor"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

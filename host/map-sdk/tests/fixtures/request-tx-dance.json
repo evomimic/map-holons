@@ -1,0 +1,76 @@
+{
+  "request_id": 14,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "Dance": {
+          "dance_name": "load-descriptor",
+          "dance_type": {
+            "QueryMethod": {
+              "members": [
+                {
+                  "source_holon": {
+                    "Staged": {
+                      "tx_id": 41,
+                      "id": "22222222-2222-2222-2222-222222222222"
+                    }
+                  },
+                  "relationships": {
+                    "children": {
+                      "members": [
+                        {
+                          "source_holon": {
+                            "Smart": {
+                              "tx_id": 41,
+                              "holon_id": {
+                                "Local": [
+                                  141,
+                                  142,
+                                  143
+                                ]
+                              },
+                              "smart_property_values": null
+                            }
+                          },
+                          "relationships": null
+                        }
+                      ],
+                      "query_spec": {
+                        "relationship_name": "children"
+                      }
+                    }
+                  }
+                }
+              ],
+              "query_spec": {
+                "relationship_name": "children"
+              }
+            }
+          },
+          "body": {
+            "ParameterValues": {
+              "published": {
+                "BooleanValue": true
+              },
+              "rank": {
+                "IntegerValue": 3
+              },
+              "status": {
+                "EnumValue": "Active"
+              },
+              "title": {
+                "StringValue": "Fixture title"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "dance request",
+    "snapshot_after": true
+  }
+}

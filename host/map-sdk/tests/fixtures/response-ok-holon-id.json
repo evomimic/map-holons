@@ -1,0 +1,21 @@
+{
+  "request_id": 110,
+  "result": {
+    "Ok": {
+      "HolonId": {
+        "External": {
+          "space_id": [
+            1,
+            2,
+            3
+          ],
+          "local_id": [
+            4,
+            5,
+            6
+          ]
+        }
+      }
+    }
+  }
+}
