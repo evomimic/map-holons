@@ -1,3 +1,4 @@
+export * from './commands/index';
 export * from './errors';
 export * from './request-context';
 export * from './result-decoders';

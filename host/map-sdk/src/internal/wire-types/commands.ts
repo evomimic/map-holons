@@ -5,6 +5,7 @@ import {
   type BaseValue,
   type PropertyName,
   type RelationshipName,
+  type TxId,
   type LocalId,
   type HolonId,
   type SmartReferenceWire,
@@ -36,7 +37,7 @@ export type SpaceCommandWire = 'BeginTransaction';
  * Transaction-scoped command envelope.
  */
 export interface TransactionCommandWire {
-  tx_id: number;
+  tx_id: TxId;
   action: TransactionActionWire;
 }
 
@@ -72,7 +73,7 @@ export type TransactionActionWire =
  * Holon-scoped command envelope.
  */
 export interface HolonCommandWire {
-  tx_id: number;
+  tx_id: TxId;
   target: HolonReferenceWire;
   action: HolonActionWire;
 }
