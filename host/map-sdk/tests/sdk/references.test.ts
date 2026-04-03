@@ -59,6 +59,8 @@ vi.mock('../../src/internal/commands/holon', () => ({
 
 import { HolonCollection } from '../../src/sdk/collection';
 import {
+  createHolonReference,
+  createTransientHolonReference,
   HolonReference,
   TransientHolonReference,
 } from '../../src/sdk/references';
@@ -123,11 +125,11 @@ const relatedCollection: HolonCollectionWire = {
 };
 
 function stagedHandle(): HolonReference {
-  return HolonReference._fromWire(txId, stagedReference);
+  return createHolonReference(txId, stagedReference);
 }
 
 function transientHandle(): TransientHolonReference {
-  return TransientHolonReference._fromWire(txId, transientReference);
+  return createTransientHolonReference(txId, transientReference);
 }
 
 // ===========================================
@@ -153,14 +155,14 @@ describe('HolonReference', () => {
   });
 
   it('wraps transient wire references as TransientHolonReference instances', () => {
-    const reference = HolonReference._fromWire(txId, transientReference);
+    const reference = createHolonReference(txId, transientReference);
 
     expect(reference).toBeInstanceOf(TransientHolonReference);
   });
 
   it('rejects non-transient wire references in the transient-only factory', () => {
     expect(() =>
-      TransientHolonReference._fromWire(txId, stagedReference),
+      createTransientHolonReference(txId, stagedReference),
     ).toThrow('Expected a transient holon reference');
   });
 
@@ -302,7 +304,7 @@ describe('HolonReference', () => {
     withDescriptorMock.mockResolvedValue(undefined);
 
     await expect(
-      stagedHandle().withDescriptor(HolonReference._fromWire(txId, smartReference)),
+      stagedHandle().withDescriptor(createHolonReference(txId, smartReference)),
     ).resolves.toBeUndefined();
 
     expect(withDescriptorMock).toHaveBeenCalledWith(
@@ -310,5 +312,12 @@ describe('HolonReference', () => {
       stagedReference,
       smartReference,
     );
+  });
+
+  it('does not expose internal transport fields on public references', () => {
+    const reference = stagedHandle();
+
+    expect('_txId' in (reference as object)).toBe(false);
+    expect('_wireRef' in (reference as object)).toBe(false);
   });
 });

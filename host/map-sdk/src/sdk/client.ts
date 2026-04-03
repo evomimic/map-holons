@@ -1,5 +1,5 @@
 import * as internalSpace from '../internal/commands/space';
-import { MapTransaction } from './transaction';
+import { createMapTransaction, MapTransaction } from './transaction';
 
 // ===========================================
 // Public MAP Client
@@ -17,6 +17,6 @@ export class MapClient {
    */
   async beginTransaction(): Promise<MapTransaction> {
     const txId = await internalSpace.beginTransaction();
-    return MapTransaction._fromTxId(txId);
+    return createMapTransaction(txId);
   }
 }

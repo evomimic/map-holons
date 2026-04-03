@@ -1,20 +1,19 @@
 import { DomainError } from '../internal/errors';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
-  DanceRequestWire,
-  DanceResponseWire,
   HolonId,
-  HolonReferenceWire,
   LocalId,
-  NodeCollectionWire,
-  QueryExpression,
   SmartReferenceWire,
   TxId,
 } from '../internal/wire-types/references';
 import { HolonCollection } from './collection';
 import {
-  HolonReference,
-  TransientHolonReference,
+  createHolonReference,
+  createTransientHolonReference,
+  type HolonReference,
+  type TransientHolonReference,
+  unwrapHolonReference,
+  unwrapTransientHolonReference,
 } from './references';
 import {
   extractNumber,
@@ -25,6 +24,9 @@ import {
 // Public Map Transaction
 // ===========================================
 
+const mapTransactionTxIds = new WeakMap<MapTransaction, TxId>();
+const MAP_TRANSACTION_CONSTRUCTION = Symbol('MapTransactionConstruction');
+
 /**
  * Public transaction-bound execution context for MAP operations.
  *
@@ -32,71 +34,70 @@ import {
  * each SDK method to exactly one transaction or holon command.
  */
 export class MapTransaction {
-  /** @internal */
-  readonly _txId: TxId;
+  constructor(txId: TxId, token: typeof MAP_TRANSACTION_CONSTRUCTION) {
+    if (token !== MAP_TRANSACTION_CONSTRUCTION) {
+      throw new TypeError('MapTransaction cannot be constructed directly');
+    }
 
-  private constructor(txId: TxId) {
-    this._txId = txId;
-  }
-
-  /**
-   * Construct a public transaction wrapper from an internal tx id.
-   */
-  static _fromTxId(txId: TxId): MapTransaction {
-    return new MapTransaction(txId);
+    mapTransactionTxIds.set(this, txId);
   }
 
   async commit(): Promise<void> {
-    await internalTransaction.commit(this._txId);
+    await internalTransaction.commit(txIdFor(this));
   }
 
   async newHolon(key?: string): Promise<TransientHolonReference> {
-    const wireRef = await internalTransaction.newHolon(this._txId, key);
-    return TransientHolonReference._fromWire(this._txId, wireRef);
+    const txId = txIdFor(this);
+    const wireRef = await internalTransaction.newHolon(txId, key);
+    return createTransientHolonReference(txId, wireRef);
   }
 
   async stageNewHolon(
     source: TransientHolonReference,
   ): Promise<HolonReference> {
+    const txId = txIdFor(this);
     const wireRef = await internalTransaction.stageNewHolon(
-      this._txId,
-      transientWireRef(source),
+      txId,
+      unwrapTransientHolonReference(source),
     );
-    return HolonReference._fromWire(this._txId, wireRef);
+    return createHolonReference(txId, wireRef);
   }
 
   async stageNewFromClone(
     original: HolonReference,
     newKey: string,
   ): Promise<HolonReference> {
+    const txId = txIdFor(this);
     const wireRef = await internalTransaction.stageNewFromClone(
-      this._txId,
-      original._wireRef,
+      txId,
+      unwrapHolonReference(original),
       newKey,
     );
-    return HolonReference._fromWire(this._txId, wireRef);
+    return createHolonReference(txId, wireRef);
   }
 
   async stageNewVersion(
     currentVersion: SmartReference,
   ): Promise<HolonReference> {
+    const txId = txIdFor(this);
     const wireRef = await internalTransaction.stageNewVersion(
-      this._txId,
-      toSmartReferenceWire(this._txId, currentVersion),
+      txId,
+      toSmartReferenceWire(txId, currentVersion),
     );
-    return HolonReference._fromWire(this._txId, wireRef);
+    return createHolonReference(txId, wireRef);
   }
 
   async stageNewVersionFromId(holonId: HolonId): Promise<HolonReference> {
+    const txId = txIdFor(this);
     const wireRef = await internalTransaction.stageNewVersionFromId(
-      this._txId,
+      txId,
       holonId,
     );
-    return HolonReference._fromWire(this._txId, wireRef);
+    return createHolonReference(txId, wireRef);
   }
 
   async deleteHolon(localId: LocalId): Promise<void> {
-    await internalTransaction.deleteHolon(this._txId, localId);
+    await internalTransaction.deleteHolon(txIdFor(this), localId);
   }
 
   /**
@@ -107,102 +108,95 @@ export class MapTransaction {
    * normal in-transaction mutation.
    */
   async loadHolons(bundle: HolonReference): Promise<void> {
-    await internalTransaction.loadHolons(this._txId, bundle._wireRef);
+    await internalTransaction.loadHolons(
+      txIdFor(this),
+      unwrapHolonReference(bundle),
+    );
   }
 
   async getAllHolons(): Promise<HolonCollection> {
-    const collection = await internalTransaction.getAllHolons(this._txId);
-    return new HolonCollection(this._txId, collection);
+    const txId = txIdFor(this);
+    const collection = await internalTransaction.getAllHolons(txId);
+    return new HolonCollection(txId, collection);
   }
 
   async getStagedHolonByBaseKey(key: string): Promise<HolonReference | null> {
+    const txId = txIdFor(this);
     return withHolonNotFoundAsNull(async () => {
       const wireRef = await internalTransaction.getStagedHolonByBaseKey(
-        this._txId,
+        txId,
         key,
       );
-      return HolonReference._fromWire(this._txId, wireRef);
+      return createHolonReference(txId, wireRef);
     });
   }
 
   async getStagedHolonsByBaseKey(key: string): Promise<HolonReference[]> {
+    const txId = txIdFor(this);
     const wireRefs = await internalTransaction.getStagedHolonsByBaseKey(
-      this._txId,
+      txId,
       key,
     );
-    return wireRefs.map((wireRef) => HolonReference._fromWire(this._txId, wireRef));
+    return wireRefs.map((wireRef) => createHolonReference(txId, wireRef));
   }
 
   async getStagedHolonByVersionedKey(
     key: string,
   ): Promise<HolonReference | null> {
+    const txId = txIdFor(this);
     return withHolonNotFoundAsNull(async () => {
       const wireRef = await internalTransaction.getStagedHolonByVersionedKey(
-        this._txId,
+        txId,
         key,
       );
-      return HolonReference._fromWire(this._txId, wireRef);
+      return createHolonReference(txId, wireRef);
     });
   }
 
   async getTransientHolonByBaseKey(
     key: string,
   ): Promise<TransientHolonReference | null> {
+    const txId = txIdFor(this);
     return withHolonNotFoundAsNull(async () => {
       const wireRef = await internalTransaction.getTransientHolonByBaseKey(
-        this._txId,
+        txId,
         key,
       );
-      return TransientHolonReference._fromWire(this._txId, wireRef);
+      return createTransientHolonReference(txId, wireRef);
     });
   }
 
   async getTransientHolonByVersionedKey(
     key: string,
   ): Promise<TransientHolonReference | null> {
+    const txId = txIdFor(this);
     return withHolonNotFoundAsNull(async () => {
       const wireRef = await internalTransaction.getTransientHolonByVersionedKey(
-        this._txId,
+        txId,
         key,
       );
-      return TransientHolonReference._fromWire(this._txId, wireRef);
+      return createTransientHolonReference(txId, wireRef);
     });
   }
 
   async stagedCount(): Promise<number> {
-    const value = await internalTransaction.stagedCount(this._txId);
+    const value = await internalTransaction.stagedCount(txIdFor(this));
     return extractNumber(value);
   }
 
   async transientCount(): Promise<number> {
-    const value = await internalTransaction.transientCount(this._txId);
+    const value = await internalTransaction.transientCount(txIdFor(this));
     return extractNumber(value);
-  }
-
-  /**
-   * Internal-only DANCE entrypoint retained for SDK completeness.
-   *
-   * This stays private in v0 because the Rust backend implementation is still
-   * incomplete.
-   */
-  private dance(request: DanceRequestWire): Promise<DanceResponseWire> {
-    return internalTransaction.dance(this._txId, request);
-  }
-
-  /**
-   * Internal-only query entrypoint retained for SDK completeness.
-   *
-   * This stays private in v0 because the Rust backend implementation is still
-   * incomplete.
-   */
-  private query(expression: QueryExpression): Promise<NodeCollectionWire> {
-    return internalTransaction.query(this._txId, expression);
   }
 }
 
 // ===========================================
 // Internal Helpers
 // ===========================================
+
+export function createMapTransaction(txId: TxId): MapTransaction {
+  return new MapTransaction(txId, MAP_TRANSACTION_CONSTRUCTION);
+}
 
 function toSmartReferenceWire(
   txId: TxId,
@@ -213,18 +207,6 @@ function toSmartReferenceWire(
     holon_id: currentVersion.holonId,
     smart_property_values: currentVersion.smartPropertyValues ?? null,
   };
-}
-
-function transientWireRef(
-  source: TransientHolonReference,
-): Extract<HolonReferenceWire, { Transient: unknown }>['Transient'] {
-  const wireRef = source._wireRef;
-
-  if (!('Transient' in wireRef)) {
-    throw new TypeError('Expected a transient holon reference');
-  }
-
-  return wireRef.Transient;
 }
 
 async function withHolonNotFoundAsNull<T>(
@@ -239,4 +221,14 @@ async function withHolonNotFoundAsNull<T>(
 
     throw error;
   }
+}
+
+function txIdFor(transaction: MapTransaction): TxId {
+  const txId = mapTransactionTxIds.get(transaction);
+
+  if (txId === undefined) {
+    throw new TypeError('Expected a MapTransaction created by @map/sdk');
+  }
+
+  return txId;
 }

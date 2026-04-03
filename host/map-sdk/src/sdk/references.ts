@@ -3,6 +3,7 @@ import type {
   HolonReferenceWire,
   PropertyName,
   RelationshipName,
+  TransientReferenceWire,
   TxId,
 } from '../internal/wire-types/references';
 import { HolonCollection } from './collection';
@@ -18,6 +19,10 @@ import {
 // Public Holon References
 // ===========================================
 
+const holonReferenceTxIds = new WeakMap<HolonReference, TxId>();
+const holonReferenceWires = new WeakMap<HolonReference, HolonReferenceWire>();
+const HOLON_REFERENCE_CONSTRUCTION = Symbol('HolonReferenceConstruction');
+
 /**
  * Public handle for a staged or persisted holon target.
  *
@@ -25,80 +30,79 @@ import {
  * can delegate each method to exactly one MAP command.
  */
 export class HolonReference implements WritableHolon {
-  /** @internal */
-  readonly _txId: TxId;
-
-  /** @internal */
-  readonly _wireRef: HolonReferenceWire;
-
-  protected constructor(txId: TxId, wireRef: HolonReferenceWire) {
-    this._txId = txId;
-    this._wireRef = wireRef;
-  }
-
-  /**
-   * Construct the appropriate public reference wrapper for a wire reference.
-   */
-  static _fromWire(txId: TxId, wireRef: HolonReferenceWire): HolonReference {
-    if ('Transient' in wireRef) {
-      return TransientHolonReference._fromWire(txId, wireRef);
+  constructor(
+    txId: TxId,
+    wireRef: HolonReferenceWire,
+    token: typeof HOLON_REFERENCE_CONSTRUCTION,
+  ) {
+    if (token !== HOLON_REFERENCE_CONSTRUCTION) {
+      throw new TypeError('HolonReference cannot be constructed directly');
     }
 
-    return new HolonReference(txId, wireRef);
+    holonReferenceTxIds.set(this, txId);
+    holonReferenceWires.set(this, wireRef);
   }
 
   async cloneHolon(): Promise<TransientHolonReference> {
-    const wireRef = await internalHolon.cloneHolon(this._txId, this._wireRef);
-    return TransientHolonReference._fromWire(this._txId, wireRef);
+    const txId = txIdFor(this);
+    const wireRef = await internalHolon.cloneHolon(txId, wireRefFor(this));
+    return createTransientHolonReference(txId, wireRef);
   }
 
   essentialContent(): Promise<EssentialHolonContent> {
-    return internalHolon.essentialContent(this._txId, this._wireRef);
+    return internalHolon.essentialContent(txIdFor(this), wireRefFor(this));
   }
 
   async summarize(): Promise<string> {
-    const value = await internalHolon.summarize(this._txId, this._wireRef);
+    const value = await internalHolon.summarize(txIdFor(this), wireRefFor(this));
     return extractString(value);
   }
 
   holonId(): Promise<HolonId> {
-    return internalHolon.readHolonId(this._txId, this._wireRef);
+    return internalHolon.readHolonId(txIdFor(this), wireRefFor(this));
   }
 
   async predecessor(): Promise<HolonReference | null> {
-    const wireRef = await internalHolon.predecessor(this._txId, this._wireRef);
-    return wireRef === null ? null : HolonReference._fromWire(this._txId, wireRef);
+    const txId = txIdFor(this);
+    const wireRef = await internalHolon.predecessor(txId, wireRefFor(this));
+    return wireRef === null ? null : createHolonReference(txId, wireRef);
   }
 
   async key(): Promise<string | null> {
-    const value = await internalHolon.readKey(this._txId, this._wireRef);
+    const value = await internalHolon.readKey(txIdFor(this), wireRefFor(this));
     return value === null ? null : extractString(value);
   }
 
   async versionedKey(): Promise<string> {
-    const value = await internalHolon.readVersionedKey(this._txId, this._wireRef);
+    const value = await internalHolon.readVersionedKey(txIdFor(this), wireRefFor(this));
     return extractString(value);
   }
 
   propertyValue(name: PropertyName): Promise<BaseValue | null> {
-    return internalHolon.readPropertyValue(this._txId, this._wireRef, name);
+    return internalHolon.readPropertyValue(txIdFor(this), wireRefFor(this), name);
   }
 
   async relatedHolons(name: RelationshipName): Promise<HolonCollection> {
+    const txId = txIdFor(this);
     const collection = await internalHolon.readRelatedHolons(
-      this._txId,
-      this._wireRef,
+      txId,
+      wireRefFor(this),
       name,
     );
-    return new HolonCollection(this._txId, collection);
+    return new HolonCollection(txId, collection);
   }
 
   withPropertyValue(name: PropertyName, value: BaseValue): Promise<void> {
-    return internalHolon.withPropertyValue(this._txId, this._wireRef, name, value);
+    return internalHolon.withPropertyValue(
+      txIdFor(this),
+      wireRefFor(this),
+      name,
+      value,
+    );
   }
 
   removePropertyValue(name: PropertyName): Promise<void> {
-    return internalHolon.removePropertyValue(this._txId, this._wireRef, name);
+    return internalHolon.removePropertyValue(txIdFor(this), wireRefFor(this), name);
   }
 
   addRelatedHolons(
@@ -106,10 +110,10 @@ export class HolonReference implements WritableHolon {
     holons: HolonReference[],
   ): Promise<void> {
     return internalHolon.addRelatedHolons(
-      this._txId,
-      this._wireRef,
+      txIdFor(this),
+      wireRefFor(this),
       name,
-      holons.map((holon) => holon._wireRef),
+      holons.map(unwrapHolonReference),
     );
   }
 
@@ -118,18 +122,18 @@ export class HolonReference implements WritableHolon {
     holons: HolonReference[],
   ): Promise<void> {
     return internalHolon.removeRelatedHolons(
-      this._txId,
-      this._wireRef,
+      txIdFor(this),
+      wireRefFor(this),
       name,
-      holons.map((holon) => holon._wireRef),
+      holons.map(unwrapHolonReference),
     );
   }
 
   withDescriptor(descriptor: HolonReference): Promise<void> {
     return internalHolon.withDescriptor(
-      this._txId,
-      this._wireRef,
-      descriptor._wireRef,
+      txIdFor(this),
+      wireRefFor(this),
+      unwrapHolonReference(descriptor),
     );
   }
 }
@@ -138,22 +142,12 @@ export class HolonReference implements WritableHolon {
  * Public handle for a transient holon target.
  */
 export class TransientHolonReference extends HolonReference {
-  protected constructor(txId: TxId, wireRef: HolonReferenceWire) {
-    super(txId, wireRef);
-  }
-
-  /**
-   * Construct a transient-only wrapper and reject non-transient wire variants.
-   */
-  static _fromWire(
+  constructor(
     txId: TxId,
     wireRef: HolonReferenceWire,
-  ): TransientHolonReference {
-    if (!('Transient' in wireRef)) {
-      throw new TypeError('Expected a transient holon reference');
-    }
-
-    return new TransientHolonReference(txId, wireRef);
+    token: typeof HOLON_REFERENCE_CONSTRUCTION,
+  ) {
+    super(txId, wireRef, token);
   }
 }
 
@@ -174,5 +168,69 @@ export function wrapHolonReference(
   txId: TxId,
   wireRef: HolonReferenceWire,
 ): HolonReference {
-  return HolonReference._fromWire(txId, wireRef);
+  return createHolonReference(txId, wireRef);
+}
+
+export function createHolonReference(
+  txId: TxId,
+  wireRef: HolonReferenceWire,
+): HolonReference {
+  if ('Transient' in wireRef) {
+    return createTransientHolonReference(txId, wireRef);
+  }
+
+  return new HolonReference(txId, wireRef, HOLON_REFERENCE_CONSTRUCTION);
+}
+
+export function createTransientHolonReference(
+  txId: TxId,
+  wireRef: HolonReferenceWire,
+): TransientHolonReference {
+  if (!('Transient' in wireRef)) {
+    throw new TypeError('Expected a transient holon reference');
+  }
+
+  return new TransientHolonReference(
+    txId,
+    wireRef,
+    HOLON_REFERENCE_CONSTRUCTION,
+  );
+}
+
+export function unwrapHolonReference(
+  reference: HolonReference,
+): HolonReferenceWire {
+  return wireRefFor(reference);
+}
+
+export function unwrapTransientHolonReference(
+  reference: TransientHolonReference,
+): TransientReferenceWire {
+  const wireRef = wireRefFor(reference);
+
+  if (!('Transient' in wireRef)) {
+    throw new TypeError('Expected a transient holon reference');
+  }
+
+  return wireRef.Transient;
+}
+
+function txIdFor(reference: HolonReference): TxId {
+  const txId = holonReferenceTxIds.get(reference);
+
+  if (txId === undefined) {
+    throw new TypeError('Expected a HolonReference created by @map/sdk');
+  }
+
+  return txId;
+}
+
+function wireRefFor(reference: HolonReference): HolonReferenceWire {
+  const wireRef = holonReferenceWires.get(reference);
+
+  if (wireRef === undefined) {
+    throw new TypeError('Expected a HolonReference created by @map/sdk');
+  }
+
+  return wireRef;
 }

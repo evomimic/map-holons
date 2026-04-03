@@ -66,10 +66,12 @@ vi.mock('../../src/internal/commands/transaction', () => ({
 
 import { HolonCollection } from '../../src/sdk/collection';
 import {
+  createHolonReference,
+  createTransientHolonReference,
   HolonReference,
   TransientHolonReference,
 } from '../../src/sdk/references';
-import { MapTransaction } from '../../src/sdk/transaction';
+import { createMapTransaction, MapTransaction } from '../../src/sdk/transaction';
 
 // ===========================================
 // MapTransaction Fixtures
@@ -111,15 +113,15 @@ const holonId: HolonId = {
 const localId: LocalId = [9, 8, 7];
 
 function transaction(): MapTransaction {
-  return MapTransaction._fromTxId(txId);
+  return createMapTransaction(txId);
 }
 
 function transientHandle(): TransientHolonReference {
-  return TransientHolonReference._fromWire(txId, transientReference);
+  return createTransientHolonReference(txId, transientReference);
 }
 
 function stagedHandle(): HolonReference {
-  return HolonReference._fromWire(txId, stagedReference);
+  return createHolonReference(txId, stagedReference);
 }
 
 // ===========================================

@@ -46,6 +46,16 @@ describe('public SDK exports', () => {
     expect('invokeMapCommand' in sdk).toBe(false);
     expect('dance' in sdk).toBe(false);
     expect('query' in sdk).toBe(false);
+    expect('createMapTransaction' in sdk).toBe(false);
+    expect('createHolonReference' in sdk).toBe(false);
+    expect('createTransientHolonReference' in sdk).toBe(false);
+    expect('unwrapHolonReference' in sdk).toBe(false);
+    expect('unwrapTransientHolonReference' in sdk).toBe(false);
+  });
+
+  it('does not leave dance/query on the public MapTransaction prototype', () => {
+    expect('dance' in sdk.MapTransaction.prototype).toBe(false);
+    expect('query' in sdk.MapTransaction.prototype).toBe(false);
   });
 
   it('supports the documented public type exports at compile time', () => {

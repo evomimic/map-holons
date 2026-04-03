@@ -29,6 +29,6 @@ describe('MapClient', () => {
     expect(beginTransactionMock).toHaveBeenCalledTimes(1);
     expect(beginTransactionMock).toHaveBeenCalledWith();
     expect(transaction).toBeInstanceOf(MapTransaction);
-    expect(transaction._txId).toBe(41);
+    expect('_txId' in (transaction as object)).toBe(false);
   });
 });
