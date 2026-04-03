@@ -1,0 +1,40 @@
+{
+  "request_id": 105,
+  "result": {
+    "Ok": {
+      "Reference": {
+        "Smart": {
+          "tx_id": 41,
+          "holon_id": {
+            "External": {
+              "space_id": [
+                11,
+                22,
+                33
+              ],
+              "local_id": [
+                44,
+                55,
+                66
+              ]
+            }
+          },
+          "smart_property_values": {
+            "published": {
+              "BooleanValue": true
+            },
+            "rank": {
+              "IntegerValue": 3
+            },
+            "status": {
+              "EnumValue": "Active"
+            },
+            "title": {
+              "StringValue": "Fixture title"
+            }
+          }
+        }
+      }
+    }
+  }
+}

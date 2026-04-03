@@ -1,0 +1,18 @@
+{
+  "request_id": 15,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "Query": {
+          "relationship_name": "children"
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": null,
+    "gesture_label": null,
+    "snapshot_after": false
+  }
+}

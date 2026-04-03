@@ -1,0 +1,66 @@
+{
+  "request_id": 112,
+  "result": {
+    "Ok": {
+      "DanceResponse": {
+        "status_code": "OK",
+        "description": "dance completed",
+        "body": {
+          "NodeCollection": {
+            "members": [
+              {
+                "source_holon": {
+                  "Staged": {
+                    "tx_id": 41,
+                    "id": "22222222-2222-2222-2222-222222222222"
+                  }
+                },
+                "relationships": {
+                  "children": {
+                    "members": [
+                      {
+                        "source_holon": {
+                          "Smart": {
+                            "tx_id": 41,
+                            "holon_id": {
+                              "Local": [
+                                141,
+                                142,
+                                143
+                              ]
+                            },
+                            "smart_property_values": null
+                          }
+                        },
+                        "relationships": null
+                      }
+                    ],
+                    "query_spec": {
+                      "relationship_name": "children"
+                    }
+                  }
+                }
+              }
+            ],
+            "query_spec": {
+              "relationship_name": "children"
+            }
+          }
+        },
+        "descriptor": {
+          "Smart": {
+            "tx_id": 41,
+            "holon_id": {
+              "Local": [
+                151,
+                152,
+                153
+              ]
+            },
+            "smart_property_values": null
+          }
+        }
+      }
+    }
+  }
+}

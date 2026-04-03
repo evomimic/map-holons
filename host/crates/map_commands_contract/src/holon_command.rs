@@ -96,7 +96,4 @@ pub enum WritableHolonAction {
 
     /// `WritableHolon::with_descriptor(descriptor)`
     WithDescriptor { descriptor: HolonReference },
-
-    /// `WritableHolon::with_predecessor(predecessor)`
-    WithPredecessor { predecessor: Option<HolonReference> },
 }

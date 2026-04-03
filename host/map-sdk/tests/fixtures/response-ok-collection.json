@@ -1,0 +1,35 @@
+{
+  "request_id": 107,
+  "result": {
+    "Ok": {
+      "Collection": {
+        "state": "Staged",
+        "members": [
+          {
+            "Staged": {
+              "tx_id": 41,
+              "id": "22222222-2222-2222-2222-222222222222"
+            }
+          },
+          {
+            "Smart": {
+              "tx_id": 41,
+              "holon_id": {
+                "Local": [
+                  121,
+                  122,
+                  123
+                ]
+              },
+              "smart_property_values": null
+            }
+          }
+        ],
+        "keyed_index": {
+          "alpha": 0,
+          "beta": 1
+        }
+      }
+    }
+  }
+}

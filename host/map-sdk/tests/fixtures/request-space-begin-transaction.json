@@ -1,0 +1,11 @@
+{
+  "request_id": 1,
+  "command": {
+    "Space": "BeginTransaction"
+  },
+  "options": {
+    "gesture_id": null,
+    "gesture_label": null,
+    "snapshot_after": false
+  }
+}

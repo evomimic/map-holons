@@ -1,0 +1,24 @@
+{
+  "request_id": 7,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "StageNewVersionFromId": {
+          "holon_id": {
+            "Local": [
+              41,
+              42,
+              43
+            ]
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "stage version from id",
+    "snapshot_after": true
+  }
+}

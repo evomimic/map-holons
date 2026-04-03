@@ -1,0 +1,48 @@
+{
+  "request_id": 6,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "StageNewVersion": {
+          "current_version": {
+            "tx_id": 41,
+            "holon_id": {
+              "External": {
+                "space_id": [
+                  21,
+                  22,
+                  23
+                ],
+                "local_id": [
+                  31,
+                  32,
+                  33
+                ]
+              }
+            },
+            "smart_property_values": {
+              "published": {
+                "BooleanValue": true
+              },
+              "rank": {
+                "IntegerValue": 3
+              },
+              "status": {
+                "EnumValue": "Active"
+              },
+              "title": {
+                "StringValue": "Fixture title"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "stage version",
+    "snapshot_after": true
+  }
+}

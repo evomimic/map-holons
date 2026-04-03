@@ -1,0 +1,14 @@
+{
+  "request_id": 10,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": "GetAllHolons"
+    }
+  },
+  "options": {
+    "gesture_id": null,
+    "gesture_label": null,
+    "snapshot_after": false
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "request_id": 116,
+  "result": {
+    "Err": {
+      "CrossTransactionReference": {
+        "reference_kind": "Staged",
+        "reference_id": "22222222-2222-2222-2222-222222222222",
+        "reference_tx": 41,
+        "context_tx": 99
+      }
+    }
+  }
+}
