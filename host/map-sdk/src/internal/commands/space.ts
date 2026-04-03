@@ -1,7 +1,7 @@
 import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import { expectTransactionCreated } from '../result-decoders';
-import { invokeMapCommand } from '../transport';
+import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type { TxId } from '../wire-types';
 
 // ===========================================
@@ -21,6 +21,7 @@ export async function beginTransaction(
     options,
   );
 
-  const result = await invokeMapCommand(request);
+  const response = await invokeMapCommand(request);
+  const result = unwrapMapResponse(response);
   return expectTransactionCreated(result);
 }

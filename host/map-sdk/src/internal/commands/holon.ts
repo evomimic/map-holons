@@ -10,7 +10,7 @@ import {
   expectReference,
   expectValue,
 } from '../result-decoders';
-import { invokeMapCommand } from '../transport';
+import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type {
   BaseValue,
   EssentialHolonContent,
@@ -61,7 +61,8 @@ async function runHolonCommand<T>(
   options?: RequestOptionsOverrides,
 ): Promise<T> {
   const request = buildHolonRequest(txId, target, action, options);
-  const result = await invokeMapCommand(request);
+  const response = await invokeMapCommand(request);
+  const result = unwrapMapResponse(response);
   return decode(result);
 }
 

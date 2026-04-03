@@ -8,9 +8,13 @@ const { invokeMapCommandMock } = vi.hoisted(() => ({
   invokeMapCommandMock: vi.fn(),
 }));
 
-vi.mock('../../src/internal/transport', () => ({
-  invokeMapCommand: invokeMapCommandMock,
-}));
+vi.mock('../../src/internal/transport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/internal/transport')>();
+  return {
+    ...actual,
+    invokeMapCommand: invokeMapCommandMock,
+  };
+});
 
 // ===========================================
 // Space Command Builder Tests
@@ -24,8 +28,13 @@ describe('space command builders', () => {
 
   it('builds a BeginTransaction request and decodes the returned tx id', async () => {
     invokeMapCommandMock.mockResolvedValue({
-      TransactionCreated: {
-        tx_id: 41,
+      request_id: 1,
+      result: {
+        Ok: {
+          TransactionCreated: {
+            tx_id: 41,
+          },
+        },
       },
     });
 
@@ -45,8 +54,13 @@ describe('space command builders', () => {
 
   it('passes request option overrides through to the request envelope', async () => {
     invokeMapCommandMock.mockResolvedValue({
-      TransactionCreated: {
-        tx_id: 42,
+      request_id: 1,
+      result: {
+        Ok: {
+          TransactionCreated: {
+            tx_id: 42,
+          },
+        },
       },
     });
 
@@ -70,7 +84,12 @@ describe('space command builders', () => {
   });
 
   it('throws MalformedResponseError when the transport returns the wrong result variant', async () => {
-    invokeMapCommandMock.mockResolvedValue('None');
+    invokeMapCommandMock.mockResolvedValue({
+      request_id: 1,
+      result: {
+        Ok: 'None',
+      },
+    });
 
     await expect(beginTransaction()).rejects.toBeInstanceOf(
       MalformedResponseError,

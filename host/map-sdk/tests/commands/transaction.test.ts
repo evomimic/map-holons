@@ -43,9 +43,17 @@ const { invokeMapCommandMock } = vi.hoisted(() => ({
   invokeMapCommandMock: vi.fn(),
 }));
 
-vi.mock('../../src/internal/transport', () => ({
-  invokeMapCommand: invokeMapCommandMock,
-}));
+vi.mock('../../src/internal/transport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/internal/transport')>();
+  return {
+    ...actual,
+    invokeMapCommand: invokeMapCommandMock,
+  };
+});
+
+function okResponse(result: MapResultWire) {
+  return { request_id: 1, result: { Ok: result } };
+}
 
 // ===========================================
 // Transaction Command Builder Fixtures
@@ -315,7 +323,7 @@ describe('transaction command builders', () => {
   it.each(transactionCases)(
     'builds $name commands and decodes the expected result',
     async ({ run, action, okResult, expected }) => {
-      invokeMapCommandMock.mockResolvedValue(okResult);
+      invokeMapCommandMock.mockResolvedValue(okResponse(okResult));
 
       await expect(run()).resolves.toEqual(expected);
       expectTransactionRequest(action);
@@ -325,14 +333,14 @@ describe('transaction command builders', () => {
   it.each(transactionCases)(
     'throws MalformedResponseError for $name when the result variant is wrong',
     async ({ run, wrongResult }) => {
-      invokeMapCommandMock.mockResolvedValue(wrongResult);
+      invokeMapCommandMock.mockResolvedValue(okResponse(wrongResult));
 
       await expect(run()).rejects.toBeInstanceOf(MalformedResponseError);
     },
   );
 
   it('defaults newHolon key to null when the caller omits it', async () => {
-    invokeMapCommandMock.mockResolvedValue({ Reference: transientReference });
+    invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
 
     await newHolon(txId);
 
@@ -344,7 +352,7 @@ describe('transaction command builders', () => {
   });
 
   it('passes request option overrides through transaction builders', async () => {
-    invokeMapCommandMock.mockResolvedValue({ Reference: transientReference });
+    invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
 
     await commit(txId, {
       gesture_id: 'gesture-123',

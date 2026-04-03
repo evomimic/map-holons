@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
 import {
-  DomainError,
   MalformedResponseError,
   TransportError,
   parseDomainError,
@@ -26,14 +25,14 @@ import {
  *
  * Responsibilities:
  * - call the Tauri `dispatch_map_command` entrypoint
+ * - validate structural response shape
  * - correlate response.request_id with the originating request
- * - unwrap WireResult Ok/Err payloads
- * - map transport, malformed-response, and domain failures into the internal
+ * - map transport and malformed-response failures into the internal
  *   SDK error hierarchy
  */
 export async function invokeMapCommand(
   request: MapIpcRequest,
-): Promise<MapResultWire> {
+): Promise<MapIpcResponse> {
   let response: unknown;
 
   try {
@@ -59,14 +58,29 @@ export async function invokeMapCommand(
     );
   }
 
-  if (!('result' in response) || !isRecord(response.result)) {
+  return response as unknown as MapIpcResponse;
+}
+
+// ===========================================
+// Response Unwrap
+// ===========================================
+
+/**
+ * Interpret the Ok/Err result envelope inside a validated `MapIpcResponse`.
+ *
+ * - Ok payload → returned as `MapResultWire`
+ * - Err payload → thrown as `DomainError`
+ * - Anything else → thrown as `MalformedResponseError`
+ */
+export function unwrapMapResponse(response: MapIpcResponse): MapResultWire {
+  const result = response.result;
+
+  if (!isRecord(result)) {
     throw new MalformedResponseError(
       'MAP IPC response is missing a valid result envelope',
       response,
     );
   }
-
-  const result = response.result;
 
   if (hasSingleKey(result, 'Ok') && isMapResultWire(result.Ok)) {
     return result.Ok;

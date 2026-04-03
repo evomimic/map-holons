@@ -33,9 +33,17 @@ const { invokeMapCommandMock } = vi.hoisted(() => ({
   invokeMapCommandMock: vi.fn(),
 }));
 
-vi.mock('../../src/internal/transport', () => ({
-  invokeMapCommand: invokeMapCommandMock,
-}));
+vi.mock('../../src/internal/transport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/internal/transport')>();
+  return {
+    ...actual,
+    invokeMapCommand: invokeMapCommandMock,
+  };
+});
+
+function okResponse(result: MapResultWire) {
+  return { request_id: 1, result: { Ok: result } };
+}
 
 // ===========================================
 // Holon Command Builder Fixtures
@@ -275,7 +283,7 @@ describe('holon command builders', () => {
   it.each(holonCases)(
     'builds $name commands and decodes the expected result',
     async ({ run, action, okResult, expected }) => {
-      invokeMapCommandMock.mockResolvedValue(okResult);
+      invokeMapCommandMock.mockResolvedValue(okResponse(okResult));
 
       await expect(run()).resolves.toEqual(expected);
       expectHolonRequest(action);
@@ -285,28 +293,28 @@ describe('holon command builders', () => {
   it.each(holonCases)(
     'throws MalformedResponseError for $name when the result variant is wrong',
     async ({ run, wrongResult }) => {
-      invokeMapCommandMock.mockResolvedValue(wrongResult);
+      invokeMapCommandMock.mockResolvedValue(okResponse(wrongResult));
 
       await expect(run()).rejects.toBeInstanceOf(MalformedResponseError);
     },
   );
 
   it('decodes optional predecessor and key results when Rust returns None', async () => {
-    invokeMapCommandMock.mockResolvedValue('None');
+    invokeMapCommandMock.mockResolvedValue(okResponse('None'));
 
     await expect(predecessor(txId, target)).resolves.toBeNull();
     expectHolonRequest({ Read: 'Predecessor' });
 
     invokeMapCommandMock.mockReset();
     resetRequestIdCounter();
-    invokeMapCommandMock.mockResolvedValue('None');
+    invokeMapCommandMock.mockResolvedValue(okResponse('None'));
 
     await expect(readKey(txId, target)).resolves.toBeNull();
     expectHolonRequest({ Read: 'Key' });
   });
 
   it('passes request option overrides through holon builders', async () => {
-    invokeMapCommandMock.mockResolvedValue('None');
+    invokeMapCommandMock.mockResolvedValue(okResponse('None'));
 
     await withDescriptor(txId, target, descriptor, {
       gesture_id: 'gesture-123',

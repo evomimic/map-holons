@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DomainError, MalformedResponseError, TransportError } from '../src/internal/errors';
-import { invokeMapCommand } from '../src/internal/transport';
+import { invokeMapCommand, unwrapMapResponse } from '../src/internal/transport';
 import type { MapIpcRequest, MapIpcResponse, MapResultWire } from '../src/internal/wire-types';
 
 const { invokeMock } = vi.hoisted(() => ({
@@ -46,35 +46,12 @@ describe('invokeMapCommand', () => {
     invokeMock.mockReset();
   });
 
-  it('calls dispatch_map_command and returns the Ok result payload', async () => {
+  it('calls dispatch_map_command and returns the validated response', async () => {
     invokeMock.mockResolvedValue(okResponse);
 
-    await expect(invokeMapCommand(request)).resolves.toEqual(okResult);
+    await expect(invokeMapCommand(request)).resolves.toEqual(okResponse);
     expect(invokeMock).toHaveBeenCalledTimes(1);
     expect(invokeMock).toHaveBeenCalledWith('dispatch_map_command', { request });
-  });
-
-  it('throws DomainError when Rust returns an Err result', async () => {
-    invokeMock.mockResolvedValue({
-      request_id: request.request_id,
-      result: {
-        Err: {
-          TransactionNotOpen: {
-            tx_id: 41,
-            state: 'Committed',
-          },
-        },
-      },
-    });
-
-    await expect(invokeMapCommand(request)).rejects.toMatchObject({
-      code: 'DOMAIN_ERROR',
-      variant: 'TransactionNotOpen',
-      payload: {
-        tx_id: 41,
-        state: 'Committed',
-      },
-    });
   });
 
   it('throws TransportError when the Tauri invoke call rejects', async () => {
@@ -84,6 +61,14 @@ describe('invokeMapCommand', () => {
     await expect(invokeMapCommand(request)).rejects.toMatchObject({
       code: 'TRANSPORT_ERROR',
       cause,
+    });
+  });
+
+  it('throws MalformedResponseError when response has no request_id', async () => {
+    invokeMock.mockResolvedValue({ result: { Ok: okResult } });
+
+    await expect(invokeMapCommand(request)).rejects.toMatchObject({
+      code: 'MALFORMED_RESPONSE',
     });
   });
 
@@ -103,15 +88,48 @@ describe('invokeMapCommand', () => {
       },
     });
   });
+});
 
-  it('throws MalformedResponseError when the result envelope is malformed', async () => {
-    invokeMock.mockResolvedValue({
-      request_id: request.request_id,
-      result: {},
-    });
+describe('unwrapMapResponse', () => {
+  it('returns the Ok result payload', () => {
+    expect(unwrapMapResponse(okResponse)).toEqual(okResult);
+  });
 
-    await expect(invokeMapCommand(request)).rejects.toMatchObject({
-      code: 'MALFORMED_RESPONSE',
-    });
+  it('throws DomainError when response contains an Err result', () => {
+    const errResponse: MapIpcResponse = {
+      request_id: 17,
+      result: {
+        Err: {
+          TransactionNotOpen: {
+            tx_id: 41,
+            state: 'Committed',
+          },
+        },
+      },
+    };
+
+    expect(() => unwrapMapResponse(errResponse)).toThrow(
+      expect.objectContaining({
+        code: 'DOMAIN_ERROR',
+        variant: 'TransactionNotOpen',
+        payload: {
+          tx_id: 41,
+          state: 'Committed',
+        },
+      }),
+    );
+  });
+
+  it('throws MalformedResponseError when the result envelope is malformed', () => {
+    const badResponse: MapIpcResponse = {
+      request_id: 17,
+      result: {} as MapIpcResponse['result'],
+    };
+
+    expect(() => unwrapMapResponse(badResponse)).toThrow(
+      expect.objectContaining({
+        code: 'MALFORMED_RESPONSE',
+      }),
+    );
   });
 });
