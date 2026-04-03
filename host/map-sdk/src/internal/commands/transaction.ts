@@ -62,7 +62,9 @@ async function runTransactionCommand<T>(
 }
 
 /**
- * Commit an open transaction.
+ * Commit an open transaction and return the runtime response reference.
+ *
+ * The public SDK currently discards this payload and exposes `Promise<void>`.
  */
 export function commit(
   txId: TxId,
@@ -194,7 +196,10 @@ export function deleteHolon(
 }
 
 /**
- * Load a bundle of holons into the transaction.
+ * Load a bundle of holons and return the runtime response reference.
+ *
+ * This remains reference-returning internally because current runtime behavior
+ * is terminal or commit-like rather than a pure in-transaction mutation.
  */
 export function loadHolons(
   txId: TxId,
