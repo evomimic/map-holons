@@ -6,11 +6,22 @@
 
     nixpkgs.follows = "holonix/nixpkgs";
     flake-parts.follows = "holonix/flake-parts";
+    rust-overlay.follows = "holonix/rust-overlay";  # reuse, no extra fetch
   };
 
   outputs = inputs@{ flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
     systems = builtins.attrNames inputs.holonix.devShells;
-    perSystem = { inputs', pkgs, ... }: {
+    perSystem = { inputs', pkgs, system, ... }:
+      let
+        pkgsWithRust = import inputs.nixpkgs {
+          inherit system;
+          overlays = [ (import inputs.rust-overlay) ];
+        };
+        rustToolchain = pkgsWithRust.rust-bin.stable."1.87.0".default.override {
+          extensions = [ "rust-src" ];
+          targets = [ "wasm32-unknown-unknown" ];
+        };
+      in {
       formatter = pkgs.nixpkgs-fmt;
 
         devShells.default = pkgs.mkShell {
