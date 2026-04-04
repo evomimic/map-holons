@@ -3,8 +3,7 @@ use crate::config::providers::ProviderConfig;
 use crate::config::providers::local::LocalConfig;
 use crate::config::StorageProvider;
 use crate::setup::common_setup::{register_receptor, serialize_props};
-//use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
-use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use recovery_receptor::{RecoveryStore, TransactionRecoveryStore};
 use tauri::{AppHandle, Manager};
 

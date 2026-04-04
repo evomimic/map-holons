@@ -19,6 +19,6 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 
 # Map shared crates (types only — no WASM-only code in these)
 holons_core = { path = "../../../shared_crates/holons_core" }
-holons_client = { path = "../holons_client" }
 core_types  = { path = "../../../shared_crates/type_system/core_types" }
+client_shared_types = { path = "../shared_types" }
 holons_boundary = { path = "../../../shared_crates/holons_boundary" }

@@ -1,6 +1,6 @@
 use core_types::{HolonError};
 //use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
-use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use super::storage::transaction_snapshot::TransactionSnapshot;
 use super::storage::{RecoveryStore, TransactionRecoveryStore};

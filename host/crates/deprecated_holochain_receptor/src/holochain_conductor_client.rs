@@ -13,7 +13,7 @@ use holochain_client::{
 };
 use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::{DanceResponseWire, ResponseBodyWire};
-use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
+use client_shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_core::dances::ResponseStatusCode;
 use holons_trust_channel::DanceEnvelopeTransport;
 

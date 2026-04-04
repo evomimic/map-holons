@@ -1,4 +1,4 @@
-use crate::shared_types::holon_space::HolonSpace;
+use crate::holon_space::HolonSpace;
 use core_types::{ContentSet, HolonError, HolonId, PropertyMap, RelationshipName};
 use holons_boundary::{
     DanceTypeWire, HolonReferenceWire, HolonWire, StagedReferenceWire, TransientReferenceWire,
