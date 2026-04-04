@@ -3,20 +3,16 @@ use std::fmt;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-use async_trait::async_trait;
-
 use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
 use core_types::HolonError;
-use holons_client::{
-    dances_client::ClientDanceBuilder,
-    init_client_context,
-    shared_types::{
-        base_receptor::{BaseReceptor, ReceptorBehavior},
+use crate::dances_client::ClientDanceBuilder;
+use crate::client_context::init_client_context;
+use client_shared_types::{
+        base_receptor::{BaseReceptor, ReceptorType},
         holon_space::{HolonSpace, SpaceInfo},
         map_request::{MapRequest, MapRequestBody},
-        map_response::MapResponse,
-    },
+        map_response::MapResponse
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseStatusCode};
@@ -28,8 +24,8 @@ use holons_trust_channel::TrustChannel;
 /// Enough to satisfy Conductora runtime configuration.
 /// Does NOT implement full space loading / root holon discovery yet.
 pub struct HolochainReceptor {
-    receptor_id: Option<String>,
-    receptor_type: String,
+    receptor_id: String,
+    receptor_type: ReceptorType,
     properties: HashMap<String, String>,
     context: Arc<TransactionContext>,
     client_handler: Arc<HolochainConductorClient>,
@@ -66,7 +62,7 @@ impl HolochainReceptor {
 
         Self {
             receptor_id: base.receptor_id.clone(),
-            receptor_type: base.receptor_type.clone(),
+            receptor_type: base.receptor_type,
             properties: base.properties.clone(),
             context,
             client_handler,
@@ -75,14 +71,13 @@ impl HolochainReceptor {
     }
 }
 
-#[async_trait]
-impl ReceptorBehavior for HolochainReceptor {
-    fn transaction_context(&self) -> Arc<TransactionContext> {
+impl HolochainReceptor {
+    pub fn transaction_context(&self) -> Arc<TransactionContext> {
         Arc::clone(&self.context)
     }
 
     /// Core request → client dance pipeline
-    async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
+    pub async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         // Temporary Phase 1.4/1.5 bridge: commit-like requests serialize host
         // ingress here. In Phase 2 this moves to CommandDispatcher.
         if Self::is_commit_dance_request(request.name.as_str()) {
@@ -149,7 +144,7 @@ impl ReceptorBehavior for HolochainReceptor {
     }
 
     /// POC stub for system info
-    async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
+   pub async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
         // Call stubbed conductor client
         self.client_handler.get_all_spaces().await
     }
@@ -170,13 +165,11 @@ mod tests {
     use super::HolochainReceptor;
     use base_types::{BaseValue, MapString};
     use core_types::{PropertyMap, PropertyName};
-    use holons_client::{
-        dances_client::ClientDanceBuilder,
-        init_client_context,
-        shared_types::{
+    use crate::dances_client::ClientDanceBuilder;
+    use crate::client_context::init_client_context;
+    use client_shared_types::{
             holon_space::HolonSpace,
             map_request::{MapRequest, MapRequestBody},
-        },
     };
     use holons_core::dances::DanceType;
 

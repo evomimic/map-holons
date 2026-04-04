@@ -12,6 +12,9 @@ impl TxId {
     pub fn value(&self) -> u64 {
         self.0
     }
+    pub fn from_str(s: &str) -> Option<Self> {
+        s.parse::<u64>().ok().map(Self) 
+    }
 }
 
 #[derive(Debug)]
@@ -46,4 +49,5 @@ impl TransactionIdGenerator {
             }
         }
     }
+    
 }

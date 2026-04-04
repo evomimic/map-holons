@@ -36,8 +36,10 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "ansi",
 
 #map dependencies
 holons_client = { path = "../crates/holons_client" }
-holons_receptor = { path = "../crates/holons_receptor" }
-holochain_receptor = { path = "../crates/holochain_receptor" }
+#holons_receptor = { path = "../crates/holons_receptor" }
+client_shared_types = { path = "../crates/shared_types" }
+deprecated_holochain_receptor = { path = "../crates/deprecated_holochain_receptor" }
+recovery_receptor = { path = "../crates/recovery_receptor" }
 holons_core = { workspace = true }
 holons_trust_channel = { path = "../../shared_crates/holons_trust_channel" }
 map_commands = { path = "../crates/map_commands" }

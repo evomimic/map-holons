@@ -3,9 +3,11 @@ resolver = "2"
 members = [
     "conductora",
     "crates/holons_client",
-    "crates/holochain_receptor",
-    "crates/holons_receptor",
+    "crates/deprecated_holochain_receptor",
+    #"crates/local_receptors",
     "crates/holons_loader_client",
+    "crates/recovery_receptor",
+    "crates/shared_types",
     "conductora/plugins/tauri-plugin-holochain"
 , "crates/map_commands"]
 
@@ -41,7 +43,9 @@ url2 = "0.0.6"
 
 # Internal crate paths (optional for IDE support)
 holons_client = { path = "crates/holons_client" }
-holons_receptor = { path = "crates/holons_receptor" }
-holochain_receptor = { path = "crates/holochain_receptor" }
+#local_receptors = { path = "crates/local_receptors" }
+deprecated_holochain_receptor = { path = "crates/deprecated_holochain_receptor" }
 holons_loader_client = { path = "crates/holons_loader_client" }
+holons_recovery = { path = "crates/holons_recovery" }
+client_shared_types = { path = "crates/shared_types" }
 tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }

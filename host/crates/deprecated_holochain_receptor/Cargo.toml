@@ -1,5 +1,5 @@
 [package]
-name = "holochain_receptor"
+name = "deprecated_holochain_receptor"
 version = "0.1.0"
 edition = "2021"
 #edition = "2024"
@@ -8,6 +8,8 @@ edition = "2021"
 tracing = "0.1"
 serde_bytes = "*"
 async-trait = "0.1"
+futures-executor = "0.3"
+tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 
 #holochain dependencies
 holochain_client = { version = "0.7.1" }
@@ -16,9 +18,12 @@ holochain_types = "0.5"
 #map dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }
 holons_boundary = { path = "../../../shared_crates/holons_boundary" }
-holons_client = { path = "../holons_client" }
+#holons_client = { path = "../holons_client" }
+client_shared_types = { path = "../shared_types" }
+integrity_core_types = { path = "../../../shared_crates/type_system/integrity_core_types" }
 holons_trust_channel = { path = "../../../shared_crates/holons_trust_channel" }
 holons_loader_client = { path = "../holons_loader_client" }
 core_types = { path = "../../../shared_crates/type_system/core_types" }
 base_types = { path = "../../../shared_crates/type_system/base_types" }
 type_names = { path = "../../../shared_crates/type_system/type_names" }
+holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }

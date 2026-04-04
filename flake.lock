@@ -204,6 +204,10 @@
         "nixpkgs": [
           "holonix",
           "nixpkgs"
+        ],
+        "rust-overlay": [
+          "holonix",
+          "rust-overlay"
         ]
       }
     },

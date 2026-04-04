@@ -12,7 +12,7 @@ use crate::{
         setup_manager::SetupManager,
     },
 };
-use holons_receptor::ReceptorFactory;
+use holons_client::receptor_factory::ReceptorFactory;
 
 pub struct AppBuilder;
 
