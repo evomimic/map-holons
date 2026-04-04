@@ -48,16 +48,18 @@
       "type": "local",
       "data_dir": "./data/local_storage",
       "max_size_mb": 1024,
-      "compression": true,
+      "compression": false,
       "encryption": false,
-      "enabled": false
+      "features": ["recovery"],
+      "enabled": true
     },
     "local_secure": {
       "type": "local",
       "data_dir": "./data/secure_storage",
       "max_size_mb": 512,
-      "compression": true,
+      "compression": false,
       "encryption": true,
+      "features": [],
       "enabled": false
     }
   }

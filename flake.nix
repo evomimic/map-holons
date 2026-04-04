@@ -62,6 +62,7 @@
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
 
           shellHook = ''
+             export PATH="${rustToolchain}/bin:$PATH"
              export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
           '';
         };

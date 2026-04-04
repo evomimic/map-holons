@@ -1,8 +1,11 @@
+use std::sync::Arc;
+use crate::config::providers::ProviderConfig;
 use crate::config::providers::local::LocalConfig;
 use crate::config::StorageProvider;
 use crate::setup::common_setup::{register_receptor, serialize_props};
-use holons_client::shared_types::base_receptor::BaseReceptor;
-use tauri::{AppHandle};
+use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use recovery_receptor::{RecoveryStore, TransactionRecoveryStore};
+use tauri::{AppHandle, Manager};
 
 pub struct LocalSetup;
 
@@ -16,37 +19,38 @@ impl LocalSetup {
         let StorageProvider::Local(local_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Local"));
         };
-        let receptor_cfg: BaseReceptor = Self::build_receptor(&handle, name, local_cfg).await?;
-        register_receptor(&handle, receptor_cfg).await?;
+        //let t_setup = std::time::Instant::now();
+        let is_recovery = local_cfg.features.iter().any(|f| f == "recovery");
+        if is_recovery {
+            let receptor_cfg: BaseReceptor = Self::build_recovery_receptor(&handle, name, local_cfg).await?;
+            register_receptor(&handle, receptor_cfg).await?;
+        }
         Ok(())
     }
 
     /// Build the receptor configuration for Local storage
-    async fn build_receptor(
-        _handle: &AppHandle,
-        _name: &str,
+    async fn build_recovery_receptor(
+        handle: &AppHandle,
+        name: &str,
         local_config: &LocalConfig,
     ) -> anyhow::Result<BaseReceptor> {
-        tracing::debug!("[LOCAL SETUP] Building Local storage receptor.");
-
-       // let snapshot_store: Option<Arc<dyn RecoveryStore>> =
-      //      create_snapshot_store(handle, local_config, name)
-       //         .await?
-       //         .map(|s| s as Arc<dyn RecoveryStore>);
+        tracing::info!("[LOCAL SETUP] Recovery feature enabled for Local storage.");
+        let snapshot_store = create_snapshot_store(handle, local_config, name).await?;
+        
+        // continue with receptor config creation as normal
         let props = serialize_props(local_config);
-
+    
         Ok(BaseReceptor {
-            receptor_id: None,
-            receptor_type: "local".to_string(),
-            client_handler: None,
-            //snapshot_store,
+            receptor_id: name.to_string(),
+            receptor_type: ReceptorType::LocalRecovery,
+            client_handler: Some(snapshot_store as Arc<dyn std::any::Any + Send + Sync>),
             properties: props,
         })
     }
 
 }
 
-/*
+
 /// Create a snapshot recovery store for any provider config type that implements `ProviderConfig`.
 ///
 /// - Returns `Ok(None)` if `snapshot_recovery` is not enabled in the config.
@@ -58,22 +62,15 @@ impl LocalSetup {
 /// Blocking I/O (dir creation + SQLite open) is offloaded via `spawn_blocking`.
 pub async fn create_snapshot_store<C: ProviderConfig>(
     handle: &AppHandle,
-    config: &C,
+    _config: &C,
     name: &str,
-) -> Result<Option<Arc<TransactionRecoveryStore>>, HolonError> {
-    //if !config.snapshot_recovery() {
-    //    tracing::debug!(
-     //       "[SNAPSHOT] Skipping snapshot store for '{}' (snapshot_recovery not enabled)",
-     //       name
-     //   );
-     //   return Ok(None);
-     //  }
+) -> Result<Arc<TransactionRecoveryStore>, anyhow::Error> {
 
     // Path resolution is non-blocking — do it on the async thread
     let app_data_dir = handle
         .path()
         .app_data_dir()
-        .map_err(|e| HolonError::Misc(format!("Failed to resolve app data dir: {}", e)))?;
+        .map_err(|e| anyhow::anyhow!("Failed to resolve app data dir: {}", e))?;
 
     let snapshot_dir = app_data_dir.join("storage").join(name);
     let db_path = snapshot_dir.join("snapshots.db");
@@ -81,14 +78,22 @@ pub async fn create_snapshot_store<C: ProviderConfig>(
 
     // Offload blocking filesystem + SQLite open to a dedicated thread
     let store =
-        tokio::task::spawn_blocking(move || -> Result<TransactionRecoveryStore, HolonError> {
+        tokio::task::spawn_blocking(move || -> Result<TransactionRecoveryStore, anyhow::Error> {
             std::fs::create_dir_all(&snapshot_dir).map_err(|e| {
-                HolonError::Misc(format!("Failed to create snapshot dir {:?}: {}", snapshot_dir, e))
+                anyhow::anyhow!("Failed to create snapshot dir {:?}: {}", snapshot_dir, e)
             })?;
-            TransactionRecoveryStore::new(&db_path)
+            TransactionRecoveryStore::new(&db_path).map_err(|e| {
+                anyhow::anyhow!("Failed to create TransactionRecoveryStore at {:?}: {}", db_path, e)
+            })
         })
         .await
-        .map_err(|e| HolonError::Misc(format!("spawn_blocking panicked: {}", e)))??;
+        .map_err(|e| anyhow::anyhow!("spawn_blocking panicked: {}", e))??;
 
-    Ok(Some(Arc::new(store)))
-}*/
+    Ok(Arc::new(store))
+}
+
+//helpers
+//fn generate_receptor_id(props: HashMap<String, String>) -> Result<String, Box<dyn std::error::Error>> {
+//    let json = serde_json::to_string(&props)?;
+ //   Ok(hex::encode(Sha256::digest(json.as_bytes())))
+//}

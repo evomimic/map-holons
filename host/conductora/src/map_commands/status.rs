@@ -1,5 +1,5 @@
 use crate::runtime::RuntimeState;
-use holons_receptor::ReceptorFactory;
+use holons_client::receptor_factory::ReceptorFactory;
 use tauri::{command, State};
 
 #[command]

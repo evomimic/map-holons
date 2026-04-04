@@ -11,7 +11,7 @@ name = "holons_client"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "*"
 async-trait = "0.1"
-#tracing = "0.1"
+tracing = "0.1"
 futures-executor = "0.3"
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 
@@ -22,3 +22,8 @@ core_types = { path = "../../../shared_crates/type_system/core_types" }
 integrity_core_types = { path = "../../../shared_crates/type_system/integrity_core_types" }
 holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
 holons_boundary = { path = "../../../shared_crates/holons_boundary" }
+client_shared_types = {path = "../shared_types"}
+deprecated_holochain_receptor = { path = "../deprecated_holochain_receptor" }
+recovery_receptor = { path = "../recovery_receptor" }
+#local_receptors = { path = "../local_receptors" }
+#holons_receptor = { path = "../holons_receptor" }

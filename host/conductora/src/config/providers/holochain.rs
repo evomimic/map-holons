@@ -29,7 +29,7 @@ pub struct HolochainConfig {
     #[serde(default)]
     pub production: bool,
 }
-
+//todo: add common functions
 impl ProviderConfig for HolochainConfig {}
 
 pub struct HolochainSelector;

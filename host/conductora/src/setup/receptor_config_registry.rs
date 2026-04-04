@@ -1,4 +1,4 @@
-use holons_client::shared_types::base_receptor::BaseReceptor;
+use client_shared_types::base_receptor::{BaseReceptor};//, ReceptorType};
 use std::sync::Mutex;
 
 /// Registry for collecting `ReceptorConfig` entries from different setup modules
@@ -22,19 +22,21 @@ impl ReceptorConfigRegistry {
 
     /// Retrieve all registered receptor configs
     pub fn all(&self) -> Vec<BaseReceptor> {
-        let mut configs = self.configs.lock().unwrap().clone();
-        Self::ensure_local_receptor_first(&mut configs);
+        let configs = self.configs.lock().unwrap().clone();
+        //Self::ensure_local_receptor_first(&mut configs);
         configs
     }
 
-        /// Ensure the local receptor is first in the vector for priority processing
-    fn ensure_local_receptor_first(configs: &mut Vec<BaseReceptor>) {
+        // Ensure the local receptor is first in the vector for priority processing
+        // future work, for now we dont care
+    
+    /*fn ensure_local_receptor_first(configs: &mut Vec<BaseReceptor>) {
         if configs.is_empty() {
             return;
         }
         // Find the index of the local receptor
         let local_index = configs.iter().position(|config| {
-            config.receptor_type == "local"
+            config.receptor_type == ReceptorType::Local
         });
 
         // If found and not already first, move it to the front
@@ -46,5 +48,5 @@ impl ReceptorConfigRegistry {
         } else {
             tracing::warn!("[REGISTRY] No local receptor found in configs");
         }
-    }
+    }*/
 }
