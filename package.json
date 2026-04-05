@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "start": "npm run build:happ && RUST_LOG=${RUST_LOG:-host:warn} WASM_LOG=${WASM_LOG:-warn} HC_DEV_MODE=${HC_DEV_MODE:-1} npm run start -w host",
-    "start:nobuild": "RUST_LOG=host:info WASM_LOG=info HC_DEV_MODE=1 npm run start -w host",
+    "start:nobuild": "RUST_LOG=host:debug WASM_LOG=info HC_DEV_MODE=1 npm run start -w host",
 
     "build": "npm run build:happ && npm run build:host",
     "build:host": "npm run build -w host",

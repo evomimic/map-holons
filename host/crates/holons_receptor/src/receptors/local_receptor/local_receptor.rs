@@ -1,6 +1,6 @@
 use core_types::{HolonError};
 use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
-use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorBehavior};
+use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorBehavior, ReceptorType};
 use holons_client::{ClientHolonService, init_client_context};
 use holons_client::shared_types::map_request::MapRequest;
 use holons_client::shared_types::map_response::MapResponse;
@@ -18,8 +18,8 @@ pub const ROOT_HOLON_SPACE_NAME: &str = "RootHolonSpace";
 pub const ROOT_HOLON_SPACE_DESCRIPTION: &str = "Default Root Holon Space";
 
 pub struct LocalReceptor {
-    receptor_id: Option<String>,
-    receptor_type: String,
+    receptor_id: String,
+    receptor_type: ReceptorType,
     properties: HashMap<String, String>,
     context: Arc<TransactionContext>,
     client_handler: Arc<LocalClient>,

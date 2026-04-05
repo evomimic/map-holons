@@ -13,8 +13,6 @@ pub struct IpfsConfig {
     pub enabled: bool,
 }
 
+//todo: add common functions
 impl ProviderConfig for IpfsConfig {
-    //fn snapshot_recovery(&self) -> bool {
-    //    self.snapshot_recovery == Some(true)
-   // }
 }

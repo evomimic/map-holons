@@ -18,6 +18,7 @@ dependencies = [
  "holons_receptor",
  "holons_trust_channel",
  "map_commands",
+ "recovery_receptor",
  "serde",
  "serde_json",
  "tauri",
@@ -7096,6 +7097,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
 dependencies = [
  "rand_core 0.3.1",
+]
+
+[[package]]
+name = "recovery_receptor"
+version = "0.1.0"
+dependencies = [
+ "core_types",
+ "futures-executor",
+ "holons_boundary",
+ "holons_client",
+ "holons_core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tracing",
+ "uuid 1.18.1",
 ]
 
 [[package]]

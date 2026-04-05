@@ -12,7 +12,7 @@ use holons_client::{
     dances_client::ClientDanceBuilder,
     init_client_context,
     shared_types::{
-        base_receptor::{BaseReceptor, ReceptorBehavior},
+        base_receptor::{BaseReceptor, ReceptorBehavior, ReceptorType},
         holon_space::{HolonSpace, SpaceInfo},
         map_request::{MapRequest, MapRequestBody},
         map_response::MapResponse,
@@ -28,8 +28,8 @@ use holons_trust_channel::TrustChannel;
 /// Enough to satisfy Conductora runtime configuration.
 /// Does NOT implement full space loading / root holon discovery yet.
 pub struct HolochainReceptor {
-    receptor_id: Option<String>,
-    receptor_type: String,
+    receptor_id: String,
+    receptor_type: ReceptorType,
     properties: HashMap<String, String>,
     context: Arc<TransactionContext>,
     client_handler: Arc<HolochainConductorClient>,
