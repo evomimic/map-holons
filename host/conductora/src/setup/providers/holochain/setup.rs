@@ -4,10 +4,12 @@ use crate::config::providers::holochain::{CellDetail, HolochainConfig};
 use crate::config::StorageProvider;
 use crate::runtime::RuntimeInitiatorState;
 use crate::setup::providers::holochain::plugins::{hc_dev_mode_enabled};
-use holons_client::shared_types::base_receptor::BaseReceptor;
+//use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use holons_trust_channel::TrustChannel;
 use tauri::{AppHandle, Manager, Theme};
 use holochain_client::{AdminWebsocket, AppWebsocket, AppInfo};
+//use deprecated_holochain_receptor::HolochainConductorClient;
 use holochain_receptor::HolochainConductorClient;
 use tauri_plugin_holochain::{HolochainExt, AppBundle};
 use async_trait::async_trait;
@@ -177,7 +179,7 @@ impl HolochainSetup {
         app_ws: AppWebsocket,
         admin_ws: AdminWebsocket,
         _handle: &AppHandle,
-        _name: &str,
+        name: &str,
         hc_cfg: &HolochainConfig,
     ) -> anyhow::Result<(BaseReceptor, Arc<HolochainConductorClient>)> {
             let agent = app_ws.my_pub_key.clone();
@@ -186,17 +188,12 @@ impl HolochainSetup {
                 return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
             }
             let client = Self::setup_holochain_client(app_ws.clone(), admin_ws.clone(), cell_details[0].clone(), agent).await;
-           // let snapshot_store: Option<Arc<dyn RecoveryStore>> =
-           // create_snapshot_store(handle, hc_cfg, name)
-           //     .await?
-          //      .map(|s| s as Arc<dyn RecoveryStore>);
             let props = serialize_props(hc_cfg);
 
             let receptor = BaseReceptor {
-                receptor_id: None,
-                receptor_type: "holochain".to_string(),
+                receptor_id: name.to_string(),
+                receptor_type: ReceptorType::Holochain,
                 client_handler: Some(client.clone() as Arc<dyn std::any::Any + Send + Sync>),
-               // snapshot_store,
                 properties: props,
             };
 

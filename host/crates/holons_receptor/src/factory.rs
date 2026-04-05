@@ -43,7 +43,7 @@ impl ReceptorFactory {
                 let receptor = HolochainReceptor::new(base);
                 Ok(Arc::new(receptor) as Arc<dyn ReceptorBehavior>)
             }
-            _ => Err(format!("Unsupported receptor type: {}", base.receptor_type).into())
+            _ => Err(format!("Unsupported receptor type: {}", base.receptor_type.as_str()).into())
         }
     }
 
@@ -78,7 +78,7 @@ impl ReceptorFactory {
         for cfg in configs {
             // Precompute key and cache the config
             let id = generate_receptor_id(cfg.properties.clone())?;
-            let key = ReceptorKey::new(cfg.receptor_type.clone(), id);
+            let key = ReceptorKey::new(cfg.receptor_type.as_str().to_string(), id);
             // Cache the config for conductor lookup later
             match self.create_receptor_from_base(cfg).await {
                 Ok(receptor) => {

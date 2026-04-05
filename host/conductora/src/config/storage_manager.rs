@@ -5,13 +5,16 @@ use crate::config::providers::{
     MultiEntrySelector,
     ProviderRuntimeSelection,
 };
-use serde::{Deserialize, Serialize};
+use serde::de::{self, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::{BTreeSet, HashMap};
+use std::fmt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageManager {
     #[serde(default)]
     pub window_provider: Option<String>,
+    #[serde(deserialize_with = "deserialize_unique_storage_providers")]
     pub storage_providers: HashMap<String, StorageProvider>,
 }
 
@@ -194,4 +197,41 @@ impl StorageProvider {
             StorageProvider::Local(_) => "local",
         }
     }
+}
+
+fn deserialize_unique_storage_providers<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<String, StorageProvider>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct UniqueStorageProvidersVisitor;
+
+    impl<'de> Visitor<'de> for UniqueStorageProvidersVisitor {
+        type Value = HashMap<String, StorageProvider>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a map of uniquely named storage providers")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut providers = HashMap::new();
+
+            while let Some((key, value)) = map.next_entry::<String, StorageProvider>()? {
+                if providers.insert(key.clone(), value).is_some() {
+                    return Err(de::Error::custom(format!(
+                        "duplicate storage provider key '{}' in storage_providers",
+                        key
+                    )));
+                }
+            }
+
+            Ok(providers)
+        }
+    }
+
+    deserializer.deserialize_map(UniqueStorageProvidersVisitor)
 }
