@@ -1,5 +1,5 @@
 [package]
-name = "holons_receptor"
+name = "local_receptors"
 version = "0.1.0"
 edition = "2021"
 #edition = "2024"
@@ -11,11 +11,13 @@ async-trait = "0.1"
 tracing = "0.1"
 sha2 = "0.10"
 hex = "0.4" 
+tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 
 
 #map dependencies
-holons_client = { path = "../holons_client" }
+#holons_client = { path = "../holons_client" }
 holons_core = { path = "../../../shared_crates/holons_core" }
-holochain_receptor = { path = "../holochain_receptor" }
+holons_recovery = { path = "../holons_recovery" }
+client_shared_types = { path = "../shared_types" }
 core_types = { path = "../../../shared_crates/type_system/core_types" }
 

@@ -2,7 +2,7 @@ use crate::{
     config::providers::ProviderConfig,
     setup::receptor_config_registry::ReceptorConfigRegistry,
 };
-use holons_client::shared_types::base_receptor::BaseReceptor;
+use client_shared_types::base_receptor::BaseReceptor;
 use tauri::{AppHandle, Manager};
 
 

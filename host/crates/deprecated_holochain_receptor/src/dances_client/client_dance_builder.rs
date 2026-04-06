@@ -34,7 +34,7 @@ const PERMITTED_OPS: &[&str] = &[
 ];
 
 impl ClientDanceBuilder {
-    pub fn permitted_operations() -> Vec<&'static str> {
+    pub fn _permitted_operations() -> Vec<&'static str> {
         PERMITTED_OPS.to_vec()
     }
 

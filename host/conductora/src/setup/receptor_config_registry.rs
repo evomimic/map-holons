@@ -1,5 +1,4 @@
-//use client_shared_types::base_receptor::{BaseReceptor};//, ReceptorType};
-use holons_client::shared_types::base_receptor::{BaseReceptor};
+use client_shared_types::base_receptor::{BaseReceptor};//, ReceptorType};
 use std::sync::Mutex;
 
 /// Registry for collecting `ReceptorConfig` entries from different setup modules

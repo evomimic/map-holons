@@ -1,6 +1,8 @@
+//NOT IMPLEMENTED - IGNORE THIS FILE
+
 use core_types::{HolonError};
 use holons_client::shared_types::holon_space::{HolonSpace, SpaceInfo};
-use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorBehavior, ReceptorType};
+use holons_client::shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use holons_client::{ClientHolonService, init_client_context};
 use holons_client::shared_types::map_request::MapRequest;
 use holons_client::shared_types::map_response::MapResponse;
@@ -10,7 +12,6 @@ use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
-use async_trait::async_trait;
 use crate::{LocalClient};
 
 pub const ROOT_SPACE_HOLON_PATH: &str = "root_holon_space";
@@ -44,7 +45,7 @@ impl LocalReceptor {
         
         Ok(Self {
             receptor_id: base_receptor.receptor_id.clone(),
-            receptor_type: base_receptor.receptor_type.clone(),
+            receptor_type: base_receptor.receptor_type,
             properties: base_receptor.properties.clone(),
             context,
             client_handler,
@@ -54,13 +55,12 @@ impl LocalReceptor {
     }
 }
 
-#[async_trait]
-impl ReceptorBehavior for LocalReceptor {
-    fn transaction_context(&self) -> Arc<TransactionContext> {
+impl LocalReceptor {
+    pub fn transaction_context(&self) -> Arc<TransactionContext> {
         Arc::clone(&self.context)
     }
 
-    async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
+    pub async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         tracing::warn!("LocalReceptor: handling request: {:?}", self.context);
         
         //TODO: implement actual handling logic here with the HolonServiceApi
@@ -81,7 +81,7 @@ impl ReceptorBehavior for LocalReceptor {
     }
     //async fn add_space(&self, holon_for_space: Holon) -> Result<(), HolonError> {
 
-    async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
+    pub async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
         self.client_handler.get_all_spaces().await
     }
 }

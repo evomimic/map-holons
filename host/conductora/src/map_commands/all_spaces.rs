@@ -1,6 +1,6 @@
 
-use holons_client::shared_types::holon_space::SpaceInfo;
-use holons_receptor::ReceptorFactory;
+use client_shared_types::{base_receptor::ReceptorType, holon_space::SpaceInfo};
+use holons_client::receptor_factory::{ReceptorFactory};
 use tauri::{command, State};
 
 
@@ -11,8 +11,7 @@ pub async fn all_spaces (
 
     tracing::debug!("[TAURI COMMAND] 'all_spaces' command invoked");
 
-    let spaces = receptor_factory.all_spaces_by_type("holochain")
-        .await
+    let spaces = receptor_factory.all_spaces_by_type(&ReceptorType::Holochain).await
         .map_err(|e| format!("receptor service error: {:?}", e))?;
     Ok(spaces)
 }

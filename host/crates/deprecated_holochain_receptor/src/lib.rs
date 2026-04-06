@@ -1,6 +1,10 @@
 mod conductor_dance_caller;
+mod dances_client;
+mod client_context;
+mod client_shared_objects;
 pub mod holochain_conductor_client;
 pub mod holochain_receptor;
+
 
 // Re-export key types and traits for external use
 pub use holochain_conductor_client::HolochainConductorClient;

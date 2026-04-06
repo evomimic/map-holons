@@ -1,4 +1,4 @@
-use holons_client::shared_types::map_request::MapRequestWire;
+use client_shared_types::map_request::MapRequestWire;
 use tauri::command;
 
 // Add this temporary command to see the raw JSON

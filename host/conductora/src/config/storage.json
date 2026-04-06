@@ -51,7 +51,7 @@
       "compression": false,
       "encryption": false,
       "features": ["recovery"],
-      "enabled": false
+      "enabled": true
     },
     "local_secure": {
       "type": "local",
