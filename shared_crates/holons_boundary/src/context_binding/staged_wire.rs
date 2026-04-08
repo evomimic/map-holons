@@ -20,6 +20,7 @@ pub struct StagedHolonWire {
 }
 
 impl StagedHolonWire {
+    /// Binds this holon's nested references to a TransactionContext, validating tx_id.
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<StagedHolon, HolonError> {
         Ok(StagedHolon::from_parts(
             self.version,
@@ -28,6 +29,21 @@ impl StagedHolonWire {
             self.validation_state,
             self.property_map,
             self.staged_relationships.bind(context)?,
+            self.original_id,
+            self.errors,
+        ))
+    }
+
+    /// Rebinds this holon's nested references to a different transaction
+    /// context, bypassing tx_id validation. See [`StagedRelationshipMapWire::rebind`].
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<StagedHolon, HolonError> {
+        Ok(StagedHolon::from_parts(
+            self.version,
+            self.holon_state,
+            self.staged_state,
+            self.validation_state,
+            self.property_map,
+            self.staged_relationships.rebind(context)?,
             self.original_id,
             self.errors,
         ))

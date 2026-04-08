@@ -33,6 +33,26 @@ impl SerializableHolonPool {
 
         Ok(HolonPool::from_parts(holons, self.keyed_index))
     }
+
+    /// Rebinds all holons in this pool to a different transaction context,
+    /// bypassing tx_id validation on nested references. This is the primary
+    /// entry point for re-importing serialized fixture or session data into a
+    /// newly opened transaction. The caller must ensure that the target
+    /// context is prepared to receive these holons (e.g., via
+    /// `import_transient_holons`).
+    ///
+    /// See [`HolonWire::rebind`] and the leaf reference `rebind` methods for
+    /// the underlying semantics.
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<HolonPool, HolonError> {
+        let mut holons: BTreeMap<TemporaryId, Arc<RwLock<Holon>>> = BTreeMap::new();
+
+        for (id, holon_wire) in self.holons {
+            let holon_runtime = holon_wire.rebind(context)?;
+            holons.insert(id, Arc::new(RwLock::new(holon_runtime)));
+        }
+
+        Ok(HolonPool::from_parts(holons, self.keyed_index))
+    }
 }
 
 impl From<&HolonPool> for SerializableHolonPool {

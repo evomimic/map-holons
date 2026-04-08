@@ -1,8 +1,8 @@
+use super::transaction_context::TransactionOperation;
 use super::{
     HolonServiceApi, HolonStagingBehavior, TransactionContext, TransactionContextHandle,
     TransientHolonBehavior,
 };
-use super::transaction_context::TransactionOperation;
 use crate::{HolonReference, SmartReference, StagedReference, TransientReference};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId};
@@ -157,5 +157,4 @@ impl MutationFacade {
         self.context.assert_allowed(TransactionOperation::MutateState)?;
         self.holon_service.delete_holon_internal(&self.context, &local_id)
     }
-
 }

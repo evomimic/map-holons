@@ -36,12 +36,7 @@ impl SessionStateWire {
         local_holon_space: Option<HolonReferenceWire>,
         tx_id: Option<TxId>,
     ) -> Self {
-        Self {
-            tx_id,
-            transient_holons,
-            staged_holons,
-            local_holon_space,
-        }
+        Self { tx_id, transient_holons, staged_holons, local_holon_space }
     }
 
     pub fn get_tx_id(&self) -> Option<TxId> {

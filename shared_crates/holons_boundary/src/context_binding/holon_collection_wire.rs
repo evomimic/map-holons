@@ -47,6 +47,33 @@ impl HolonCollectionWire {
         Ok(HolonCollection::from_parts(self.state, members, self.keyed_index))
     }
 
+    /// Rebinds all collection members to a different transaction context,
+    /// bypassing tx_id validation. Delegates to each member's
+    /// [`HolonReferenceWire::rebind`]. The caller is responsible for ensuring
+    /// that the referenced identities are valid in the target context.
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<HolonCollection, HolonError> {
+        for (key, index) in &self.keyed_index {
+            if *index >= self.members.len() {
+                return Err(HolonError::InvalidWireFormat {
+                    wire_type: "HolonCollectionWire".to_string(),
+                    reason: format!(
+                        "keyed_index out of bounds: key={:?} index={} members_len={}",
+                        key,
+                        index,
+                        self.members.len()
+                    ),
+                });
+            }
+        }
+
+        let mut members = Vec::with_capacity(self.members.len());
+        for member_wire in self.members {
+            members.push(member_wire.rebind(context)?);
+        }
+
+        Ok(HolonCollection::from_parts(self.state, members, self.keyed_index))
+    }
+
     /// Summarizes this wire collection without context_binding.
     pub fn summarize(&self) -> String {
         format!(

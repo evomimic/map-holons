@@ -1,0 +1,14 @@
+{
+  "request_id": 2,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": "Commit"
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "commit transaction",
+    "snapshot_after": true
+  }
+}

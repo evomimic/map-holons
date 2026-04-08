@@ -1,17 +1,16 @@
-use std::sync::RwLock;
 use anyhow::Context;
+use std::sync::RwLock;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     config::{providers::ProviderRuntimeSelection, storage_manager::StorageManager},
     map_commands as commands, runtime,
     setup::{
-        plugin_manager::PluginManager,
-        provider_registry::ProviderRegistry,
-        receptor_config_registry::ReceptorConfigRegistry,
-        setup_manager::SetupManager,
+        plugin_manager::PluginManager, provider_registry::ProviderRegistry,
+        receptor_config_registry::ReceptorConfigRegistry, setup_manager::SetupManager,
     },
 };
+
 use holons_client::receptor_factory::ReceptorFactory;
 
 pub struct AppBuilder;
@@ -28,14 +27,13 @@ impl AppBuilder {
         });
 
         tracing::debug!("[APP BUILDER] Resolving runtime provider selection.");
-        let runtime_selection = StorageManager::resolve_runtime_selection(&storage_manager).unwrap_or_else(|e| {
-            tracing::error!("[APP BUILDER] failed: {}", e);
-            std::process::exit(1);
-        });
+        let runtime_selection = StorageManager::resolve_runtime_selection(&storage_manager)
+            .unwrap_or_else(|e| {
+                tracing::error!("[APP BUILDER] failed: {}", e);
+                std::process::exit(1);
+            });
         if runtime_selection.runtime_provider_keys.is_empty() {
-            tracing::error!(
-                "[APP BUILDER] failed: at least one storage provider must be enabled."
-            );
+            tracing::error!("[APP BUILDER] failed: at least one storage provider must be enabled.");
             std::process::exit(1);
         }
         for warning in &runtime_selection.warnings {
@@ -80,16 +78,12 @@ impl AppBuilder {
             ]);
 
         tracing::debug!("[APP BUILDER] Applying provider plugins.");
-        let with_plugins = PluginManager::apply_plugins(
-            base,
-            &storage_manager,
-            &runtime_selection,
-            &registry,
-        )
-        .unwrap_or_else(|e| {
-            tracing::error!("[APP BUILDER] failed to apply provider plugins: {}", e);
-            std::process::exit(1);
-        });
+        let with_plugins =
+            PluginManager::apply_plugins(base, &storage_manager, &runtime_selection, &registry)
+                .unwrap_or_else(|e| {
+                    tracing::error!("[APP BUILDER] failed to apply provider plugins: {}", e);
+                    std::process::exit(1);
+                });
 
         tracing::debug!("[APP BUILDER] Registering setup orchestration.");
         let with_registry = with_plugins.manage(registry);
@@ -118,7 +112,7 @@ impl AppBuilder {
                     Ok::<(), anyhow::Error>(())
                 }
                 .await;
-    
+
                 if let Err(e) = startup_result {
                     tracing::error!("[APP BUILDER] startup failed: {}", e);
                     std::process::exit(1);

@@ -36,6 +36,32 @@ impl StagedRelationshipMapWire {
 
         Ok(StagedRelationshipMap::new(map))
     }
+
+    /// Rebinds all nested collection references to a different transaction
+    /// context, bypassing tx_id validation. See [`HolonCollectionWire::rebind`].
+    pub fn rebind(
+        self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<StagedRelationshipMap, HolonError> {
+        let mut map = BTreeMap::new();
+
+        for (name, collection_wire) in self.map {
+            let collection = collection_wire.rebind(context)?;
+
+            for member in collection.get_members() {
+                if member.is_transient() {
+                    return Err(HolonError::InvalidRelationship(
+                        name.to_string(),
+                        "StagedRelationshipMap cannot contain TransientReferences".to_string(),
+                    ));
+                }
+            }
+
+            map.insert(name, Arc::new(RwLock::new(collection)));
+        }
+
+        Ok(StagedRelationshipMap::new(map))
+    }
 }
 
 impl From<&StagedRelationshipMap> for StagedRelationshipMapWire {

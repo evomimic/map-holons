@@ -21,10 +21,11 @@
 
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
-use std::fmt;
 use holons_core::{
-    ReadableHolon, core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference
+    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
+    ReadableHolon,
 };
+use std::fmt;
 
 /// Stable identity for a fixture snapshot across execution.
 /// Used as the unifying key for:
@@ -117,7 +118,6 @@ impl TestReference {
     pub fn expected_reference(&self) -> &TransientReference {
         &self.expected.snapshot
     }
-
 }
 
 impl fmt::Display for TestReference {
@@ -162,7 +162,6 @@ pub struct ExpectedSnapshot {
 }
 
 impl ExpectedSnapshot {
-
     /// Converts this expected snapshot into the source snapshot for the *next* execution step.
     ///
     /// This encodes the core chaining invariant:
@@ -171,14 +170,11 @@ impl ExpectedSnapshot {
         SourceSnapshot::new(self.snapshot.clone(), self.state)
     }
 
-    pub fn essential_content(
-        &self,
-        
-    ) -> Result<EssentialHolonContent, HolonError> {
+    pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         self.snapshot.essential_content()
     }
 
-    pub fn id(&self) -> SnapshotId{
+    pub fn id(&self) -> SnapshotId {
         self.snapshot.temporary_id().into()
     }
 

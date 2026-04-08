@@ -83,16 +83,8 @@ impl RequestBody {
 }
 
 impl DanceRequest {
-    pub fn new(
-        dance_name: MapString,
-        dance_type: DanceType,
-        body: RequestBody,
-    ) -> Self {
-        Self {
-            dance_name,
-            dance_type,
-            body,
-        }
+    pub fn new(dance_name: MapString, dance_type: DanceType, body: RequestBody) -> Self {
+        Self { dance_name, dance_type, body }
     }
 
     /// Summarizes the DanceRequest for logging purposes.

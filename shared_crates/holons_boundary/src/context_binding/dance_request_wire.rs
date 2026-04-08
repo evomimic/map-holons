@@ -146,9 +146,7 @@ impl RequestBodyWire {
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<RequestBody, HolonError> {
         match self {
             RequestBodyWire::None => Ok(RequestBody::None),
-            RequestBodyWire::Holon(holon_wire) => {
-                Ok(RequestBody::Holon(holon_wire.bind(context)?))
-            }
+            RequestBodyWire::Holon(holon_wire) => Ok(RequestBody::Holon(holon_wire.bind(context)?)),
             RequestBodyWire::TargetHolons(name, wires) => {
                 let mut refs = Vec::with_capacity(wires.len());
                 for w in wires {

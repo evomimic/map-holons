@@ -16,11 +16,11 @@ pub mod reference_layer {
 }
 
 pub mod core_shared_objects {
-    pub use crate::session_state::SerializableHolonPool;
     pub use crate::context_binding::{
         HolonCollectionWire, HolonWire, StagedHolonWire, StagedRelationshipMapWire,
         TransientHolonWire, TransientRelationshipMapWire,
     };
+    pub use crate::session_state::SerializableHolonPool;
 }
 
 pub mod query_layer {

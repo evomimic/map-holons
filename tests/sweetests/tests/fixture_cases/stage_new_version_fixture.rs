@@ -1,6 +1,7 @@
 use holons_prelude::prelude::*;
-use holons_test::{harness::helpers::ENSURE_DB_EMPTY, ExpectedTestResult};
+use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, TestCaseInit};
+use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
 
@@ -36,7 +37,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
         &mut fixture_holons,
-        ResponseStatusCode::OK,
+        None,
         Some("Commit --- after setup_book_authors".to_string()),
     )?;
 
@@ -46,17 +47,27 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 
+    // Begin a fresh transaction before resuming mutating work from the saved book.
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin new transaction before staging first new version".to_string()),
+    )?;
+
     // Get book source
     let book_key = MapString(BOOK_KEY.to_string());
 
     //  NEW_VERSION -- SmartReference -- Book Holon Clone  //
+    version_count.0 += 1;
+
     let staged_clone = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token.clone(),
-        ExpectedTestResult::Success,
+        None,
         version_count.clone(),
         None,
-        Some("Stage New Version -- first clone from book.".to_string()),
+        Some(
+            "Stage New Version -- first clone from book into fresh transaction".to_string(),
+        ),
     )?;
 
     // Add properties
@@ -72,14 +83,14 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         &mut fixture_holons,
         staged_clone,
         expected_clone_properties.clone(),
-        ExpectedTestResult::Success,
+        None,
         Some("With Properties -- first version cloned from book.".to_string()),
     )?;
 
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
         &mut fixture_holons,
-        ResponseStatusCode::OK,
+        None,
         Some("Commit --- after staging new first version".to_string()),
     )?;
 
@@ -89,30 +100,42 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 
+    // Begin fresh transaction so versions 2/3 stage into a clean nursery
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin new transaction after second commit".to_string()),
+    )?;
+
     // VERSION 2 //
     // Stage a second version from the same original holon in order to verify that:
     // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
     // b. get_staged_holons_by_base_key correctly returns BOTH staged holons
 
+    version_count.0 += 1;
+
     let _version_2_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token.clone(),
-        ExpectedTestResult::Success,
+        None,
         version_count.clone(),
         None,
-        Some("Stage New Version --- second version".to_string()),
+        Some(
+            "Stage New Version --- second version; first in this transaction, no duplicate"
+                .to_string(),
+        ),
     )?;
-    version_count.0 += 1;
+
+    // Third version in same transaction — now 2 staged holons share the base key
+    let staged_in_this_tx = MapInteger(2);
 
     let _version_3_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,
         book_staged_token,
-        ExpectedTestResult::Success,
-        version_count.clone(),
-        Some(ResponseStatusCode::Conflict),
-        Some("Stage New Version --- third version, expecting Conflict for duplicate return of get_staged_holon_by_base_key".to_string())
+        None,
+        staged_in_this_tx,
+        Some(HolonErrorKind::DuplicateError),
+        Some("Stage New Version --- third version, expecting DuplicateError from get_staged_holon_by_base_key".to_string()),
     )?;
-    version_count.0 += 1;
 
     // Finalize
     test_case.finalize(&fixture_context)?;

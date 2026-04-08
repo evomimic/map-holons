@@ -4,12 +4,13 @@ members = [
     "conductora",
     "crates/holons_client",
     "crates/deprecated_holochain_receptor",
-    #"crates/local_receptors",
     "crates/holons_loader_client",
     "crates/recovery_receptor",
     "crates/shared_types",
-    "conductora/plugins/tauri-plugin-holochain"
-, "crates/map_commands"]
+    "conductora/plugins/tauri-plugin-holochain",
+    "crates/map_commands_contract",
+    "crates/map_commands_wire",
+    "crates/map_commands_runtime"]
 
 [workspace.dependencies]
 
@@ -26,7 +27,7 @@ holon_dance_builders = { path = "../shared_crates/holon_dance_builders" }
 shared_validation = { path = "../shared_crates/shared_validation" }
 json_schema_validation = { path = "../shared_crates/json_schema_validation" }
 
-holochain_client = { version = "0.7.1"}
+holochain_client = { version = "0.7.1" }
 tauri = { version = "2", features = ["macros"] }
 tauri-build = "2"
 tauri-plugin-fs = "2"
@@ -43,10 +44,11 @@ url2 = "0.0.6"
 
 # Internal crate paths (optional for IDE support)
 holons_client = { path = "crates/holons_client" }
-#local_receptors = { path = "crates/local_receptors" }
 deprecated_holochain_receptor = { path = "crates/deprecated_holochain_receptor" }
 holons_loader_client = { path = "crates/holons_loader_client" }
-holons_recovery = { path = "crates/holons_recovery" }
 client_shared_types = { path = "crates/shared_types" }
 tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
+map_commands_contract = { path = "crates/map_commands_contract" }
+map_commands_wire = { path = "crates/map_commands_wire" }
+map_commands_runtime = { path = "crates/map_commands_runtime" }
 recovery_receptor = { path = "crates/recovery_receptor" }

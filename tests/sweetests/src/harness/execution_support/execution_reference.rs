@@ -17,6 +17,7 @@ use crate::{ExpectedSnapshot, TestReference};
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
 use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Debug)]
 pub struct ExecutionReference {
@@ -131,22 +132,20 @@ impl ExecutionReference {
             ));
         }
 
-        let expected_relationship_map =
-            match expected.all_related_holons() {
-                Ok(map) => Some(map),
-                Err(HolonError::NotImplemented(_)) => None,
-                Err(e) => {
-                    return Err(format!("Failed to get expected all_related_holons: {:?}", e));
-                }
-            };
-        let actual_relationship_map =
-            match actual.all_related_holons() {
-                Ok(map) => Some(map),
-                Err(HolonError::NotImplemented(_)) => None,
-                Err(e) => {
-                    return Err(format!("Failed to get actual all_related_holons: {:?}", e));
-                }
-            };
+        let expected_relationship_map = match expected.all_related_holons() {
+            Ok(map) => Some(map),
+            Err(HolonError::NotImplemented(_)) => None,
+            Err(e) => {
+                return Err(format!("Failed to get expected all_related_holons: {:?}", e));
+            }
+        };
+        let actual_relationship_map = match actual.all_related_holons() {
+            Ok(map) => Some(map),
+            Err(HolonError::NotImplemented(_)) => None,
+            Err(e) => {
+                return Err(format!("Failed to get actual all_related_holons: {:?}", e));
+            }
+        };
 
         // Some references (notably SmartReference on client side) cannot fetch
         // related holons yet. In that case, compare essential content only.
@@ -154,31 +153,38 @@ impl ExecutionReference {
             return Ok(());
         }
 
-        let expected_relationship_map = expected_relationship_map
-            .expect("checked above: expected_relationship_map is Some");
+        let expected_relationship_map =
+            expected_relationship_map.expect("checked above: expected_relationship_map is Some");
         let actual_relationship_map =
             actual_relationship_map.expect("checked above: actual_relationship_map is Some");
 
-        if expected_relationship_map.count() != actual_relationship_map.count() {
+        let expected_relationships =
+            Self::relationship_entries_with_members(&expected_relationship_map)?;
+        let actual_relationships =
+            Self::relationship_entries_with_members(&actual_relationship_map)?;
+
+        if expected_relationships.len() != actual_relationships.len() {
             return Err(format!(
                 "relationship count mismatch for expected {}:{} vs actual {}:{} (expected {}, actual {})",
                 expected.reference_kind_string(),
                 expected.reference_id_string(),
                 actual.reference_kind_string(),
                 actual.reference_id_string(),
-                expected_relationship_map.count(),
-                actual_relationship_map.count()
+                expected_relationships.len(),
+                actual_relationships.len()
             ));
         }
 
-        for (relationship_name, expected_collection_arc) in expected_relationship_map.iter() {
-            let expected_collection = expected_collection_arc
-                .read()
-                .map_err(|e| format!("Failed to acquire read lock for expected collection: {}", e))?;
+        for (relationship_name, expected_collection_arc) in expected_relationships {
+            let expected_collection = expected_collection_arc.read().map_err(|e| {
+                format!("Failed to acquire read lock for expected collection: {}", e)
+            })?;
             let expected_members = expected_collection.get_members().clone();
 
-            let actual_collection_arc = actual_relationship_map
-                .get_collection_for_relationship(&relationship_name)
+            let actual_collection_arc = actual_relationships
+                .iter()
+                .find(|(actual_name, _)| actual_name == &relationship_name)
+                .map(|(_, collection_arc)| collection_arc.clone())
                 .ok_or_else(|| {
                     format!(
                         "actual relationship map is missing relationship {:?}",
@@ -259,18 +265,41 @@ impl ExecutionReference {
         Ok(())
     }
 
+    /// Returns only relationship entries whose collections currently contain
+    /// members.
+    ///
+    /// This treats an empty relationship collection as equivalent to the
+    /// relationship being absent, which keeps saved-content assertions aligned
+    /// with current persistence behavior.
+    fn relationship_entries_with_members(
+        relationship_map: &RelationshipMap,
+    ) -> Result<Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>, String> {
+        let mut entries = Vec::new();
+
+        for (relationship_name, collection_arc) in relationship_map.iter() {
+            let count = collection_arc
+                .read()
+                .map_err(|e| {
+                    format!(
+                        "Failed to acquire read lock while normalizing relationship {:?}: {}",
+                        relationship_name, e
+                    )
+                })?
+                .get_members()
+                .len();
+
+            if count > 0 {
+                entries.push((relationship_name, collection_arc));
+            }
+        }
+
+        Ok(entries)
+    }
+
     fn pair_key(expected: &HolonReference, actual: &HolonReference) -> (String, String) {
         (
-            format!(
-                "{}:{}",
-                expected.reference_kind_string(),
-                expected.reference_id_string()
-            ),
-            format!(
-                "{}:{}",
-                actual.reference_kind_string(),
-                actual.reference_id_string()
-            ),
+            format!("{}:{}", expected.reference_kind_string(), expected.reference_id_string()),
+            format!("{}:{}", actual.reference_kind_string(), actual.reference_id_string()),
         )
     }
 }

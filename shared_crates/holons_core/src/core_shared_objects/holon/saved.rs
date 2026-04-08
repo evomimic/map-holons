@@ -14,7 +14,8 @@ use core_types::{
 use type_names::CorePropertyTypeName;
 
 use super::{
-    EssentialHolonContent, state::{AccessType, HolonState, SavedState, ValidationState}
+    state::{AccessType, HolonState, SavedState, ValidationState},
+    EssentialHolonContent,
 };
 
 /// Represents a Holon that has been persisted in the DHT.

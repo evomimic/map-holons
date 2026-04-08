@@ -111,6 +111,6 @@ pub struct FileData {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct ContentSet {
-   pub schema: FileData,
-   pub files_to_load: Vec<FileData>,
+    pub schema: FileData,
+    pub files_to_load: Vec<FileData>,
 }

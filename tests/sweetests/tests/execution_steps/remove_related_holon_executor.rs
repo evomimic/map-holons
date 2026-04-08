@@ -1,79 +1,68 @@
-use holons_test::{
-    ExecutionHandle, ExecutionReference, ExpectedTestResult, ResolveBy, TestExecutionState,
-    TestReference,
-};
-
-use tracing::{
-    // debug,
-    info,
-};
-
 use holons_prelude::prelude::*;
+use holons_test::{
+    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
+};
+use map_commands_contract::{
+    HolonAction, HolonCommand, MapCommand, MapResult, WritableHolonAction,
+};
+use tracing::{debug, info};
 
-/// This function tests the ability to remove holons from a specified relationship_name.
-/// It calls the 'remove_related_holons' mutation for the supplied HolonReference.
-///
+/// Removes related holons from a target via `WritableHolonAction::RemoveRelatedHolons`
+/// dispatched through the Runtime.
 pub async fn execute_remove_related_holons(
     state: &mut TestExecutionState,
     step_token: TestReference,
     relationship_name: RelationshipName,
     holons: Vec<TestReference>,
-    expected_result: ExpectedTestResult,
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
-    let mut source_reference: HolonReference =
+    // 1. LOOKUP — resolve source and target holons
+    let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
     let holons_to_remove: Vec<HolonReference> =
         state.resolve_execution_references(&context, ResolveBy::Expected, &holons).unwrap();
 
-    // 2. MATCH EXPECTED - confirm actual against expected result
-    match expected_result {
-        ExpectedTestResult::Success => {
-            // Attempt mutation, confirm successful result
-            let result =
-                source_reference.remove_related_holons(relationship_name, holons_to_remove);
+    // 2. DISPATCH
+    let command = MapCommand::Holon(HolonCommand {
+        context: context.clone(),
+        target: source_reference.clone(),
+        action: HolonAction::Write(WritableHolonAction::RemoveRelatedHolons {
+            name: relationship_name,
+            holons: holons_to_remove,
+        }),
+    });
+    let result = state.dispatch_command(command, "remove_related_holons").await;
+    debug!("remove_related_holons result: {:?}", &result);
 
-            if let Err(e) = result {
-                panic!("Expected successful remove_related_holons mutation, got {:?}", e);
-            }
-            // Proceed with these steps only if a successful result is expected and achieved
-            else {
-                info!(
-                    "Success! remove_related_holons mutation on source_reference succeeded as expected."
-                );
-                // 3. ASSERT — essential content matches expected
-                let execution_handle = ExecutionHandle::from(source_reference.clone());
-                let execution_reference =
-                    ExecutionReference::from_token_execution(&step_token, execution_handle);
+    // 3. VALIDATE
+    match result {
+        Ok(MapResult::None) => {
+            assert!(
+                expected_error.is_none(),
+                "remove_related_holons succeeded but expected {:?}",
+                expected_error,
+            );
+            info!("Success! Related holons removed");
 
-                execution_reference.assert_essential_content_eq();
-                info!("Success! Updated holon's essential content matched expected");
-
-                // 4. RECORD — make this execution result available downstream
-                state.record(&step_token, execution_reference).unwrap();
-            }
+            // 4. RECORD — source_reference reflects mutation in-place
+            let execution_handle = ExecutionHandle::from(source_reference);
+            let execution_reference =
+                ExecutionReference::from_token_execution(&step_token, execution_handle);
+            execution_reference.assert_essential_content_eq();
+            info!("Success! Updated holon's essential content matched expected");
+            state.record(&step_token, execution_reference).unwrap();
         }
-        ExpectedTestResult::Failure(expected_error) => {
-            // Attempt mutation, panic if the result does not match expected.
-            let result =
-                source_reference.remove_related_holons(relationship_name, holons_to_remove);
-            match result {
-                Ok(_) => {
-                    panic!("Expected remove_related_holons to error: {:?}, got Ok", expected_error)
-                }
-                Err(e) => {
-                    if e != expected_error {
-                        panic!(
-                            "Expected remove_related_holons to error with: {:?}, but got {:?}",
-                            expected_error, e
-                        );
-                    } else {
-                        info!("Success! remove_related_holons failed as expected.");
-                    }
-                }
-            }
+        Err(e) => {
+            let actual = HolonErrorKind::from(&e);
+            assert_eq!(
+                Some(actual),
+                expected_error,
+                "remove_related_holons: unexpected error {:?}",
+                e,
+            );
         }
+        Ok(other) => panic!("remove_related_holons: expected None, got {:?}", other),
     }
 }

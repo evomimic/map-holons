@@ -1,0 +1,130 @@
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+
+use core_types::HolonError;
+use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
+use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
+use holons_core::TransientReference;
+
+/// Transaction ownership layer for MAP Commands.
+///
+/// Holds strong `Arc<TransactionContext>` references for all active transactions.
+/// `TransactionManager` remains weak-registry/id-authority only (per issue 370).
+///
+/// Follow-up: once the `ClientSession` PR 418 merges, this should store
+/// `ClientSession` values instead of raw `Arc<TransactionContext>` to get
+/// undo/redo/recovery for free.
+pub struct RuntimeSession {
+    space_manager: Arc<HolonSpaceManager>,
+    active_transactions: RwLock<HashMap<TxId, Arc<TransactionContext>>>,
+    archived_transactions: RwLock<HashMap<TxId, Arc<TransactionContext>>>,
+}
+
+impl RuntimeSession {
+    pub fn new(space_manager: Arc<HolonSpaceManager>) -> Self {
+        Self {
+            space_manager,
+            active_transactions: RwLock::new(HashMap::new()),
+            archived_transactions: RwLock::new(HashMap::new()),
+        }
+    }
+
+    /// Opens a new transaction via the space's TransactionManager and stores
+    /// the strong reference in `active_transactions`.
+    pub fn begin_transaction(&self) -> Result<TxId, HolonError> {
+        let context = self
+            .space_manager
+            .get_transaction_manager()
+            .open_new_transaction(Arc::clone(&self.space_manager))?;
+
+        let tx_id = context.tx_id();
+
+        let mut guard = self.active_transactions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on active_transactions: {}",
+                e
+            ))
+        })?;
+        guard.insert(tx_id, context);
+
+        Ok(tx_id)
+    }
+
+    /// Looks up a transaction by TxId, checking active first, then archived.
+    ///
+    /// Returns an error if the transaction is not found in either pool.
+    pub fn get_transaction(&self, tx_id: &TxId) -> Result<Arc<TransactionContext>, HolonError> {
+        let active_guard = self.active_transactions.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on active_transactions: {}",
+                e
+            ))
+        })?;
+
+        if let Some(ctx) = active_guard.get(tx_id).cloned() {
+            return Ok(ctx);
+        }
+        drop(active_guard);
+
+        let archived_guard = self.archived_transactions.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on archived_transactions: {}",
+                e
+            ))
+        })?;
+
+        archived_guard.get(tx_id).cloned().ok_or_else(|| {
+            HolonError::InvalidParameter(format!(
+                "No transaction found for tx_id={}",
+                tx_id.value()
+            ))
+        })
+    }
+
+    pub fn commit_transaction(&self, tx_id: &TxId) -> Result<TransientReference, HolonError> {
+        let context = self.get_transaction(tx_id)?;
+
+        // Call commit on the TransactionContext, which performs the actual commit
+        let response = context.commit()?;
+
+        // Move from active to archived
+        self.archive_transaction(tx_id)?;
+
+        Ok(response)
+    }
+
+    /// Removes a transaction from active ownership (e.g., after commit or abandon).
+    pub fn archive_transaction(&self, tx_id: &TxId) -> Result<(), HolonError> {
+        {
+            let mut active_guard = self.active_transactions.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on active_transactions: {}",
+                    e
+                ))
+            })?;
+            let mut archived_guard = self.archived_transactions.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on archived_transactions: {}",
+                    e
+                ))
+            })?;
+
+            if let Some(context) = active_guard.remove(tx_id) {
+                archived_guard.insert(*tx_id, context);
+            }
+        }
+        Ok(())
+    }
+
+    /// Returns a reference to the space manager.
+    pub fn space_manager(&self) -> &Arc<HolonSpaceManager> {
+        &self.space_manager
+    }
+}
+
+impl std::fmt::Debug for RuntimeSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let tx_count = self.active_transactions.read().map(|g| g.len()).unwrap_or(0);
+        f.debug_struct("RuntimeSession").field("active_transactions", &tx_count).finish()
+    }
+}

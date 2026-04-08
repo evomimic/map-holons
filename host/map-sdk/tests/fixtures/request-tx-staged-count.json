@@ -1,0 +1,14 @@
+{
+  "request_id": 12,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": "StagedCount"
+    }
+  },
+  "options": {
+    "gesture_id": null,
+    "gesture_label": null,
+    "snapshot_after": false
+  }
+}

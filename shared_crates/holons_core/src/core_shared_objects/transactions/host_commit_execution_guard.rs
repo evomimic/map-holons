@@ -16,9 +16,7 @@ pub struct HostCommitExecutionGuard<'a> {
 impl<'a> HostCommitExecutionGuard<'a> {
     pub(crate) fn acquire(context: &'a TransactionContext) -> Result<Self, HolonError> {
         if !context.try_begin_host_commit_ingress() {
-            return Err(HolonError::TransactionCommitInProgress {
-                tx_id: context.tx_id().value(),
-            });
+            return Err(HolonError::TransactionCommitInProgress { tx_id: context.tx_id().value() });
         }
 
         Ok(Self { context })

@@ -41,7 +41,9 @@ deprecated_holochain_receptor = { path = "../crates/deprecated_holochain_recepto
 recovery_receptor = { path = "../crates/recovery_receptor" }
 holons_core = { workspace = true }
 holons_trust_channel = { path = "../../shared_crates/holons_trust_channel" }
-map_commands = { path = "../crates/map_commands" }
+map_commands_contract = { workspace = true }
+map_commands_wire = { workspace = true }
+map_commands_runtime = { workspace = true }
 core_types = { path = "../../shared_crates/type_system/core_types" }
 
 #holochain dependencies

@@ -1,5 +1,6 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, ExpectedTestResult, TestCaseInit};
+use holons_test::{DancesTestCase, TestCaseInit};
+use integrity_core_types::HolonErrorKind;
 use rstest::*;
 use std::collections::BTreeMap;
 
@@ -10,11 +11,11 @@ use holons_test::harness::helpers::BOOK_KEY;
 pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
     let TestCaseInit {
-    mut test_case,
-    fixture_context,
-    mut fixture_holons,
-    fixture_bindings: _fixture_bindings,
-} = TestCaseInit::new(
+        mut test_case,
+        fixture_context,
+        mut fixture_holons,
+        fixture_bindings: _fixture_bindings,
+    } = TestCaseInit::new(
         "DeleteHolon Testcase",
         "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.",
     );
@@ -33,7 +34,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         book_transient_reference,
         book_properties,
         Some(book_key.clone()),
-        ExpectedTestResult::Success,
+        None,
         Some("Creating book holon...".to_string()),
     )?;
 
@@ -41,30 +42,28 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     let staged_token = test_case.add_stage_holon_step(
         &mut fixture_holons,
         book_step_token,
-        ExpectedTestResult::Success,
+        None,
         Some("Staging book holon...".to_string()),
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ResponseStatusCode::OK, None)?;
+    test_case.add_commit_step(&mut fixture_holons, None, None)?;
 
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
-    // ADD STEP: DELETE HOLON - Valid //
-    test_case.add_delete_holon_step(
-        &mut fixture_holons,
-        staged_token.clone(),
-        ExpectedTestResult::Success,
+    test_case.add_begin_transaction_step(
         None,
+        Some("Begin new transaction before delete".to_string()),
     )?;
+
+    // ADD STEP: DELETE HOLON - Valid //
+    test_case.add_delete_holon_step(&mut fixture_holons, staged_token.clone(), None, None)?;
 
     // ADD STEP: DELETE HOLON - Invalid //
     test_case.add_delete_holon_step(
         &mut fixture_holons,
         staged_token,
-        ExpectedTestResult::Failure(HolonError::HolonNotFound(
-            "for id".to_string(),
-        )),
+        Some(HolonErrorKind::HolonNotFound),
         Some("Attempting invalid delete...".to_string()),
     )?;
 

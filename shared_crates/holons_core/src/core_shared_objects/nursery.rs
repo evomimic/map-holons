@@ -231,7 +231,7 @@ impl HolonStagingBehavior for Nursery {
         // Stage it as a new holon
         let mut cloned_staged = self.stage_new_holon(cloned_transient)?;
 
-        // Set predecessor back to the current version
+        // Set predecessor relationship back to the current version
         cloned_staged.with_predecessor(Some(HolonReference::Smart(current_version)))?;
 
         Ok(cloned_staged)

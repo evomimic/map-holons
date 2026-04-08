@@ -1,76 +1,56 @@
 use holons_prelude::prelude::*;
 use holons_test::{
-    ExecutionHandle, ExecutionReference, ExpectedTestResult, ResolveBy, TestExecutionState,
-    TestReference,
+    ExecutionHandle, ExecutionReference, ResolveBy, TestExecutionState, TestReference,
 };
-use tracing::{
-    // debug,
-    info,
-};
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+use tracing::{debug, info};
 
-/// This function tests the ability to stage a new holon.
-/// It calls the `stage_new_holon` API.
-///
+/// Stages a transient holon into the nursery via `TransactionAction::StageNewHolon`.
 pub async fn execute_stage_new_holon(
     state: &mut TestExecutionState,
     step_token: TestReference,
-    expected_result: ExpectedTestResult,
+    expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — get the input handle for the source token
+    // 1. LOOKUP — resolve source token to a TransientReference
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // Can only stage Transient
     let transient_reference = match source_reference {
-        HolonReference::Transient(ref tr) => tr.clone(),
-        other => {
-            panic!("{}", format!("expected lookup to return TransientReference, got {:?}", other));
-        }
+        HolonReference::Transient(tr) => tr,
+        other => panic!("expected TransientReference, got {:?}", other),
     };
-    // 2. MATCH EXPECTED - confirm actual against expected result
-    match expected_result {
-        ExpectedTestResult::Success => {
-            // Attempt the API call, confirm successful result
-            context
-                .mutation()
-                .stage_new_holon(transient_reference)
-                .map_or_else(
-                |e| panic!("Expected stage_new_holon to be successful, got {:?}", e),
-                |staged_reference| {
-                    info!("Success! stage_new_holon succeded as expected.");
-                    // 3. ASSERT — essential content matches expected
-                    let execution_handle =
-                        ExecutionHandle::from(HolonReference::from(staged_reference));
-                    let execution_reference =
-                        ExecutionReference::from_token_execution(&step_token, execution_handle);
-                    execution_reference.assert_essential_content_eq();
-                    info!("Success! Holon's essential content matched expected");
 
-                    // 4. RECORD — make this execution result available downstream
-                    state.record(&step_token, execution_reference).unwrap();
-                },
+    // 2. BUILD + DISPATCH
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::StageNewHolon { source: transient_reference },
+    });
+    let result = state.dispatch_command(command, "stage_new_holon").await;
+    debug!("stage_new_holon result: {:?}", &result);
+
+    // 3. VALIDATE
+    match result {
+        Ok(MapResult::Reference(HolonReference::Staged(staged_ref))) => {
+            assert!(
+                expected_error.is_none(),
+                "stage_new_holon succeeded but expected {:?}",
+                expected_error,
             );
+
+            let holon_ref = HolonReference::Staged(staged_ref);
+            let execution_handle = ExecutionHandle::from(holon_ref);
+            let execution_reference =
+                ExecutionReference::from_token_execution(&step_token, execution_handle);
+            execution_reference.assert_essential_content_eq();
+            info!("Success! Staged holon's essential content matched expected");
+            state.record(&step_token, execution_reference).unwrap();
         }
-        ExpectedTestResult::Failure(expected_error) => {
-            // Attempt the API call, panic if the result does not match expected.
-            let result = context.mutation().stage_new_holon(transient_reference);
-            match result {
-                Ok(_) => {
-                    panic!("Expected stage_new_holon to error: {:?}, got Ok", expected_error)
-                }
-                Err(e) => {
-                    if e != expected_error {
-                        panic!(
-                            "Expected stage_new_holon to error with: {:?}, but got {:?}",
-                            expected_error, e
-                        );
-                    } else {
-                        info!("Success! stage_new_holon failed as expected.");
-                    }
-                }
-            }
+        Err(e) => {
+            let actual = HolonErrorKind::from(&e);
+            assert_eq!(Some(actual), expected_error, "stage_new_holon: unexpected error {:?}", e,);
         }
+        Ok(other) => panic!("stage_new_holon: expected Staged reference, got {:?}", other),
     }
 }

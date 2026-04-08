@@ -1,5 +1,6 @@
 pub mod abandon_staged_changes_executor;
 pub mod add_related_holons_executor;
+pub mod begin_transaction_executor;
 pub mod commit_executor;
 pub mod delete_holon_executor;
 pub mod ensure_database_count_executor;
@@ -9,12 +10,12 @@ pub mod match_db_content_executor;
 pub mod new_holon_executor;
 pub mod print_database_executor;
 pub mod query_relationships_executor;
-pub mod remove_properties_command_executor;
+pub mod remove_properties_executor;
 pub mod remove_related_holon_executor;
 pub mod stage_new_from_clone_executor;
 pub mod stage_new_holon_executor;
 pub mod stage_new_version_executor;
-pub mod with_properties_command_executor;
+pub mod with_properties_executor;
 
 // pub use abandon_staged_changes_executor::*;
 // pub use add_related_holons_executor::*;

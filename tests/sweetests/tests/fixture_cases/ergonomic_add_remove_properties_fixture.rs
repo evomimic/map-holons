@@ -133,6 +133,6 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
 
     // Finalize
     test_case.finalize(&fixture_context)?;
-    
+
     Ok(test_case)
 }

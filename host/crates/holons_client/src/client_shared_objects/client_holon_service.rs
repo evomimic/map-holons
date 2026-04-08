@@ -36,7 +36,9 @@
 
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
-use holons_core::core_shared_objects::transactions::{TransactionContext, TransactionContextHandle};
+use holons_core::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle,
+};
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::reference_layer::TransientReference;
@@ -105,10 +107,7 @@ impl HolonServiceApi for ClientHolonService {
             run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
         if response.status_code != ResponseStatusCode::OK {
-            return Err(HolonError::Misc(format!(
-                "DeleteHolon dance failed: {:?} — {}",
-                response.status_code, response.description.0
-            )));
+            return Err(map_dance_error("DeleteHolon", &response));
         }
 
         match response.body {
@@ -128,10 +127,8 @@ impl HolonServiceApi for ClientHolonService {
         let context_handle = TransactionContextHandle::new(Arc::clone(context));
         let source_reference =
             HolonReference::Smart(SmartReference::new_from_id(context_handle, source_id.clone()));
-        let node_collection = NodeCollection {
-            members: vec![Node::new(source_reference, None)],
-            query_spec: None,
-        };
+        let node_collection =
+            NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
 
         let request =
             holon_dance_builders::build_fetch_all_related_holons_dance_request(node_collection)?;
@@ -172,10 +169,7 @@ impl HolonServiceApi for ClientHolonService {
                             } else {
                                 let mut collection = HolonCollection::new_existing();
                                 collection.add_references(references)?;
-                                result.insert(
-                                    relationship_name,
-                                    Arc::new(RwLock::new(collection)),
-                                );
+                                result.insert(relationship_name, Arc::new(RwLock::new(collection)));
                             }
                         }
                     }
@@ -224,15 +218,11 @@ impl HolonServiceApi for ClientHolonService {
         let context_handle = TransactionContextHandle::new(Arc::clone(context));
         let source_reference =
             HolonReference::Smart(SmartReference::new_from_id(context_handle, source_id.clone()));
-        let node_collection = NodeCollection {
-            members: vec![Node::new(source_reference, None)],
-            query_spec: None,
-        };
+        let node_collection =
+            NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
         let query = QueryExpression::new(relationship_name.clone());
-        let request = holon_dance_builders::build_query_relationships_dance_request(
-            node_collection,
-            query,
-        )?;
+        let request =
+            holon_dance_builders::build_query_relationships_dance_request(node_collection, query)?;
         let response =
             run_future_synchronously(async move { context.initiate_dance(request).await })?;
 
@@ -324,6 +314,38 @@ impl HolonServiceApi for ClientHolonService {
                 other
             ))),
         }
+    }
+}
+
+/// Maps a non-OK `DanceResponse` to a structured `HolonError`, preserving the
+/// error kind where a 1-to-1 `ResponseStatusCode` → `HolonError` variant exists.
+///
+/// Only `NotFound` and `NotImplemented` have unambiguous reverse mappings:
+///   - `NotFound`       → `HolonError::HolonNotFound`
+///   - `NotImplemented` → `HolonError::NotImplemented`
+///
+/// All other status codes (`BadRequest`, `Conflict`, `ServerError`, etc.) are
+/// many-to-one: multiple `HolonError` variants collapse into the same status
+/// code on the guest side (see `From<HolonError> for ResponseStatusCode`), so
+/// there is no reliable way to reconstruct the original variant. These fall
+/// through to `HolonError::Misc` until the dance bridge is replaced by native
+/// command dispatch.
+fn map_dance_error(
+    operation: &str,
+    response: &holons_core::dances::DanceResponse,
+) -> HolonError {
+    let description = &response.description.0;
+    match response.status_code {
+        ResponseStatusCode::NotFound => {
+            HolonError::HolonNotFound(format!("{operation}: {description}"))
+        }
+        ResponseStatusCode::NotImplemented => {
+            HolonError::NotImplemented(format!("{operation}: {description}"))
+        }
+        _ => HolonError::Misc(format!(
+            "{operation} dance failed: {:?} — {description}",
+            response.status_code
+        )),
     }
 }
 

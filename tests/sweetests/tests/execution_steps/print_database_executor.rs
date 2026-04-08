@@ -1,44 +1,40 @@
-use holons_test::TestExecutionState;
-use tracing::{debug, info};
-
 use holons_prelude::prelude::*;
+use holons_test::TestExecutionState;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+use tracing::info;
 
-/// This function retrieves all holons and then writes log messages for each holon:
-/// `info!` -- writes only the "key" for each holon
-/// `debug!` -- writes the full json-formatted contents of the holon
-///
+/// Retrieves all holons via `TransactionAction::GetAllHolons` and logs them.
 pub async fn execute_print_database(state: &mut TestExecutionState) {
     info!("--- TEST STEP: Print Database Contents ---");
 
-    let context = state.context();
+    let context = state
+        .open_assertion_context("print_database")
+        .await
+        .expect("failed to open assertion transaction");
 
-    // 1. BUILD - the get_all_holons DanceRequest
-    let request =
-        build_get_all_holons_dance_request().expect("Failed to build get_all_holons request");
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::GetAllHolons,
+    });
+    let result =
+        state.dispatch_command(command, "get_all_holons").await.expect("get_all_holons failed");
 
-    debug!("Dance Request: {:#?}", request);
+    let holons = match result {
+        MapResult::Collection(c) => c,
+        other => panic!("Expected Collection, got {:?}", other),
+    };
 
-    // 2. CALL - the dance
-    let response = context.initiate_dance(request).await.expect("dance should succeed");
-    debug!("Dance Response: {:#?}", response.clone());
+    info!("DB contains {} holons", holons.get_count());
 
-    // 3. VALIDATE - verify response contains Holons
-    if let ResponseBody::HolonCollection(holons) = response.body {
-        info!("DB contains {} holons", holons.get_count());
+    for holon in holons {
+        let key = holon
+            .key()
+            .map(|key| key.unwrap_or_else(|| MapString("<None>".to_string())))
+            .unwrap_or_else(|err| {
+                panic!("Attempt to key() resulted in error: {:?}", err);
+            });
 
-        for holon in holons {
-            let key = holon
-                .key()
-                .map(|key| key.unwrap_or_else(|| MapString("<None>".to_string())))
-                .unwrap_or_else(|err| {
-                    panic!("Attempt to key() resulted in error: {:?}", err);
-                });
-
-            info!("Key = {:?}", key.0);
-            info!("{:?}", holon.summarize());
-            // debug!("Holon JSON: {:?}", as_json(&holon));
-        }
-    } else {
-        panic!("Expected print_database to return Holons response, but got {:?}", response.body);
+        info!("Key = {:?}", key.0);
+        info!("{:?}", holon.summarize());
     }
 }

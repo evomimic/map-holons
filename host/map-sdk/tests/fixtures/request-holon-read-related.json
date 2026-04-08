@@ -1,0 +1,33 @@
+{
+  "request_id": 17,
+  "command": {
+    "Holon": {
+      "tx_id": 41,
+      "target": {
+        "Smart": {
+          "tx_id": 41,
+          "holon_id": {
+            "Local": [
+              61,
+              62,
+              63
+            ]
+          },
+          "smart_property_values": null
+        }
+      },
+      "action": {
+        "Read": {
+          "RelatedHolons": {
+            "name": "children"
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": null,
+    "gesture_label": null,
+    "snapshot_after": false
+  }
+}

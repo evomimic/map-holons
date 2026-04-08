@@ -1,0 +1,10 @@
+{
+  "request_id": 108,
+  "result": {
+    "Ok": {
+      "Value": {
+        "StringValue": "fixture string"
+      }
+    }
+  }
+}

@@ -30,7 +30,8 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
     let person_2_key = MapString(PERSON_2_KEY.to_string());
     let publisher_key = MapString(PUBLISHER_KEY.to_string());
     let descriptor_key = MapString("DESCRIPTOR_KEY".to_string());
-    let mut book_transient_reference = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
+    let mut book_transient_reference =
+        fixture_context.mutation().new_holon(Some(book_key.clone()))?;
     let person_1_transient_reference =
         fixture_context.mutation().new_holon(Some(person_1_key.clone()))?;
     let person_2_transient_reference =
@@ -119,15 +120,12 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
 
     // === STAGED === //
     //
-    let mut person_1_staged_reference = fixture_context
-        .mutation()
-        .stage_new_holon(person_1_transient_reference.clone())?;
-    let publisher_staged_reference = fixture_context
-        .mutation()
-        .stage_new_holon(publisher_transient_reference.clone())?;
-    let descriptor_staged_reference = fixture_context
-        .mutation()
-        .stage_new_holon(descriptor_transient_reference.clone())?;
+    let mut person_1_staged_reference =
+        fixture_context.mutation().stage_new_holon(person_1_transient_reference.clone())?;
+    let publisher_staged_reference =
+        fixture_context.mutation().stage_new_holon(publisher_transient_reference.clone())?;
+    let descriptor_staged_reference =
+        fixture_context.mutation().stage_new_holon(descriptor_transient_reference.clone())?;
 
     // -- ADD -- //
     //

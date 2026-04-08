@@ -1,0 +1,45 @@
+{
+  "request_id": 24,
+  "command": {
+    "Holon": {
+      "tx_id": 41,
+      "target": {
+        "Staged": {
+          "tx_id": 41,
+          "id": "22222222-2222-2222-2222-222222222222"
+        }
+      },
+      "action": {
+        "Write": {
+          "WithDescriptor": {
+            "descriptor": {
+              "Smart": {
+                "tx_id": 41,
+                "holon_id": {
+                  "External": {
+                    "space_id": [
+                      91,
+                      92,
+                      93
+                    ],
+                    "local_id": [
+                      94,
+                      95,
+                      96
+                    ]
+                  }
+                },
+                "smart_property_values": null
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "gesture_id": "gesture-123",
+    "gesture_label": "set descriptor",
+    "snapshot_after": true
+  }
+}

@@ -25,6 +25,22 @@ impl HolonReferenceWire {
             HolonReferenceWire::Smart(smart) => smart.bind(context).map(HolonReference::Smart),
         }
     }
+
+    /// Rebinds this wire reference to a different transaction context, bypassing
+    /// tx_id validation. Delegates to the variant's `rebind`. See
+    /// [`TransientReferenceWire::rebind`], [`StagedReferenceWire::rebind`], or
+    /// [`SmartReferenceWire::rebind`] for safety requirements.
+    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<HolonReference, HolonError> {
+        match self {
+            HolonReferenceWire::Transient(transient) => {
+                transient.rebind(context).map(HolonReference::Transient)
+            }
+            HolonReferenceWire::Staged(staged) => {
+                staged.rebind(context).map(HolonReference::Staged)
+            }
+            HolonReferenceWire::Smart(smart) => smart.rebind(context).map(HolonReference::Smart),
+        }
+    }
 }
 
 impl From<HolonReference> for HolonReferenceWire {

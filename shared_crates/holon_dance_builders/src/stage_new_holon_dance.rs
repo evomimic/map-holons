@@ -12,9 +12,5 @@ pub fn build_stage_new_holon_dance_request(
     holon: TransientReference,
 ) -> Result<DanceRequest, HolonError> {
     let body = RequestBody::TransientReference(holon);
-    Ok(DanceRequest::new(
-        MapString("stage_new_holon".to_string()),
-        DanceType::Standalone,
-        body,
-    ))
+    Ok(DanceRequest::new(MapString("stage_new_holon".to_string()), DanceType::Standalone, body))
 }

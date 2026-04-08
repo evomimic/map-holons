@@ -26,6 +26,22 @@ impl TransientRelationshipMapWire {
 
         Ok(TransientRelationshipMap::new(map))
     }
+
+    /// Rebinds all nested collection references to a different transaction
+    /// context, bypassing tx_id validation. See [`HolonCollectionWire::rebind`].
+    pub fn rebind(
+        self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<TransientRelationshipMap, HolonError> {
+        let mut map = BTreeMap::new();
+
+        for (name, collection_wire) in self.map {
+            let collection = collection_wire.rebind(context)?;
+            map.insert(name, Arc::new(RwLock::new(collection)));
+        }
+
+        Ok(TransientRelationshipMap::new(map))
+    }
 }
 
 impl From<&TransientRelationshipMap> for TransientRelationshipMapWire {

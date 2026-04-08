@@ -9,7 +9,7 @@ pub mod timestamp;
 pub mod validation_error;
 
 pub use hc_action::*;
-pub use holon_error::HolonError;
+pub use holon_error::{HolonError, HolonErrorKind};
 pub use holon_node_model::*;
 pub use id::*;
 pub use link_types::*;

@@ -23,7 +23,7 @@ impl RelationshipMap {
     }
 
     /// Converts to a StagedRelationshipMap.
-    /// 
+    ///
     /// Any `TransientReference` entries are intentionally skipped during cloning.
     pub fn clone_for_staged(&self) -> Result<StagedRelationshipMap, HolonError> {
         let mut cloned_map = BTreeMap::new();

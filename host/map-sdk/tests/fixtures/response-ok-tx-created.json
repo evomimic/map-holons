@@ -1,0 +1,10 @@
+{
+  "request_id": 102,
+  "result": {
+    "Ok": {
+      "TransactionCreated": {
+        "tx_id": 41
+      }
+    }
+  }
+}

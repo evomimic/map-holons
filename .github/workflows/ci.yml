@@ -30,6 +30,10 @@ jobs:
         run: |
           nix develop --command bash -c "npm ci"
 
+      - name: Check SDK wire fixtures are up to date
+        run: |
+          nix develop --command bash -c "npm run regen:sdk-fixtures && git diff --exit-code host/map-sdk/tests/fixtures/"
+
       - name: Test
         run: |
           nix develop --command bash -c "npm test"

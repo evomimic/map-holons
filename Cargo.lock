@@ -3170,6 +3170,8 @@ dependencies = [
  "holons_prelude",
  "holons_trust_channel",
  "integrity_core_types",
+ "map_commands_contract",
+ "map_commands_runtime",
  "pretty_assertions",
  "rstest",
  "sha2",
@@ -4073,6 +4075,27 @@ dependencies = [
  "thiserror 2.0.18",
  "zerocopy",
  "zerocopy-derive",
+]
+
+[[package]]
+name = "map_commands_contract"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+]
+
+[[package]]
+name = "map_commands_runtime"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+ "map_commands_contract",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

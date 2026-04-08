@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
 use client_shared_types::ReceptorType;
-use holons_client::{ClientSession, Receptor, receptor_factory};
+use holons_client::{receptor_factory, ClientSession, Receptor};
 use tauri::{AppHandle, Manager};
 
 use crate::runtime::RuntimeState;
-use holons_client::{init_client_runtime}; 
-use map_commands::dispatch::{Runtime, RuntimeSession};
+use holons_client::init_client_runtime;
+use map_commands_runtime::{Runtime, RuntimeSession};
 
 /// Stored by providers (e.g. Holochain) and consumed by runtime init.
-pub type RuntimeInitiatorState = std::sync::RwLock<Option<Arc<dyn holons_core::dances::DanceInitiator>>>;
+pub type RuntimeInitiatorState =
+    std::sync::RwLock<Option<Arc<dyn holons_core::dances::DanceInitiator>>>;
 
 /// Initialize the MAP Commands runtime from the initiator stored in app state.
 pub fn init_from_state(handle: &AppHandle) -> bool {
-    let initiator = handle
-        .try_state::<RuntimeInitiatorState>()
-        .and_then(|state| state.read().ok()?.clone());
+    let initiator =
+        handle.try_state::<RuntimeInitiatorState>().and_then(|state| state.read().ok()?.clone());
 
     let Some(initiator) = initiator else {
         tracing::warn!(
@@ -25,15 +25,14 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
     };
 
     let space_manager = init_client_runtime(Some(initiator));
-    
+
     let recovery_receptor = get_recovery_receptor_from_factory(handle);
 
-    let _client_session = ClientSession::new(space_manager.clone(), recovery_receptor,  None);
+    let _client_session = ClientSession::new(space_manager.clone(), recovery_receptor, None);
 
-//TODO: use the client_session
+    //TODO: use the client_session
 
     let session = Arc::new(RuntimeSession::new(space_manager));
-
 
     let runtime = Runtime::new(session);
 
@@ -55,7 +54,7 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
 }
 
 fn get_recovery_receptor_from_factory(handle: &AppHandle) -> Option<Arc<Receptor>> {
-     handle.try_state::<receptor_factory::ReceptorFactory>()
+    handle.try_state::<receptor_factory::ReceptorFactory>()
     .and_then(|factory| {
         match factory.get_default_receptor_by_type(&ReceptorType::LocalRecovery) {
             Ok(receptor) => {

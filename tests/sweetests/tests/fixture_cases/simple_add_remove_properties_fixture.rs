@@ -1,4 +1,4 @@
-use holons_test::{DancesTestCase, ExpectedTestResult, TestCaseInit};
+use holons_test::{DancesTestCase, TestCaseInit};
 
 use holons_prelude::prelude::*;
 use rstest::*;
@@ -48,7 +48,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         example_transient_reference,
         example_properties.clone(),
         Some(example_key.clone()),
-        ExpectedTestResult::Success,
+        None,
         Some("Creating example holon...".to_string()),
     )?;
     // Add properties
@@ -63,7 +63,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         &mut fixture_holons,
         example_transient_token,
         example_properties.clone(),
-        ExpectedTestResult::Success,
+        None,
         Some("Updating Transient example holon with properties".to_string()),
     )?;
 
@@ -83,7 +83,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         &mut fixture_holons,
         book_step_token,
         book_properties.clone(),
-        ExpectedTestResult::Success,
+        None,
         Some("Updating Staged book holon with properties".to_string()),
     )?;
 
@@ -109,7 +109,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         &mut fixture_holons,
         modified_example_token,
         transient_holon_properties_to_remove,
-        ExpectedTestResult::Success,
+        None,
         Some("Removing properties from Transient example Holon".to_string()),
     )?;
 
@@ -128,7 +128,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         &mut fixture_holons,
         modified_book_token,
         staged_holon_properties_to_remove,
-        ExpectedTestResult::Success,
+        None,
         Some("Removing properties from Staged book Holon".to_string()),
     )?;
 
