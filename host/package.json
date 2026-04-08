@@ -10,6 +10,7 @@
     "check": "cargo check --workspace",
     "test:unit": "cargo test --workspace",
     "test:unit:no-run": "cargo test --workspace --no-run",
+    "regen:sdk-fixtures": "cargo test -p map_commands_wire --test generate_fixtures -- --ignored",
     "web:serve": "cd ui && ng serve",
     "web:build": "cd ui && ng build --base-href ./",
     "web:dev": "npm run web:build",

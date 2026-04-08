@@ -29,7 +29,7 @@
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
     "sweet:test:nocapture": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
 
-    "regen:sdk-fixtures": "cargo test -p map_commands_wire --test generate_fixtures -- --ignored",
+    "regen:sdk-fixtures": "npm run regen:sdk-fixtures -w map-host",
 
     "clean": "npm run clean:rust:deep && npm run clean:ui",
     "clean:rust": "npm run clean:rust -w map-host && npm run clean:rust -w map-happ",
