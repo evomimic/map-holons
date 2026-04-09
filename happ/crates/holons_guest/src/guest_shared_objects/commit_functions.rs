@@ -17,7 +17,7 @@ use holons_core::{
 };
 
 use base_types::{BaseValue, MapString};
-use core_types::HolonError;
+use core_types::{HolonError, HolonId};
 use holons_core::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle,
 };
@@ -247,25 +247,59 @@ pub fn commit(
         // and mark the overall response incomplete. This keeps failure handling bounded and avoids
         // cascading secondary errors.
         let mut first_error: Option<HolonError> = None;
-
-        for (name, holon_collection_rc) in relationship_collections {
-            debug!("COMMITTING {:#?} relationship", name.0.clone());
-
-            let holon_collection = holon_collection_rc.read().map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on relationship collection for {}: {}",
-                    name.0 .0, e
-                ))
-            })?;
-
-            if let Err(err) = commit_relationship(
-                context,
-                source_local_id.clone(),
-                name.clone(),
-                &holon_collection,
-            ) {
+        let source_holon_ref = HolonReference::Staged(staged_reference.clone());
+        let source_key: Option<MapString> = match staged_reference.key() {
+            Ok(key) => key,
+            Err(err) => {
                 first_error = Some(err);
-                break;
+                None
+            }
+        };
+
+        if first_error.is_none() {
+            for (name, holon_collection_rc) in relationship_collections {
+                debug!("COMMITTING {:#?} relationship", name.0.clone());
+
+                let holon_collection = holon_collection_rc.read().map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on relationship collection for {}: {}",
+                        name.0 .0, e
+                    ))
+                })?;
+
+                if let Err(err) = commit_relationship(
+                    context,
+                    source_local_id.clone(),
+                    name.clone(),
+                    &holon_collection,
+                ) {
+                    first_error = Some(err);
+                    break;
+                }
+
+                match resolve_inverse_relationship_name(&source_holon_ref, &name) {
+                    Ok(Some(inverse_name)) => {
+                        if let Err(err) = commit_inverse_smartlinks(
+                            &source_local_id,
+                            source_key.clone(),
+                            &inverse_name,
+                            &holon_collection,
+                        ) {
+                            first_error = Some(err);
+                            break;
+                        }
+                    }
+                    Ok(None) => {
+                        debug!(
+                            "No inverse resolved for '{}' — skipping inverse SmartLink",
+                            name.0.0
+                        );
+                    }
+                    Err(schema_err) => {
+                        first_error = Some(schema_err);
+                        break;
+                    }
+                }
             }
         }
 
@@ -302,7 +336,6 @@ pub fn commit(
 
 /// Clones collection members under a short-lived read lock so callers can traverse
 /// references without holding the collection lock across later resolution steps.
-#[allow(dead_code)]
 fn clone_collection_members(
     collection_arc: Arc<RwLock<HolonCollection>>,
     collection_label: &str,
@@ -320,7 +353,6 @@ fn clone_collection_members(
 
 /// Resolves the inverse relationship name declared for a forward relationship on the
 /// source holon's descriptor, if that schema contract exists.
-#[allow(dead_code)]
 fn resolve_inverse_relationship_name(
     source_holon_ref: &HolonReference,
     forward_name: &RelationshipName,
@@ -408,6 +440,50 @@ fn resolve_inverse_relationship_name(
 
     let inverse_type_name_string: String = (&inverse_type_name_value).into();
     Ok(Some(RelationshipName(MapString(inverse_type_name_string))))
+}
+
+/// Persists inverse SmartLinks by reversing the endpoints of each forward member
+/// and re-tagging the link with the inverse relationship name.
+fn commit_inverse_smartlinks(
+    source_local_id: &LocalId,
+    source_key: Option<MapString>,
+    inverse_name: &RelationshipName,
+    collection: &HolonCollection,
+) -> Result<(), HolonError> {
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+
+    // Iterate the forward targets and materialize the inverse link only for local targets.
+    for (idx, holon_reference) in collection.get_members().iter().enumerate() {
+        let target_id = holon_reference.holon_id()?;
+
+        if target_id.is_external() {
+            debug!(
+                "Skipping inverse SmartLink for external target at index {} on '{}': {:?}",
+                idx,
+                inverse_name.0.0,
+                target_id
+            );
+            continue;
+        }
+
+        let target_local_id = target_id.local_id().clone();
+
+        // Preserve key semantics: the inverse target is the original source, so encode the source key.
+        let smart_property_values = source_key.clone().map(|key| {
+            let mut property_map: PropertyMap = BTreeMap::new();
+            property_map.insert(key_prop.clone(), BaseValue::StringValue(key));
+            property_map
+        });
+
+        save_smartlink(SmartLink {
+            from_address: target_local_id,
+            to_address: HolonId::Local(source_local_id.clone()),
+            relationship_name: inverse_name.clone(),
+            smart_property_values,
+        })?;
+    }
+
+    Ok(())
 }
 
 /// Attempts to persist the holon referenced by the given [`StagedReference`].
