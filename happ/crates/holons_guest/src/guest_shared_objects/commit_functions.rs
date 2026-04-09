@@ -300,6 +300,116 @@ pub fn commit(
     Ok(response_reference)
 }
 
+/// Clones collection members under a short-lived read lock so callers can traverse
+/// references without holding the collection lock across later resolution steps.
+#[allow(dead_code)]
+fn clone_collection_members(
+    collection_arc: Arc<RwLock<HolonCollection>>,
+    collection_label: &str,
+) -> Result<Vec<HolonReference>, HolonError> {
+    let collection = collection_arc.read().map_err(|e| {
+        HolonError::FailedToAcquireLock(format!(
+            "Failed to acquire read lock on {} holon collection: {}",
+            collection_label, e
+        ))
+    })?;
+
+    collection.is_accessible(AccessType::Read)?;
+    Ok(collection.get_members().clone())
+}
+
+/// Resolves the inverse relationship name declared for a forward relationship on the
+/// source holon's descriptor, if that schema contract exists.
+#[allow(dead_code)]
+fn resolve_inverse_relationship_name(
+    source_holon_ref: &HolonReference,
+    forward_name: &RelationshipName,
+) -> Result<Option<RelationshipName>, HolonError> {
+    // Descriptor lookup: undescribed holons have no schema contract to enforce.
+    let Some(source_descriptor_ref) = source_holon_ref.get_descriptor()? else {
+        debug!(
+            "No descriptor found for {} while resolving inverse for '{}'",
+            source_holon_ref.reference_id_string(),
+            forward_name.0.0
+        );
+        return Ok(None);
+    };
+
+    // Declared relationship lookup: search the descriptor's declared instance relationships by type name.
+    let declared_relationship_refs = clone_collection_members(
+        source_descriptor_ref.related_holons(CoreRelationshipTypeName::InstanceRelationships)?,
+        "InstanceRelationships",
+    )?;
+
+    let mut matched_declared_relationship_ref: Option<HolonReference> = None;
+    for declared_relationship_ref in declared_relationship_refs {
+        let type_name_value =
+            declared_relationship_ref.property_value(CorePropertyTypeName::TypeName)?;
+        let Some(type_name_value) = type_name_value else {
+            continue;
+        };
+
+        let type_name_string: String = (&type_name_value).into();
+        if type_name_string == forward_name.0.0 {
+            matched_declared_relationship_ref = Some(declared_relationship_ref);
+            break;
+        }
+    }
+
+    let Some(matched_declared_relationship_ref) = matched_declared_relationship_ref else {
+        debug!(
+            "No declared relationship descriptor matched '{}' for {}",
+            forward_name.0.0,
+            source_descriptor_ref.reference_id_string()
+        );
+        return Ok(None);
+    };
+
+    // Inverse lookup: a matched declared relationship must have exactly one HasInverse target.
+    let inverse_relationship_refs = clone_collection_members(
+        matched_declared_relationship_ref.related_holons(CoreRelationshipTypeName::HasInverse)?,
+        "HasInverse",
+    )?;
+
+    if inverse_relationship_refs.is_empty() {
+        return Err(HolonError::InvalidRelationship(
+            forward_name.0.0.clone(),
+            format!(
+                "descriptor {} is missing HasInverse",
+                source_descriptor_ref.reference_id_string()
+            ),
+        ));
+    }
+
+    if inverse_relationship_refs.len() > 1 {
+        return Err(HolonError::DuplicateError(
+            "HasInverse".to_string(),
+            format!(
+                "declared relationship '{}' on {}",
+                forward_name.0.0,
+                source_descriptor_ref.reference_id_string()
+            ),
+        ));
+    }
+
+    // Type-name extraction: the inverse descriptor's TypeName becomes the inverse relationship name.
+    let inverse_relationship_ref = inverse_relationship_refs.into_iter().next().expect(
+        "inverse_relationship_refs length checked above to contain exactly one member",
+    );
+
+    let inverse_type_name_value = inverse_relationship_ref
+        .property_value(CorePropertyTypeName::TypeName)?
+        .ok_or_else(|| {
+            HolonError::EmptyField(format!(
+                "TypeName missing on inverse relationship descriptor {}",
+                inverse_relationship_ref.reference_id_string()
+            ))
+        })?;
+
+    let inverse_type_name_string: String = (&inverse_type_name_value).into();
+    Ok(Some(RelationshipName(MapString(inverse_type_name_string))))
+}
+
 /// Attempts to persist the holon referenced by the given [`StagedReference`].
 ///
 /// This low-level persistence routine determines the holon's current [`StagedState`]
