@@ -203,6 +203,50 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_assert_related_holons_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        source_token: TestReference,
+        relationship_name: RelationshipName,
+        expected_target_tokens: Vec<TestReference>,
+        expected_error: Option<HolonErrorKind>,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Assert related holons".to_string());
+
+        // Assertions do not advance fixture state, but they must capture the current head snapshots
+        // so post-commit checks resolve saved references rather than stale staged tokens.
+        let source_snapshot = fixture_holons.derive_next_source(&source_token)?;
+        let source_expected = ExpectedSnapshot::new(
+            source_snapshot.snapshot().clone_holon()?,
+            source_snapshot.state(),
+        );
+        let source_assertion_token = fixture_holons.mint_test_reference(source_snapshot, source_expected);
+
+        let mut expected_target_assertion_tokens = Vec::new();
+        for target_token in expected_target_tokens {
+            let target_snapshot = fixture_holons.derive_next_source(&target_token)?;
+            let target_expected = ExpectedSnapshot::new(
+                target_snapshot.snapshot().clone_holon()?,
+                target_snapshot.state(),
+            );
+            let target_assertion_token =
+                fixture_holons.mint_test_reference(target_snapshot, target_expected);
+            expected_target_assertion_tokens.push(target_assertion_token);
+        }
+
+        self.steps.push(DanceTestStep::AssertRelatedHolons {
+            source_token: source_assertion_token,
+            relationship_name,
+            expected_target_tokens: expected_target_assertion_tokens,
+            expected_error,
+            description,
+        });
+
+        Ok(())
+    }
+
     // === Execution Steps with === //
     // ==== Token Minting ==== //
 
@@ -589,6 +633,8 @@ impl DancesTestCase {
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| "Query Relationships".to_string());
+        // Prefer AssertRelatedHolons for new fixtures. QueryRelationships remains a legacy
+        // query-dance smoke step and is not the preferred relationship assertion pattern.
         // Derive new source
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let new_snapshot = new_source.snapshot().clone_holon()?;

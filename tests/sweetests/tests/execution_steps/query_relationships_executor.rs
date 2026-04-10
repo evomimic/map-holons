@@ -9,6 +9,9 @@ use tracing::debug;
 /// `TransactionAction::Query` currently returns `NotImplemented`, so we wrap the
 /// existing dance request in `TransactionAction::Dance(...)` to route through Runtime.
 ///
+/// Prefer `AssertRelatedHolons` for new fixtures. This executor remains a legacy
+/// query-dance smoke path and is not the preferred relationship assertion pattern.
+///
 /// TODO: Migrate to native `TransactionAction::Query` once implemented.
 pub async fn execute_query_relationships(
     state: &mut TestExecutionState,
