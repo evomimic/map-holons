@@ -32,6 +32,7 @@ use tracing::{
 
 use execution_steps::abandon_staged_changes_executor::execute_abandon_staged_changes;
 use execution_steps::add_related_holons_executor::execute_add_related_holons;
+use execution_steps::assert_related_holons_executor::execute_assert_related_holons;
 use execution_steps::begin_transaction_executor::execute_begin_transaction;
 use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
@@ -52,6 +53,7 @@ use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
+use fixture_cases::inverse_smartlink_fixture::*;
 use fixture_cases::load_holons_fixture::*;
 use fixture_cases::loader_client_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
@@ -99,6 +101,7 @@ use holons_prelude::prelude::*;
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
 #[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
 #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
+#[case::inverse_smartlink_test(inverse_smartlink_fixture())]
 #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
@@ -134,6 +137,22 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
         info!("========== STARTING STEP: {}", step);
 
         match step {
+            DanceTestStep::AssertRelatedHolons {
+                source_token,
+                relationship_name,
+                expected_target_tokens,
+                expected_error,
+                ..
+            } => {
+                execute_assert_related_holons(
+                    &mut test_execution_state,
+                    source_token,
+                    relationship_name,
+                    expected_target_tokens,
+                    expected_error,
+                )
+                .await
+            }
             DanceTestStep::AbandonStagedChanges { step_token, expected_error, .. } => {
                 execute_abandon_staged_changes(
                     &mut test_execution_state,

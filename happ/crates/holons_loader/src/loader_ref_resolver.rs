@@ -2,10 +2,28 @@
 //
 // Pass-2 (Resolver): Transform queued LoaderRelationshipReference holons into
 // concrete writes on staged holons. Implements the multi‑pass, graph‑driven
-// inverse handling policy:
+// resolution policy:
 //   Pass-2a: write DescribedBy (declared) first
 //   Pass-2b: write InverseOf (declared) next (no endpoint prefilter)
 //   Pass-2c: resolve remaining relationships via fixed-point iteration
+//
+// ## All staged relationships are declared relationships
+//
+// The JSON import format allows relationships to be expressed from either
+// direction as an authoring convenience. LRRs with IsDeclared=false represent
+// relationships that were authored from the inverse direction. In Pass-2c,
+// `try_inverse_single_resolve()` translates these by:
+//   1. deriving the declared relationship name via type-graph walk,
+//   2. flipping source and target to the declared orientation, and
+//   3. writing the relationship under the declared name on the flipped source.
+//
+// As a result, every relationship that ends up in a staged holon's relationship
+// map is a declared relationship. Inverse relationships are NEVER staged here.
+//
+// Inverse SmartLinks are materialized by `commit_functions::commit()` (Pass 2)
+// at persistence time, based on the schema's HasInverse contract. This resolver
+// is not responsible for producing inverse links — only for ensuring every
+// declared relationship is correctly staged before commit runs.
 //
 // Design goals:
 // - Self‑contained, self‑describing code with explicit invariants

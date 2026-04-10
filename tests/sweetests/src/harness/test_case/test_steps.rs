@@ -10,6 +10,13 @@ use integrity_core_types::HolonErrorKind;
 /// Internal step representation used by executors at runtime.
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
+    AssertRelatedHolons {
+        source_token: TestReference,
+        relationship_name: RelationshipName,
+        expected_target_tokens: Vec<TestReference>,
+        expected_error: Option<HolonErrorKind>,
+        description: String,
+    },
     AbandonStagedChanges {
         step_token: TestReference,
         expected_error: Option<HolonErrorKind>,
@@ -115,6 +122,19 @@ pub enum DanceTestStep {
 impl core::fmt::Display for DanceTestStep {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            DanceTestStep::AssertRelatedHolons {
+                source_token,
+                relationship_name,
+                expected_target_tokens,
+                expected_error,
+                description,
+            } => {
+                write!(
+                    f,
+                    "{description} [source: {source_token}, relationship: {relationship_name}, expected_targets: {}, expected_error: {expected_error:?}]",
+                    expected_target_tokens.len()
+                )
+            }
             DanceTestStep::BeginTransaction { expected_error, description } => {
                 write!(f, "{description} [expected_error: {expected_error:?}]")
             }

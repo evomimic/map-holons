@@ -1,5 +1,6 @@
 pub mod abandon_staged_changes_executor;
 pub mod add_related_holons_executor;
+pub mod assert_related_holons_executor;
 pub mod begin_transaction_executor;
 pub mod commit_executor;
 pub mod delete_holon_executor;

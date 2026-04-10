@@ -205,7 +205,25 @@ pub(crate) async fn launch_holochain_runtime(
         clean_dev_conductor_state(&dev_dir);
 
         // DangerTestKeystore is set in the config; no lair process needed.
-        Conductor::builder().config(conductor_config).build().await?
+        //
+        // Warm-start cleanup tries to preserve WASM cache artifacts for faster restarts, but if
+        // that preserved state is inconsistent after prior crashes or migrations, conductor build
+        // can still fail. In dev mode we prefer a self-healing retry over forcing the user to
+        // manually delete /tmp state.
+        match Conductor::builder().config(conductor_config.clone()).build().await {
+            Ok(conductor) => conductor,
+            Err(first_err) => {
+                tracing::warn!(
+                    "[LAUNCH] DEV MODE: conductor build failed after cache-preserving reset: {:?}",
+                    first_err
+                );
+                tracing::warn!(
+                    "[LAUNCH] DEV MODE: retrying after full dev conductor wipe (WASM cache will be rebuilt)"
+                );
+                wipe_dev_conductor_dir(&dev_dir);
+                Conductor::builder().config(conductor_config).build().await?
+            }
+        }
     } else {
         tracing::info!("[LAUNCH] Spawning lair keystore (in-proc)...");
         let t0 = std::time::Instant::now();
@@ -420,4 +438,27 @@ fn clean_dev_conductor_state(conductor_dir: &std::path::Path) {
         "[LAUNCH] DEV MODE: conductor state reset in {:.2}s (wasm cache preserved in-place)",
         t.elapsed().as_secs_f64()
     );
+}
+
+/// Fall back to a complete dev-dir wipe when cache-preserving cleanup still leaves the
+/// conductor unable to start. This trades startup speed for reliability in dev mode.
+fn wipe_dev_conductor_dir(conductor_dir: &std::path::Path) {
+    if conductor_dir.exists() {
+        if let Err(err) = std::fs::remove_dir_all(conductor_dir) {
+            tracing::warn!(
+                "[LAUNCH] DEV MODE: failed to remove conductor dir {:?}: {}",
+                conductor_dir,
+                err
+            );
+            return;
+        }
+    }
+
+    if let Err(err) = std::fs::create_dir_all(conductor_dir) {
+        tracing::warn!(
+            "[LAUNCH] DEV MODE: failed to recreate conductor dir {:?}: {}",
+            conductor_dir,
+            err
+        );
+    }
 }
