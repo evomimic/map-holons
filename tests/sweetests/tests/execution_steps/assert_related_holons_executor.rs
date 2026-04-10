@@ -30,7 +30,7 @@ pub async fn execute_assert_related_holons(
             state.resolve_execution_reference(&context, ResolveBy::Source, &source_token)?;
         let expected_target_references = state.resolve_execution_references(
             &context,
-            ResolveBy::Expected,
+            ResolveBy::Source,
             &expected_target_tokens,
         )?;
 

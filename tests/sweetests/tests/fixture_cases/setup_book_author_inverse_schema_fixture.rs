@@ -122,19 +122,6 @@ pub fn setup_book_author_inverse_schema_steps_with_context<'a>(
         authors_inverse_descriptor_token.clone(),
     );
 
-    let book_type_with_relationships = test_case.add_add_related_holons_step(
-        fixture_holons,
-        book_type_token,
-        instance_relationships,
-        vec![authored_by_descriptor_token.clone()],
-        None,
-        Some("Declaring BookType -> InstanceRelationships -> AuthoredBy".to_string()),
-    )?;
-    bindings.insert_token(
-        MapString("BookType".to_string()),
-        book_type_with_relationships.clone(),
-    );
-
     let authored_by_with_inverse = test_case.add_add_related_holons_step(
         fixture_holons,
         authored_by_descriptor_token,
@@ -145,7 +132,20 @@ pub fn setup_book_author_inverse_schema_steps_with_context<'a>(
     )?;
     bindings.insert_token(
         MapString("AuthoredByDescriptor".to_string()),
-        authored_by_with_inverse,
+        authored_by_with_inverse.clone(),
+    );
+
+    let book_type_with_relationships = test_case.add_add_related_holons_step(
+        fixture_holons,
+        book_type_token,
+        instance_relationships,
+        vec![authored_by_with_inverse],
+        None,
+        Some("Declaring BookType -> InstanceRelationships -> AuthoredBy".to_string()),
+    )?;
+    bindings.insert_token(
+        MapString("BookType".to_string()),
+        book_type_with_relationships.clone(),
     );
 
     let book_with_descriptor = test_case.add_add_related_holons_step(
