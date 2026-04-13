@@ -4,7 +4,7 @@ mod runtime_session;
 mod space_handler;
 mod transaction_handler;
 
-pub use runtime::Runtime;
+pub use runtime::{ExecutionPolicy, Runtime};
 pub use runtime_session::RuntimeSession;
 
 #[cfg(test)]
