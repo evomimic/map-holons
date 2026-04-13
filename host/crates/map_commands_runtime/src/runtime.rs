@@ -87,7 +87,7 @@ impl Runtime {
     /// Routes a bound domain command to its scope-specific handler.
     async fn route_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
         match command {
-            MapCommand::Space(cmd) => space_handler::handle_space(&self.session, cmd),
+            MapCommand::Space(cmd) => space_handler::handle_space(&self.session, cmd).await,
             MapCommand::Transaction(cmd) => {
                 transaction_handler::handle_transaction(&self.session, cmd).await
             }

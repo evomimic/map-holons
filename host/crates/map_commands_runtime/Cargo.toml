@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 map_commands_contract = { workspace = true }
 holons_core = { workspace = true }
+holons_client = { path = "../holons_client" } 
+recovery_receptor = { path = "../recovery_receptor" }
 base_types = { workspace = true }
 core_types = { workspace = true }
 
