@@ -103,7 +103,7 @@ fn build_test_space_manager() -> Arc<HolonSpaceManager> {
 
 fn build_test_runtime() -> Runtime {
     let space_manager = build_test_space_manager();
-    let session = Arc::new(RuntimeSession::new(space_manager));
+    let session = Arc::new(RuntimeSession::new(space_manager,None));
     Runtime::new(session)
 }
 

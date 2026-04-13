@@ -16,7 +16,7 @@ pub async fn handle_transaction(
     match command.action {
         // ── Commit ───────────────────────────────────────────────────
         TransactionAction::Commit => {
-            let transient_ref = session.commit_transaction(&command.context.tx_id())?;
+            let transient_ref = session.commit_transaction(&command.context.tx_id()).await?;
             Ok(MapResult::Reference(HolonReference::Transient(transient_ref)))
         }
 
