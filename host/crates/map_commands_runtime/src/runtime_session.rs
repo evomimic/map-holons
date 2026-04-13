@@ -79,6 +79,27 @@ impl RuntimeSession {
         Ok(tx_id)
     }
 
+    /// Registers an already-opened recovered client session into the active pool.
+    ///
+    /// This is the seam startup recovery uses after reopening a transaction
+    /// with its preserved `TxId`.
+    pub fn register_recovered_session(
+        &self,
+        session: Arc<ClientSession>,
+    ) -> Result<TxId, HolonError> {
+        let tx_id = session.tx_id();
+
+        let mut active = self.active_sessions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on active_sessions: {}",
+                e
+            ))
+        })?;
+        active.insert(tx_id, session);
+
+        Ok(tx_id)
+    }
+
     pub fn get_transaction(&self, tx_id: &TxId) -> Result<Arc<TransactionContext>, HolonError> {
         Ok(Arc::clone(self.get_client_session(tx_id)?.context()))
     }
@@ -175,7 +196,7 @@ impl std::fmt::Debug for RuntimeSession {
 }
 
 
-/* 
+
 #[cfg(test)]
 mod tests {
     use std::any::Any;
@@ -278,20 +299,21 @@ mod tests {
     fn insert_recovered_transaction(
         session: &RuntimeSession,
         recovered_tx_id: TxId,
-    ) -> Arc<TransactionContext> {
-        let context = session
-            .space_manager()
-            .get_transaction_manager()
-            .open_transaction_with_id(Arc::clone(session.space_manager()), recovered_tx_id)
-            .expect("recovered transaction should open");
+    ) -> Arc<ClientSession> {
+        let recovered_session = Arc::new(
+            ClientSession::recover(
+                Arc::clone(session.space_manager()),
+                None,
+                recovered_tx_id.value().to_string(),
+            )
+            .expect("recovered session should open"),
+        );
 
         session
-            .active_sessions
-            .write()
-            .expect("active transaction lock should succeed")
-            .insert(recovered_tx_id, Arc::clone(&context));
+            .register_recovered_session(Arc::clone(&recovered_session))
+            .expect("recovered session should register");
 
-        context
+        recovered_session
     }
 
     #[test]
@@ -300,14 +322,14 @@ mod tests {
         let session = RuntimeSession::new(space_manager, None);
         let recovered_tx_id = tx_id(41);
 
-        let recovered_context = insert_recovered_transaction(&session, recovered_tx_id);
+        let recovered_session = insert_recovered_transaction(&session, recovered_tx_id);
 
         let lookup = session
             .get_transaction(&recovered_tx_id)
             .expect("recovered transaction lookup should succeed");
 
         assert!(
-            Arc::ptr_eq(&recovered_context, &lookup),
+            Arc::ptr_eq(recovered_session.context(), &lookup),
             "runtime session should return the recovered context stored for the tx"
         );
     }
@@ -318,7 +340,7 @@ mod tests {
         let session = RuntimeSession::new(space_manager, None);
         let recovered_tx_id = tx_id(77);
 
-        let recovered_context = insert_recovered_transaction(&session, recovered_tx_id);
+        let recovered_session = insert_recovered_transaction(&session, recovered_tx_id);
         session
             .archive_transaction(&recovered_tx_id)
             .expect("archive should succeed");
@@ -328,13 +350,13 @@ mod tests {
             .expect("archived recovered transaction lookup should succeed");
 
         assert!(
-            Arc::ptr_eq(&recovered_context, &lookup),
+            Arc::ptr_eq(recovered_session.context(), &lookup),
             "archived recovered transaction should still resolve to the original context"
         );
     }
 
-    #[test]
-    fn begin_transaction_after_recovered_context_uses_higher_tx_id() {
+    #[tokio::test]
+    async fn begin_transaction_after_recovered_context_uses_higher_tx_id() {
         let space_manager = build_test_space_manager();
         let session = RuntimeSession::new(space_manager,None);
         let recovered_tx_id = tx_id(120);
@@ -342,7 +364,7 @@ mod tests {
         insert_recovered_transaction(&session, recovered_tx_id);
 
         let new_tx_id = session
-            .begin_transaction()
+            .begin_transaction().await
             .expect("new transaction should open after recovery");
 
         assert!(
@@ -350,4 +372,4 @@ mod tests {
             "new tx_id should advance beyond the recovered tx_id to avoid collisions"
         );
     }
-}*/
+}
