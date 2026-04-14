@@ -58,6 +58,9 @@ pub enum DanceTestStep {
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
     },
+    LoadCoreSchema {
+        description: String,
+    },
     MatchSavedContent,
     NewHolon {
         step_token: TestReference,
@@ -181,6 +184,9 @@ impl core::fmt::Display for DanceTestStep {
                     expect_total_bundles.0,
                     expect_total_loader_holons.0
                 )
+            }
+            DanceTestStep::LoadCoreSchema { description } => {
+                write!(f, "{description}")
             }
             DanceTestStep::MatchSavedContent => {
                 write!(f, "MatchSavedContent")

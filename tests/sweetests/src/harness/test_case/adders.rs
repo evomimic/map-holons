@@ -172,6 +172,17 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_load_core_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Load MAP core schema".to_string());
+        self.steps.push(DanceTestStep::LoadCoreSchema { description });
+
+        Ok(())
+    }
+
     pub fn add_load_holons_step(
         &mut self,
         set: TransientReference,
@@ -225,7 +236,8 @@ impl DancesTestCase {
         if expected_error.is_none() {
             // Advance head snapshot for the FixtureHolon
             fixture_holons.advance_head(&step_token.expected_id(), expected.clone())?;
-            fixture_holons.remove_relationship_targets_for_staged_holons(step_token.expected_reference())?;
+            fixture_holons
+                .remove_relationship_targets_for_staged_holons(step_token.expected_reference())?;
         }
         // Mint
         let new_step_token = fixture_holons.mint_test_reference(new_source, expected);
