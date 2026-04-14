@@ -36,6 +36,7 @@ use execution_steps::begin_transaction_executor::execute_begin_transaction;
 use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
+use execution_steps::load_core_schema_executor::execute_load_core_schema;
 use execution_steps::load_holons_client_executor::execute_load_holons_client;
 use execution_steps::load_holons_executor::execute_load_holons;
 use execution_steps::match_db_content_executor::execute_match_db_content;
@@ -211,6 +212,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expect_total_loader_holons,
                 )
                 .await
+            }
+            DanceTestStep::LoadCoreSchema { .. } => {
+                execute_load_core_schema(&mut test_execution_state).await
             }
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&mut test_execution_state).await
