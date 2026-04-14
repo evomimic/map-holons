@@ -53,6 +53,7 @@ use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
+use fixture_cases::load_core_schema_fixture::*;
 use fixture_cases::load_holons_fixture::*;
 use fixture_cases::loader_client_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
@@ -104,6 +105,7 @@ use holons_prelude::prelude::*;
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_test(loader_incremental_fixture())]
 #[case::load_holons_client_test(loader_client_fixture())]
+#[case::load_core_schema_test(load_core_schema_fixture())]
 #[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 // TODO: Support for relationships to be finished in issue 382
