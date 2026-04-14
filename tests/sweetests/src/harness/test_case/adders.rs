@@ -41,7 +41,6 @@ use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedSnapshot, FixtureHolons,
     SourceSnapshot, TestHolonState, TestSessionState,
 };
-use core_types::ContentSet;
 use holons_boundary::SerializableHolonPool;
 use holons_core::{
     core_shared_objects::transactions::TransactionContext, reference_layer::ReadableHolon,
@@ -144,30 +143,6 @@ impl DancesTestCase {
         let description =
             description.unwrap_or_else(|| format!("Ensuring Database holds {}", &expected_count.0));
         self.steps.push(DanceTestStep::EnsureDatabaseCount { expected_count, description });
-
-        Ok(())
-    }
-
-    pub fn add_load_holons_client_step(
-        &mut self,
-        content_set: ContentSet,
-        expect_staged: MapInteger,
-        expect_committed: MapInteger,
-        expect_links_created: MapInteger,
-        expect_errors: MapInteger,
-        expect_total_bundles: MapInteger,
-        expect_total_loader_holons: MapInteger,
-    ) -> Result<(), HolonError> {
-        self.ensure_not_finalized()?;
-        self.steps.push(DanceTestStep::LoadHolonsClient {
-            content_set,
-            expect_staged,
-            expect_committed,
-            expect_links_created,
-            expect_errors,
-            expect_total_bundles,
-            expect_total_loader_holons,
-        });
 
         Ok(())
     }

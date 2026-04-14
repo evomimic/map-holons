@@ -3,7 +3,7 @@
 //!   corresponding to one or more MAP dances or assertions.
 
 use crate::harness::fixtures_support::TestReference;
-use core_types::{ContentSet, TemporaryId};
+use core_types::TemporaryId;
 use holons_prelude::prelude::*;
 use integrity_core_types::HolonErrorKind;
 
@@ -42,15 +42,6 @@ pub enum DanceTestStep {
     },
     LoadHolons {
         set_id: TemporaryId,
-        expect_staged: MapInteger,
-        expect_committed: MapInteger,
-        expect_links_created: MapInteger,
-        expect_errors: MapInteger,
-        expect_total_bundles: MapInteger,
-        expect_total_loader_holons: MapInteger,
-    },
-    LoadHolonsClient {
-        content_set: ContentSet,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
         expect_links_created: MapInteger,
@@ -163,26 +154,6 @@ impl core::fmt::Display for DanceTestStep {
                     f,
                     "LoadHolons(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
                     expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
-                )
-            }
-            DanceTestStep::LoadHolonsClient {
-                expect_staged,
-                expect_committed,
-                expect_links_created,
-                expect_errors,
-                expect_total_bundles,
-                expect_total_loader_holons,
-                ..
-            } => {
-                write!(
-                    f,
-                    "LoadHolonsClient(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
-                    expect_staged.0,
-                    expect_committed.0,
-                    expect_links_created.0,
-                    expect_errors.0,
-                    expect_total_bundles.0,
-                    expect_total_loader_holons.0
                 )
             }
             DanceTestStep::LoadCoreSchema { description } => {
@@ -347,15 +318,6 @@ impl core::fmt::Display for DanceTestStep {
 //                 .field("expect_total_bundles", expect_total_bundles)
 //                 .field("expect_total_loader_holons", expect_total_loader_holons)
 //                 .finish(),
-//             },
-//             DanceTestStep::LoadHolonsClient {
-//                 expect_staged,
-//                 expect_committed,
-//                 expect_links_created,
-//                 expect_errors,
-//                 expect_total_bundles,
-//                 expect_total_loader_holons,
-//                 ..
 //             },
 //             DanceTestStep::MatchSavedContent => f
 //                 write!(f, "MatchSavedContent")
