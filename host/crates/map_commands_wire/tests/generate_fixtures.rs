@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use base_types::{BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString};
 use core_types::{
-    ExternalId, HolonError, HolonId, LocalId, OutboundProxyId, PropertyMap, PropertyName,
-    RelationshipName, TemporaryId, ValidationError,
+    ContentSet, ExternalId, FileData, HolonError, HolonId, LocalId, OutboundProxyId, PropertyMap,
+    PropertyName, RelationshipName, TemporaryId, ValidationError,
 };
 use holons_boundary::{
     DanceRequestWire, DanceResponseWire, DanceTypeWire, HolonCollectionWire, HolonReferenceWire,
@@ -143,7 +143,7 @@ fn generate_fixtures() {
             9,
             tx_command(
                 41,
-                TransactionActionWire::LoadHolons { bundle: staged_reference(41, uuid_b()) },
+                TransactionActionWire::LoadHolons { content_set: sample_content_set() },
             ),
             mutation_options("load holons"),
         ),
@@ -483,6 +483,19 @@ fn mutation_options(label: &str) -> RequestOptions {
         gesture_id: Some(GestureId(map_string("gesture-123"))),
         gesture_label: Some(label.to_string()),
         snapshot_after: true,
+    }
+}
+
+fn sample_content_set() -> ContentSet {
+    ContentSet {
+        schema: FileData {
+            filename: "bootstrap-import.schema.json".to_string(),
+            raw_contents: r#"{"type":"object"}"#.to_string(),
+        },
+        files_to_load: vec![FileData {
+            filename: "sample-loader-file.json".to_string(),
+            raw_contents: r#"{"holons":[]}"#.to_string(),
+        }],
     }
 }
 
