@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DomainError } from '../../src/internal/errors';
 import type {
   BaseValue,
+  ContentSet,
   HolonCollectionWire,
   HolonId,
   HolonReferenceWire,
@@ -78,6 +79,19 @@ import { createMapTransaction, MapTransaction } from '../../src/sdk/transaction'
 // ===========================================
 
 const txId = 41;
+
+const contentSet: ContentSet = {
+  schema: {
+    filename: 'bootstrap-import.schema.json',
+    raw_contents: '{"type":"object"}',
+  },
+  files_to_load: [
+    {
+      filename: 'sample-loader-file.json',
+      raw_contents: '{"holons":[]}',
+    },
+  ],
+};
 
 const transientReference: HolonReferenceWire = {
   Transient: {
@@ -245,8 +259,8 @@ describe('MapTransaction', () => {
   it('delegates loadHolons and discards the internal payload', async () => {
     loadHolonsMock.mockResolvedValue(transientReference);
 
-    await expect(transaction().loadHolons(stagedHandle())).resolves.toBeUndefined();
-    expect(loadHolonsMock).toHaveBeenCalledWith(txId, stagedReference);
+    await expect(transaction().loadHolons(contentSet)).resolves.toBeUndefined();
+    expect(loadHolonsMock).toHaveBeenCalledWith(txId, contentSet);
   });
 
   it('wraps getAllHolons results as a HolonCollection', async () => {

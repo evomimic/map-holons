@@ -16,6 +16,7 @@ import {
   unwrapTransientHolonReference,
 } from './references';
 import {
+  type ContentSet,
   extractNumber,
   type SmartReference,
 } from './types';
@@ -101,17 +102,14 @@ export class MapTransaction {
   }
 
   /**
-   * Load a holon bundle into the current runtime context.
+   * Load uploaded/imported holon content into the current runtime context.
    *
    * In v0 this is a documented special case: current runtime behavior may end
    * or effectively commit the active transaction rather than behaving like a
    * normal in-transaction mutation.
    */
-  async loadHolons(bundle: HolonReference): Promise<void> {
-    await internalTransaction.loadHolons(
-      txIdFor(this),
-      unwrapHolonReference(bundle),
-    );
+  async loadHolons(contentSet: ContentSet): Promise<void> {
+    await internalTransaction.loadHolons(txIdFor(this), contentSet);
   }
 
   async getAllHolons(): Promise<HolonCollection> {

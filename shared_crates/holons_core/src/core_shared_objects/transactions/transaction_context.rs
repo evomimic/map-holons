@@ -277,10 +277,10 @@ impl TransactionContext {
     /// `LoadCommitStatus = Complete`, this transaction transitions to `Committed`.
     pub fn load_holons_and_commit(
         self: &Arc<Self>,
-        content_set: TransientReference,
+        load_set: TransientReference,
     ) -> Result<TransientReference, HolonError> {
         self.assert_allowed(TransactionOperation::CommitExecution)?;
-        let load_response = self.get_holon_service().load_holons_internal(self, content_set)?;
+        let load_response = self.get_holon_service().load_holons_internal(self, load_set)?;
         if self.should_transition_from_load_response(&load_response)? {
             self.transition_to_committed_if_needed()?;
         }

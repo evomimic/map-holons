@@ -41,6 +41,16 @@ export interface TransactionCommandWire {
   action: TransactionActionWire;
 }
 
+export interface FileData {
+  filename: string;
+  raw_contents: string;
+}
+
+export interface ContentSet {
+  schema: FileData;
+  files_to_load: FileData[];
+}
+
 /**
  * Flat transaction action enum mirroring Rust `TransactionActionWire`.
  *
@@ -51,7 +61,7 @@ export interface TransactionCommandWire {
  */
 export type TransactionActionWire =
   | 'Commit'
-  | { LoadHolons: { bundle: HolonReferenceWire } }
+  | { LoadHolons: { content_set: ContentSet } }
   | { Dance: DanceRequestWire }
   | { Query: QueryExpression }
   | 'GetAllHolons'
@@ -146,6 +156,23 @@ function isStringFieldObject<T extends string>(
   return isRecord(value) && isString(value[field]);
 }
 
+export function isFileData(value: unknown): value is FileData {
+  return (
+    isRecord(value) &&
+    isString(value.filename) &&
+    isString(value.raw_contents)
+  );
+}
+
+export function isContentSet(value: unknown): value is ContentSet {
+  return (
+    isRecord(value) &&
+    isFileData(value.schema) &&
+    Array.isArray(value.files_to_load) &&
+    value.files_to_load.every(isFileData)
+  );
+}
+
 // ===========================================
 // Command Guards
 // ===========================================
@@ -208,7 +235,7 @@ export function isTransactionActionWire(
     // Struct variants.
     (hasSingleKey(value, 'LoadHolons') &&
       isRecord(value.LoadHolons) &&
-      isHolonReferenceWire(value.LoadHolons.bundle)) ||
+      isContentSet(value.LoadHolons.content_set)) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
     (hasSingleKey(value, 'Query') && isQueryExpression(value.Query)) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&

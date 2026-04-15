@@ -30,8 +30,7 @@ pub async fn handle_transaction(
         }
         TransactionAction::LoadHolons { content_set } => {
             let response =
-                holons_loader_client::load_holons_from_files(command.context.clone(), content_set)
-                    .await?;
+                holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;
             Ok(MapResult::Reference(HolonReference::Transient(response)))
         }
 
