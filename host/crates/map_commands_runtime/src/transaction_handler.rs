@@ -28,18 +28,10 @@ pub async fn handle_transaction(
         TransactionAction::Query(_) => {
             Err(HolonError::NotImplemented("TransactionAction::Query".to_string()))
         }
-        TransactionAction::LoadHolons { bundle } => {
-            // LoadHolons requires a TransientReference; extract from the bound HolonReference
-            match bundle {
-                HolonReference::Transient(transient_ref) => {
-                    let result = context.load_holons_and_commit(transient_ref)?;
-                    Ok(MapResult::Reference(HolonReference::Transient(result)))
-                }
-                other => Err(HolonError::InvalidParameter(format!(
-                    "LoadHolons requires a TransientReference, got {:?}",
-                    other
-                ))),
-            }
+        TransactionAction::LoadHolons { content_set } => {
+            let response =
+                holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;
+            Ok(MapResult::Reference(HolonReference::Transient(response)))
         }
 
         // ── Lookup actions (LookupFacade) ────────────────────────────

@@ -158,7 +158,7 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_load_holons_step(
+    pub fn add_load_holons_internal_step(
         &mut self,
         set: TransientReference,
         expect_staged: MapInteger,
@@ -169,7 +169,7 @@ impl DancesTestCase {
         expect_total_loader_holons: MapInteger,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
-        self.steps.push(DanceTestStep::LoadHolons {
+        self.steps.push(DanceTestStep::LoadHolonsInternal {
             set_id: set.temporary_id(),
             expect_staged,
             expect_committed,

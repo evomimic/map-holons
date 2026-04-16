@@ -5,11 +5,17 @@
       "tx_id": 41,
       "action": {
         "LoadHolons": {
-          "bundle": {
-            "Staged": {
-              "tx_id": 41,
-              "id": "22222222-2222-2222-2222-222222222222"
-            }
+          "content_set": {
+            "schema": {
+              "filename": "bootstrap-import.schema.json",
+              "raw_contents": "{\"type\":\"object\"}"
+            },
+            "files_to_load": [
+              {
+                "filename": "sample-loader-file.json",
+                "raw_contents": "{\"holons\":[]}"
+              }
+            ]
           }
         }
       }

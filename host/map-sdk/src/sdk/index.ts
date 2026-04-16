@@ -15,7 +15,9 @@ export {
 } from './types';
 export type {
   BaseValue,
+  ContentSet,
   EssentialHolonContent,
+  FileData,
   HolonError,
   HolonId,
   LocalId,

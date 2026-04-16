@@ -271,16 +271,16 @@ impl TransactionContext {
         Ok(commit_response)
     }
 
-    /// Loads holons from a loader bundle and applies terminal lifecycle semantics.
+    /// Loads holons from a loader set and applies terminal lifecycle semantics.
     ///
     /// This operation is commit-like by design: when the returned load response indicates
     /// `LoadCommitStatus = Complete`, this transaction transitions to `Committed`.
     pub fn load_holons_and_commit(
         self: &Arc<Self>,
-        bundle: TransientReference,
+        load_set: TransientReference,
     ) -> Result<TransientReference, HolonError> {
         self.assert_allowed(TransactionOperation::CommitExecution)?;
-        let load_response = self.get_holon_service().load_holons_internal(self, bundle)?;
+        let load_response = self.get_holon_service().load_holons_internal(self, load_set)?;
         if self.should_transition_from_load_response(&load_response)? {
             self.transition_to_committed_if_needed()?;
         }

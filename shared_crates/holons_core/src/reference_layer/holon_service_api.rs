@@ -70,7 +70,7 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn load_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
-        bundle: TransientReference,
+        load_set: TransientReference,
     ) -> Result<TransientReference, HolonError>;
 
     /// Ensures a persisted local space holon exists and returns its reference.

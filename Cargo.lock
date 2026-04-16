@@ -4093,6 +4093,7 @@ dependencies = [
  "base_types",
  "core_types",
  "holons_core",
+ "holons_loader_client",
  "map_commands_contract",
  "serde_json",
  "tokio",

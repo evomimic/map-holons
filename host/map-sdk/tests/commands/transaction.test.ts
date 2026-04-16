@@ -24,6 +24,7 @@ import { MalformedResponseError } from '../../src/internal/errors';
 import { resetRequestIdCounter } from '../../src/internal/request-context';
 import type {
   BaseValue,
+  ContentSet,
   DanceRequestWire,
   DanceResponseWire,
   HolonCollectionWire,
@@ -138,6 +139,19 @@ const nodeCollection: NodeCollectionWire = {
   query_spec: queryExpression,
 };
 
+const contentSet: ContentSet = {
+  schema: {
+    filename: 'bootstrap-import.schema.json',
+    raw_contents: '{"type":"object"}',
+  },
+  files_to_load: [
+    {
+      filename: 'sample-loader-file.json',
+      raw_contents: '{"holons":[]}',
+    },
+  ],
+};
+
 function expectTransactionRequest(
   action: TransactionActionWire,
   options: RequestOptions = defaultOptions,
@@ -222,8 +236,8 @@ const transactionCases: TransactionCase<unknown>[] = [
   },
   {
     name: 'loadHolons',
-    run: () => loadHolons(txId, transientReference),
-    action: { LoadHolons: { bundle: transientReference } },
+    run: () => loadHolons(txId, contentSet),
+    action: { LoadHolons: { content_set: contentSet } },
     okResult: { Reference: transientReference },
     expected: transientReference,
     wrongResult: 'None',

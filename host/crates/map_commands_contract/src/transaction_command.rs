@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use base_types::MapString;
-use core_types::{HolonId, LocalId};
+use core_types::{ContentSet, HolonId, LocalId};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceRequest;
 use holons_core::query_layer::QueryExpression;
@@ -28,8 +28,8 @@ pub enum TransactionAction {
     /// Commits the transaction.
     Commit,
 
-    /// Loads holons from a content bundle.
-    LoadHolons { bundle: HolonReference },
+    /// Loads holons from uploaded/imported file content.
+    LoadHolons { content_set: ContentSet },
 
     /// Executes a dance request within this transaction.
     Dance(DanceRequest),

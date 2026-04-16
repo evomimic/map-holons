@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import * as sdk from '../../src';
 import type {
   BaseValue,
+  ContentSet,
   EssentialHolonContent,
+  FileData,
   HolonError,
   HolonId,
   LocalId,
@@ -65,6 +67,17 @@ describe('public SDK exports', () => {
     const propertyName: PropertyName = 'title';
     const relationshipName: RelationshipName = 'related_to';
     const smartReference: SmartReference = { holonId };
+    const fileData: FileData = {
+      filename: 'sample-loader-file.json',
+      raw_contents: '{"holons":[]}',
+    };
+    const contentSet: ContentSet = {
+      schema: {
+        filename: 'bootstrap-import.schema.json',
+        raw_contents: '{"type":"object"}',
+      },
+      files_to_load: [fileData],
+    };
     const holonError: HolonError = { HolonNotFound: 'missing-holon' };
     const essentialContent: EssentialHolonContent = {
       property_map: {
@@ -86,6 +99,7 @@ describe('public SDK exports', () => {
     expect(propertyName).toBe('title');
     expect(relationshipName).toBe('related_to');
     expect(smartReference).toEqual({ holonId });
+    expect(contentSet.files_to_load).toEqual([fileData]);
     expect(essentialContent.errors).toEqual([holonError]);
   });
 });

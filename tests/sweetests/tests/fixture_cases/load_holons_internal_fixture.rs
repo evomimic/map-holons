@@ -1,4 +1,4 @@
-//! # Holon Loader Test Fixtures (Incremental)
+//! # Holon Loader Internal Test Fixtures (Incremental)
 //!
 //! This module provides an **incremental** rstest fixture that exercises the holon
 //! loader’s two-pass workflow in a single test case by appending multiple bundles
@@ -15,7 +15,7 @@
 //! 7. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; DB unchanged
 //!
 //! ### Why a single fixture?
-//! - Enables incremental coverage growth by appending new steps (`add_load_holons_step()`).
+//! - Enables incremental coverage growth by appending new steps (`add_load_holons_internal_step()`).
 //! - Avoids repeated context setup; we export the same transient pool at the end.
 //! - Keeps each step’s expectations explicit (status, staged/committed counts, links, errors).
 //!
@@ -41,8 +41,8 @@ use std::sync::Arc;
 
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
-    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_REL_INVERSE,
-    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    PERSON_1_KEY, PERSON_2_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    PERSON_TO_BOOK_REL_INVERSE,
 };
 
 /// Declaredness of a `LoaderRelationshipReference` as represented by the
@@ -309,7 +309,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut declared_rel_descriptor,
-        CoreRelationshipTypeName::SourceType.as_relationship_name().0.0.as_str(),
+        CoreRelationshipTypeName::SourceType.as_relationship_name().0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         BOOK_TO_PERSON_RELATIONSHIP_KEY,
         &[BOOK_DESCRIPTOR_KEY],
@@ -317,7 +317,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut declared_rel_descriptor,
-        CoreRelationshipTypeName::TargetType.as_relationship_name().0.0.as_str(),
+        CoreRelationshipTypeName::TargetType.as_relationship_name().0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         BOOK_TO_PERSON_RELATIONSHIP_KEY,
         &[PERSON_DESCRIPTOR_KEY],
@@ -325,7 +325,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut inverse_rel_descriptor,
-        CoreRelationshipTypeName::InverseOf.as_relationship_name().0.0.as_str(),
+        CoreRelationshipTypeName::InverseOf.as_relationship_name().0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
         &[BOOK_TO_PERSON_RELATIONSHIP_KEY],
@@ -336,7 +336,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut book_loader,
-        described_by.0.0.as_str(),
+        described_by.0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         book_instance_key,
         &[BOOK_DESCRIPTOR_KEY],
@@ -344,7 +344,7 @@ fn build_inverse_with_inline_schema_bundle(
     add_loader_relationship_reference(
         context,
         &mut person_loader,
-        described_by.0.0.as_str(),
+        described_by.0 .0.as_str(),
         LoaderRelationshipDeclaredness::Declared,
         person_instance_key,
         &[PERSON_DESCRIPTOR_KEY],
@@ -417,7 +417,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         "LoadSet.Empty.1",
         vec![BundleWithFilename::new(empty_bundle, "empty.json")],
     )?;
-    test_case.add_load_holons_step(
+    test_case.add_load_holons_internal_step(
         empty_set,
         MapInteger(0), // holons_staged
         MapInteger(0), // holons_committed
@@ -437,7 +437,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         "LoadSet.NodesOnly.1",
         vec![BundleWithFilename::new(nodes_bundle, "nodes_only.json")],
     )?;
-    test_case.add_load_holons_step(
+    test_case.add_load_holons_internal_step(
         nodes_set,
         MapInteger(n_nodes as i64), // holons_staged
         MapInteger(n_nodes as i64), // holons_committed
@@ -465,7 +465,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         "LoadSet.DeclaredLink.1",
         vec![BundleWithFilename::new(declared_bundle, "declared_link.json")],
     )?;
-    test_case.add_load_holons_step(
+    test_case.add_load_holons_internal_step(
         declared_set,
         MapInteger(node_count as i64),    // 2
         MapInteger(node_count as i64),    // 2
@@ -497,7 +497,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         "LoadSet.InverseLink.1",
         vec![BundleWithFilename::new(inverse_bundle, "inverse_link.json")],
     )?;
-    test_case.add_load_holons_step(
+    test_case.add_load_holons_internal_step(
         inverse_set,
         MapInteger(inv_nodes as i64), // 2
         MapInteger(inv_nodes as i64), // 2
@@ -550,7 +550,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
     let multi_bundle_nodes_total = (f1_nodes + f2_nodes) as i64; // 1 Book + 1 Person = 2
 
-    test_case.add_load_holons_step(
+    test_case.add_load_holons_internal_step(
         multi_set,
         MapInteger(multi_bundle_nodes_total), // holons_staged
         MapInteger(multi_bundle_nodes_total), // holons_committed
@@ -607,7 +607,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
     let dup_total_nodes = (dup_nodes_1 + dup_nodes_2) as i64; // 1 + 1 = 2
 
-    test_case.add_load_holons_step(
+    test_case.add_load_holons_internal_step(
         dup_set,
         MapInteger(dup_total_nodes), // holons_staged (Pass 1 still stages them)
         MapInteger(0),               // holons_committed (commit skipped)

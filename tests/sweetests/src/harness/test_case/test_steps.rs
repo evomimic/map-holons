@@ -40,7 +40,7 @@ pub enum DanceTestStep {
         expected_count: MapInteger,
         description: String,
     },
-    LoadHolons {
+    LoadHolonsInternal {
         set_id: TemporaryId,
         expect_staged: MapInteger,
         expect_committed: MapInteger,
@@ -141,7 +141,7 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::EnsureDatabaseCount { expected_count, description } => {
                 write!(f, "{description} [expected_count: {}]", expected_count.0)
             }
-            DanceTestStep::LoadHolons {
+            DanceTestStep::LoadHolonsInternal {
                 set_id: _,
                 expect_staged,
                 expect_committed,
@@ -152,7 +152,7 @@ impl core::fmt::Display for DanceTestStep {
             } => {
                 write!(
                     f,
-                    "LoadHolons(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
+                    "LoadHolonsInternal(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
                     expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
                 )
             }
@@ -299,7 +299,7 @@ impl core::fmt::Display for DanceTestStep {
 //                 .field("expected_count", expected_count)
 //                 .finish(),
 //             },
-//             DanceTestStep::LoadHolons {
+//             DanceTestStep::LoadHolonsInternal {
 //                 set: _,
 //                 expect_staged,
 //                 expect_committed,
@@ -308,7 +308,7 @@ impl core::fmt::Display for DanceTestStep {
 //                 expect_total_bundles,
 //                 expect_total_loader_holons,
 //             } => f
-//                 .debug_struct("LoadHolons")
+//                 .debug_struct("LoadHolonsInternal")
 //                 .field("description", description)
 //                 .field("set", set),
 //                 .field("expect_staged", expect_staged)

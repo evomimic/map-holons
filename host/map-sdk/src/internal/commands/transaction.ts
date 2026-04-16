@@ -12,6 +12,7 @@ import {
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type {
   BaseValue,
+  ContentSet,
   DanceRequestWire,
   DanceResponseWire,
   HolonCollectionWire,
@@ -196,21 +197,21 @@ export function deleteHolon(
 }
 
 /**
- * Load a bundle of holons and return the runtime response reference.
+ * Load uploaded/imported holon content and return the runtime response reference.
  *
  * This remains reference-returning internally because current runtime behavior
  * is terminal or commit-like rather than a pure in-transaction mutation.
  */
 export function loadHolons(
   txId: TxId,
-  bundle: HolonReferenceWire,
+  contentSet: ContentSet,
   options?: RequestOptionsOverrides,
 ): Promise<HolonReferenceWire> {
   return runTransactionCommand(
     txId,
     {
       LoadHolons: {
-        bundle,
+        content_set: contentSet,
       },
     },
     expectReference,

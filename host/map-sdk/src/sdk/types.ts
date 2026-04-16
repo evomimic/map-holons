@@ -6,6 +6,10 @@ import type {
   PropertyName,
   RelationshipName,
 } from '../internal/wire-types/references';
+import type {
+  ContentSet as InternalContentSet,
+  FileData as InternalFileData,
+} from '../internal/wire-types/commands';
 import type { EssentialHolonContent as InternalEssentialHolonContent } from '../internal/wire-types/results';
 import type { HolonCollection } from './collection';
 import type { HolonReference, TransientHolonReference } from './references';
@@ -39,6 +43,10 @@ export interface SmartReference {
   readonly holonId: HolonId;
   readonly smartPropertyValues?: Record<PropertyName, BaseValue> | null;
 }
+
+export type FileData = InternalFileData;
+
+export type ContentSet = InternalContentSet;
 
 /**
  * Public alias for domain errors returned by MAP operations.

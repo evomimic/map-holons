@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use base_types::MapString;
-use core_types::{HolonError, HolonId, LocalId};
+use core_types::{ContentSet, HolonError, HolonId, LocalId};
 use holons_boundary::{
     DanceRequestWire, HolonReferenceWire, SmartReferenceWire, TransientReferenceWire,
 };
@@ -29,8 +29,8 @@ pub enum TransactionActionWire {
     /// Commits the transaction.
     Commit,
 
-    /// Loads holons from a content bundle.
-    LoadHolons { bundle: HolonReferenceWire },
+    /// Loads holons from uploaded/imported file content.
+    LoadHolons { content_set: ContentSet },
 
     /// Executes a dance request within this transaction.
     Dance(DanceRequestWire),
@@ -111,10 +111,8 @@ impl TransactionActionWire {
     ) -> Result<TransactionAction, HolonError> {
         match self {
             TransactionActionWire::Commit => Ok(TransactionAction::Commit),
-            TransactionActionWire::LoadHolons { bundle } => {
-                Ok(TransactionAction::LoadHolons {
-                    bundle: bundle.bind(context)?,
-                })
+            TransactionActionWire::LoadHolons { content_set } => {
+                Ok(TransactionAction::LoadHolons { content_set })
             }
             TransactionActionWire::Dance(request_wire) => {
                 Ok(TransactionAction::Dance(request_wire.bind(context)?))

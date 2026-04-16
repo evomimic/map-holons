@@ -1,5 +1,6 @@
-use holons_loader_client::load_holons_from_files;
+use core_types::ContentSet;
 use holons_prelude::prelude::*;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::info;
 
 use holons_test::TestExecutionState;
@@ -13,11 +14,12 @@ fn read_int_property(reference: &TransientReference, property: CorePropertyTypeN
     }
 }
 
-/// Execute the loader client end-to-end: validate/parse files, run the dance,
-/// and assert loader response properties.
+/// Execute public LoadHolons ingress end-to-end: dispatch MAP command,
+/// validate/parse files through the loader client, run the dance, and assert
+/// loader response properties.
 pub async fn execute_load_holons_client(
     test_state: &mut TestExecutionState,
-    content_set: core_types::ContentSet,
+    content_set: ContentSet,
     expect_staged: MapInteger,
     expect_committed: MapInteger,
     expect_links_created: MapInteger,
@@ -27,9 +29,19 @@ pub async fn execute_load_holons_client(
 ) {
     let context = test_state.context();
 
-    let response_reference = load_holons_from_files(context.clone(), content_set)
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::LoadHolons { content_set },
+    });
+    let result = test_state
+        .dispatch_command(command, "load_holons_client")
         .await
-        .unwrap_or_else(|e| panic!("loader_client failed: {e:?}"));
+        .unwrap_or_else(|e| panic!("load_holons_client failed: {e:?}"));
+
+    let response_reference = match result {
+        MapResult::Reference(HolonReference::Transient(t)) => t,
+        other => panic!("LoadHolons: expected Reference(Transient), got {other:?}"),
+    };
 
     let staged = read_int_property(&response_reference, CorePropertyTypeName::HolonsStaged);
     let committed = read_int_property(&response_reference, CorePropertyTypeName::HolonsCommitted);

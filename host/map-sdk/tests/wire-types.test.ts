@@ -5,8 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
+  isContentSet,
+  isFileData,
   isMapIpcRequest,
   isMapIpcResponse,
+  isTransactionActionWire,
 } from '../src/internal/wire-types/index';
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -30,4 +33,42 @@ describe('wire type fixtures', () => {
       expect(isValid).toBe(true);
     });
   }
+});
+
+describe('LoadHolons wire type guard', () => {
+  const contentSet = {
+    schema: {
+      filename: 'bootstrap-import.schema.json',
+      raw_contents: '{"type":"object"}',
+    },
+    files_to_load: [
+      {
+        filename: 'sample-loader-file.json',
+        raw_contents: '{"holons":[]}',
+      },
+    ],
+  };
+
+  it('accepts ContentSet payloads', () => {
+    expect(isFileData(contentSet.schema)).toBe(true);
+    expect(isContentSet(contentSet)).toBe(true);
+    expect(isTransactionActionWire({ LoadHolons: { content_set: contentSet } })).toBe(
+      true,
+    );
+  });
+
+  it('rejects the former bundle payload shape', () => {
+    expect(
+      isTransactionActionWire({
+        LoadHolons: {
+          bundle: {
+            Staged: {
+              tx_id: 41,
+              id: '22222222-2222-2222-2222-222222222222',
+            },
+          },
+        },
+      }),
+    ).toBe(false);
+  });
 });
