@@ -2,7 +2,6 @@ use core_types::TemporaryId;
 use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_prelude::prelude::*;
 use holons_test::TestExecutionState;
-use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::info;
 
 /// Read an integer property from a transient response holon.
@@ -134,9 +133,9 @@ fn dump_error_holons_from_response(
     output
 }
 
-/// Execute the `LoadHolons` step via `TransactionAction::LoadHolons`,
+/// Execute the internal `LoadHolons` step via `TransactionContext::load_holons_and_commit`,
 /// then assert each response property on the returned response holon.
-pub async fn execute_load_holons(
+pub async fn execute_load_holons_internal(
     test_state: &mut TestExecutionState,
     load_set_id: TemporaryId,
     expect_staged: MapInteger,
@@ -146,7 +145,7 @@ pub async fn execute_load_holons(
     expect_total_bundles: MapInteger,
     expect_total_loader_holons: MapInteger,
 ) {
-    info!("--- TEST STEP: Load Holons ---");
+    info!("--- TEST STEP: Load Holons Internal ---");
     let context = test_state.context();
 
     // Reconstruct the load-set reference inside the active transaction using the
@@ -155,24 +154,9 @@ pub async fn execute_load_holons(
     let context_handle = TransactionContextHandle::new(context.clone());
     let rebound_set_reference = TransientReference::from_temporary_id(context_handle, &load_set_id);
 
-    // Dispatch via TransactionAction::LoadHolons
-    let command = MapCommand::Transaction(TransactionCommand {
-        context: context.clone(),
-        action: TransactionAction::LoadHolons {
-            bundle: HolonReference::Transient(rebound_set_reference),
-        },
-    });
-    let result =
-        test_state.dispatch_command(command, "load_holons").await.expect("load_holons failed");
-
-    // Extract the response TransientReference
-    let response_reference: TransientReference = match result {
-        MapResult::Reference(HolonReference::Transient(t)) => t,
-        MapResult::Reference(other_ref) => other_ref.clone_holon().unwrap_or_else(|e| {
-            panic!("LoadHolons returned non-transient reference and clone_holon failed: {e:?}")
-        }),
-        other => panic!("LoadHolons: expected Reference(Transient), got {:?}", other),
-    };
+    let response_reference = context
+        .load_holons_and_commit(rebound_set_reference)
+        .unwrap_or_else(|e| panic!("load_holons_internal failed: {e:?}"));
 
     // Read response properties
     let actual_staged =

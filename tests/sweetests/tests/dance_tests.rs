@@ -37,7 +37,7 @@ use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
 use execution_steps::load_core_schema_executor::execute_load_core_schema;
-use execution_steps::load_holons_executor::execute_load_holons;
+use execution_steps::load_holons_internal_executor::execute_load_holons_internal;
 use execution_steps::match_db_content_executor::execute_match_db_content;
 use execution_steps::new_holon_executor::execute_new_holon;
 use execution_steps::query_relationships_executor::execute_query_relationships;
@@ -53,7 +53,7 @@ use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_core_schema_fixture::*;
-use fixture_cases::load_holons_fixture::*;
+use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
@@ -101,7 +101,7 @@ use holons_prelude::prelude::*;
 #[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
 #[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
 #[case::stage_new_version_test(stage_new_version_fixture())]
-#[case::load_holons_test(loader_incremental_fixture())]
+#[case::load_holons_internal_test(loader_incremental_fixture())]
 #[case::load_core_schema_test(load_core_schema_fixture())]
 #[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
 #[tokio::test(flavor = "multi_thread")]
@@ -170,7 +170,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::EnsureDatabaseCount { expected_count, .. } => {
                 execute_ensure_database_count(&mut test_execution_state, expected_count).await
             }
-            DanceTestStep::LoadHolons {
+            DanceTestStep::LoadHolonsInternal {
                 set_id,
                 expect_staged,
                 expect_committed,
@@ -179,7 +179,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 expect_total_bundles,
                 expect_total_loader_holons,
             } => {
-                execute_load_holons(
+                execute_load_holons_internal(
                     &mut test_execution_state,
                     set_id,
                     expect_staged,
