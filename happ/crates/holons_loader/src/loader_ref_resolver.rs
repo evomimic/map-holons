@@ -108,6 +108,7 @@ impl LoaderRefResolver {
         // ── Pass-2a: ensure all descriptors are set (enables type graph walks later)
         Self::pass_2a_write_described_by_declared(
             context,
+            &mut resolver_state,
             &queued_relationship_references,
             &mut seen_relationship_edge_keys,
             &mut outcome,
@@ -116,6 +117,7 @@ impl LoaderRefResolver {
         // ── Pass-2b: write any declared InverseOf edges
         Self::pass_2b_write_inverse_of_declared(
             context,
+            &mut resolver_state,
             &queued_relationship_references,
             &mut seen_relationship_edge_keys,
             &mut outcome,
@@ -210,6 +212,7 @@ impl LoaderRefResolver {
     /// Writes all declared DescribedBy edges; enforces exactly one target.
     fn pass_2a_write_described_by_declared(
         context: &Arc<TransactionContext>,
+        resolver_state: &mut ResolverState,
         queue: &[TransientReference],
         seen: &mut HashSet<RelationshipEdgeKey>,
         outcome: &mut ResolverOutcome,
@@ -226,7 +229,7 @@ impl LoaderRefResolver {
                 Self::brief_lrr_summary(relationship_reference),
                 Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
             );
-            match Self::resolve_endpoints(context, relationship_reference) {
+            match Self::resolve_endpoints(context, resolver_state, relationship_reference) {
                 Ok((source_endpoint, mut target_endpoints)) => {
                     // Enforce exactly one target for DescribedBy
                     if target_endpoints.len() != 1 {
@@ -271,7 +274,10 @@ impl LoaderRefResolver {
                     ) {
                         Ok(n) => {
                             outcome.links_created += n;
-                            debug!("[resolver] AFTER write_relationship(DescribedBy): links_created={}", n);
+                            debug!(
+                                "[resolver] AFTER write_relationship(DescribedBy): links_created={}",
+                                n
+                            );
                         }
                         Err(e) => {
                             outcome.errors.push(Self::error_with_context(relationship_reference, e))
@@ -290,6 +296,7 @@ impl LoaderRefResolver {
     /// Writes all declared InverseOf edges (no endpoint prefilter).
     fn pass_2b_write_inverse_of_declared(
         context: &Arc<TransactionContext>,
+        resolver_state: &mut ResolverState,
         queue: &[TransientReference],
         seen: &mut HashSet<RelationshipEdgeKey>,
         outcome: &mut ResolverOutcome,
@@ -305,7 +312,7 @@ impl LoaderRefResolver {
                 Self::brief_lrr_summary(relationship_reference),
                 Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
             );
-            match Self::resolve_endpoints(context, relationship_reference) {
+            match Self::resolve_endpoints(context, resolver_state, relationship_reference) {
                 Ok((source_endpoint, target_endpoints)) => {
                     let staged_source =
                         match Self::resolve_staged_write_source(context, &source_endpoint) {
@@ -377,7 +384,12 @@ impl LoaderRefResolver {
 
                 let is_declared = Self::is_declared(relationship_reference);
                 let resolution_result = if is_declared {
-                    Self::try_declared_single_resolve(context, relationship_reference, seen)
+                    Self::try_declared_single_resolve(
+                        context,
+                        resolver_state,
+                        relationship_reference,
+                        seen,
+                    )
                 } else {
                     Self::try_inverse_single_resolve(
                         context,
@@ -526,7 +538,7 @@ impl LoaderRefResolver {
                 return Err(HolonError::UnexpectedValueType(
                     format!("{:?}", other),
                     "String".into(),
-                ))
+                ));
             }
         };
 
@@ -538,7 +550,7 @@ impl LoaderRefResolver {
         let is_declared_flag: bool = match is_declared_value {
             BaseValue::BooleanValue(inner) => inner.0,
             other => {
-                return Err(HolonError::UnexpectedValueType(format!("{:?}", other), "bool".into()))
+                return Err(HolonError::UnexpectedValueType(format!("{:?}", other), "bool".into()));
             }
         };
 
@@ -551,6 +563,7 @@ impl LoaderRefResolver {
     /// from its LoaderHolonReference wrapper.
     fn resolve_endpoints(
         context: &Arc<TransactionContext>,
+        resolver_state: &mut ResolverState,
         relationship_reference: &TransientReference,
     ) -> Result<(HolonReference, Vec<HolonReference>), HolonError> {
         let source_relationship = CoreRelationshipTypeName::ReferenceSource;
@@ -584,13 +597,13 @@ impl LoaderRefResolver {
             0 => {
                 return Err(HolonError::EmptyField(
                     "LoaderRelationshipReference.ReferenceSource".into(),
-                ))
+                ));
             }
             n => {
                 return Err(HolonError::DuplicateError(
                     "ReferenceSource".into(),
                     format!("{n} found"),
-                ))
+                ));
             }
         }
 
@@ -602,7 +615,8 @@ impl LoaderRefResolver {
         }
 
         // Dereference: LoaderHolonReference → actual HolonReference
-        let source_holon = Self::resolve_loader_holon_reference(context, &source_loader_refs[0])?;
+        let source_holon =
+            Self::resolve_loader_holon_reference(context, resolver_state, &source_loader_refs[0])?;
         debug!(
             "[resolver]   resolved source holon = {}",
             Self::best_identifier_for_dedupe(&source_holon)
@@ -610,7 +624,8 @@ impl LoaderRefResolver {
 
         let mut target_holons = Vec::with_capacity(target_loader_refs.len());
         for loader_ref in target_loader_refs.iter() {
-            let resolved = Self::resolve_loader_holon_reference(context, loader_ref)?;
+            let resolved =
+                Self::resolve_loader_holon_reference(context, resolver_state, loader_ref)?;
             debug!(
                 "[resolver]   resolved target holon = {}",
                 Self::best_identifier_for_dedupe(&resolved)
@@ -624,37 +639,69 @@ impl LoaderRefResolver {
     /// Dereference a LoaderHolonReference to the actual holon it points to.
     ///
     /// Resolution order (per spec):
-    /// 1. `holon_key` → staged holon via Nursery
-    /// 2. `holon_id` → saved holon by ID
+    /// 1. `holon_key` → prefer staged holon via Nursery, then fall back to saved by key
+    /// 2. (Future) `holon_id` → saved holon by ID
     /// 3. (Future) `proxy_key`/`proxy_id` → external holon via proxy
     fn resolve_loader_holon_reference(
         context: &Arc<TransactionContext>,
+        resolver_state: &mut ResolverState,
         loader_ref: &HolonReference,
     ) -> Result<HolonReference, HolonError> {
         // Property names from LoaderHolonReference schema
         let holon_key_property = CorePropertyTypeName::HolonKey.as_property_name();
         // let holon_id_property = CorePropertyTypeName::HolonId.as_property_name(); // to be used with holon id lookup below
 
-        // Try holon_key first (local staged)
+        // Try holon_key first:
+        //   1) prefer staged holons in the current import
+        //   2) fall back to already-saved local holons by key
         if let Some(BaseValue::StringValue(key)) = loader_ref.property_value(&holon_key_property)? {
             debug!("[resolver] dereference LHR by holon_key='{}'", key.0);
-            // Use the convenience API for single expected match
-            return match context.lookup().get_staged_holon_by_base_key(&key) {
+            // Use the convenience API for the single expected staged match.
+            match context.lookup().get_staged_holon_by_base_key(&key) {
                 Ok(staged) => {
                     debug!("[resolver]   → FOUND staged holon for key='{}'", key.0);
-                    Ok(HolonReference::Staged(staged))
+                    return Ok(HolonReference::Staged(staged));
                 }
                 Err(HolonError::HolonNotFound(_)) => {
-                    // Key was present, but nothing staged yet → deferrable
-                    debug!("[resolver]   → NO staged holon for key='{}' (HolonNotFound)", key.0);
-                    Err(HolonError::HolonNotFound(format!("staged holon with key '{}'", key.0)))
+                    debug!(
+                        "[resolver]   → NO staged holon for key='{}'; trying saved fallback",
+                        key.0
+                    );
                 }
                 Err(e) => {
-                    // Propagate duplicate/borrow/etc.
+                    // Propagate duplicate/borrow/etc. from staged lookup.
                     debug!("[resolver]   → lookup for key='{}' failed with: {:?}", key.0, e);
-                    Err(e)
+                    return Err(e);
                 }
-            };
+            }
+
+            // Lazily fetch the saved index on first staged miss and reuse it for the rest of the run.
+            if resolver_state.saved_index().is_none() {
+                debug!(
+                    "Staged miss for holon key '{}'; fetching saved holons via get_all_holons()",
+                    key.0
+                );
+                resolver_state.ensure_saved_index(context)?;
+            }
+
+            if let Some(saved_collection) = resolver_state.saved_index() {
+                match saved_collection.get_by_key(&key) {
+                    Ok(Some(saved_reference)) => {
+                        debug!("[resolver]   → FOUND saved holon for key='{}'", key.0);
+                        return Ok(saved_reference);
+                    }
+                    Ok(None) => {
+                        debug!("[resolver]   → NO saved holon for key='{}'", key.0);
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+
+            // Key was present, but neither staged nor saved lookup found a match yet → deferrable.
+            return Err(HolonError::HolonNotFound(format!(
+                "staged or saved holon with key '{}'",
+                key.0
+            )));
         }
 
         // TODO: un-comment when saved holon fetch by ID is implemented (we need a MapBytes BaseValue variant)
@@ -763,9 +810,9 @@ impl LoaderRefResolver {
         // 2) Saved fallback: lazily fetch the saved index on first staged miss.
         if resolver_state.saved_index().is_none() {
             debug!(
-            "Staged miss for relationship type '{}'; fetching saved holons via get_all_holons()",
-            canonical_key.0
-        );
+                "Staged miss for relationship type '{}'; fetching saved holons via get_all_holons()",
+                canonical_key.0
+            );
             resolver_state.ensure_saved_index(context)?; // one-time fetch per run
         }
 
@@ -948,6 +995,7 @@ impl LoaderRefResolver {
     /// Returns number of links created (may be 0 if dedup) or an error.
     fn try_declared_single_resolve(
         context: &Arc<TransactionContext>,
+        resolver_state: &mut ResolverState,
         relationship_reference: &TransientReference,
         seen: &mut HashSet<RelationshipEdgeKey>,
     ) -> Result<i64, HolonError> {
@@ -976,7 +1024,7 @@ impl LoaderRefResolver {
             Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
         );
         let (source_endpoint, target_endpoints) =
-            Self::resolve_endpoints(context, relationship_reference)?;
+            Self::resolve_endpoints(context, resolver_state, relationship_reference)?;
 
         let staged_source = Self::resolve_staged_write_source(context, &source_endpoint)?;
 
@@ -1017,7 +1065,7 @@ impl LoaderRefResolver {
             Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
         );
         let (src_endpoint, target_endpoints) =
-            Self::resolve_endpoints(context, relationship_reference)?;
+            Self::resolve_endpoints(context, resolver_state, relationship_reference)?;
 
         let mut created_link_count = 0i64;
 
