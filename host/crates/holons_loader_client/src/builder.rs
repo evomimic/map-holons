@@ -482,3 +482,57 @@ fn create_relationship_reference(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Deserialize;
+    use serde_json::json;
+
+    #[derive(Debug, Deserialize)]
+    struct TargetWrapper {
+        #[serde(deserialize_with = "deserialize_targets")]
+        target: Vec<String>,
+    }
+
+    fn parse_targets(target_json: serde_json::Value) -> Vec<String> {
+        serde_json::from_value::<TargetWrapper>(json!({ "target": target_json }))
+            .expect("target JSON should deserialize")
+            .target
+    }
+
+    #[test]
+    fn normalize_ref_key_leaves_bare_key_unchanged() {
+        assert_eq!(normalize_ref_key("SomeType"), "SomeType");
+    }
+
+    #[test]
+    fn normalize_ref_key_strips_hash_prefix() {
+        assert_eq!(normalize_ref_key("#SomeType"), "SomeType");
+    }
+
+    #[test]
+    fn deserialize_targets_accepts_bare_string_target() {
+        assert_eq!(parse_targets(json!("SomeType")), vec!["SomeType"]);
+    }
+
+    #[test]
+    fn deserialize_targets_treats_bare_and_hash_ref_objects_equivalently() {
+        let bare_ref = parse_targets(json!({ "$ref": "SomeType" }));
+        let hash_ref = parse_targets(json!({ "$ref": "#SomeType" }));
+
+        assert_eq!(bare_ref, vec!["SomeType"]);
+        assert_eq!(bare_ref, hash_ref);
+    }
+
+    #[test]
+    fn deserialize_targets_normalizes_mixed_array_forms() {
+        let normalized = parse_targets(json!([
+            "SomeType",
+            { "$ref": "OtherType" },
+            { "$ref": "#ThirdType" }
+        ]));
+
+        assert_eq!(normalized, vec!["SomeType", "OtherType", "ThirdType"]);
+    }
+}
