@@ -2,7 +2,7 @@ use std::sync::RwLock;
 
 use core_types::HolonError;
 use map_commands_contract::MapCommand;
-use map_commands_runtime::{ExecutionPolicy, Runtime};
+use map_commands_runtime::{Runtime}; //ExecutionPolicy
 use map_commands_wire::{
     MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire,
 };
@@ -71,11 +71,11 @@ async fn dispatch_inner(
 
     // Execute via runtime (policy enforcement + handler routing)
     runtime
-        .execute_command_with_policy(
+        .execute_command( //_with_policy(
             command,
-            ExecutionPolicy {
-                snapshot_after: options.snapshot_after,
-            },
+            //ExecutionPolicy {
+             //   snapshot_after: options.snapshot_after,
+            //},
         )
         .await
 }

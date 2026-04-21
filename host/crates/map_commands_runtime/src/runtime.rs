@@ -42,20 +42,18 @@ impl Runtime {
 
     /// Enforce lifecycle policy and route a bound domain command to its handler.
     pub async fn execute_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
-        self.execute_command_with_policy(command, ExecutionPolicy::default())
-            .await
-    }
+        //policy: ExecutionPolicy,
 
-    /// Enforce lifecycle policy, apply execution policy, and route a bound
-    /// domain command to its handler.
-    pub async fn execute_command_with_policy(
-        &self,
-        command: MapCommand,
-        policy: ExecutionPolicy,
-    ) -> Result<MapResult, HolonError> {
+        //TODO:  execution policy will be integrated into the workflow with experience units PR
+
+        let policy = ExecutionPolicy::default();
         let descriptor = command.descriptor();
         let command_label = command_label(&command);
 
+        let is_commit = match &command {
+            MapCommand::Transaction(cmd) => matches!(cmd.action, TransactionAction::Commit),
+            _ => false,
+        };
         // Extract context for lifecycle checks (Transaction and Holon commands have one)
         let context = match &command {
             MapCommand::Transaction(cmd) => Some(Arc::clone(&cmd.context)),
@@ -104,7 +102,14 @@ impl Runtime {
         let tx_id_for_snapshot = context.as_ref().map(|ctx| ctx.tx_id());
         let result = self.route_command(command).await?;
 
-        if policy.snapshot_after && descriptor.mutation != MutationClassification::ReadOnly {
+        // Only persist a snapshot after commands that:
+        // - explicitly requested snapshot_after
+        // - are not read-only
+        // - are not a Commit (commit destroys transaction-scoped recovery state)
+        if policy.snapshot_after
+            && descriptor.mutation != MutationClassification::ReadOnly
+            && !is_commit
+        {
             if let Some(tx_id) = tx_id_for_snapshot {
                 self.session
                     .persist_success(&tx_id, command_label, false)
