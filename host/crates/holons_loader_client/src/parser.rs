@@ -294,7 +294,23 @@ pub fn parse_single_import_file_into_bundle(
 
         // Attach the DescribedBy relationship if a type is present.
         if let Some(ref type_key) = raw_holon.r#type {
-            let normalized_type_key = normalize_ref_key(type_key);
+            let normalized_type_key = match normalize_ref_key(type_key) {
+                Ok(normalized) => normalized,
+                Err(err) => {
+                    return Err(ImportFileParsingIssue {
+                        file_path: file_path.clone(),
+                        kind: ImportFileParsingIssueKind::HolonConstructionFailure,
+                        message: format!(
+                            "Failed to normalize DescribedBy reference '{}' for LoaderHolon '{}' in file '{}': {}",
+                            type_key,
+                            raw_holon.key,
+                            import_file.filename,
+                            err
+                        ),
+                        source_error: Some(err),
+                    });
+                }
+            };
             if let Err(err) = attach_described_by_relationship(
                 context,
                 &loader_holon_ref,

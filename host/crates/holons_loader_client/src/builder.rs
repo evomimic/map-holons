@@ -356,15 +356,19 @@ fn json_value_to_base_value(property_name: &str, value: &Value) -> Result<BaseVa
     }
 }
 
-/// Normalize a relationship target reference string into a canonical holon key.
-/// Currently strips local-ref style prefixes like `#` or `id:`; extend as needed.
-pub fn normalize_ref_key(raw: &str) -> String {
+/// Normalize a supported local reference string into a canonical holon key.
+/// Currently `#key` and `key` are supported local-key forms; `id:` remains unsupported.
+pub fn normalize_ref_key(raw: &str) -> Result<String, HolonError> {
+    if raw.starts_with("id:") {
+        return Err(HolonError::InvalidParameter(
+            "id:<HolonId> references are not supported yet".into(),
+        ));
+    }
+
     if let Some(stripped) = raw.strip_prefix('#') {
-        stripped.to_string()
-    } else if let Some(stripped) = raw.strip_prefix("id:") {
-        stripped.to_string()
+        Ok(stripped.to_string())
     } else {
-        raw.to_string()
+        Ok(raw.to_string())
     }
 }
 
@@ -381,12 +385,12 @@ where
 
     fn convert_target(val: Value) -> Result<String, String> {
         match val {
-            Value::String(s) => Ok(normalize_ref_key(&s)),
+            Value::String(s) => normalize_ref_key(&s).map_err(|e| e.to_string()),
             Value::Object(map) => map
                 .get("$ref")
                 .and_then(|v| v.as_str())
-                .map(|s| normalize_ref_key(s))
-                .ok_or_else(|| format!("target object missing '$ref': {map:?}")),
+                .ok_or_else(|| format!("target object missing '$ref': {map:?}"))
+                .and_then(|s| normalize_ref_key(s).map_err(|e| e.to_string())),
             other => Err(format!("unsupported target value: {other}")),
         }
     }
@@ -495,31 +499,35 @@ mod tests {
         target: Vec<String>,
     }
 
-    fn parse_targets(target_json: serde_json::Value) -> Vec<String> {
-        serde_json::from_value::<TargetWrapper>(json!({ "target": target_json }))
-            .expect("target JSON should deserialize")
-            .target
+    fn parse_targets(target_json: serde_json::Value) -> Result<Vec<String>, serde_json::Error> {
+        serde_json::from_value::<TargetWrapper>(json!({ "target": target_json })).map(|parsed| parsed.target)
     }
 
     #[test]
     fn normalize_ref_key_leaves_bare_key_unchanged() {
-        assert_eq!(normalize_ref_key("SomeType"), "SomeType");
+        assert_eq!(normalize_ref_key("SomeType").unwrap(), "SomeType");
     }
 
     #[test]
     fn normalize_ref_key_strips_hash_prefix() {
-        assert_eq!(normalize_ref_key("#SomeType"), "SomeType");
+        assert_eq!(normalize_ref_key("#SomeType").unwrap(), "SomeType");
+    }
+
+    #[test]
+    fn normalize_ref_key_rejects_id_prefix() {
+        let error = normalize_ref_key("id:abc").unwrap_err();
+        assert!(matches!(error, HolonError::InvalidParameter(message) if message.contains("id:<HolonId> references are not supported yet")));
     }
 
     #[test]
     fn deserialize_targets_accepts_bare_string_target() {
-        assert_eq!(parse_targets(json!("SomeType")), vec!["SomeType"]);
+        assert_eq!(parse_targets(json!("SomeType")).unwrap(), vec!["SomeType"]);
     }
 
     #[test]
     fn deserialize_targets_treats_bare_and_hash_ref_objects_equivalently() {
-        let bare_ref = parse_targets(json!({ "$ref": "SomeType" }));
-        let hash_ref = parse_targets(json!({ "$ref": "#SomeType" }));
+        let bare_ref = parse_targets(json!({ "$ref": "SomeType" })).unwrap();
+        let hash_ref = parse_targets(json!({ "$ref": "#SomeType" })).unwrap();
 
         assert_eq!(bare_ref, vec!["SomeType"]);
         assert_eq!(bare_ref, hash_ref);
@@ -531,8 +539,14 @@ mod tests {
             "SomeType",
             { "$ref": "OtherType" },
             { "$ref": "#ThirdType" }
-        ]));
+        ])).unwrap();
 
         assert_eq!(normalized, vec!["SomeType", "OtherType", "ThirdType"]);
+    }
+
+    #[test]
+    fn deserialize_targets_rejects_id_ref_objects() {
+        let error = parse_targets(json!({ "$ref": "id:abc" })).unwrap_err();
+        assert!(error.to_string().contains("id:<HolonId> references are not supported yet"));
     }
 }
