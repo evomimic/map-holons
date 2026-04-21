@@ -53,8 +53,12 @@ struct RelationshipEdgeKey {
 /// Per-run resolver state. Holds data we want to compute once and reuse.
 /// Start small (just the saved index), but this scales well if we add
 /// metrics, feature flags, or lazy fetches later.
+///
+/// Note: saved local-key fallback is currently implemented by lazily caching
+/// `get_all_holons()` on the first staged miss because targeted saved lookup
+/// by key does not exist yet. Replace this cache once saved key lookup is available.
 pub struct ResolverState {
-    /// Optional snapshot of *saved* holons for key-based lookups.
+    /// Interim snapshot of *saved* holons for key-based fallback lookups.
     /// We fetch it at most once per resolver run.
     saved_index: Option<Rc<HolonCollection>>,
 }
@@ -67,8 +71,11 @@ impl ResolverState {
     }
 
     /// Ensure we have a saved holon index available.
-    /// If already present, this is a no-op. Otherwise, it attempts to fetch
-    /// all holons once via the TransactionContext and stores the collection.
+    /// If already present, this is a no-op. Otherwise, it fetches all saved holons
+    /// once via the TransactionContext and stores the collection for this resolver run.
+    ///
+    /// This is an interim implementation until the lookup layer supports targeted
+    /// saved lookup by key.
     pub fn ensure_saved_index(
         &mut self,
         context: &Arc<TransactionContext>,
@@ -642,6 +649,9 @@ impl LoaderRefResolver {
     /// 1. `holon_key` → prefer staged holon via Nursery, then fall back to saved by key
     /// 2. (Future) `holon_id` → saved holon by ID
     /// 3. (Future) `proxy_key`/`proxy_id` → external holon via proxy
+    ///
+    /// Note: the saved fallback currently uses a lazily populated per-run snapshot
+    /// of all saved holons because targeted saved lookup by key is not available yet.
     fn resolve_loader_holon_reference(
         context: &Arc<TransactionContext>,
         resolver_state: &mut ResolverState,
@@ -675,7 +685,8 @@ impl LoaderRefResolver {
                 }
             }
 
-            // Lazily fetch the saved index on first staged miss and reuse it for the rest of the run.
+            // Interim saved fallback: fetch all saved holons once on the first staged miss,
+            // then reuse that snapshot until targeted saved lookup by key exists.
             if resolver_state.saved_index().is_none() {
                 debug!(
                     "Staged miss for holon key '{}'; fetching saved holons via get_all_holons()",
