@@ -9,9 +9,9 @@ const DOMAIN_SCHEMA_RELATIVE_PATH: &str =
     "import_files/MAP Schema Types-map-test-schema-book-person-inverse.json";
 
 pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 0,
-    committed: 0,
-    links_created: 0,
+    staged: 7,
+    committed: 7,
+    links_created: 39,
     errors: 0,
     total_bundles: 1,
     total_loader_holons: 7,
