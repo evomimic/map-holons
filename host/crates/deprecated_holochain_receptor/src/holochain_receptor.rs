@@ -163,15 +163,6 @@ impl Debug for HolochainReceptor {
 #[cfg(test)]
 mod tests {
     use super::HolochainReceptor;
-    use base_types::{BaseValue, MapString};
-    use core_types::{PropertyMap, PropertyName};
-    use crate::dances_client::ClientDanceBuilder;
-    use crate::client_context::init_client_context;
-    use client_shared_types::{
-            holon_space::HolonSpace,
-            map_request::{MapRequest, MapRequestBody},
-    };
-    use holons_core::dances::DanceType;
 
     #[test]
     fn commit_route_classification_is_exact() {
@@ -193,51 +184,5 @@ mod tests {
         assert!(!HolochainReceptor::is_read_only_request("create_new_holon"));
         assert!(!HolochainReceptor::is_read_only_request("stage_new_holon"));
         assert!(!HolochainReceptor::is_read_only_request("load_holons"));
-    }
-
-    #[test]
-    fn host_mutation_precheck_blocks_create_new_holon_before_builder_side_effects() {
-        let context = init_client_context(None);
-        let _guard = context.begin_host_commit_ingress_guard().expect("guard should acquire");
-
-        let before = context.lookup().transient_count().expect("count should succeed");
-
-        let mut props = PropertyMap::new();
-        props.insert(
-            PropertyName(MapString("key".to_string())),
-            BaseValue::StringValue(MapString("PRECHECK_BLOCK".to_string())),
-        );
-
-        let request = MapRequest {
-            name: "create_new_holon".to_string(),
-            req_type: DanceType::Standalone,
-            body: MapRequestBody::ParameterValues(props),
-            space: HolonSpace::default(),
-        };
-
-        let is_read_only = HolochainReceptor::is_read_only_request(request.name.as_str());
-        assert!(!is_read_only);
-
-        // New receptor ordering: precheck before request build.
-        let err = context
-            .ensure_host_mutation_entry_allowed()
-            .expect_err("host mutation precheck should reject during commit ingress");
-        let msg = format!("{err:?}");
-        assert!(
-            msg.contains("TransactionCommitInProgress"),
-            "expected TransactionCommitInProgress, got {msg}"
-        );
-
-        // Ensure request builder was not run and no transient was created as a side effect.
-        let after = context.lookup().transient_count().expect("count should succeed");
-        assert_eq!(before, after, "transient pool must remain unchanged");
-
-        // Sanity: builder remains side-effecting for create_new_holon if called directly.
-        let _ = ClientDanceBuilder::validate_and_execute(&context, &request);
-        let after_builder = context.lookup().transient_count().expect("count should succeed");
-        assert!(
-            after_builder > after,
-            "direct builder call should still create transient side effect"
-        );
     }
 }
