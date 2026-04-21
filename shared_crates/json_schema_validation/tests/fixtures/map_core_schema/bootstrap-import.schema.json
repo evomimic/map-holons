@@ -134,7 +134,7 @@
       "properties": {
         "$ref": {
           "type": "string",
-          "pattern": "^(#|id:|@|ext:).+$"
+          "pattern": "^(#?(?!(id:|ext:))[^#@:].*|id:.+|@.+|ext:.+)$"
         }
       },
       "additionalProperties": false
