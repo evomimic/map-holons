@@ -18,7 +18,7 @@
         "generator": {
           "type": "string"
         },
-        "depends_on_files": {
+        "load_with": {
           "type": "array",
           "items": {
             "type": "string",
@@ -141,7 +141,7 @@
       "properties": {
         "$ref": {
           "type": "string",
-          "pattern": "^(#|id:|@|ext:).+$"
+          "pattern": "^(#?(?!(id:|ext:))[^#@:].*|id:.+|@.+|ext:.+)$"
         }
       },
       "additionalProperties": false
