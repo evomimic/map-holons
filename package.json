@@ -20,6 +20,10 @@
     "build:happ": "npm run build:happ -w map-happ",
 
     "check": "npm run check -w map-host && npm run check -w map-happ",
+    "fmt": "npm run fmt -w map-host && npm run fmt -w map-happ && npm run fmt:sweetests",
+    "fmt:check": "npm run fmt:check -w map-host && npm run fmt:check -w map-happ && npm run fmt:sweetests:check",
+    "fmt:sweetests": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all",
+    "fmt:sweetests:check": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all --check",
 
     "test": "npm run test:unit && npm run sweetest",
     "test:unit": "npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run typecheck -w map-sdk && npm run test -w map-sdk",
