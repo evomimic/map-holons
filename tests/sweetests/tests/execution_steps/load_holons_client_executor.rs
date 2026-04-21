@@ -61,6 +61,21 @@ pub async fn execute_load_holons_client(
 
     let full_dump = dump_full_response(&response_reference);
     info!("[loader-client] response_full_dump:\n{}", full_dump);
+    info!(
+        "[loader-client] metrics observed: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}; expected: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
+        staged,
+        committed,
+        links_created,
+        errors,
+        total_bundles,
+        total_loader_holons,
+        expect_staged.0,
+        expect_committed.0,
+        expect_links_created.0,
+        expect_errors.0,
+        expect_total_bundles.0,
+        expect_total_loader_holons.0
+    );
 
     assert_eq!(staged, expect_staged.0);
     assert_eq!(committed, expect_committed.0);

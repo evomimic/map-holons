@@ -55,7 +55,7 @@ pub fn build_core_schema_content_set() -> Result<ContentSet, HolonError> {
     Ok(ContentSet { schema, files_to_load })
 }
 
-fn read_file_data(path: &Path, role: &str) -> Result<FileData, HolonError> {
+pub fn read_file_data(path: &Path, role: &str) -> Result<FileData, HolonError> {
     let raw_contents = fs::read_to_string(path).map_err(|error| {
         HolonError::Misc(format!("failed to read {role} file {}: {error}", path.display()))
     })?;

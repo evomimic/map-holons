@@ -52,6 +52,9 @@ pub enum DanceTestStep {
     LoadCoreSchema {
         description: String,
     },
+    LoadBookPersonInverseTestSchema {
+        description: String,
+    },
     MatchSavedContent,
     NewHolon {
         step_token: TestReference,
@@ -157,6 +160,9 @@ impl core::fmt::Display for DanceTestStep {
                 )
             }
             DanceTestStep::LoadCoreSchema { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::LoadBookPersonInverseTestSchema { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::MatchSavedContent => {
