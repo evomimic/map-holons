@@ -2,7 +2,7 @@ use std::sync::RwLock;
 
 use core_types::HolonError;
 use map_commands_contract::MapCommand;
-use map_commands_runtime::Runtime;
+use map_commands_runtime::{Runtime}; //ExecutionPolicy
 use map_commands_wire::{
     MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire,
 };
@@ -70,7 +70,14 @@ async fn dispatch_inner(
     let command = bind_command(&runtime, command)?;
 
     // Execute via runtime (policy enforcement + handler routing)
-    runtime.execute_command(command).await
+    runtime
+        .execute_command( //_with_policy(
+            command,
+            //ExecutionPolicy {
+             //   snapshot_after: options.snapshot_after,
+            //},
+        )
+        .await
 }
 
 /// Binds a wire command to its domain equivalent using the runtime session.

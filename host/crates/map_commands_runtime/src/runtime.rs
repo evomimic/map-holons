@@ -4,7 +4,10 @@ use core_types::HolonError;
 
 use holons_core::core_shared_objects::transactions::TransactionLifecycleState;
 
-use map_commands_contract::{MapCommand, MapResult, MutationClassification};
+use map_commands_contract::{
+    HolonAction, MapCommand, MapResult, MutationClassification, ReadableHolonAction,
+    SpaceCommand, TransactionAction,
+};
 
 use super::runtime_session::RuntimeSession;
 use super::{holon_handler, space_handler, transaction_handler};
@@ -22,6 +25,11 @@ pub struct Runtime {
     session: Arc<RuntimeSession>,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ExecutionPolicy {
+    pub snapshot_after: bool,
+}
+
 impl Runtime {
     pub fn new(session: Arc<RuntimeSession>) -> Self {
         Self { session }
@@ -34,8 +42,18 @@ impl Runtime {
 
     /// Enforce lifecycle policy and route a bound domain command to its handler.
     pub async fn execute_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
-        let descriptor = command.descriptor();
+        //policy: ExecutionPolicy,
 
+        //TODO:  execution policy will be integrated into the workflow with experience units PR
+
+        let policy = ExecutionPolicy::default();
+        let descriptor = command.descriptor();
+        let command_label = command_label(&command);
+
+        let is_commit = match &command {
+            MapCommand::Transaction(cmd) => matches!(cmd.action, TransactionAction::Commit),
+            _ => false,
+        };
         // Extract context for lifecycle checks (Transaction and Holon commands have one)
         let context = match &command {
             MapCommand::Transaction(cmd) => Some(Arc::clone(&cmd.context)),
@@ -81,17 +99,83 @@ impl Runtime {
             }
         }
 
-        self.route_command(command).await
+        let tx_id_for_snapshot = context.as_ref().map(|ctx| ctx.tx_id());
+        let result = self.route_command(command).await?;
+
+        // Only persist a snapshot after commands that:
+        // - explicitly requested snapshot_after
+        // - are not read-only
+        // - are not a Commit (commit destroys transaction-scoped recovery state)
+        if policy.snapshot_after
+            && descriptor.mutation != MutationClassification::ReadOnly
+            && !is_commit
+        {
+            if let Some(tx_id) = tx_id_for_snapshot {
+                self.session
+                    .persist_success(&tx_id, command_label, false)
+                    .await?;
+            }
+        }
+
+        Ok(result)
     }
 
     /// Routes a bound domain command to its scope-specific handler.
     async fn route_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
         match command {
-            MapCommand::Space(cmd) => space_handler::handle_space(&self.session, cmd),
+            MapCommand::Space(cmd) => space_handler::handle_space(&self.session, cmd).await,
             MapCommand::Transaction(cmd) => {
                 transaction_handler::handle_transaction(&self.session, cmd).await
             }
             MapCommand::Holon(cmd) => holon_handler::handle_holon(cmd).await,
         }
+    }
+}
+
+fn command_label(command: &MapCommand) -> &'static str {
+    match command {
+        MapCommand::Space(SpaceCommand::BeginTransaction) => "begin_transaction",
+        MapCommand::Transaction(cmd) => match &cmd.action {
+            TransactionAction::Commit => "commit",
+            TransactionAction::LoadHolons { .. } => "load_holons",
+            TransactionAction::Dance(_) => "dance",
+            TransactionAction::Query(_) => "query",
+            TransactionAction::GetAllHolons => "get_all_holons",
+            TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
+            TransactionAction::GetStagedHolonsByBaseKey { .. } => {
+                "get_staged_holons_by_base_key"
+            }
+            TransactionAction::GetStagedHolonByVersionedKey { .. } => {
+                "get_staged_holon_by_versioned_key"
+            }
+            TransactionAction::GetTransientHolonByBaseKey { .. } => {
+                "get_transient_holon_by_base_key"
+            }
+            TransactionAction::GetTransientHolonByVersionedKey { .. } => {
+                "get_transient_holon_by_versioned_key"
+            }
+            TransactionAction::StagedCount => "staged_count",
+            TransactionAction::TransientCount => "transient_count",
+            TransactionAction::NewHolon { .. } => "new_holon",
+            TransactionAction::StageNewHolon { .. } => "stage_new_holon",
+            TransactionAction::StageNewFromClone { .. } => "stage_new_from_clone",
+            TransactionAction::StageNewVersion { .. } => "stage_new_version",
+            TransactionAction::StageNewVersionFromId { .. } => "stage_new_version_from_id",
+            TransactionAction::DeleteHolon { .. } => "delete_holon",
+        },
+        MapCommand::Holon(cmd) => match &cmd.action {
+            HolonAction::Read(action) => match action {
+                ReadableHolonAction::CloneHolon => "clone_holon",
+                ReadableHolonAction::EssentialContent => "essential_content",
+                ReadableHolonAction::Summarize => "summarize",
+                ReadableHolonAction::HolonId => "holon_id",
+                ReadableHolonAction::Predecessor => "predecessor",
+                ReadableHolonAction::Key => "key",
+                ReadableHolonAction::VersionedKey => "versioned_key",
+                ReadableHolonAction::PropertyValue { .. } => "property_value",
+                ReadableHolonAction::RelatedHolons { .. } => "related_holons",
+            },
+            HolonAction::Write(_) => "holon_write",
+        },
     }
 }

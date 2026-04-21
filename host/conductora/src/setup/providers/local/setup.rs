@@ -24,6 +24,9 @@ impl LocalSetup {
         if is_recovery {
             let receptor_cfg: BaseReceptor = Self::build_recovery_receptor(&handle, name, local_cfg).await?;
             register_receptor(&handle, receptor_cfg).await?;
+        } else {
+            return Err(anyhow::anyhow!(
+                "Local storage '{}' enabled without 'recovery' feature: Registering a non-recovery receptor is currently not allowed as we have not defined other local receptors.",name));
         }
         Ok(())
     }
@@ -91,9 +94,3 @@ pub async fn create_snapshot_store<C: ProviderConfig>(
 
     Ok(Arc::new(store))
 }
-
-//helpers
-//fn generate_receptor_id(props: HashMap<String, String>) -> Result<String, Box<dyn std::error::Error>> {
-//    let json = serde_json::to_string(&props)?;
- //   Ok(hex::encode(Sha256::digest(json.as_bytes())))
-//}

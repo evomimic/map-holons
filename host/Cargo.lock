@@ -5220,9 +5220,11 @@ version = "0.1.0"
 dependencies = [
  "base_types",
  "core_types",
+ "holons_client",
  "holons_core",
  "holons_loader_client",
  "map_commands_contract",
+ "recovery_receptor",
  "serde_json",
  "tokio",
 ]
