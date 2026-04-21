@@ -18,7 +18,7 @@
         "generator": {
           "type": "string"
         },
-        "depends_on_files": {
+        "load_with": {
           "type": "array",
           "items": {
             "type": "string",

@@ -158,6 +158,18 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_load_book_person_inverse_test_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Load Book/Person inverse test schema".to_string());
+        self.steps.push(DanceTestStep::LoadBookPersonInverseTestSchema { description });
+
+        Ok(())
+    }
+
     pub fn add_load_holons_internal_step(
         &mut self,
         set: TransientReference,

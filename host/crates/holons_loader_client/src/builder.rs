@@ -438,6 +438,8 @@ fn create_relationship_reference(
         CorePropertyTypeName::RelationshipName,
         BaseValue::StringValue(MapString(relationship_name.to_string())),
     )?;
+    // We currently treat all relationships as declared; if we allow inverse relationships in import
+    // json, we'll need a conditional here and possibly derive this from relationship type definitions
     relationship_reference.with_property_value(
         CorePropertyTypeName::IsDeclared,
         BaseValue::BooleanValue(MapBoolean(true)),
