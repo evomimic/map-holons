@@ -116,6 +116,9 @@
       "description": "A relationship target (reference or embedded holon).",
       "oneOf": [
         {
+          "$ref": "#/definitions/local_ref_string"
+        },
+        {
           "$ref": "#/definitions/local_ref"
         },
         {
@@ -138,6 +141,10 @@
         }
       },
       "additionalProperties": false
+    },
+    "local_ref_string": {
+      "type": "string",
+      "pattern": "^(#?(?!(id:|ext:))[^#@:].*|id:.+|@.+|ext:.+)$"
     },
     "holon_id": {
       "type": "object",
