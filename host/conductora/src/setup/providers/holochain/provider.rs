@@ -42,7 +42,9 @@ impl ProviderIntegration for HolochainProvider {
         provider: &StorageProvider,
     ) -> anyhow::Result<tauri::Builder<tauri::Wry>> {
         let StorageProvider::Holochain(cfg) = provider else {
-            tracing::error!("[PLUGIN MANAGER] Invalid storage provider config for Holochain plugin");
+            tracing::error!(
+                "[PLUGIN MANAGER] Invalid storage provider config for Holochain plugin"
+            );
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain plugin"));
         };
 

@@ -24,14 +24,12 @@ impl LocalRecoveryReceptor {
             .expect("a handler is required for LocalRecoveryReceptor")
             .clone();
 
-        let recovery_store = client_any
-            .downcast::<TransactionRecoveryStore>()
-            .map_err(|_| {
-                HolonError::DowncastFailure(format!(
-                    "Failed to cast client handler for LocalRecoveryReceptor '{}'",
-                    base_receptor.receptor_id
-                ))
-            })?;
+        let recovery_store = client_any.downcast::<TransactionRecoveryStore>().map_err(|_| {
+            HolonError::DowncastFailure(format!(
+                "Failed to cast client handler for LocalRecoveryReceptor '{}'",
+                base_receptor.receptor_id
+            ))
+        })?;
 
         Ok(Self {
             receptor_id: base_receptor.receptor_id.clone(),

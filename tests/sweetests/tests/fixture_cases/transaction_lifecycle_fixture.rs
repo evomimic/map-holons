@@ -18,15 +18,11 @@ use std::collections::BTreeMap;
 /// - Cross-transaction persistence (both holons visible after second commit)
 #[fixture]
 pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
-    let TestCaseInit {
-        mut test_case,
-        fixture_context,
-        mut fixture_holons,
-        fixture_bindings: _,
-    } = TestCaseInit::new(
-        "Transaction Lifecycle Test",
-        "Commit → rejection on committed tx → begin new tx → continue",
-    );
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _ } =
+        TestCaseInit::new(
+            "Transaction Lifecycle Test",
+            "Commit → rejection on committed tx → begin new tx → continue",
+        );
 
     // ── Phase 1: First transaction — create and commit ──
 
@@ -36,14 +32,10 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     let book_key = MapString("book-lifecycle-1".to_string());
-    let book_transient =
-        fixture_context.mutation().new_holon(Some(book_key.clone()))?;
+    let book_transient = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
 
     let mut book_props = BTreeMap::new();
-    book_props.insert(
-        "Title".to_property_name(),
-        "Lifecycle Book".to_base_value(),
-    );
+    book_props.insert("Title".to_property_name(), "Lifecycle Book".to_base_value());
     book_props.insert(
         "Description".to_property_name(),
         "A holon for testing transaction lifecycle".to_base_value(),
@@ -82,15 +74,11 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Attempt to create a new holon on the committed transaction — should be
     // rejected at the Runtime lifecycle gate with TransactionAlreadyCommitted.
-    let rejected_transient = fixture_context
-        .mutation()
-        .new_holon(Some(MapString("rejected".to_string())))?;
+    let rejected_transient =
+        fixture_context.mutation().new_holon(Some(MapString("rejected".to_string())))?;
 
     let mut rejected_props = BTreeMap::new();
-    rejected_props.insert(
-        "Title".to_property_name(),
-        "Should Not Exist".to_base_value(),
-    );
+    rejected_props.insert("Title".to_property_name(), "Should Not Exist".to_base_value());
 
     test_case.add_new_holon_step(
         &mut fixture_holons,
@@ -110,20 +98,13 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ── Phase 3: Begin fresh transaction and continue work ──
 
-    test_case.add_begin_transaction_step(
-        None,
-        Some("Begin second transaction".to_string()),
-    )?;
+    test_case.add_begin_transaction_step(None, Some("Begin second transaction".to_string()))?;
 
     let article_key = MapString("article-lifecycle-1".to_string());
-    let article_transient =
-        fixture_context.mutation().new_holon(Some(article_key.clone()))?;
+    let article_transient = fixture_context.mutation().new_holon(Some(article_key.clone()))?;
 
     let mut article_props = BTreeMap::new();
-    article_props.insert(
-        "Title".to_property_name(),
-        "Lifecycle Article".to_base_value(),
-    );
+    article_props.insert("Title".to_property_name(), "Lifecycle Article".to_base_value());
     article_props.insert(
         "Description".to_property_name(),
         "Created in the second transaction".to_base_value(),

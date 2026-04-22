@@ -50,20 +50,12 @@ impl From<MapResult> for MapResultWire {
     fn from(result: MapResult) -> Self {
         match result {
             MapResult::None => MapResultWire::None,
-            MapResult::TransactionCreated { tx_id } => {
-                MapResultWire::TransactionCreated { tx_id }
-            }
-            MapResult::Reference(r) => {
-                MapResultWire::Reference(HolonReferenceWire::from(&r))
-            }
+            MapResult::TransactionCreated { tx_id } => MapResultWire::TransactionCreated { tx_id },
+            MapResult::Reference(r) => MapResultWire::Reference(HolonReferenceWire::from(&r)),
             MapResult::References(refs) => {
-                MapResultWire::References(
-                    refs.iter().map(HolonReferenceWire::from).collect(),
-                )
+                MapResultWire::References(refs.iter().map(HolonReferenceWire::from).collect())
             }
-            MapResult::Collection(c) => {
-                MapResultWire::Collection(HolonCollectionWire::from(&c))
-            }
+            MapResult::Collection(c) => MapResultWire::Collection(HolonCollectionWire::from(&c)),
             MapResult::NodeCollection(n) => {
                 MapResultWire::NodeCollection(NodeCollectionWire::from(&n))
             }

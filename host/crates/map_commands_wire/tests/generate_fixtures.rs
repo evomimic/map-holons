@@ -141,10 +141,7 @@ fn generate_fixtures() {
         "request-tx-load-holons.json",
         &request(
             9,
-            tx_command(
-                41,
-                TransactionActionWire::LoadHolons { content_set: sample_content_set() },
-            ),
+            tx_command(41, TransactionActionWire::LoadHolons { content_set: sample_content_set() }),
             mutation_options("load holons"),
         ),
     );

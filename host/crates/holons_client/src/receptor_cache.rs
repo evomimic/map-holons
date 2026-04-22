@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use core_types::HolonError;
 use client_shared_types::base_receptor::ReceptorType;
+use core_types::HolonError;
 
 use crate::Receptor;
 
@@ -32,9 +32,9 @@ impl ReceptorCache {
     fn lock_cache(
         &self,
     ) -> Result<std::sync::MutexGuard<'_, HashMap<ReceptorKey, Arc<Receptor>>>, HolonError> {
-        self.cache
-            .lock()
-            .map_err(|e| HolonError::FailedToAcquireLock(format!("Receptor cache lock poisoned: {e}")))
+        self.cache.lock().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!("Receptor cache lock poisoned: {e}"))
+        })
     }
 
     pub fn get(&self, key: &ReceptorKey) -> Result<Option<Arc<Receptor>>, HolonError> {
@@ -45,17 +45,22 @@ impl ReceptorCache {
         let cache = self.lock_cache()?;
         Ok(cache
             .iter()
-            .filter_map(|(key, receptor)| {
-                if key.receptor_id == *receptor_id {
-                    Some(receptor.clone())
-                } else {
-                    None
-                }
-            })
+            .filter_map(
+                |(key, receptor)| {
+                    if key.receptor_id == *receptor_id {
+                        Some(receptor.clone())
+                    } else {
+                        None
+                    }
+                },
+            )
             .collect())
     }
 
-    pub fn get_by_type(&self, receptor_type: ReceptorType) -> Result<Vec<Arc<Receptor>>, HolonError> {
+    pub fn get_by_type(
+        &self,
+        receptor_type: ReceptorType,
+    ) -> Result<Vec<Arc<Receptor>>, HolonError> {
         let cache = self.lock_cache()?;
         Ok(cache
             .iter()
@@ -108,9 +113,7 @@ impl std::fmt::Debug for ReceptorCache {
             Ok(cache) => cache.len(),
             Err(_) => 0,
         };
-        f.debug_struct("ReceptorCache")
-            .field("cache_size", &cache_size)
-            .finish()
+        f.debug_struct("ReceptorCache").field("cache_size", &cache_size).finish()
     }
 }
 

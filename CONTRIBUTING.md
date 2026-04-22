@@ -39,14 +39,15 @@ Make sure your IDE is configured to support multiple independent Cargo workspace
 
 ## 📦 Project Layout
 
-| Directory            | Purpose                                   |
-|----------------------|-------------------------------------------|
-| `crates/`            | Core and shared Rust crates               |
-| `zomes/`             | Coordinator and integrity zomes           |
-| `native/`            | Cargo workspace for native (tokio) builds |
-| `wasm/`              | Cargo workspace for WASM builds           |
-| `test/` *(optional)* | Future test workspace (e.g. sweetests)    |
-| `.dev/`              | Internal dev setup and tools              |
+Start with [ARCHITECTURE.md](ARCHITECTURE.md) for the repo’s execution-context model and workspace boundaries.
+
+| Directory         | Purpose                                                       |
+|-------------------|---------------------------------------------------------------|
+| `happ/`           | Holochain app Rust workspace for WASM builds                  |
+| `host/`           | Native host workspace for Rust, orchestration, and UI         |
+| `shared_crates/`  | Shared Rust libraries compiled into `happ` and `host`         |
+| `tests/`          | Test harnesses and standalone test crates such as sweetests   |
+| root workspace    | npm orchestration, IDE support, and dependency coordination   |
 
 ---
 
@@ -85,7 +86,7 @@ All pull requests are automatically validated by our GitHub Actions CI workflows
 ### ✅ What the CI Checks Do
 
 - **Test** — Runs `npm test`, including backend integration tests (Sweetest)
-- **Format** — Runs `cargo fmt --all --check` to enforce Rust code formatting
+- **Format** — Runs `npm run fmt:check` inside `nix develop` to enforce Rust formatting across `host`, `happ`, and `tests/sweetests`
 - **CI Pass Aggregator** — Combines and reports status of all required checks
 
 > 📝 **Note:** Unit tests are currently excluded from CI due to compatibility issues with the GitHub Actions Ubuntu environment. Run them locally before submitting PRs.
@@ -100,7 +101,8 @@ npm run test:unit
 
 To avoid failed checks:
 
-- Run `cargo fmt` locally or enable *format on save* in your IDE
+- Run `npm run fmt` locally to format all Rust code covered by the repo-level formatting contract (`host`, `happ`, and `tests/sweetests`)
+- Run `npm run fmt:check` if you want the same formatting validation used in CI
 - Ensure integration tests pass with `npm run sweetest`
 - Keep commits clean and scoped — large formatting-only changes should be separated
 

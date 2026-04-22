@@ -10,9 +10,7 @@ pub struct ProviderRegistry {
 
 impl ProviderRegistry {
     pub fn new() -> Self {
-        Self {
-            providers: HashMap::new(),
-        }
+        Self { providers: HashMap::new() }
     }
 
     pub fn with_provider_types(provider_types: &[&str]) -> Self {

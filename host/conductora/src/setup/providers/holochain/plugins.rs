@@ -19,7 +19,6 @@ pub fn holochain_plugin(
     Ok(tauri_plugin_holochain::async_init(vec_to_locked(vec![]), plugin_config))
 }
 
-
 pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) -> NetworkConfig {
     let mut network_config = NetworkConfig::default();
 
@@ -53,8 +52,8 @@ pub fn network_config_from_storage_config(holochain_config: &HolochainConfig) ->
 
 pub fn holochain_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error> {
     if tauri::is_dev() {
-        let tmp_dir =
-            tempdir::TempDir::new(&hc_cfg.app_id).map_err(|e| anyhow::anyhow!("Could not create temporary directory: {}", e))?;
+        let tmp_dir = tempdir::TempDir::new(&hc_cfg.app_id)
+            .map_err(|e| anyhow::anyhow!("Could not create temporary directory: {}", e))?;
         // Convert `tmp_dir` into a `Path`, destroying the `TempDir` without deleting the directory.
         Ok(tmp_dir.into_path())
     } else {
@@ -65,7 +64,7 @@ pub fn holochain_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error>
         )
         .expect("Could not get app root")
         .join("holochain");
-        Ok(path)    
+        Ok(path)
     }
 }
 
@@ -77,7 +76,10 @@ pub fn holochain_dir(hc_cfg: &HolochainConfig) -> Result<PathBuf, anyhow::Error>
 // /tmp/nix-shell.1TXdRd/ that changes on every new shell invocation.
 // Using temp_dir() would give a different path each run, losing the
 // WASM compile cache.  /tmp is always available on macOS/Linux.
-pub fn dev_conductor_dir(provider_name: &str, app_id: &str) -> Result<std::path::PathBuf, anyhow::Error> {
+pub fn dev_conductor_dir(
+    provider_name: &str,
+    app_id: &str,
+) -> Result<std::path::PathBuf, anyhow::Error> {
     let workspace = std::env::current_dir()
         .map_err(|e| anyhow::anyhow!("Failed to resolve current directory: {}", e))?
         .canonicalize()

@@ -15,10 +15,7 @@ pub struct RuntimeSession {
 }
 
 impl RuntimeSession {
-    pub fn new(
-        space_manager: Arc<HolonSpaceManager>,
-        recovery: Option<Arc<Receptor>>,
-    ) -> Self {
+    pub fn new(space_manager: Arc<HolonSpaceManager>, recovery: Option<Arc<Receptor>>) -> Self {
         Self {
             space_manager,
             recovery,
@@ -144,10 +141,7 @@ impl RuntimeSession {
         Ok(())
     }
 
-    pub async fn commit_transaction(
-        &self,
-        tx_id: &TxId,
-    ) -> Result<TransientReference, HolonError> {
+    pub async fn commit_transaction(&self, tx_id: &TxId) -> Result<TransientReference, HolonError> {
         let session = self.get_client_session(tx_id)?;
         let transient_ref = session.context().commit()?;
 
@@ -195,8 +189,6 @@ impl std::fmt::Debug for RuntimeSession {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use std::any::Any;
@@ -205,9 +197,7 @@ mod tests {
     use holons_core::core_shared_objects::{
         Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
     };
-    use holons_core::reference_layer::{
-        HolonServiceApi, StagedReference, TransientReference,
-    };
+    use holons_core::reference_layer::{HolonServiceApi, StagedReference, TransientReference};
 
     use super::*;
 
@@ -215,9 +205,7 @@ mod tests {
     struct TestHolonService;
 
     fn unreachable_in_runtime_session_tests<T>() -> Result<T, HolonError> {
-        Err(HolonError::NotImplemented(
-            "TestHolonService".to_string(),
-        ))
+        Err(HolonError::NotImplemented("TestHolonService".to_string()))
     }
 
     impl HolonServiceApi for TestHolonService {
@@ -341,9 +329,7 @@ mod tests {
         let recovered_tx_id = tx_id(77);
 
         let recovered_session = insert_recovered_transaction(&session, recovered_tx_id);
-        session
-            .archive_transaction(&recovered_tx_id)
-            .expect("archive should succeed");
+        session.archive_transaction(&recovered_tx_id).expect("archive should succeed");
 
         let lookup = session
             .get_transaction(&recovered_tx_id)
@@ -358,14 +344,13 @@ mod tests {
     #[tokio::test]
     async fn begin_transaction_after_recovered_context_uses_higher_tx_id() {
         let space_manager = build_test_space_manager();
-        let session = RuntimeSession::new(space_manager,None);
+        let session = RuntimeSession::new(space_manager, None);
         let recovered_tx_id = tx_id(120);
 
         insert_recovered_transaction(&session, recovered_tx_id);
 
-        let new_tx_id = session
-            .begin_transaction().await
-            .expect("new transaction should open after recovery");
+        let new_tx_id =
+            session.begin_transaction().await.expect("new transaction should open after recovery");
 
         assert!(
             new_tx_id.value() > recovered_tx_id.value(),

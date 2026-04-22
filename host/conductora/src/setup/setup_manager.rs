@@ -1,10 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    config::{
-        providers::ProviderRuntimeSelection,
-        storage_manager::StorageManager,
-    },
+    config::{providers::ProviderRuntimeSelection, storage_manager::StorageManager},
     setup::{
         provider_registry::ProviderRegistry,
         window_setup::{DefaultWindowSetup, ProviderWindowSetup},
@@ -20,10 +17,7 @@ type ReadySender = Arc<Mutex<Option<oneshot::Sender<anyhow::Result<()>>>>>;
 
 impl SetupManager {
     fn resolve_ready(ready_sender: &ReadySender, result: anyhow::Result<()>) {
-        let sender = ready_sender
-            .lock()
-            .expect("ready sender lock poisoned")
-            .take();
+        let sender = ready_sender.lock().expect("ready sender lock poisoned").take();
 
         if let Some(sender) = sender {
             if sender.send(result).is_err() {
@@ -59,10 +53,7 @@ impl SetupManager {
         let success_event_name = success_event.to_string();
         let success_sender = Arc::clone(&ready_sender);
         let success_id = handle.once(success_event_name.clone(), move |_event| {
-            tracing::debug!(
-                "[SETUP MANAGER] Received '{}' readiness event.",
-                success_event_name
-            );
+            tracing::debug!("[SETUP MANAGER] Received '{}' readiness event.", success_event_name);
             Self::resolve_ready(&success_sender, Ok(()));
         });
 
@@ -71,10 +62,7 @@ impl SetupManager {
             let failure_sender = Arc::clone(&ready_sender);
             let provider_name = provider_name.clone();
             handle.once(failure_event_name.clone(), move |_event| {
-                tracing::error!(
-                    "[SETUP MANAGER] Received '{}' failure event.",
-                    failure_event_name
-                );
+                tracing::error!("[SETUP MANAGER] Received '{}' failure event.", failure_event_name);
                 Self::resolve_ready(
                     &failure_sender,
                     Err(anyhow::anyhow!(

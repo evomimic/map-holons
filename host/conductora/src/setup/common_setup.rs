@@ -1,10 +1,8 @@
 use crate::{
-    config::providers::ProviderConfig,
-    setup::receptor_config_registry::ReceptorConfigRegistry,
+    config::providers::ProviderConfig, setup::receptor_config_registry::ReceptorConfigRegistry,
 };
 use client_shared_types::base_receptor::BaseReceptor;
 use tauri::{AppHandle, Manager};
-
 
 pub fn serialize_props<C: ProviderConfig>(config: &C) -> std::collections::HashMap<String, String> {
     match serde_json::to_value(config) {

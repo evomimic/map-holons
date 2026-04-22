@@ -23,16 +23,7 @@ fn make_local_provider() -> Arc<dyn ProviderIntegration> {
 }
 
 pub const PROVIDER_CATALOG: &[ProviderDescriptor] = &[
-    ProviderDescriptor {
-        provider_type: "holochain",
-        factory: make_holochain_provider,
-    },
-    ProviderDescriptor {
-        provider_type: "ipfs",
-        factory: make_ipfs_provider,
-    },
-    ProviderDescriptor {
-        provider_type: "local",
-        factory: make_local_provider,
-    },
+    ProviderDescriptor { provider_type: "holochain", factory: make_holochain_provider },
+    ProviderDescriptor { provider_type: "ipfs", factory: make_ipfs_provider },
+    ProviderDescriptor { provider_type: "local", factory: make_local_provider },
 ];

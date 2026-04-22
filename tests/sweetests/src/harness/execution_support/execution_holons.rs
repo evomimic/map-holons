@@ -19,8 +19,7 @@ use crate::harness::{
 };
 use core_types::{LocalId, TemporaryId};
 use holons_core::core_shared_objects::{
-    holon::StagedState,
-    transactions::TransactionContextHandle,
+    holon::StagedState, transactions::TransactionContextHandle,
 };
 use holons_core::reference_layer::SmartReference;
 use holons_prelude::prelude::*;

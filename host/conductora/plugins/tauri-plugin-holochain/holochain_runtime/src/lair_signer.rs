@@ -26,10 +26,8 @@ impl AgentSigner for LairAgentSignerWithProvenance {
     ) -> anyhow::Result<Signature> {
         let public_key: [u8; 32] = provenance.get_raw_32().try_into()?;
 
-        let signature = self
-            .lair_client
-            .sign_by_pub_key(public_key.into(), None, data_to_sign)
-            .await?;
+        let signature =
+            self.lair_client.sign_by_pub_key(public_key.into(), None, data_to_sign).await?;
 
         Ok(Signature(*signature.0))
     }
@@ -44,7 +42,6 @@ impl AgentSigner for LairAgentSignerWithProvenance {
         None
     }
 }
-
 
 /// Signs an unsigned zome call with the given LairClient
 pub(crate) async fn sign_zome_call_with_client(
@@ -63,8 +60,5 @@ pub(crate) async fn sign_zome_call_with_client(
 
     let signature = Signature(*signature.0);
 
-    Ok(ZomeCallParamsSigned {
-        bytes: ExternIO(bytes),
-        signature,
-    })
+    Ok(ZomeCallParamsSigned { bytes: ExternIO(bytes), signature })
 }

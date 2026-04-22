@@ -23,10 +23,7 @@ pub async fn execute_stage_new_from_clone(
     let rebound_reference = match &source_reference {
         HolonReference::Smart(smart_ref) => {
             let context_handle = TransactionContextHandle::new(context.clone());
-            HolonReference::Smart(SmartReference::new_from_id(
-                context_handle,
-                smart_ref.holon_id(),
-            ))
+            HolonReference::Smart(SmartReference::new_from_id(context_handle, smart_ref.holon_id()))
         }
         other => other.clone(),
     };

@@ -6,6 +6,7 @@ use serde_bytes::ByteBuf;
 use crate::conductor_dance_caller::ConductorDanceCaller;
 use async_trait::async_trait;
 use base_types::MapString;
+use client_shared_types::holon_space::{HolonSpace, SpaceInfo};
 use core_types::HolonError;
 use holochain_client::{
     AdminWebsocket, AgentPubKey, AppInfo, AppWebsocket, CellInfo, ExternIO, SerializedBytes,
@@ -13,7 +14,6 @@ use holochain_client::{
 };
 use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_boundary::{DanceResponseWire, ResponseBodyWire};
-use client_shared_types::holon_space::{HolonSpace, SpaceInfo};
 use holons_core::dances::ResponseStatusCode;
 use holons_trust_channel::DanceEnvelopeTransport;
 

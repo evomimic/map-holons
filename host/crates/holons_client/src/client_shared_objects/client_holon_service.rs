@@ -330,10 +330,7 @@ impl HolonServiceApi for ClientHolonService {
 /// there is no reliable way to reconstruct the original variant. These fall
 /// through to `HolonError::Misc` until the dance bridge is replaced by native
 /// command dispatch.
-fn map_dance_error(
-    operation: &str,
-    response: &holons_core::dances::DanceResponse,
-) -> HolonError {
+fn map_dance_error(operation: &str, response: &holons_core::dances::DanceResponse) -> HolonError {
     let description = &response.description.0;
     match response.status_code {
         ResponseStatusCode::NotFound => {

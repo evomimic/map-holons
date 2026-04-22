@@ -1,8 +1,5 @@
 use crate::config::providers::{
-    skipped_selection_warning,
-    select_single_key_by,
-    MultiEntrySelector,
-    ProviderConfig,
+    select_single_key_by, skipped_selection_warning, MultiEntrySelector, ProviderConfig,
 };
 use serde::{Deserialize, Serialize};
 pub type CellDetails = Vec<CellDetail>;

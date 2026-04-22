@@ -2,8 +2,8 @@ use core_types::HolonError;
 use std::path::Path;
 use std::sync::Arc;
 
-use holons_core::core_shared_objects::transactions::TransactionContext;
 use super::transaction_snapshot::TransactionSnapshot;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 
 /// Trait object so BaseReceptor can hold any recovery store implementation.
 pub trait RecoveryStore: Send + Sync {

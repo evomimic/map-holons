@@ -39,7 +39,6 @@ pub enum TransactionActionWire {
     Query(QueryExpression),
 
     // ── Lookup actions ───────────────────────────────────────────────
-
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
@@ -65,7 +64,6 @@ pub enum TransactionActionWire {
     TransientCount,
 
     // ── Mutation actions ─────────────────────────────────────────────
-
     /// `new_holon(key)` → `TransientReference`
     NewHolon { key: Option<MapString> },
 
@@ -73,10 +71,7 @@ pub enum TransactionActionWire {
     StageNewHolon { source: TransientReferenceWire },
 
     /// `stage_new_from_clone(original, new_key)` → `StagedReference`
-    StageNewFromClone {
-        original: HolonReferenceWire,
-        new_key: MapString,
-    },
+    StageNewFromClone { original: HolonReferenceWire, new_key: MapString },
 
     /// `stage_new_version(current_version)` → `StagedReference`
     StageNewVersion { current_version: SmartReferenceWire },
@@ -95,20 +90,14 @@ impl TransactionCommandWire {
     ///
     /// Requires a pre-resolved `Arc<TransactionContext>` (looked up from
     /// `RuntimeSession.active_transactions` by the caller).
-    pub fn bind(
-        self,
-        context: Arc<TransactionContext>,
-    ) -> Result<TransactionCommand, HolonError> {
+    pub fn bind(self, context: Arc<TransactionContext>) -> Result<TransactionCommand, HolonError> {
         let action = self.action.bind(&context)?;
         Ok(TransactionCommand { context, action })
     }
 }
 
 impl TransactionActionWire {
-    fn bind(
-        self,
-        context: &Arc<TransactionContext>,
-    ) -> Result<TransactionAction, HolonError> {
+    fn bind(self, context: &Arc<TransactionContext>) -> Result<TransactionAction, HolonError> {
         match self {
             TransactionActionWire::Commit => Ok(TransactionAction::Commit),
             TransactionActionWire::LoadHolons { content_set } => {
@@ -140,13 +129,9 @@ impl TransactionActionWire {
             TransactionActionWire::TransientCount => Ok(TransactionAction::TransientCount),
 
             // Mutation actions — some require context binding
-            TransactionActionWire::NewHolon { key } => {
-                Ok(TransactionAction::NewHolon { key })
-            }
+            TransactionActionWire::NewHolon { key } => Ok(TransactionAction::NewHolon { key }),
             TransactionActionWire::StageNewHolon { source } => {
-                Ok(TransactionAction::StageNewHolon {
-                    source: source.bind(context)?,
-                })
+                Ok(TransactionAction::StageNewHolon { source: source.bind(context)? })
             }
             TransactionActionWire::StageNewFromClone { original, new_key } => {
                 Ok(TransactionAction::StageNewFromClone {

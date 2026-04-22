@@ -72,7 +72,7 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     ));
 
     // Step 4: Create RuntimeSession and Runtime
-    let session = Arc::new(RuntimeSession::new(Arc::clone(&space_manager),None));
+    let session = Arc::new(RuntimeSession::new(Arc::clone(&space_manager), None));
     let runtime = Runtime::new(session);
 
     // Step 5: Begin first transaction through the real command path

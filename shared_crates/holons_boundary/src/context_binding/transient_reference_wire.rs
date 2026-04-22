@@ -38,7 +38,10 @@ impl TransientReferenceWire {
     ///
     /// Primary use case: re-importing serialized fixture or session data into a
     /// newly opened transaction.
-    pub fn rebind(self, context: &Arc<TransactionContext>) -> Result<TransientReference, HolonError> {
+    pub fn rebind(
+        self,
+        context: &Arc<TransactionContext>,
+    ) -> Result<TransientReference, HolonError> {
         let context_handle = TransactionContextHandle::new(Arc::clone(context));
         Ok(TransientReference::from_temporary_id(context_handle, &self.id))
     }

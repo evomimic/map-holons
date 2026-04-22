@@ -1,15 +1,13 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use holochain_client::{
-    AdminWebsocket, AgentPubKey, AppInfo,  InstallAppPayload, 
-};
+use holochain_client::{AdminWebsocket, AgentPubKey, AppInfo, InstallAppPayload};
 use holochain_types::prelude::*;
 
 pub async fn install_app(
     admin_ws: &AdminWebsocket,
     app_id: String,
     app_bundle_path: PathBuf,
-    roles_settings: Option<HashMap<String,RoleSettings>>,
+    roles_settings: Option<HashMap<String, RoleSettings>>,
     agent_key: Option<AgentPubKey>,
     network_seed: Option<NetworkSeed>,
 ) -> crate::Result<AppInfo> {
@@ -23,7 +21,7 @@ pub async fn install_app(
             source: AppBundleSource::Path(app_bundle_path),
             installed_app_id: Some(app_id.clone()),
             ignore_genesis_failure: false,
-            allow_throwaway_random_agent_key: false
+            allow_throwaway_random_agent_key: false,
         })
         .await
         .map_err(|err| crate::Error::ConductorApiError(err))?;

@@ -32,10 +32,8 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
     let space_manager = init_client_runtime(Some(initiator));
     let recovery_receptor = get_recovery_receptor_from_factory(handle);
 
-    let session = Arc::new(RuntimeSession::new(
-        Arc::clone(&space_manager),
-        recovery_receptor.clone(),
-    ));
+    let session =
+        Arc::new(RuntimeSession::new(Arc::clone(&space_manager), recovery_receptor.clone()));
 
     if recovery_receptor.is_some() {
         match session.restore_open_sessions() {

@@ -14,5 +14,4 @@ pub struct IpfsConfig {
 }
 
 //todo: add common functions
-impl ProviderConfig for IpfsConfig {
-}
+impl ProviderConfig for IpfsConfig {}

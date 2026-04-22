@@ -1,6 +1,6 @@
-use client_shared_types::map_request::{MapRequest, MapRequestBody};
 use base_types::BaseValue::StringValue;
 use base_types::MapString;
+use client_shared_types::map_request::{MapRequest, MapRequestBody};
 use core_types::{HolonError, PropertyMap, PropertyName};
 use holon_dance_builders::{
     build_commit_dance_request, build_get_all_holons_dance_request,
