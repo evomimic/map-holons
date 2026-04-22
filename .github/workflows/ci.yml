@@ -60,7 +60,7 @@ jobs:
 
       - name: Check formatting
         run: |
-          nix develop --command bash -c "npm run fmt:check"
+          nix develop --command bash -c "npm run fmt:check || (echo 'Formatting check failed. Run: npm run fmt' && exit 1)"
 
 #  lint:
 #    continue-on-error: true  # 👈 Make this advisory only
