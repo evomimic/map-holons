@@ -16,7 +16,7 @@ pub trait ProviderConfig: serde::Serialize {
     // Missing field (None) or false -> no snapshot store created.
     //fn snapshot_recovery(&self) -> bool {
     //    false
-   // }
+    // }
 }
 
 /// Generic selector interface for provider types that may have

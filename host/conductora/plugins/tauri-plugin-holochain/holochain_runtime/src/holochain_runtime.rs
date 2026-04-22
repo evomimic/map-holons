@@ -93,13 +93,11 @@ impl HolochainRuntime {
             .map_err(|err| crate::Error::ConductorApiError(err))?;
 
         let response = admin_ws
-            .issue_app_auth_token(
-                holochain_conductor_api::IssueAppAuthenticationTokenPayload {
-                    installed_app_id: app_id.clone(),
-                    expiry_seconds: 999999999,
-                    single_use: false,
-                },
-            )
+            .issue_app_auth_token(holochain_conductor_api::IssueAppAuthenticationTokenPayload {
+                installed_app_id: app_id.clone(),
+                expiry_seconds: 999999999,
+                single_use: false,
+            })
             .await
             .map_err(|err| crate::Error::ConductorApiError(err))?;
 
@@ -124,9 +122,8 @@ impl HolochainRuntime {
         app_id: InstalledAppId,
         allowed_origins: AllowedOrigins,
     ) -> crate::Result<AppWebsocket> {
-        let app_websocket_auth = self
-            .get_app_websocket_auth(&app_id, allowed_origins.clone())
-            .await?;
+        let app_websocket_auth =
+            self.get_app_websocket_auth(&app_id, allowed_origins.clone()).await?;
 
         let config = Arc::new(WebsocketConfig::CLIENT_DEFAULT);
         let mut request = ConnectRequest::new(SocketAddr::new(
@@ -170,17 +167,11 @@ impl HolochainRuntime {
         agent: Option<AgentPubKey>,
         network_seed: Option<NetworkSeed>,
     ) -> crate::Result<AppInfo> {
-        self.filesystem
-            .bundle_store
-            .store_web_happ_bundle(app_id.clone(), &web_app_bundle)
-            .await?;
+        self.filesystem.bundle_store.store_web_happ_bundle(app_id.clone(), &web_app_bundle).await?;
 
         let app_bundle = web_app_bundle.happ_bundle().await?;
-        let app_bundle_path = self
-            .filesystem
-            .bundle_store
-            .happ_bundle_store()
-            .app_bundle_path(&app_bundle)?;
+        let app_bundle_path =
+            self.filesystem.bundle_store.happ_bundle_store().app_bundle_path(&app_bundle)?;
 
         let admin_ws = self.admin_websocket().await?;
         let app_info = install_app(
@@ -213,15 +204,10 @@ impl HolochainRuntime {
     ) -> crate::Result<AppInfo> {
         let admin_ws = self.admin_websocket().await?;
 
-        self.filesystem
-            .bundle_store
-            .store_happ_bundle(app_id.clone(), &app_bundle)?;
+        self.filesystem.bundle_store.store_happ_bundle(app_id.clone(), &app_bundle)?;
 
-        let app_bundle_path = self
-            .filesystem
-            .bundle_store
-            .happ_bundle_store()
-            .app_bundle_path(&app_bundle)?;
+        let app_bundle_path =
+            self.filesystem.bundle_store.happ_bundle_store().app_bundle_path(&app_bundle)?;
 
         let app_info = install_app(
             &admin_ws,
@@ -245,21 +231,11 @@ impl HolochainRuntime {
         app_id: InstalledAppId,
         web_app_bundle: WebAppBundle,
     ) -> crate::Result<()> {
-        self.filesystem
-            .bundle_store
-            .store_web_happ_bundle(app_id.clone(), &web_app_bundle)
-            .await?;
+        self.filesystem.bundle_store.store_web_happ_bundle(app_id.clone(), &web_app_bundle).await?;
 
-        let admin_ws = self
-            .admin_websocket()
-            .await
-            .map_err(|_err| UpdateHappError::WebsocketError)?;
-        update_app(
-            &admin_ws,
-            app_id.clone(),
-            web_app_bundle.happ_bundle().await?,
-        )
-        .await?;
+        let admin_ws =
+            self.admin_websocket().await.map_err(|_err| UpdateHappError::WebsocketError)?;
+        update_app(&admin_ws, app_id.clone(), web_app_bundle.happ_bundle().await?).await?;
 
         Ok(())
     }
@@ -273,10 +249,8 @@ impl HolochainRuntime {
         app_id: InstalledAppId,
         app_bundle: AppBundle,
     ) -> std::result::Result<(), UpdateHappError> {
-        let mut admin_ws = self
-            .admin_websocket()
-            .await
-            .map_err(|_err| UpdateHappError::WebsocketError)?;
+        let mut admin_ws =
+            self.admin_websocket().await.map_err(|_err| UpdateHappError::WebsocketError)?;
         let app_info = update_app(&mut admin_ws, app_id.clone(), app_bundle).await?;
 
         Ok(app_info)
@@ -356,13 +330,9 @@ impl HolochainRuntime {
     /// * `app_id` - the app id to check
     pub async fn is_app_installed(&self, app_id: InstalledAppId) -> crate::Result<bool> {
         let admin_ws = self.admin_websocket().await?;
-        let apps = admin_ws
-            .list_apps(None)
-            .await
-            .map_err(|e| crate::Error::ConductorApiError(e))?;
-        let matching_app = apps
-            .into_iter()
-            .find(|app_info| app_info.installed_app_id == app_id);
+        let apps =
+            admin_ws.list_apps(None).await.map_err(|e| crate::Error::ConductorApiError(e))?;
+        let matching_app = apps.into_iter().find(|app_info| app_info.installed_app_id == app_id);
 
         Ok(matching_app.is_some())
     }
@@ -385,10 +355,7 @@ impl HolochainRuntime {
     /// * `app_id` - the app id of the app to enable
     pub async fn enable_app(&self, app_id: InstalledAppId) -> crate::Result<()> {
         let admin_ws = self.admin_websocket().await?;
-        admin_ws
-            .enable_app(app_id)
-            .await
-            .map_err(|e| crate::Error::ConductorApiError(e))?;
+        admin_ws.enable_app(app_id).await.map_err(|e| crate::Error::ConductorApiError(e))?;
 
         Ok(())
     }
@@ -398,10 +365,7 @@ impl HolochainRuntime {
     /// * `app_id` - the app id of the app to disable
     pub async fn disable_app(&self, app_id: InstalledAppId) -> crate::Result<()> {
         let admin_ws = self.admin_websocket().await?;
-        admin_ws
-            .disable_app(app_id)
-            .await
-            .map_err(|e| crate::Error::ConductorApiError(e))?;
+        admin_ws.disable_app(app_id).await.map_err(|e| crate::Error::ConductorApiError(e))?;
 
         Ok(())
     }

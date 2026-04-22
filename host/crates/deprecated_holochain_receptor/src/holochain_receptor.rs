@@ -3,17 +3,17 @@ use std::fmt;
 use std::fmt::Debug;
 use std::sync::Arc;
 
+use crate::client_context::init_client_context;
+use crate::dances_client::ClientDanceBuilder;
 use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
-use core_types::HolonError;
-use crate::dances_client::ClientDanceBuilder;
-use crate::client_context::init_client_context;
 use client_shared_types::{
-        base_receptor::{BaseReceptor, ReceptorType},
-        holon_space::{HolonSpace, SpaceInfo},
-        map_request::{MapRequest, MapRequestBody},
-        map_response::MapResponse
+    base_receptor::{BaseReceptor, ReceptorType},
+    holon_space::{HolonSpace, SpaceInfo},
+    map_request::{MapRequest, MapRequestBody},
+    map_response::MapResponse,
 };
+use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseStatusCode};
 use holons_core::reference_layer::HolonReference;
@@ -83,7 +83,8 @@ impl HolochainReceptor {
         if Self::is_commit_dance_request(request.name.as_str()) {
             let _commit_guard = self.context.begin_host_commit_ingress_guard()?;
             // Preserve request-shape validation before routing to context-owned commit execution.
-            let _validated_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
+            let _validated_request =
+                ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
             let response_reference = self.context.commit()?;
             let dance_response = DanceResponse::new(
                 ResponseStatusCode::OK,
@@ -109,7 +110,8 @@ impl HolochainReceptor {
                 }
             };
 
-            let response_reference = load_holons_from_files(self.context.clone(), content_set).await?;
+            let response_reference =
+                load_holons_from_files(self.context.clone(), content_set).await?;
             tracing::info!(
                 "HolochainReceptor: loaded holons with reference: {:?}",
                 response_reference
@@ -135,16 +137,14 @@ impl HolochainReceptor {
         }
 
         let dance_request = ClientDanceBuilder::validate_and_execute(&self.context, &request)?;
-        let dance_response = self
-            .context
-            .initiate_ingress_dance(dance_request, is_read_only)
-            .await?;
+        let dance_response =
+            self.context.initiate_ingress_dance(dance_request, is_read_only).await?;
 
         Ok(MapResponse::new_from_dance_response(request.space.id, dance_response))
     }
 
     /// POC stub for system info
-   pub async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
+    pub async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
         // Call stubbed conductor client
         self.client_handler.get_all_spaces().await
     }

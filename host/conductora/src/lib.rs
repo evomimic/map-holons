@@ -1,6 +1,6 @@
 // Module declarations
-mod map_commands;
 mod config;
+mod map_commands;
 mod runtime;
 mod setup;
 

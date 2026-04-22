@@ -25,10 +25,7 @@ pub async fn execute_abandon_staged_changes(
     // 2. APPLY — direct local mutation on the staged holon
     match staged_reference.abandon_staged_changes(&context) {
         Ok(()) => {
-            assert!(
-                expected_error.is_none(),
-                "abandon_staged_changes expected failure but got OK",
-            );
+            assert!(expected_error.is_none(), "abandon_staged_changes expected failure but got OK",);
             info!("Success! abandon_staged_changes completed");
 
             let mut holon_reference = HolonReference::Staged(staged_reference);

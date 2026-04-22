@@ -2,8 +2,7 @@ use crate::config::providers::{
     holochain::{HolochainConfig, HolochainSelector},
     ipfs::IpfsConfig,
     local::LocalConfig,
-    MultiEntrySelector,
-    ProviderRuntimeSelection,
+    MultiEntrySelector, ProviderRuntimeSelection,
 };
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -123,13 +122,15 @@ impl StorageManager {
             .collect();
 
         let selected_holochain_keys = HolochainSelector::select_keys(&holochain_entries);
-        let mut warnings = HolochainSelector::warnings(&holochain_entries, &selected_holochain_keys);
+        let mut warnings =
+            HolochainSelector::warnings(&holochain_entries, &selected_holochain_keys);
 
         let mut runtime_provider_keys: Vec<String> = self
             .storage_providers
             .iter()
             .filter(|(_, provider)| {
-                provider.is_enabled() && provider.provider_type() != HolochainSelector::PROVIDER_TYPE
+                provider.is_enabled()
+                    && provider.provider_type() != HolochainSelector::PROVIDER_TYPE
             })
             .map(|(key, _)| key.clone())
             .collect();
@@ -143,9 +144,9 @@ impl StorageManager {
                 selected_holochain_keys.first().cloned()
             }
             Some(name) => {
-                let (_, provider) = self
-                    .get_provider_entry(name)
-                    .ok_or_else(|| anyhow::anyhow!("window_provider '{}' not found in providers", name))?;
+                let (_, provider) = self.get_provider_entry(name).ok_or_else(|| {
+                    anyhow::anyhow!("window_provider '{}' not found in providers", name)
+                })?;
                 if !provider.is_enabled() {
                     return Err(anyhow::anyhow!("window_provider '{}' is disabled", name));
                 }
@@ -161,7 +162,8 @@ impl StorageManager {
                     if active != name {
                         return Err(anyhow::anyhow!(
                             "window_provider '{}' is not the active holochain provider '{}'",
-                            name, active
+                            name,
+                            active
                         ));
                     }
                 }
@@ -173,11 +175,7 @@ impl StorageManager {
 
         warnings.sort();
 
-        Ok(ProviderRuntimeSelection {
-            runtime_provider_keys,
-            window_provider_key,
-            warnings,
-        })
+        Ok(ProviderRuntimeSelection { runtime_provider_keys, window_provider_key, warnings })
     }
 }
 

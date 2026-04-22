@@ -5,8 +5,8 @@ use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionLifecycleState;
 
 use map_commands_contract::{
-    HolonAction, MapCommand, MapResult, MutationClassification, ReadableHolonAction,
-    SpaceCommand, TransactionAction,
+    HolonAction, MapCommand, MapResult, MutationClassification, ReadableHolonAction, SpaceCommand,
+    TransactionAction,
 };
 
 use super::runtime_session::RuntimeSession;
@@ -111,9 +111,7 @@ impl Runtime {
             && !is_commit
         {
             if let Some(tx_id) = tx_id_for_snapshot {
-                self.session
-                    .persist_success(&tx_id, command_label, false)
-                    .await?;
+                self.session.persist_success(&tx_id, command_label, false).await?;
             }
         }
 
@@ -142,9 +140,7 @@ fn command_label(command: &MapCommand) -> &'static str {
             TransactionAction::Query(_) => "query",
             TransactionAction::GetAllHolons => "get_all_holons",
             TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
-            TransactionAction::GetStagedHolonsByBaseKey { .. } => {
-                "get_staged_holons_by_base_key"
-            }
+            TransactionAction::GetStagedHolonsByBaseKey { .. } => "get_staged_holons_by_base_key",
             TransactionAction::GetStagedHolonByVersionedKey { .. } => {
                 "get_staged_holon_by_versioned_key"
             }

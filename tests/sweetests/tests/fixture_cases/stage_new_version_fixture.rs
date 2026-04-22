@@ -65,9 +65,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         version_count.clone(),
         None,
-        Some(
-            "Stage New Version -- first clone from book into fresh transaction".to_string(),
-        ),
+        Some("Stage New Version -- first clone from book into fresh transaction".to_string()),
     )?;
 
     // Add properties

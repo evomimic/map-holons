@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use crate::config::providers::ProviderConfig;
 use crate::config::providers::local::LocalConfig;
+use crate::config::providers::ProviderConfig;
 use crate::config::StorageProvider;
 use crate::setup::common_setup::{register_receptor, serialize_props};
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use recovery_receptor::{RecoveryStore, TransactionRecoveryStore};
+use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 
 pub struct LocalSetup;
@@ -22,7 +22,8 @@ impl LocalSetup {
         //let t_setup = std::time::Instant::now();
         let is_recovery = local_cfg.features.iter().any(|f| f == "recovery");
         if is_recovery {
-            let receptor_cfg: BaseReceptor = Self::build_recovery_receptor(&handle, name, local_cfg).await?;
+            let receptor_cfg: BaseReceptor =
+                Self::build_recovery_receptor(&handle, name, local_cfg).await?;
             register_receptor(&handle, receptor_cfg).await?;
         } else {
             return Err(anyhow::anyhow!(
@@ -39,10 +40,10 @@ impl LocalSetup {
     ) -> anyhow::Result<BaseReceptor> {
         tracing::info!("[LOCAL SETUP] Recovery feature enabled for Local storage.");
         let snapshot_store = create_snapshot_store(handle, local_config, name).await?;
-        
+
         // continue with receptor config creation as normal
         let props = serialize_props(local_config);
-    
+
         Ok(BaseReceptor {
             receptor_id: name.to_string(),
             receptor_type: ReceptorType::LocalRecovery,
@@ -50,9 +51,7 @@ impl LocalSetup {
             properties: props,
         })
     }
-
 }
-
 
 /// Create a snapshot recovery store for any provider config type that implements `ProviderConfig`.
 ///
@@ -68,7 +67,6 @@ pub async fn create_snapshot_store<C: ProviderConfig>(
     _config: &C,
     name: &str,
 ) -> Result<Arc<TransactionRecoveryStore>, anyhow::Error> {
-
     // Path resolution is non-blocking — do it on the async thread
     let app_data_dir = handle
         .path()

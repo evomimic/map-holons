@@ -502,7 +502,8 @@ mod tests {
     }
 
     fn parse_targets(target_json: serde_json::Value) -> Result<Vec<String>, serde_json::Error> {
-        serde_json::from_value::<TargetWrapper>(json!({ "target": target_json })).map(|parsed| parsed.target)
+        serde_json::from_value::<TargetWrapper>(json!({ "target": target_json }))
+            .map(|parsed| parsed.target)
     }
 
     #[test]
@@ -518,7 +519,9 @@ mod tests {
     #[test]
     fn normalize_ref_key_rejects_id_prefix() {
         let error = normalize_ref_key("id:abc").unwrap_err();
-        assert!(matches!(error, HolonError::InvalidParameter(message) if message.contains("id:<HolonId> references are not supported yet")));
+        assert!(
+            matches!(error, HolonError::InvalidParameter(message) if message.contains("id:<HolonId> references are not supported yet"))
+        );
     }
 
     #[test]
@@ -541,7 +544,8 @@ mod tests {
             "SomeType",
             { "$ref": "OtherType" },
             { "$ref": "#ThirdType" }
-        ])).unwrap();
+        ]))
+        .unwrap();
 
         assert_eq!(normalized, vec!["SomeType", "OtherType", "ThirdType"]);
     }

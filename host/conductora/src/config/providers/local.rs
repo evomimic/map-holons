@@ -14,5 +14,4 @@ pub struct LocalConfig {
 }
 
 //todo: add common functions
-impl ProviderConfig for LocalConfig {
-}
+impl ProviderConfig for LocalConfig {}

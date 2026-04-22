@@ -2,8 +2,8 @@
 
 pub mod config;
 mod logging;
-mod runtime;
 mod map_commands;
+mod runtime;
 pub mod setup;
 
 fn main() {

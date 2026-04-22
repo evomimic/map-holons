@@ -1,4 +1,4 @@
-use client_shared_types::base_receptor::{BaseReceptor};//, ReceptorType};
+use client_shared_types::base_receptor::BaseReceptor; //, ReceptorType};
 use std::sync::Mutex;
 
 /// Registry for collecting `ReceptorConfig` entries from different setup modules
@@ -10,9 +10,7 @@ pub struct ReceptorConfigRegistry {
 impl ReceptorConfigRegistry {
     /// Create an empty registry
     pub fn new() -> Self {
-        Self {
-            configs: Mutex::new(Vec::new())
-        }
+        Self { configs: Mutex::new(Vec::new()) }
     }
 
     /// Register a receptor config
@@ -27,9 +25,9 @@ impl ReceptorConfigRegistry {
         configs
     }
 
-        // Ensure the local receptor is first in the vector for priority processing
-        // future work, for now we dont care
-    
+    // Ensure the local receptor is first in the vector for priority processing
+    // future work, for now we dont care
+
     /*fn ensure_local_receptor_first(configs: &mut Vec<BaseReceptor>) {
         if configs.is_empty() {
             return;

@@ -1,8 +1,5 @@
 use crate::{
-    config::{
-        providers::ProviderRuntimeSelection,
-        storage_manager::StorageManager,
-    },
+    config::{providers::ProviderRuntimeSelection, storage_manager::StorageManager},
     setup::provider_registry::ProviderRegistry,
 };
 

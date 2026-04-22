@@ -2,8 +2,8 @@ use crate::harness::fixtures_support::{TestHolonState, TestReference};
 use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
-use holons_core::TransientReference;
 use holons_core::HolonReference;
+use holons_core::TransientReference;
 use holons_core::WritableHolon;
 use std::collections::BTreeMap;
 use tracing::debug;
@@ -222,8 +222,7 @@ impl FixtureHolons {
                     .holons
                     .get_mut(&fixture_id)
                     .expect("fixture id collected from self.holons must still exist");
-                self.snapshot_to_fixture_holon
-                    .insert(updated_expected.id(), fixture_id.clone());
+                self.snapshot_to_fixture_holon.insert(updated_expected.id(), fixture_id.clone());
                 holon.head_snapshot = updated_expected;
             }
         }

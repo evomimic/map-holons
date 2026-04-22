@@ -1,20 +1,18 @@
-
 use client_shared_types::map_request::MapRequestWire;
-use tauri::{command };
+use tauri::command;
 
 #[command]
-pub async fn serde_test(
-    request_json: String,
-    receptor_id: String,
-) -> Result<String, String> {
-
+pub async fn serde_test(request_json: String, receptor_id: String) -> Result<String, String> {
     tracing::info!("[TEST] Received JSON string: {}", receptor_id);
 
     // Try to parse the JSON into a generic Value first for debugging
     match serde_json::from_str::<serde_json::Value>(&request_json) {
         Ok(json_value) => {
             tracing::debug!("[TEST] JSON structure: {:#?}", json_value);
-            tracing::debug!("[DEBUG] Available fields: {:?}", json_value.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+            tracing::debug!(
+                "[DEBUG] Available fields: {:?}",
+                json_value.as_object().map(|o| o.keys().collect::<Vec<_>>())
+            );
         }
         Err(e) => {
             tracing::error!("[TEST] Invalid JSON: {}", e);
@@ -59,9 +57,7 @@ pub async fn serde_test(
                     .unwrap_or("unknown");
                 format!("\n🔍 Missing field: `{}`", field_name)
             } else if error_string.contains("invalid type") {
-                format!(
-                    "\n🔍 Type mismatch - check field types match between TypeScript and Rust"
-                )
+                format!("\n🔍 Type mismatch - check field types match between TypeScript and Rust")
             } else {
                 String::new()
             };
@@ -82,5 +78,4 @@ pub async fn serde_test(
             Err(short_error)
         }
     }
-    
 }

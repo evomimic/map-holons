@@ -155,10 +155,7 @@ pub async fn read_asset(
 ) -> crate::Result<Option<(Vec<u8>, Option<String>)>> {
     tracing::debug!("Reading asset from filesystem. Asset name: {}", asset_name);
     if asset_name.starts_with("/") {
-        asset_name = asset_name
-            .strip_prefix("/")
-            .expect("Failed to strip prefix")
-            .to_string();
+        asset_name = asset_name.strip_prefix("/").expect("Failed to strip prefix").to_string();
     }
     if asset_name == "" {
         asset_name = String::from("index.html");
@@ -193,8 +190,8 @@ pub async fn read_asset(
             };
             match std::fs::read(asset_file.clone()) {
                 Ok(asset) => Ok(Some((asset, mime_type))),
-                Err(_e) => Ok(None)
+                Err(_e) => Ok(None),
             }
-        },
+        }
     }
 }

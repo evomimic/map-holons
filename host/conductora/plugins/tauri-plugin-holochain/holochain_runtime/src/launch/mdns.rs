@@ -35,10 +35,8 @@ pub async fn spawn_mdns_bootstrap(admin_port: u16) -> crate::Result<()> {
                 })
                 .collect();
 
-            let spaces: HashSet<SpaceId> = agent_infos
-                .iter()
-                .map(|agent_info| agent_info.space.clone())
-                .collect();
+            let spaces: HashSet<SpaceId> =
+                agent_infos.iter().map(|agent_info| agent_info.space.clone()).collect();
 
             for space in spaces {
                 if !spaces_listened_to.contains(&space) {
@@ -79,9 +77,8 @@ pub async fn spawn_mdns_bootstrap(admin_port: u16) -> crate::Result<()> {
 }
 
 pub async fn spawn_listen_to_space_task(space: SpaceId, admin_port: u16) -> crate::Result<()> {
-    let admin_ws = AdminWebsocket::connect(format!("localhost:{}", admin_port))
-        .await
-        .map_err(|err| {
+    let admin_ws =
+        AdminWebsocket::connect(format!("localhost:{}", admin_port)).await.map_err(|err| {
             crate::Error::WebsocketConnectionError(format!(
                 "Could not connect to websocket: {err:?}"
             ))

@@ -2,10 +2,8 @@ use std::sync::RwLock;
 
 use core_types::HolonError;
 use map_commands_contract::MapCommand;
-use map_commands_runtime::{Runtime}; //ExecutionPolicy
-use map_commands_wire::{
-    MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire,
-};
+use map_commands_runtime::Runtime; //ExecutionPolicy
+use map_commands_wire::{MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire};
 use tauri::{command, State};
 
 /// Tauri-managed state wrapper for the MAP Commands runtime.
@@ -44,15 +42,11 @@ async fn dispatch_inner(
 ) -> Result<map_commands_contract::MapResult, HolonError> {
     let runtime = runtime_state
         .read()
-        .map_err(|e| {
-            HolonError::FailedToAcquireLock(format!("RuntimeState lock poisoned: {}", e))
-        })?
+        .map_err(|e| HolonError::FailedToAcquireLock(format!("RuntimeState lock poisoned: {}", e)))?
         .clone();
 
     let runtime = runtime.ok_or_else(|| {
-        HolonError::ServiceNotAvailable(
-            "MAP Commands Runtime not initialized".to_string(),
-        )
+        HolonError::ServiceNotAvailable("MAP Commands Runtime not initialized".to_string())
     })?;
 
     // Log gesture context if present
@@ -71,20 +65,18 @@ async fn dispatch_inner(
 
     // Execute via runtime (policy enforcement + handler routing)
     runtime
-        .execute_command( //_with_policy(
+        .execute_command(
+            //_with_policy(
             command,
             //ExecutionPolicy {
-             //   snapshot_after: options.snapshot_after,
+            //   snapshot_after: options.snapshot_after,
             //},
         )
         .await
 }
 
 /// Binds a wire command to its domain equivalent using the runtime session.
-fn bind_command(
-    runtime: &Runtime,
-    command: MapCommandWire,
-) -> Result<MapCommand, HolonError> {
+fn bind_command(runtime: &Runtime, command: MapCommandWire) -> Result<MapCommand, HolonError> {
     match command {
         MapCommandWire::Space(wire) => Ok(MapCommand::Space(wire.bind())),
         MapCommandWire::Transaction(wire) => {

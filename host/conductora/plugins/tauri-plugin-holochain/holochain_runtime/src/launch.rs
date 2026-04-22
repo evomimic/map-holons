@@ -124,7 +124,9 @@ pub(crate) async fn launch_holochain_runtime(
                     false
                 }
             } else {
-                tracing::debug!("[LAUNCH] WAN signal server is reachable; local fallback not needed");
+                tracing::debug!(
+                    "[LAUNCH] WAN signal server is reachable; local fallback not needed"
+                );
                 false
             };
 
@@ -198,10 +200,7 @@ pub(crate) async fn launch_holochain_runtime(
         //
         // inside Nix shells TMPDIR is session-specific
         // (/tmp/nix-shell.XXXX/) so std::env::temp_dir() changes between runs.
-        let dev_dir = config
-            .dev_data_root
-            .clone()
-            .expect("dev_mode=true requires dev_data_root");
+        let dev_dir = config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root");
         clean_dev_conductor_state(&dev_dir);
 
         // DangerTestKeystore is set in the config; no lair process needed.
@@ -256,7 +255,6 @@ pub(crate) async fn launch_holochain_runtime(
         _local_sbd_server: maybe_local_signal_server.map(|s| s.1),
     })
 }
-
 
 //helper functions
 

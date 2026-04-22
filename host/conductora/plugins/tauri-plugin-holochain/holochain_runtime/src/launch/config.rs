@@ -16,7 +16,7 @@ pub fn conductor_config(
     mut network_config: NetworkConfig,
     local_signal_url: Option<Url2>,
     dev_mode: bool,
-    dev_data_root: Option<std::path::PathBuf>
+    dev_data_root: Option<std::path::PathBuf>,
 ) -> ConductorConfig {
     let mut config = ConductorConfig::default();
     const DEV_SIGNAL_PLACEHOLDER_URL: &str = "ws://127.0.0.1:1";
@@ -30,8 +30,7 @@ pub fn conductor_config(
         //   /tmp/nix-shell.1TXdRd/ that changes on every new shell invocation.
         //   Using temp_dir() would give a different path each run, losing the
         //   WASM compile cache.  /tmp is always available on macOS/Linux.
-        let dev_dir = dev_data_root
-        .expect("dev_mode=true requires dev_data_root");
+        let dev_dir = dev_data_root.expect("dev_mode=true requires dev_data_root");
         tracing::info!(
             "[LAUNCH] DEV MODE: using persistent dev conductor dir {:?} (WASM cache preserved)",
             dev_dir

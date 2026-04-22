@@ -85,7 +85,7 @@ impl ClientSession {
         };
 
         if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-           return r.cleanup(&self.tx_id().value().to_string()).await;
+            return r.cleanup(&self.tx_id().value().to_string()).await;
         } else {
             Ok(())
         }

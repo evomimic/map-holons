@@ -13,7 +13,7 @@ impl TxId {
         self.0
     }
     pub fn from_str(s: &str) -> Option<Self> {
-        s.parse::<u64>().ok().map(Self) 
+        s.parse::<u64>().ok().map(Self)
     }
 }
 
@@ -49,5 +49,4 @@ impl TransactionIdGenerator {
             }
         }
     }
-    
 }

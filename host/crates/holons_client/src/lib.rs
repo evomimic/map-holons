@@ -2,8 +2,8 @@ pub mod client_context;
 pub mod client_session;
 pub mod client_shared_objects;
 pub mod dances_client;
-pub mod receptor_factory;
 pub mod receptor_cache;
+pub mod receptor_factory;
 
 use std::sync::Arc;
 
@@ -28,7 +28,7 @@ impl Receptor {
         match self {
             Receptor::Holochain(r) => Ok(r.transaction_context()),
             Receptor::LocalRecovery(_) => Err(HolonError::NotImplemented(
-                "LocalRecoveryReceptor does not expose transaction_context".into()
+                "LocalRecoveryReceptor does not expose transaction_context".into(),
             )),
         }
     }
