@@ -26,7 +26,8 @@
     "fmt:sweetests:check": "cargo fmt --manifest-path tests/sweetests/Cargo.toml --all --check",
 
     "test": "npm run test:unit && npm run sweetest",
-    "test:unit": "npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run typecheck -w map-sdk && npm run test -w map-sdk",
+    "test:unit": "npm run test:unit:shared && npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run typecheck -w map-sdk && npm run test -w map-sdk",
+    "test:unit:shared": "cargo test --manifest-path shared_crates/type_system/base_types/Cargo.toml && cargo test --manifest-path shared_crates/type_system/core_types/Cargo.toml && cargo test --manifest-path shared_crates/type_system/integrity_core_types/Cargo.toml && cargo test --manifest-path shared_crates/type_system/type_names/Cargo.toml && cargo test --manifest-path shared_crates/shared_validation/Cargo.toml && cargo test --manifest-path shared_crates/holons_core/Cargo.toml && cargo test --manifest-path shared_crates/holons_boundary/Cargo.toml && cargo test --manifest-path shared_crates/holons_prelude/Cargo.toml && cargo test --manifest-path shared_crates/holon_dance_builders/Cargo.toml && cargo test --manifest-path shared_crates/holons_trust_channel/Cargo.toml && cargo test --manifest-path shared_crates/json_schema_validation/Cargo.toml",
 
     "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test",
     "sweetest:nocapture": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test:nocapture",
