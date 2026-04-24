@@ -1,7 +1,7 @@
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy};
-use crate::reference_layer::{HolonServiceApi, StagedReference, TransientReference};
+use crate::reference_layer::{HolonServiceApi, StagedReference, TransientReference, WritableHolon};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use std::any::Any;
@@ -108,4 +108,22 @@ pub(crate) fn new_test_holon(
     key: &str,
 ) -> Result<TransientReference, HolonError> {
     context.mutation().new_holon(Some(MapString(key.to_string())))
+}
+
+/// Creates a transient descriptor holon with the shared header properties.
+pub(crate) fn new_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: &str,
+    instance_type_kind: &str,
+) -> Result<TransientReference, HolonError> {
+    let mut descriptor = new_test_holon(context, key)?;
+    descriptor
+        .with_property_value(type_names::CorePropertyTypeName::TypeName, type_name)?
+        .with_property_value(type_names::CorePropertyTypeName::IsAbstractType, false)?
+        .with_property_value(
+            type_names::CorePropertyTypeName::InstanceTypeKind,
+            instance_type_kind,
+        )?;
+    Ok(descriptor)
 }

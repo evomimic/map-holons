@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::RwLockReadGuard;
 
-use crate::core_shared_objects::{holon::state::AccessType, HolonCollection};
+use crate::core_shared_objects::HolonCollection;
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
 use type_names::relationship_names::CoreRelationshipTypeName;
@@ -11,10 +11,8 @@ use type_names::relationship_names::CoreRelationshipTypeName;
 /// Cardinality is enforced here so all iterator-based callers inherit the same
 /// multiple-parent error semantics.
 pub(crate) fn extends_parent(holon: &HolonReference) -> Result<Option<HolonReference>, HolonError> {
-    holon.is_accessible(AccessType::Read)?;
     let collection_arc = holon.related_holons(CoreRelationshipTypeName::Extends)?;
     let collection = collection_arc.read().map_err(lock_error)?;
-    collection.is_accessible(AccessType::Read)?;
     let members = collection.get_members();
 
     match members.as_slice() {

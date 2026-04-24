@@ -10,13 +10,20 @@ pub struct HolonDescriptor {
 }
 
 impl HolonDescriptor {
-    pub(crate) fn new(holon: HolonReference) -> Self {
+    /// Wraps an already-resolved descriptor holon reference.
+    pub fn from_holon(holon: HolonReference) -> Self {
         Self { holon }
     }
 
     /// Projects the shared descriptor header view for this descriptor holon.
     pub fn header(&self) -> TypeHeader<'_> {
         TypeHeader::new(&self.holon)
+    }
+}
+
+impl From<HolonReference> for HolonDescriptor {
+    fn from(holon: HolonReference) -> Self {
+        Self::from_holon(holon)
     }
 }
 
@@ -55,6 +62,21 @@ mod tests {
     fn assert_is_descriptor<T: Descriptor>(descriptor: &T) {
         // Compile-time trait membership plus one trivial runtime use.
         let _ = descriptor.holon().reference_id_string();
+    }
+
+    #[test]
+    fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon =
+            HolonReference::from(&new_descriptor_holon(&context, "holon-descriptor", "HolonType")?);
+
+        let descriptor = HolonDescriptor::from_holon(holon.clone());
+
+        assert_eq!(descriptor.holon(), &holon);
+        assert_eq!(descriptor.header().type_name()?, MapString("HolonType".to_string()));
+        assert_is_descriptor(&descriptor);
+
+        Ok(())
     }
 
     #[test]

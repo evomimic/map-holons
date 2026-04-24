@@ -147,7 +147,6 @@ pub trait ReadableHolon: ReadableHolonImpl {
     }
 
     fn holon_descriptor(&self) -> Result<HolonDescriptor, HolonError> {
-        self.is_accessible(AccessType::Read)?;
         let collection_arc = self.related_holons(CoreRelationshipTypeName::DescribedBy)?;
         let collection =
             collection_arc.read().map_err(|e| HolonError::FailedToAcquireLock(format!("{e}")))?;
@@ -155,7 +154,7 @@ pub trait ReadableHolon: ReadableHolonImpl {
 
         match members.as_slice() {
             [] => Err(HolonError::MissingDescribedBy { holon: self.summarize()? }),
-            [single] => Ok(HolonDescriptor::new(single.clone())),
+            [single] => Ok(HolonDescriptor::from_holon(single.clone())),
             many => {
                 Err(HolonError::MultipleDescribedBy { holon: self.summarize()?, count: many.len() })
             }
