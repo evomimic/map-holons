@@ -1,6 +1,10 @@
 use crate::descriptors::{Descriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
 
+/// Runtime wrapper for holon-type descriptors.
+///
+/// This is the main descriptor surface that callers will reach from ordinary
+/// holon instances via `ReadableHolon::holon_descriptor()`.
 pub struct HolonDescriptor {
     holon: HolonReference,
 }
@@ -10,6 +14,7 @@ impl HolonDescriptor {
         Self { holon }
     }
 
+    /// Projects the shared descriptor header view for this descriptor holon.
     pub fn header(&self) -> TypeHeader<'_> {
         TypeHeader::new(&self.holon)
     }
@@ -38,6 +43,7 @@ mod tests {
         key: &str,
         type_name: &str,
     ) -> Result<TransientReference, HolonError> {
+        // Descriptor tests only need the shared header surface in this phase.
         let mut descriptor = new_test_holon(context, key)?;
         descriptor
             .with_property_value(CorePropertyTypeName::TypeName, type_name)?
@@ -47,6 +53,7 @@ mod tests {
     }
 
     fn assert_is_descriptor<T: Descriptor>(descriptor: &T) {
+        // Compile-time trait membership plus one trivial runtime use.
         let _ = descriptor.holon().reference_id_string();
     }
 

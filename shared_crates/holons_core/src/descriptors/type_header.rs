@@ -3,6 +3,10 @@ use base_types::{BaseValue, MapString};
 use core_types::HolonError;
 use type_names::CorePropertyTypeName;
 
+/// Borrowed projection of the shared descriptor header fields.
+///
+/// `TypeHeader` does not own data or cache values; it centralizes the common
+/// property extraction logic used across descriptor wrappers.
 pub struct TypeHeader<'a> {
     holon: &'a HolonReference,
 }
@@ -12,35 +16,43 @@ impl<'a> TypeHeader<'a> {
         Self { holon }
     }
 
+    /// Returns the required singular type name from the backing descriptor.
     pub fn type_name(&self) -> Result<MapString, HolonError> {
         self.require_string(CorePropertyTypeName::TypeName)
     }
 
+    /// Returns the optional plural type name when the schema provides one.
     pub fn type_name_plural(&self) -> Result<Option<MapString>, HolonError> {
         self.optional_string(CorePropertyTypeName::TypeNamePlural)
     }
 
+    /// Returns the optional human-facing display name.
     pub fn display_name(&self) -> Result<Option<MapString>, HolonError> {
         self.optional_string(CorePropertyTypeName::DisplayName)
     }
 
+    /// Returns the optional plural display name.
     pub fn display_name_plural(&self) -> Result<Option<MapString>, HolonError> {
         self.optional_string(CorePropertyTypeName::DisplayNamePlural)
     }
 
+    /// Returns the optional human-facing description.
     pub fn description(&self) -> Result<Option<MapString>, HolonError> {
         self.optional_string(CorePropertyTypeName::Description)
     }
 
+    /// Returns whether the descriptor is marked abstract.
     pub fn is_abstract_type(&self) -> Result<bool, HolonError> {
         self.require_bool(CorePropertyTypeName::IsAbstractType)
     }
 
+    /// Returns the required instance kind string from the header.
     pub fn instance_type_kind(&self) -> Result<MapString, HolonError> {
         self.require_string(CorePropertyTypeName::InstanceTypeKind)
     }
 
     fn require_string(&self, prop: CorePropertyTypeName) -> Result<MapString, HolonError> {
+        // Required string fields share the same missing-vs-wrong-type semantics.
         let property_name = prop.as_property_name();
         match self.holon.property_value(prop)? {
             Some(BaseValue::StringValue(value)) => Ok(value),
@@ -52,6 +64,7 @@ impl<'a> TypeHeader<'a> {
     }
 
     fn optional_string(&self, prop: CorePropertyTypeName) -> Result<Option<MapString>, HolonError> {
+        // Optional string fields still fail loudly when the stored value shape is wrong.
         match self.holon.property_value(prop)? {
             Some(BaseValue::StringValue(value)) => Ok(Some(value)),
             Some(other) => {
@@ -62,6 +75,7 @@ impl<'a> TypeHeader<'a> {
     }
 
     fn require_bool(&self, prop: CorePropertyTypeName) -> Result<bool, HolonError> {
+        // Boolean header fields mirror the required-string contract with a different base type.
         let property_name = prop.as_property_name();
         match self.holon.property_value(prop)? {
             Some(BaseValue::BooleanValue(value)) => Ok(value.0),
@@ -83,6 +97,7 @@ mod tests {
 
     fn build_header_holon() -> Result<HolonReference, HolonError> {
         let context = build_context();
+        // Populate the full shared header surface for the happy-path assertions.
         let mut holon = new_test_holon(&context, "header-holon")?;
         holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")
@@ -108,6 +123,7 @@ mod tests {
 
         Ok(HolonReference::Transient(holon))
     }
+
     #[test]
     fn header_accessors_return_expected_values() -> Result<(), HolonError> {
         let holon_ref = build_header_holon()?;
@@ -189,6 +205,7 @@ mod tests {
     #[test]
     fn required_header_accessors_error_when_property_missing() -> Result<(), HolonError> {
         let context = build_context();
+        // Exercise each required accessor with its own missing-property shape.
         let mut missing_bool_holon = new_test_holon(&context, "missing-is-abstract")?;
         missing_bool_holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")?

@@ -7,6 +7,10 @@ use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use std::any::Any;
 use std::sync::Arc;
 
+// Minimal fail-fast holon service for descriptor unit tests.
+//
+// Descriptor runtime tests stay entirely in-memory in this phase, so any call
+// that would cross into the real holon service is a test bug.
 #[derive(Debug)]
 struct TestHolonService;
 
@@ -76,6 +80,10 @@ impl HolonServiceApi for TestHolonService {
     }
 }
 
+/// Builds a fresh in-memory transaction context for descriptor tests.
+///
+/// This mirrors the transaction-context test harness so descriptor tests can
+/// stage transient and staged holons without involving host or guest services.
 pub(crate) fn build_context() -> Arc<TransactionContext> {
     let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
@@ -91,6 +99,10 @@ pub(crate) fn build_context() -> Arc<TransactionContext> {
         .expect("default transaction should open")
 }
 
+/// Creates a transient holon with a deterministic test key.
+///
+/// Descriptor tests use keyed transients because the underlying runtime rejects
+/// keyless transient creation in normal mutation flows.
 pub(crate) fn new_test_holon(
     context: &Arc<TransactionContext>,
     key: &str,

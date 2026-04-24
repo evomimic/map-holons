@@ -1,6 +1,10 @@
 use crate::descriptors::Descriptor;
 use crate::reference_layer::HolonReference;
 
+/// Runtime wrapper for property descriptors.
+///
+/// This remains a thin view in Phase 1/2 so later value-type behavior can land
+/// on a stable wrapper without changing call-site types.
 pub struct PropertyDescriptor {
     holon: HolonReference,
 }
@@ -20,6 +24,7 @@ impl Descriptor for PropertyDescriptor {
 
 #[cfg(test)]
 const _: fn() = || {
+    // Compile-time guard: this wrapper must continue implementing Descriptor.
     fn assert_impl<T: Descriptor>() {}
     assert_impl::<PropertyDescriptor>();
 };
