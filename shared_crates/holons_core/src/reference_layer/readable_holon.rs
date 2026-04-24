@@ -76,6 +76,15 @@ pub trait ReadableHolon: ReadableHolonImpl {
         ReadableHolonImpl::into_model_impl(self)
     }
 
+    /// Checks whether this reference can support the requested access type.
+    ///
+    /// This is primarily a reference-layer boundary concern. Normal callers should
+    /// prefer the higher-level read/write methods and rely on those methods to
+    /// enforce accessibility internally rather than pre-checking access manually.
+    ///
+    /// TODO: Reconsider whether this belongs on the public trait surface. The
+    /// concrete reference types still need internal accessibility checks, but
+    /// exposing this here can encourage higher layers to duplicate boundary logic.
     #[inline]
     fn is_accessible(&self, access: AccessType) -> Result<(), HolonError> {
         ReadableHolonImpl::is_accessible_impl(self, access)
