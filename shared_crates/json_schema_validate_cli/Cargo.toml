@@ -14,3 +14,5 @@ path = "../json_schema_validation"
 [[bin]]
 name = "jsv"
 path = "src/main.rs"
+
+[workspace]

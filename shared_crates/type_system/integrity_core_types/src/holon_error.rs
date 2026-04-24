@@ -67,6 +67,14 @@ pub enum HolonError {
     Misc(String),
     #[error("{0} relationship is missing StagedCollection")]
     MissingStagedCollection(String),
+    #[error("Missing DescribedBy relationship for holon: {holon}")]
+    MissingDescribedBy { holon: String },
+    #[error("Multiple DescribedBy relationships found for holon {holon}: {count}")]
+    MultipleDescribedBy { holon: String, count: usize },
+    #[error("Multiple Extends relationships found for descriptor {descriptor}: {count}")]
+    MultipleExtends { descriptor: String, count: usize },
+    #[error("Cyclic Extends relationship detected for descriptor: {descriptor}")]
+    CyclicExtends { descriptor: String },
     #[error("{0} access not allowed while holon is in {1} state")]
     NotAccessible(String, String),
     #[error("{0} Not Implemented")]
@@ -137,6 +145,10 @@ pub enum HolonErrorKind {
     LoaderParsingError,
     Misc,
     MissingStagedCollection,
+    MissingDescribedBy,
+    MultipleDescribedBy,
+    MultipleExtends,
+    CyclicExtends,
     NotAccessible,
     NotImplemented,
     RecordConversion,
@@ -181,6 +193,10 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::LoaderParsingError(_) => Self::LoaderParsingError,
             HolonError::Misc(_) => Self::Misc,
             HolonError::MissingStagedCollection(_) => Self::MissingStagedCollection,
+            HolonError::MissingDescribedBy { .. } => Self::MissingDescribedBy,
+            HolonError::MultipleDescribedBy { .. } => Self::MultipleDescribedBy,
+            HolonError::MultipleExtends { .. } => Self::MultipleExtends,
+            HolonError::CyclicExtends { .. } => Self::CyclicExtends,
             HolonError::NotAccessible(_, _) => Self::NotAccessible,
             HolonError::NotImplemented(_) => Self::NotImplemented,
             HolonError::RecordConversion(_) => Self::RecordConversion,

@@ -54,6 +54,10 @@ pub use holons_core::reference_layer::{
     HolonCollectionApi, HolonReference, HolonSpaceBehavior, HolonStagingBehavior, ReadableHolon,
     SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
 };
+pub use holons_core::{
+    Descriptor, ExtendsIter, HolonDescriptor, PropertyDescriptor, RelationshipDescriptor,
+    TypeHeader, ValueDescriptor, ancestors, walk_extends_chain,
+};
 
 pub use type_names::{
     CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,

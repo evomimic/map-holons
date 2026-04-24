@@ -1,6 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use super::{HolonReference, TransientReference};
+use crate::descriptors::HolonDescriptor;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::{
     core_shared_objects::{
@@ -11,7 +12,7 @@ use crate::{
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId, HolonNodeModel, PropertyValue};
-use type_names::relationship_names::ToRelationshipName;
+use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 use type_names::ToPropertyName;
 
 // Façade: ergonomic + complete; default bodies delegate to *_impl.
@@ -75,6 +76,15 @@ pub trait ReadableHolon: ReadableHolonImpl {
         ReadableHolonImpl::into_model_impl(self)
     }
 
+    /// Checks whether this reference can support the requested access type.
+    ///
+    /// This is primarily a reference-layer boundary concern. Normal callers should
+    /// prefer the higher-level read/write methods and rely on those methods to
+    /// enforce accessibility internally rather than pre-checking access manually.
+    ///
+    /// TODO: Reconsider whether this belongs on the public trait surface. The
+    /// concrete reference types still need internal accessibility checks, but
+    /// exposing this here can encourage higher layers to duplicate boundary logic.
     #[inline]
     fn is_accessible(&self, access: AccessType) -> Result<(), HolonError> {
         ReadableHolonImpl::is_accessible_impl(self, access)
@@ -143,6 +153,21 @@ pub trait ReadableHolon: ReadableHolonImpl {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         let rel = name.to_relationship_name();
         ReadableHolonImpl::related_holons_impl(self, &rel)
+    }
+
+    fn holon_descriptor(&self) -> Result<HolonDescriptor, HolonError> {
+        let collection_arc = self.related_holons(CoreRelationshipTypeName::DescribedBy)?;
+        let collection =
+            collection_arc.read().map_err(|e| HolonError::FailedToAcquireLock(format!("{e}")))?;
+        let members = collection.get_members();
+
+        match members.as_slice() {
+            [] => Err(HolonError::MissingDescribedBy { holon: self.summarize()? }),
+            [single] => Ok(HolonDescriptor::from_holon(single.clone())),
+            many => {
+                Err(HolonError::MultipleDescribedBy { holon: self.summarize()?, count: many.len() })
+            }
+        }
     }
 }
 
