@@ -202,6 +202,10 @@ impl From<HolonError> for ResponseStatusCode {
 
             // 422-ish (semantic validation / parse errors)
             HolonError::LoaderParsingError(_) => ResponseStatusCode::UnprocessableEntity,
+            HolonError::MissingDescribedBy { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::MultipleDescribedBy { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::MultipleExtends { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::CyclicExtends { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceBindingFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ValidationError(_) => ResponseStatusCode::UnprocessableEntity,

@@ -7,6 +7,7 @@
 
 // Public Modules
 pub mod core_shared_objects;
+pub mod descriptors;
 pub mod reference_layer;
 // Utility modules (if needed outside the crate)
 pub mod dances;
@@ -20,6 +21,7 @@ pub use core_shared_objects::{
     StagedRelationshipMap, TransientCollection,
 };
 pub use core_types::HolonError;
+pub use descriptors::{Descriptor, TypeHeader};
 pub use reference_layer::{
     HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
     ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior, TransientReference,
