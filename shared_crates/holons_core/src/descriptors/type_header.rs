@@ -8,7 +8,6 @@ pub struct TypeHeader<'a> {
 }
 
 impl<'a> TypeHeader<'a> {
-    #[allow(dead_code)]
     pub(crate) fn new(holon: &'a HolonReference) -> Self {
         Self { holon }
     }
@@ -77,105 +76,14 @@ impl<'a> TypeHeader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core_shared_objects::space_manager::HolonSpaceManager;
-    use crate::core_shared_objects::transactions::TransactionContext;
-    use crate::core_shared_objects::{
-        Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
-    };
-    use crate::reference_layer::{
-        HolonServiceApi, StagedReference, TransientReference, WritableHolon,
-    };
+    use crate::descriptors::test_support::{build_context, new_test_holon};
+    use crate::reference_layer::WritableHolon;
     use base_types::MapString;
-    use core_types::{HolonId, LocalId, RelationshipName};
-    use std::any::Any;
-    use std::sync::Arc;
-
-    #[derive(Debug)]
-    struct TestHolonService;
-
-    fn unreachable_in_type_header_tests<T>() -> Result<T, HolonError> {
-        Err(HolonError::NotImplemented("TestHolonService".to_string()))
-    }
-
-    impl HolonServiceApi for TestHolonService {
-        fn as_any(&self) -> &dyn Any {
-            self
-        }
-
-        fn commit_internal(
-            &self,
-            _context: &Arc<TransactionContext>,
-            _staged_references: &[StagedReference],
-        ) -> Result<TransientReference, HolonError> {
-            unreachable_in_type_header_tests()
-        }
-
-        fn delete_holon_internal(
-            &self,
-            _context: &Arc<TransactionContext>,
-            _local_id: &LocalId,
-        ) -> Result<(), HolonError> {
-            unreachable_in_type_header_tests()
-        }
-
-        fn fetch_all_related_holons_internal(
-            &self,
-            _context: &Arc<TransactionContext>,
-            _source_id: &HolonId,
-        ) -> Result<RelationshipMap, HolonError> {
-            unreachable_in_type_header_tests()
-        }
-
-        fn fetch_holon_internal(
-            &self,
-            _context: &Arc<TransactionContext>,
-            _id: &HolonId,
-        ) -> Result<Holon, HolonError> {
-            unreachable_in_type_header_tests()
-        }
-
-        fn fetch_related_holons_internal(
-            &self,
-            _context: &Arc<TransactionContext>,
-            _source_id: &HolonId,
-            _relationship_name: &RelationshipName,
-        ) -> Result<HolonCollection, HolonError> {
-            unreachable_in_type_header_tests()
-        }
-
-        fn get_all_holons_internal(
-            &self,
-            _context: &Arc<TransactionContext>,
-        ) -> Result<HolonCollection, HolonError> {
-            unreachable_in_type_header_tests()
-        }
-
-        fn load_holons_internal(
-            &self,
-            _context: &Arc<TransactionContext>,
-            _bundle: TransientReference,
-        ) -> Result<TransientReference, HolonError> {
-            unreachable_in_type_header_tests()
-        }
-    }
-
-    fn build_context() -> Arc<TransactionContext> {
-        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
-        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
-            None,
-            holon_service,
-            None,
-            ServiceRoutingPolicy::BlockExternal,
-        ));
-
-        space_manager
-            .get_transaction_manager()
-            .open_new_transaction(Arc::clone(&space_manager))
-            .expect("default transaction should open")
-    }
+    use core_types::HolonError;
 
     fn build_header_holon() -> Result<HolonReference, HolonError> {
-        let mut holon = new_test_holon("header-holon")?;
+        let context = build_context();
+        let mut holon = new_test_holon(&context, "header-holon")?;
         holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")
             .and_then(|holon| {
@@ -200,11 +108,6 @@ mod tests {
 
         Ok(HolonReference::Transient(holon))
     }
-
-    fn new_test_holon(key: &str) -> Result<TransientReference, HolonError> {
-        build_context().mutation().new_holon(Some(MapString(key.to_string())))
-    }
-
     #[test]
     fn header_accessors_return_expected_values() -> Result<(), HolonError> {
         let holon_ref = build_header_holon()?;
@@ -226,7 +129,8 @@ mod tests {
 
     #[test]
     fn type_name_errors_when_required_property_missing() -> Result<(), HolonError> {
-        let mut holon = new_test_holon("missing-type-name")?;
+        let context = build_context();
+        let mut holon = new_test_holon(&context, "missing-type-name")?;
         holon
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
             .with_property_value(CorePropertyTypeName::InstanceTypeKind, "Holon")?;
@@ -244,7 +148,8 @@ mod tests {
 
     #[test]
     fn optional_accessors_return_none_when_absent() -> Result<(), HolonError> {
-        let mut holon = new_test_holon("optional-header")?;
+        let context = build_context();
+        let mut holon = new_test_holon(&context, "optional-header")?;
         holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
@@ -263,7 +168,8 @@ mod tests {
 
     #[test]
     fn type_name_errors_when_property_value_has_wrong_type() -> Result<(), HolonError> {
-        let mut holon = new_test_holon("wrong-type-name")?;
+        let context = build_context();
+        let mut holon = new_test_holon(&context, "wrong-type-name")?;
         holon
             .with_property_value(CorePropertyTypeName::TypeName, true)?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
@@ -282,7 +188,8 @@ mod tests {
 
     #[test]
     fn required_header_accessors_error_when_property_missing() -> Result<(), HolonError> {
-        let mut missing_bool_holon = new_test_holon("missing-is-abstract")?;
+        let context = build_context();
+        let mut missing_bool_holon = new_test_holon(&context, "missing-is-abstract")?;
         missing_bool_holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")?
             .with_property_value(CorePropertyTypeName::InstanceTypeKind, "Holon")?;
@@ -295,7 +202,7 @@ mod tests {
             Err(HolonError::EmptyField(field)) if field == "IsAbstractType"
         ));
 
-        let mut missing_kind_holon = new_test_holon("missing-instance-type-kind")?;
+        let mut missing_kind_holon = new_test_holon(&context, "missing-instance-type-kind")?;
         missing_kind_holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?;

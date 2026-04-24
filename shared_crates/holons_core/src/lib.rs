@@ -21,7 +21,10 @@ pub use core_shared_objects::{
     StagedRelationshipMap, TransientCollection,
 };
 pub use core_types::HolonError;
-pub use descriptors::{Descriptor, TypeHeader};
+pub use descriptors::{
+    Descriptor, HolonDescriptor, PropertyDescriptor, RelationshipDescriptor, TypeHeader,
+    ValueDescriptor,
+};
 pub use reference_layer::{
     HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
     ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior, TransientReference,
