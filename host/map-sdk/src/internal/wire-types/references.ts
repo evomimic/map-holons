@@ -426,8 +426,8 @@ export function isHolonId(value: unknown): value is HolonId {
       'External',
       (candidate): candidate is ExternalId =>
         isRecord(candidate) &&
-        isLocalId(candidate.space_id) &&
-        isLocalId(candidate.local_id),
+        isLocalId(candidate['space_id']) &&
+        isLocalId(candidate['local_id']),
     )
   );
 }
@@ -450,19 +450,19 @@ export function isPropertyMap(value: unknown): value is PropertyMap {
 export function isTransientReferenceWire(
   value: unknown,
 ): value is TransientReferenceWire {
-  return isRecord(value) && isNumber(value.tx_id) && isTemporaryId(value.id);
+  return isRecord(value) && isNumber(value['tx_id']) && isTemporaryId(value['id']);
 }
 
 export function isStagedReferenceWire(value: unknown): value is StagedReferenceWire {
-  return isRecord(value) && isNumber(value.tx_id) && isTemporaryId(value.id);
+  return isRecord(value) && isNumber(value['tx_id']) && isTemporaryId(value['id']);
 }
 
 export function isSmartReferenceWire(value: unknown): value is SmartReferenceWire {
   return (
     isRecord(value) &&
-    isNumber(value.tx_id) &&
-    isHolonId(value.holon_id) &&
-    isNullable(value.smart_property_values, isPropertyMap)
+    isNumber(value['tx_id']) &&
+    isHolonId(value['holon_id']) &&
+    isNullable(value['smart_property_values'], isPropertyMap)
   );
 }
 
@@ -485,15 +485,15 @@ export function isCollectionState(value: unknown): value is CollectionState {
 export function isHolonCollectionWire(value: unknown): value is HolonCollectionWire {
   return (
     isRecord(value) &&
-    isCollectionState(value.state) &&
-    Array.isArray(value.members) &&
-    value.members.every(isHolonReferenceWire) &&
-    isStringRecord(value.keyed_index, isNumber)
+    isCollectionState(value['state']) &&
+    Array.isArray(value['members']) &&
+    value['members'].every(isHolonReferenceWire) &&
+    isStringRecord(value['keyed_index'], isNumber)
   );
 }
 
 export function isQueryExpression(value: unknown): value is QueryExpression {
-  return isRecord(value) && isString(value.relationship_name);
+  return isRecord(value) && isString(value['relationship_name']);
 }
 
 export function isQueryPathMapWire(value: unknown): value is QueryPathMapWire {
@@ -503,17 +503,17 @@ export function isQueryPathMapWire(value: unknown): value is QueryPathMapWire {
 export function isNodeWire(value: unknown): value is NodeWire {
   return (
     isRecord(value) &&
-    isHolonReferenceWire(value.source_holon) &&
-    isNullable(value.relationships, isQueryPathMapWire)
+    isHolonReferenceWire(value['source_holon']) &&
+    isNullable(value['relationships'], isQueryPathMapWire)
   );
 }
 
 export function isNodeCollectionWire(value: unknown): value is NodeCollectionWire {
   return (
     isRecord(value) &&
-    Array.isArray(value.members) &&
-    value.members.every(isNodeWire) &&
-    isNullable(value.query_spec, isQueryExpression)
+    Array.isArray(value['members']) &&
+    value['members'].every(isNodeWire) &&
+    isNullable(value['query_spec'], isQueryExpression)
   );
 }
 
@@ -551,14 +551,14 @@ export function isTransientRelationshipMapWire(
 ): value is TransientRelationshipMapWire {
   return (
     isRecord(value) &&
-    isStringRecord(value.map, isHolonCollectionWire)
+    isStringRecord(value['map'], isHolonCollectionWire)
   );
 }
 
 export function isStagedRelationshipMapWire(
   value: unknown,
 ): value is StagedRelationshipMapWire {
-  return isRecord(value) && isStringRecord(value.map, isHolonCollectionWire);
+  return isRecord(value) && isStringRecord(value['map'], isHolonCollectionWire);
 }
 
 export function isValidationErrorWire(value: unknown): value is ValidationErrorWire {
@@ -586,10 +586,10 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
         context_tx: number;
       } =>
         isRecord(candidate) &&
-        isString(candidate.reference_kind) &&
-        isString(candidate.reference_id) &&
-        isNumber(candidate.reference_tx) &&
-        isNumber(candidate.context_tx),
+        isString(candidate['reference_kind']) &&
+        isString(candidate['reference_id']) &&
+        isNumber(candidate['reference_tx']) &&
+        isNumber(candidate['context_tx']),
     ) ||
     isTaggedValue(value, 'DeletionNotAllowed', isString) ||
     isTaggedValue(value, 'DowncastFailure', isString) ||
@@ -606,8 +606,8 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
       'InvalidWireFormat',
       (candidate): candidate is { wire_type: string; reason: string } =>
         isRecord(candidate) &&
-        isString(candidate.wire_type) &&
-        isString(candidate.reason),
+        isString(candidate['wire_type']) &&
+        isString(candidate['reason']),
     ) ||
     isTaggedValue(value, 'InvalidState', isString) ||
     isTaggedValue(value, 'InvalidTransition', isString) ||
@@ -620,9 +620,9 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
         to_state: string;
       } =>
         isRecord(candidate) &&
-        isNumber(candidate.tx_id) &&
-        isString(candidate.from_state) &&
-        isString(candidate.to_state),
+        isNumber(candidate['tx_id']) &&
+        isString(candidate['from_state']) &&
+        isString(candidate['to_state']),
     ) ||
     isTaggedValue(value, 'InvalidType', isString) ||
     isTaggedValue(value, 'InvalidParameter', isString) ||
@@ -643,9 +643,9 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
         reason: string;
       } =>
         isRecord(candidate) &&
-        isString(candidate.reference_kind) &&
-        isNullable(candidate.reference_id, isString) &&
-        isString(candidate.reason),
+        isString(candidate['reference_kind']) &&
+        isNullable(candidate['reference_id'], isString) &&
+        isString(candidate['reason']),
     ) ||
     isTaggedValue(
       value,
@@ -656,30 +656,30 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
         reason: string;
       } =>
         isRecord(candidate) &&
-        isString(candidate.reference_kind) &&
-        isString(candidate.reference_id) &&
-        isString(candidate.reason),
+        isString(candidate['reference_kind']) &&
+        isString(candidate['reference_id']) &&
+        isString(candidate['reason']),
     ) ||
     isTaggedValue(value, 'ServiceNotAvailable', isString) ||
     isTaggedValue(
       value,
       'TransactionAlreadyCommitted',
       (candidate): candidate is { tx_id: number } =>
-        isRecord(candidate) && isNumber(candidate.tx_id),
+        isRecord(candidate) && isNumber(candidate['tx_id']),
     ) ||
     isTaggedValue(
       value,
       'TransactionCommitInProgress',
       (candidate): candidate is { tx_id: number } =>
-        isRecord(candidate) && isNumber(candidate.tx_id),
+        isRecord(candidate) && isNumber(candidate['tx_id']),
     ) ||
     isTaggedValue(
       value,
       'TransactionNotOpen',
       (candidate): candidate is { tx_id: number; state: string } =>
         isRecord(candidate) &&
-        isNumber(candidate.tx_id) &&
-        isString(candidate.state),
+        isNumber(candidate['tx_id']) &&
+        isString(candidate['state']),
     ) ||
     isTaggedValue(value, 'UnableToAddHolons', isString) ||
     isTaggedValue(value, 'UnexpectedValueType', isStringPair) ||
@@ -692,40 +692,40 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
 export function isTransientHolonWire(value: unknown): value is TransientHolonWire {
   return (
     isRecord(value) &&
-    isNumber(value.version) &&
-    isHolonState(value.holon_state) &&
-    isValidationState(value.validation_state) &&
-    isPropertyMap(value.property_map) &&
-    isTransientRelationshipMapWire(value.transient_relationships) &&
-    isNullable(value.original_id, isLocalId)
+    isNumber(value['version']) &&
+    isHolonState(value['holon_state']) &&
+    isValidationState(value['validation_state']) &&
+    isPropertyMap(value['property_map']) &&
+    isTransientRelationshipMapWire(value['transient_relationships']) &&
+    isNullable(value['original_id'], isLocalId)
   );
 }
 
 export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
   return (
     isRecord(value) &&
-    isNumber(value.version) &&
-    isHolonState(value.holon_state) &&
-    isStagedState(value.staged_state) &&
-    isValidationState(value.validation_state) &&
-    isPropertyMap(value.property_map) &&
-    isStagedRelationshipMapWire(value.staged_relationships) &&
-    isNullable(value.original_id, isLocalId) &&
-    Array.isArray(value.errors) &&
-    value.errors.every(isHolonErrorWire)
+    isNumber(value['version']) &&
+    isHolonState(value['holon_state']) &&
+    isStagedState(value['staged_state']) &&
+    isValidationState(value['validation_state']) &&
+    isPropertyMap(value['property_map']) &&
+    isStagedRelationshipMapWire(value['staged_relationships']) &&
+    isNullable(value['original_id'], isLocalId) &&
+    Array.isArray(value['errors']) &&
+    value['errors'].every(isHolonErrorWire)
   );
 }
 
 export function isSavedHolonWire(value: unknown): value is SavedHolonWire {
   return (
     isRecord(value) &&
-    isHolonState(value.holon_state) &&
-    isValidationState(value.validation_state) &&
-    isLocalId(value.saved_id) &&
-    isNumber(value.version) &&
-    isSavedState(value.saved_state) &&
-    isPropertyMap(value.property_map) &&
-    isNullable(value.original_id, isLocalId)
+    isHolonState(value['holon_state']) &&
+    isValidationState(value['validation_state']) &&
+    isLocalId(value['saved_id']) &&
+    isNumber(value['version']) &&
+    isSavedState(value['saved_state']) &&
+    isPropertyMap(value['property_map']) &&
+    isNullable(value['original_id'], isLocalId)
   );
 }
 
@@ -777,9 +777,9 @@ export function isRequestBodyWire(value: unknown): value is RequestBodyWire {
 export function isDanceRequestWire(value: unknown): value is DanceRequestWire {
   return (
     isRecord(value) &&
-    isString(value.dance_name) &&
-    isDanceTypeWire(value.dance_type) &&
-    isRequestBodyWire(value.body)
+    isString(value['dance_name']) &&
+    isDanceTypeWire(value['dance_type']) &&
+    isRequestBodyWire(value['body'])
   );
 }
 
@@ -809,9 +809,9 @@ export function isResponseBodyWire(value: unknown): value is ResponseBodyWire {
 export function isDanceResponseWire(value: unknown): value is DanceResponseWire {
   return (
     isRecord(value) &&
-    isResponseStatusCode(value.status_code) &&
-    isString(value.description) &&
-    isResponseBodyWire(value.body) &&
-    isNullable(value.descriptor, isHolonReferenceWire)
+    isResponseStatusCode(value['status_code']) &&
+    isString(value['description']) &&
+    isResponseBodyWire(value['body']) &&
+    isNullable(value['descriptor'], isHolonReferenceWire)
   );
 }

@@ -61,10 +61,10 @@ export function isEssentialHolonContent(
 ): value is EssentialHolonContent {
   return (
     isRecord(value) &&
-    isPropertyMap(value.property_map) &&
-    (value.key === null || isString(value.key)) &&
-    Array.isArray(value.errors) &&
-    value.errors.every(isHolonErrorWire)
+    isPropertyMap(value['property_map']) &&
+    (value['key'] === null || isString(value['key'])) &&
+    Array.isArray(value['errors']) &&
+    value['errors'].every(isHolonErrorWire)
   );
 }
 
@@ -73,7 +73,7 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
     value === 'None' ||
     (hasSingleKey(value, 'TransactionCreated') &&
       isRecord(value.TransactionCreated) &&
-      isNumber(value.TransactionCreated.tx_id)) ||
+      isNumber(value.TransactionCreated['tx_id'])) ||
     (hasSingleKey(value, 'Reference') && isHolonReferenceWire(value.Reference)) ||
     (hasSingleKey(value, 'References') &&
       Array.isArray(value.References) &&

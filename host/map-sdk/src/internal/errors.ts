@@ -29,7 +29,7 @@ export abstract class MapError extends Error {
  */
 export class TransportError extends MapError {
   readonly code = 'TRANSPORT_ERROR' as const;
-  readonly cause: unknown;
+  override readonly cause: unknown;
 
   constructor(message: string, cause?: unknown) {
     super(message);

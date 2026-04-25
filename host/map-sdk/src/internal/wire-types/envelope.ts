@@ -52,9 +52,9 @@ export interface MapIpcResponse {
 export function isRequestOptions(value: unknown): value is RequestOptions {
   return (
     isRecord(value) &&
-    (value.gesture_id === null || typeof value.gesture_id === 'string') &&
-    (value.gesture_label === null || typeof value.gesture_label === 'string') &&
-    typeof value.snapshot_after === 'boolean'
+    (value['gesture_id'] === null || typeof value['gesture_id'] === 'string') &&
+    (value['gesture_label'] === null || typeof value['gesture_label'] === 'string') &&
+    typeof value['snapshot_after'] === 'boolean'
   );
 }
 
@@ -64,24 +64,24 @@ export function isWireResult<T, E>(
   errGuard: (candidate: unknown) => candidate is E,
 ): value is WireResult<T, E> {
   return (
-    (isRecord(value) && Object.keys(value).length === 1 && 'Ok' in value && okGuard(value.Ok)) ||
-    (isRecord(value) && Object.keys(value).length === 1 && 'Err' in value && errGuard(value.Err))
+    (isRecord(value) && Object.keys(value).length === 1 && 'Ok' in value && okGuard(value['Ok'])) ||
+    (isRecord(value) && Object.keys(value).length === 1 && 'Err' in value && errGuard(value['Err']))
   );
 }
 
 export function isMapIpcRequest(value: unknown): value is MapIpcRequest {
   return (
     isRecord(value) &&
-    isNumber(value.request_id) &&
-    isMapCommandWire(value.command) &&
-    isRequestOptions(value.options)
+    isNumber(value['request_id']) &&
+    isMapCommandWire(value['command']) &&
+    isRequestOptions(value['options'])
   );
 }
 
 export function isMapIpcResponse(value: unknown): value is MapIpcResponse {
   return (
     isRecord(value) &&
-    isNumber(value.request_id) &&
-    isWireResult(value.result, isMapResultWire, isHolonErrorWire)
+    isNumber(value['request_id']) &&
+    isWireResult(value['result'], isMapResultWire, isHolonErrorWire)
   );
 }
