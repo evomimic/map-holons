@@ -159,17 +159,17 @@ function isStringFieldObject<T extends string>(
 export function isFileData(value: unknown): value is FileData {
   return (
     isRecord(value) &&
-    isString(value.filename) &&
-    isString(value.raw_contents)
+    isString(value['filename']) &&
+    isString(value['raw_contents'])
   );
 }
 
 export function isContentSet(value: unknown): value is ContentSet {
   return (
     isRecord(value) &&
-    isFileData(value.schema) &&
-    Array.isArray(value.files_to_load) &&
-    value.files_to_load.every(isFileData)
+    isFileData(value['schema']) &&
+    Array.isArray(value['files_to_load']) &&
+    value['files_to_load'].every(isFileData)
   );
 }
 
@@ -200,23 +200,23 @@ export function isWritableHolonActionWire(
   return (
     (hasSingleKey(value, 'WithPropertyValue') &&
       isRecord(value.WithPropertyValue) &&
-      isString(value.WithPropertyValue.name) &&
-      isBaseValue(value.WithPropertyValue.value)) ||
+      isString(value.WithPropertyValue['name']) &&
+      isBaseValue(value.WithPropertyValue['value'])) ||
     (hasSingleKey(value, 'RemovePropertyValue') &&
       isStringFieldObject(value.RemovePropertyValue, 'name')) ||
     (hasSingleKey(value, 'AddRelatedHolons') &&
       isRecord(value.AddRelatedHolons) &&
-      isString(value.AddRelatedHolons.name) &&
-      Array.isArray(value.AddRelatedHolons.holons) &&
-      value.AddRelatedHolons.holons.every(isHolonReferenceWire)) ||
+      isString(value.AddRelatedHolons['name']) &&
+      Array.isArray(value.AddRelatedHolons['holons']) &&
+      value.AddRelatedHolons['holons'].every(isHolonReferenceWire)) ||
     (hasSingleKey(value, 'RemoveRelatedHolons') &&
       isRecord(value.RemoveRelatedHolons) &&
-      isString(value.RemoveRelatedHolons.name) &&
-      Array.isArray(value.RemoveRelatedHolons.holons) &&
-      value.RemoveRelatedHolons.holons.every(isHolonReferenceWire)) ||
+      isString(value.RemoveRelatedHolons['name']) &&
+      Array.isArray(value.RemoveRelatedHolons['holons']) &&
+      value.RemoveRelatedHolons['holons'].every(isHolonReferenceWire)) ||
     (hasSingleKey(value, 'WithDescriptor') &&
       isRecord(value.WithDescriptor) &&
-      isHolonReferenceWire(value.WithDescriptor.descriptor))
+      isHolonReferenceWire(value.WithDescriptor['descriptor']))
   );
 }
 
@@ -235,7 +235,7 @@ export function isTransactionActionWire(
     // Struct variants.
     (hasSingleKey(value, 'LoadHolons') &&
       isRecord(value.LoadHolons) &&
-      isContentSet(value.LoadHolons.content_set)) ||
+      isContentSet(value.LoadHolons['content_set'])) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
     (hasSingleKey(value, 'Query') && isQueryExpression(value.Query)) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&
@@ -250,23 +250,23 @@ export function isTransactionActionWire(
       isStringFieldObject(value.GetTransientHolonByVersionedKey, 'key')) ||
     (hasSingleKey(value, 'NewHolon') &&
       isRecord(value.NewHolon) &&
-      (value.NewHolon.key === null || isString(value.NewHolon.key))) ||
+      (value.NewHolon['key'] === null || isString(value.NewHolon['key']))) ||
     (hasSingleKey(value, 'StageNewHolon') &&
       isRecord(value.StageNewHolon) &&
-      isTransientReferenceWire(value.StageNewHolon.source)) ||
+      isTransientReferenceWire(value.StageNewHolon['source'])) ||
     (hasSingleKey(value, 'StageNewFromClone') &&
       isRecord(value.StageNewFromClone) &&
-      isHolonReferenceWire(value.StageNewFromClone.original) &&
-      isString(value.StageNewFromClone.new_key)) ||
+      isHolonReferenceWire(value.StageNewFromClone['original']) &&
+      isString(value.StageNewFromClone['new_key'])) ||
     (hasSingleKey(value, 'StageNewVersion') &&
       isRecord(value.StageNewVersion) &&
-      isSmartReferenceWire(value.StageNewVersion.current_version)) ||
+      isSmartReferenceWire(value.StageNewVersion['current_version'])) ||
     (hasSingleKey(value, 'StageNewVersionFromId') &&
       isRecord(value.StageNewVersionFromId) &&
-      isHolonId(value.StageNewVersionFromId.holon_id)) ||
+      isHolonId(value.StageNewVersionFromId['holon_id'])) ||
     (hasSingleKey(value, 'DeleteHolon') &&
       isRecord(value.DeleteHolon) &&
-      isLocalId(value.DeleteHolon.local_id))
+      isLocalId(value.DeleteHolon['local_id']))
   );
 }
 
@@ -275,17 +275,17 @@ export function isTransactionCommandWire(
 ): value is TransactionCommandWire {
   return (
     isRecord(value) &&
-    isNumber(value.tx_id) &&
-    isTransactionActionWire(value.action)
+    isNumber(value['tx_id']) &&
+    isTransactionActionWire(value['action'])
   );
 }
 
 export function isHolonCommandWire(value: unknown): value is HolonCommandWire {
   return (
     isRecord(value) &&
-    isNumber(value.tx_id) &&
-    isHolonReferenceWire(value.target) &&
-    isHolonActionWire(value.action)
+    isNumber(value['tx_id']) &&
+    isHolonReferenceWire(value['target']) &&
+    isHolonActionWire(value['action'])
   );
 }
 

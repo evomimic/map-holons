@@ -41,19 +41,19 @@ export async function invokeMapCommand(
     throw new TransportError('Failed to invoke dispatch_map_command', cause);
   }
 
-  if (!isRecord(response) || !isNumber(response.request_id)) {
+  if (!isRecord(response) || !isNumber(response['request_id'])) {
     throw new MalformedResponseError(
       'MAP IPC response is missing a valid request_id',
       response,
     );
   }
 
-  if (response.request_id !== request.request_id) {
+  if (response['request_id'] !== request.request_id) {
     throw new MalformedResponseError(
       'MAP IPC response request_id did not match the originating request',
       {
         request_id: request.request_id,
-        response_request_id: response.request_id,
+        response_request_id: response['request_id'],
       },
     );
   }
