@@ -7,7 +7,7 @@ import type {
   HolonReference,
   PropertyName,
   RelationshipName,
-} from '../deps/map-sdk';
+} from '../deps';
 
 export type RelationshipDescriptorKind = 'declared' | 'inverse';
 

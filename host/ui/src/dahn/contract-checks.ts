@@ -22,7 +22,7 @@ import type {
   VisualizerDefinition,
   VisualizerElement,
 } from './index';
-import type { HolonReference } from './deps/map-sdk';
+import type { HolonReference } from './deps';
 
 /**
  * Compile-time DAHN contract checks for PR 1.

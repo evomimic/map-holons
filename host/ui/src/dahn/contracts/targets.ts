@@ -1,4 +1,4 @@
-import type { HolonReference } from '../deps/map-sdk';
+import type { HolonReference } from '../deps';
 
 /**
  * Runtime-level target handle used to identify the holon DAHN should open.
