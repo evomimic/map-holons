@@ -27,9 +27,22 @@ export type {
   VisualizerElement,
   VisualizerTargetRule,
 } from './contracts/visualizers';
+export { DomCanvas } from './canvas/dom-canvas';
+export { createCanvasRoot } from './canvas/create-canvas-root';
+export {
+  DefaultVisualizerRegistry,
+} from './registry/default-visualizer-registry';
+export {
+  registerBuiltInVisualizers,
+} from './registry/register-builtins';
+export type { VisualizerRegistry } from './registry/visualizer-registry';
 export { DefaultDahnRuntime } from './runtime/default-dahn-runtime';
 export type { DahnRuntime } from './runtime/dahn-runtime';
 export {
   DahnNotImplementedError,
   DahnRuntimeError,
 } from './runtime/runtime-errors';
+export { applyTheme } from './themes/apply-theme';
+export { DEFAULT_DAHN_THEME } from './themes/default-theme';
+export { DefaultThemeRegistry } from './themes/theme-registry';
+export { BUILTIN_VISUALIZER_DEFINITIONS } from './visualizers/builtins';
