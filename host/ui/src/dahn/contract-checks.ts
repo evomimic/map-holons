@@ -13,6 +13,7 @@ import type {
   PropertyDescriptorHandle,
   RelationshipDescriptorHandle,
   RelationshipDescriptorKind,
+  Phase0Selector,
   SelectorFunction,
   SelectorInput,
   SelectorOutput,
@@ -21,7 +22,7 @@ import type {
   VisualizerDefinition,
   VisualizerElement,
 } from './index';
-import type { HolonReference } from '../../../map-sdk/src';
+import type { HolonReference } from './deps';
 
 /**
  * Compile-time DAHN contract checks for PR 1.
@@ -98,6 +99,7 @@ declare const danceDescriptor: DanceDescriptorHandle;
 declare const holonTypeDescriptor: HolonTypeDescriptorHandle;
 declare const holonViewContext: HolonViewContext;
 declare const selector: SelectorFunction;
+declare const phase0Selector: Phase0Selector;
 
 void valueTypeDescriptor;
 void propertyDescriptor;
@@ -106,3 +108,4 @@ void danceDescriptor;
 void holonTypeDescriptor;
 void holonViewContext;
 void selector;
+void phase0Selector;

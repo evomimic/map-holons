@@ -36,6 +36,7 @@ export {
   registerBuiltInVisualizers,
 } from './registry/register-builtins';
 export type { VisualizerRegistry } from './registry/visualizer-registry';
+export { Phase0Selector } from './selector/phase0-selector';
 export { DefaultDahnRuntime } from './runtime/default-dahn-runtime';
 export type { DahnRuntime } from './runtime/dahn-runtime';
 export {
