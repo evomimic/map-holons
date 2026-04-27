@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-12-08T13:09:06",
+    "generated_at": "2026-04-27T11:32:34",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -349,7 +349,7 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 1
       },
       "relationships": [
         {
