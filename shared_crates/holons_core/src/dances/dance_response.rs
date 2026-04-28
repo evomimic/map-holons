@@ -178,6 +178,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::Misc(_) => ResponseStatusCode::ServerError,
 
             // 404-ish (missing resource)
+            HolonError::DescriptorDeclarationNotFound { .. } => ResponseStatusCode::NotFound,
             HolonError::HolonNotFound(_) => ResponseStatusCode::NotFound,
 
             // 409-ish (conflict with current state / invariants)
@@ -206,6 +207,14 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MultipleDescribedBy { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::MultipleExtends { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::CyclicExtends { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::WrongDescriptorKind { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::DuplicateInheritedDeclaration { .. } => {
+                ResponseStatusCode::UnprocessableEntity
+            }
+            HolonError::MissingRequiredRelationship { .. } => {
+                ResponseStatusCode::UnprocessableEntity
+            }
+            HolonError::MultipleRelatedHolons { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceBindingFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ValidationError(_) => ResponseStatusCode::UnprocessableEntity,

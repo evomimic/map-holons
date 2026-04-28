@@ -75,6 +75,20 @@ pub enum HolonError {
     MultipleExtends { descriptor: String, count: usize },
     #[error("Cyclic Extends relationship detected for descriptor: {descriptor}")]
     CyclicExtends { descriptor: String },
+    #[error("Descriptor kind mismatch for {descriptor}: expected {expected}, found {found}")]
+    WrongDescriptorKind { expected: String, found: String, descriptor: String },
+    #[error(
+        "Duplicate inherited {kind} declaration named {name} found for descriptor {descriptor}"
+    )]
+    DuplicateInheritedDeclaration { kind: String, name: String, descriptor: String },
+    #[error("Missing required {relationship} relationship for descriptor {descriptor}")]
+    MissingRequiredRelationship { relationship: String, descriptor: String },
+    #[error(
+        "Multiple related holons found for required-singular {relationship} relationship on descriptor {descriptor}: {count}"
+    )]
+    MultipleRelatedHolons { relationship: String, descriptor: String, count: usize },
+    #[error("{kind} declaration named {name} not found for descriptor {descriptor}")]
+    DescriptorDeclarationNotFound { kind: String, name: String, descriptor: String },
     #[error("{0} access not allowed while holon is in {1} state")]
     NotAccessible(String, String),
     #[error("{0} Not Implemented")]
@@ -149,6 +163,11 @@ pub enum HolonErrorKind {
     MultipleDescribedBy,
     MultipleExtends,
     CyclicExtends,
+    WrongDescriptorKind,
+    DuplicateInheritedDeclaration,
+    MissingRequiredRelationship,
+    MultipleRelatedHolons,
+    DescriptorDeclarationNotFound,
     NotAccessible,
     NotImplemented,
     RecordConversion,
@@ -197,6 +216,11 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::MultipleDescribedBy { .. } => Self::MultipleDescribedBy,
             HolonError::MultipleExtends { .. } => Self::MultipleExtends,
             HolonError::CyclicExtends { .. } => Self::CyclicExtends,
+            HolonError::WrongDescriptorKind { .. } => Self::WrongDescriptorKind,
+            HolonError::DuplicateInheritedDeclaration { .. } => Self::DuplicateInheritedDeclaration,
+            HolonError::MissingRequiredRelationship { .. } => Self::MissingRequiredRelationship,
+            HolonError::MultipleRelatedHolons { .. } => Self::MultipleRelatedHolons,
+            HolonError::DescriptorDeclarationNotFound { .. } => Self::DescriptorDeclarationNotFound,
             HolonError::NotAccessible(_, _) => Self::NotAccessible,
             HolonError::NotImplemented(_) => Self::NotImplemented,
             HolonError::RecordConversion(_) => Self::RecordConversion,

@@ -42,6 +42,33 @@ pub fn ancestors(start: &HolonReference) -> Result<Vec<HolonReference>, HolonErr
     walk_extends_chain(start).collect()
 }
 
+/// Collects related members across a descriptor's effective inheritance chain.
+///
+/// Members are returned in self-first ancestor order. A member reference that
+/// appears more than once is included only at its first occurrence.
+#[allow(dead_code)]
+pub(crate) fn flatten_related_members(
+    start: &HolonReference,
+    relationship_name: CoreRelationshipTypeName,
+) -> Result<Vec<HolonReference>, HolonError> {
+    let mut members = Vec::new();
+    let mut seen = HashSet::new();
+
+    for ancestor in walk_extends_chain(start) {
+        let ancestor = ancestor?;
+        let collection_arc = ancestor.related_holons(relationship_name.clone())?;
+        let collection = collection_arc.read().map_err(lock_error)?;
+
+        for member in collection.get_members() {
+            if seen.insert(member.reference_id_string()) {
+                members.push(member.clone());
+            }
+        }
+    }
+
+    Ok(members)
+}
+
 /// Lazy iterator over a descriptor's `Extends` lineage.
 ///
 /// State model:
@@ -240,6 +267,47 @@ mod tests {
             .collect::<Result<Vec<_>, _>>()?;
 
         assert_eq!(first_two, vec![HolonReference::from(&leaf), HolonReference::from(&middle)]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn flatten_related_members_preserves_lineage_order_and_deduplicates() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let member_a = new_test_holon(&context, "member-a")?;
+        let member_b = new_test_holon(&context, "member-b")?;
+        let member_c = new_test_holon(&context, "member-c")?;
+        let mut root = new_test_holon(&context, "root")?;
+        let mut middle = new_test_holon(&context, "middle")?;
+        let mut leaf = new_test_holon(&context, "leaf")?;
+
+        root.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![member_a.clone().into()],
+        )?;
+        middle.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.clone().into()])?;
+        middle.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![member_b.clone().into(), member_a.clone().into()],
+        )?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![middle.clone().into()])?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![member_c.clone().into(), member_b.clone().into()],
+        )?;
+
+        assert_eq!(
+            flatten_related_members(
+                &HolonReference::from(&leaf),
+                CoreRelationshipTypeName::InstanceProperties,
+            )?,
+            vec![
+                HolonReference::from(&member_c),
+                HolonReference::from(&member_b),
+                HolonReference::from(&member_a),
+            ]
+        );
 
         Ok(())
     }
