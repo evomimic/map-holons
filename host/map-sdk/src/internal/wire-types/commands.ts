@@ -63,6 +63,8 @@ export type TransactionActionWire =
   | 'Commit'
   | 'UndoLast'
   | 'RedoLast'
+  | { UndoToMarker: { marker_id: string } }
+  | { RedoToMarker: { marker_id: string } }
   | { LoadHolons: { content_set: ContentSet } }
   | { Dance: DanceRequestWire }
   | { Query: QueryExpression }
@@ -271,7 +273,11 @@ export function isTransactionActionWire(
       isHolonId(value.StageNewVersionFromId['holon_id'])) ||
     (hasSingleKey(value, 'DeleteHolon') &&
       isRecord(value.DeleteHolon) &&
-      isLocalId(value.DeleteHolon['local_id']))
+      isLocalId(value.DeleteHolon['local_id'])) ||
+    (hasSingleKey(value, 'UndoToMarker') &&
+      isStringFieldObject(value.UndoToMarker, 'marker_id')) ||
+    (hasSingleKey(value, 'RedoToMarker') &&
+      isStringFieldObject(value.RedoToMarker, 'marker_id'))
   );
 }
 

@@ -546,3 +546,187 @@ async fn disable_undo_prevents_future_units() {
         "UndoLast should fail after disable_undo permanently disabled checkpointing"
     );
 }
+
+// ── Marker navigation tests ─────────────────────────────────────────
+
+/// Stage a holon and close an EU with an explicit marker_id.
+async fn stage_and_close_marked(runtime: &Runtime, tx_id: &TxId, key: &str, marker: &str) {
+    let cmd =
+        tx_cmd(runtime, tx_id, TransactionAction::NewHolon { key: Some(MapString::from(key)) });
+    let result = runtime
+        .execute_command(cmd, ExecutionPolicy::default())
+        .await
+        .expect("NewHolon should succeed");
+    let transient_ref = match result {
+        MapResult::Reference(HolonReference::Transient(t)) => t,
+        other => panic!("stage_and_close_marked: expected Transient, got {:?}", other),
+    };
+
+    let cmd = tx_cmd(runtime, tx_id, TransactionAction::StageNewHolon { source: transient_ref });
+    runtime
+        .execute_command(
+            cmd,
+            ExecutionPolicy {
+                snapshot_after: true,
+                marker_id: Some(marker.to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect("StageNewHolon with marker should succeed");
+}
+
+#[tokio::test]
+async fn undo_to_marker_jumps_to_marked_unit() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    // EU_0 (unmarked, count=1) — establishes a snapshot before the marker
+    stage_and_close(&runtime, &tx_id, "holon-0").await;
+    // EU_1 marked "step-1" (count=2)
+    stage_and_close_marked(&runtime, &tx_id, "holon-1", "step-1").await;
+    // EU_2 (count=3) and EU_3 (count=4) above the marker
+    stage_and_close(&runtime, &tx_id, "holon-2").await;
+    stage_and_close(&runtime, &tx_id, "holon-3").await;
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 4);
+
+    // UndoToMarker should pop EU_3, EU_2, EU_1 and restore to EU_0 state
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "step-1".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoToMarker should succeed");
+
+    assert_eq!(
+        staged_count(&runtime, &tx_id).await,
+        1,
+        "UndoToMarker should restore state to just before the marked EU"
+    );
+}
+
+#[tokio::test]
+async fn redo_to_marker_jumps_forward() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    stage_and_close(&runtime, &tx_id, "holon-0").await; // EU_0, count=1
+    stage_and_close_marked(&runtime, &tx_id, "holon-1", "step-1").await; // EU_1, count=2
+    stage_and_close(&runtime, &tx_id, "holon-2").await; // EU_2, count=3
+    stage_and_close(&runtime, &tx_id, "holon-3").await; // EU_3, count=4
+
+    // Undo to the marker — now count=1, redo stack has [EU_1, EU_2, EU_3]
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "step-1".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoToMarker should succeed");
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 1);
+
+    // RedoToMarker("step-1") should restore EU_1's state — count=2
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::RedoToMarker { marker_id: "step-1".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("RedoToMarker should succeed");
+
+    assert_eq!(
+        staged_count(&runtime, &tx_id).await,
+        2,
+        "RedoToMarker should restore state to after the marked EU was applied"
+    );
+}
+
+#[tokio::test]
+async fn undo_to_marker_fails_if_marker_not_reachable() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    stage_and_close(&runtime, &tx_id, "holon-a").await;
+    stage_and_close(&runtime, &tx_id, "holon-b").await;
+
+    // "ghost" is not on the undo stack — should return InvalidParameter
+    let result = runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "ghost".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await;
+    assert!(result.is_err(), "UndoToMarker should fail for a nonexistent marker");
+
+    // Move EU to redo, then try to UndoToMarker it — no longer on undo stack
+    stage_and_close_marked(&runtime, &tx_id, "holon-c", "now-in-redo").await;
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::UndoLast),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoLast should succeed");
+
+    let result2 = runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "now-in-redo".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await;
+    assert!(
+        result2.is_err(),
+        "UndoToMarker should fail when the marker is in the redo stack, not undo"
+    );
+}
+
+#[tokio::test]
+async fn marker_binding_at_close() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    // EU_0 establishes a prior snapshot so UndoToMarker has something to restore
+    stage_and_close(&runtime, &tx_id, "base").await; // count=1
+                                                     // EU_1 bound to marker "m1"
+    stage_and_close_marked(&runtime, &tx_id, "marked", "m1").await; // count=2
+                                                                    // EU_2 above the marker
+    stage_and_close(&runtime, &tx_id, "above").await; // count=3
+
+    // If the marker was stored, UndoToMarker("m1") finds EU_1 and succeeds
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "m1".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoToMarker should find the marker — proving it was bound at EU close");
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 1, "restored to the EU before the marker");
+}

@@ -92,6 +92,34 @@ impl LocalRecoveryReceptor {
             .map_err(|e| HolonError::Misc(format!("redo join error: {e}")))?
     }
 
+    pub async fn undo_to_marker(
+        &self,
+        tx_id: &str,
+        marker_id: &str,
+    ) -> Result<Option<TransactionSnapshot>, HolonError> {
+        let store = Arc::clone(&self.recovery_store);
+        let tx_id = tx_id.to_string();
+        let marker_id = marker_id.to_string();
+
+        tokio::task::spawn_blocking(move || store.undo_to_marker(&tx_id, &marker_id))
+            .await
+            .map_err(|e| HolonError::Misc(format!("undo_to_marker join error: {e}")))?
+    }
+
+    pub async fn redo_to_marker(
+        &self,
+        tx_id: &str,
+        marker_id: &str,
+    ) -> Result<Option<TransactionSnapshot>, HolonError> {
+        let store = Arc::clone(&self.recovery_store);
+        let tx_id = tx_id.to_string();
+        let marker_id = marker_id.to_string();
+
+        tokio::task::spawn_blocking(move || store.redo_to_marker(&tx_id, &marker_id))
+            .await
+            .map_err(|e| HolonError::Misc(format!("redo_to_marker join error: {e}")))?
+    }
+
     pub fn can_undo(&self, tx_id: &str) -> Result<bool, HolonError> {
         self.recovery_store.can_undo(tx_id)
     }

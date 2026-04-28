@@ -112,6 +112,38 @@ impl ClientSession {
         }
     }
 
+    /// Undo all ExperienceUnits back to (and including) the one with `marker_id`.
+    pub async fn undo_to_marker(&self, marker_id: &str) -> Result<(), HolonError> {
+        let Some(recovery) = self.recovery.as_ref() else {
+            return Ok(());
+        };
+
+        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
+            let tx_id = self.tx_id().value().to_string();
+            match r.undo_to_marker(&tx_id, marker_id).await? {
+                Some(snapshot) => snapshot.restore_into(&self.context)?,
+                None => {} // restored to baseline — no snapshot to apply
+            }
+        }
+        Ok(())
+    }
+
+    /// Redo all ExperienceUnits up to (and including) the one with `marker_id`.
+    pub async fn redo_to_marker(&self, marker_id: &str) -> Result<(), HolonError> {
+        let Some(recovery) = self.recovery.as_ref() else {
+            return Ok(());
+        };
+
+        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
+            let tx_id = self.tx_id().value().to_string();
+            match r.redo_to_marker(&tx_id, marker_id).await? {
+                Some(snapshot) => snapshot.restore_into(&self.context)?,
+                None => {} // no-op (no redo units found — already handled as Err by store)
+            }
+        }
+        Ok(())
+    }
+
     /// Persist the current transaction state with the given description and options.
     pub async fn persist(
         &self,

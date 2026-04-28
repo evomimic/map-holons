@@ -24,6 +24,16 @@ pub trait RecoveryStore: Send + Sync {
 
     fn undo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError>;
     fn redo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError>;
+    fn undo_to_marker(
+        &self,
+        tx_id: &str,
+        marker_id: &str,
+    ) -> Result<Option<TransactionSnapshot>, HolonError>;
+    fn redo_to_marker(
+        &self,
+        tx_id: &str,
+        marker_id: &str,
+    ) -> Result<Option<TransactionSnapshot>, HolonError>;
     fn recover_latest(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError>;
     fn cleanup(&self, tx_id: &str) -> Result<(), HolonError>;
 

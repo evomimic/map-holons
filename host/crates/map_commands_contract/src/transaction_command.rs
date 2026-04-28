@@ -34,6 +34,12 @@ pub enum TransactionAction {
     /// Redoes the last undone mutation in this transaction.
     RedoLast,
 
+    /// Undoes mutations up to the specified marker.
+    UndoToMarker { marker_id: String },
+
+    /// Redoes mutations up to the specified marker.
+    RedoToMarker { marker_id: String },
+
     /// Loads holons from uploaded/imported file content.
     LoadHolons { content_set: ContentSet },
 
@@ -93,6 +99,9 @@ impl TransactionAction {
         match self {
             TransactionAction::Commit => CommandDescriptor::mutating_with_guard(),
             TransactionAction::UndoLast | TransactionAction::RedoLast => {
+                CommandDescriptor::transaction_read_only()
+            }
+            TransactionAction::UndoToMarker { .. } | TransactionAction::RedoToMarker { .. } => {
                 CommandDescriptor::transaction_read_only()
             }
             TransactionAction::LoadHolons { .. } => CommandDescriptor::mutating_with_guard(),

@@ -139,6 +139,8 @@ fn command_label(command: &MapCommand) -> &'static str {
             TransactionAction::Commit => "commit",
             TransactionAction::UndoLast => "undo_last",
             TransactionAction::RedoLast => "redo_last",
+            TransactionAction::UndoToMarker { .. } => "undo_to_marker",
+            TransactionAction::RedoToMarker { .. } => "redo_to_marker",
             TransactionAction::LoadHolons { .. } => "load_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::Query(_) => "query",

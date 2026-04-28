@@ -175,6 +175,20 @@ impl RuntimeSession {
         Ok(())
     }
 
+    pub async fn undo_to_marker(&self, tx_id: &TxId, marker_id: &str) -> Result<(), HolonError> {
+        if let Ok(session) = self.get_client_session(tx_id) {
+            session.undo_to_marker(marker_id).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn redo_to_marker(&self, tx_id: &TxId, marker_id: &str) -> Result<(), HolonError> {
+        if let Ok(session) = self.get_client_session(tx_id) {
+            session.redo_to_marker(marker_id).await?;
+        }
+        Ok(())
+    }
+
     pub fn archive_transaction(&self, tx_id: &TxId) -> Result<(), HolonError> {
         let mut active = self.active_sessions.write().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(

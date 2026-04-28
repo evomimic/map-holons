@@ -26,6 +26,14 @@ pub async fn handle_transaction(
             session.redo_last(&command.context.tx_id()).await?;
             Ok(MapResult::RedoComplete)
         }
+        TransactionAction::UndoToMarker { marker_id } => {
+            session.undo_to_marker(&command.context.tx_id(), &marker_id).await?;
+            Ok(MapResult::UndoToMarkerComplete)
+        }
+        TransactionAction::RedoToMarker { marker_id } => {
+            session.redo_to_marker(&command.context.tx_id(), &marker_id).await?;
+            Ok(MapResult::RedoToMarkerComplete)
+        }
         TransactionAction::Dance(request) => {
             let response = context.initiate_ingress_dance(request, false).await?;
             Ok(MapResult::DanceResponse(response))

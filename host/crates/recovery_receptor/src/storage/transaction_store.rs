@@ -358,6 +358,149 @@ impl RecoveryStore for TransactionRecoveryStore {
         Ok(Some(snapshot))
     }
 
+    /// Pop ExperienceUnits from the undo stack until the unit with `marker_id` is popped
+    /// (inclusive). All popped units are moved to the redo stack. Returns the snapshot
+    /// representing the state just before the marked unit, or `None` for baseline.
+    /// Returns `Err(InvalidParameter)` if the marker is not reachable on the undo stack.
+    fn undo_to_marker(
+        &self,
+        tx_id: &str,
+        marker_id: &str,
+    ) -> Result<Option<TransactionSnapshot>, HolonError> {
+        let mut guard = lock(self)?;
+        let now = now_ms();
+        let (mut undo_stack, mut redo_stack) = load_stacks(&guard, tx_id)?;
+
+        // Load EU list newest-first; all reads happen before the write transaction opens.
+        let mut undo_units = load_eu_stack(&guard, tx_id, "undo")?;
+        // undo_units[0] = top of stack (newest), same order as undo_stack reversed.
+
+        let marker_pos = undo_units
+            .iter()
+            .position(|(_, _, mid)| mid.as_deref() == Some(marker_id))
+            .ok_or_else(|| {
+                HolonError::InvalidParameter(format!(
+                    "marker_id '{marker_id}' not found on undo stack for tx={tx_id}"
+                ))
+            })?;
+
+        // Units to pop: indices 0..=marker_pos (newest-first, inclusive of the marker).
+        let to_pop: Vec<(String, String, Option<String>)> =
+            undo_units.drain(..=marker_pos).collect();
+
+        // Restore target = checkpoint of the new undo top (the unit just below the marker).
+        let (restore_snapshot, latest_cp) = match undo_units.first() {
+            Some((_, cp_id, _)) => {
+                let snap = load_snapshot(&guard, cp_id)?;
+                (Some(snap), Some(cp_id.clone()))
+            }
+            None => (None, None),
+        };
+
+        let initial_redo_len = redo_stack.len() as i64;
+        for (uid, _, _) in &to_pop {
+            undo_stack.pop();
+            redo_stack.push(uid.clone());
+        }
+
+        let tx = guard
+            .transaction()
+            .map_err(|e| HolonError::Misc(format!("undo_to_marker begin tx: {e}")))?;
+
+        for (i, (uid, cp_id, _)) in to_pop.iter().enumerate() {
+            let redo_pos = initial_redo_len + i as i64;
+            tx.execute(
+                "UPDATE experience_unit SET stack_kind = 'redo', stack_pos = ?1 WHERE unit_id = ?2",
+                params![redo_pos, uid],
+            )
+            .map_err(|e| HolonError::Misc(format!("undo_to_marker: move EU to redo: {e}")))?;
+            tx.execute(
+                "UPDATE recovery_checkpoint SET stack_kind = 'redo', stack_pos = ?1 WHERE checkpoint_id = ?2",
+                params![redo_pos, cp_id],
+            )
+            .map_err(|e| HolonError::Misc(format!("undo_to_marker: sync checkpoint to redo: {e}")))?;
+        }
+
+        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, latest_cp.as_deref(), now)?;
+        tx.commit().map_err(|e| HolonError::Misc(format!("undo_to_marker commit: {e}")))?;
+
+        tracing::info!(
+            "[RECOVERY STORE] undo_to_marker: popped {} units to reach marker='{marker_id}' for tx={tx_id}",
+            to_pop.len()
+        );
+        Ok(restore_snapshot)
+    }
+
+    /// Pop ExperienceUnits from the redo stack until the unit with `marker_id` is popped
+    /// (inclusive). All popped units are moved back to the undo stack. Returns the snapshot
+    /// captured by the marked unit (the state after it was applied).
+    /// Returns `Err(InvalidParameter)` if the marker is not reachable on the redo stack.
+    fn redo_to_marker(
+        &self,
+        tx_id: &str,
+        marker_id: &str,
+    ) -> Result<Option<TransactionSnapshot>, HolonError> {
+        let mut guard = lock(self)?;
+        let now = now_ms();
+        let (mut undo_stack, mut redo_stack) = load_stacks(&guard, tx_id)?;
+
+        // Load redo EUs newest-first (highest stack_pos first).
+        let mut redo_units = load_eu_stack(&guard, tx_id, "redo")?;
+
+        let marker_pos = redo_units
+            .iter()
+            .position(|(_, _, mid)| mid.as_deref() == Some(marker_id))
+            .ok_or_else(|| {
+                HolonError::InvalidParameter(format!(
+                    "marker_id '{marker_id}' not found on redo stack for tx={tx_id}"
+                ))
+            })?;
+
+        // Drain newest-first up to and including the marker.
+        let to_redo: Vec<(String, String, Option<String>)> =
+            redo_units.drain(..=marker_pos).collect();
+
+        // The marker is the last entry in to_redo (oldest of those being redone).
+        // Its checkpoint represents the state we want to restore.
+        let (_, marker_cp, _) = &to_redo[marker_pos];
+        let restore_snapshot = load_snapshot(&guard, marker_cp)?;
+        let latest_cp = marker_cp.clone();
+
+        let initial_undo_len = undo_stack.len() as i64;
+        for (uid, _, _) in &to_redo {
+            redo_stack.pop();
+            undo_stack.push(uid.clone());
+        }
+
+        let tx = guard
+            .transaction()
+            .map_err(|e| HolonError::Misc(format!("redo_to_marker begin tx: {e}")))?;
+
+        for (i, (uid, cp_id, _)) in to_redo.iter().enumerate() {
+            // Newest unit gets the highest undo position; marker gets initial_undo_len.
+            let undo_pos = initial_undo_len + (to_redo.len() - 1 - i) as i64;
+            tx.execute(
+                "UPDATE experience_unit SET stack_kind = 'undo', stack_pos = ?1 WHERE unit_id = ?2",
+                params![undo_pos, uid],
+            )
+            .map_err(|e| HolonError::Misc(format!("redo_to_marker: move EU to undo: {e}")))?;
+            tx.execute(
+                "UPDATE recovery_checkpoint SET stack_kind = 'undo', stack_pos = ?1 WHERE checkpoint_id = ?2",
+                params![undo_pos, cp_id],
+            )
+            .map_err(|e| HolonError::Misc(format!("redo_to_marker: sync checkpoint to undo: {e}")))?;
+        }
+
+        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, Some(&latest_cp), now)?;
+        tx.commit().map_err(|e| HolonError::Misc(format!("redo_to_marker commit: {e}")))?;
+
+        tracing::info!(
+            "[RECOVERY STORE] redo_to_marker: restored {} units to reach marker='{marker_id}' for tx={tx_id}",
+            to_redo.len()
+        );
+        Ok(Some(restore_snapshot))
+    }
+
     // -----------------------------------------------------------------------
     // Startup recovery
     // -----------------------------------------------------------------------
@@ -549,6 +692,32 @@ fn load_checkpoint_for_unit(conn: &Connection, unit_id: &str) -> Result<String, 
         |r| r.get(0),
     )
     .map_err(|e| HolonError::Misc(format!("Load checkpoint for unit '{unit_id}': {e}")))
+}
+
+/// Load all ExperienceUnit rows for a given stack (newest-first) as `(unit_id, checkpoint_id, marker_id)`.
+fn load_eu_stack(
+    conn: &Connection,
+    tx_id: &str,
+    stack_kind: &str,
+) -> Result<Vec<(String, String, Option<String>)>, HolonError> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT unit_id, checkpoint_id, marker_id
+             FROM experience_unit
+             WHERE tx_id = ?1 AND stack_kind = ?2
+             ORDER BY stack_pos DESC",
+        )
+        .map_err(|e| HolonError::Misc(format!("load_eu_stack prepare: {e}")))?;
+
+    let rows = stmt
+        .query_map(params![tx_id, stack_kind], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?))
+        })
+        .map_err(|e| HolonError::Misc(format!("load_eu_stack query: {e}")))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| HolonError::Misc(format!("load_eu_stack collect: {e}")))?;
+
+    Ok(rows)
 }
 
 fn load_snapshot(
