@@ -19,4 +19,12 @@ impl MapCommand {
             MapCommand::Holon(cmd) => cmd.action.descriptor(),
         }
     }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            MapCommand::Space(cmd) => cmd.label(),
+            MapCommand::Transaction(cmd) => cmd.action.label(),
+            MapCommand::Holon(cmd) => cmd.action.label(),
+        }
+    }
 }

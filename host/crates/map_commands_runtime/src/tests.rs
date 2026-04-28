@@ -730,3 +730,121 @@ async fn marker_binding_at_close() {
 
     assert_eq!(staged_count(&runtime, &tx_id).await, 1, "restored to the EU before the marker");
 }
+
+// ── disable_undo hardening tests ────────────────────────────────────
+
+#[tokio::test]
+async fn disable_undo_midstream_prior_eus_remain_undoable() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    // Two EUs created normally before disable fires.
+    stage_and_close(&runtime, &tx_id, "before-0").await; // EU_0, count=1
+    stage_and_close(&runtime, &tx_id, "before-1").await; // EU_1, count=2
+    assert_eq!(staged_count(&runtime, &tx_id).await, 2);
+
+    // Intermediate command with disable_undo=true — permanently disables checkpointing
+    // but does not touch the existing undo stack.
+    let cmd = tx_cmd(
+        &runtime,
+        &tx_id,
+        TransactionAction::NewHolon { key: Some(MapString::from("after-disable")) },
+    );
+    runtime
+        .execute_command(cmd, ExecutionPolicy { disable_undo: true, ..Default::default() })
+        .await
+        .expect("NewHolon with disable_undo should succeed");
+
+    // EU_1 is still on the undo stack — UndoLast must succeed.
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::UndoLast),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoLast should still work on EUs created before disable_undo");
+
+    assert_eq!(
+        staged_count(&runtime, &tx_id).await,
+        1,
+        "EU_1 should have been undone; count drops to 1"
+    );
+}
+
+#[tokio::test]
+async fn disable_undo_without_snapshot_after_still_sets_flag() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    // Fire any command with disable_undo=true and snapshot_after=false — the flag
+    // is written to the DB regardless of snapshot_after.
+    let cmd = tx_cmd(
+        &runtime,
+        &tx_id,
+        TransactionAction::NewHolon { key: Some(MapString::from("flag-setter")) },
+    );
+    runtime
+        .execute_command(
+            cmd,
+            ExecutionPolicy { disable_undo: true, snapshot_after: false, ..Default::default() },
+        )
+        .await
+        .expect("NewHolon with disable_undo=true should succeed");
+
+    // Close an EU — snapshot_after=true — but the flag is already set so no EU is created.
+    stage_and_close(&runtime, &tx_id, "after-flag").await;
+
+    let result = runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::UndoLast),
+            ExecutionPolicy::default(),
+        )
+        .await;
+    assert!(
+        result.is_err(),
+        "UndoLast should fail: disable_undo set the flag before any EU was created"
+    );
+}
+
+#[tokio::test]
+async fn disable_undo_after_markers_marker_still_navigable() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    // EU_0 (no marker, count=1) provides a snapshot to restore to — same pattern
+    // used by every other marker test (undo_to_marker restores to the EU *below* the marker).
+    stage_and_close(&runtime, &tx_id, "base").await;
+    // EU_1 with marker "m1" (count=2), EU_2 above (count=3).
+    stage_and_close_marked(&runtime, &tx_id, "marked", "m1").await;
+    stage_and_close(&runtime, &tx_id, "above").await;
+
+    // Disable checkpointing — existing EUs stay on the undo stack.
+    let cmd = tx_cmd(
+        &runtime,
+        &tx_id,
+        TransactionAction::NewHolon { key: Some(MapString::from("disabler")) },
+    );
+    runtime
+        .execute_command(cmd, ExecutionPolicy { disable_undo: true, ..Default::default() })
+        .await
+        .expect("NewHolon with disable_undo should succeed");
+
+    // undo_to_marker("m1") pops EU_2 and EU_1; restores to EU_0's snapshot (count=1).
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "m1".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoToMarker should still navigate to markers created before disable_undo");
+
+    assert_eq!(
+        staged_count(&runtime, &tx_id).await,
+        1,
+        "restored to EU_0's state — count drops from 3 to 1"
+    );
+}

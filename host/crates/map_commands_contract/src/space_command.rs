@@ -19,4 +19,10 @@ impl SpaceCommand {
             },
         }
     }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            SpaceCommand::BeginTransaction => "begin_transaction",
+        }
+    }
 }

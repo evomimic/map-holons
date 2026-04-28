@@ -73,9 +73,8 @@ async function runTransactionCommand<T>(
  */
 export function commit(
   txId: TxId,
-  options?: RequestOptionsOverrides,
 ): Promise<HolonReferenceWire> {
-  return runTransactionCommand(txId, 'Commit', expectReference, options);
+  return runTransactionCommand(txId, 'Commit', expectReference);
 }
 
 /**

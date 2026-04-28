@@ -18,8 +18,8 @@ export type RequestId = number;
  * Per-request dispatch options echoed by the Rust IPC envelope.
  */
 export interface RequestOptions {
-  marker_id: string | null;   // replaces gesture_id
-  marker_label: string | null;       // replaces gesture_label
+  marker_id: string | null;
+  marker_label: string | null;
   snapshot_after: boolean;
   disable_undo: boolean;
 }

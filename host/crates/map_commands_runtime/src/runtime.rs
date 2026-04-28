@@ -50,7 +50,7 @@ impl Runtime {
         policy: ExecutionPolicy,
     ) -> Result<MapResult, HolonError> {
         let descriptor = command.descriptor();
-        let command_label = command_label(&command);
+        let command_label = command.label();
 
         let is_commit = match &command {
             MapCommand::Transaction(cmd) => matches!(cmd.action, TransactionAction::Commit),
@@ -129,55 +129,5 @@ impl Runtime {
             }
             MapCommand::Holon(cmd) => holon_handler::handle_holon(cmd).await,
         }
-    }
-}
-
-fn command_label(command: &MapCommand) -> &'static str {
-    match command {
-        MapCommand::Space(SpaceCommand::BeginTransaction) => "begin_transaction",
-        MapCommand::Transaction(cmd) => match &cmd.action {
-            TransactionAction::Commit => "commit",
-            TransactionAction::UndoLast => "undo_last",
-            TransactionAction::RedoLast => "redo_last",
-            TransactionAction::UndoToMarker { .. } => "undo_to_marker",
-            TransactionAction::RedoToMarker { .. } => "redo_to_marker",
-            TransactionAction::LoadHolons { .. } => "load_holons",
-            TransactionAction::Dance(_) => "dance",
-            TransactionAction::Query(_) => "query",
-            TransactionAction::GetAllHolons => "get_all_holons",
-            TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
-            TransactionAction::GetStagedHolonsByBaseKey { .. } => "get_staged_holons_by_base_key",
-            TransactionAction::GetStagedHolonByVersionedKey { .. } => {
-                "get_staged_holon_by_versioned_key"
-            }
-            TransactionAction::GetTransientHolonByBaseKey { .. } => {
-                "get_transient_holon_by_base_key"
-            }
-            TransactionAction::GetTransientHolonByVersionedKey { .. } => {
-                "get_transient_holon_by_versioned_key"
-            }
-            TransactionAction::StagedCount => "staged_count",
-            TransactionAction::TransientCount => "transient_count",
-            TransactionAction::NewHolon { .. } => "new_holon",
-            TransactionAction::StageNewHolon { .. } => "stage_new_holon",
-            TransactionAction::StageNewFromClone { .. } => "stage_new_from_clone",
-            TransactionAction::StageNewVersion { .. } => "stage_new_version",
-            TransactionAction::StageNewVersionFromId { .. } => "stage_new_version_from_id",
-            TransactionAction::DeleteHolon { .. } => "delete_holon",
-        },
-        MapCommand::Holon(cmd) => match &cmd.action {
-            HolonAction::Read(action) => match action {
-                ReadableHolonAction::CloneHolon => "clone_holon",
-                ReadableHolonAction::EssentialContent => "essential_content",
-                ReadableHolonAction::Summarize => "summarize",
-                ReadableHolonAction::HolonId => "holon_id",
-                ReadableHolonAction::Predecessor => "predecessor",
-                ReadableHolonAction::Key => "key",
-                ReadableHolonAction::VersionedKey => "versioned_key",
-                ReadableHolonAction::PropertyValue { .. } => "property_value",
-                ReadableHolonAction::RelatedHolons { .. } => "related_holons",
-            },
-            HolonAction::Write(_) => "holon_write",
-        },
     }
 }

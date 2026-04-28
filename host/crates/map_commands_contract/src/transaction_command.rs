@@ -131,4 +131,37 @@ impl TransactionAction {
             | TransactionAction::DeleteHolon { .. } => CommandDescriptor::mutating(),
         }
     }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            TransactionAction::Commit => "commit",
+            TransactionAction::UndoLast => "undo_last",
+            TransactionAction::RedoLast => "redo_last",
+            TransactionAction::UndoToMarker { .. } => "undo_to_marker",
+            TransactionAction::RedoToMarker { .. } => "redo_to_marker",
+            TransactionAction::LoadHolons { .. } => "load_holons",
+            TransactionAction::Dance(_) => "dance",
+            TransactionAction::Query(_) => "query",
+            TransactionAction::GetAllHolons => "get_all_holons",
+            TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
+            TransactionAction::GetStagedHolonsByBaseKey { .. } => "get_staged_holons_by_base_key",
+            TransactionAction::GetStagedHolonByVersionedKey { .. } => {
+                "get_staged_holon_by_versioned_key"
+            }
+            TransactionAction::GetTransientHolonByBaseKey { .. } => {
+                "get_transient_holon_by_base_key"
+            }
+            TransactionAction::GetTransientHolonByVersionedKey { .. } => {
+                "get_transient_holon_by_versioned_key"
+            }
+            TransactionAction::StagedCount => "staged_count",
+            TransactionAction::TransientCount => "transient_count",
+            TransactionAction::NewHolon { .. } => "new_holon",
+            TransactionAction::StageNewHolon { .. } => "stage_new_holon",
+            TransactionAction::StageNewFromClone { .. } => "stage_new_from_clone",
+            TransactionAction::StageNewVersion { .. } => "stage_new_version",
+            TransactionAction::StageNewVersionFromId { .. } => "stage_new_version_from_id",
+            TransactionAction::DeleteHolon { .. } => "delete_holon",
+        }
+    }
 }

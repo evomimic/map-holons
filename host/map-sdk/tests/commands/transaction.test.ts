@@ -384,22 +384,18 @@ describe('transaction command builders', () => {
     });
   });
 
-  it('passes request option overrides through transaction builders', async () => {
+  it('commit sends default options (no snapshot_after, no marker)', async () => {
     invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
 
-    await commit(txId, {
-      marker_id: 'gesture-123',
-      marker_label: 'commit',
-      snapshot_after: true,
-      disable_undo: false,
-    });
+    await commit(txId);
 
-    expectTransactionRequest('Commit', {
-      marker_id: 'gesture-123',
-      marker_label: 'commit',
-      snapshot_after: true,
-      disable_undo: false,
-    });
+    expectTransactionRequest('Commit', defaultOptions);
+  });
+
+  it('commit does not accept options (txId only)', () => {
+    // commit() deliberately has no options parameter — lifecycle operations must
+    // never create an ExperienceUnit or carry marker metadata.
+    expect(commit.length).toBe(1);
   });
 
   it('undoLast sends default options with snapshot_after false', async () => {
