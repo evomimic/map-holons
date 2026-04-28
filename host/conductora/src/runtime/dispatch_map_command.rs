@@ -70,7 +70,7 @@ async fn dispatch_inner(
             ExecutionPolicy {
                 snapshot_after: options.snapshot_after,
                 disable_undo: options.disable_undo,
-                marker_id: options.marker_id.map(|m| m.0.0),
+                marker_id: options.marker_id.map(|m| m.0 .0),
                 label: options.marker_label,
             },
         )

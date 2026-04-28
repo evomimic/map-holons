@@ -138,7 +138,7 @@ impl TestExecutionState {
         step_name: &str,
     ) -> Result<MapResult, HolonError> {
         debug!("Dispatching {}: {:?}", step_name, command);
-        let result = self.runtime.execute_command(command,ExecutionPolicy::default()).await;
+        let result = self.runtime.execute_command(command, ExecutionPolicy::default()).await;
         debug!("{} result: {:?}", step_name, &result);
         result
     }

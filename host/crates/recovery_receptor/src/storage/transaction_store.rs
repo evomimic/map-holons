@@ -185,9 +185,7 @@ impl RecoveryStore for TransactionRecoveryStore {
             )
             .map_err(|e| HolonError::Misc(format!("Disable checkpointing: {e}")))?;
 
-            tracing::debug!(
-                "[RECOVERY STORE] disable_undo: checkpointing disabled for tx={tx_id}"
-            );
+            tracing::debug!("[RECOVERY STORE] disable_undo: checkpointing disabled for tx={tx_id}");
         } else if snapshot_after && checkpointing_enabled {
             // Close the current Experience Unit: create a checkpoint + EU row,
             // push unit_id onto undo stack, invalidate redo history.
@@ -304,9 +302,7 @@ impl RecoveryStore for TransactionRecoveryStore {
 
         tx.commit().map_err(|e| HolonError::Misc(format!("Undo commit: {e}")))?;
 
-        tracing::info!(
-            "[RECOVERY STORE] Undo: popped unit={popped_unit_id} for tx={tx_id}"
-        );
+        tracing::info!("[RECOVERY STORE] Undo: popped unit={popped_unit_id} for tx={tx_id}");
         Ok(snapshot)
     }
 

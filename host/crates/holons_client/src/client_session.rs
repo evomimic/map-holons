@@ -90,7 +90,7 @@ impl ClientSession {
             Ok(())
         }
     }
-    
+
     /// Redo the last undone transaction, if available.
     pub async fn redo_last(&self) -> Result<(), HolonError> {
         let Some(recovery) = self.recovery.as_ref() else {
@@ -113,13 +113,29 @@ impl ClientSession {
     }
 
     /// Persist the current transaction state with the given description and options.
-    pub async fn persist(&self, description: &str, disable_undo: bool, snapshot_after: bool, marker_id: Option<String>, marker_label: Option<String>) -> Result<(), HolonError> {
+    pub async fn persist(
+        &self,
+        description: &str,
+        disable_undo: bool,
+        snapshot_after: bool,
+        marker_id: Option<String>,
+        marker_label: Option<String>,
+    ) -> Result<(), HolonError> {
         let Some(recovery) = self.recovery.as_ref() else {
             return Ok(());
         };
 
         if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            return r.persist(&self.context, description, disable_undo, snapshot_after, marker_id, marker_label).await;
+            return r
+                .persist(
+                    &self.context,
+                    description,
+                    disable_undo,
+                    snapshot_after,
+                    marker_id,
+                    marker_label,
+                )
+                .await;
         } else {
             Ok(())
         }

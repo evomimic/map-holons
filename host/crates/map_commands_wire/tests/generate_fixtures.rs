@@ -18,8 +18,8 @@ use holons_core::dances::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
 use holons_core::CollectionState;
 use map_commands_wire::{
-    MarkerId, HolonActionWire, HolonCommandWire, MapCommandWire, MapIpcRequest, MapIpcResponse,
-    MapResultWire, ReadableHolonActionWire, RequestId, RequestOptions, SpaceCommandWire,
+    HolonActionWire, HolonCommandWire, MapCommandWire, MapIpcRequest, MapIpcResponse,
+    MapResultWire, MarkerId, ReadableHolonActionWire, RequestId, RequestOptions, SpaceCommandWire,
     TransactionActionWire, TransactionCommandWire, WritableHolonActionWire,
 };
 use serde::Serialize;
@@ -472,7 +472,12 @@ fn holon_command(tx: u64, target: HolonReferenceWire, action: HolonActionWire) -
 }
 
 fn default_options() -> RequestOptions {
-    RequestOptions { marker_id: None, marker_label: None, snapshot_after: false, disable_undo: false }
+    RequestOptions {
+        marker_id: None,
+        marker_label: None,
+        snapshot_after: false,
+        disable_undo: false,
+    }
 }
 
 fn mutation_options(label: &str) -> RequestOptions {

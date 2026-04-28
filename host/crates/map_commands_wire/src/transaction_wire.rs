@@ -31,7 +31,7 @@ pub enum TransactionActionWire {
 
     /// Undoes the last mutation in this transaction.
     UndoLast,
-    
+
     /// Redoes the last undone mutation in this transaction.
     RedoLast,
 

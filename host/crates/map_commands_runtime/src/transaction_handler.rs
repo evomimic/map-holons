@@ -93,5 +93,6 @@ pub async fn handle_transaction(
         TransactionAction::DeleteHolon { local_id } => {
             context.mutation().delete_holon(local_id)?;
             Ok(MapResult::None)
-        }}
+        }
+    }
 }

@@ -77,7 +77,10 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
 
     // Step 5: Begin first transaction through the real command path
     let result = runtime
-        .execute_command(MapCommand::Space(SpaceCommand::BeginTransaction),ExecutionPolicy::default())
+        .execute_command(
+            MapCommand::Space(SpaceCommand::BeginTransaction),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("failed to begin initial transaction");
     let tx_id = match result {

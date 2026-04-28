@@ -64,7 +64,7 @@ impl RuntimeSession {
             self.recovery.clone(),
         )?);
 
-        session.persist("begin_transaction", false, false,None, None).await?;
+        session.persist("begin_transaction", false, false, None, None).await?;
 
         let tx_id = session.tx_id();
         let mut active = self.active_sessions.write().map_err(|e| {
@@ -138,7 +138,15 @@ impl RuntimeSession {
         policy: ExecutionPolicy,
     ) -> Result<(), HolonError> {
         if let Ok(session) = self.get_client_session(tx_id) {
-            session.persist(description, policy.disable_undo, policy.snapshot_after, policy.marker_id, policy.label).await?;
+            session
+                .persist(
+                    description,
+                    policy.disable_undo,
+                    policy.snapshot_after,
+                    policy.marker_id,
+                    policy.label,
+                )
+                .await?;
         }
         Ok(())
     }

@@ -47,9 +47,13 @@ pub async fn execute_new_holon(
                         value,
                     }),
                 });
-                state.runtime().execute_command(prop_command, ExecutionPolicy::default()).await.unwrap_or_else(|e| {
-                    panic!("failed to set property {:?} on new holon: {:?}", name, e)
-                });
+                state
+                    .runtime()
+                    .execute_command(prop_command, ExecutionPolicy::default())
+                    .await
+                    .unwrap_or_else(|e| {
+                        panic!("failed to set property {:?} on new holon: {:?}", name, e)
+                    });
             }
 
             // 4. RECORD

@@ -116,7 +116,10 @@ fn build_test_runtime() -> Runtime {
 /// Helper: begin a transaction and return the tx_id.
 async fn begin_tx(runtime: &Runtime) -> TxId {
     let result = runtime
-        .execute_command(MapCommand::Space(SpaceCommand::BeginTransaction), ExecutionPolicy::default())
+        .execute_command(
+            MapCommand::Space(SpaceCommand::BeginTransaction),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("execute_command should succeed");
     match result {
@@ -138,7 +141,10 @@ async fn begin_transaction_returns_valid_tx_id() {
     let runtime = build_test_runtime();
 
     let result = runtime
-        .execute_command(MapCommand::Space(SpaceCommand::BeginTransaction), ExecutionPolicy::default())
+        .execute_command(
+            MapCommand::Space(SpaceCommand::BeginTransaction),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("execute_command should succeed");
 
@@ -157,7 +163,10 @@ async fn begin_transaction_ids_are_unique() {
     let mut tx_ids = Vec::new();
     for _ in 0..3 {
         let result = runtime
-            .execute_command(MapCommand::Space(SpaceCommand::BeginTransaction),ExecutionPolicy::default())
+            .execute_command(
+                MapCommand::Space(SpaceCommand::BeginTransaction),
+                ExecutionPolicy::default(),
+            )
             .await
             .expect("execute_command should succeed");
         match result {
@@ -196,7 +205,10 @@ async fn staged_count_returns_zero_for_new_tx() {
     let tx_id = begin_tx(&runtime).await;
 
     let result = runtime
-        .execute_command(tx_cmd(&runtime, &tx_id, TransactionAction::StagedCount),ExecutionPolicy::default())
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::StagedCount),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("execute_command should succeed");
 
@@ -212,7 +224,10 @@ async fn transient_count_returns_zero_for_new_tx() {
     let tx_id = begin_tx(&runtime).await;
 
     let result = runtime
-        .execute_command(tx_cmd(&runtime, &tx_id, TransactionAction::TransientCount), ExecutionPolicy::default())
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::TransientCount),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("execute_command should succeed");
 
@@ -235,7 +250,10 @@ async fn new_holon_then_transient_count() {
         &tx_id,
         TransactionAction::NewHolon { key: Some(MapString::from("test-key")) },
     );
-    let result = runtime.execute_command(cmd, ExecutionPolicy::default()).await.expect("execute_command should succeed");
+    let result = runtime
+        .execute_command(cmd, ExecutionPolicy::default())
+        .await
+        .expect("execute_command should succeed");
     match &result {
         MapResult::Reference(HolonReference::Transient(_)) => {}
         other => panic!("expected Transient reference, got {:?}", other),
@@ -243,7 +261,10 @@ async fn new_holon_then_transient_count() {
 
     // Transient count should be 1
     let result = runtime
-        .execute_command(tx_cmd(&runtime, &tx_id, TransactionAction::TransientCount), ExecutionPolicy::default())
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::TransientCount),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("execute_command should succeed");
     match result {
@@ -263,7 +284,10 @@ async fn new_holon_stage_then_staged_count() {
         &tx_id,
         TransactionAction::NewHolon { key: Some(MapString::from("stage-test")) },
     );
-    let result = runtime.execute_command(cmd,ExecutionPolicy::default()).await.expect("execute_command should succeed");
+    let result = runtime
+        .execute_command(cmd, ExecutionPolicy::default())
+        .await
+        .expect("execute_command should succeed");
     let transient_ref = match result {
         MapResult::Reference(HolonReference::Transient(t)) => t,
         other => panic!("expected Transient reference, got {:?}", other),
@@ -271,7 +295,10 @@ async fn new_holon_stage_then_staged_count() {
 
     // StageNewHolon using the transient ref directly
     let cmd = tx_cmd(&runtime, &tx_id, TransactionAction::StageNewHolon { source: transient_ref });
-    let result = runtime.execute_command(cmd, ExecutionPolicy::default()).await.expect("execute_command should succeed");
+    let result = runtime
+        .execute_command(cmd, ExecutionPolicy::default())
+        .await
+        .expect("execute_command should succeed");
     match &result {
         MapResult::Reference(HolonReference::Staged(_)) => {}
         other => panic!("expected Staged reference, got {:?}", other),
@@ -279,7 +306,10 @@ async fn new_holon_stage_then_staged_count() {
 
     // StagedCount should be 1
     let result = runtime
-        .execute_command(tx_cmd(&runtime, &tx_id, TransactionAction::StagedCount), ExecutionPolicy::default())
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::StagedCount),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("execute_command should succeed");
     match result {
@@ -315,11 +345,8 @@ fn build_test_runtime_with_recovery() -> Runtime {
 
 /// Create a transient holon, stage it, and close an ExperienceUnit (`snapshot_after=true`).
 async fn stage_and_close(runtime: &Runtime, tx_id: &TxId, key: &str) {
-    let cmd = tx_cmd(
-        runtime,
-        tx_id,
-        TransactionAction::NewHolon { key: Some(MapString::from(key)) },
-    );
+    let cmd =
+        tx_cmd(runtime, tx_id, TransactionAction::NewHolon { key: Some(MapString::from(key)) });
     let result = runtime
         .execute_command(cmd, ExecutionPolicy::default())
         .await
@@ -329,8 +356,7 @@ async fn stage_and_close(runtime: &Runtime, tx_id: &TxId, key: &str) {
         other => panic!("stage_and_close: expected Transient reference, got {:?}", other),
     };
 
-    let cmd =
-        tx_cmd(runtime, tx_id, TransactionAction::StageNewHolon { source: transient_ref });
+    let cmd = tx_cmd(runtime, tx_id, TransactionAction::StageNewHolon { source: transient_ref });
     runtime
         .execute_command(cmd, ExecutionPolicy { snapshot_after: true, ..Default::default() })
         .await
@@ -497,8 +523,7 @@ async fn disable_undo_prevents_future_units() {
         MapResult::Reference(HolonReference::Transient(t)) => t,
         other => panic!("expected Transient reference, got {:?}", other),
     };
-    let cmd =
-        tx_cmd(&runtime, &tx_id, TransactionAction::StageNewHolon { source: transient_ref });
+    let cmd = tx_cmd(&runtime, &tx_id, TransactionAction::StageNewHolon { source: transient_ref });
     runtime
         .execute_command(
             cmd,

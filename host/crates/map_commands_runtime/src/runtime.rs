@@ -44,8 +44,11 @@ impl Runtime {
     }
 
     /// Enforce lifecycle policy and route a bound domain command to its handler.
-    pub async fn execute_command(&self, command: MapCommand, policy: ExecutionPolicy) -> Result<MapResult, HolonError> {
-    
+    pub async fn execute_command(
+        &self,
+        command: MapCommand,
+        policy: ExecutionPolicy,
+    ) -> Result<MapResult, HolonError> {
         let descriptor = command.descriptor();
         let command_label = command_label(&command);
 
@@ -135,7 +138,7 @@ fn command_label(command: &MapCommand) -> &'static str {
         MapCommand::Transaction(cmd) => match &cmd.action {
             TransactionAction::Commit => "commit",
             TransactionAction::UndoLast => "undo_last",
-            TransactionAction::RedoLast => "redo_last", 
+            TransactionAction::RedoLast => "redo_last",
             TransactionAction::LoadHolons { .. } => "load_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::Query(_) => "query",

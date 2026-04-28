@@ -40,11 +40,11 @@ pub struct UndoCheckpoint {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExperienceUnit {
-    pub unit_id: String,           // UUID
+    pub unit_id: String, // UUID
     pub tx_id: String,
     pub marker_id: Option<String>, // bound at close; None until Phase 2
     pub label: Option<String>,
-    pub checkpoint_id: String,     // the restore target snapshot
+    pub checkpoint_id: String, // the restore target snapshot
     pub created_at_ms: i64,
 }
 
