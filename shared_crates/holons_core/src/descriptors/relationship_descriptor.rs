@@ -1,8 +1,10 @@
-use crate::descriptors::{accessor_helpers, Descriptor, HolonDescriptor, TypeHeader};
+use crate::descriptors::{
+    accessor_helpers, DeclaredRelationshipDescriptor, Descriptor, HolonDescriptor,
+    InverseRelationshipDescriptor, TypeHeader,
+};
 use crate::reference_layer::HolonReference;
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Runtime wrapper for relationship descriptors.
 ///
@@ -25,64 +27,66 @@ impl RelationshipDescriptor {
 
     /// Returns whether the relationship participates in defining identity or structure.
     pub fn is_definitional(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(&self.holon, CorePropertyTypeName::IsDefinitional)
+        accessor_helpers::relationship_is_definitional(&self.holon)
     }
 
     /// Returns whether related members have schema-significant order.
     pub fn is_ordered(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(&self.holon, CorePropertyTypeName::IsOrdered)
+        accessor_helpers::relationship_is_ordered(&self.holon)
     }
 
     /// Returns whether repeated target references are allowed.
     pub fn allows_duplicates(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(&self.holon, CorePropertyTypeName::AllowsDuplicates)
+        accessor_helpers::relationship_allows_duplicates(&self.holon)
     }
 
     /// Returns the minimum number of targets permitted by this relationship.
     pub fn min_cardinality(&self) -> Result<i64, HolonError> {
-        accessor_helpers::require_integer(&self.holon, CorePropertyTypeName::MinCardinality)
+        accessor_helpers::relationship_min_cardinality(&self.holon)
     }
 
     /// Returns the maximum number of targets permitted by this relationship.
     pub fn max_cardinality(&self) -> Result<i64, HolonError> {
-        accessor_helpers::require_integer(&self.holon, CorePropertyTypeName::MaxCardinality)
+        accessor_helpers::relationship_max_cardinality(&self.holon)
     }
 
     /// Returns the optional deletion semantic declared by this relationship, when populated.
     pub fn deletion_semantic(&self) -> Result<Option<MapString>, HolonError> {
-        accessor_helpers::optional_string(&self.holon, CorePropertyTypeName::DeletionSemantic)
+        accessor_helpers::relationship_deletion_semantic(&self.holon)
     }
 
     /// Returns this descriptor's base relationship name.
     pub fn base_relationship_name(&self) -> Result<RelationshipName, HolonError> {
-        Ok(RelationshipName(self.header().type_name()?))
+        accessor_helpers::relationship_base_relationship_name(&self.holon)
     }
 
     /// Returns the source holon descriptor reached through the required `SourceType` relationship.
     pub fn source_type(&self) -> Result<HolonDescriptor, HolonError> {
-        let source_type = accessor_helpers::require_single_related(
-            &self.holon,
-            CoreRelationshipTypeName::SourceType,
-        )?;
-        Ok(HolonDescriptor::from_holon(source_type))
+        accessor_helpers::relationship_source_type(&self.holon)
     }
 
     /// Returns the target holon descriptor reached through the required `TargetType` relationship.
     pub fn target_type(&self) -> Result<HolonDescriptor, HolonError> {
-        let target_type = accessor_helpers::require_single_related(
-            &self.holon,
-            CoreRelationshipTypeName::TargetType,
-        )?;
-        Ok(HolonDescriptor::from_holon(target_type))
+        accessor_helpers::relationship_target_type(&self.holon)
     }
 
     /// Returns the full `(Source)-[Base]->(Target)` relationship name.
     pub fn full_relationship_name(&self) -> Result<MapString, HolonError> {
-        let source_name = self.source_type()?.header().type_name()?;
-        let base_name = self.base_relationship_name()?;
-        let target_name = self.target_type()?.header().type_name()?;
+        accessor_helpers::relationship_full_relationship_name(&self.holon)
+    }
 
-        Ok(MapString(format!("({source_name})-[{base_name}]->({target_name})")))
+    /// Narrows this descriptor to a declared relationship descriptor.
+    pub fn try_into_declared_relationship_descriptor(
+        self,
+    ) -> Result<DeclaredRelationshipDescriptor, HolonError> {
+        DeclaredRelationshipDescriptor::try_from_holon(self.holon)
+    }
+
+    /// Narrows this descriptor to an inverse relationship descriptor.
+    pub fn try_into_inverse_relationship_descriptor(
+        self,
+    ) -> Result<InverseRelationshipDescriptor, HolonError> {
+        InverseRelationshipDescriptor::try_from_holon(self.holon)
     }
 }
 
@@ -230,6 +234,55 @@ mod tests {
             Err(HolonError::MultipleRelatedHolons { relationship, count, .. })
                 if relationship == "SourceType" && count == 2
         ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn narrowing_convenience_methods_validate_subtype_kind() -> Result<(), HolonError> {
+        let context = build_context();
+        let declared_type = new_descriptor_holon(
+            &context,
+            "declared-type-for-narrowing",
+            "DeclaredRelationshipType",
+            "Relationship",
+        )?;
+        let inverse_type = new_descriptor_holon(
+            &context,
+            "inverse-type-for-narrowing",
+            "InverseRelationshipType",
+            "Relationship",
+        )?;
+        let mut declared = new_descriptor_holon(
+            &context,
+            "declared-narrowing",
+            "DeclaredNarrowing",
+            "Relationship",
+        )?;
+        declared
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
+        let mut inverse = new_descriptor_holon(
+            &context,
+            "inverse-narrowing",
+            "InverseNarrowing",
+            "Relationship",
+        )?;
+        inverse.add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse_type.into()])?;
+
+        assert_eq!(
+            RelationshipDescriptor::from_holon(declared.into())
+                .try_into_declared_relationship_descriptor()?
+                .header()
+                .type_name()?,
+            MapString("DeclaredNarrowing".to_string())
+        );
+        assert_eq!(
+            RelationshipDescriptor::from_holon(inverse.into())
+                .try_into_inverse_relationship_descriptor()?
+                .header()
+                .type_name()?,
+            MapString("InverseNarrowing".to_string())
+        );
 
         Ok(())
     }
