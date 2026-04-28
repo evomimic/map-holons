@@ -303,6 +303,42 @@ mod tests {
     }
 
     #[test]
+    fn structural_flags_error_when_relationship_flag_is_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon =
+            new_descriptor_holon(&context, "missing-relationship-structural-flag", "BookType")?;
+        holon.with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, true)?;
+
+        let descriptor = HolonDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.allows_additional_relationships(),
+            Err(HolonError::EmptyField(field)) if field == "AllowsAdditionalRelationships"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn structural_flags_error_when_required_boolean_has_wrong_type() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(&context, "wrong-type-structural-flag", "BookType")?;
+        holon.with_property_value(
+            CorePropertyTypeName::AllowsAdditionalProperties,
+            "not-a-boolean",
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.allows_additional_properties(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
     fn flattened_plural_accessors_preserve_self_first_inheritance_order() -> Result<(), HolonError>
     {
         let context = build_context();
@@ -401,6 +437,40 @@ mod tests {
             descriptor.get_property_by_name(PropertyName(MapString("DuplicateProperty".to_string()))),
             Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
                 if kind == "property" && name == "DuplicateProperty"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_relationship_by_name_detects_duplicate_inherited_declarations() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let duplicate_root =
+            new_descriptor_holon(&context, "duplicate-root-rel", "DuplicateRelationship")?;
+        let duplicate_leaf =
+            new_descriptor_holon(&context, "duplicate-leaf-rel", "DuplicateRelationship")?;
+        let mut root = new_descriptor_holon(&context, "duplicate-root-rel-type", "RootType")?;
+        let mut leaf = new_descriptor_holon(&context, "duplicate-leaf-rel-type", "LeafType")?;
+
+        root.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![duplicate_root.into()],
+        )?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![duplicate_leaf.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert!(matches!(
+            descriptor.get_relationship_by_name(RelationshipName(MapString(
+                "DuplicateRelationship".to_string()
+            ))),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "relationship" && name == "DuplicateRelationship"
         ));
 
         Ok(())

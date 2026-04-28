@@ -1,11 +1,14 @@
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy};
-use crate::reference_layer::{HolonServiceApi, StagedReference, TransientReference, WritableHolon};
+use crate::reference_layer::{
+    HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
+};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use std::any::Any;
 use std::sync::Arc;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 // Minimal fail-fast holon service for descriptor unit tests.
 //
@@ -125,5 +128,55 @@ pub(crate) fn new_descriptor_holon(
             type_names::CorePropertyTypeName::InstanceTypeKind,
             instance_type_kind,
         )?;
+    Ok(descriptor)
+}
+
+/// Creates a holon-type descriptor with the required Phase B structural flags.
+pub(crate) fn new_holon_type_descriptor(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: &str,
+) -> Result<TransientReference, HolonError> {
+    let mut descriptor = new_descriptor_holon(context, key, type_name, "Holon")?;
+    descriptor
+        .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
+        .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
+    Ok(descriptor)
+}
+
+/// Creates a property descriptor with structural fields and its value type edge.
+pub(crate) fn new_property_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: &str,
+    property_name: &str,
+    is_required: bool,
+    value_type: HolonReference,
+) -> Result<TransientReference, HolonError> {
+    let mut descriptor = new_descriptor_holon(context, key, type_name, "Property")?;
+    descriptor
+        .with_property_value(CorePropertyTypeName::PropertyName, property_name)?
+        .with_property_value(CorePropertyTypeName::IsRequired, is_required)?;
+    descriptor.add_related_holons(CoreRelationshipTypeName::ValueType, vec![value_type])?;
+    Ok(descriptor)
+}
+
+/// Creates a relationship descriptor with structural fields and source/target edges.
+pub(crate) fn new_relationship_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: &str,
+    source_type: HolonReference,
+    target_type: HolonReference,
+) -> Result<TransientReference, HolonError> {
+    let mut descriptor = new_descriptor_holon(context, key, type_name, "Relationship")?;
+    descriptor
+        .with_property_value(CorePropertyTypeName::IsDefinitional, false)?
+        .with_property_value(CorePropertyTypeName::IsOrdered, false)?
+        .with_property_value(CorePropertyTypeName::AllowsDuplicates, false)?
+        .with_property_value(CorePropertyTypeName::MinCardinality, 0_i64)?
+        .with_property_value(CorePropertyTypeName::MaxCardinality, 1_i64)?;
+    descriptor.add_related_holons(CoreRelationshipTypeName::SourceType, vec![source_type])?;
+    descriptor.add_related_holons(CoreRelationshipTypeName::TargetType, vec![target_type])?;
     Ok(descriptor)
 }

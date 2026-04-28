@@ -112,7 +112,7 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::descriptors::test_support::{build_context, new_descriptor_holon, new_test_holon};
     use crate::reference_layer::WritableHolon;
     use base_types::{MapEnumValue, MapString};
     use core_types::HolonError;
@@ -176,6 +176,114 @@ mod tests {
     }
 
     #[test]
+    fn boolean_accessors_error_when_required_fields_are_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon = new_descriptor_holon(
+            &context,
+            "relationship-missing-booleans",
+            "MissingBooleans",
+            "Relationship",
+        )?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.is_definitional(),
+            Err(HolonError::EmptyField(field)) if field == "IsDefinitional"
+        ));
+        assert!(matches!(
+            descriptor.is_ordered(),
+            Err(HolonError::EmptyField(field)) if field == "IsOrdered"
+        ));
+        assert!(matches!(
+            descriptor.allows_duplicates(),
+            Err(HolonError::EmptyField(field)) if field == "AllowsDuplicates"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn boolean_accessors_error_when_required_fields_have_wrong_type() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(
+            &context,
+            "relationship-wrong-booleans",
+            "WrongBooleans",
+            "Relationship",
+        )?;
+        holon
+            .with_property_value(CorePropertyTypeName::IsDefinitional, "not-a-boolean")?
+            .with_property_value(CorePropertyTypeName::IsOrdered, "not-a-boolean")?
+            .with_property_value(CorePropertyTypeName::AllowsDuplicates, "not-a-boolean")?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.is_definitional(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"
+        ));
+        assert!(matches!(
+            descriptor.is_ordered(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"
+        ));
+        assert!(matches!(
+            descriptor.allows_duplicates(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn cardinality_accessors_error_when_required_fields_are_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon = new_descriptor_holon(
+            &context,
+            "relationship-missing-cardinalities",
+            "MissingCardinalities",
+            "Relationship",
+        )?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.min_cardinality(),
+            Err(HolonError::EmptyField(field)) if field == "MinCardinality"
+        ));
+        assert!(matches!(
+            descriptor.max_cardinality(),
+            Err(HolonError::EmptyField(field)) if field == "MaxCardinality"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn cardinality_accessors_error_when_required_fields_have_wrong_type() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(
+            &context,
+            "relationship-wrong-cardinalities",
+            "WrongCardinalities",
+            "Relationship",
+        )?;
+        holon
+            .with_property_value(CorePropertyTypeName::MinCardinality, "not-an-integer")?
+            .with_property_value(CorePropertyTypeName::MaxCardinality, "not-an-integer")?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.min_cardinality(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Integer"
+        ));
+        assert!(matches!(
+            descriptor.max_cardinality(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Integer"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
     fn deletion_semantic_returns_none_when_absent() -> Result<(), HolonError> {
         let context = build_context();
         let holon = new_descriptor_holon(
@@ -212,10 +320,86 @@ mod tests {
     }
 
     #[test]
+    fn deletion_semantic_errors_when_populated_with_wrong_type() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(
+            &context,
+            "relationship-with-wrong-deletion-semantic",
+            "RelatedTo",
+            "Relationship",
+        )?;
+        holon.with_property_value(CorePropertyTypeName::DeletionSemantic, true)?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.deletion_semantic(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "String"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn base_relationship_name_errors_when_type_name_is_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon = new_test_holon(&context, "relationship-without-type-name")?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.base_relationship_name(),
+            Err(HolonError::EmptyField(field)) if field == "TypeName"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn base_relationship_name_errors_when_type_name_has_wrong_type() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_test_holon(&context, "relationship-wrong-type-name")?;
+        holon.with_property_value(CorePropertyTypeName::TypeName, true)?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.base_relationship_name(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "String"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn required_singular_navigation_errors_when_targets_are_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon = new_descriptor_holon(
+            &context,
+            "missing-source-target-types",
+            "MissingSourceTargetTypes",
+            "Relationship",
+        )?;
+        let descriptor = RelationshipDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.source_type(),
+            Err(HolonError::MissingRequiredRelationship { relationship, .. })
+                if relationship == "SourceType"
+        ));
+        assert!(matches!(
+            descriptor.target_type(),
+            Err(HolonError::MissingRequiredRelationship { relationship, .. })
+                if relationship == "TargetType"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
     fn required_singular_navigation_errors_when_multiple_targets_exist() -> Result<(), HolonError> {
         let context = build_context();
         let source_a = new_descriptor_holon(&context, "source-a", "SourceA", "Holon")?;
         let source_b = new_descriptor_holon(&context, "source-b", "SourceB", "Holon")?;
+        let target_a = new_descriptor_holon(&context, "target-a", "TargetA", "Holon")?;
+        let target_b = new_descriptor_holon(&context, "target-b", "TargetB", "Holon")?;
         let mut holon = new_descriptor_holon(
             &context,
             "multiple-source-types",
@@ -226,6 +410,10 @@ mod tests {
             CoreRelationshipTypeName::SourceType,
             vec![source_a.into(), source_b.into()],
         )?;
+        holon.add_related_holons(
+            CoreRelationshipTypeName::TargetType,
+            vec![target_a.into(), target_b.into()],
+        )?;
 
         let descriptor = RelationshipDescriptor::from_holon(holon.into());
 
@@ -233,6 +421,11 @@ mod tests {
             descriptor.source_type(),
             Err(HolonError::MultipleRelatedHolons { relationship, count, .. })
                 if relationship == "SourceType" && count == 2
+        ));
+        assert!(matches!(
+            descriptor.target_type(),
+            Err(HolonError::MultipleRelatedHolons { relationship, count, .. })
+                if relationship == "TargetType" && count == 2
         ));
 
         Ok(())

@@ -7,6 +7,8 @@ pub mod inverse_relationship_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
 #[cfg(test)]
+mod schema_contract_tests;
+#[cfg(test)]
 pub(crate) mod test_support;
 pub mod type_header;
 pub mod value_descriptor;
