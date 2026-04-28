@@ -28,6 +28,12 @@ pub enum TransactionAction {
     /// Commits the transaction.
     Commit,
 
+     /// Undoes the last mutation in this transaction.
+    UndoLast,
+    
+    /// Redoes the last undone mutation in this transaction.
+    RedoLast,
+
     /// Loads holons from uploaded/imported file content.
     LoadHolons { content_set: ContentSet },
 
@@ -86,6 +92,7 @@ impl TransactionAction {
     pub fn descriptor(&self) -> CommandDescriptor {
         match self {
             TransactionAction::Commit => CommandDescriptor::mutating_with_guard(),
+            TransactionAction::UndoLast | TransactionAction::RedoLast => CommandDescriptor::transaction_read_only(),
             TransactionAction::LoadHolons { .. } => CommandDescriptor::mutating_with_guard(),
             TransactionAction::Dance(_) => CommandDescriptor {
                 mutation: MutationClassification::RuntimeDetected,

@@ -21,19 +21,21 @@ impl RequestId {
     }
 }
 
-/// Identifies a user gesture for undo/redo grouping.
+/// Identifies a user marker for undo/redo grouping.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GestureId(pub MapString);
+pub struct MarkerId(pub MapString);
 
 /// Per-request options controlling dispatch behavior.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RequestOptions {
-    /// Groups this command into a gesture for undo/redo.
-    pub gesture_id: Option<GestureId>,
-    /// Human-readable label for the gesture (shown in undo UI).
-    pub gesture_label: Option<String>,
+    /// Groups this command into a marker for undo/redo.
+    pub marker_id: Option<MarkerId>,
+    /// Human-readable label for the marker (shown in undo UI).
+    pub marker_label: Option<String>,
     /// When true, snapshot pool state after mutation (no-op until Phase 2.3).
     pub snapshot_after: bool,
+    /// When true, disables undo for this request.
+    pub disable_undo: bool,
 }
 
 /// Canonical IPC request envelope for MAP Commands.

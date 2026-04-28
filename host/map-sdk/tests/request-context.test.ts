@@ -38,9 +38,10 @@ describe('request context', () => {
 
   it('returns the required default request options', () => {
     expect(defaultRequestOptions()).toEqual({
-      gesture_id: null,
-      gesture_label: null,
+      marker_id: null,
+      marker_label: null,
       snapshot_after: false,
+      disable_undo: false,
     });
   });
 
@@ -59,40 +60,44 @@ describe('request context', () => {
       request_id: 1,
       command: beginTransactionCommand,
       options: {
-        gesture_id: null,
-        gesture_label: null,
+        marker_id: null,
+        marker_label: null,
         snapshot_after: false,
+        disable_undo: false,
       },
     });
   });
 
   it('merges caller-provided request options over the defaults', () => {
     const request = buildRequest(beginTransactionCommand, {
-      gesture_id: 'gesture-123',
-      gesture_label: 'rename holon',
+      marker_id: 'gesture-123',
+      marker_label: 'rename holon',
       snapshot_after: true,
+      disable_undo: false,
     });
 
     expect(request).toEqual({
       request_id: 1,
       command: beginTransactionCommand,
       options: {
-        gesture_id: 'gesture-123',
-        gesture_label: 'rename holon',
+        marker_id: 'gesture-123',
+        marker_label: 'rename holon',
         snapshot_after: true,
+        disable_undo: false,
       },
     });
   });
 
   it('supports partial request option overrides', () => {
     const request = buildRequest(beginTransactionCommand, {
-      gesture_label: 'partial override',
+      marker_label: 'partial override',
     });
 
     expect(request.options).toEqual({
-      gesture_id: null,
-      gesture_label: 'partial override',
+      marker_id: null,
+      marker_label: 'partial override',
       snapshot_after: false,
+      disable_undo: false,
     });
   });
 

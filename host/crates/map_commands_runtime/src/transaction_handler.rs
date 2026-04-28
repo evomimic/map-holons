@@ -14,13 +14,18 @@ pub async fn handle_transaction(
     let context = &command.context;
 
     match command.action {
-        // ── Commit ───────────────────────────────────────────────────
         TransactionAction::Commit => {
             let transient_ref = session.commit_transaction(&command.context.tx_id()).await?;
             Ok(MapResult::Reference(HolonReference::Transient(transient_ref)))
         }
-
-        // ── Dance / Query / LoadHolons ───────────────────────────────
+        TransactionAction::UndoLast => {
+            session.undo_last(&command.context.tx_id()).await?;
+            Ok(MapResult::UndoComplete)
+        }
+        TransactionAction::RedoLast => {
+            session.redo_last(&command.context.tx_id()).await?;
+            Ok(MapResult::RedoComplete)
+        }
         TransactionAction::Dance(request) => {
             let response = context.initiate_ingress_dance(request, false).await?;
             Ok(MapResult::DanceResponse(response))
@@ -33,8 +38,6 @@ pub async fn handle_transaction(
                 holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;
             Ok(MapResult::Reference(HolonReference::Transient(response)))
         }
-
-        // ── Lookup actions (LookupFacade) ────────────────────────────
         TransactionAction::GetAllHolons => {
             let collection = context.lookup().get_all_holons()?;
             Ok(MapResult::Collection(collection))
@@ -67,8 +70,6 @@ pub async fn handle_transaction(
             let count = context.lookup().transient_count()?;
             Ok(MapResult::Value(BaseValue::IntegerValue(MapInteger(count))))
         }
-
-        // ── Mutation actions (MutationFacade) ────────────────────────
         TransactionAction::NewHolon { key } => {
             let transient = context.mutation().new_holon(key)?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
@@ -92,6 +93,5 @@ pub async fn handle_transaction(
         TransactionAction::DeleteHolon { local_id } => {
             context.mutation().delete_holon(local_id)?;
             Ok(MapResult::None)
-        }
-    }
+        }}
 }

@@ -7,6 +7,8 @@ use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::TransientReference;
 
+use crate::ExecutionPolicy;
+
 pub struct RuntimeSession {
     space_manager: Arc<HolonSpaceManager>,
     recovery: Option<Arc<Receptor>>,
@@ -62,7 +64,7 @@ impl RuntimeSession {
             self.recovery.clone(),
         )?);
 
-        session.persist("begin_transaction", true).await?;
+        session.persist("begin_transaction", false, false,None, None).await?;
 
         let tx_id = session.tx_id();
         let mut active = self.active_sessions.write().map_err(|e| {
@@ -133,10 +135,10 @@ impl RuntimeSession {
         &self,
         tx_id: &TxId,
         description: &str,
-        disable_undo: bool,
+        policy: ExecutionPolicy,
     ) -> Result<(), HolonError> {
         if let Ok(session) = self.get_client_session(tx_id) {
-            session.persist(description, disable_undo).await?;
+            session.persist(description, policy.disable_undo, policy.snapshot_after, policy.marker_id, policy.label).await?;
         }
         Ok(())
     }
@@ -149,6 +151,20 @@ impl RuntimeSession {
         self.archive_transaction(tx_id)?;
 
         Ok(transient_ref)
+    }
+
+    pub async fn undo_last(&self, tx_id: &TxId) -> Result<(), HolonError> {
+        if let Ok(session) = self.get_client_session(tx_id) {
+            session.undo_last().await?;
+        }
+        Ok(())
+    }
+
+    pub async fn redo_last(&self, tx_id: &TxId) -> Result<(), HolonError> {
+        if let Ok(session) = self.get_client_session(tx_id) {
+            session.redo_last().await?;
+        }
+        Ok(())
     }
 
     pub fn archive_transaction(&self, tx_id: &TxId) -> Result<(), HolonError> {

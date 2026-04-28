@@ -61,6 +61,8 @@ export interface ContentSet {
  */
 export type TransactionActionWire =
   | 'Commit'
+  | 'UndoLast'
+  | 'RedoLast'
   | { LoadHolons: { content_set: ContentSet } }
   | { Dance: DanceRequestWire }
   | { Query: QueryExpression }
@@ -78,6 +80,7 @@ export type TransactionActionWire =
   | { StageNewVersion: { current_version: SmartReferenceWire } }
   | { StageNewVersionFromId: { holon_id: HolonId } }
   | { DeleteHolon: { local_id: LocalId } };
+
 
 /**
  * Holon-scoped command envelope.
@@ -141,6 +144,8 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
 
 const TRANSACTION_UNIT_ACTIONS = new Set([
   'Commit',
+  'UndoLast',
+  'RedoLast',
   'GetAllHolons',
   'StagedCount',
   'TransientCount',

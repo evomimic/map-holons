@@ -37,6 +37,7 @@ const SCHEMA_SQL: &'static str = "
             latest_checkpoint_id  TEXT,
             undo_stack_json       TEXT NOT NULL DEFAULT '[]',
             redo_stack_json       TEXT NOT NULL DEFAULT '[]',
+            undo_checkpointing_enabled INTEGER NOT NULL DEFAULT 1,
             format_version        INTEGER NOT NULL DEFAULT 1,
             updated_at_ms         INTEGER NOT NULL
         );
@@ -55,6 +56,22 @@ const SCHEMA_SQL: &'static str = "
                 REFERENCES recovery_session(tx_id)
                 ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS experience_unit (
+            unit_id         TEXT    PRIMARY KEY,
+            tx_id           TEXT    NOT NULL,
+            marker_id       TEXT,
+            marker_label    TEXT,
+            checkpoint_id   TEXT    NOT NULL,
+            stack_kind      TEXT    NOT NULL CHECK (stack_kind IN ('undo', 'redo')),
+            stack_pos       INTEGER NOT NULL,
+            created_at_ms   INTEGER NOT NULL,
+            FOREIGN KEY (tx_id)         REFERENCES recovery_session(tx_id) ON DELETE CASCADE,
+            FOREIGN KEY (checkpoint_id) REFERENCES recovery_checkpoint(checkpoint_id)
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_eu_stack_pos
+            ON experience_unit(tx_id, stack_kind, stack_pos);
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_checkpoint_stack_pos
             ON recovery_checkpoint(tx_id, stack_kind, stack_pos);
@@ -87,17 +104,25 @@ impl RecoveryStore for TransactionRecoveryStore {
 
     /// Capture the current context state and persist a new checkpoint.
     ///
-    /// - Builds a `TransactionSnapshot` from the context.
-    /// - If `disable_undo` is false: inserts a new undo checkpoint row,
-    ///   clears the redo stack, and pushes the checkpoint_id onto the undo stack.
-    /// - If `disable_undo` is true: updates the latest recoverable state
-    ///   without adding to the undo stack.
-    /// - All writes are in a single SQLite transaction (atomic).
+    /// Always writes a crash-recovery snapshot (`latest_checkpoint_id`).
+    ///
+    /// - `disable_undo=true`: marks `undo_checkpointing_enabled=0` for the
+    ///   transaction so no future undo units are created; persists crash-recovery
+    ///   row only (`stack_pos=-1`).
+    /// - `snapshot_after=true` (and checkpointing still enabled): closes the
+    ///   current Experience Unit — inserts a checkpoint + experience_unit row,
+    ///   pushes the unit_id onto the undo stack, clears redo history.
+    /// - Otherwise (intermediate command): updates `latest_checkpoint_id` only.
+    ///
+    /// All writes are in a single SQLite transaction (atomic).
     fn persist(
         &self,
         context: &Arc<TransactionContext>,
         description: &str,
         disable_undo: bool,
+        snapshot_after: bool,
+        marker_id: Option<&str>,
+        marker_label: Option<&str>,
     ) -> Result<(), HolonError> {
         let snapshot = TransactionSnapshot::from_context(context)?;
         let tx_id = snapshot.tx_id.clone();
@@ -109,77 +134,109 @@ impl RecoveryStore for TransactionRecoveryStore {
 
         let mut guard = lock(self)?;
 
-        // Load stacks before opening the write transaction (read-only query).
-        let (mut undo_stack, mut redo_stack) = load_stacks(&guard, &tx_id)?;
+        // Read undo_checkpointing_enabled + stacks before opening the write tx.
+        let checkpointing_enabled = load_checkpointing_enabled(&guard, &tx_id)?;
+        let (mut undo_stack, _redo_stack) = load_stacks(&guard, &tx_id)?;
 
-        // Use conn.transaction() so that any error automatically rolls back,
-        // preventing a dangling open transaction on the next call.
         let tx =
             guard.transaction().map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
 
-        if !disable_undo {
-            // New undoable command invalidates all redo history.
-            tx.execute(
-                "DELETE FROM recovery_checkpoint WHERE tx_id = ?1 AND stack_kind = 'redo'",
-                params![tx_id],
-            )
-            .map_err(|e| HolonError::Misc(format!("Clear redo checkpoints: {e}")))?;
-            redo_stack.clear();
-            undo_stack.push(checkpoint_id.clone());
-        }
-
-        // Compute the final stack JSON and latest pointer before any INSERTs.
-        let undo_json = serde_json::to_string(&undo_stack)
-            .map_err(|e| HolonError::Misc(format!("Serialize undo stack: {e}")))?;
-        let redo_json = serde_json::to_string(&redo_stack)
-            .map_err(|e| HolonError::Misc(format!("Serialize redo stack: {e}")))?;
-
-        // ── Step 1: upsert session row FIRST so the FK on recovery_checkpoint is satisfied ──
+        // ── Step 1: upsert session row (crash-recovery pointer always updated) ──
+        // undo_checkpointing_enabled starts as a no-update; we patch it below if needed.
         tx.execute(
             "INSERT INTO recovery_session
                  (tx_id, lifecycle_state, latest_checkpoint_id,
-                  undo_stack_json, redo_stack_json, format_version, updated_at_ms)
-             VALUES (?1, 'Open', ?2, ?3, ?4, 1, ?5)
+                  undo_stack_json, redo_stack_json,
+                  undo_checkpointing_enabled, format_version, updated_at_ms)
+             VALUES (?1, 'Open', ?2, '[]', '[]', 1, 1, ?3)
              ON CONFLICT(tx_id) DO UPDATE SET
                  latest_checkpoint_id = excluded.latest_checkpoint_id,
-                 undo_stack_json      = excluded.undo_stack_json,
-                 redo_stack_json      = excluded.redo_stack_json,
                  updated_at_ms        = excluded.updated_at_ms",
-            params![tx_id, checkpoint_id, undo_json, redo_json, now],
+            params![tx_id, checkpoint_id, now],
         )
         .map_err(|e| HolonError::Misc(format!("Upsert session: {e}")))?;
 
-        // ── Step 2: insert the checkpoint row (FK now satisfied) ──
+        // ── Step 2: insert the checkpoint blob (FK now satisfied) ──
+        // INSERT OR REPLACE so the crash-recovery sentinel (stack_pos=-1) is always
+        // replaced by the latest snapshot rather than causing a UNIQUE conflict.
+        tx.execute(
+            "INSERT OR REPLACE INTO recovery_checkpoint
+                (checkpoint_id, tx_id, stack_kind, stack_pos,
+                 snapshot_blob, snapshot_hash, description, disable_undo, created_at_ms)
+             VALUES (?1, ?2, 'undo', -1, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                checkpoint_id,
+                tx_id,
+                snapshot_blob,
+                snapshot.hash,
+                description,
+                disable_undo as i64,
+                now,
+            ],
+        )
+        .map_err(|e| HolonError::Misc(format!("Insert checkpoint: {e}")))?;
+
+        // ── Step 3: apply undo semantics ──
         if disable_undo {
-            // Detached "latest" snapshot — not on the undo stack, used only for
-            // crash recovery of the most recent committed state.
+            // Permanently disable future undo checkpoint creation for this tx.
             tx.execute(
-                "INSERT INTO recovery_checkpoint
-                    (checkpoint_id, tx_id, stack_kind, stack_pos,
-                     snapshot_blob, snapshot_hash, description, disable_undo, created_at_ms)
-                 VALUES (?1, ?2, 'undo', -1, ?3, ?4, ?5, 1, ?6)",
-                params![checkpoint_id, tx_id, snapshot_blob, snapshot.hash, description, now,],
+                "UPDATE recovery_session SET undo_checkpointing_enabled = 0 WHERE tx_id = ?1",
+                params![tx_id],
             )
-            .map_err(|e| HolonError::Misc(format!("Insert no-undo checkpoint: {e}")))?;
-        } else {
-            let stack_pos = (undo_stack.len() as i64) - 1; // already pushed above
+            .map_err(|e| HolonError::Misc(format!("Disable checkpointing: {e}")))?;
+
+            tracing::debug!(
+                "[RECOVERY STORE] disable_undo: checkpointing disabled for tx={tx_id}"
+            );
+        } else if snapshot_after && checkpointing_enabled {
+            // Close the current Experience Unit: create a checkpoint + EU row,
+            // push unit_id onto undo stack, invalidate redo history.
+            let unit_id = Uuid::new_v4().to_string();
+            let stack_pos = undo_stack.len() as i64;
+
+            // Update the checkpoint to reflect its undo stack position.
             tx.execute(
-                "INSERT INTO recovery_checkpoint
-                    (checkpoint_id, tx_id, stack_kind, stack_pos,
-                     snapshot_blob, snapshot_hash, description, disable_undo, created_at_ms)
-                 VALUES (?1, ?2, 'undo', ?3, ?4, ?5, ?6, 0, ?7)",
-                params![
-                    checkpoint_id,
-                    tx_id,
-                    stack_pos,
-                    snapshot_blob,
-                    snapshot.hash,
-                    description,
-                    now,
-                ],
+                "UPDATE recovery_checkpoint SET stack_pos = ?1 WHERE checkpoint_id = ?2",
+                params![stack_pos, checkpoint_id],
             )
-            .map_err(|e| HolonError::Misc(format!("Insert checkpoint: {e}")))?;
+            .map_err(|e| HolonError::Misc(format!("Update checkpoint stack_pos: {e}")))?;
+
+            // Insert the Experience Unit record.
+            tx.execute(
+                "INSERT INTO experience_unit
+                    (unit_id, tx_id, marker_id, marker_label,
+                     checkpoint_id, stack_kind, stack_pos, created_at_ms)
+                 VALUES (?1, ?2, ?3, ?4, ?5, 'undo', ?6, ?7)",
+                params![unit_id, tx_id, marker_id, marker_label, checkpoint_id, stack_pos, now],
+            )
+            .map_err(|e| HolonError::Misc(format!("Insert experience_unit: {e}")))?;
+
+            // Invalidate redo history: delete all redo experience_unit rows.
+            tx.execute(
+                "DELETE FROM experience_unit WHERE tx_id = ?1 AND stack_kind = 'redo'",
+                params![tx_id],
+            )
+            .map_err(|e| HolonError::Misc(format!("Clear redo experience_units: {e}")))?;
+
+            // Push unit_id onto undo stack and clear redo stack.
+            undo_stack.push(unit_id.clone());
+            let undo_json = serde_json::to_string(&undo_stack)
+                .map_err(|e| HolonError::Misc(format!("Serialize undo stack: {e}")))?;
+
+            tx.execute(
+                "UPDATE recovery_session
+                 SET undo_stack_json = ?1, redo_stack_json = '[]'
+                 WHERE tx_id = ?2",
+                params![undo_json, tx_id],
+            )
+            .map_err(|e| HolonError::Misc(format!("Update stacks: {e}")))?;
+
+            tracing::debug!(
+                "[RECOVERY STORE] Closed ExperienceUnit unit_id={unit_id} \
+                 checkpoint={checkpoint_id} for tx={tx_id}"
+            );
         }
+        // Else: intermediate command — crash recovery only (session already updated in step 1).
 
         tx.commit().map_err(|e| HolonError::Misc(format!("Commit transaction: {e}")))?;
 
@@ -188,99 +245,120 @@ impl RecoveryStore for TransactionRecoveryStore {
     }
 
     // -----------------------------------------------------------------------
-    // Undo — pop from undo stack, restore previous checkpoint
+    // Undo — pop top ExperienceUnit, restore the checkpoint before it
     // -----------------------------------------------------------------------
 
-    /// Pop the top of the undo stack and return the snapshot to restore.
-    /// Moves the popped checkpoint to the redo stack.
-    /// Returns `None` if nothing to undo.
+    /// Pop the top ExperienceUnit from the undo stack and return the snapshot
+    /// that preceded it (i.e. the checkpoint of the unit now at the top after
+    /// the pop, or `None` for baseline).
+    /// Moves the popped unit to the redo stack.
+    /// Returns `None` if the undo stack is empty.
     fn undo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
         let mut guard = lock(self)?;
         let now = now_ms();
         let (mut undo_stack, mut redo_stack) = load_stacks(&guard, tx_id)?;
 
-        let Some(popped_id) = undo_stack.pop() else {
+        let Some(popped_unit_id) = undo_stack.pop() else {
             tracing::debug!("[RECOVERY STORE] Nothing to undo for tx={tx_id}");
             return Ok(None);
         };
 
-        let restore_id = undo_stack.last().cloned();
-        let snapshot = match restore_id.as_ref() {
-            Some(id) => Some(load_snapshot(&guard, id)?),
-            None => None,
+        // Pre-compute restore target and latest checkpoint pointer before opening
+        // the write transaction — guard can't be borrowed immutably once tx is open.
+        let popped_checkpoint_id = load_checkpoint_for_unit(&guard, &popped_unit_id)?;
+        let (snapshot, latest_cp) = match undo_stack.last() {
+            Some(prior_unit_id) => {
+                let cp_id = load_checkpoint_for_unit(&guard, prior_unit_id)?;
+                let snap = load_snapshot(&guard, &cp_id)?;
+                (Some(snap), Some(cp_id))
+            }
+            None => (None, None),
         };
 
-        // Move checkpoint to redo stack
         let redo_pos = redo_stack.len() as i64;
-        redo_stack.push(popped_id.clone());
+        redo_stack.push(popped_unit_id.clone());
 
         let tx =
             guard.transaction().map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
 
+        // Move the experience_unit to the redo stack.
+        tx.execute(
+            "UPDATE experience_unit
+             SET stack_kind = 'redo', stack_pos = ?1
+             WHERE unit_id = ?2",
+            params![redo_pos, popped_unit_id],
+        )
+        .map_err(|e| HolonError::Misc(format!("Undo: move EU to redo: {e}")))?;
+
+        // Keep recovery_checkpoint in sync so its (tx_id, stack_kind, stack_pos)
+        // index stays consistent with the experience_unit position.
         tx.execute(
             "UPDATE recovery_checkpoint
              SET stack_kind = 'redo', stack_pos = ?1
              WHERE checkpoint_id = ?2",
-            params![redo_pos, popped_id],
+            params![redo_pos, popped_checkpoint_id],
         )
-        .map_err(|e| HolonError::Misc(format!("Undo: move to redo: {e}")))?;
+        .map_err(|e| HolonError::Misc(format!("Undo: sync checkpoint to redo: {e}")))?;
 
-        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
+        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, latest_cp.as_deref(), now)?;
 
         tx.commit().map_err(|e| HolonError::Misc(format!("Undo commit: {e}")))?;
 
-        if let Some(restored_id) = restore_id {
-            tracing::info!(
-                "[RECOVERY STORE] Undo: restored checkpoint '{restored_id}' for tx={tx_id}"
-            );
-        } else {
-            tracing::info!(
-                "[RECOVERY STORE] Undo: restored baseline (no prior checkpoint) for tx={tx_id}"
-            );
-        }
+        tracing::info!(
+            "[RECOVERY STORE] Undo: popped unit={popped_unit_id} for tx={tx_id}"
+        );
         Ok(snapshot)
     }
 
     // -----------------------------------------------------------------------
-    // Redo — pop from redo stack, restore checkpoint
+    // Redo — pop top ExperienceUnit from redo, restore its checkpoint
     // -----------------------------------------------------------------------
 
-    /// Pop the top of the redo stack and return the snapshot to restore.
-    /// Moves the checkpoint back to the undo stack.
-    /// Returns `None` if nothing to redo.
+    /// Pop the top ExperienceUnit from the redo stack and return its snapshot.
+    /// Moves the unit back to the undo stack.
+    /// Returns `None` if the redo stack is empty.
     fn redo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {
         let mut guard = lock(self)?;
         let now = now_ms();
         let (mut undo_stack, mut redo_stack) = load_stacks(&guard, tx_id)?;
 
-        let Some(checkpoint_id) = redo_stack.pop() else {
+        let Some(unit_id) = redo_stack.pop() else {
             tracing::debug!("[RECOVERY STORE] Nothing to redo for tx={tx_id}");
             return Ok(None);
         };
 
+        let checkpoint_id = load_checkpoint_for_unit(&guard, &unit_id)?;
         let snapshot = load_snapshot(&guard, &checkpoint_id)?;
 
         let undo_pos = undo_stack.len() as i64;
-        undo_stack.push(checkpoint_id.clone());
+        undo_stack.push(unit_id.clone());
 
         let tx =
             guard.transaction().map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
 
+        // Move the experience_unit back to the undo stack.
+        tx.execute(
+            "UPDATE experience_unit
+             SET stack_kind = 'undo', stack_pos = ?1
+             WHERE unit_id = ?2",
+            params![undo_pos, unit_id],
+        )
+        .map_err(|e| HolonError::Misc(format!("Redo: move EU to undo: {e}")))?;
+
+        // Keep recovery_checkpoint in sync with the experience_unit position.
         tx.execute(
             "UPDATE recovery_checkpoint
              SET stack_kind = 'undo', stack_pos = ?1
              WHERE checkpoint_id = ?2",
             params![undo_pos, checkpoint_id],
         )
-        .map_err(|e| HolonError::Misc(format!("Redo: move to undo: {e}")))?;
+        .map_err(|e| HolonError::Misc(format!("Redo: sync checkpoint to undo: {e}")))?;
 
-        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, now)?;
+        save_stacks(&tx, tx_id, &undo_stack, &redo_stack, Some(&checkpoint_id), now)?;
 
         tx.commit().map_err(|e| HolonError::Misc(format!("Redo commit: {e}")))?;
 
-        tracing::info!(
-            "[RECOVERY STORE] Redo: restored checkpoint '{checkpoint_id}' for tx={tx_id}"
-        );
+        tracing::info!("[RECOVERY STORE] Redo: restored unit={unit_id} for tx={tx_id}");
         Ok(Some(snapshot))
     }
 
@@ -435,24 +513,46 @@ fn save_stacks(
     tx_id: &str,
     undo_stack: &[String],
     redo_stack: &[String],
+    latest_checkpoint_id: Option<&str>,
     now: i64,
 ) -> Result<(), HolonError> {
     let undo_json = serde_json::to_string(undo_stack)
         .map_err(|e| HolonError::Misc(format!("Serialize undo stack: {e}")))?;
     let redo_json = serde_json::to_string(redo_stack)
         .map_err(|e| HolonError::Misc(format!("Serialize redo stack: {e}")))?;
-    let latest = undo_stack.last().cloned();
 
     conn.execute(
         "UPDATE recovery_session
              SET undo_stack_json = ?1, redo_stack_json = ?2,
                  latest_checkpoint_id = ?3, updated_at_ms = ?4
              WHERE tx_id = ?5",
-        params![undo_json, redo_json, latest, now, tx_id],
+        params![undo_json, redo_json, latest_checkpoint_id, now, tx_id],
     )
     .map_err(|e| HolonError::Misc(format!("Save stacks for tx={tx_id}: {e}")))?;
 
     Ok(())
+}
+
+fn load_checkpointing_enabled(conn: &Connection, tx_id: &str) -> Result<bool, HolonError> {
+    let result: rusqlite::Result<i64> = conn.query_row(
+        "SELECT undo_checkpointing_enabled FROM recovery_session WHERE tx_id = ?1",
+        params![tx_id],
+        |r| r.get(0),
+    );
+    match result {
+        Ok(v) => Ok(v != 0),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(true), // default for new sessions
+        Err(e) => Err(HolonError::Misc(format!("Load checkpointing_enabled for tx={tx_id}: {e}"))),
+    }
+}
+
+fn load_checkpoint_for_unit(conn: &Connection, unit_id: &str) -> Result<String, HolonError> {
+    conn.query_row(
+        "SELECT checkpoint_id FROM experience_unit WHERE unit_id = ?1",
+        params![unit_id],
+        |r| r.get(0),
+    )
+    .map_err(|e| HolonError::Misc(format!("Load checkpoint for unit '{unit_id}': {e}")))
 }
 
 fn load_snapshot(

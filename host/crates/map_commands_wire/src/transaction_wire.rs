@@ -29,6 +29,12 @@ pub enum TransactionActionWire {
     /// Commits the transaction.
     Commit,
 
+    /// Undoes the last mutation in this transaction.
+    UndoLast,
+    
+    /// Redoes the last undone mutation in this transaction.
+    RedoLast,
+
     /// Loads holons from uploaded/imported file content.
     LoadHolons { content_set: ContentSet },
 
@@ -100,6 +106,8 @@ impl TransactionActionWire {
     fn bind(self, context: &Arc<TransactionContext>) -> Result<TransactionAction, HolonError> {
         match self {
             TransactionActionWire::Commit => Ok(TransactionAction::Commit),
+            TransactionActionWire::UndoLast => Ok(TransactionAction::UndoLast),
+            TransactionActionWire::RedoLast => Ok(TransactionAction::RedoLast),
             TransactionActionWire::LoadHolons { content_set } => {
                 Ok(TransactionAction::LoadHolons { content_set })
             }

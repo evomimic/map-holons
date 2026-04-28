@@ -52,14 +52,26 @@ impl LocalRecoveryReceptor {
         context: &Arc<TransactionContext>,
         description: &str,
         disable_undo: bool,
+        snapshot_after: bool,
+        marker_id: Option<String>,
+        marker_label: Option<String>,
     ) -> Result<(), HolonError> {
         let store = Arc::clone(&self.recovery_store);
         let context = Arc::clone(context);
         let description = description.to_string();
 
-        tokio::task::spawn_blocking(move || store.persist(&context, &description, disable_undo))
-            .await
-            .map_err(|e| HolonError::Misc(format!("persist join error: {e}")))?
+        tokio::task::spawn_blocking(move || {
+            store.persist(
+                &context,
+                &description,
+                disable_undo,
+                snapshot_after,
+                marker_id.as_deref(),
+                marker_label.as_deref(),
+            )
+        })
+        .await
+        .map_err(|e| HolonError::Misc(format!("persist join error: {e}")))?
     }
 
     pub async fn undo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError> {

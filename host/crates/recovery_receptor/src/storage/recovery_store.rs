@@ -17,6 +17,9 @@ pub trait RecoveryStore: Send + Sync {
         context: &Arc<TransactionContext>,
         description: &str,
         disable_undo: bool,
+        snapshot_after: bool,
+        marker_id: Option<&str>,
+        marker_label: Option<&str>,
     ) -> Result<(), HolonError>;
 
     fn undo(&self, tx_id: &str) -> Result<Option<TransactionSnapshot>, HolonError>;

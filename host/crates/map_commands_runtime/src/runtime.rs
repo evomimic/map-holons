@@ -25,9 +25,12 @@ pub struct Runtime {
     session: Arc<RuntimeSession>,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ExecutionPolicy {
     pub snapshot_after: bool,
+    pub disable_undo: bool,
+    pub marker_id: Option<String>,
+    pub label: Option<String>,
 }
 
 impl Runtime {
@@ -41,12 +44,8 @@ impl Runtime {
     }
 
     /// Enforce lifecycle policy and route a bound domain command to its handler.
-    pub async fn execute_command(&self, command: MapCommand) -> Result<MapResult, HolonError> {
-        //policy: ExecutionPolicy,
-
-        //TODO:  execution policy will be integrated into the workflow with experience units PR
-
-        let policy = ExecutionPolicy::default();
+    pub async fn execute_command(&self, command: MapCommand, policy: ExecutionPolicy) -> Result<MapResult, HolonError> {
+    
         let descriptor = command.descriptor();
         let command_label = command_label(&command);
 
@@ -111,7 +110,7 @@ impl Runtime {
             && !is_commit
         {
             if let Some(tx_id) = tx_id_for_snapshot {
-                self.session.persist_success(&tx_id, command_label, false).await?;
+                self.session.persist_success(&tx_id, command_label, policy).await?;
             }
         }
 
@@ -135,6 +134,8 @@ fn command_label(command: &MapCommand) -> &'static str {
         MapCommand::Space(SpaceCommand::BeginTransaction) => "begin_transaction",
         MapCommand::Transaction(cmd) => match &cmd.action {
             TransactionAction::Commit => "commit",
+            TransactionAction::UndoLast => "undo_last",
+            TransactionAction::RedoLast => "redo_last", 
             TransactionAction::LoadHolons { .. } => "load_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::Query(_) => "query",

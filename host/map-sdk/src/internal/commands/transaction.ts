@@ -5,8 +5,10 @@ import {
   expectDanceResponse,
   expectNodeCollection,
   expectNone,
+  expectRedoComplete,
   expectReference,
   expectReferences,
+  expectUndoComplete,
   expectValue,
 } from '../result-decoders';
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
@@ -72,6 +74,18 @@ export function commit(
   options?: RequestOptionsOverrides,
 ): Promise<HolonReferenceWire> {
   return runTransactionCommand(txId, 'Commit', expectReference, options);
+}
+
+export function undoLast(
+  txId: TxId,
+): Promise<void> {
+  return runTransactionCommand(txId, 'UndoLast', expectUndoComplete);
+}
+
+export function redoLast(
+  txId: TxId,
+): Promise<void> {
+  return runTransactionCommand(txId, 'RedoLast', expectRedoComplete);
 }
 
 /**
