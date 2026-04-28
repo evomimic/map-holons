@@ -1,3 +1,4 @@
+pub(crate) mod accessor_helpers;
 pub mod descriptor;
 pub mod holon_descriptor;
 pub mod inheritance;

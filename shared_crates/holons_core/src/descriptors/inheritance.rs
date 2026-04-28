@@ -1,7 +1,6 @@
 use std::collections::HashSet;
-use std::sync::RwLockReadGuard;
 
-use crate::core_shared_objects::HolonCollection;
+use crate::descriptors::accessor_helpers::{descriptor_label, lock_error};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
 use type_names::relationship_names::CoreRelationshipTypeName;
@@ -46,7 +45,6 @@ pub fn ancestors(start: &HolonReference) -> Result<Vec<HolonReference>, HolonErr
 ///
 /// Members are returned in self-first ancestor order. A member reference that
 /// appears more than once is included only at its first occurrence.
-#[allow(dead_code)]
 pub(crate) fn flatten_related_members(
     start: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
@@ -137,27 +135,6 @@ impl Iterator for ExtendsIter {
 
         Some(Ok(current))
     }
-}
-
-/// Best-effort descriptor label for structural inheritance errors.
-///
-/// Prefer the human-readable summary when available, but fall back to the
-/// stable reference id so error construction never cascades into a second
-/// failure path.
-fn descriptor_label(holon: &HolonReference) -> String {
-    match holon.summarize() {
-        Ok(summary) => summary,
-        Err(_) => holon.reference_id_string(),
-    }
-}
-
-/// Normalizes poisoned collection-lock errors into the crate's standard
-/// `FailedToAcquireLock` surface.
-fn lock_error(error: std::sync::PoisonError<RwLockReadGuard<'_, HolonCollection>>) -> HolonError {
-    HolonError::FailedToAcquireLock(format!(
-        "Failed to acquire read lock on holon collection: {}",
-        error
-    ))
 }
 
 #[cfg(test)]

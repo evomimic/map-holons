@@ -1,5 +1,7 @@
-use crate::descriptors::{Descriptor, TypeHeader};
+use crate::descriptors::{accessor_helpers, Descriptor, TypeHeader, ValueDescriptor};
 use crate::reference_layer::HolonReference;
+use core_types::{HolonError, PropertyName};
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Runtime wrapper for property descriptors.
 ///
@@ -18,6 +20,28 @@ impl PropertyDescriptor {
     /// Projects the shared descriptor header view for this descriptor holon.
     pub fn header(&self) -> TypeHeader<'_> {
         TypeHeader::new(&self.holon)
+    }
+
+    /// Returns the runtime property name declared by this descriptor.
+    pub fn property_name(&self) -> Result<PropertyName, HolonError> {
+        Ok(PropertyName(accessor_helpers::require_string(
+            &self.holon,
+            CorePropertyTypeName::PropertyName,
+        )?))
+    }
+
+    /// Returns whether instances must provide this property.
+    pub fn is_required(&self) -> Result<bool, HolonError> {
+        accessor_helpers::require_bool(&self.holon, CorePropertyTypeName::IsRequired)
+    }
+
+    /// Returns the value descriptor reached through the required `ValueType` relationship.
+    pub fn value_type(&self) -> Result<ValueDescriptor, HolonError> {
+        let value_type = accessor_helpers::require_single_related(
+            &self.holon,
+            CoreRelationshipTypeName::ValueType,
+        )?;
+        Ok(ValueDescriptor::from_holon(value_type))
     }
 }
 
@@ -44,8 +68,10 @@ const _: fn() = || {
 mod tests {
     use super::*;
     use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::reference_layer::WritableHolon;
     use base_types::MapString;
     use core_types::HolonError;
+    use type_names::CoreRelationshipTypeName;
 
     #[test]
     fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {
@@ -61,6 +87,46 @@ mod tests {
 
         assert_eq!(descriptor.holon(), &holon);
         assert_eq!(descriptor.header().type_name()?, MapString("PropertyType".to_string()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn structural_accessors_return_declared_values() -> Result<(), HolonError> {
+        let context = build_context();
+        let value_type =
+            new_descriptor_holon(&context, "string-value-type", "StringValueType", "Value")?;
+        let mut holon =
+            new_descriptor_holon(&context, "title-property", "TitleProperty", "Property")?;
+        holon
+            .with_property_value(CorePropertyTypeName::PropertyName, "title")?
+            .with_property_value(CorePropertyTypeName::IsRequired, true)?;
+        holon.add_related_holons(CoreRelationshipTypeName::ValueType, vec![value_type.into()])?;
+
+        let descriptor = PropertyDescriptor::from_holon(holon.into());
+
+        assert_eq!(descriptor.property_name()?.to_string(), "title");
+        assert!(descriptor.is_required()?);
+        assert_eq!(
+            descriptor.value_type()?.header().type_name()?,
+            MapString("StringValueType".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn value_type_errors_when_required_relationship_is_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon =
+            new_descriptor_holon(&context, "missing-value-type", "MissingValueType", "Property")?;
+        let descriptor = PropertyDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.value_type(),
+            Err(HolonError::MissingRequiredRelationship { relationship, .. })
+                if relationship == "ValueType"
+        ));
 
         Ok(())
     }

@@ -1,5 +1,7 @@
-use crate::descriptors::{Descriptor, TypeHeader};
+use crate::descriptors::{accessor_helpers, Descriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
+use core_types::HolonError;
+use type_names::CorePropertyTypeName;
 
 /// Runtime wrapper for holon-type descriptors.
 ///
@@ -18,6 +20,22 @@ impl HolonDescriptor {
     /// Projects the shared descriptor header view for this descriptor holon.
     pub fn header(&self) -> TypeHeader<'_> {
         TypeHeader::new(&self.holon)
+    }
+
+    /// Returns whether instances may carry properties beyond the descriptor declaration.
+    pub fn allows_additional_properties(&self) -> Result<bool, HolonError> {
+        accessor_helpers::require_bool(
+            &self.holon,
+            CorePropertyTypeName::AllowsAdditionalProperties,
+        )
+    }
+
+    /// Returns whether instances may carry relationships beyond the descriptor declaration.
+    pub fn allows_additional_relationships(&self) -> Result<bool, HolonError> {
+        accessor_helpers::require_bool(
+            &self.holon,
+            CorePropertyTypeName::AllowsAdditionalRelationships,
+        )
     }
 }
 
@@ -143,6 +161,38 @@ mod tests {
         assert!(matches!(
             source.holon_descriptor(),
             Err(HolonError::MultipleDescribedBy { count, .. }) if count == 2
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn structural_flags_return_required_boolean_values() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(&context, "structural-flags", "BookType")?;
+        holon
+            .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, true)?
+            .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
+
+        let descriptor = HolonDescriptor::from_holon(holon.into());
+
+        assert!(descriptor.allows_additional_properties()?);
+        assert!(!descriptor.allows_additional_relationships()?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn structural_flags_error_when_required_boolean_is_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(&context, "missing-structural-flag", "BookType")?;
+        holon.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
+
+        let descriptor = HolonDescriptor::from_holon(holon.into());
+
+        assert!(matches!(
+            descriptor.allows_additional_properties(),
+            Err(HolonError::EmptyField(field)) if field == "AllowsAdditionalProperties"
         ));
 
         Ok(())
