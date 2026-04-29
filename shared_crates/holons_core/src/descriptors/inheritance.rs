@@ -111,6 +111,10 @@ impl Iterator for ExtendsIter {
         }
 
         let current = self.next.take()?;
+        // Cycle detection relies on reference_id_string() being a stable,
+        // collision-resistant identity for each concrete holon reference. Do
+        // not implement reference_id_string() with lossy display fallbacks such
+        // as "<invalid utf-8>" for binary saved IDs.
         self.visited.insert(current.reference_id_string());
 
         // Resolve the next step after capturing the current item. This keeps
