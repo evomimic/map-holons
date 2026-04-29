@@ -486,8 +486,9 @@ impl RecoveryStore for TransactionRecoveryStore {
             .map_err(|e| HolonError::Misc(format!("redo_to_marker begin tx: {e}")))?;
 
         for (i, (uid, cp_id, _)) in to_redo.iter().enumerate() {
-            // Newest unit gets the highest undo position; marker gets initial_undo_len.
-            let undo_pos = initial_undo_len + (to_redo.len() - 1 - i) as i64;
+            // to_redo[0] = newest-on-redo (redone first), to_redo[last] = marker (redone last).
+            // Marker gets the highest stack_pos = top of undo stack, matching undo_stack_json.
+            let undo_pos = initial_undo_len + i as i64;
             tx.execute(
                 "UPDATE experience_unit SET stack_kind = 'undo', stack_pos = ?1 WHERE unit_id = ?2",
                 params![undo_pos, uid],

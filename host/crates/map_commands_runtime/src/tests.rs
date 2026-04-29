@@ -989,3 +989,66 @@ async fn undo_to_marker_at_first_eu_restores_to_baseline() {
         "UndoToMarker at first EU should restore to baseline"
     );
 }
+
+#[tokio::test]
+async fn undo_to_marker_after_redo_to_marker_uses_correct_stack_order() {
+    // Regression for redo_to_marker stack_pos inversion bug.
+    // After redo_to_marker moves multiple EUs back to undo, the marker must be
+    // at the top of the undo stack so undo_to_marker("m1") pops only that one EU.
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    stage_and_close(&runtime, &tx_id, "eu-0").await; // EU_0, count=1
+    stage_and_close_marked(&runtime, &tx_id, "eu-1", "m1").await; // EU_1 (marked), count=2
+    stage_and_close(&runtime, &tx_id, "eu-2").await; // EU_2, count=3
+
+    // Undo all three — redo stack now holds [EU_2, EU_1, EU_0] (EU_2 most recently undone)
+    for _ in 0..3 {
+        runtime
+            .execute_command(
+                tx_cmd(&runtime, &tx_id, TransactionAction::UndoLast),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect("UndoLast should succeed");
+    }
+    assert_eq!(staged_count(&runtime, &tx_id).await, 0);
+
+    // redo_to_marker("m1") moves EU_2 (newest on redo) and EU_1 (marker) back to undo.
+    // After this: undo=[EU_0, EU_1], redo=[EU_2], count=2.
+    // EU_1 must be at the TOP of the undo stack (highest stack_pos).
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::RedoToMarker { marker_id: "m1".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("RedoToMarker should succeed");
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 2);
+
+    // undo_to_marker("m1") must pop only EU_1 (the top of the undo stack) → count=1.
+    // With the stack_pos inversion bug, load_eu_stack would put EU_0 at the top
+    // and drain both EU_0 and EU_1, giving count=0 instead.
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "m1".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoToMarker should find m1 at the top of the undo stack");
+
+    assert_eq!(
+        staged_count(&runtime, &tx_id).await,
+        1,
+        "undo_to_marker after redo_to_marker must pop only the marker EU, not the ones below it"
+    );
+}
