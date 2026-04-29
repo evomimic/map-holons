@@ -3,6 +3,10 @@ use crate::reference_layer::HolonReference;
 
 /// Runtime wrapper for value-type descriptors.
 ///
+/// In PR2, value descriptors expose only the shared descriptor header. The
+/// current schema does not yet define value-kind-specific structural accessors;
+/// semantic behavior is deferred to PR3.
+///
 /// Validation and operator behavior will dispatch through this wrapper in later
 /// phases, so the typed shell lands early even while behavior is still deferred.
 pub struct ValueDescriptor {

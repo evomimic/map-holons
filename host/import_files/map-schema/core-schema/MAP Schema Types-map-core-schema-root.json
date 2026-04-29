@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-12-08T13:09:06",
+    "generated_at": "2026-04-28T12:16:06",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -27,12 +27,6 @@
         "allows_additional_relationships": false
       },
       "relationships": [
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#HolonType"
-          }
-        },
         {
           "name": "UsesKeyRule",
           "target": {
@@ -348,15 +342,6 @@
             },
             {
               "$ref": "#MaxCardinality.PropertyType"
-            },
-            {
-              "$ref": "#PropertyName.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalProperties.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalRelationships.PropertyType"
             }
           ]
         },
@@ -439,15 +424,6 @@
             },
             {
               "$ref": "#MaxCardinality.PropertyType"
-            },
-            {
-              "$ref": "#PropertyName.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalProperties.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalRelationships.PropertyType"
             }
           ]
         },
@@ -484,12 +460,6 @@
           "name": "ComponentOf",
           "target": {
             "$ref": "#MAP Core Schema-v0.0.4"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#MetaHolonType"
           }
         },
         {
@@ -672,15 +642,6 @@
             },
             {
               "$ref": "#MaxCardinality.PropertyType"
-            },
-            {
-              "$ref": "#PropertyName.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalProperties.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalRelationships.PropertyType"
             }
           ]
         },
@@ -754,15 +715,6 @@
             },
             {
               "$ref": "#MaxCardinality.PropertyType"
-            },
-            {
-              "$ref": "#PropertyName.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalProperties.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalRelationships.PropertyType"
             }
           ]
         },
@@ -845,15 +797,6 @@
             },
             {
               "$ref": "#MaxCardinality.PropertyType"
-            },
-            {
-              "$ref": "#PropertyName.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalProperties.PropertyType"
-            },
-            {
-              "$ref": "#AllowsAdditionalRelationships.PropertyType"
             }
           ]
         },

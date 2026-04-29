@@ -1,5 +1,6 @@
-use crate::reference_layer::{HolonReference, ReadableHolon};
-use base_types::{BaseValue, MapString};
+use crate::descriptors::accessor_helpers;
+use crate::reference_layer::HolonReference;
+use base_types::MapString;
 use core_types::HolonError;
 use type_names::CorePropertyTypeName;
 
@@ -53,37 +54,17 @@ impl<'a> TypeHeader<'a> {
 
     fn require_string(&self, prop: CorePropertyTypeName) -> Result<MapString, HolonError> {
         // Required string fields share the same missing-vs-wrong-type semantics.
-        let property_name = prop.as_property_name();
-        match self.holon.property_value(prop)? {
-            Some(BaseValue::StringValue(value)) => Ok(value),
-            Some(other) => {
-                Err(HolonError::UnexpectedValueType(format!("{:?}", other), "String".to_string()))
-            }
-            None => Err(HolonError::EmptyField(property_name.to_string())),
-        }
+        accessor_helpers::require_string(self.holon, prop)
     }
 
     fn optional_string(&self, prop: CorePropertyTypeName) -> Result<Option<MapString>, HolonError> {
         // Optional string fields still fail loudly when the stored value shape is wrong.
-        match self.holon.property_value(prop)? {
-            Some(BaseValue::StringValue(value)) => Ok(Some(value)),
-            Some(other) => {
-                Err(HolonError::UnexpectedValueType(format!("{:?}", other), "String".to_string()))
-            }
-            None => Ok(None),
-        }
+        accessor_helpers::optional_string(self.holon, prop)
     }
 
     fn require_bool(&self, prop: CorePropertyTypeName) -> Result<bool, HolonError> {
         // Boolean header fields mirror the required-string contract with a different base type.
-        let property_name = prop.as_property_name();
-        match self.holon.property_value(prop)? {
-            Some(BaseValue::BooleanValue(value)) => Ok(value.0),
-            Some(other) => {
-                Err(HolonError::UnexpectedValueType(format!("{:?}", other), "Boolean".to_string()))
-            }
-            None => Err(HolonError::EmptyField(property_name.to_string())),
-        }
+        accessor_helpers::require_bool(self.holon, prop)
     }
 }
 

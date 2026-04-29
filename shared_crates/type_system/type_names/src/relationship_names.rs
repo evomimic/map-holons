@@ -87,6 +87,7 @@ pub enum CoreRelationshipTypeName {
     OwnedBy,
     Owns,
     Predecessor,
+    Properties,
     PropertyName,
     ReferenceSource,
     ReferenceTarget,
@@ -126,6 +127,10 @@ mod tests {
         assert_eq!(
             RelationshipName(MapString("InstanceRelationshipFor".to_string())),
             CoreRelationshipTypeName::InstanceRelationshipFor.as_relationship_name()
+        );
+        assert_eq!(
+            RelationshipName(MapString("Properties".to_string())),
+            CoreRelationshipTypeName::Properties.as_relationship_name()
         );
     }
 

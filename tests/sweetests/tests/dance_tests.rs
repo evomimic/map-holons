@@ -108,7 +108,6 @@ use holons_prelude::prelude::*;
 #[case::load_book_person_inverse_schema_test(load_book_person_inverse_schema_fixture())]
 #[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
 #[tokio::test(flavor = "multi_thread")]
-// TODO: Support for relationships to be finished in issue 382
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     // Setup
 
