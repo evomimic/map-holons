@@ -170,6 +170,42 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_verify_book_person_descriptors_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description
+            .unwrap_or_else(|| "Verify Book/Person descriptors over loaded schema".to_string());
+        self.steps.push(DanceTestStep::VerifyBookPersonDescriptors { description });
+
+        Ok(())
+    }
+
+    pub fn add_verify_core_schema_descriptor_subtypes_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Verify core schema descriptor subtypes".to_string());
+        self.steps.push(DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { description });
+
+        Ok(())
+    }
+
+    pub fn add_verify_core_schema_descriptors_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Verify core schema descriptors".to_string());
+        self.steps.push(DanceTestStep::VerifyCoreSchemaDescriptors { description });
+
+        Ok(())
+    }
+
     pub fn add_load_holons_internal_step(
         &mut self,
         set: TransientReference,
