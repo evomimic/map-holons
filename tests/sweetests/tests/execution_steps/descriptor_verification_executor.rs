@@ -34,17 +34,17 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         MapString("HolonType".to_string())
     );
 
-    let instance_property_names = type_names(holon_type_descriptor.instance_properties());
+    let instance_property_names = property_type_names(holon_type_descriptor.instance_properties());
     assert_contains(&instance_property_names, "AllowsAdditionalProperties");
     assert_contains(&instance_property_names, "AllowsAdditionalRelationships");
 
     let instance_relationship_names =
-        relationship_names(holon_type_descriptor.instance_relationships());
+        relationship_base_names(holon_type_descriptor.instance_relationships());
     assert_contains(&instance_relationship_names, "Properties");
     assert_contains(&instance_relationship_names, "DescribedBy");
 
     let property = holon_type_descriptor
-        .get_property_by_name(PropertyName(MapString("AllowsAdditionalProperties".to_string())))
+        .get_property_by_name(PropertyName(MapString::from("AllowsAdditionalProperties")))
         .expect("AllowsAdditionalProperties lookup");
     assert_eq!(
         property
@@ -57,10 +57,13 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
 
     let relationship = holon_type_descriptor
-        .get_relationship_by_name(RelationshipName(MapString("Properties".to_string())))
+        .get_relationship_by_name(RelationshipName(MapString::from("Properties")))
         .expect("Properties relationship lookup");
     assert_relationship_shape(
-        &relationship,
+        relationship.base_relationship_name(),
+        relationship.source_type(),
+        relationship.target_type(),
+        relationship.full_relationship_name(),
         "Properties",
         "HolonType",
         "PropertyType",
@@ -81,7 +84,10 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
     .try_into_declared_relationship_descriptor()
     .expect("core declared relationship should narrow");
     assert_relationship_shape(
-        &declared,
+        declared.base_relationship_name(),
+        declared.source_type(),
+        declared.target_type(),
+        declared.full_relationship_name(),
         "InstanceProperties",
         "TypeDescriptor",
         "PropertyType",
@@ -95,7 +101,10 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
     .try_into_inverse_relationship_descriptor()
     .expect("core inverse relationship should narrow");
     assert_relationship_shape(
-        &inverse,
+        inverse.base_relationship_name(),
+        inverse.source_type(),
+        inverse.target_type(),
+        inverse.full_relationship_name(),
         "InstancePropertyFor",
         "PropertyType",
         "TypeDescriptor",
@@ -131,16 +140,17 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         .allows_additional_relationships()
         .expect("Book allows_additional_relationships"));
 
-    let instance_property_names = type_names(book_descriptor.instance_properties());
+    let instance_property_names = property_type_names(book_descriptor.instance_properties());
     assert_contains(&instance_property_names, "Title");
     assert_contains(&instance_property_names, "AllowsAdditionalProperties");
 
-    let instance_relationship_names = relationship_names(book_descriptor.instance_relationships());
+    let instance_relationship_names =
+        relationship_base_names(book_descriptor.instance_relationships());
     assert_contains(&instance_relationship_names, "AuthoredBy");
     assert_contains(&instance_relationship_names, "Properties");
 
     let title = book_descriptor
-        .get_property_by_name(PropertyName(MapString("Title".to_string())))
+        .get_property_by_name(PropertyName(MapString::from("Title")))
         .expect("Title property lookup");
     assert_eq!(
         title
@@ -153,10 +163,13 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
     );
 
     let authored_by = book_descriptor
-        .get_relationship_by_name(RelationshipName(MapString("AuthoredBy".to_string())))
+        .get_relationship_by_name(RelationshipName(MapString::from("AuthoredBy")))
         .expect("AuthoredBy relationship lookup");
     assert_relationship_shape(
-        &authored_by,
+        authored_by.base_relationship_name(),
+        authored_by.source_type(),
+        authored_by.target_type(),
+        authored_by.full_relationship_name(),
         "AuthoredBy",
         "Book",
         "Person",
@@ -186,7 +199,10 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
     .try_into_declared_relationship_descriptor()
     .expect("Book/Person declared relationship should narrow");
     assert_relationship_shape(
-        &declared,
+        declared.base_relationship_name(),
+        declared.source_type(),
+        declared.target_type(),
+        declared.full_relationship_name(),
         "AuthoredBy",
         "Book",
         "Person",
@@ -218,22 +234,12 @@ async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> Holon
 
 fn find_holon_by_key(holons: &HolonCollection, key: &str) -> HolonReference {
     holons
-        .get_members()
-        .iter()
-        .find(|holon| {
-            holon
-                .key()
-                .unwrap_or_else(|error| {
-                    panic!("failed to read holon key while finding {key}: {error:?}")
-                })
-                .map(|actual| actual.0 == key)
-                .unwrap_or(false)
-        })
+        .get_by_key(&MapString::from(key))
+        .unwrap_or_else(|error| panic!("key lookup for {key} failed: {error:?}"))
         .unwrap_or_else(|| panic!("expected loaded holon with key {key}"))
-        .clone()
 }
 
-fn type_names(
+fn property_type_names(
     descriptors: Result<Vec<holons_core::descriptors::PropertyDescriptor>, HolonError>,
 ) -> Vec<String> {
     descriptors
@@ -243,7 +249,9 @@ fn type_names(
         .collect()
 }
 
-fn relationship_names(descriptors: Result<Vec<RelationshipDescriptor>, HolonError>) -> Vec<String> {
+fn relationship_base_names(
+    descriptors: Result<Vec<RelationshipDescriptor>, HolonError>,
+) -> Vec<String> {
     descriptors
         .expect("relationship descriptor list")
         .into_iter()
@@ -264,97 +272,29 @@ fn assert_contains(values: &[String], expected: &str) {
 }
 
 fn assert_relationship_shape(
-    relationship: &impl RelationshipAssertions,
+    base_relationship_name: Result<RelationshipName, HolonError>,
+    source_type: Result<HolonDescriptor, HolonError>,
+    target_type: Result<HolonDescriptor, HolonError>,
+    full_relationship_name: Result<MapString, HolonError>,
     expected_base_name: &str,
     expected_source_type: &str,
     expected_target_type: &str,
     expected_full_name: &str,
 ) {
     assert_eq!(
-        relationship.base_relationship_name().expect("base relationship name").to_string(),
+        base_relationship_name.expect("base relationship name").to_string(),
         expected_base_name
     );
     assert_eq!(
-        relationship
-            .source_type()
-            .expect("source_type")
-            .header()
-            .type_name()
-            .expect("source type_name"),
+        source_type.expect("source_type").header().type_name().expect("source type_name"),
         MapString(expected_source_type.to_string())
     );
     assert_eq!(
-        relationship
-            .target_type()
-            .expect("target_type")
-            .header()
-            .type_name()
-            .expect("target type_name"),
+        target_type.expect("target_type").header().type_name().expect("target type_name"),
         MapString(expected_target_type.to_string())
     );
     assert_eq!(
-        relationship.full_relationship_name().expect("full relationship name"),
+        full_relationship_name.expect("full relationship name"),
         MapString(expected_full_name.to_string())
     );
-}
-
-trait RelationshipAssertions {
-    fn base_relationship_name(&self) -> Result<RelationshipName, HolonError>;
-    fn source_type(&self) -> Result<HolonDescriptor, HolonError>;
-    fn target_type(&self) -> Result<HolonDescriptor, HolonError>;
-    fn full_relationship_name(&self) -> Result<MapString, HolonError>;
-}
-
-impl RelationshipAssertions for RelationshipDescriptor {
-    fn base_relationship_name(&self) -> Result<RelationshipName, HolonError> {
-        RelationshipDescriptor::base_relationship_name(self)
-    }
-
-    fn source_type(&self) -> Result<HolonDescriptor, HolonError> {
-        RelationshipDescriptor::source_type(self)
-    }
-
-    fn target_type(&self) -> Result<HolonDescriptor, HolonError> {
-        RelationshipDescriptor::target_type(self)
-    }
-
-    fn full_relationship_name(&self) -> Result<MapString, HolonError> {
-        RelationshipDescriptor::full_relationship_name(self)
-    }
-}
-
-impl RelationshipAssertions for holons_core::descriptors::DeclaredRelationshipDescriptor {
-    fn base_relationship_name(&self) -> Result<RelationshipName, HolonError> {
-        self.base_relationship_name()
-    }
-
-    fn source_type(&self) -> Result<HolonDescriptor, HolonError> {
-        self.source_type()
-    }
-
-    fn target_type(&self) -> Result<HolonDescriptor, HolonError> {
-        self.target_type()
-    }
-
-    fn full_relationship_name(&self) -> Result<MapString, HolonError> {
-        self.full_relationship_name()
-    }
-}
-
-impl RelationshipAssertions for holons_core::descriptors::InverseRelationshipDescriptor {
-    fn base_relationship_name(&self) -> Result<RelationshipName, HolonError> {
-        self.base_relationship_name()
-    }
-
-    fn source_type(&self) -> Result<HolonDescriptor, HolonError> {
-        self.source_type()
-    }
-
-    fn target_type(&self) -> Result<HolonDescriptor, HolonError> {
-        self.target_type()
-    }
-
-    fn full_relationship_name(&self) -> Result<MapString, HolonError> {
-        self.full_relationship_name()
-    }
 }
