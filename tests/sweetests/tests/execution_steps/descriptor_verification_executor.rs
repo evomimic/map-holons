@@ -1,35 +1,31 @@
 use holons_core::descriptors::{HolonDescriptor, RelationshipDescriptor};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP_KEY,
+    CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY,
+    HOLON_TYPE_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, SCHEMA_TYPE_KEY,
 };
 use holons_test::TestExecutionState;
+use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use pretty_assertions::assert_eq;
 use tracing::info;
-
-const CORE_SCHEMA_KEY: &str = "MAP Core Schema-v0.0.4";
-const HOLON_TYPE_KEY: &str = "HolonType";
-const DECLARED_CORE_RELATIONSHIP_KEY: &str =
-    "(TypeDescriptor)-[InstanceProperties]->(PropertyType)";
-const INVERSE_CORE_RELATIONSHIP_KEY: &str =
-    "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor)";
 
 /// Verifies representative foundational descriptor access over loaded MAP core schema data.
 pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_core_schema_descriptors").await;
 
-    let core_schema = find_holon_by_key(&holons, CORE_SCHEMA_KEY);
-    let core_schema_descriptor = HolonDescriptor::from_holon(core_schema);
+    let schema_type = find_holon_by_key(&holons, SCHEMA_TYPE_KEY);
+    let schema_type_descriptor = HolonDescriptor::from_holon(schema_type);
     assert_eq!(
-        core_schema_descriptor.header().type_name().expect("core schema type_name"),
-        MapString(CORE_SCHEMA_KEY.to_string())
+        schema_type_descriptor.header().type_name().expect("SchemaType type_name"),
+        MapString(SCHEMA_TYPE_KEY.to_string())
     );
-    assert!(!core_schema_descriptor
+    assert!(!schema_type_descriptor
         .allows_additional_properties()
-        .expect("core schema allows_additional_properties"));
-    assert!(!core_schema_descriptor
+        .expect("SchemaType allows_additional_properties"));
+    assert!(!schema_type_descriptor
         .allows_additional_relationships()
-        .expect("core schema allows_additional_relationships"));
+        .expect("SchemaType allows_additional_relationships"));
 
     let holon_type = find_holon_by_key(&holons, HOLON_TYPE_KEY);
     let holon_type_descriptor = HolonDescriptor::from_holon(holon_type);
@@ -80,7 +76,7 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
 
     let declared = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        DECLARED_CORE_RELATIONSHIP_KEY,
+        CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY,
     ))
     .try_into_declared_relationship_descriptor()
     .expect("core declared relationship should narrow");
@@ -94,7 +90,7 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
 
     let inverse = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        INVERSE_CORE_RELATIONSHIP_KEY,
+        CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY,
     ))
     .try_into_inverse_relationship_descriptor()
     .expect("core inverse relationship should narrow");
@@ -205,10 +201,19 @@ async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> Holon
         panic!("{step_name}: failed to open assertion transaction: {error:?}")
     });
 
-    context
-        .lookup()
-        .get_all_holons()
-        .unwrap_or_else(|error| panic!("{step_name}: get_all_holons failed: {error:?}"))
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::GetAllHolons,
+    });
+    let result = state
+        .dispatch_command(command, step_name)
+        .await
+        .unwrap_or_else(|error| panic!("{step_name}: get_all_holons failed: {error:?}"));
+
+    match result {
+        MapResult::Collection(collection) => collection,
+        other => panic!("{step_name}: expected Collection, got {other:?}"),
+    }
 }
 
 fn find_holon_by_key(holons: &HolonCollection, key: &str) -> HolonReference {
