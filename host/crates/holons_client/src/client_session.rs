@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
 use core_types::HolonError;
-use holons_core::core_shared_objects::{
-    space_manager::HolonSpaceManager,
-    transactions::{TransactionContext, TxId},
+use holons_core::{
+    core_shared_objects::{
+        space_manager::HolonSpaceManager,
+        transactions::{TransactionContext, TxId},
+    },
+    HolonPool,
 };
 
 use crate::Receptor;
@@ -77,18 +80,24 @@ impl ClientSession {
         };
 
         if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            if let Some(tx_snapshot) = r.undo(&self.tx_id().value().to_string()).await? {
-                tx_snapshot.restore_into(&self.context)?;
-                return Ok(());
-            } else {
+            let tx_id_str = self.tx_id().value().to_string();
+            if !r.can_undo(&tx_id_str)? {
                 return Err(HolonError::Misc(format!(
                     "No undo snapshot available for tx_id={}",
                     &self.tx_id().value()
                 )));
             }
-        } else {
-            Ok(())
+            // Stack was non-empty before the call. After popping the last EU,
+            // None means there is no prior snapshot — restore to baseline.
+            match r.undo(&tx_id_str).await? {
+                Some(snapshot) => snapshot.restore_into(&self.context)?,
+                None => {
+                    self.context.import_staged_holons(HolonPool::new())?;
+                    self.context.import_transient_holons(HolonPool::new())?;
+                }
+            }
         }
+        Ok(())
     }
 
     /// Redo the last undone transaction, if available.
@@ -103,7 +112,7 @@ impl ClientSession {
                 return Ok(());
             } else {
                 return Err(HolonError::Misc(format!(
-                    "No napshot available for tx_id={}",
+                    "No redo snapshot available for tx_id={}",
                     &self.tx_id().value()
                 )));
             }
@@ -122,7 +131,11 @@ impl ClientSession {
             let tx_id = self.tx_id().value().to_string();
             match r.undo_to_marker(&tx_id, marker_id).await? {
                 Some(snapshot) => snapshot.restore_into(&self.context)?,
-                None => {} // restored to baseline — no snapshot to apply
+                None => {
+                    // Marker was the first EU — restore to baseline.
+                    self.context.import_staged_holons(HolonPool::new())?;
+                    self.context.import_transient_holons(HolonPool::new())?;
+                }
             }
         }
         Ok(())

@@ -136,7 +136,7 @@ impl RecoveryStore for TransactionRecoveryStore {
 
         // Read undo_checkpointing_enabled + stacks before opening the write tx.
         let checkpointing_enabled = load_checkpointing_enabled(&guard, &tx_id)?;
-        let (mut undo_stack, _redo_stack) = load_stacks(&guard, &tx_id)?;
+        let (mut undo_stack, mut redo_stack) = load_stacks(&guard, &tx_id)?;
 
         let tx =
             guard.transaction().map_err(|e| HolonError::Misc(format!("Begin transaction: {e}")))?;
@@ -177,6 +177,32 @@ impl RecoveryStore for TransactionRecoveryStore {
         .map_err(|e| HolonError::Misc(format!("Insert checkpoint: {e}")))?;
 
         // ── Step 3: apply undo semantics ──
+
+        // Any forward mutation diverges from the redo timeline. Clear redo unconditionally —
+        // applies to EU-closing, intermediate, and disable_undo mutations alike.
+        if !redo_stack.is_empty() {
+            tx.execute(
+                "DELETE FROM experience_unit WHERE tx_id = ?1 AND stack_kind = 'redo'",
+                params![tx_id],
+            )
+            .map_err(|e| HolonError::Misc(format!("Clear redo EUs on forward mutation: {e}")))?;
+            tx.execute(
+                "DELETE FROM recovery_checkpoint WHERE tx_id = ?1 AND stack_kind = 'redo'",
+                params![tx_id],
+            )
+            .map_err(|e| {
+                HolonError::Misc(format!("Clear redo checkpoints on forward mutation: {e}"))
+            })?;
+            tx.execute(
+                "UPDATE recovery_session SET redo_stack_json = '[]' WHERE tx_id = ?1",
+                params![tx_id],
+            )
+            .map_err(|e| {
+                HolonError::Misc(format!("Clear redo stack json on forward mutation: {e}"))
+            })?;
+            redo_stack.clear();
+        }
+
         if disable_undo {
             // Permanently disable future undo checkpoint creation for this tx.
             tx.execute(
@@ -188,7 +214,7 @@ impl RecoveryStore for TransactionRecoveryStore {
             tracing::debug!("[RECOVERY STORE] disable_undo: checkpointing disabled for tx={tx_id}");
         } else if snapshot_after && checkpointing_enabled {
             // Close the current Experience Unit: create a checkpoint + EU row,
-            // push unit_id onto undo stack, invalidate redo history.
+            // push unit_id onto undo stack.
             let unit_id = Uuid::new_v4().to_string();
             let stack_pos = undo_stack.len() as i64;
 
@@ -209,25 +235,8 @@ impl RecoveryStore for TransactionRecoveryStore {
             )
             .map_err(|e| HolonError::Misc(format!("Insert experience_unit: {e}")))?;
 
-            // Invalidate redo history: delete all redo experience_unit rows.
-            tx.execute(
-                "DELETE FROM experience_unit WHERE tx_id = ?1 AND stack_kind = 'redo'",
-                params![tx_id],
-            )
-            .map_err(|e| HolonError::Misc(format!("Clear redo experience_units: {e}")))?;
-
-            // Push unit_id onto undo stack and clear redo stack.
             undo_stack.push(unit_id.clone());
-            let undo_json = serde_json::to_string(&undo_stack)
-                .map_err(|e| HolonError::Misc(format!("Serialize undo stack: {e}")))?;
-
-            tx.execute(
-                "UPDATE recovery_session
-                 SET undo_stack_json = ?1, redo_stack_json = '[]'
-                 WHERE tx_id = ?2",
-                params![undo_json, tx_id],
-            )
-            .map_err(|e| HolonError::Misc(format!("Update stacks: {e}")))?;
+            save_stacks(&tx, &tx_id, &undo_stack, &redo_stack, Some(&checkpoint_id), now)?;
 
             tracing::debug!(
                 "[RECOVERY STORE] Closed ExperienceUnit unit_id={unit_id} \

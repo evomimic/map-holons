@@ -4,10 +4,7 @@ use core_types::HolonError;
 
 use holons_core::core_shared_objects::transactions::TransactionLifecycleState;
 
-use map_commands_contract::{
-    HolonAction, MapCommand, MapResult, MutationClassification, ReadableHolonAction, SpaceCommand,
-    TransactionAction,
-};
+use map_commands_contract::{MapCommand, MapResult, MutationClassification, TransactionAction};
 
 use super::runtime_session::RuntimeSession;
 use super::{holon_handler, space_handler, transaction_handler};
@@ -104,14 +101,10 @@ impl Runtime {
         let tx_id_for_snapshot = context.as_ref().map(|ctx| ctx.tx_id());
         let result = self.route_command(command).await?;
 
-        // Only persist a snapshot after commands that:
-        // - explicitly requested snapshot_after
-        // - are not read-only
-        // - are not a Commit (commit destroys transaction-scoped recovery state)
-        if policy.snapshot_after
-            && descriptor.mutation != MutationClassification::ReadOnly
-            && !is_commit
-        {
+        // Persist after every mutable non-commit command so the store can clear
+        // the redo stack unconditionally. EU creation only happens when
+        // snapshot_after=true; crash-recovery state is always written.
+        if descriptor.mutation != MutationClassification::ReadOnly && !is_commit {
             if let Some(tx_id) = tx_id_for_snapshot {
                 self.session.persist_success(&tx_id, command_label, policy).await?;
             }

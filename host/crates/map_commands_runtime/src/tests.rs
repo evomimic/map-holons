@@ -848,3 +848,144 @@ async fn disable_undo_after_markers_marker_still_navigable() {
         "restored to EU_0's state — count drops from 3 to 1"
     );
 }
+
+// ── Redo invalidation by forward mutations ──────────────────────────
+
+#[tokio::test]
+async fn intermediate_mutation_after_undo_invalidates_redo() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    stage_and_close(&runtime, &tx_id, "eu-0").await; // EU_0, count=1
+    stage_and_close(&runtime, &tx_id, "eu-1").await; // EU_1, count=2
+
+    // Undo EU_1 — it moves to the redo stack.
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::UndoLast),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoLast should succeed");
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 1);
+
+    // Intermediate forward mutation (no snapshot_after) — must invalidate redo.
+    let cmd = tx_cmd(
+        &runtime,
+        &tx_id,
+        TransactionAction::NewHolon { key: Some(MapString::from("forward")) },
+    );
+    runtime
+        .execute_command(cmd, ExecutionPolicy::default())
+        .await
+        .expect("intermediate NewHolon should succeed");
+
+    // RedoLast must now fail — the redo timeline was cleared.
+    let result = runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::RedoLast),
+            ExecutionPolicy::default(),
+        )
+        .await;
+    assert!(result.is_err(), "RedoLast should fail: intermediate mutation cleared the redo stack");
+}
+
+#[tokio::test]
+async fn disable_undo_mutation_after_undo_invalidates_redo() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    stage_and_close(&runtime, &tx_id, "eu-0").await; // EU_0, count=1
+    stage_and_close(&runtime, &tx_id, "eu-1").await; // EU_1, count=2
+
+    // Undo EU_1 — it moves to the redo stack.
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::UndoLast),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoLast should succeed");
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 1);
+
+    // disable_undo mutation — must also invalidate redo.
+    let cmd = tx_cmd(
+        &runtime,
+        &tx_id,
+        TransactionAction::NewHolon { key: Some(MapString::from("forward")) },
+    );
+    runtime
+        .execute_command(cmd, ExecutionPolicy { disable_undo: true, ..Default::default() })
+        .await
+        .expect("disable_undo NewHolon should succeed");
+
+    // RedoLast must now fail — the redo timeline was cleared.
+    let result = runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::RedoLast),
+            ExecutionPolicy::default(),
+        )
+        .await;
+    assert!(result.is_err(), "RedoLast should fail: disable_undo mutation cleared the redo stack");
+}
+
+#[tokio::test]
+async fn undo_first_eu_restores_to_baseline() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    stage_and_close(&runtime, &tx_id, "eu-0").await; // EU_0, count=1
+    assert_eq!(staged_count(&runtime, &tx_id).await, 1);
+
+    // Undo the only EU — store returns None (no prior snapshot), must restore to baseline.
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::UndoLast),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoLast should succeed even when undoing the first EU");
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 0, "baseline should have no staged holons");
+
+    // EU_0 is now on the redo stack — RedoLast must restore it.
+    runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::RedoLast),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("RedoLast should restore EU_0");
+
+    assert_eq!(staged_count(&runtime, &tx_id).await, 1, "redo should restore EU_0 state");
+}
+
+#[tokio::test]
+async fn undo_to_marker_at_first_eu_restores_to_baseline() {
+    let runtime = build_test_runtime_with_recovery();
+    let tx_id = begin_tx(&runtime).await;
+
+    stage_and_close_marked(&runtime, &tx_id, "eu-0", "m0").await; // EU_0 with marker, count=1
+    assert_eq!(staged_count(&runtime, &tx_id).await, 1);
+
+    // UndoToMarker targeting the first (only) EU — store returns None (no prior snapshot).
+    runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::UndoToMarker { marker_id: "m0".to_string() },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("UndoToMarker should succeed when marker is the first EU");
+
+    assert_eq!(
+        staged_count(&runtime, &tx_id).await,
+        0,
+        "UndoToMarker at first EU should restore to baseline"
+    );
+}
