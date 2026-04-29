@@ -1,14 +1,14 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-28T11:38:06",
+    "generated_at": "2026-04-29T10:51:57",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
     ],
     "load_with": [
-      "MAP Schema Types-map-core-schema-root.json",
       "MAP Schema Types-map-core-schema-relationship-types.json",
+      "MAP Schema Types-map-core-schema-root.json",
       "MAP Schema Types-map-core-schema-property-types.json"
     ]
   },
@@ -28,12 +28,6 @@
         "allows_additional_relationships": false
       },
       "relationships": [
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#HolonType"
-          }
-        },
         {
           "name": "UsesKeyRule",
           "target": {
