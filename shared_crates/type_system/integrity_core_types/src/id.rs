@@ -38,6 +38,9 @@ impl LocalId {
 
 impl fmt::Display for LocalId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Display is for human-readable diagnostics only. Do not use it for
+        // identity, lookup keys, or hashing: non-UTF-8 IDs collapse to the
+        // same "<invalid utf-8>" placeholder.
         match short_hash(self, 6) {
             Ok(s) => write!(f, "{}", s),
             Err(_) => write!(f, "<invalid utf-8>"),

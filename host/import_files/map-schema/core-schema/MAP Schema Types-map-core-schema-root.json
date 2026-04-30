@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-28T12:16:06",
+    "generated_at": "2026-04-29T10:51:57",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -89,100 +89,6 @@
             },
             {
               "$ref": "#InstanceTypeKind.PropertyType"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SchemaType",
-      "type": "#TypeDescriptor",
-      "properties": {
-        "type_name": "SchemaType",
-        "type_name_plural": "SchemaTypes",
-        "display_name": "Schema Type",
-        "display_name_plural": "Schema Types",
-        "instance_type_kind": "Holon",
-        "description": "Describes schema holons - groupings of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies.",
-        "is_abstract_type": true
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#MetaHolonType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#TypeNameRule"
-          }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#MapString.PropertyType"
-            },
-            {
-              "$ref": "#Description.PropertyType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "#(SchemaType)-[DependsOn]->(SchemaType)"
-          }
-        }
-      ]
-    },
-    {
-      "key": "HolonSpaceType",
-      "type": "#TypeDescriptor",
-      "properties": {
-        "type_name": "HolonSpaceType",
-        "type_name_plural": "HolonSpaceTypes",
-        "display_name": "Holon Space Holon Type",
-        "display_name_plural": "Holon Space Holon Types",
-        "instance_type_kind": "Holon",
-        "description": "Describes HolonSpace holons. A HolonSpace is a holon that, itself, is a container for holons. It maps 1:1 with a DHT. It also proxies inbound and outbound calls to other HolonSpaces of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies. With minimal InstanceProperties and no InstanceRelationships, a HolonSpace is very stable = i.e., owned holons and space proxies can be added to a space without requiring a new version of the HolonSpace.",
-        "is_abstract_type": true
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#MetaHolonType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#TypeNameRule"
-          }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#SpaceName.PropertyType"
-            },
-            {
-              "$ref": "#Description.PropertyType"
             }
           ]
         }
@@ -817,6 +723,104 @@
       ]
     },
     {
+      "key": "SchemaType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "SchemaType",
+        "type_name_plural": "SchemaTypes",
+        "display_name": "Schema Type",
+        "display_name_plural": "Schema Types",
+        "instance_type_kind": "Holon",
+        "description": "Describes schema holons - groupings of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#MapString.PropertyType"
+            },
+            {
+              "$ref": "#Description.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "#(SchemaType)-[DependsOn]->(SchemaType)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonSpaceType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "HolonSpaceType",
+        "type_name_plural": "HolonSpaceTypes",
+        "display_name": "Holon Space Holon Type",
+        "display_name_plural": "Holon Space Holon Types",
+        "instance_type_kind": "Holon",
+        "description": "Describes HolonSpace holons. A HolonSpace is a holon that, itself, is a container for holons. It maps 1:1 with a DHT. It also proxies inbound and outbound calls to other HolonSpaces of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies. With minimal InstanceProperties and no InstanceRelationships, a HolonSpace is very stable = i.e., owned holons and space proxies can be added to a space without requiring a new version of the HolonSpace.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#SpaceName.PropertyType"
+            },
+            {
+              "$ref": "#Description.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "HolonErrorType",
       "type": "#TypeDescriptor",
       "properties": {
@@ -826,7 +830,7 @@
         "display_name_plural": "Holon Error Types",
         "instance_type_kind": "Holon",
         "description": "Describes the structure of error holons.",
-        "is_abstract_type": true,
+        "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },

@@ -116,7 +116,7 @@ impl SmartReference {
     }
 
     pub fn reference_id_string(&self) -> String {
-        format!("HolonId={}", self.holon_id)
+        format!("HolonId={:?}", self.holon_id)
     }
 }
 

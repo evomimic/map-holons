@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2025-12-08T13:09:06",
+    "generated_at": "2026-04-29T10:51:57",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-holon-loader-schema.csv"
@@ -9,9 +9,10 @@
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
       "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
       "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-dance-schema.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json"
+      "MAP Schema Types-map-core-schema-abstract-value-types.json"
     ]
   },
   "holons": [
@@ -273,6 +274,9 @@
             },
             {
               "$ref": "#LinksCreated.PropertyType"
+            },
+            {
+              "$ref": "#LoadCommitStatus.PropertyType"
             }
           ]
         },
@@ -1029,6 +1033,150 @@
       ]
     },
     {
+      "key": "LoadCommitStatus",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "LoadCommitStatus",
+        "type_name_plural": "LoadCommitStatuses",
+        "display_name": "LoadCommitStatus",
+        "display_name_plural": "LoadCommitStatuses",
+        "instance_type_kind": "Value.Enum",
+        "description": "An enum representing the commit outcome of a holon load.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MapEnumValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LoadCommitStatus.Complete",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Complete",
+        "display_name": "Complete",
+        "instance_type_kind": "EnumVariant",
+        "description": "An enum variant indicating a complete commit.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#EnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#LoadCommitStatus"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LoadCommitStatus.Incomplete",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Incomplete",
+        "display_name": "Incomplete",
+        "instance_type_kind": "EnumVariant",
+        "description": "An enum variant indicating an incomplete commit.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#EnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#LoadCommitStatus"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LoadCommitStatus.Skipped",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Skipped",
+        "display_name": "Skipped",
+        "instance_type_kind": "EnumVariant",
+        "description": "An enum variant indicating that commit was skipped.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#EnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#LoadCommitStatus"
+          }
+        }
+      ]
+    },
+    {
       "key": "Key.PropertyType",
       "type": "#TypeDescriptor",
       "properties": {
@@ -1531,6 +1679,45 @@
           "name": "ValueType",
           "target": {
             "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LoadCommitStatus.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "LoadCommitStatus",
+        "type_name_plural": "LoadCommitStatuses",
+        "display_name": "load_commit_status",
+        "display_name_plural": "load_commit_statuses",
+        "instance_type_kind": "Property",
+        "description": "Represents the commit status for a holon loading operation.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#LoadCommitStatus"
           }
         }
       ]

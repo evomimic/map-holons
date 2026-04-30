@@ -12,6 +12,8 @@ pub fn load_core_schema_fixture() -> Result<DancesTestCase, HolonError> {
         TestCaseInit::new("load_core_schema", "Load MAP core schema via LoadCoreSchema step");
 
     test_case.add_load_core_schema_step(None)?;
+    test_case.add_verify_core_schema_descriptors_step(None)?;
+    test_case.add_verify_core_schema_descriptor_subtypes_step(None)?;
 
     test_case.finalize(&fixture_context)?;
 

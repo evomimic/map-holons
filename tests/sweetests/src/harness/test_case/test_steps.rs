@@ -55,6 +55,15 @@ pub enum DanceTestStep {
     LoadBookPersonInverseTestSchema {
         description: String,
     },
+    VerifyBookPersonDescriptors {
+        description: String,
+    },
+    VerifyCoreSchemaDescriptorSubtypes {
+        description: String,
+    },
+    VerifyCoreSchemaDescriptors {
+        description: String,
+    },
     MatchSavedContent,
     NewHolon {
         step_token: TestReference,
@@ -163,6 +172,15 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::LoadBookPersonInverseTestSchema { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyBookPersonDescriptors { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyCoreSchemaDescriptors { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::MatchSavedContent => {

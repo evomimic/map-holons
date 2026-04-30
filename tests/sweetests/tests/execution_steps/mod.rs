@@ -3,6 +3,7 @@ pub mod add_related_holons_executor;
 pub mod begin_transaction_executor;
 pub mod commit_executor;
 pub mod delete_holon_executor;
+pub mod descriptor_verification_executor;
 pub mod ensure_database_count_executor;
 pub mod load_book_person_inverse_test_schema_executor;
 pub mod load_core_schema_executor;
