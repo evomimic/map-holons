@@ -1109,7 +1109,7 @@
         "type_name": "Incomplete",
         "display_name": "Incomplete",
         "instance_type_kind": "EnumVariant",
-        "description": "An enum variant indicating a incomplete commit.",
+        "description": "An enum variant indicating an incomplete commit.",
         "is_abstract_type": false
       },
       "relationships": [
