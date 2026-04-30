@@ -2,7 +2,7 @@ use std::sync::RwLock;
 
 use core_types::HolonError;
 use map_commands_contract::MapCommand;
-use map_commands_runtime::Runtime; //ExecutionPolicy
+use map_commands_runtime::{ExecutionPolicy, Runtime}; //ExecutionPolicy
 use map_commands_wire::{MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire};
 use tauri::{command, State};
 
@@ -50,12 +50,12 @@ async fn dispatch_inner(
     })?;
 
     // Log gesture context if present
-    if let Some(ref gesture_id) = options.gesture_id {
-        let label = options.gesture_label.as_deref().unwrap_or("<no label>");
+    if let Some(ref marker_id) = options.marker_id {
+        let label = options.marker_label.as_deref().unwrap_or("<no label>");
         tracing::info!(
-            "dispatch_map_command request_id={} gesture_id={:?} label={}",
+            "dispatch_map_command request_id={} marker_id={:?} label={}",
             request_id.value(),
-            gesture_id.0,
+            marker_id.0,
             label
         );
     }
@@ -66,11 +66,13 @@ async fn dispatch_inner(
     // Execute via runtime (policy enforcement + handler routing)
     runtime
         .execute_command(
-            //_with_policy(
             command,
-            //ExecutionPolicy {
-            //   snapshot_after: options.snapshot_after,
-            //},
+            ExecutionPolicy {
+                snapshot_after: options.snapshot_after,
+                disable_undo: options.disable_undo,
+                marker_id: options.marker_id.map(|m| m.0 .0),
+                label: options.marker_label,
+            },
         )
         .await
 }

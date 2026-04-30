@@ -23,7 +23,7 @@ use holons_prelude::prelude::*;
 
 use holons_core::core_shared_objects::transactions::TxId;
 use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
-use map_commands_runtime::Runtime;
+use map_commands_runtime::{ExecutionPolicy, Runtime};
 use tracing::debug;
 
 #[derive(Clone, Debug)]
@@ -138,7 +138,7 @@ impl TestExecutionState {
         step_name: &str,
     ) -> Result<MapResult, HolonError> {
         debug!("Dispatching {}: {:?}", step_name, command);
-        let result = self.runtime.execute_command(command).await;
+        let result = self.runtime.execute_command(command, ExecutionPolicy::default()).await;
         debug!("{} result: {:?}", step_name, &result);
         result
     }

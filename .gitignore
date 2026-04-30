@@ -37,6 +37,7 @@ workspaces/**/target/**/
 .idea/
 .venv/
 .vscode/
+.notes/
 .running
 settings.json
 

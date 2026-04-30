@@ -13,12 +13,14 @@ import {
   loadHolons,
   newHolon,
   query,
+  redoLast,
   stageNewFromClone,
   stageNewHolon,
   stageNewVersion,
   stageNewVersionFromId,
   stagedCount,
   transientCount,
+  undoLast,
 } from '../../src/internal/commands/transaction';
 import { MalformedResponseError } from '../../src/internal/errors';
 import { resetRequestIdCounter } from '../../src/internal/request-context';
@@ -62,9 +64,10 @@ function okResponse(result: MapResultWire) {
 
 const txId = 41;
 const defaultOptions: RequestOptions = {
-  gesture_id: null,
-  gesture_label: null,
+  marker_id: null,
+  marker_label: null,
   snapshot_after: false,
+  disable_undo: false
 };
 
 const transientWire: TransientReferenceWire = {
@@ -322,6 +325,22 @@ const transactionCases: TransactionCase<unknown>[] = [
     expected: nodeCollection,
     wrongResult: { Collection: holonCollection },
   },
+  {
+    name: 'undoLast',
+    run: () => undoLast(txId),
+    action: 'UndoLast',
+    okResult: 'UndoComplete',
+    expected: undefined,
+    wrongResult: 'None',
+  },
+  {
+    name: 'redoLast',
+    run: () => redoLast(txId),
+    action: 'RedoLast',
+    okResult: 'RedoComplete',
+    expected: undefined,
+    wrongResult: 'None',
+  },
 ];
 
 // ===========================================
@@ -365,19 +384,29 @@ describe('transaction command builders', () => {
     });
   });
 
-  it('passes request option overrides through transaction builders', async () => {
+  it('commit sends default options (no snapshot_after, no marker)', async () => {
     invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
 
-    await commit(txId, {
-      gesture_id: 'gesture-123',
-      gesture_label: 'commit',
-      snapshot_after: true,
-    });
+    await commit(txId);
 
-    expectTransactionRequest('Commit', {
-      gesture_id: 'gesture-123',
-      gesture_label: 'commit',
-      snapshot_after: true,
-    });
+    expectTransactionRequest('Commit', defaultOptions);
+  });
+
+  it('commit does not accept options (txId only)', () => {
+    // commit() deliberately has no options parameter — lifecycle operations must
+    // never create an ExperienceUnit or carry marker metadata.
+    expect(commit.length).toBe(1);
+  });
+
+  it('undoLast sends default options with snapshot_after false', async () => {
+    invokeMapCommandMock.mockResolvedValue(okResponse('UndoComplete'));
+    await undoLast(txId);
+    expectTransactionRequest('UndoLast', defaultOptions);
+  });
+    
+  it('redoLast sends default options with snapshot_after false', async () => {
+    invokeMapCommandMock.mockResolvedValue(okResponse('RedoComplete'));
+    await redoLast(txId);
+    expectTransactionRequest('RedoLast', defaultOptions);
   });
 });

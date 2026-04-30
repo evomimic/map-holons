@@ -61,6 +61,10 @@ export interface ContentSet {
  */
 export type TransactionActionWire =
   | 'Commit'
+  | 'UndoLast'
+  | 'RedoLast'
+  | { UndoToMarker: { marker_id: string } }
+  | { RedoToMarker: { marker_id: string } }
   | { LoadHolons: { content_set: ContentSet } }
   | { Dance: DanceRequestWire }
   | { Query: QueryExpression }
@@ -78,6 +82,7 @@ export type TransactionActionWire =
   | { StageNewVersion: { current_version: SmartReferenceWire } }
   | { StageNewVersionFromId: { holon_id: HolonId } }
   | { DeleteHolon: { local_id: LocalId } };
+
 
 /**
  * Holon-scoped command envelope.
@@ -141,6 +146,8 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
 
 const TRANSACTION_UNIT_ACTIONS = new Set([
   'Commit',
+  'UndoLast',
+  'RedoLast',
   'GetAllHolons',
   'StagedCount',
   'TransientCount',
@@ -266,7 +273,11 @@ export function isTransactionActionWire(
       isHolonId(value.StageNewVersionFromId['holon_id'])) ||
     (hasSingleKey(value, 'DeleteHolon') &&
       isRecord(value.DeleteHolon) &&
-      isLocalId(value.DeleteHolon['local_id']))
+      isLocalId(value.DeleteHolon['local_id'])) ||
+    (hasSingleKey(value, 'UndoToMarker') &&
+      isStringFieldObject(value.UndoToMarker, 'marker_id')) ||
+    (hasSingleKey(value, 'RedoToMarker') &&
+      isStringFieldObject(value.RedoToMarker, 'marker_id'))
   );
 }
 

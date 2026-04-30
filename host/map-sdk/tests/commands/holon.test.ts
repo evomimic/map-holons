@@ -51,9 +51,10 @@ function okResponse(result: MapResultWire) {
 
 const txId = 41;
 const defaultOptions: RequestOptions = {
-  gesture_id: null,
-  gesture_label: null,
+  marker_id: null,
+  marker_label: null,
   snapshot_after: false,
+  disable_undo: false
 };
 
 const target: HolonReferenceWire = {
@@ -317,9 +318,10 @@ describe('holon command builders', () => {
     invokeMapCommandMock.mockResolvedValue(okResponse('None'));
 
     await withDescriptor(txId, target, descriptor, {
-      gesture_id: 'gesture-123',
-      gesture_label: 'descriptor-link',
+      marker_id: 'gesture-123',
+      marker_label: 'descriptor-link',
       snapshot_after: true,
+      disable_undo: false,
     });
 
     expectHolonRequest(
@@ -331,9 +333,10 @@ describe('holon command builders', () => {
         },
       },
       {
-        gesture_id: 'gesture-123',
-        gesture_label: 'descriptor-link',
+        marker_id: 'gesture-123',
+        marker_label: 'descriptor-link',
         snapshot_after: true,
+        disable_undo: false,
       },
     );
   });

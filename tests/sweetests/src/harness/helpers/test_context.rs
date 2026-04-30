@@ -5,7 +5,7 @@ use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
 use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
-use map_commands_runtime::{Runtime, RuntimeSession};
+use map_commands_runtime::{ExecutionPolicy, Runtime, RuntimeSession};
 use std::sync::Arc;
 use tracing::info;
 
@@ -77,7 +77,10 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
 
     // Step 5: Begin first transaction through the real command path
     let result = runtime
-        .execute_command(MapCommand::Space(SpaceCommand::BeginTransaction))
+        .execute_command(
+            MapCommand::Space(SpaceCommand::BeginTransaction),
+            ExecutionPolicy::default(),
+        )
         .await
         .expect("failed to begin initial transaction");
     let tx_id = match result {

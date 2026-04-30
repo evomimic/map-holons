@@ -42,6 +42,10 @@ export interface EssentialHolonContent {
  */
 export type MapResultWire =
   | 'None'
+  | 'UndoComplete'    
+  | 'RedoComplete'
+  | 'UndoToMarkerComplete'
+  | 'RedoToMarkerComplete'
   | { TransactionCreated: { tx_id: number } }
   | { Reference: HolonReferenceWire }
   | { References: HolonReferenceWire[] }
@@ -71,6 +75,10 @@ export function isEssentialHolonContent(
 export function isMapResultWire(value: unknown): value is MapResultWire {
   return (
     value === 'None' ||
+    value === 'UndoComplete' ||
+    value === 'RedoComplete' ||
+    value === 'UndoToMarkerComplete' ||
+    value === 'RedoToMarkerComplete' ||
     (hasSingleKey(value, 'TransactionCreated') &&
       isRecord(value.TransactionCreated) &&
       isNumber(value.TransactionCreated['tx_id'])) ||

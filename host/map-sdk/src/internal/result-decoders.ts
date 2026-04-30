@@ -49,6 +49,42 @@ export function expectNone(result: MapResultWire): void {
 }
 
 /**
+ * Decode a `MapResultWire::UndoComplete` payload.
+ */
+export function expectUndoComplete(result: MapResultWire): void {
+  if (result !== 'UndoComplete') {
+    throw unexpectedResultVariant('UndoComplete', result);
+  }
+}
+
+/**
+ * Decode a `MapResultWire::RedoComplete` payload.
+ */
+export function expectRedoComplete(result: MapResultWire): void {
+  if (result !== 'RedoComplete') {
+    throw unexpectedResultVariant('RedoComplete', result);
+  }
+}
+
+/**
+ * Decode a `MapResultWire::UndoToMarkerComplete` payload.
+ */
+export function expectUndoToMarkerComplete(result: MapResultWire): void {
+  if (result !== 'UndoToMarkerComplete') {
+    throw unexpectedResultVariant('UndoToMarkerComplete', result);
+  }
+}
+
+/**
+ * Decode a `MapResultWire::RedoToMarkerComplete` payload.
+ */
+export function expectRedoToMarkerComplete(result: MapResultWire): void {
+  if (result !== 'RedoToMarkerComplete') {
+    throw unexpectedResultVariant('RedoToMarkerComplete', result);
+  }
+}
+
+/**
  * Decode a `MapResultWire::TransactionCreated` payload.
  */
 export function expectTransactionCreated(result: MapResultWire): TxId {

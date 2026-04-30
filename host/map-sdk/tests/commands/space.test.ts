@@ -45,9 +45,10 @@ describe('space command builders', () => {
         Space: 'BeginTransaction',
       },
       options: {
-        gesture_id: null,
-        gesture_label: null,
+        marker_id: null,
+        marker_label: null,
         snapshot_after: false,
+        disable_undo: false,
       },
     });
   });
@@ -65,9 +66,10 @@ describe('space command builders', () => {
     });
 
     await beginTransaction({
-      gesture_id: 'gesture-123',
-      gesture_label: 'space-start',
+      marker_id: 'gesture-123',
+      marker_label: 'space-start',
       snapshot_after: true,
+      disable_undo: false,
     });
 
     expect(invokeMapCommandMock).toHaveBeenCalledWith({
@@ -76,9 +78,10 @@ describe('space command builders', () => {
         Space: 'BeginTransaction',
       },
       options: {
-        gesture_id: 'gesture-123',
-        gesture_label: 'space-start',
+        marker_id: 'gesture-123',
+        marker_label: 'space-start',
         snapshot_after: true,
+        disable_undo: false,
       },
     });
   });

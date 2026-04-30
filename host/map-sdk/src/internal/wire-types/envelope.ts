@@ -18,9 +18,10 @@ export type RequestId = number;
  * Per-request dispatch options echoed by the Rust IPC envelope.
  */
 export interface RequestOptions {
-  gesture_id: string | null;
-  gesture_label: string | null;
+  marker_id: string | null;
+  marker_label: string | null;
   snapshot_after: boolean;
+  disable_undo: boolean;
 }
 
 /**
@@ -52,8 +53,8 @@ export interface MapIpcResponse {
 export function isRequestOptions(value: unknown): value is RequestOptions {
   return (
     isRecord(value) &&
-    (value['gesture_id'] === null || typeof value['gesture_id'] === 'string') &&
-    (value['gesture_label'] === null || typeof value['gesture_label'] === 'string') &&
+    (value['marker_id'] === null || typeof value['marker_id'] === 'string') &&
+    (value['marker_label'] === null || typeof value['marker_label'] === 'string') &&
     typeof value['snapshot_after'] === 'boolean'
   );
 }

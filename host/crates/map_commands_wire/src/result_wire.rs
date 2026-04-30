@@ -18,6 +18,18 @@ pub enum MapResultWire {
     /// Command completed with no return value.
     None,
 
+    /// Command completed an undo operation.
+    UndoComplete,
+
+    /// Command completed a redo operation.
+    RedoComplete,
+
+    /// Command completed an undo to marker operation.
+    UndoToMarkerComplete,
+
+    /// Command completed a redo to marker operation.
+    RedoToMarkerComplete,
+
     /// Returns a new transaction id (from BeginTransaction).
     TransactionCreated { tx_id: TxId },
 
@@ -50,6 +62,10 @@ impl From<MapResult> for MapResultWire {
     fn from(result: MapResult) -> Self {
         match result {
             MapResult::None => MapResultWire::None,
+            MapResult::UndoComplete => MapResultWire::UndoComplete,
+            MapResult::RedoComplete => MapResultWire::RedoComplete,
+            MapResult::UndoToMarkerComplete => MapResultWire::UndoToMarkerComplete,
+            MapResult::RedoToMarkerComplete => MapResultWire::RedoToMarkerComplete,
             MapResult::TransactionCreated { tx_id } => MapResultWire::TransactionCreated { tx_id },
             MapResult::Reference(r) => MapResultWire::Reference(HolonReferenceWire::from(&r)),
             MapResult::References(refs) => {

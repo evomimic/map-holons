@@ -15,3 +15,4 @@ core_types = { workspace = true }
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
 serde_json = { workspace = true }
+client_shared_types = { path = "../shared_types" }

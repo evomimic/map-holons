@@ -29,6 +29,18 @@ pub enum TransactionActionWire {
     /// Commits the transaction.
     Commit,
 
+    /// Undoes the last mutation in this transaction.
+    UndoLast,
+
+    /// Redoes the last undone mutation in this transaction.
+    RedoLast,
+
+    /// Undoes mutations up to the specified marker.
+    UndoToMarker { marker_id: String },
+
+    /// Redoes mutations up to the specified marker.
+    RedoToMarker { marker_id: String },
+
     /// Loads holons from uploaded/imported file content.
     LoadHolons { content_set: ContentSet },
 
@@ -100,6 +112,14 @@ impl TransactionActionWire {
     fn bind(self, context: &Arc<TransactionContext>) -> Result<TransactionAction, HolonError> {
         match self {
             TransactionActionWire::Commit => Ok(TransactionAction::Commit),
+            TransactionActionWire::UndoLast => Ok(TransactionAction::UndoLast),
+            TransactionActionWire::RedoLast => Ok(TransactionAction::RedoLast),
+            TransactionActionWire::UndoToMarker { marker_id } => {
+                Ok(TransactionAction::UndoToMarker { marker_id })
+            }
+            TransactionActionWire::RedoToMarker { marker_id } => {
+                Ok(TransactionAction::RedoToMarker { marker_id })
+            }
             TransactionActionWire::LoadHolons { content_set } => {
                 Ok(TransactionAction::LoadHolons { content_set })
             }
@@ -107,7 +127,6 @@ impl TransactionActionWire {
                 Ok(TransactionAction::Dance(request_wire.bind(context)?))
             }
             TransactionActionWire::Query(query) => Ok(TransactionAction::Query(query)),
-
             // Lookup actions — no context binding needed
             TransactionActionWire::GetAllHolons => Ok(TransactionAction::GetAllHolons),
             TransactionActionWire::GetStagedHolonByBaseKey { key } => {

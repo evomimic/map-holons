@@ -4091,6 +4091,7 @@ name = "map_commands_runtime"
 version = "0.1.0"
 dependencies = [
  "base_types",
+ "client_shared_types",
  "core_types",
  "holons_client",
  "holons_core",

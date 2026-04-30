@@ -16,6 +16,18 @@ pub enum MapResult {
     /// Command completed with no return value (also used for "not found").
     None,
 
+    /// Command completed an undo operation.
+    UndoComplete,
+
+    /// Command completed a redo operation.
+    RedoComplete,
+
+    /// Command completed an undo to marker operation.
+    UndoToMarkerComplete,
+
+    /// Command completed a redo to marker operation.
+    RedoToMarkerComplete,
+
     /// Returns a new transaction id (from BeginTransaction).
     TransactionCreated { tx_id: TxId },
 

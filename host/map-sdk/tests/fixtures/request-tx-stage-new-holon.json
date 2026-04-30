@@ -14,8 +14,9 @@
     }
   },
   "options": {
-    "gesture_id": "gesture-123",
-    "gesture_label": "stage new holon",
-    "snapshot_after": true
+    "marker_id": "marker-123",
+    "marker_label": "stage new holon",
+    "snapshot_after": true,
+    "disable_undo": false
   }
 }

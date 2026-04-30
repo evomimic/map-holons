@@ -35,6 +35,21 @@ impl HolonAction {
             HolonAction::Write(_) => CommandDescriptor::mutating(),
         }
     }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            HolonAction::Read(ReadableHolonAction::CloneHolon) => "clone_holon",
+            HolonAction::Read(ReadableHolonAction::EssentialContent) => "essential_content",
+            HolonAction::Read(ReadableHolonAction::Summarize) => "summarize",
+            HolonAction::Read(ReadableHolonAction::HolonId) => "holon_id",
+            HolonAction::Read(ReadableHolonAction::Predecessor) => "predecessor",
+            HolonAction::Read(ReadableHolonAction::Key) => "key",
+            HolonAction::Read(ReadableHolonAction::VersionedKey) => "versioned_key",
+            HolonAction::Read(ReadableHolonAction::PropertyValue { .. }) => "property_value",
+            HolonAction::Read(ReadableHolonAction::RelatedHolons { .. }) => "related_holons",
+            HolonAction::Write(_) => "holon_write",
+        }
+    }
 }
 
 /// Non-mutating holon actions.

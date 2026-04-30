@@ -5,6 +5,7 @@ use map_commands_contract::{
     HolonAction, HolonCommand, MapCommand, MapResult, TransactionAction, TransactionCommand,
     WritableHolonAction,
 };
+use map_commands_runtime::ExecutionPolicy;
 use tracing::{debug, info};
 
 /// Creates a new transient holon via `TransactionAction::NewHolon`, applies properties
@@ -46,9 +47,13 @@ pub async fn execute_new_holon(
                         value,
                     }),
                 });
-                state.runtime().execute_command(prop_command).await.unwrap_or_else(|e| {
-                    panic!("failed to set property {:?} on new holon: {:?}", name, e)
-                });
+                state
+                    .runtime()
+                    .execute_command(prop_command, ExecutionPolicy::default())
+                    .await
+                    .unwrap_or_else(|e| {
+                        panic!("failed to set property {:?} on new holon: {:?}", name, e)
+                    });
             }
 
             // 4. RECORD

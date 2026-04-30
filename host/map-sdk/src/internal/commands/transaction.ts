@@ -5,8 +5,12 @@ import {
   expectDanceResponse,
   expectNodeCollection,
   expectNone,
+  expectRedoComplete,
+  expectRedoToMarkerComplete,
   expectReference,
   expectReferences,
+  expectUndoComplete,
+  expectUndoToMarkerComplete,
   expectValue,
 } from '../result-decoders';
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
@@ -69,9 +73,38 @@ async function runTransactionCommand<T>(
  */
 export function commit(
   txId: TxId,
-  options?: RequestOptionsOverrides,
 ): Promise<HolonReferenceWire> {
-  return runTransactionCommand(txId, 'Commit', expectReference, options);
+  return runTransactionCommand(txId, 'Commit', expectReference);
+}
+
+/**
+ * Experiential unit functions for undo/redo operations.
+ */
+
+export function undoLast(
+  txId: TxId,
+): Promise<void> {
+  return runTransactionCommand(txId, 'UndoLast', expectUndoComplete);
+}
+
+export function redoLast(
+  txId: TxId,
+): Promise<void> {
+  return runTransactionCommand(txId, 'RedoLast', expectRedoComplete);
+}
+
+export function undoToMarker(
+  txId: TxId,
+  markerId: string,
+): Promise<void> {
+  return runTransactionCommand(txId, { UndoToMarker: { marker_id: markerId } }, expectUndoToMarkerComplete);
+}
+
+export function redoToMarker(
+  txId: TxId,
+  markerId: string,
+): Promise<void> {
+  return runTransactionCommand(txId, { RedoToMarker: { marker_id: markerId } }, expectRedoToMarkerComplete);
 }
 
 /**

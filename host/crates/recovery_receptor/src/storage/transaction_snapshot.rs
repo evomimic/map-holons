@@ -38,6 +38,16 @@ pub struct UndoCheckpoint {
     pub timestamp: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExperienceUnit {
+    pub unit_id: String, // UUID
+    pub tx_id: String,
+    pub marker_id: Option<String>, // bound at close; None until Phase 2
+    pub label: Option<String>,
+    pub checkpoint_id: String, // the restore target snapshot
+    pub created_at_ms: i64,
+}
+
 /// Complete transaction graph state — the unit persisted per checkpoint.
 ///
 /// This is what gets serialized into `snapshot_blob` in `recovery_checkpoint`,
