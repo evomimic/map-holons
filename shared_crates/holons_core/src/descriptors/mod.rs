@@ -14,6 +14,7 @@ mod schema_contract_tests;
 pub(crate) mod test_support;
 pub mod type_header;
 pub mod value_descriptor;
+pub mod value_descriptor_subtypes;
 
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
 pub use descriptor::Descriptor;
@@ -29,3 +30,6 @@ pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::RelationshipDescriptor;
 pub use type_header::TypeHeader;
 pub use value_descriptor::ValueDescriptor;
+pub use value_descriptor_subtypes::{
+    EnumValueDescriptor, IntegerValueDescriptor, StringValueDescriptor, ValueArrayDescriptor,
+};
