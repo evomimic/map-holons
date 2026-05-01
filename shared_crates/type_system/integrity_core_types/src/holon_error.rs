@@ -41,6 +41,8 @@ pub enum HolonError {
     HolonNotFound(String),
     #[error("Index {0} into Holons Vector is Out of Range")]
     IndexOutOfRange(String),
+    #[error("Integer {value} is out of range for {context}: expected {min}..={max}")]
+    IntegerOutOfRange { value: i64, min: i64, max: i64, context: String },
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
     #[error("Invalid wire format for {wire_type}: {reason}")]
@@ -159,6 +161,7 @@ pub enum HolonErrorKind {
     HashConversion,
     HolonNotFound,
     IndexOutOfRange,
+    IntegerOutOfRange,
     InvalidHolonReference,
     InvalidWireFormat,
     InvalidState,
@@ -216,6 +219,7 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::HashConversion(_, _) => Self::HashConversion,
             HolonError::HolonNotFound(_) => Self::HolonNotFound,
             HolonError::IndexOutOfRange(_) => Self::IndexOutOfRange,
+            HolonError::IntegerOutOfRange { .. } => Self::IntegerOutOfRange,
             HolonError::InvalidHolonReference(_) => Self::InvalidHolonReference,
             HolonError::InvalidWireFormat { .. } => Self::InvalidWireFormat,
             HolonError::InvalidState(_) => Self::InvalidState,

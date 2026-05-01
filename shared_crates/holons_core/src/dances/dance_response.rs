@@ -202,6 +202,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
 
             // 422-ish (semantic validation / parse errors)
+            HolonError::IntegerOutOfRange { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::LoaderParsingError(_) => ResponseStatusCode::UnprocessableEntity,
             HolonError::MissingDescribedBy { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::MultipleDescribedBy { .. } => ResponseStatusCode::UnprocessableEntity,

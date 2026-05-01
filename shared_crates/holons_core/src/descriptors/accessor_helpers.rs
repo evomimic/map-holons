@@ -41,6 +41,21 @@ pub(crate) fn optional_string<T: ToPropertyName>(
     }
 }
 
+/// Returns a required enum value name from a descriptor holon.
+pub(crate) fn require_enum_string<T: ToPropertyName>(
+    holon: &HolonReference,
+    property_name: T,
+) -> Result<MapString, HolonError> {
+    let name = property_name.to_property_name();
+    match holon.property_value(&name)? {
+        Some(BaseValue::EnumValue(value)) => Ok(value.0),
+        Some(other) => {
+            Err(HolonError::UnexpectedValueType(format!("{:?}", other), "Enum".to_string()))
+        }
+        None => Err(HolonError::EmptyField(name.to_string())),
+    }
+}
+
 /// Returns a required boolean property from a descriptor holon.
 pub(crate) fn require_bool<T: ToPropertyName>(
     holon: &HolonReference,
