@@ -208,6 +208,7 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MultipleExtends { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::CyclicExtends { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::WrongDescriptorKind { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::EnumVariantNotInSchema { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::DuplicateInheritedDeclaration { .. } => {
                 ResponseStatusCode::UnprocessableEntity
             }
@@ -217,6 +218,9 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MultipleRelatedHolons { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceBindingFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::UnknownOperatorCategory { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::UnsupportedOperator { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::ValueKindMismatch { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ValidationError(_) => ResponseStatusCode::UnprocessableEntity,
 
             // 501-ish

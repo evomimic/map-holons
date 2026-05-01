@@ -89,6 +89,10 @@ pub enum HolonError {
     MultipleRelatedHolons { relationship: String, descriptor: String, count: usize },
     #[error("{kind} declaration named {name} not found for descriptor {descriptor}")]
     DescriptorDeclarationNotFound { kind: String, name: String, descriptor: String },
+    #[error(
+        "Enum variant {variant} is not declared for value type {value_type} on descriptor {descriptor}"
+    )]
+    EnumVariantNotInSchema { variant: String, value_type: String, descriptor: String },
     #[error("{0} access not allowed while holon is in {1} state")]
     NotAccessible(String, String),
     #[error("{0} Not Implemented")]
@@ -113,8 +117,16 @@ pub enum HolonError {
     UnableToAddHolons(String),
     #[error("Unable to cast {0} into expected ValueType: {1}")]
     UnexpectedValueType(String, String),
+    #[error("Unknown operator category: {value}")]
+    UnknownOperatorCategory { value: String },
+    #[error(
+        "Operator {operator} is not supported for value type {value_type} on descriptor {descriptor}"
+    )]
+    UnsupportedOperator { operator: String, value_type: String, descriptor: String },
     #[error("Invalid UTF8: Couldn't convert {0} into {1}")]
     Utf8Conversion(String, String),
+    #[error("Value kind mismatch for descriptor {descriptor}: expected {expected}, found {found}")]
+    ValueKindMismatch { expected: String, found: String, descriptor: String },
     #[error("Validation error: {0}")]
     ValidationError(ValidationError),
     #[error("WasmError {0}")]
@@ -168,6 +180,7 @@ pub enum HolonErrorKind {
     MissingRequiredRelationship,
     MultipleRelatedHolons,
     DescriptorDeclarationNotFound,
+    EnumVariantNotInSchema,
     NotAccessible,
     NotImplemented,
     RecordConversion,
@@ -179,7 +192,10 @@ pub enum HolonErrorKind {
     TransactionNotOpen,
     UnableToAddHolons,
     UnexpectedValueType,
+    UnknownOperatorCategory,
+    UnsupportedOperator,
     Utf8Conversion,
+    ValueKindMismatch,
     ValidationError,
     WasmError,
 }
@@ -221,6 +237,7 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::MissingRequiredRelationship { .. } => Self::MissingRequiredRelationship,
             HolonError::MultipleRelatedHolons { .. } => Self::MultipleRelatedHolons,
             HolonError::DescriptorDeclarationNotFound { .. } => Self::DescriptorDeclarationNotFound,
+            HolonError::EnumVariantNotInSchema { .. } => Self::EnumVariantNotInSchema,
             HolonError::NotAccessible(_, _) => Self::NotAccessible,
             HolonError::NotImplemented(_) => Self::NotImplemented,
             HolonError::RecordConversion(_) => Self::RecordConversion,
@@ -232,7 +249,10 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::TransactionNotOpen { .. } => Self::TransactionNotOpen,
             HolonError::UnableToAddHolons(_) => Self::UnableToAddHolons,
             HolonError::UnexpectedValueType(_, _) => Self::UnexpectedValueType,
+            HolonError::UnknownOperatorCategory { .. } => Self::UnknownOperatorCategory,
+            HolonError::UnsupportedOperator { .. } => Self::UnsupportedOperator,
             HolonError::Utf8Conversion(_, _) => Self::Utf8Conversion,
+            HolonError::ValueKindMismatch { .. } => Self::ValueKindMismatch,
             HolonError::ValidationError(_) => Self::ValidationError,
             HolonError::WasmError(_) => Self::WasmError,
         }
