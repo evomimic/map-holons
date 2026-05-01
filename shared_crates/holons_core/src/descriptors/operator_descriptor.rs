@@ -207,13 +207,33 @@ mod tests {
             "WrongOperatorCategory",
             "Holon",
         )?;
-        holon.with_property_value(CorePropertyTypeName::OperatorCategory, "Equality")?;
+        holon.with_property_value(CorePropertyTypeName::OperatorCategory, true)?;
         let descriptor = OperatorDescriptor::from_holon(holon.into());
 
         assert!(matches!(
             descriptor.operator_category(),
             Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Enum"
         ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn operator_category_accepts_loaded_schema_string_value() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(
+            &context,
+            "string-backed-operator-category",
+            "StringBackedOperatorCategory",
+            "Holon",
+        )?;
+        holon.with_property_value(
+            CorePropertyTypeName::OperatorCategory,
+            "OperatorCategory.Equality",
+        )?;
+        let descriptor = OperatorDescriptor::from_holon(holon.into());
+
+        assert_eq!(descriptor.operator_category()?, OperatorCategory::Equality);
 
         Ok(())
     }

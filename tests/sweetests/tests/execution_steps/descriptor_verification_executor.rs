@@ -1,4 +1,6 @@
-use holons_core::descriptors::{HolonDescriptor, RelationshipDescriptor};
+use holons_core::descriptors::{
+    HolonDescriptor, OperatorCategory, OperatorDescriptor, RelationshipDescriptor, ValueDescriptor,
+};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP_KEY,
@@ -135,6 +137,72 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
     );
 
     info!("verified core schema descriptor subtype access");
+}
+
+/// Verifies value-descriptor semantic dispatch over loaded MAP core schema data.
+pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutionState) {
+    let holons = loaded_holons(state, "verify_core_schema_value_semantics").await;
+
+    let equals = OperatorDescriptor::from_holon(find_holon_by_key(&holons, "EqualsOperator"));
+    let less_than = OperatorDescriptor::from_holon(find_holon_by_key(&holons, "LessThanOperator"));
+
+    assert_eq!(equals.arity().expect("EqualsOperator arity"), 2);
+    assert_eq!(
+        equals.operator_category().expect("EqualsOperator operator_category"),
+        OperatorCategory::Equality
+    );
+
+    let integer = ValueDescriptor::from_holon(find_holon_by_key(&holons, "IntegerValueType"));
+    let integer_operator_names = operator_type_names(integer.supported_operators());
+    assert_contains(&integer_operator_names, "EqualsOperator");
+    assert_contains(&integer_operator_names, "LessThanOperator");
+    assert!(integer.supports_operator(&equals).expect("IntegerValueType supports EqualsOperator"));
+    assert!(integer
+        .supports_operator(&less_than)
+        .expect("IntegerValueType supports LessThanOperator"));
+    assert!(integer
+        .apply_operator(
+            &equals,
+            &BaseValue::IntegerValue(MapInteger(3)),
+            &BaseValue::IntegerValue(MapInteger(3)),
+        )
+        .expect("IntegerValueType EqualsOperator execution"));
+    assert!(integer
+        .apply_operator(
+            &less_than,
+            &BaseValue::IntegerValue(MapInteger(2)),
+            &BaseValue::IntegerValue(MapInteger(5)),
+        )
+        .expect("IntegerValueType LessThanOperator execution"));
+
+    let boolean = ValueDescriptor::from_holon(find_holon_by_key(&holons, "BooleanValueType"));
+    assert!(!boolean
+        .supports_operator(&less_than)
+        .expect("BooleanValueType does not support LessThanOperator"));
+    assert!(matches!(
+        boolean.apply_operator(
+            &less_than,
+            &BaseValue::BooleanValue(MapBoolean(false)),
+            &BaseValue::BooleanValue(MapBoolean(true)),
+        ),
+        Err(HolonError::UnsupportedOperator { operator, value_type, .. })
+            if operator == "LessThanOperator" && value_type == "BooleanValueType"
+    ));
+
+    let operator_category =
+        ValueDescriptor::from_holon(find_holon_by_key(&holons, "OperatorCategory"));
+    operator_category
+        .is_valid(&BaseValue::EnumValue(MapEnumValue(MapString("Equality".to_string()))))
+        .expect("OperatorCategory Equality variant should validate");
+    assert!(matches!(
+        operator_category.is_valid(&BaseValue::EnumValue(MapEnumValue(MapString(
+            "NotARealVariant".to_string()
+        )))),
+        Err(HolonError::EnumVariantNotInSchema { variant, value_type, .. })
+            if variant == "NotARealVariant" && value_type == "OperatorCategory"
+    ));
+
+    info!("verified core schema value semantics");
 }
 
 /// Verifies representative descriptor access over the loaded Book/Person inverse schema.
@@ -275,6 +343,14 @@ fn relationship_base_names(
                 .expect("relationship descriptor base name")
                 .to_string()
         })
+        .collect()
+}
+
+fn operator_type_names(descriptors: Result<Vec<OperatorDescriptor>, HolonError>) -> Vec<String> {
+    descriptors
+        .expect("operator descriptor list")
+        .into_iter()
+        .map(|descriptor| descriptor.type_name().expect("operator descriptor type_name").0)
         .collect()
 }
 

@@ -206,6 +206,18 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_verify_core_schema_value_semantics_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Verify core schema value semantics".to_string());
+        self.steps.push(DanceTestStep::VerifyCoreSchemaValueSemantics { description });
+
+        Ok(())
+    }
+
     pub fn add_load_holons_internal_step(
         &mut self,
         set: TransientReference,
