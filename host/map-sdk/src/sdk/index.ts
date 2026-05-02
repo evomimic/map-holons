@@ -24,7 +24,10 @@ export type {
   MapErrorCode,
   PropertyName,
   ReadableHolon,
+  Row,
+  RowSet,
   RelationshipName,
   SmartReference,
+  Value,
   WritableHolon,
 } from './types';

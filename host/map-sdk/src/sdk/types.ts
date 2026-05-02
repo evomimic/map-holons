@@ -4,7 +4,10 @@ import type {
   HolonId,
   LocalId,
   PropertyName,
+  Row,
+  RowSet,
   RelationshipName,
+  Value,
 } from '../internal/wire-types/references';
 import type {
   ContentSet as InternalContentSet,
@@ -19,7 +22,10 @@ export type {
   HolonId,
   LocalId,
   PropertyName,
+  Row,
+  RowSet,
   RelationshipName,
+  Value,
 } from '../internal/wire-types/references';
 export {
   DomainError,

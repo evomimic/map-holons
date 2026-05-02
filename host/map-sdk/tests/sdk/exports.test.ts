@@ -11,8 +11,11 @@ import type {
   LocalId,
   PropertyName,
   ReadableHolon,
+  Row,
+  RowSet,
   RelationshipName,
   SmartReference,
+  Value,
   WritableHolon,
 } from '../../src';
 
@@ -62,10 +65,18 @@ describe('public SDK exports', () => {
 
   it('supports the documented public type exports at compile time', () => {
     const baseValue: BaseValue = { StringValue: 'alpha' };
+    const value: Value = { IntegerValue: 7 };
     const holonId: HolonId = { Local: [1, 2, 3] };
     const localId: LocalId = [4, 5, 6];
     const propertyName: PropertyName = 'title';
     const relationshipName: RelationshipName = 'related_to';
+    const row: Row = {
+      title: baseValue,
+      rank: value,
+    };
+    const rowSet: RowSet = {
+      rows: [row, { published: { BooleanValue: true } }],
+    };
     const smartReference: SmartReference = { holonId };
     const fileData: FileData = {
       filename: 'sample-loader-file.json',
@@ -94,10 +105,13 @@ describe('public SDK exports', () => {
     acceptsWritable(null);
 
     expect(baseValue).toEqual({ StringValue: 'alpha' });
+    expect(value).toEqual({ IntegerValue: 7 });
     expect(holonId).toEqual({ Local: [1, 2, 3] });
     expect(localId).toEqual([4, 5, 6]);
     expect(propertyName).toBe('title');
     expect(relationshipName).toBe('related_to');
+    expect(row['rank']).toEqual({ IntegerValue: 7 });
+    expect(rowSet.rows).toHaveLength(2);
     expect(smartReference).toEqual({ holonId });
     expect(contentSet.files_to_load).toEqual([fileData]);
     expect(essentialContent.errors).toEqual([holonError]);

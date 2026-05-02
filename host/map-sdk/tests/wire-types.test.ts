@@ -9,6 +9,8 @@ import {
   isFileData,
   isMapIpcRequest,
   isMapIpcResponse,
+  isRow,
+  isRowSet,
   isTransactionActionWire,
 } from '../src/internal/wire-types/index';
 
@@ -67,6 +69,40 @@ describe('LoadHolons wire type guard', () => {
               id: '22222222-2222-2222-2222-222222222222',
             },
           },
+        },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('shared operand wire type guards', () => {
+  it('accepts Value-backed row shapes', () => {
+    expect(
+      isRow({
+        title: { StringValue: 'alpha' },
+        rank: { IntegerValue: 7 },
+      }),
+    ).toBe(true);
+  });
+
+  it('accepts ordered rowset shapes', () => {
+    expect(
+      isRowSet({
+        rows: [
+          { title: { StringValue: 'alpha' } },
+          { published: { BooleanValue: true } },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects conflated scalar, row, and rowset shapes', () => {
+    expect(isRow({ StringValue: 'alpha' })).toBe(false);
+    expect(isRowSet({ title: { StringValue: 'alpha' } })).toBe(false);
+    expect(
+      isRow({
+        nested: {
+          title: { StringValue: 'alpha' },
         },
       }),
     ).toBe(false);

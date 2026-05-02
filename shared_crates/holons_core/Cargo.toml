@@ -31,5 +31,6 @@ path = "../type_system/base_types"
 [dependencies.type_names]
 path = "../type_system/type_names"
 
-
+[dev-dependencies]
+serde_json = { workspace = true }
 

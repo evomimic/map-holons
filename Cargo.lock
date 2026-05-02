@@ -3037,6 +3037,7 @@ dependencies = [
  "core_types",
  "holons_core",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3070,6 +3071,7 @@ dependencies = [
  "derive-new",
  "quick_cache",
  "serde",
+ "serde_json",
  "sha2",
  "tracing",
  "type_names",
