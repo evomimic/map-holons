@@ -8,3 +8,6 @@ holons_core = { path = "../holons_core" }
 base_types = { path = "../type_system/base_types" }
 core_types = { path = "../type_system/core_types" }
 serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = { workspace = true }

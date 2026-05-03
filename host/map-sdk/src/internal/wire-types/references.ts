@@ -37,8 +37,18 @@ export type BaseValue =
   | { IntegerValue: number }
   | { EnumValue: string };
 
+// Operand-facing compatibility alias over the shared scalar payload family.
+export type Value = BaseValue;
+
 // BTreeMap<PropertyName, BaseValue> serialized with string keys.
 export type PropertyMap = Record<string, BaseValue>;
+
+// String-keyed projection row. Keys are projection labels, not property names.
+export type Row = Record<string, Value>;
+
+export interface RowSet {
+  rows: Row[];
+}
 
 // ===========================================
 // Reference Types
@@ -97,6 +107,9 @@ export interface NodeCollectionWire {
 }
 
 export type QueryPathMapWire = Record<string, NodeCollectionWire>;
+
+export type RowWire = Row;
+export type RowSetWire = RowSet;
 
 // ===========================================
 // Holon Payload Types
@@ -445,6 +458,18 @@ export function isBaseValue(value: unknown): value is BaseValue {
 
 export function isPropertyMap(value: unknown): value is PropertyMap {
   return isStringRecord(value, isBaseValue);
+}
+
+export function isRow(value: unknown): value is Row {
+  return isStringRecord(value, isBaseValue);
+}
+
+export function isRowSet(value: unknown): value is RowSet {
+  return (
+    isRecord(value) &&
+    Array.isArray(value['rows']) &&
+    value['rows'].every(isRow)
+  );
 }
 
 export function isTransientReferenceWire(
