@@ -446,35 +446,34 @@ impl LoaderRefResolver {
     ) -> Result<RelationshipName, HolonError> {
         debug!("[resolver] entering declared_name_for_inverse for inverse '{}'", inverse_name.0);
 
-        // 1) Resolve endpoint type descriptors (instances → follow DescribedBy; types pass through).
-        let source_type_descriptor = Self::resolve_type_descriptor(src_endpoint)?;
-        let target_type_descriptor = Self::resolve_type_descriptor(tgt_endpoint)?;
-        debug!("[resolver] TypeDescriptors resolved for endpoints of inverse '{}'", inverse_name.0);
-
-        // 2) Build the **canonical key** for the *inverse* RTD using descriptor Keys.
-        let key_prop: PropertyName = CorePropertyTypeName::Key.as_property_name();
-        let src_desc_key = Self::read_string_property(&source_type_descriptor, &key_prop)?;
-        let tgt_desc_key = Self::read_string_property(&target_type_descriptor, &key_prop)?;
-        let inverse_key =
-            MapString(format!("({})-[{}]->({})", src_desc_key.0, inverse_name.0, tgt_desc_key.0));
-        debug!("[resolver] looking up RelationshipType by key '{}'", inverse_key.0);
-
-        // 3) Locate the inverse RTD by canonical key (prefer staged).
-        let inverse_relationship_descriptor =
-            match Self::find_relationship_type_by_key(context, resolver_state, &inverse_key)? {
-                Some(h) => h,
+        let (relationship_type_descriptor, relationship_direction) =
+            match Self::find_relationship_type_for_endpoints(
+                context,
+                resolver_state,
+                inverse_name,
+                src_endpoint,
+                tgt_endpoint,
+            )? {
+                Some(result) => result,
                 None => {
                     return Err(HolonError::HolonNotFound(format!(
-                        "RelationshipType for key '{}'",
-                        inverse_key.0
+                        "RelationshipType for relationship '{}' between endpoint descriptors",
+                        inverse_name.0
                     )));
                 }
             };
-        debug!("[resolver] found RelationshipType for key '{}'", inverse_key.0);
 
-        // 4) Follow InverseOf from the inverse RTD to the declared RTD.
+        if relationship_direction == RelationshipDirection::Declared {
+            debug!(
+                "[resolver] relationship '{}' resolved as declared; using authored name",
+                inverse_name.0
+            );
+            return Ok(inverse_name.clone());
+        }
+
+        // Follow InverseOf from the inverse RTD to the declared RTD.
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        let declared_handle = inverse_relationship_descriptor.related_holons(&inverse_of)?;
+        let declared_handle = relationship_type_descriptor.related_holons(&inverse_of)?;
         debug!("[resolver] found declared TypeDescriptor");
 
         let related_members: Vec<HolonReference> = {
@@ -486,7 +485,7 @@ impl LoaderRefResolver {
         if related_members.is_empty() {
             return Err(HolonError::InvalidRelationship(
                 "InverseOf".into(),
-                format!("No InverseOf target from relationship type key '{}'", inverse_key.0),
+                format!("No InverseOf target from relationship '{}'", inverse_name.0),
             ));
         }
 
@@ -508,14 +507,14 @@ impl LoaderRefResolver {
                 Ok(declared_type_name.to_relationship_name())
             }
             0 => Err(HolonError::InvalidType(format!(
-                "InverseOf targets for key '{}' did not include a RelationshipTypeDescriptor",
-                inverse_key.0
+                "InverseOf targets for relationship '{}' did not include a RelationshipTypeDescriptor",
+                inverse_name.0
             ))),
             n => Err(HolonError::DuplicateError(
                 "inverse mapping".into(),
                 format!(
-                    "Multiple RelationshipTypeDescriptor targets ({}) via InverseOf for key '{}'",
-                    n, inverse_key.0
+                    "Multiple RelationshipTypeDescriptor targets ({}) via InverseOf for relationship '{}'",
+                    n, inverse_name.0
                 ),
             )),
         }
@@ -781,6 +780,105 @@ impl LoaderRefResolver {
                 "DescribedBy".into(),
                 "Expected exactly one descriptor target".into(),
             )),
+        }
+    }
+
+    /// Finds the first relationship type descriptor matching an endpoint pair's effective types.
+    ///
+    /// Endpoint descriptors are searched across their `Extends` ancestors in
+    /// source-major, target-minor order, so matches closer to the concrete
+    /// source descriptor win before widening the source type.
+    fn find_relationship_type_for_endpoints(
+        context: &Arc<TransactionContext>,
+        resolver_state: &mut ResolverState,
+        relationship_name: &RelationshipName,
+        source_endpoint: &HolonReference,
+        target_endpoint: &HolonReference,
+    ) -> Result<Option<(HolonReference, RelationshipDirection)>, HolonError> {
+        let source_descriptor = Self::resolve_type_descriptor(source_endpoint)?;
+        let target_descriptor = Self::resolve_type_descriptor(target_endpoint)?;
+        let source_ancestors = ancestors(&source_descriptor)?;
+        let target_ancestors = ancestors(&target_descriptor)?;
+        let key_property_name = CorePropertyTypeName::Key.as_property_name();
+        let target_descriptor_keys = Self::keyed_descriptor_ancestors(
+            &target_ancestors,
+            &key_property_name,
+            "target",
+            relationship_name,
+        )?;
+
+        // Search endpoint type pairs from most-specific source outward.
+        for source_ancestor in source_ancestors.iter() {
+            let Some(source_descriptor_key) = Self::optional_descriptor_key(
+                source_ancestor,
+                &key_property_name,
+                "source",
+                relationship_name,
+            )?
+            else {
+                continue;
+            };
+
+            for target_descriptor_key in target_descriptor_keys.iter() {
+                let canonical_key = MapString(format!(
+                    "({})-[{}]->({})",
+                    source_descriptor_key.0, relationship_name.0, target_descriptor_key.0
+                ));
+
+                if let Some(relationship_type_descriptor) =
+                    Self::find_relationship_type_by_key(context, resolver_state, &canonical_key)?
+                {
+                    let direction = classify_relationship_direction(&relationship_type_descriptor)?;
+                    debug!(
+                        "[resolver] found RelationshipType key '{}' with direction {:?}",
+                        canonical_key.0, direction
+                    );
+                    return Ok(Some((relationship_type_descriptor, direction)));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn keyed_descriptor_ancestors(
+        ancestors: &[HolonReference],
+        key_property_name: &PropertyName,
+        endpoint_role: &str,
+        relationship_name: &RelationshipName,
+    ) -> Result<Vec<MapString>, HolonError> {
+        let mut keyed_ancestors = Vec::new();
+
+        for ancestor in ancestors.iter() {
+            if let Some(key) = Self::optional_descriptor_key(
+                ancestor,
+                key_property_name,
+                endpoint_role,
+                relationship_name,
+            )? {
+                keyed_ancestors.push(key);
+            }
+        }
+
+        Ok(keyed_ancestors)
+    }
+
+    fn optional_descriptor_key(
+        descriptor: &HolonReference,
+        key_property_name: &PropertyName,
+        endpoint_role: &str,
+        relationship_name: &RelationshipName,
+    ) -> Result<Option<MapString>, HolonError> {
+        match Self::read_string_property(descriptor, key_property_name) {
+            Ok(key) => Ok(Some(key)),
+            Err(HolonError::EmptyField(_)) | Err(HolonError::UnexpectedValueType(_, _)) => {
+                debug!(
+                    "[resolver] skipping {} descriptor ancestor without usable Key while resolving relationship '{}'",
+                    endpoint_role, relationship_name.0
+                );
+                Ok(None)
+            }
+            Err(error) => Err(error),
         }
     }
 
@@ -1185,5 +1283,313 @@ impl LoaderRefResolver {
     fn error_with_context(lrr: &TransientReference, err: HolonError) -> ErrorWithContext {
         let key = Self::source_loader_key_of_lrr(lrr);
         ErrorWithContext { error: err, source_loader_key: key }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core_types::LocalId;
+    use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
+    use holons_core::core_shared_objects::{Holon, ServiceRoutingPolicy};
+    use holons_core::HolonServiceApi;
+    use std::any::Any;
+
+    #[derive(Debug)]
+    struct TestHolonService;
+
+    fn unreachable_in_loader_ref_resolver_tests<T>() -> Result<T, HolonError> {
+        Err(HolonError::NotImplemented("TestHolonService".to_string()))
+    }
+
+    impl HolonServiceApi for TestHolonService {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn commit_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _staged_references: &[StagedReference],
+        ) -> Result<TransientReference, HolonError> {
+            unreachable_in_loader_ref_resolver_tests()
+        }
+
+        fn delete_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _local_id: &LocalId,
+        ) -> Result<(), HolonError> {
+            unreachable_in_loader_ref_resolver_tests()
+        }
+
+        fn fetch_all_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _source_id: &HolonId,
+        ) -> Result<RelationshipMap, HolonError> {
+            unreachable_in_loader_ref_resolver_tests()
+        }
+
+        fn fetch_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _id: &HolonId,
+        ) -> Result<Holon, HolonError> {
+            unreachable_in_loader_ref_resolver_tests()
+        }
+
+        fn fetch_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _source_id: &HolonId,
+            _relationship_name: &RelationshipName,
+        ) -> Result<HolonCollection, HolonError> {
+            unreachable_in_loader_ref_resolver_tests()
+        }
+
+        fn get_all_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+        ) -> Result<HolonCollection, HolonError> {
+            Ok(HolonCollection::new_saved())
+        }
+
+        fn load_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _bundle: TransientReference,
+        ) -> Result<TransientReference, HolonError> {
+            unreachable_in_loader_ref_resolver_tests()
+        }
+    }
+
+    fn build_context() -> Arc<TransactionContext> {
+        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
+        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            holon_service,
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+
+        space_manager
+            .get_transaction_manager()
+            .open_new_transaction(Arc::clone(&space_manager))
+            .expect("test transaction should open")
+    }
+
+    fn new_holon(
+        context: &Arc<TransactionContext>,
+        key: &str,
+    ) -> Result<TransientReference, HolonError> {
+        context.mutation().new_holon(Some(MapString(key.to_string())))
+    }
+
+    fn new_descriptor(
+        context: &Arc<TransactionContext>,
+        key: &str,
+        type_name: &str,
+        instance_type_kind: TypeKind,
+    ) -> Result<TransientReference, HolonError> {
+        let mut descriptor = new_holon(context, key)?;
+        descriptor
+            .with_property_value(CorePropertyTypeName::TypeName, type_name)?
+            .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                instance_type_kind.to_string(),
+            )?;
+        Ok(descriptor)
+    }
+
+    fn stage(
+        context: &Arc<TransactionContext>,
+        transient_reference: TransientReference,
+    ) -> Result<HolonReference, HolonError> {
+        Ok(HolonReference::Staged(context.mutation().stage_new_holon(transient_reference)?))
+    }
+
+    fn relationship_direction_meta(
+        context: &Arc<TransactionContext>,
+        direction_type_name: CoreHolonTypeName,
+    ) -> Result<HolonReference, HolonError> {
+        let type_name = direction_type_name.as_holon_name();
+        let descriptor = new_descriptor(
+            context,
+            &type_name.to_string(),
+            &type_name.to_string(),
+            TypeKind::Relationship,
+        )?;
+        stage(context, descriptor)
+    }
+
+    fn typed_instance(
+        context: &Arc<TransactionContext>,
+        key: &str,
+        descriptor: HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        let mut instance = new_holon(context, key)?;
+        instance.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![descriptor])?;
+        stage(context, instance)
+    }
+
+    fn relationship_type_descriptor(
+        context: &Arc<TransactionContext>,
+        relationship_name: &str,
+        source_descriptor_key: &str,
+        target_descriptor_key: &str,
+        direction_meta: HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        let canonical_key = format!(
+            "({})-[{}]->({})",
+            source_descriptor_key, relationship_name, target_descriptor_key
+        );
+        let mut relationship_type =
+            new_descriptor(context, &canonical_key, relationship_name, TypeKind::Relationship)?;
+        relationship_type
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![direction_meta])?;
+        stage(context, relationship_type)
+    }
+
+    #[test]
+    fn find_relationship_type_for_endpoints_returns_concrete_pair_hit() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let declared_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::DeclaredRelationshipType)?;
+        let source_descriptor = stage(
+            &context,
+            new_descriptor(&context, "SourceType", "SourceType", TypeKind::Holon)?,
+        )?;
+        let target_descriptor = stage(
+            &context,
+            new_descriptor(&context, "TargetType", "TargetType", TypeKind::Holon)?,
+        )?;
+        let expected_relationship_type = relationship_type_descriptor(
+            &context,
+            "Owns",
+            "SourceType",
+            "TargetType",
+            declared_meta,
+        )?;
+        let source_endpoint = typed_instance(&context, "source-instance", source_descriptor)?;
+        let target_endpoint = typed_instance(&context, "target-instance", target_descriptor)?;
+
+        let (relationship_type_descriptor, direction) =
+            LoaderRefResolver::find_relationship_type_for_endpoints(
+                &context,
+                &mut resolver_state,
+                &RelationshipName(MapString("Owns".to_string())),
+                &source_endpoint,
+                &target_endpoint,
+            )?
+            .expect("concrete endpoint pair should resolve");
+
+        assert_eq!(direction, RelationshipDirection::Declared);
+        assert_eq!(
+            relationship_type_descriptor.reference_id_string(),
+            expected_relationship_type.reference_id_string()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn find_relationship_type_for_endpoints_walks_abstract_ancestors_and_skips_missing_keys(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let inverse_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::InverseRelationshipType)?;
+        let abstract_source = stage(
+            &context,
+            new_descriptor(&context, "AbstractSource", "AbstractSource", TypeKind::Holon)?,
+        )?;
+        let abstract_target = stage(
+            &context,
+            new_descriptor(&context, "AbstractTarget", "AbstractTarget", TypeKind::Holon)?,
+        )?;
+
+        let mut keyless_source_parent = new_descriptor(
+            &context,
+            "KeylessSourceParent",
+            "KeylessSourceParent",
+            TypeKind::Holon,
+        )?;
+        keyless_source_parent.remove_property_value(CorePropertyTypeName::Key)?;
+        keyless_source_parent
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![abstract_source.clone()])?;
+
+        let mut concrete_source =
+            new_descriptor(&context, "ConcreteSource", "ConcreteSource", TypeKind::Holon)?;
+        concrete_source.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&keyless_source_parent)],
+        )?;
+        let concrete_source = stage(&context, concrete_source)?;
+
+        let mut concrete_target =
+            new_descriptor(&context, "ConcreteTarget", "ConcreteTarget", TypeKind::Holon)?;
+        concrete_target
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![abstract_target.clone()])?;
+        let concrete_target = stage(&context, concrete_target)?;
+
+        let expected_relationship_type = relationship_type_descriptor(
+            &context,
+            "VariantOf",
+            "AbstractSource",
+            "AbstractTarget",
+            inverse_meta,
+        )?;
+        let source_endpoint = typed_instance(&context, "source-instance", concrete_source)?;
+        let target_endpoint = typed_instance(&context, "target-instance", concrete_target)?;
+
+        let (relationship_type_descriptor, direction) =
+            LoaderRefResolver::find_relationship_type_for_endpoints(
+                &context,
+                &mut resolver_state,
+                &RelationshipName(MapString("VariantOf".to_string())),
+                &source_endpoint,
+                &target_endpoint,
+            )?
+            .expect("abstract ancestor endpoint pair should resolve");
+
+        assert_eq!(direction, RelationshipDirection::Inverse);
+        assert_eq!(
+            relationship_type_descriptor.reference_id_string(),
+            expected_relationship_type.reference_id_string()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn find_relationship_type_for_endpoints_returns_none_when_no_pair_matches(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let source_descriptor = stage(
+            &context,
+            new_descriptor(&context, "SourceType", "SourceType", TypeKind::Holon)?,
+        )?;
+        let target_descriptor = stage(
+            &context,
+            new_descriptor(&context, "TargetType", "TargetType", TypeKind::Holon)?,
+        )?;
+        let source_endpoint = typed_instance(&context, "source-instance", source_descriptor)?;
+        let target_endpoint = typed_instance(&context, "target-instance", target_descriptor)?;
+
+        let result = LoaderRefResolver::find_relationship_type_for_endpoints(
+            &context,
+            &mut resolver_state,
+            &RelationshipName(MapString("MissingRelationship".to_string())),
+            &source_endpoint,
+            &target_endpoint,
+        )?;
+
+        assert!(result.is_none());
+
+        Ok(())
     }
 }

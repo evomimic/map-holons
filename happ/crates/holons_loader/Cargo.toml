@@ -13,4 +13,4 @@ core_types = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
-
+holons_core = { workspace = true }
