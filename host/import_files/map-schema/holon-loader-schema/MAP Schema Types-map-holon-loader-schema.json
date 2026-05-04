@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-30T16:19:32",
+    "generated_at": "2026-05-04T12:40:31",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-holon-loader-schema.csv"
@@ -103,14 +103,9 @@
         },
         {
           "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#RelationshipName.PropertyType"
-            },
-            {
-              "$ref": "#IsDeclared.PropertyType"
-            }
-          ]
+          "target": {
+            "$ref": "#RelationshipName.PropertyType"
+          }
         },
         {
           "name": "InstanceRelationships",
@@ -1250,45 +1245,6 @@
           "name": "ValueType",
           "target": {
             "$ref": "#MapStringValueType"
-          }
-        }
-      ]
-    },
-    {
-      "key": "IsDeclared.PropertyType",
-      "type": "#TypeDescriptor",
-      "properties": {
-        "type_name": "IsDeclared",
-        "type_name_plural": "IsDeclaredFlags",
-        "display_name": "is_declared",
-        "display_name_plural": "is_declared_flags",
-        "instance_type_kind": "Property",
-        "description": "Whether the relationship is declared (`true`) or inverse (`false`).",
-        "is_abstract_type": false
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "#MAP Core Schema-v0.0.5"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "ValueType",
-          "target": {
-            "$ref": "#MapBooleanValueType"
           }
         }
       ]
