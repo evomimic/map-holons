@@ -45,26 +45,6 @@ use holons_test::harness::helpers::{
     PERSON_TO_BOOK_REL_INVERSE,
 };
 
-/// Declaredness of a `LoaderRelationshipReference` as represented by the
-/// loader’s `IsDeclared` boolean property.
-#[derive(Copy, Clone, Debug)]
-pub enum LoaderRelationshipDeclaredness {
-    /// Relationship is declared on the forward (canonical) side.
-    Declared,
-    /// Relationship is declared on the inverse side (resolver must map it).
-    Inverse,
-}
-
-impl LoaderRelationshipDeclaredness {
-    #[inline]
-    fn as_map_boolean(self) -> MapBoolean {
-        match self {
-            LoaderRelationshipDeclaredness::Declared => MapBoolean(true),
-            LoaderRelationshipDeclaredness::Inverse => MapBoolean(false),
-        }
-    }
-}
-
 /// Simple wrapper for composing HolonLoadSets in tests:
 /// one bundle + the filename it came from.
 pub struct BundleWithFilename {
@@ -159,7 +139,6 @@ fn build_declared_links_bundle(
         context,
         &mut source_loader,
         declared_relationship_name,
-        LoaderRelationshipDeclaredness::Declared,
         source_instance_key,
         &[target_instance_key],
     )?;
@@ -201,7 +180,6 @@ fn build_cross_bundle_declared_link_bundle(
         context,
         &mut source_loader,
         declared_relationship_name,
-        LoaderRelationshipDeclaredness::Declared,
         source_instance_key,
         &[target_instance_key],
     )?;
@@ -310,7 +288,6 @@ fn build_inverse_with_inline_schema_bundle(
         context,
         &mut declared_rel_descriptor,
         CoreRelationshipTypeName::SourceType.as_relationship_name().0 .0.as_str(),
-        LoaderRelationshipDeclaredness::Declared,
         BOOK_TO_PERSON_RELATIONSHIP_KEY,
         &[BOOK_DESCRIPTOR_KEY],
     )?;
@@ -318,7 +295,6 @@ fn build_inverse_with_inline_schema_bundle(
         context,
         &mut declared_rel_descriptor,
         CoreRelationshipTypeName::TargetType.as_relationship_name().0 .0.as_str(),
-        LoaderRelationshipDeclaredness::Declared,
         BOOK_TO_PERSON_RELATIONSHIP_KEY,
         &[PERSON_DESCRIPTOR_KEY],
     )?;
@@ -326,7 +302,6 @@ fn build_inverse_with_inline_schema_bundle(
         context,
         &mut inverse_rel_descriptor,
         CoreRelationshipTypeName::InverseOf.as_relationship_name().0 .0.as_str(),
-        LoaderRelationshipDeclaredness::Declared,
         PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
         &[BOOK_TO_PERSON_RELATIONSHIP_KEY],
     )?;
@@ -337,7 +312,6 @@ fn build_inverse_with_inline_schema_bundle(
         context,
         &mut book_loader,
         described_by.0 .0.as_str(),
-        LoaderRelationshipDeclaredness::Declared,
         book_instance_key,
         &[BOOK_DESCRIPTOR_KEY],
     )?;
@@ -345,7 +319,6 @@ fn build_inverse_with_inline_schema_bundle(
         context,
         &mut person_loader,
         described_by.0 .0.as_str(),
-        LoaderRelationshipDeclaredness::Declared,
         person_instance_key,
         &[PERSON_DESCRIPTOR_KEY],
     )?;
@@ -355,7 +328,6 @@ fn build_inverse_with_inline_schema_bundle(
         context,
         &mut person_loader,
         inverse_rel_name,
-        LoaderRelationshipDeclaredness::Inverse,
         person_instance_key,
         &[book_instance_key],
     )?;
@@ -632,17 +604,13 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 
 /// Build and attach a `LoaderRelationshipReference` (LRR) to a given `LoaderHolon`,
 /// wiring `ReferenceSource` and ordered `ReferenceTarget` endpoint containers,
-/// and setting `relationship_name` plus `is_declared` in one place.
-///
-/// This replaces `add_declared_relationship_reference` and
-/// `add_inverse_relationship_reference`.
+/// and setting `relationship_name` in one place.
 ///
 /// ### Behavior
 /// - Creates a new LRR container and one `LoaderHolonReference` for the source,
 ///   plus one per target (in order).
 /// - Sets:
 ///   - `relationship_name` (string)
-///   - `is_declared` (`true` for declared, `false` for inverse)
 ///   - Each endpoint’s `holon_key` to the provided instance keys
 /// - Wires:
 ///   - `HasRelationshipReference` from the `source_loader_holon` to the LRR
@@ -653,7 +621,6 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
 /// - `context`: Holons context used for creation and wiring
 /// - `source_loader_holon`: the **LoaderHolon** that owns this LRR
 /// - `relationship_name_str`: the loader-declared relationship name
-/// - `declaredness`: whether the LRR is declared or inverse
 /// - `source_instance_key`: key of the **instance** acting as relationship source
 /// - `target_instance_keys`: keys of the **instance(s)** acting as relationship target(s)
 ///
@@ -669,7 +636,6 @@ pub fn add_loader_relationship_reference(
     context: &Arc<TransactionContext>,
     source_loader_holon: &mut TransientReference,
     relationship_name_str: &str,
-    declaredness: LoaderRelationshipDeclaredness,
     source_instance_key: &str,
     target_instance_keys: &[&str],
 ) -> Result<TransientReference, HolonError> {
@@ -701,14 +667,10 @@ pub fn add_loader_relationship_reference(
 
     // ── 2) Set properties on created transients ───────────────────────────────
 
-    // LRR required properties: relationship_name + is_declared
+    // LRR required properties: relationship_name
     relationship_reference.with_property_value(
         CorePropertyTypeName::RelationshipName,
         BaseValue::StringValue(MapString(relationship_name_str.to_string())),
-    )?;
-    relationship_reference.with_property_value(
-        CorePropertyTypeName::IsDeclared,
-        BaseValue::BooleanValue(declaredness.as_map_boolean()),
     )?;
 
     // Source endpoint: holon_key = source instance key

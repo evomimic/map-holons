@@ -188,16 +188,6 @@ impl LoaderRefResolver {
     // Pass partitioning / predicates
     // ─────────────────────────────────────────────────────────────────────
 
-    /// Returns true if the LRR is declared (IsDeclared = true). Errors default to false.
-    fn is_declared(relationship_reference: &TransientReference) -> bool {
-        let is_declared_property: PropertyName =
-            CorePropertyTypeName::IsDeclared.as_property_name();
-        match relationship_reference.property_value(&is_declared_property) {
-            Ok(Some(BaseValue::BooleanValue(b))) => b.0,
-            _ => false,
-        }
-    }
-
     /// Returns true if the LRR’s relationship name equals `relationship_name`.
     fn has_relationship_name(
         relationship_reference: &TransientReference,
@@ -213,18 +203,16 @@ impl LoaderRefResolver {
         }
     }
 
-    /// Returns true if the LRR is a declared DescribedBy relationship.
+    /// Returns true if the LRR's relationship name is DescribedBy.
     fn is_described_by_declared(relationship_reference: &TransientReference) -> bool {
         let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
-        Self::is_declared(relationship_reference)
-            && Self::has_relationship_name(relationship_reference, &described_by)
+        Self::has_relationship_name(relationship_reference, &described_by)
     }
 
-    /// Returns true if the LRR is a declared InverseOf relationship.
+    /// Returns true if the LRR's relationship name is InverseOf.
     fn is_inverse_of_declared(relationship_reference: &TransientReference) -> bool {
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        Self::is_declared(relationship_reference)
-            && Self::has_relationship_name(relationship_reference, &inverse_of)
+        Self::has_relationship_name(relationship_reference, &inverse_of)
     }
 
     // ─────────────────────────────────────────────────────────────────────
