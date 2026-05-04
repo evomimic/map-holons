@@ -159,13 +159,13 @@ impl Descriptor for HolonDescriptor {
 mod tests {
     use super::*;
     use crate::core_shared_objects::transactions::TransactionContext;
-    use crate::descriptors::test_support::{build_context, new_test_holon};
+    use crate::descriptors::test_support::{build_context, core_holon_type_name, new_test_holon};
     use crate::reference_layer::{ReadableHolon, WritableHolon};
     use crate::TransientReference;
     use base_types::MapString;
     use core_types::{HolonError, PropertyName, RelationshipName};
     use std::sync::Arc;
-    use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
+    use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
     fn new_descriptor_holon(
         context: &Arc<TransactionContext>,
@@ -507,10 +507,16 @@ mod tests {
     #[test]
     fn get_inverse_relationship_by_name_follows_declared_inverse() -> Result<(), HolonError> {
         let context = build_context();
-        let declared_type =
-            new_descriptor_holon(&context, "declared-type", "DeclaredRelationshipType")?;
-        let inverse_type =
-            new_descriptor_holon(&context, "inverse-type", "InverseRelationshipType")?;
+        let declared_type = new_descriptor_holon(
+            &context,
+            "declared-type",
+            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+        )?;
+        let inverse_type = new_descriptor_holon(
+            &context,
+            "inverse-type",
+            &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
+        )?;
         let mut declared = new_descriptor_holon(&context, "authored-by", "AuthoredBy")?;
         declared
             .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
@@ -544,7 +550,7 @@ mod tests {
         let declared_type = new_descriptor_holon(
             &context,
             "declared-type-missing-inverse",
-            "DeclaredRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
         )?;
         let mut declared =
             new_descriptor_holon(&context, "declared-no-inverse", "DeclaredNoInverse")?;

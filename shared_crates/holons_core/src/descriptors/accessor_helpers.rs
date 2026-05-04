@@ -116,13 +116,15 @@ pub(crate) fn optional_single_related(
     }
 }
 
-/// Validates that a descriptor's effective `Extends` chain reaches the expected type name.
-pub(crate) fn validate_extends_chain_reaches(
+/// Searches a descriptor's effective `Extends` chain for a matching type name.
+pub(crate) fn search_extends_chain<T>(
     holon: &HolonReference,
-    expected_type_name: &str,
-) -> Result<(), HolonError> {
+    expected_type_names: &[MapString],
+    matcher: impl Fn(&MapString) -> Option<T>,
+) -> Result<T, HolonError> {
     let mut found = None;
 
+    // Walk the effective type lineage self-first.
     for ancestor in walk_extends_chain(holon) {
         let ancestor = ancestor?;
         match TypeHeader::new(&ancestor).type_name() {
@@ -130,8 +132,8 @@ pub(crate) fn validate_extends_chain_reaches(
                 if found.is_none() {
                     found = Some(type_name.to_string());
                 }
-                if type_name.0 == expected_type_name {
-                    return Ok(());
+                if let Some(match_result) = matcher(&type_name) {
+                    return Ok(match_result);
                 }
             }
             Err(_) => {
@@ -142,10 +144,35 @@ pub(crate) fn validate_extends_chain_reaches(
         }
     }
 
+    // Preserve the established descriptor-kind diagnostic shape.
     Err(HolonError::WrongDescriptorKind {
-        expected: expected_type_name.to_string(),
+        expected: format_expected_type_names(expected_type_names),
         found: found.unwrap_or_else(|| "unknown".to_string()),
         descriptor: descriptor_label(holon),
+    })
+}
+
+fn format_expected_type_names(expected_type_names: &[MapString]) -> String {
+    match expected_type_names {
+        [] => "unknown".to_string(),
+        [single] => single.to_string(),
+        [first, second] => format!("{first} or {second}"),
+        many => {
+            let names = many.iter().map(ToString::to_string).collect::<Vec<_>>();
+            let (last, leading) =
+                names.split_last().expect("non-empty expected names should split");
+            format!("{}, or {}", leading.join(", "), last)
+        }
+    }
+}
+
+/// Validates that a descriptor's effective `Extends` chain reaches the expected type name.
+pub(crate) fn validate_extends_chain_reaches(
+    holon: &HolonReference,
+    expected_type_name: &MapString,
+) -> Result<(), HolonError> {
+    search_extends_chain(holon, std::slice::from_ref(expected_type_name), |type_name| {
+        (type_name == expected_type_name).then_some(())
     })
 }
 

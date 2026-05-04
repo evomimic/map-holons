@@ -66,8 +66,8 @@ pub struct RawLoaderHolon {
     ///
     /// The `name` is the relationship type name (`type_name`), and
     /// `targets` are the endpoint holon keys. Directionality (declared vs
-    /// inverse) will ultimately be derived from the relationship type
-    /// definition (Extends → DeclaredRelationshipType / InverseRelationshipType)
+    /// inverse) will ultimately be derived from the relationship type's
+    /// declared or inverse meta-type ancestry
     /// when constructing `LoaderRelationshipReference` holons. In the initial
     /// implementation we treat all relationships as declared (`is_declared = true`).
     #[serde(default)]

@@ -8,11 +8,13 @@ pub enum CoreHolonTypeName {
     CommitResponseType,
     Dance,
     DanceType,
+    DeclaredRelationshipType,
     Holon,
     HolonErrorType,
     HolonLoadError,
     HolonSpace,
     HolonType,
+    InverseRelationshipType,
     SchemaHolonType,
     SchemaType,
     TypeDescriptor,
@@ -35,6 +37,10 @@ mod tests {
             MapString("Collection".to_string()),
             CoreHolonTypeName::Collection.as_holon_name()
         );
+        assert_eq!(
+            MapString("DeclaredRelationshipType".to_string()),
+            CoreHolonTypeName::DeclaredRelationshipType.as_holon_name()
+        );
         assert_eq!(MapString("Dance".to_string()), CoreHolonTypeName::Dance.as_holon_name());
         assert_eq!(MapString("Holon".to_string()), CoreHolonTypeName::Holon.as_holon_name());
         assert_eq!(
@@ -44,6 +50,10 @@ mod tests {
         assert_eq!(
             MapString("HolonType".to_string()),
             CoreHolonTypeName::HolonType.as_holon_name()
+        );
+        assert_eq!(
+            MapString("InverseRelationshipType".to_string()),
+            CoreHolonTypeName::InverseRelationshipType.as_holon_name()
         );
         assert_eq!(
             MapString("SchemaHolonType".to_string()),

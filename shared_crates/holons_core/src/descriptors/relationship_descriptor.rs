@@ -112,11 +112,13 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon, new_test_holon};
+    use crate::descriptors::test_support::{
+        build_context, core_holon_type_name, new_descriptor_holon, new_test_holon,
+    };
     use crate::reference_layer::WritableHolon;
     use base_types::{MapEnumValue, MapString};
     use core_types::HolonError;
-    use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
+    use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
     #[test]
     fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {
@@ -437,13 +439,13 @@ mod tests {
         let declared_type = new_descriptor_holon(
             &context,
             "declared-type-for-narrowing",
-            "DeclaredRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
             "Relationship",
         )?;
         let inverse_type = new_descriptor_holon(
             &context,
             "inverse-type-for-narrowing",
-            "InverseRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?;
         let mut declared = new_descriptor_holon(

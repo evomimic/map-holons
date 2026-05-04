@@ -24,7 +24,7 @@
 //! - `context.mutation().new_holon(Some(key: String | MapString))` **sets the holon `Key` property automatically**,
 //!   so we simply pass the *intended instance key string* when creating LoaderHolons.
 //! - Tier-0 (declared-only) needs **no** type descriptors.
-//! - For inverse mapping, we load a **tiny micro-schema** first (two HolonTypes + DeclaredRelationshipType + InverseRelationshipType).
+//! - For inverse mapping, we load a **tiny micro-schema** first (two HolonTypes plus the relationship direction meta-types).
 //! - Pass-2 resolves `LoaderRelationshipReference` endpoints by `LoaderHolonReference.holon_key`
 //!   (in-bundle first, then previously committed as your resolver specifies).
 //!
