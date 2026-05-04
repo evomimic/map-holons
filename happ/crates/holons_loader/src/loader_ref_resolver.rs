@@ -50,6 +50,21 @@ struct RelationshipEdgeKey {
     target_identifier: String,
 }
 
+/// Batched declared-orientation write prepared after all per-target classification succeeds.
+struct DeclaredRelationshipWrite {
+    staged_source: StagedReference,
+    targets: Vec<HolonReference>,
+    edge_keys: Vec<RelationshipEdgeKey>,
+}
+
+/// Single inverse-orientation write prepared after all per-target classification succeeds.
+struct InverseRelationshipWrite {
+    staged_source: StagedReference,
+    declared_name: RelationshipName,
+    target: HolonReference,
+    edge_key: RelationshipEdgeKey,
+}
+
 /// Per-run resolver state. Holds data we want to compute once and reuse.
 /// Start small (just the saved index), but this scales well if we add
 /// metrics, feature flags, or lazy fetches later.
@@ -389,22 +404,14 @@ impl LoaderRefResolver {
                     return false;
                 }
 
-                let is_declared = Self::is_declared(relationship_reference);
-                let resolution_result = if is_declared {
-                    Self::try_declared_single_resolve(
-                        context,
-                        resolver_state,
-                        relationship_reference,
-                        seen,
-                    )
-                } else {
-                    Self::try_inverse_single_resolve(
-                        context,
-                        resolver_state,
-                        relationship_reference,
-                        seen,
-                    )
-                };
+                // Pass-2c runs after Pass-2a so endpoint DescribedBy links are available
+                // for type-graph classification.
+                let resolution_result = Self::try_resolve_by_type_graph(
+                    context,
+                    resolver_state,
+                    relationship_reference,
+                    seen,
+                );
 
                 match resolution_result {
                     Ok(n) => {
@@ -436,42 +443,11 @@ impl LoaderRefResolver {
         (total_links_created, errors, remaining_queue)
     }
 
-    /// Resolve the declared relationship name for a single inverse LRR via type-gated graph walk.
-    fn declared_name_for_inverse(
-        context: &Arc<TransactionContext>,
-        resolver_state: &mut ResolverState,
+    /// Follow InverseOf from an inverse RTD to its declared RTD and return the declared name.
+    fn declared_name_from_inverse_type_descriptor(
         inverse_name: &RelationshipName,
-        src_endpoint: &HolonReference,
-        tgt_endpoint: &HolonReference,
+        relationship_type_descriptor: &HolonReference,
     ) -> Result<RelationshipName, HolonError> {
-        debug!("[resolver] entering declared_name_for_inverse for inverse '{}'", inverse_name.0);
-
-        let (relationship_type_descriptor, relationship_direction) =
-            match Self::find_relationship_type_for_endpoints(
-                context,
-                resolver_state,
-                inverse_name,
-                src_endpoint,
-                tgt_endpoint,
-            )? {
-                Some(result) => result,
-                None => {
-                    return Err(HolonError::HolonNotFound(format!(
-                        "RelationshipType for relationship '{}' between endpoint descriptors",
-                        inverse_name.0
-                    )));
-                }
-            };
-
-        if relationship_direction == RelationshipDirection::Declared {
-            debug!(
-                "[resolver] relationship '{}' resolved as declared; using authored name",
-                inverse_name.0
-            );
-            return Ok(inverse_name.clone());
-        }
-
-        // Follow InverseOf from the inverse RTD to the declared RTD.
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
         let declared_handle = relationship_type_descriptor.related_holons(&inverse_of)?;
         debug!("[resolver] found declared TypeDescriptor");
@@ -524,14 +500,12 @@ impl LoaderRefResolver {
     // Endpoint + type-graph helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    /// Extracts (relationship_name, is_declared) from an LRR.
+    /// Extracts the relationship name from an LRR.
     fn extract_relationship_metadata(
         relationship_reference: &TransientReference,
-    ) -> Result<(RelationshipName, bool), HolonError> {
+    ) -> Result<RelationshipName, HolonError> {
         let relationship_name_property: PropertyName =
             CorePropertyTypeName::RelationshipName.as_property_name();
-        let is_declared_property: PropertyName =
-            CorePropertyTypeName::IsDeclared.as_property_name();
 
         let relationship_value =
             relationship_reference.property_value(&relationship_name_property)?.ok_or_else(
@@ -548,19 +522,7 @@ impl LoaderRefResolver {
             }
         };
 
-        let is_declared_value =
-            relationship_reference.property_value(&is_declared_property)?.ok_or_else(|| {
-                HolonError::EmptyField("LoaderRelationshipReference.IsDeclared".into())
-            })?;
-
-        let is_declared_flag: bool = match is_declared_value {
-            BaseValue::BooleanValue(inner) => inner.0,
-            other => {
-                return Err(HolonError::UnexpectedValueType(format!("{:?}", other), "bool".into()));
-            }
-        };
-
-        Ok((relationship_name, is_declared_flag))
+        Ok(relationship_name)
     }
 
     /// Resolve LoaderHolonReference endpoints to actual holon references.
@@ -1100,30 +1062,21 @@ impl LoaderRefResolver {
         format!("{prefix}<no-id>")
     }
 
-    /// Handle a single DECLARED (non-InverseOf, non-DescribedBy) reference.
-    /// Returns number of links created (may be 0 if dedup) or an error.
-    fn try_declared_single_resolve(
+    /// Resolve one remaining relationship reference by classifying each endpoint pair.
+    fn try_resolve_by_type_graph(
         context: &Arc<TransactionContext>,
         resolver_state: &mut ResolverState,
         relationship_reference: &TransientReference,
-        seen: &mut HashSet<RelationshipEdgeKey>,
+        seen_relationship_edge_keys: &mut HashSet<RelationshipEdgeKey>,
     ) -> Result<i64, HolonError> {
-        debug!("[resolver] Entering try_declared_single_resolve");
-        // Fast skips if caller forgot to prefilter
-        if !Self::is_declared(relationship_reference)
-            || Self::is_described_by_declared(relationship_reference)
-            || Self::is_inverse_of_declared(relationship_reference)
-        {
-            return Ok(0);
-        }
+        debug!("[resolver] Entering try_resolve_by_type_graph");
 
-        let (declared_relationship_name, _is_declared) =
-            Self::extract_relationship_metadata(relationship_reference)?;
+        let relationship_name = Self::extract_relationship_metadata(relationship_reference)?;
         let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
         let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
 
-        // Defensive: exclude the two handled in 2a/2b
-        if declared_relationship_name == described_by || declared_relationship_name == inverse_of {
+        // Bootstrap relationships are handled before type-graph resolution.
+        if relationship_name == described_by || relationship_name == inverse_of {
             return Ok(0);
         }
 
@@ -1135,97 +1088,174 @@ impl LoaderRefResolver {
         let (source_endpoint, target_endpoints) =
             Self::resolve_endpoints(context, resolver_state, relationship_reference)?;
 
-        let staged_source = Self::resolve_staged_write_source(context, &source_endpoint)?;
+        let mut declared_target_candidates: Vec<HolonReference> = Vec::new();
+        let mut inverse_write_candidates: Vec<(RelationshipName, HolonReference)> = Vec::new();
 
-        // Dedupe per (source, declared_name, each target)
-        let source_ref = HolonReference::Staged(staged_source.clone());
-        let mut unique_targets: Vec<HolonReference> = Vec::new();
-        for target in target_endpoints.into_iter() {
-            let edge_key = Self::make_edge_key(&source_ref, &declared_relationship_name, &target);
-            if seen.insert(edge_key) {
-                unique_targets.push(target);
+        // Classification phase: prove every target before mutating relationships.
+        for target_endpoint in target_endpoints {
+            // Classify this endpoint pair; heterogeneous targets may resolve differently.
+            let Some((relationship_type_descriptor, relationship_direction)) =
+                Self::find_relationship_type_for_endpoints(
+                    context,
+                    resolver_state,
+                    &relationship_name,
+                    &source_endpoint,
+                    &target_endpoint,
+                )?
+            else {
+                return Err(HolonError::HolonNotFound(format!(
+                    "RelationshipType for relationship '{}' between endpoint descriptors",
+                    relationship_name.0
+                )));
+            };
+
+            match relationship_direction {
+                RelationshipDirection::Declared => {
+                    declared_target_candidates.push(target_endpoint);
+                }
+                RelationshipDirection::Inverse => {
+                    // Inverse orientation: use the matched RTD instead of walking the type graph again.
+                    let declared_name = Self::declared_name_from_inverse_type_descriptor(
+                        &relationship_name,
+                        &relationship_type_descriptor,
+                    )
+                    .map_err(|e| {
+                        HolonError::InvalidType(format!(
+                            "inverse LRR ({}): {}",
+                            Self::brief_lrr_summary(relationship_reference),
+                            e
+                        ))
+                    })?;
+                    inverse_write_candidates.push((declared_name, target_endpoint));
+                }
             }
         }
 
-        Self::write_relationship(staged_source, &declared_relationship_name, unique_targets)
-    }
+        let mut planned_edge_keys: HashSet<RelationshipEdgeKey> = HashSet::new();
+        let declared_write = Self::plan_declared_relationship_write(
+            context,
+            &relationship_name,
+            &source_endpoint,
+            declared_target_candidates,
+            seen_relationship_edge_keys,
+            &mut planned_edge_keys,
+        )?;
+        let inverse_writes = Self::plan_inverse_relationship_writes(
+            context,
+            &source_endpoint,
+            inverse_write_candidates,
+            seen_relationship_edge_keys,
+            &mut planned_edge_keys,
+        )?;
 
-    /// Handle a single INVERSE (IsDeclared=false) reference via type-gated graph walk.
-    /// Returns number of links created (sum across flipped targets) or an error
-    /// if *no* targets could be processed (fatal). Deferrables should be returned as Err(deferrable).
-    fn try_inverse_single_resolve(
-        context: &Arc<TransactionContext>,
-        resolver_state: &mut ResolverState,
-        relationship_reference: &TransientReference,
-        seen: &mut HashSet<RelationshipEdgeKey>,
-    ) -> Result<i64, HolonError> {
-        debug!("[resolver] Entering try_inverse_single_resolve");
-        if Self::is_declared(relationship_reference) {
-            return Ok(0); // not an inverse item
-        }
-
-        // Single diagnostic summary (used only if we need to surface an error)
-        let lrr_ctx = Self::brief_lrr_summary(relationship_reference);
-
-        let (inverse_name, _flag) = Self::extract_relationship_metadata(relationship_reference)?;
-        debug!(
-            "[resolver] BEFORE resolve_endpoints: {}, source_loader_key={:?}",
-            Self::brief_lrr_summary(relationship_reference),
-            Self::source_loader_key_of_lrr(relationship_reference).map(|k| k.0),
-        );
-        let (src_endpoint, target_endpoints) =
-            Self::resolve_endpoints(context, resolver_state, relationship_reference)?;
-
+        // Write phase: execute only after all endpoint pairs and write sources resolved.
         let mut created_link_count = 0i64;
-
-        // Precompute declared target identifier for logging
-        let declared_target_identifier = Self::best_identifier_for_dedupe(&src_endpoint);
-
-        for target_endpoint in target_endpoints.into_iter() {
-            // Derive declared relationship name from type graph
-            let declared_name = Self::declared_name_for_inverse(
-                context,
-                resolver_state,
-                &inverse_name,
-                &src_endpoint,
-                &target_endpoint,
-            )
-            .map_err(|e| {
-                // Enrich just this error path with the single precomputed summary
-                HolonError::InvalidType(format!("inverse LRR ({}): {}", lrr_ctx, e))
-            })?;
-
-            // In declared orientation, each original target becomes the write source
-            let staged_source = Self::resolve_staged_write_source(context, &target_endpoint)?;
-
-            // Per-edge dedupe across (declared_source, declared_name, declared_target)
-            let declared_source_ref = HolonReference::Staged(staged_source.clone());
-            let edge_key = Self::make_edge_key(&declared_source_ref, &declared_name, &src_endpoint);
-            if !seen.insert(edge_key) {
-                debug!("Duplicate relationship skipped (inverse→declared)");
-                continue;
+        if let Some(declared_write) = declared_write {
+            created_link_count += Self::write_relationship(
+                declared_write.staged_source,
+                &relationship_name,
+                declared_write.targets,
+            )?;
+            for edge_key in declared_write.edge_keys {
+                seen_relationship_edge_keys.insert(edge_key);
             }
+        }
 
-            // Perform the flipped write: declared_source −[declared_name]→ declared_target (original src)
+        for inverse_write in inverse_writes {
             debug!(
                 "Attempting to write inverse→declared relationship: declared_name={}",
-                declared_name.0
+                inverse_write.declared_name.0
             );
             created_link_count += Self::write_relationship(
-                staged_source,
-                &declared_name,
-                vec![src_endpoint.clone()],
+                inverse_write.staged_source.clone(),
+                &inverse_write.declared_name,
+                vec![inverse_write.target.clone()],
             )?;
+
+            seen_relationship_edge_keys.insert(inverse_write.edge_key);
 
             debug!(
                 "Created relationship (inverse→declared): source={}, rel={}, target={}",
-                Self::best_identifier_for_dedupe(&declared_source_ref),
-                declared_name,
-                declared_target_identifier,
+                Self::best_identifier_for_dedupe(&HolonReference::Staged(
+                    inverse_write.staged_source
+                )),
+                inverse_write.declared_name,
+                Self::best_identifier_for_dedupe(&inverse_write.target),
             );
         }
 
         Ok(created_link_count)
+    }
+
+    /// Plan a batched declared write and dedupe it without mutating the global seen set.
+    fn plan_declared_relationship_write(
+        context: &Arc<TransactionContext>,
+        relationship_name: &RelationshipName,
+        source_endpoint: &HolonReference,
+        target_candidates: Vec<HolonReference>,
+        seen_relationship_edge_keys: &HashSet<RelationshipEdgeKey>,
+        planned_edge_keys: &mut HashSet<RelationshipEdgeKey>,
+    ) -> Result<Option<DeclaredRelationshipWrite>, HolonError> {
+        if target_candidates.is_empty() {
+            return Ok(None);
+        }
+
+        let staged_source = Self::resolve_staged_write_source(context, source_endpoint)?;
+        let source_reference = HolonReference::Staged(staged_source.clone());
+        let mut targets = Vec::new();
+        let mut edge_keys = Vec::new();
+
+        for target in target_candidates {
+            let edge_key = Self::make_edge_key(&source_reference, relationship_name, &target);
+            if seen_relationship_edge_keys.contains(&edge_key)
+                || !planned_edge_keys.insert(edge_key.clone())
+            {
+                debug!("Duplicate relationship skipped (declared)");
+                continue;
+            }
+
+            targets.push(target);
+            edge_keys.push(edge_key);
+        }
+
+        if targets.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(DeclaredRelationshipWrite { staged_source, targets, edge_keys }))
+    }
+
+    /// Plan flipped inverse writes and dedupe them without mutating the global seen set.
+    fn plan_inverse_relationship_writes(
+        context: &Arc<TransactionContext>,
+        source_endpoint: &HolonReference,
+        inverse_write_candidates: Vec<(RelationshipName, HolonReference)>,
+        seen_relationship_edge_keys: &HashSet<RelationshipEdgeKey>,
+        planned_edge_keys: &mut HashSet<RelationshipEdgeKey>,
+    ) -> Result<Vec<InverseRelationshipWrite>, HolonError> {
+        let mut planned_writes = Vec::new();
+
+        for (declared_name, write_source_endpoint) in inverse_write_candidates {
+            let staged_source = Self::resolve_staged_write_source(context, &write_source_endpoint)?;
+            let declared_source_reference = HolonReference::Staged(staged_source.clone());
+            let target = source_endpoint.clone();
+            let edge_key = Self::make_edge_key(&declared_source_reference, &declared_name, &target);
+            if seen_relationship_edge_keys.contains(&edge_key)
+                || !planned_edge_keys.insert(edge_key.clone())
+            {
+                debug!("Duplicate relationship skipped (inverse→declared)");
+                continue;
+            }
+
+            planned_writes.push(InverseRelationshipWrite {
+                staged_source,
+                declared_name,
+                target,
+                edge_key,
+            });
+        }
+
+        Ok(planned_writes)
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -1248,9 +1278,9 @@ impl LoaderRefResolver {
 
     /// Short diagnostic summary for a LoaderRelationshipReference.
     fn brief_lrr_summary(lrr: &TransientReference) -> String {
-        let (name, is_decl) = Self::extract_relationship_metadata(lrr)
-            .unwrap_or_else(|_| (RelationshipName(MapString("<unknown>".into())), false));
-        format!("name={}, declared={}", name, is_decl)
+        let name = Self::extract_relationship_metadata(lrr)
+            .unwrap_or_else(|_| RelationshipName(MapString("<unknown>".into())));
+        format!("name={}", name)
     }
 
     /// Deferrable errors are those that might succeed after earlier writes land.
@@ -1452,6 +1482,50 @@ mod tests {
         stage(context, relationship_type)
     }
 
+    fn loader_holon_reference(
+        context: &Arc<TransactionContext>,
+        key: &str,
+    ) -> Result<TransientReference, HolonError> {
+        let mut loader_reference = new_holon(context, &format!("LoaderHolonReference.{}", key))?;
+        loader_reference.with_property_value(
+            CorePropertyTypeName::HolonKey,
+            BaseValue::StringValue(MapString(key.to_string())),
+        )?;
+        Ok(loader_reference)
+    }
+
+    fn loader_relationship_reference(
+        context: &Arc<TransactionContext>,
+        relationship_name: &str,
+        source_key: &str,
+        target_keys: &[&str],
+    ) -> Result<TransientReference, HolonError> {
+        let mut relationship_reference = new_holon(
+            context,
+            &format!("LoaderRelationshipReference.{}.{}", source_key, relationship_name),
+        )?;
+        relationship_reference.with_property_value(
+            CorePropertyTypeName::RelationshipName,
+            BaseValue::StringValue(MapString(relationship_name.to_string())),
+        )?;
+
+        let source_reference = loader_holon_reference(context, source_key)?;
+        let mut target_references = Vec::with_capacity(target_keys.len());
+        for target_key in target_keys {
+            target_references
+                .push(HolonReference::Transient(loader_holon_reference(context, target_key)?));
+        }
+
+        relationship_reference.add_related_holons(
+            CoreRelationshipTypeName::ReferenceSource,
+            vec![HolonReference::Transient(source_reference)],
+        )?;
+        relationship_reference
+            .add_related_holons(CoreRelationshipTypeName::ReferenceTarget, target_references)?;
+
+        Ok(relationship_reference)
+    }
+
     #[test]
     fn find_relationship_type_for_endpoints_returns_concrete_pair_hit() -> Result<(), HolonError> {
         let context = build_context();
@@ -1589,6 +1663,61 @@ mod tests {
         )?;
 
         assert!(result.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn try_resolve_by_type_graph_does_not_write_partial_declared_targets() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let mut seen_relationship_edge_keys = HashSet::new();
+        let declared_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::DeclaredRelationshipType)?;
+        let source_descriptor = stage(
+            &context,
+            new_descriptor(&context, "SourceType", "SourceType", TypeKind::Holon)?,
+        )?;
+        let target_descriptor = stage(
+            &context,
+            new_descriptor(&context, "TargetType", "TargetType", TypeKind::Holon)?,
+        )?;
+        let missing_target_descriptor = stage(
+            &context,
+            new_descriptor(&context, "MissingTargetType", "MissingTargetType", TypeKind::Holon)?,
+        )?;
+
+        relationship_type_descriptor(&context, "Owns", "SourceType", "TargetType", declared_meta)?;
+        let source_endpoint = typed_instance(&context, "source-instance", source_descriptor)?;
+        let _target_endpoint = typed_instance(&context, "target-instance", target_descriptor)?;
+        let _missing_target_endpoint =
+            typed_instance(&context, "missing-target-instance", missing_target_descriptor)?;
+        let relationship_reference = loader_relationship_reference(
+            &context,
+            "Owns",
+            "source-instance",
+            &["target-instance", "missing-target-instance"],
+        )?;
+
+        let result = LoaderRefResolver::try_resolve_by_type_graph(
+            &context,
+            &mut resolver_state,
+            &relationship_reference,
+            &mut seen_relationship_edge_keys,
+        );
+
+        assert!(matches!(result, Err(HolonError::HolonNotFound(_))));
+        assert!(seen_relationship_edge_keys.is_empty());
+
+        let relationship_name = RelationshipName(MapString("Owns".to_string()));
+        let related_handle = source_endpoint.related_holons(&relationship_name)?;
+        let related_members = related_handle
+            .read()
+            .map_err(|_| HolonError::FailedToBorrow("Owns collection read lock poisoned".into()))?
+            .get_members()
+            .clone();
+        assert!(related_members.is_empty());
 
         Ok(())
     }
