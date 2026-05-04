@@ -41,9 +41,21 @@ impl From<&Row> for RowWire {
     }
 }
 
+impl From<Row> for RowWire {
+    fn from(row: Row) -> Self {
+        Self::new(row.0)
+    }
+}
+
 impl From<&RowSet> for RowSetWire {
     fn from(rowset: &RowSet) -> Self {
         Self::new(rowset.rows.iter().map(RowWire::from).collect())
+    }
+}
+
+impl From<RowSet> for RowSetWire {
+    fn from(rowset: RowSet) -> Self {
+        Self::new(rowset.rows.into_iter().map(RowWire::from).collect())
     }
 }
 

@@ -4,6 +4,7 @@ pub mod holon_collection_wire;
 pub mod holon_reference_wire;
 pub mod holon_wire;
 pub mod operand_wire;
+pub mod query_contract_wire;
 pub mod query_wire;
 pub mod smart_reference_wire;
 pub mod staged_reference_wire;
@@ -18,6 +19,9 @@ pub use dance_response_wire::{DanceResponseWire, ResponseBodyWire};
 pub use holon_collection_wire::HolonCollectionWire;
 pub use holon_wire::HolonWire;
 pub use operand_wire::{RowSetWire, RowWire};
+pub use query_contract_wire::{
+    QueryDiagnosticWire, QueryRequestWire, QueryResultDataWire, QueryResultWire,
+};
 pub use query_wire::{NodeCollectionWire, NodeWire, QueryPathMapWire};
 pub use staged_relationship_wire::StagedRelationshipMapWire;
 pub use staged_wire::StagedHolonWire;

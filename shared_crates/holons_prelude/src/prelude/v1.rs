@@ -49,7 +49,10 @@ pub use holons_core::core_shared_objects::{HolonCollection, RelationshipMap};
 pub use holons_core::dances::{
     DanceInitiator, DanceRequest, DanceResponse, ResponseBody, ResponseStatusCode,
 };
-pub use holons_core::query_layer::{Node, NodeCollection, QueryExpression, Row, RowSet, Value};
+pub use holons_core::query_layer::{
+    Node, NodeCollection, QueryDiagnostic, QueryExpression, QueryRequest, QueryResult,
+    QueryResultData, QuerySpec, Row, RowSet, Value,
+};
 pub use holons_core::reference_layer::{
     HolonCollectionApi, HolonReference, HolonSpaceBehavior, HolonStagingBehavior, ReadableHolon,
     SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,

@@ -8,6 +8,7 @@ import type {
   HolonReferenceWire,
   MapResultWire,
   NodeCollectionWire,
+  QueryResultWire,
   TxId,
 } from './wire-types';
 
@@ -163,6 +164,18 @@ export function expectNodeCollection(result: MapResultWire): NodeCollectionWire 
   }
 
   throw unexpectedResultVariant('NodeCollection', result);
+}
+
+export function expectQueryResult(result: MapResultWire): QueryResultWire {
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    'QueryResult' in result
+  ) {
+    return result.QueryResult;
+  }
+
+  throw unexpectedResultVariant('QueryResult', result);
 }
 
 /**

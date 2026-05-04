@@ -14,7 +14,7 @@
     "test:unit:no-run": "cargo test --workspace --no-run",
     "regen:sdk-fixtures": "cargo test -p map_commands_wire --test generate_fixtures -- --ignored",
     "web:serve": "cd ui && ng serve",
-    "web:test:dahn": "cd ui && vitest run",
+    "web:test:dahn": "npm exec --prefix .. vitest -- run --root ui",
     "web:typecheck": "npx tsc -p ./ui/tsconfig.app.json --noEmit",
     "web:build": "cd ui && ng build --base-href ./",
     "web:dev": "npm run web:build",

@@ -4,7 +4,7 @@ use base_types::MapString;
 use core_types::{ContentSet, HolonId, LocalId};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceRequest;
-use holons_core::query_layer::QueryExpression;
+use holons_core::query_layer::QueryRequest;
 use holons_core::reference_layer::{HolonReference, SmartReference, TransientReference};
 
 use super::{CommandDescriptor, MutationClassification};
@@ -46,8 +46,8 @@ pub enum TransactionAction {
     /// Executes a dance request within this transaction.
     Dance(DanceRequest),
 
-    /// Executes a query expression within this transaction.
-    Query(QueryExpression),
+    /// Executes a substrate-facing query request within this transaction.
+    Query(QueryRequest),
 
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`

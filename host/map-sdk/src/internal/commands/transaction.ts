@@ -3,8 +3,8 @@ import { buildRequest } from '../request-context';
 import {
   expectCollection,
   expectDanceResponse,
-  expectNodeCollection,
   expectNone,
+  expectQueryResult,
   expectRedoComplete,
   expectRedoToMarkerComplete,
   expectReference,
@@ -24,8 +24,8 @@ import type {
   HolonReferenceWire,
   LocalId,
   MapResultWire,
-  NodeCollectionWire,
-  QueryExpression,
+  QueryRequestWire,
+  QueryResultWire,
   SmartReferenceWire,
   TransactionActionWire,
   TransientReferenceWire,
@@ -401,19 +401,19 @@ export function dance(
 }
 
 /**
- * Execute a transaction-scoped query expression.
+ * Execute a transaction-scoped query request.
  */
 export function query(
   txId: TxId,
-  expression: QueryExpression,
+  request: QueryRequestWire,
   options?: RequestOptionsOverrides,
-): Promise<NodeCollectionWire> {
+): Promise<QueryResultWire> {
   return runTransactionCommand(
     txId,
     {
-      Query: expression,
+      Query: request,
     },
-    expectNodeCollection,
+    expectQueryResult,
     options,
   );
 }

@@ -9,13 +9,14 @@ use core_types::{
 };
 use holons_boundary::{
     DanceRequestWire, DanceResponseWire, DanceTypeWire, HolonCollectionWire, HolonReferenceWire,
-    NodeCollectionWire, NodeWire, QueryPathMapWire, RequestBodyWire, ResponseBodyWire,
+    NodeCollectionWire, NodeWire, QueryDiagnosticWire, QueryPathMapWire, QueryRequestWire,
+    QueryResultDataWire, QueryResultWire, RequestBodyWire, ResponseBodyWire, RowSetWire,
     SmartReferenceWire, StagedReferenceWire, TransientReferenceWire,
 };
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use holons_core::dances::ResponseStatusCode;
-use holons_core::query_layer::QueryExpression;
+use holons_core::query_layer::{QueryExpression, QuerySpec, Row, RowSet};
 use holons_core::CollectionState;
 use map_commands_wire::{
     HolonActionWire, HolonCommandWire, MapCommandWire, MapIpcRequest, MapIpcResponse,
@@ -188,7 +189,7 @@ fn generate_fixtures() {
             15,
             tx_command(
                 41,
-                TransactionActionWire::Query(QueryExpression::new(relationship_name("children"))),
+                TransactionActionWire::Query(sample_query_request()),
             ),
             default_options(),
         ),
@@ -409,6 +410,11 @@ fn generate_fixtures() {
     );
     write_fixture(
         &fixtures_dir,
+        "response-ok-query-result.json",
+        &response(117, Ok(MapResultWire::QueryResult(sample_query_result()))),
+    );
+    write_fixture(
+        &fixtures_dir,
         "response-err-holon-not-found.json",
         &response(114, Err(HolonError::HolonNotFound("missing-holon".to_string()))),
     );
@@ -624,6 +630,33 @@ fn sample_dance_request() -> DanceRequestWire {
         dance_type: DanceTypeWire::QueryMethod(sample_node_collection()),
         body: RequestBodyWire::ParameterValues(sample_property_map()),
     }
+}
+
+fn sample_query_request() -> QueryRequestWire {
+    QueryRequestWire::new(
+        Vec::new(),
+        QuerySpec::LegacyRelationshipTraversal(QueryExpression::new(
+            relationship_name("children"),
+        )),
+        None,
+    )
+}
+
+fn sample_query_result() -> QueryResultWire {
+    QueryResultWire::new(
+        Some(QueryResultDataWire::RowSet(RowSetWire::from(
+            RowSet::new(vec![Row::new(
+                BTreeMap::from([(
+                    "title".to_string(),
+                    BaseValue::StringValue(map_string("alpha")),
+                )]),
+            )]),
+        ))),
+        vec![QueryDiagnosticWire::new(
+            "legacy_bridge",
+            "query substrate not implemented yet",
+        )],
+    )
 }
 
 fn sample_dance_response() -> DanceResponseWire {

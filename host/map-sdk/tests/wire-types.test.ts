@@ -9,6 +9,8 @@ import {
   isFileData,
   isMapIpcRequest,
   isMapIpcResponse,
+  isQueryRequestWire,
+  isQueryResultWire,
   isRow,
   isRowSet,
   isTransactionActionWire,
@@ -19,7 +21,7 @@ const fixtureFiles = readdirSync(fixturesDir).sort();
 
 describe('wire type fixtures', () => {
   it('discovers the generated fixture set', () => {
-    expect(fixtureFiles.length).toBe(41);
+    expect(fixtureFiles.length).toBe(42);
   });
 
   for (const fixtureFile of fixtureFiles) {
@@ -104,6 +106,57 @@ describe('shared operand wire type guards', () => {
         nested: {
           title: { StringValue: 'alpha' },
         },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('query contract wire type guards', () => {
+  it('accepts substrate-facing query request shapes', () => {
+    expect(
+      isQueryRequestWire({
+        target_refs: [],
+        query: {
+          LegacyRelationshipTraversal: {
+            relationship_name: 'children',
+          },
+        },
+        parameters: {
+          status: { StringValue: 'Active' },
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it('accepts materialized query result envelope shapes', () => {
+    expect(
+      isQueryResultWire({
+        data: {
+          RowSet: {
+            rows: [{ title: { StringValue: 'alpha' } }],
+          },
+        },
+        diagnostics: [{ code: 'ok', message: 'shape stabilized' }],
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects malformed query contract shapes', () => {
+    expect(
+      isQueryRequestWire({
+        target_refs: [],
+        query: {
+          relationship_name: 'children',
+        },
+        parameters: null,
+      }),
+    ).toBe(false);
+    expect(
+      isQueryResultWire({
+        data: {
+          RowSet: { title: { StringValue: 'alpha' } },
+        },
+        diagnostics: [],
       }),
     ).toBe(false);
   });
