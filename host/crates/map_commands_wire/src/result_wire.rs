@@ -1,8 +1,7 @@
 use base_types::BaseValue;
 use core_types::HolonId;
 use holons_boundary::{
-    DanceResponseWire, HolonCollectionWire, HolonReferenceWire, NodeCollectionWire,
-    QueryResultWire,
+    DanceResponseWire, HolonCollectionWire, HolonReferenceWire, NodeCollectionWire, QueryResultWire,
 };
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
@@ -79,7 +78,9 @@ impl From<MapResult> for MapResultWire {
             MapResult::NodeCollection(n) => {
                 MapResultWire::NodeCollection(NodeCollectionWire::from(&n))
             }
-            MapResult::QueryResult(result) => MapResultWire::QueryResult(QueryResultWire::from(&result)),
+            MapResult::QueryResult(result) => {
+                MapResultWire::QueryResult(QueryResultWire::from(&result))
+            }
             MapResult::Value(v) => MapResultWire::Value(v),
             MapResult::HolonId(id) => MapResultWire::HolonId(id),
             MapResult::EssentialContent(c) => MapResultWire::EssentialContent(c),

@@ -187,10 +187,7 @@ fn generate_fixtures() {
         "request-tx-query.json",
         &request(
             15,
-            tx_command(
-                41,
-                TransactionActionWire::Query(sample_query_request()),
-            ),
+            tx_command(41, TransactionActionWire::Query(sample_query_request())),
             default_options(),
         ),
     );
@@ -635,27 +632,17 @@ fn sample_dance_request() -> DanceRequestWire {
 fn sample_query_request() -> QueryRequestWire {
     QueryRequestWire::new(
         Vec::new(),
-        QuerySpec::LegacyRelationshipTraversal(QueryExpression::new(
-            relationship_name("children"),
-        )),
+        QuerySpec::LegacyRelationshipTraversal(QueryExpression::new(relationship_name("children"))),
         None,
     )
 }
 
 fn sample_query_result() -> QueryResultWire {
     QueryResultWire::new(
-        Some(QueryResultDataWire::RowSet(RowSetWire::from(
-            RowSet::new(vec![Row::new(
-                BTreeMap::from([(
-                    "title".to_string(),
-                    BaseValue::StringValue(map_string("alpha")),
-                )]),
-            )]),
-        ))),
-        vec![QueryDiagnosticWire::new(
-            "legacy_bridge",
-            "query substrate not implemented yet",
-        )],
+        Some(QueryResultDataWire::RowSet(RowSetWire::from(RowSet::new(vec![Row::new(
+            BTreeMap::from([("title".to_string(), BaseValue::StringValue(map_string("alpha")))]),
+        )])))),
+        vec![QueryDiagnosticWire::new("legacy_bridge", "query substrate not implemented yet")],
     )
 }
 
