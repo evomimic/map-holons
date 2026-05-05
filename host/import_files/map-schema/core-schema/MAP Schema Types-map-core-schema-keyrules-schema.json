@@ -1,14 +1,14 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-30T16:19:32",
+    "generated_at": "2026-05-04T18:14:26",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
     ],
     "load_with": [
-      "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-property-types.json"
     ]
   },
@@ -301,6 +301,112 @@
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[UsesKeyRule]->(KeyRuleType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "UsesKeyRule",
+        "type_name_plural": "UsesKeyRule Relationships",
+        "display_name": "UsesKeyRule",
+        "display_name_plural": "UsesKeyRule Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declares the KeyRuleType used to derive keys for instances of a type.",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(KeyRuleType)-[KeyRuleFor]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "KeyRuleFor",
+        "type_name_plural": "KeyRuleFor Relationships",
+        "display_name": "KeyRuleFor",
+        "display_name_plural": "KeyRuleFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of UsesKeyRule, from KeyRuleType to TypeDescriptor.",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(TypeDescriptor)-[UsesKeyRule]->(KeyRuleType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
           }
         }
       ]
