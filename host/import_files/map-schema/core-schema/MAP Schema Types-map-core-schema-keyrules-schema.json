@@ -1,15 +1,15 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-04T20:52:07",
+    "generated_at": "2026-05-05T11:39:21",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
-      "MAP Schema Types-map-core-schema-relationship-types.json",
-      "MAP Schema Types-map-core-schema-property-types.json"
+      "MAP Schema Types-map-core-schema-property-types.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json"
     ]
   },
   "holons": [
@@ -28,12 +28,6 @@
         "allows_additional_relationships": false
       },
       "relationships": [
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#TypeNameRule"
-          }
-        },
         {
           "name": "DependsOn",
           "target": {
@@ -114,20 +108,15 @@
         },
         {
           "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "#(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
-            },
-            {
-              "$ref": "#(PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType)"
-            }
-          ]
+          "target": {
+            "$ref": "#(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
+          }
         }
       ]
     },
     {
       "key": "EnumVariantRule",
-      "type": "#FormatRule.KeyRuleType",
+      "type": "#TypeDescriptor",
       "properties": {
         "is_abstract_type": false,
         "type_name": "EnumVariantRule",
@@ -145,6 +134,12 @@
           }
         },
         {
+          "name": "Extends",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
+          }
+        },
+        {
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#TypeNameRule"
@@ -154,7 +149,7 @@
     },
     {
       "key": "TypeNameRule",
-      "type": "#FormatRule.KeyRuleType",
+      "type": "#TypeDescriptor",
       "properties": {
         "is_abstract_type": false,
         "type_name": "TypeNameRule",
@@ -172,6 +167,12 @@
           }
         },
         {
+          "name": "Extends",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
+          }
+        },
+        {
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#TypeNameRule"
@@ -181,7 +182,7 @@
     },
     {
       "key": "TypeKindRule",
-      "type": "#FormatRule.KeyRuleType",
+      "type": "#TypeDescriptor",
       "properties": {
         "is_abstract_type": false,
         "type_name": "TypeKindRule",
@@ -196,6 +197,12 @@
           "name": "ComponentOf",
           "target": {
             "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
           }
         },
         {

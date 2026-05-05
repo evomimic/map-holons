@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-04T20:52:07",
+    "generated_at": "2026-05-05T11:39:21",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-schema.csv"
@@ -55,12 +55,6 @@
               "$ref": "#OperatorCategory.PropertyType"
             }
           ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "#(OperatorType)-[AffordedBy]->(ValueType)"
-          }
         }
       ]
     },

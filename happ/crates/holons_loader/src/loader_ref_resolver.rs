@@ -392,6 +392,16 @@ impl LoaderRefResolver {
             );
             match Self::resolve_endpoints(context, resolver_state, relationship_reference) {
                 Ok((source_endpoint, target_endpoints)) => {
+                    if let Err(error) = Self::validate_bootstrap_relationship_targets(
+                        relationship_name,
+                        target_endpoints.len(),
+                    ) {
+                        outcome
+                            .errors
+                            .push(Self::error_with_context(relationship_reference, error));
+                        continue;
+                    }
+
                     let staged_source =
                         match Self::resolve_staged_write_source(context, &source_endpoint) {
                             Ok(s) => s,
@@ -427,6 +437,27 @@ impl LoaderRefResolver {
                 Err(e) => outcome.errors.push(Self::error_with_context(relationship_reference, e)),
             }
         }
+    }
+
+    fn validate_bootstrap_relationship_targets(
+        relationship_name: &RelationshipName,
+        target_count: usize,
+    ) -> Result<(), HolonError> {
+        let extends = CoreRelationshipTypeName::Extends.as_relationship_name();
+        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
+
+        if (*relationship_name == extends || *relationship_name == inverse_of) && target_count != 1
+        {
+            return Err(HolonError::InvalidRelationship(
+                relationship_name.to_string(),
+                format!(
+                    "{} relationship must have exactly one target; found {}",
+                    relationship_name, target_count
+                ),
+            ));
+        }
+
+        Ok(())
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -948,44 +979,7 @@ impl LoaderRefResolver {
             }
         }
 
-        Self::append_type_descriptor_kind_anchor(&mut keyed_ancestors, ancestors)?;
-
         Ok(keyed_ancestors)
-    }
-
-    fn append_type_descriptor_kind_anchor(
-        keyed_ancestors: &mut Vec<MapString>,
-        ancestors: &[HolonReference],
-    ) -> Result<(), HolonError> {
-        let Some(first_ancestor) = ancestors.first() else {
-            return Ok(());
-        };
-
-        // TypeDescriptor is itself a holon type, but its schema inheritance walks through
-        // MetaTypeDescriptor. Add the HolonType anchor after the normal ancestry so generic
-        // endpoint RTDs such as SourceType/TargetType can match without weakening concrete order.
-        let type_descriptor_key = CoreHolonTypeName::TypeDescriptor.as_holon_name();
-        let holon_type_key = CoreHolonTypeName::HolonType.as_holon_name();
-        let key_property_name = CorePropertyTypeName::Key.as_property_name();
-        let instance_type_kind_property_name =
-            CorePropertyTypeName::InstanceTypeKind.as_property_name();
-
-        let first_key = Self::read_string_property(first_ancestor, &key_property_name)?;
-        if first_key != type_descriptor_key {
-            return Ok(());
-        }
-
-        let instance_type_kind =
-            Self::read_string_property(first_ancestor, &instance_type_kind_property_name)?;
-        if instance_type_kind.0 != TypeKind::Holon.to_string() {
-            return Ok(());
-        }
-
-        if !keyed_ancestors.iter().any(|key| *key == holon_type_key) {
-            keyed_ancestors.push(holon_type_key);
-        }
-
-        Ok(())
     }
 
     fn optional_descriptor_key(
@@ -1991,7 +1985,7 @@ mod tests {
     }
 
     #[test]
-    fn find_relationship_type_for_endpoints_matches_holon_type_anchor_for_type_descriptor_endpoint(
+    fn find_relationship_type_for_endpoints_matches_type_descriptor_endpoint_without_holon_anchor(
     ) -> Result<(), HolonError> {
         let context = build_context();
         let mut resolver_state = ResolverState::new();
@@ -2003,7 +1997,7 @@ mod tests {
             &context,
             "SourceType",
             "DeclaredRelationshipType",
-            "HolonType",
+            "TypeDescriptor",
             declared_meta.clone(),
         )?;
         let mut implements_dance = new_descriptor(
@@ -2028,7 +2022,7 @@ mod tests {
                 &implements_dance,
                 &type_descriptor,
             )?
-            .expect("TypeDescriptor endpoint should match generic HolonType RTD");
+            .expect("TypeDescriptor endpoint should match generic TypeDescriptor RTD");
 
         assert_eq!(direction, RelationshipDirection::Declared);
         assert_eq!(
@@ -2066,6 +2060,26 @@ mod tests {
         assert!(result.is_none());
 
         Ok(())
+    }
+
+    #[test]
+    fn validate_bootstrap_relationship_targets_rejects_multiple_extends_targets() {
+        let extends = CoreRelationshipTypeName::Extends.as_relationship_name();
+
+        assert!(matches!(
+            LoaderRefResolver::validate_bootstrap_relationship_targets(&extends, 2),
+            Err(HolonError::InvalidRelationship(name, _)) if name == "Extends"
+        ));
+    }
+
+    #[test]
+    fn validate_bootstrap_relationship_targets_rejects_missing_inverse_of_target() {
+        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
+
+        assert!(matches!(
+            LoaderRefResolver::validate_bootstrap_relationship_targets(&inverse_of, 0),
+            Err(HolonError::InvalidRelationship(name, _)) if name == "InverseOf"
+        ));
     }
 
     #[test]
