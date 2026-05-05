@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-30T16:19:32",
+    "generated_at": "2026-05-04T20:54:23",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-test-schema-book-person-inverse.csv"
@@ -35,7 +35,7 @@
         {
           "name": "DependsOn",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.5"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         }
       ]

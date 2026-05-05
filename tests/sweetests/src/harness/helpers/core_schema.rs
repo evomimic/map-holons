@@ -6,11 +6,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const CORE_SCHEMA_RELATIVE_PATHS: [&str; 7] = [
+const CORE_SCHEMA_RELATIVE_PATHS: [&str; 8] = [
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
+    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-schema.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-root.json",
@@ -27,8 +28,8 @@ pub struct CoreSchemaLoadMetrics {
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 182,
-    committed: 182,
+    staged: 195,
+    committed: 195,
     links_created: 1041,
     errors: 0,
     total_bundles: 7,

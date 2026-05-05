@@ -948,7 +948,44 @@ impl LoaderRefResolver {
             }
         }
 
+        Self::append_type_descriptor_kind_anchor(&mut keyed_ancestors, ancestors)?;
+
         Ok(keyed_ancestors)
+    }
+
+    fn append_type_descriptor_kind_anchor(
+        keyed_ancestors: &mut Vec<MapString>,
+        ancestors: &[HolonReference],
+    ) -> Result<(), HolonError> {
+        let Some(first_ancestor) = ancestors.first() else {
+            return Ok(());
+        };
+
+        // TypeDescriptor is itself a holon type, but its schema inheritance walks through
+        // MetaTypeDescriptor. Add the HolonType anchor after the normal ancestry so generic
+        // endpoint RTDs such as SourceType/TargetType can match without weakening concrete order.
+        let type_descriptor_key = CoreHolonTypeName::TypeDescriptor.as_holon_name();
+        let holon_type_key = CoreHolonTypeName::HolonType.as_holon_name();
+        let key_property_name = CorePropertyTypeName::Key.as_property_name();
+        let instance_type_kind_property_name =
+            CorePropertyTypeName::InstanceTypeKind.as_property_name();
+
+        let first_key = Self::read_string_property(first_ancestor, &key_property_name)?;
+        if first_key != type_descriptor_key {
+            return Ok(());
+        }
+
+        let instance_type_kind =
+            Self::read_string_property(first_ancestor, &instance_type_kind_property_name)?;
+        if instance_type_kind.0 != TypeKind::Holon.to_string() {
+            return Ok(());
+        }
+
+        if !keyed_ancestors.iter().any(|key| *key == holon_type_key) {
+            keyed_ancestors.push(holon_type_key);
+        }
+
+        Ok(())
     }
 
     fn optional_descriptor_key(
@@ -1577,6 +1614,20 @@ mod tests {
         Ok(HolonReference::Staged(context.mutation().stage_new_holon(transient_reference)?))
     }
 
+    fn self_described_type_descriptor(
+        context: &Arc<TransactionContext>,
+    ) -> Result<HolonReference, HolonError> {
+        let mut staged_type_descriptor = context.mutation().stage_new_holon(new_descriptor(
+            context,
+            "TypeDescriptor",
+            "TypeDescriptor",
+            TypeKind::Holon,
+        )?)?;
+        let type_descriptor_reference = HolonReference::Staged(staged_type_descriptor.clone());
+        staged_type_descriptor.with_descriptor(type_descriptor_reference.clone())?;
+        Ok(type_descriptor_reference)
+    }
+
     fn relationship_direction_meta(
         context: &Arc<TransactionContext>,
         direction_type_name: CoreHolonTypeName,
@@ -1929,6 +1980,55 @@ mod tests {
                 &depends_on,
             )?
             .expect("relationship RTD target should match generic InstanceRelationships RTD");
+
+        assert_eq!(direction, RelationshipDirection::Declared);
+        assert_eq!(
+            relationship_type_descriptor.reference_id_string(),
+            expected_relationship_type.reference_id_string()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn find_relationship_type_for_endpoints_matches_holon_type_anchor_for_type_descriptor_endpoint(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let declared_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::DeclaredRelationshipType)?;
+        let type_descriptor = self_described_type_descriptor(&context)?;
+
+        let expected_relationship_type = relationship_type_descriptor(
+            &context,
+            "SourceType",
+            "DeclaredRelationshipType",
+            "HolonType",
+            declared_meta.clone(),
+        )?;
+        let mut implements_dance = new_descriptor(
+            &context,
+            "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
+            "ImplementsDance",
+            TypeKind::Relationship,
+        )?;
+        implements_dance.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![type_descriptor.clone()],
+        )?;
+        implements_dance
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_meta])?;
+        let implements_dance = stage(&context, implements_dance)?;
+
+        let (relationship_type_descriptor, direction) =
+            LoaderRefResolver::find_relationship_type_for_endpoints(
+                &context,
+                &mut resolver_state,
+                &RelationshipName(MapString("SourceType".to_string())),
+                &implements_dance,
+                &type_descriptor,
+            )?
+            .expect("TypeDescriptor endpoint should match generic HolonType RTD");
 
         assert_eq!(direction, RelationshipDirection::Declared);
         assert_eq!(
