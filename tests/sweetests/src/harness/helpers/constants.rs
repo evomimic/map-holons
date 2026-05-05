@@ -14,6 +14,14 @@ pub const BOOK_DESCRIPTOR_KEY: &str = "Book.HolonType";
 pub const PERSON_DESCRIPTOR_KEY: &str = "Person.HolonType";
 pub const SCHEMA_TYPE_KEY: &str = "SchemaType";
 pub const HOLON_TYPE_KEY: &str = "HolonType";
+pub const DELETION_SEMANTIC_KEY: &str = "DeletionSemantic";
+pub const DELETION_SEMANTIC_ALLOW_KEY: &str = "DeletionSemantic.Allow";
+pub const DELETION_SEMANTIC_BLOCK_KEY: &str = "DeletionSemantic.Block";
+pub const DELETION_SEMANTIC_CASCADE_KEY: &str = "DeletionSemantic.Cascade";
+pub const OPERATOR_CATEGORY_KEY: &str = "OperatorCategory";
+pub const OPERATOR_CATEGORY_EQUALITY_KEY: &str = "OperatorCategory.Equality";
+pub const OPERATOR_CATEGORY_ORDERING_KEY: &str = "OperatorCategory.Ordering";
+pub const VARIANTS_RELATIONSHIP: &str = "Variants";
 pub const CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY: &str =
     "(TypeDescriptor)-[InstanceProperties]->(PropertyType)";
 pub const CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY: &str =
