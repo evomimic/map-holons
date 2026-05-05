@@ -984,24 +984,31 @@ impl LoaderRefResolver {
         debug!("[resolver] looking up RelationshipType by key '{}'", canonical_key.0);
 
         // 1) Prefer staged (Nursery) lookup by base key through the holon operations API.
-        let staged_candidates = context.lookup().get_staged_holons_by_base_key(canonical_key)?;
-
-        match staged_candidates.len() {
-            1 => {
-                let staged = staged_candidates.into_iter().next().unwrap();
+        match context.lookup().get_staged_holons_by_base_key(canonical_key) {
+            Ok(staged_candidates) => match staged_candidates.len() {
+                1 => {
+                    let staged = staged_candidates.into_iter().next().unwrap();
+                    debug!(
+                        "[resolver]   → FOUND staged RelationshipType for key '{}'",
+                        canonical_key.0
+                    );
+                    return Ok(Some(HolonReference::Staged(staged)));
+                }
+                n if n > 1 => {
+                    return Err(HolonError::DuplicateError(
+                        "relationship type by key".into(),
+                        n.to_string(),
+                    ));
+                }
+                _ => { /* fall through to saved fallback */ }
+            },
+            Err(HolonError::HolonNotFound(_)) => {
                 debug!(
-                    "[resolver]   → FOUND staged RelationshipType for key '{}'",
+                    "[resolver]   → NO staged RelationshipType for key '{}'; trying saved fallback",
                     canonical_key.0
                 );
-                return Ok(Some(HolonReference::Staged(staged)));
             }
-            n if n > 1 => {
-                return Err(HolonError::DuplicateError(
-                    "relationship type by key".into(),
-                    n.to_string(),
-                ));
-            }
-            _ => { /* fall through to saved fallback */ }
+            Err(error) => return Err(error),
         }
 
         // 2) Saved fallback: lazily fetch the saved index on first staged miss.
@@ -1721,16 +1728,17 @@ mod tests {
             "KeylessSourceParent",
             TypeKind::Holon,
         )?;
-        keyless_source_parent.remove_property_value(CorePropertyTypeName::Key)?;
         keyless_source_parent
             .add_related_holons(CoreRelationshipTypeName::Extends, vec![abstract_source.clone()])?;
+        let mut keyless_source_parent =
+            context.mutation().stage_new_holon(keyless_source_parent)?;
+        keyless_source_parent.remove_property_value(CorePropertyTypeName::Key)?;
+        let keyless_source_parent = HolonReference::Staged(keyless_source_parent);
 
         let mut concrete_source =
             new_descriptor(&context, "ConcreteSource", "ConcreteSource", TypeKind::Holon)?;
-        concrete_source.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&keyless_source_parent)],
-        )?;
+        concrete_source
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![keyless_source_parent])?;
         let concrete_source = stage(&context, concrete_source)?;
 
         let mut concrete_target =
@@ -1760,6 +1768,169 @@ mod tests {
             .expect("abstract ancestor endpoint pair should resolve");
 
         assert_eq!(direction, RelationshipDirection::Inverse);
+        assert_eq!(
+            relationship_type_descriptor.reference_id_string(),
+            expected_relationship_type.reference_id_string()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn find_relationship_type_for_endpoints_uses_type_descriptor_fallback_for_descriptor_sources(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let declared_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::DeclaredRelationshipType)?;
+
+        let type_descriptor = stage(
+            &context,
+            new_descriptor(&context, "TypeDescriptor", "TypeDescriptor", TypeKind::Holon)?,
+        )?;
+        let holon_type =
+            stage(&context, new_descriptor(&context, "HolonType", "HolonType", TypeKind::Holon)?)?;
+        let mut schema_type =
+            new_descriptor(&context, "SchemaType", "SchemaType", TypeKind::Holon)?;
+        schema_type.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![type_descriptor.clone()],
+        )?;
+        schema_type.add_related_holons(CoreRelationshipTypeName::Extends, vec![holon_type])?;
+        let schema_type = stage(&context, schema_type)?;
+
+        let expected_relationship_type = relationship_type_descriptor(
+            &context,
+            "ComponentOf",
+            "TypeDescriptor",
+            "SchemaType",
+            declared_meta,
+        )?;
+        let schema_endpoint =
+            typed_instance(&context, "MAP Core Schema-v0.0.5", schema_type.clone())?;
+
+        let (relationship_type_descriptor, direction) =
+            LoaderRefResolver::find_relationship_type_for_endpoints(
+                &context,
+                &mut resolver_state,
+                &RelationshipName(MapString("ComponentOf".to_string())),
+                &schema_type,
+                &schema_endpoint,
+            )?
+            .expect("descriptor endpoint should match generic TypeDescriptor RTD");
+
+        assert_eq!(direction, RelationshipDirection::Declared);
+        assert_eq!(
+            relationship_type_descriptor.reference_id_string(),
+            expected_relationship_type.reference_id_string()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn find_relationship_type_for_endpoints_prefers_concrete_descriptor_rtd_before_fallback(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let declared_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::DeclaredRelationshipType)?;
+
+        let type_descriptor = stage(
+            &context,
+            new_descriptor(&context, "TypeDescriptor", "TypeDescriptor", TypeKind::Holon)?,
+        )?;
+        let mut schema_type =
+            new_descriptor(&context, "SchemaType", "SchemaType", TypeKind::Holon)?;
+        schema_type
+            .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![type_descriptor])?;
+        let schema_type = stage(&context, schema_type)?;
+
+        relationship_type_descriptor(
+            &context,
+            "ComponentOf",
+            "TypeDescriptor",
+            "SchemaType",
+            declared_meta.clone(),
+        )?;
+        let expected_relationship_type = relationship_type_descriptor(
+            &context,
+            "ComponentOf",
+            "SchemaType",
+            "SchemaType",
+            declared_meta,
+        )?;
+        let schema_endpoint =
+            typed_instance(&context, "MAP Core Schema-v0.0.5", schema_type.clone())?;
+
+        let (relationship_type_descriptor, direction) =
+            LoaderRefResolver::find_relationship_type_for_endpoints(
+                &context,
+                &mut resolver_state,
+                &RelationshipName(MapString("ComponentOf".to_string())),
+                &schema_type,
+                &schema_endpoint,
+            )?
+            .expect("concrete descriptor RTD should resolve first");
+
+        assert_eq!(direction, RelationshipDirection::Declared);
+        assert_eq!(
+            relationship_type_descriptor.reference_id_string(),
+            expected_relationship_type.reference_id_string()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn find_relationship_type_for_endpoints_matches_generic_instance_relationships_for_rtd_targets(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let declared_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::DeclaredRelationshipType)?;
+
+        let type_descriptor = stage(
+            &context,
+            new_descriptor(&context, "TypeDescriptor", "TypeDescriptor", TypeKind::Holon)?,
+        )?;
+        let mut schema_type =
+            new_descriptor(&context, "SchemaType", "SchemaType", TypeKind::Holon)?;
+        schema_type.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![type_descriptor.clone()],
+        )?;
+        let schema_type = stage(&context, schema_type)?;
+
+        let expected_relationship_type = relationship_type_descriptor(
+            &context,
+            "InstanceRelationships",
+            "TypeDescriptor",
+            "DeclaredRelationshipType",
+            declared_meta.clone(),
+        )?;
+        let mut depends_on = new_descriptor(
+            &context,
+            "(SchemaType)-[DependsOn]->(SchemaType)",
+            "DependsOn",
+            TypeKind::Relationship,
+        )?;
+        depends_on
+            .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![type_descriptor])?;
+        depends_on.add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_meta])?;
+        let depends_on = stage(&context, depends_on)?;
+
+        let (relationship_type_descriptor, direction) =
+            LoaderRefResolver::find_relationship_type_for_endpoints(
+                &context,
+                &mut resolver_state,
+                &RelationshipName(MapString("InstanceRelationships".to_string())),
+                &schema_type,
+                &depends_on,
+            )?
+            .expect("relationship RTD target should match generic InstanceRelationships RTD");
+
+        assert_eq!(direction, RelationshipDirection::Declared);
         assert_eq!(
             relationship_type_descriptor.reference_id_string(),
             expected_relationship_type.reference_id_string()
