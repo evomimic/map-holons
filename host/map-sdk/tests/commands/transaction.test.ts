@@ -34,8 +34,8 @@ import type {
   HolonReferenceWire,
   LocalId,
   MapResultWire,
-  NodeCollectionWire,
-  QueryExpression,
+  QueryRequestWire,
+  QueryResultWire,
   RequestOptions,
   SmartReferenceWire,
   TransactionActionWire,
@@ -128,18 +128,33 @@ const danceResponse: DanceResponseWire = {
   descriptor: stagedReference,
 };
 
-const queryExpression: QueryExpression = {
-  relationship_name: 'related_to',
+const queryRequest: QueryRequestWire = {
+  target_refs: [stagedReference],
+  query: {
+    LegacyRelationshipTraversal: {
+      relationship_name: 'related_to',
+    },
+  },
+  parameters: {
+    status: {
+      StringValue: 'Active',
+    },
+  },
 };
 
-const nodeCollection: NodeCollectionWire = {
-  members: [
-    {
-      source_holon: stagedReference,
-      relationships: null,
+const queryResult: QueryResultWire = {
+  data: {
+    RowSet: {
+      rows: [
+        {
+          title: {
+            StringValue: 'alpha',
+          },
+        },
+      ],
     },
-  ],
-  query_spec: queryExpression,
+  },
+  diagnostics: [],
 };
 
 const contentSet: ContentSet = {
@@ -319,10 +334,10 @@ const transactionCases: TransactionCase<unknown>[] = [
   },
   {
     name: 'query',
-    run: () => query(txId, queryExpression),
-    action: { Query: queryExpression },
-    okResult: { NodeCollection: nodeCollection },
-    expected: nodeCollection,
+    run: () => query(txId, queryRequest),
+    action: { Query: queryRequest },
+    okResult: { QueryResult: queryResult },
+    expected: queryResult,
     wrongResult: { Collection: holonCollection },
   },
   {

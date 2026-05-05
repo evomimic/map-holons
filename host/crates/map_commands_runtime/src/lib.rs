@@ -1,4 +1,5 @@
 mod holon_handler;
+mod query_adapter;
 mod runtime;
 mod runtime_session;
 mod space_handler;

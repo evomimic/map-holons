@@ -5,7 +5,13 @@
       "tx_id": 41,
       "action": {
         "Query": {
-          "relationship_name": "children"
+          "target_refs": [],
+          "query": {
+            "LegacyRelationshipTraversal": {
+              "relationship_name": "children"
+            }
+          },
+          "parameters": null
         }
       }
     }

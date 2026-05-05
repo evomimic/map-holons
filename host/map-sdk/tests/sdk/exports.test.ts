@@ -10,6 +10,8 @@ import type {
   HolonId,
   LocalId,
   PropertyName,
+  QueryRequest,
+  QueryResult,
   ReadableHolon,
   Row,
   RowSet,
@@ -60,7 +62,7 @@ describe('public SDK exports', () => {
 
   it('does not leave dance/query on the public MapTransaction prototype', () => {
     expect('dance' in sdk.MapTransaction.prototype).toBe(false);
-    expect('query' in sdk.MapTransaction.prototype).toBe(false);
+    expect('query' in sdk.MapTransaction.prototype).toBe(true);
   });
 
   it('supports the documented public type exports at compile time', () => {
@@ -76,6 +78,21 @@ describe('public SDK exports', () => {
     };
     const rowSet: RowSet = {
       rows: [row, { published: { BooleanValue: true } }],
+    };
+    const queryRequest: QueryRequest = {
+      target_refs: [],
+      query: {
+        LegacyRelationshipTraversal: {
+          relationship_name: relationshipName,
+        },
+      },
+      parameters: row,
+    };
+    const queryResult: QueryResult = {
+      data: {
+        RowSet: rowSet,
+      },
+      diagnostics: [],
     };
     const smartReference: SmartReference = { holonId };
     const fileData: FileData = {
@@ -110,6 +127,10 @@ describe('public SDK exports', () => {
     expect(localId).toEqual([4, 5, 6]);
     expect(propertyName).toBe('title');
     expect(relationshipName).toBe('related_to');
+    expect(queryRequest.query.LegacyRelationshipTraversal.relationship_name).toBe(
+      'related_to',
+    );
+    expect(queryResult.data).toEqual({ RowSet: rowSet });
     expect(row['rank']).toEqual({ IntegerValue: 7 });
     expect(rowSet.rows).toHaveLength(2);
     expect(smartReference).toEqual({ holonId });

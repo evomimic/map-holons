@@ -25,7 +25,8 @@ pub mod core_shared_objects {
 
 pub mod query_layer {
     pub use crate::context_binding::{
-        NodeCollectionWire, NodeWire, QueryPathMapWire, RowSetWire, RowWire,
+        NodeCollectionWire, NodeWire, QueryDiagnosticWire, QueryPathMapWire, QueryRequestWire,
+        QueryResultDataWire, QueryResultWire, RowSetWire, RowWire,
     };
 }
 

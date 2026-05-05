@@ -19,6 +19,7 @@ import {
   isString,
   isPropertyMap,
 } from './references';
+import { type QueryResultWire, isQueryResultWire } from './query';
 
 // ===========================================
 // Result Payload Types
@@ -51,6 +52,7 @@ export type MapResultWire =
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { NodeCollection: NodeCollectionWire }
+  | { QueryResult: QueryResultWire }
   | { Value: BaseValue }
   | { HolonId: HolonId }
   | { EssentialContent: EssentialHolonContent }
@@ -90,6 +92,8 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
       isHolonCollectionWire(value.Collection)) ||
     (hasSingleKey(value, 'NodeCollection') &&
       isNodeCollectionWire(value.NodeCollection)) ||
+    (hasSingleKey(value, 'QueryResult') &&
+      isQueryResultWire(value.QueryResult)) ||
     (hasSingleKey(value, 'Value') && isBaseValue(value.Value)) ||
     (hasSingleKey(value, 'HolonId') && isHolonId(value.HolonId)) ||
     (hasSingleKey(value, 'EssentialContent') &&
