@@ -1,15 +1,15 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-29T10:51:57",
+    "generated_at": "2026-05-05T11:39:21",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
     ],
     "load_with": [
-      "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-root.json",
-      "MAP Schema Types-map-core-schema-property-types.json"
+      "MAP Schema Types-map-core-schema-property-types.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json"
     ]
   },
   "holons": [
@@ -29,15 +29,9 @@
       },
       "relationships": [
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#TypeNameRule"
-          }
-        },
-        {
           "name": "DependsOn",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         }
       ]
@@ -114,20 +108,15 @@
         },
         {
           "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "#(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
-            },
-            {
-              "$ref": "#(PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType)"
-            }
-          ]
+          "target": {
+            "$ref": "#(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
+          }
         }
       ]
     },
     {
       "key": "EnumVariantRule",
-      "type": "#FormatRule.KeyRuleType",
+      "type": "#TypeDescriptor",
       "properties": {
         "is_abstract_type": false,
         "type_name": "EnumVariantRule",
@@ -145,6 +134,12 @@
           }
         },
         {
+          "name": "Extends",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
+          }
+        },
+        {
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#TypeNameRule"
@@ -154,7 +149,7 @@
     },
     {
       "key": "TypeNameRule",
-      "type": "#FormatRule.KeyRuleType",
+      "type": "#TypeDescriptor",
       "properties": {
         "is_abstract_type": false,
         "type_name": "TypeNameRule",
@@ -172,6 +167,12 @@
           }
         },
         {
+          "name": "Extends",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
+          }
+        },
+        {
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#TypeNameRule"
@@ -181,7 +182,7 @@
     },
     {
       "key": "TypeKindRule",
-      "type": "#FormatRule.KeyRuleType",
+      "type": "#TypeDescriptor",
       "properties": {
         "is_abstract_type": false,
         "type_name": "TypeKindRule",
@@ -196,6 +197,12 @@
           "name": "ComponentOf",
           "target": {
             "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#FormatRule.KeyRuleType"
           }
         },
         {
@@ -301,6 +308,112 @@
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[UsesKeyRule]->(KeyRuleType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "UsesKeyRule",
+        "type_name_plural": "UsesKeyRule Relationships",
+        "display_name": "UsesKeyRule",
+        "display_name_plural": "UsesKeyRule Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declares the KeyRuleType used to derive keys for instances of a type.",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TypeDescriptor"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(KeyRuleType)-[KeyRuleFor]->(TypeDescriptor)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "KeyRuleFor",
+        "type_name_plural": "KeyRuleFor Relationships",
+        "display_name": "KeyRuleFor",
+        "display_name_plural": "KeyRuleFor Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of UsesKeyRule, from KeyRuleType to TypeDescriptor.",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(TypeDescriptor)-[UsesKeyRule]->(KeyRuleType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#KeyRuleType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TypeDescriptor"
           }
         }
       ]

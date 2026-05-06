@@ -4,20 +4,24 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::MapString;
 use core_types::{HolonError, RelationshipName};
-use type_names::CoreRelationshipTypeName;
+use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
 /// Runtime wrapper for inverse relationship descriptors.
 ///
 /// Construction validates that the descriptor's effective `Extends` chain reaches
-/// `InverseRelationshipType`.
+/// [`CoreHolonTypeName::InverseRelationshipType`].
 pub struct InverseRelationshipDescriptor {
     holon: HolonReference,
 }
 
 impl InverseRelationshipDescriptor {
-    /// Wraps a relationship descriptor only if it extends `InverseRelationshipType`.
+    /// Wraps a relationship descriptor only if it extends
+    /// [`CoreHolonTypeName::InverseRelationshipType`].
     pub fn try_from_holon(holon: HolonReference) -> Result<Self, HolonError> {
-        accessor_helpers::validate_extends_chain_reaches(&holon, "InverseRelationshipType")?;
+        accessor_helpers::validate_extends_chain_reaches(
+            &holon,
+            &CoreHolonTypeName::InverseRelationshipType.as_holon_name(),
+        )?;
         Ok(Self { holon })
     }
 
@@ -102,9 +106,11 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::descriptors::test_support::{
+        build_context, core_holon_type_name, new_descriptor_holon,
+    };
     use crate::reference_layer::WritableHolon;
-    use type_names::CoreRelationshipTypeName;
+    use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
     #[test]
     fn try_from_holon_accepts_inverse_relationship_chain() -> Result<(), HolonError> {
@@ -112,7 +118,7 @@ mod tests {
         let inverse_type = new_descriptor_holon(
             &context,
             "inverse-relationship-type",
-            "InverseRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?;
         let mut concrete =
@@ -133,7 +139,7 @@ mod tests {
         let declared_type = new_descriptor_holon(
             &context,
             "declared-relationship-type",
-            "DeclaredRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
             "Relationship",
         )?;
         let mut concrete =
@@ -144,7 +150,8 @@ mod tests {
         assert!(matches!(
             InverseRelationshipDescriptor::try_from_holon(concrete.into()),
             Err(HolonError::WrongDescriptorKind { expected, found, .. })
-                if expected == "InverseRelationshipType" && found == "AuthoredBy"
+                if expected == core_holon_type_name(CoreHolonTypeName::InverseRelationshipType)
+                    && found == "AuthoredBy"
         ));
 
         Ok(())
@@ -156,13 +163,13 @@ mod tests {
         let declared_type = new_descriptor_holon(
             &context,
             "declared-type-for-inverse-of",
-            "DeclaredRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
             "Relationship",
         )?;
         let inverse_type = new_descriptor_holon(
             &context,
             "inverse-type-for-inverse-of",
-            "InverseRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?;
         let mut declared =
@@ -190,7 +197,7 @@ mod tests {
         let inverse_type = new_descriptor_holon(
             &context,
             "inverse-type-for-missing-inverse-of",
-            "InverseRelationshipType",
+            &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?;
         let mut inverse = new_descriptor_holon(

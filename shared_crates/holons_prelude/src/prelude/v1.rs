@@ -59,7 +59,8 @@ pub use holons_core::reference_layer::{
 };
 pub use holons_core::{
     Descriptor, ExtendsIter, HolonDescriptor, PropertyDescriptor, RelationshipDescriptor,
-    TypeHeader, ValueDescriptor, ancestors, walk_extends_chain,
+    RelationshipDirection, TypeHeader, ValueDescriptor, ancestors, classify_relationship_direction,
+    walk_extends_chain,
 };
 
 pub use type_names::{

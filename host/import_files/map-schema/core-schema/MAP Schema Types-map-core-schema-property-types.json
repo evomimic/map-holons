@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-29T10:51:57",
+    "generated_at": "2026-05-05T11:39:21",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-property-types.csv"
@@ -29,7 +29,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -68,7 +68,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -107,7 +107,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -146,7 +146,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -185,7 +185,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -224,7 +224,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -263,7 +263,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -302,7 +302,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -341,7 +341,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -380,7 +380,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -419,7 +419,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -458,7 +458,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -497,7 +497,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -536,7 +536,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -575,7 +575,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -614,7 +614,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -653,7 +653,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -692,7 +692,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -716,84 +716,6 @@
       ]
     },
     {
-      "key": "PropertyName.PropertyType",
-      "type": "#TypeDescriptor",
-      "properties": {
-        "is_abstract_type": false,
-        "type_name": "PropertyName",
-        "type_name_plural": "PropertyNames",
-        "display_name": "Property Name",
-        "display_name_plural": "Property Names",
-        "description": "The name of a property.",
-        "instance_type_kind": "Property"
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "ValueType",
-          "target": {
-            "$ref": "#PropertyNameValueType"
-          }
-        }
-      ]
-    },
-    {
-      "key": "SpaceName.PropertyType",
-      "type": "#TypeDescriptor",
-      "properties": {
-        "is_abstract_type": false,
-        "type_name": "SpaceName",
-        "type_name_plural": "SpaceNames",
-        "display_name": "SpaceName",
-        "display_name_plural": "SpaceNames",
-        "description": "The type used for names of HolonSpaces",
-        "instance_type_kind": "Property"
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "ValueType",
-          "target": {
-            "$ref": "#MapStringValueType"
-          }
-        }
-      ]
-    },
-    {
       "key": "TypeKind.PropertyType",
       "type": "#TypeDescriptor",
       "properties": {
@@ -809,7 +731,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -848,7 +770,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -887,7 +809,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -926,7 +848,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -965,7 +887,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -1004,7 +926,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {

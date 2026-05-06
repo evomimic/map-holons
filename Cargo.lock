@@ -3125,6 +3125,7 @@ name = "holons_loader"
 version = "0.1.0"
 dependencies = [
  "core_types",
+ "holons_core",
  "holons_prelude",
  "tracing",
 ]

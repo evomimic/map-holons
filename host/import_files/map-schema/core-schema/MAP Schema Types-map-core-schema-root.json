@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-29T10:51:57",
+    "generated_at": "2026-05-05T11:39:21",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -9,31 +9,22 @@
     "load_with": [
       "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json",
-      "MAP Schema Types-map-core-schema-concrete-value-types.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
   },
   "holons": [
     {
-      "key": "MAP Core Schema-v0.0.4",
+      "key": "MAP Core Schema-v0.0.6",
       "type": "#SchemaType",
       "properties": {
-        "type_name": "MAP Core Schema-v0.0.4",
-        "display_name": "MAP Core Schema-v0.0.4",
+        "type_name": "MAP Core Schema-v0.0.6",
+        "display_name": "MAP Core Schema-v0.0.6",
         "instance_type_kind": "Holon",
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
-      },
-      "relationships": [
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#TypeNameRule"
-          }
-        }
-      ]
+      }
     },
     {
       "key": "TypeDescriptor",
@@ -51,7 +42,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -65,32 +56,6 @@
           "target": {
             "$ref": "#TypeNameRule"
           }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#TypeName.PropertyType"
-            },
-            {
-              "$ref": "#TypeNamePlural.PropertyType"
-            },
-            {
-              "$ref": "#DisplayName.PropertyType"
-            },
-            {
-              "$ref": "#DisplayNamePlural.PropertyType"
-            },
-            {
-              "$ref": "#Description.PropertyType"
-            },
-            {
-              "$ref": "#IsAbstractType.PropertyType"
-            },
-            {
-              "$ref": "#InstanceTypeKind.PropertyType"
-            }
-          ]
         }
       ]
     },
@@ -110,7 +75,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -135,20 +100,6 @@
               "$ref": "#AllowsAdditionalRelationships.PropertyType"
             }
           ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "#(HolonType)-[Properties]->(PropertyType)"
-            },
-            {
-              "$ref": "#(HolonType)-[DescribedBy]->(TypeDescriptor)"
-            },
-            {
-              "$ref": "#(HolonType)-[OwnedBy]->(HolonSpaceType)"
-            }
-          ]
         }
       ]
     },
@@ -168,7 +119,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -181,18 +132,6 @@
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#TypeNameRule"
-          }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": {
-            "$ref": "#PropertyName.PropertyType"
-          }
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "#(PropertyType)-[ValueType]->(ValueType)"
           }
         }
       ]
@@ -213,7 +152,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -227,55 +166,6 @@
           "target": {
             "$ref": "#TypeNameRule"
           }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#DeletionSemantic"
-            },
-            {
-              "$ref": "#IsDefinitional.PropertyType"
-            },
-            {
-              "$ref": "#IsOrdered.PropertyType"
-            },
-            {
-              "$ref": "#AllowsDuplicates.PropertyType"
-            },
-            {
-              "$ref": "#MinCardinality.PropertyType"
-            },
-            {
-              "$ref": "#MaxCardinality.PropertyType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "#(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)"
-            },
-            {
-              "$ref": "#(DeclaredRelationshipType)-[TargetType]->(HolonType)"
-            },
-            {
-              "$ref": "#(DeclaredRelationshipType)-[SourceType]->(HolonType)"
-            },
-            {
-              "$ref": "#(MetaRelationshipType)-[SourceType]->(HolonType)"
-            },
-            {
-              "$ref": "#(MetaRelationshipType)-[TargetType]->(HolonType)"
-            },
-            {
-              "$ref": "#(HolonType)-[SourceOf]->(MetaRelationshipType)"
-            },
-            {
-              "$ref": "#(HolonType)-[TargetOf]->(MetaRelationshipType)"
-            }
-          ]
         }
       ]
     },
@@ -295,7 +185,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -309,43 +199,6 @@
           "target": {
             "$ref": "#TypeNameRule"
           }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#DeletionSemantic"
-            },
-            {
-              "$ref": "#IsDefinitional.PropertyType"
-            },
-            {
-              "$ref": "#IsOrdered.PropertyType"
-            },
-            {
-              "$ref": "#AllowsDuplicates.PropertyType"
-            },
-            {
-              "$ref": "#MinCardinality.PropertyType"
-            },
-            {
-              "$ref": "#MaxCardinality.PropertyType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "#(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
-            },
-            {
-              "$ref": "#(InverseRelationshipType)-[TargetType]->(HolonType)"
-            },
-            {
-              "$ref": "#(InverseRelationshipType)-[SourceType]->(HolonType)"
-            }
-          ]
         }
       ]
     },
@@ -365,7 +218,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -424,7 +277,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -447,6 +300,9 @@
             },
             {
               "$ref": "#(HolonType)-[OwnedBy]->(HolonSpaceType)"
+            },
+            {
+              "$ref": "#(HolonType)-[Properties]->(PropertyType)"
             }
           ]
         }
@@ -468,13 +324,13 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaHolonType"
+            "$ref": "#MetaTypeDescriptor"
           }
         },
         {
@@ -513,7 +369,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -532,9 +388,6 @@
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "#DeletionSemantic"
-            },
-            {
               "$ref": "#IsDefinitional.PropertyType"
             },
             {
@@ -548,6 +401,9 @@
             },
             {
               "$ref": "#MaxCardinality.PropertyType"
+            },
+            {
+              "$ref": "#DeletionSemantic.PropertyType"
             }
           ]
         },
@@ -555,16 +411,10 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "#(MetaRelationshipType)-[SourceType]->(HolonType)"
+              "$ref": "#(MetaRelationshipType)-[SourceType]->(TypeDescriptor)"
             },
             {
-              "$ref": "#(MetaRelationshipType)-[TargetType]->(HolonType)"
-            },
-            {
-              "$ref": "#(HolonType)-[SourceOf]->(MetaRelationshipType)"
-            },
-            {
-              "$ref": "#(HolonType)-[TargetOf]->(MetaRelationshipType)"
+              "$ref": "#(MetaRelationshipType)-[TargetType]->(TypeDescriptor)"
             }
           ]
         }
@@ -586,7 +436,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -600,55 +450,6 @@
           "target": {
             "$ref": "#TypeNameRule"
           }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#DeletionSemantic"
-            },
-            {
-              "$ref": "#IsDefinitional.PropertyType"
-            },
-            {
-              "$ref": "#IsOrdered.PropertyType"
-            },
-            {
-              "$ref": "#AllowsDuplicates.PropertyType"
-            },
-            {
-              "$ref": "#MinCardinality.PropertyType"
-            },
-            {
-              "$ref": "#MaxCardinality.PropertyType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "#(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)"
-            },
-            {
-              "$ref": "#(DeclaredRelationshipType)-[TargetType]->(HolonType)"
-            },
-            {
-              "$ref": "#(DeclaredRelationshipType)-[SourceType]->(HolonType)"
-            },
-            {
-              "$ref": "#(MetaRelationshipType)-[SourceType]->(HolonType)"
-            },
-            {
-              "$ref": "#(MetaRelationshipType)-[TargetType]->(HolonType)"
-            },
-            {
-              "$ref": "#(HolonType)-[SourceOf]->(MetaRelationshipType)"
-            },
-            {
-              "$ref": "#(HolonType)-[TargetOf]->(MetaRelationshipType)"
-            }
-          ]
         }
       ]
     },
@@ -668,7 +469,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -684,41 +485,10 @@
           }
         },
         {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#DeletionSemantic"
-            },
-            {
-              "$ref": "#IsDefinitional.PropertyType"
-            },
-            {
-              "$ref": "#IsOrdered.PropertyType"
-            },
-            {
-              "$ref": "#AllowsDuplicates.PropertyType"
-            },
-            {
-              "$ref": "#MinCardinality.PropertyType"
-            },
-            {
-              "$ref": "#MaxCardinality.PropertyType"
-            }
-          ]
-        },
-        {
           "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "#(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
-            },
-            {
-              "$ref": "#(InverseRelationshipType)-[TargetType]->(HolonType)"
-            },
-            {
-              "$ref": "#(InverseRelationshipType)-[SourceType]->(HolonType)"
-            }
-          ]
+          "target": {
+            "$ref": "#(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
+          }
         }
       ]
     },
@@ -731,7 +501,7 @@
         "display_name": "Schema Type",
         "display_name_plural": "Schema Types",
         "instance_type_kind": "Holon",
-        "description": "Describes schema holons - groupings of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies.",
+        "description": "Describes schema holons - holons that anchor a cohesive schema. Includes the ability to define inter-schema dependencies.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -740,7 +510,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -754,17 +524,6 @@
           "target": {
             "$ref": "#TypeNameRule"
           }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#MapString.PropertyType"
-            },
-            {
-              "$ref": "#Description.PropertyType"
-            }
-          ]
         },
         {
           "name": "InstanceRelationships",
@@ -792,7 +551,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {
@@ -806,17 +565,6 @@
           "target": {
             "$ref": "#TypeNameRule"
           }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#SpaceName.PropertyType"
-            },
-            {
-              "$ref": "#Description.PropertyType"
-            }
-          ]
         }
       ]
     },
@@ -838,7 +586,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         },
         {

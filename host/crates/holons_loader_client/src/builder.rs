@@ -66,10 +66,7 @@ pub struct RawLoaderHolon {
     ///
     /// The `name` is the relationship type name (`type_name`), and
     /// `targets` are the endpoint holon keys. Directionality (declared vs
-    /// inverse) will ultimately be derived from the relationship type
-    /// definition (Extends → DeclaredRelationshipType / InverseRelationshipType)
-    /// when constructing `LoaderRelationshipReference` holons. In the initial
-    /// implementation we treat all relationships as declared (`is_declared = true`).
+    /// inverse) is resolved by the guest from relationship type definitions.
     #[serde(default)]
     pub relationships: Vec<RawRelationshipEndpoints>,
 }
@@ -93,9 +90,8 @@ pub struct RawRelationshipEndpoints {
 /// Internal unified representation of a loader relationship.
 ///
 /// The parser converts `RawLoaderHolon.relationships` into this neutral shape
-/// so that the builder logic can operate over a single collection. Polarity
-/// (`is_declared`) is *not* stored here; it will be derived from the
-/// relationship type definitions in a later phase.
+/// so that the builder logic can operate over a single collection. Direction
+/// is resolved by the guest from relationship type definitions.
 pub struct RawRelationshipSpec {
     /// Relationship name, as declared in the JSON.
     pub name: String,
@@ -188,7 +184,7 @@ pub fn create_loader_holon_from_raw(
 ///
 /// This allows the rest of the builder logic to operate over a single
 /// collection regardless of how the JSON was produced. Directionality
-/// (`is_declared`) is computed later from relationship type definitions.
+/// is resolved later by the guest from relationship type definitions.
 pub fn collect_relationship_specs_for_loader_holon(
     raw_holon: &RawLoaderHolon,
 ) -> Vec<RawRelationshipSpec> {
@@ -205,8 +201,6 @@ pub fn collect_relationship_specs_for_loader_holon(
 /// For each `RawRelationshipSpec`:
 /// - Create a `LoaderRelationshipReference` and set:
 ///   - `relationship_name`
-///   - `is_declared` (currently always `true`; a later phase will derive this
-///     from relationship type definitions).
 /// - Create a `LoaderHolonReference` for the source holon key.
 /// - Create one `LoaderHolonReference` per target holon key (in order).
 /// - Wire relationships:
@@ -250,7 +244,6 @@ pub fn attach_relationships_for_loader_holon(
 /// Behavior:
 /// - If `type_descriptor_key` is non-empty:
 ///   - Create `LoaderRelationshipReference` with `relationship_name = "DescribedBy"`.
-///   - Mark `is_declared = true`.
 ///   - Create source and target `LoaderHolonReference`s with the appropriate
 ///     `holon_key` values.
 ///   - Wire them using:
@@ -437,12 +430,6 @@ fn create_relationship_reference(
     relationship_reference.with_property_value(
         CorePropertyTypeName::RelationshipName,
         BaseValue::StringValue(MapString(relationship_name.to_string())),
-    )?;
-    // We currently treat all relationships as declared; if we allow inverse relationships in import
-    // json, we'll need a conditional here and possibly derive this from relationship type definitions
-    relationship_reference.with_property_value(
-        CorePropertyTypeName::IsDeclared,
-        BaseValue::BooleanValue(MapBoolean(true)),
     )?;
 
     // Source endpoint reference.

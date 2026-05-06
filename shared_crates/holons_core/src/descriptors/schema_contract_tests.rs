@@ -1,12 +1,12 @@
 use super::test_support::{
-    build_context, new_descriptor_holon, new_holon_type_descriptor, new_property_descriptor_holon,
-    new_relationship_descriptor_holon,
+    build_context, core_holon_type_name, new_descriptor_holon, new_holon_type_descriptor,
+    new_property_descriptor_holon, new_relationship_descriptor_holon,
 };
 use crate::descriptors::{HolonDescriptor, RelationshipDescriptor};
 use crate::reference_layer::{HolonReference, WritableHolon};
 use base_types::MapString;
 use core_types::{HolonError, PropertyName, RelationshipName};
-use type_names::CoreRelationshipTypeName;
+use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
 #[test]
 fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), HolonError> {
@@ -28,13 +28,13 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
     let declared_type = new_descriptor_holon(
         &context,
         "declared-relationship-type",
-        "DeclaredRelationshipType",
+        &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
         "Relationship",
     )?;
     let inverse_type = new_descriptor_holon(
         &context,
         "inverse-relationship-type",
-        "InverseRelationshipType",
+        &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
         "Relationship",
     )?;
     let mut authored_by = new_relationship_descriptor_holon(

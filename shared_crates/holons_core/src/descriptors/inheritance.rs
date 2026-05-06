@@ -1,9 +1,18 @@
 use std::collections::HashSet;
 
-use crate::descriptors::accessor_helpers::{descriptor_label, lock_error};
+use crate::descriptors::accessor_helpers::{descriptor_label, lock_error, search_extends_chain};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
-use type_names::relationship_names::CoreRelationshipTypeName;
+use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
+
+/// Direction of a relationship type descriptor relative to its declared edge.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RelationshipDirection {
+    /// The descriptor names the canonical source-to-target relationship.
+    Declared,
+    /// The descriptor names the inverse target-to-source relationship.
+    Inverse,
+}
 
 /// Resolves the direct `Extends` parent for a descriptor holon.
 ///
@@ -39,6 +48,37 @@ pub fn walk_extends_chain(start: &HolonReference) -> ExtendsIter {
 /// rather than a short-circuiting iterator walk.
 pub fn ancestors(start: &HolonReference) -> Result<Vec<HolonReference>, HolonError> {
     walk_extends_chain(start).collect()
+}
+
+/// Classifies whether a relationship type descriptor is declared or inverse.
+///
+/// The descriptor's effective `Extends` chain must reach either
+/// [`CoreHolonTypeName::DeclaredRelationshipType`] or
+/// [`CoreHolonTypeName::InverseRelationshipType`]; otherwise this returns
+/// [`HolonError::WrongDescriptorKind`].
+pub fn classify_relationship_direction(
+    relationship_type_descriptor: &HolonReference,
+) -> Result<RelationshipDirection, HolonError> {
+    let declared_relationship_type = CoreHolonTypeName::DeclaredRelationshipType.as_holon_name();
+    let inverse_relationship_type = CoreHolonTypeName::InverseRelationshipType.as_holon_name();
+    let expected_relationship_type_names =
+        [declared_relationship_type.clone(), inverse_relationship_type.clone()];
+
+    search_extends_chain(
+        relationship_type_descriptor,
+        &expected_relationship_type_names,
+        |type_name| {
+            if type_name == &declared_relationship_type {
+                return Some(RelationshipDirection::Declared);
+            }
+
+            if type_name == &inverse_relationship_type {
+                return Some(RelationshipDirection::Inverse);
+            }
+
+            None
+        },
+    )
 }
 
 /// Collects related members across a descriptor's effective inheritance chain.
@@ -144,9 +184,20 @@ impl Iterator for ExtendsIter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_test_holon};
+    use crate::descriptors::test_support::{build_context, new_descriptor_holon, new_test_holon};
     use crate::reference_layer::WritableHolon;
-    use type_names::relationship_names::CoreRelationshipTypeName;
+
+    fn declared_relationship_type_name() -> String {
+        CoreHolonTypeName::DeclaredRelationshipType.as_holon_name().to_string()
+    }
+
+    fn inverse_relationship_type_name() -> String {
+        CoreHolonTypeName::InverseRelationshipType.as_holon_name().to_string()
+    }
+
+    fn expected_relationship_kind() -> String {
+        format!("{} or {}", declared_relationship_type_name(), inverse_relationship_type_name())
+    }
 
     #[test]
     fn ancestors_returns_self_for_root_descriptor() -> Result<(), HolonError> {
@@ -177,6 +228,130 @@ mod tests {
                 HolonReference::from(&root),
             ]
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn classify_relationship_direction_returns_declared_for_declared_relationship_type(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let declared_relationship_type = new_descriptor_holon(
+            &context,
+            "declared-relationship-type",
+            &declared_relationship_type_name(),
+            "Relationship",
+        )?;
+        let mut authored_books =
+            new_descriptor_holon(&context, "authored-books", "AuthoredBooks", "Relationship")?;
+
+        authored_books.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![declared_relationship_type.into()],
+        )?;
+
+        assert_eq!(
+            classify_relationship_direction(&HolonReference::from(&authored_books))?,
+            RelationshipDirection::Declared
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn classify_relationship_direction_walks_multi_step_relationship_chain(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let declared_relationship_type = new_descriptor_holon(
+            &context,
+            "declared-relationship-type-multi-step",
+            &declared_relationship_type_name(),
+            "Relationship",
+        )?;
+        let mut intermediate_relationship_type = new_descriptor_holon(
+            &context,
+            "intermediate-relationship-type",
+            "IntermediateRelationshipType",
+            "Relationship",
+        )?;
+        intermediate_relationship_type.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![declared_relationship_type.into()],
+        )?;
+        let mut authored_books = new_descriptor_holon(
+            &context,
+            "authored-books-multi-step",
+            "AuthoredBooks",
+            "Relationship",
+        )?;
+
+        authored_books.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![intermediate_relationship_type.into()],
+        )?;
+
+        assert_eq!(
+            classify_relationship_direction(&HolonReference::from(&authored_books))?,
+            RelationshipDirection::Declared
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn classify_relationship_direction_returns_inverse_for_inverse_relationship_type(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let inverse_relationship_type = new_descriptor_holon(
+            &context,
+            "inverse-relationship-type",
+            &inverse_relationship_type_name(),
+            "Relationship",
+        )?;
+        let mut authored_by =
+            new_descriptor_holon(&context, "authored-by", "AuthoredBy", "Relationship")?;
+
+        authored_by.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![inverse_relationship_type.into()],
+        )?;
+
+        assert_eq!(
+            classify_relationship_direction(&HolonReference::from(&authored_by))?,
+            RelationshipDirection::Inverse
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn classify_relationship_direction_errors_for_malformed_relationship_type(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let other_relationship_root = new_descriptor_holon(
+            &context,
+            "other-relationship-root",
+            "OtherRelationshipRoot",
+            "Relationship",
+        )?;
+        let mut malformed_relationship = new_descriptor_holon(
+            &context,
+            "malformed-relationship",
+            "MalformedRelationship",
+            "Relationship",
+        )?;
+
+        malformed_relationship.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![other_relationship_root.into()],
+        )?;
+
+        assert!(matches!(
+            classify_relationship_direction(&HolonReference::from(&malformed_relationship)),
+            Err(HolonError::WrongDescriptorKind { expected, found, .. })
+                if expected == expected_relationship_kind()
+                    && found == "MalformedRelationship"
+        ));
 
         Ok(())
     }

@@ -3,7 +3,10 @@ use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP_KEY,
     CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY,
-    HOLON_TYPE_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, SCHEMA_TYPE_KEY,
+    DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY, DELETION_SEMANTIC_CASCADE_KEY,
+    DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY, OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY,
+    OPERATOR_CATEGORY_ORDERING_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, SCHEMA_TYPE_KEY,
+    VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
@@ -118,6 +121,17 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
             .expect("core inverse_of base name")
             .to_string(),
         "InstanceProperties"
+    );
+
+    assert_enum_variants_rewritten_to_declared_side(
+        &holons,
+        DELETION_SEMANTIC_KEY,
+        &[DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY, DELETION_SEMANTIC_CASCADE_KEY],
+    );
+    assert_enum_variants_rewritten_to_declared_side(
+        &holons,
+        OPERATOR_CATEGORY_KEY,
+        &[OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_ORDERING_KEY],
     );
 
     info!("verified core schema descriptor subtype access");
@@ -262,6 +276,41 @@ fn relationship_base_names(
                 .to_string()
         })
         .collect()
+}
+
+fn related_holon_keys(holon: &HolonReference, relationship_name: &str) -> Vec<String> {
+    let members_handle = holon
+        .related_holons(RelationshipName(MapString::from(relationship_name)))
+        .unwrap_or_else(|error| panic!("related_holons({relationship_name}) failed: {error:?}"));
+    let members = members_handle.read().unwrap_or_else(|error| {
+        panic!("related_holons({relationship_name}) lock failed: {error:?}")
+    });
+
+    members
+        .get_members()
+        .iter()
+        .map(|member| {
+            member
+                .key()
+                .unwrap_or_else(|error| {
+                    panic!("related_holons({relationship_name}) member key failed: {error:?}")
+                })
+                .unwrap_or_else(|| panic!("related_holons({relationship_name}) member missing key"))
+                .0
+        })
+        .collect()
+}
+
+fn assert_enum_variants_rewritten_to_declared_side(
+    holons: &HolonCollection,
+    enum_value_key: &str,
+    expected_variant_keys: &[&str],
+) {
+    let enum_value = find_holon_by_key(holons, enum_value_key);
+    let variant_keys = related_holon_keys(&enum_value, VARIANTS_RELATIONSHIP);
+    for expected_variant_key in expected_variant_keys {
+        assert_contains(&variant_keys, expected_variant_key);
+    }
 }
 
 fn assert_contains(values: &[String], expected: &str) {

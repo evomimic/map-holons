@@ -11,7 +11,7 @@ const DOMAIN_SCHEMA_RELATIVE_PATH: &str =
 pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
     staged: 7,
     committed: 7,
-    links_created: 38,
+    links_created: 36,
     errors: 0,
     total_bundles: 1,
     total_loader_holons: 7,

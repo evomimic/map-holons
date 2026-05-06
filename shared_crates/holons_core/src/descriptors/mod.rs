@@ -16,7 +16,10 @@ pub mod value_descriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
 pub use descriptor::Descriptor;
 pub use holon_descriptor::HolonDescriptor;
-pub use inheritance::{ancestors, walk_extends_chain, ExtendsIter};
+pub use inheritance::{
+    ancestors, classify_relationship_direction, walk_extends_chain, ExtendsIter,
+    RelationshipDirection,
+};
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::RelationshipDescriptor;

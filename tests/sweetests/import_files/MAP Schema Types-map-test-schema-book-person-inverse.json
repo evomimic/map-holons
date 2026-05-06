@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-04-29T10:51:57",
+    "generated_at": "2026-05-05T11:58:05",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-test-schema-book-person-inverse.csv"
@@ -27,15 +27,9 @@
       },
       "relationships": [
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#TypeNameRule"
-          }
-        },
-        {
           "name": "DependsOn",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.4"
+            "$ref": "#MAP Core Schema-v0.0.6"
           }
         }
       ]
@@ -124,12 +118,6 @@
           "name": "InstanceProperties",
           "target": {
             "$ref": "#Name.PropertyType"
-          }
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "#(Person.HolonType)-[Authors]->(Book.HolonType)"
           }
         }
       ]

@@ -1,0 +1,456 @@
+{
+  "meta": {
+    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
+    "generated_at": "2026-05-06T15:18:44",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Schema Types-map-core-schema-operator-schema.csv"
+    ],
+    "load_with": [
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-abstract-value-types.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MetaOperatorType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MetaOperatorType",
+        "type_name_plural": "MetaOperatorTypes",
+        "display_name": "Meta Operator Type",
+        "display_name_plural": "Meta Operator Types",
+        "instance_type_kind": "Holon",
+        "description": "Defines the meta-level obligations for all OperatorTypes. Specifies the structural and semantic expectations that concrete OperatorTypes must fulfill.",
+        "is_abstract_type": true
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MetaTypeDescriptor"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#Arity.PropertyType"
+            },
+            {
+              "$ref": "#OperatorCategory.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OperatorType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "OperatorType",
+        "type_name_plural": "OperatorTypes",
+        "display_name": "Operator Type",
+        "display_name_plural": "Operator Types",
+        "instance_type_kind": "Holon",
+        "description": "Abstract descriptor for operator affordances. OperatorTypes are core-defined operations applicable to ValueTypes, used for validation, query construction, and filter expressions.",
+        "is_abstract_type": true
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MetaOperatorType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueType)-[AffordsOperator]->(OperatorType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "AffordsOperator",
+        "type_name_plural": "AffordsOperatorRelationships",
+        "display_name": "AffordsOperator",
+        "display_name_plural": "AffordsOperator Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#OperatorType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(OperatorType)-[AffordedBy]->(ValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "AffordedBy",
+        "type_name_plural": "AffordedByRelationships",
+        "display_name": "AffordedBy",
+        "display_name_plural": "AffordedBy Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of AffordsOperator, relationship from OperatorType to ValueType.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(ValueType)-[AffordsOperator]->(OperatorType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#OperatorType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#ValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "OperatorCategory",
+        "type_name_plural": "OperatorCategories",
+        "display_name": "OperatorCategory",
+        "display_name_plural": "OperatorCategories",
+        "instance_type_kind": "Value.Enum",
+        "description": "Enum value type categorizing operators (e.g., Comparison, StringMatch).",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MapEnumValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory.Equality",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Equality",
+        "display_name": "Equality",
+        "instance_type_kind": "EnumVariant",
+        "description": "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#OperatorCategory"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory.Ordering",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Ordering",
+        "display_name": "Ordering",
+        "instance_type_kind": "EnumVariant",
+        "description": "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string).",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "#OperatorCategory"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Arity.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Arity",
+        "type_name_plural": "Arities",
+        "display_name": "arity",
+        "display_name_plural": "arities",
+        "instance_type_kind": "Property",
+        "description": "Number of operands the operator accepts (1 = unary, 2 = binary).",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "OperatorCategory",
+        "type_name_plural": "OperatorCategories",
+        "display_name": "operator_category",
+        "display_name_plural": "operator_categories",
+        "instance_type_kind": "Property",
+        "description": "Categorical grouping of an operator (e.g., Comparison, StringMatch).",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#OperatorCategory"
+          }
+        }
+      ]
+    },
+    {
+      "key": "EqualsOperator",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "EqualsOperator",
+        "type_name_plural": "EqualsOperators",
+        "display_name": "Equals",
+        "display_name_plural": "Equals Operators",
+        "instance_type_kind": "Holon",
+        "description": "Returns true iff lhs and rhs are equal under the value type's equality semantics.",
+        "is_abstract_type": false,
+        "arity": 2,
+        "operator_category": "OperatorCategory.Equality"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#OperatorType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LessThanOperator",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "LessThanOperator",
+        "type_name_plural": "LessThanOperator",
+        "display_name": "Less Than",
+        "display_name_plural": "Less Than Operators",
+        "instance_type_kind": "Holon",
+        "description": "Returns true iff lhs < rhs.",
+        "is_abstract_type": false,
+        "arity": 2,
+        "operator_category": "OperatorCategory.Ordering"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#OperatorType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    }
+  ]
+}
