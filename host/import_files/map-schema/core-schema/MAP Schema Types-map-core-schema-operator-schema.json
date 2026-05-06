@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-05T11:39:21",
+    "generated_at": "2026-05-06T15:18:44",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-schema.csv"
@@ -429,7 +429,7 @@
         "description": "Returns true iff lhs < rhs.",
         "is_abstract_type": false,
         "arity": 2,
-        "operator_category": "OperatorCategory.Equality"
+        "operator_category": "OperatorCategory.Ordering"
       },
       "relationships": [
         {
