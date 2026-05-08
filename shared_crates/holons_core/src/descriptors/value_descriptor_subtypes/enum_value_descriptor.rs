@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use crate::descriptors::inheritance::flatten_related_members;
-use crate::descriptors::value_descriptor_subtypes::{
-    supported_operators, supports_operator, type_name_is, unsupported_operator,
-    value_kind_mismatch, value_type_name,
+use crate::descriptors::value_descriptor_subtypes::helpers::{
+    require_supported_operator, supported_operators, supports_operator, type_name_is,
+    unsupported_operator, value_kind_mismatch, value_type_name,
 };
 use crate::descriptors::{Descriptor, OperatorDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
@@ -55,13 +55,18 @@ impl EnumValueDescriptor {
         supports_operator(&self.holon, op)
     }
 
-    /// Applies an enum operator to two enum operands.
+    /// Applies an afforded enum operator to two enum operands.
+    ///
+    /// Operators must be declared through this descriptor's `AffordsOperator`
+    /// relationships; otherwise execution returns `UnsupportedOperator`.
     pub fn apply_operator(
         &self,
         op: &OperatorDescriptor,
         lhs: &BaseValue,
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
+        require_supported_operator(&self.holon, op)?;
+
         if !type_name_is(op, "EqualsOperator")? {
             return unsupported_operator(&self.holon, op);
         }
@@ -212,11 +217,21 @@ mod tests {
     #[test]
     fn apply_operator_executes_enum_equality() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = OperatorDescriptor::from_holon(
-            new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?.into(),
-        );
-        let descriptor = enum_descriptor_with_variants()?;
+        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let red = new_descriptor_holon(&context, "red", "Red", "EnumVariant")?;
+        let blue = new_descriptor_holon(&context, "blue", "Blue", "EnumVariant")?;
+        let mut value = new_descriptor_holon(&context, "color", "ColorValueType", "Value")?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::Variants,
+            vec![red.into(), blue.into()],
+        )?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![equals.clone().into()],
+        )?;
 
+        let equals = OperatorDescriptor::from_holon(equals.into());
+        let descriptor = EnumValueDescriptor::from_holon(value.into());
         assert!(descriptor.apply_operator(&equals, &enum_value("Red"), &enum_value("Red"))?);
         assert!(!descriptor.apply_operator(&equals, &enum_value("Red"), &enum_value("Blue"))?);
         Ok(())
@@ -225,14 +240,24 @@ mod tests {
     #[test]
     fn apply_operator_reports_invalid_variant_and_unsupported_operator() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = OperatorDescriptor::from_holon(
-            new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?.into(),
-        );
+        let equals_holon = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
         let less_than = OperatorDescriptor::from_holon(
             new_descriptor_holon(&context, "less-than", "LessThanOperator", "Holon")?.into(),
         );
-        let descriptor = enum_descriptor_with_variants()?;
+        let red = new_descriptor_holon(&context, "red", "Red", "EnumVariant")?;
+        let blue = new_descriptor_holon(&context, "blue", "Blue", "EnumVariant")?;
+        let mut value = new_descriptor_holon(&context, "color", "ColorValueType", "Value")?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::Variants,
+            vec![red.into(), blue.into()],
+        )?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![equals_holon.clone().into()],
+        )?;
 
+        let equals = OperatorDescriptor::from_holon(equals_holon.into());
+        let descriptor = EnumValueDescriptor::from_holon(value.into());
         assert!(matches!(
             descriptor.apply_operator(&equals, &enum_value("Green"), &enum_value("Red")),
             Err(HolonError::EnumVariantNotInSchema { variant, .. }) if variant == "Green"
@@ -248,11 +273,21 @@ mod tests {
     #[test]
     fn apply_operator_reports_kind_mismatch_for_non_enum_operand() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = OperatorDescriptor::from_holon(
-            new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?.into(),
-        );
-        let descriptor = enum_descriptor_with_variants()?;
+        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let red = new_descriptor_holon(&context, "red", "Red", "EnumVariant")?;
+        let blue = new_descriptor_holon(&context, "blue", "Blue", "EnumVariant")?;
+        let mut value = new_descriptor_holon(&context, "color", "ColorValueType", "Value")?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::Variants,
+            vec![red.into(), blue.into()],
+        )?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![equals.clone().into()],
+        )?;
 
+        let equals = OperatorDescriptor::from_holon(equals.into());
+        let descriptor = EnumValueDescriptor::from_holon(value.into());
         assert!(matches!(
             descriptor.apply_operator(
                 &equals,
@@ -261,6 +296,22 @@ mod tests {
             ),
             Err(HolonError::ValueKindMismatch { expected, found, .. })
                 if expected == "Enum" && found == "Integer"
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn apply_operator_rejects_known_operator_when_not_afforded() -> Result<(), HolonError> {
+        let context = build_context();
+        let equals = OperatorDescriptor::from_holon(
+            new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?.into(),
+        );
+        let descriptor = enum_descriptor_with_variants()?;
+
+        assert!(matches!(
+            descriptor.apply_operator(&equals, &enum_value("Red"), &enum_value("Red")),
+            Err(HolonError::UnsupportedOperator { operator, value_type, .. })
+                if operator == "EqualsOperator" && value_type == "ColorValueType"
         ));
         Ok(())
     }

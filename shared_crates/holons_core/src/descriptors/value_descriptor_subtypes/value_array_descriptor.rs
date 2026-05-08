@@ -1,4 +1,4 @@
-use crate::descriptors::value_descriptor_subtypes::{
+use crate::descriptors::value_descriptor_subtypes::helpers::{
     supported_operators, supports_operator, unsupported_operator,
 };
 use crate::descriptors::{
@@ -46,7 +46,10 @@ impl ValueArrayDescriptor {
         supports_operator(&self.holon, op)
     }
 
-    /// Array operator execution is not implemented in this phase.
+    /// Rejects array operator execution in this phase.
+    ///
+    /// Array affordances may be visible through descriptors, but runtime
+    /// execution is deferred and always returns `UnsupportedOperator`.
     pub fn apply_operator(
         &self,
         op: &OperatorDescriptor,

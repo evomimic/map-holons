@@ -1,5 +1,5 @@
 use crate::descriptors::inheritance::walk_extends_chain;
-use crate::descriptors::value_descriptor_subtypes::{
+use crate::descriptors::value_descriptor_subtypes::helpers::{
     supported_operators as collect_supported_operators,
     supports_operator as descriptor_supports_operator,
     unsupported_operator as descriptor_unsupported_operator,

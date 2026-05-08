@@ -1,5 +1,6 @@
-use crate::descriptors::value_descriptor_subtypes::{
-    supported_operators, supports_operator, type_name_is, unsupported_operator, value_kind_mismatch,
+use crate::descriptors::value_descriptor_subtypes::helpers::{
+    require_supported_operator, supported_operators, supports_operator, type_name_is,
+    unsupported_operator, value_kind_mismatch,
 };
 use crate::descriptors::{Descriptor, OperatorDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
@@ -40,13 +41,18 @@ impl StringValueDescriptor {
         supports_operator(&self.holon, op)
     }
 
-    /// Applies a string operator to two string operands.
+    /// Applies an afforded string operator to two string operands.
+    ///
+    /// Operators must be declared through this descriptor's `AffordsOperator`
+    /// relationships; otherwise execution returns `UnsupportedOperator`.
     pub fn apply_operator(
         &self,
         op: &OperatorDescriptor,
         lhs: &BaseValue,
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
+        require_supported_operator(&self.holon, op)?;
+
         let lhs = match lhs {
             BaseValue::StringValue(value) => value,
             other => return Err(value_kind_mismatch(&self.holon, "String", other)),
@@ -158,15 +164,17 @@ mod tests {
     #[test]
     fn apply_operator_executes_string_comparisons() -> Result<(), HolonError> {
         let context = build_context();
-        let equals = OperatorDescriptor::from_holon(
-            new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?.into(),
-        );
-        let less_than = OperatorDescriptor::from_holon(
-            new_descriptor_holon(&context, "less-than", "LessThanOperator", "Holon")?.into(),
-        );
-        let descriptor = StringValueDescriptor::from_holon(
-            new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?.into(),
-        );
+        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let less_than = new_descriptor_holon(&context, "less-than", "LessThanOperator", "Holon")?;
+        let mut value = new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![equals.clone().into(), less_than.clone().into()],
+        )?;
+
+        let equals = OperatorDescriptor::from_holon(equals.into());
+        let less_than = OperatorDescriptor::from_holon(less_than.into());
+        let descriptor = StringValueDescriptor::from_holon(value.into());
 
         assert!(descriptor.apply_operator(&equals, &string_value("a"), &string_value("a"))?);
         assert!(!descriptor.apply_operator(&equals, &string_value("a"), &string_value("b"))?);
@@ -180,12 +188,15 @@ mod tests {
         let contains = OperatorDescriptor::from_holon(
             new_descriptor_holon(&context, "contains", "ContainsOperator", "Holon")?.into(),
         );
-        let equals = OperatorDescriptor::from_holon(
-            new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?.into(),
-        );
-        let descriptor = StringValueDescriptor::from_holon(
-            new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?.into(),
-        );
+        let equals_holon = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let mut value = new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![equals_holon.clone().into()],
+        )?;
+
+        let equals = OperatorDescriptor::from_holon(equals_holon.into());
+        let descriptor = StringValueDescriptor::from_holon(value.into());
 
         assert!(matches!(
             descriptor.apply_operator(&equals, &BaseValue::IntegerValue(MapInteger(3)), &string_value("3")),
@@ -196,6 +207,24 @@ mod tests {
             descriptor.apply_operator(&contains, &string_value("a"), &string_value("a")),
             Err(HolonError::UnsupportedOperator { operator, value_type, .. })
                 if operator == "ContainsOperator" && value_type == "StringValueType"
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn apply_operator_rejects_known_operator_when_not_afforded() -> Result<(), HolonError> {
+        let context = build_context();
+        let equals = OperatorDescriptor::from_holon(
+            new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?.into(),
+        );
+        let descriptor = StringValueDescriptor::from_holon(
+            new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?.into(),
+        );
+
+        assert!(matches!(
+            descriptor.apply_operator(&equals, &string_value("a"), &string_value("a")),
+            Err(HolonError::UnsupportedOperator { operator, value_type, .. })
+                if operator == "EqualsOperator" && value_type == "StringValueType"
         ));
         Ok(())
     }
