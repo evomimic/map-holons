@@ -64,6 +64,9 @@ pub enum DanceTestStep {
     VerifyCoreSchemaDescriptors {
         description: String,
     },
+    VerifyCoreSchemaValueSemantics {
+        description: String,
+    },
     MatchSavedContent,
     NewHolon {
         step_token: TestReference,
@@ -181,6 +184,9 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyCoreSchemaDescriptors { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyCoreSchemaValueSemantics { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::MatchSavedContent => {

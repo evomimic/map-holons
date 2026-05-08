@@ -67,6 +67,8 @@ impl ToRelationshipName for &RelationshipName {
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreRelationshipTypeName {
     AbandonedHolons,
+    AffordedBy,
+    AffordsOperator,
     BundleMembers,
     ComponentOf,
     Contains,
@@ -100,6 +102,7 @@ pub enum CoreRelationshipTypeName {
     UsesKeyRule,
     ValueType,
     ValueTypeFor,
+    Variants,
 }
 
 impl CoreRelationshipTypeName {

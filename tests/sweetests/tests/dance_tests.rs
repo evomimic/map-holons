@@ -37,7 +37,7 @@ use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::descriptor_verification_executor::{
     execute_verify_book_person_descriptors, execute_verify_core_schema_descriptor_subtypes,
-    execute_verify_core_schema_descriptors,
+    execute_verify_core_schema_descriptors, execute_verify_core_schema_value_semantics,
 };
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_book_person_inverse_test_schema;
@@ -211,6 +211,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
             DanceTestStep::VerifyCoreSchemaDescriptors { .. } => {
                 execute_verify_core_schema_descriptors(&mut test_execution_state).await
+            }
+            DanceTestStep::VerifyCoreSchemaValueSemantics { .. } => {
+                execute_verify_core_schema_value_semantics(&mut test_execution_state).await
             }
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&mut test_execution_state).await
