@@ -21,4 +21,24 @@ describe('DAHN dependency seam', () => {
     expect(readText('contracts/holon-view.ts')).toContain("from '../deps'");
     expect(readText('contract-checks.ts')).toContain("from './deps'");
   });
+
+  it('uses MAP SDK holon handles instead of declaring DAHN-local descriptor handles', () => {
+    const holonViewSource = readText('contracts/holon-view.ts');
+    const actionsSource = readText('contracts/actions.ts');
+    const dahnIndexSource = readText('index.ts');
+
+    expect(holonViewSource).toContain(
+      'export type HolonViewAccess = HolonReference',
+    );
+    expect(holonViewSource).not.toContain('interface ValueTypeDescriptorHandle');
+    expect(holonViewSource).not.toContain('interface PropertyDescriptorHandle');
+    expect(holonViewSource).not.toContain(
+      'interface RelationshipDescriptorHandle',
+    );
+    expect(holonViewSource).not.toContain('interface DanceDescriptorHandle');
+    expect(holonViewSource).not.toContain('interface HolonTypeDescriptorHandle');
+    expect(actionsSource).toContain('dance?: HolonReference;');
+    expect(dahnIndexSource).not.toContain('DanceDescriptorHandle');
+    expect(dahnIndexSource).not.toContain('HolonTypeDescriptorHandle');
+  });
 });
