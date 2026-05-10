@@ -45,10 +45,7 @@ impl DanceIdentity {
         Self { dance_name, dance_descriptor_ref: None }
     }
 
-    pub fn with_descriptor(
-        dance_name: MapString,
-        dance_descriptor_ref: HolonReference,
-    ) -> Self {
+    pub fn with_descriptor(dance_name: MapString, dance_descriptor_ref: HolonReference) -> Self {
         Self { dance_name, dance_descriptor_ref: Some(dance_descriptor_ref) }
     }
 }
@@ -226,8 +223,8 @@ mod tests {
         let context = build_context();
         let transient = new_test_holon(&context, "params").expect("create transient test holon");
 
-        let parameters =
-            DanceParameters::parameter_holon(HolonReference::from(transient)).expect("valid params");
+        let parameters = DanceParameters::parameter_holon(HolonReference::from(transient))
+            .expect("valid params");
 
         assert!(matches!(
             parameters,
@@ -239,15 +236,15 @@ mod tests {
     fn parameter_holon_rejects_non_transient_reference() {
         let context = build_context();
         let transient = new_test_holon(&context, "params").expect("create transient test holon");
-        let staged = context
-            .mutation()
-            .stage_new_holon(transient)
-            .expect("stage transient test holon");
+        let staged =
+            context.mutation().stage_new_holon(transient).expect("stage transient test holon");
 
         let error = DanceParameters::parameter_holon(HolonReference::from(staged))
             .expect_err("staged ref should be rejected");
 
-        assert!(matches!(error, HolonError::InvalidParameter(message) if message.contains("Transient reference")));
+        assert!(
+            matches!(error, HolonError::InvalidParameter(message) if message.contains("Transient reference"))
+        );
     }
 
     #[test]
@@ -260,10 +257,7 @@ mod tests {
             DanceContext::trust_channel().invocation_source,
             DanceInvocationSource::TrustChannel
         );
-        assert_eq!(
-            DanceContext::internal().invocation_source,
-            DanceInvocationSource::Internal
-        );
+        assert_eq!(DanceContext::internal().invocation_source, DanceInvocationSource::Internal);
     }
 
     #[test]
@@ -308,10 +302,12 @@ mod tests {
     #[test]
     fn identity_can_carry_optional_descriptor_metadata() {
         let context = build_context();
-        let descriptor = new_test_holon(&context, "dance_descriptor")
-            .expect("create descriptor metadata holon");
-        let identity =
-            DanceIdentity::with_descriptor(MapString("query_relationships".to_string()), descriptor.into());
+        let descriptor =
+            new_test_holon(&context, "dance_descriptor").expect("create descriptor metadata holon");
+        let identity = DanceIdentity::with_descriptor(
+            MapString("query_relationships".to_string()),
+            descriptor.into(),
+        );
 
         assert_eq!(identity.dance_name.0, "query_relationships");
         assert!(identity.dance_descriptor_ref.is_some());
