@@ -5,14 +5,8 @@ export type {
   VisualizerMountPlan,
 } from './contracts/canvas';
 export type {
-  DanceDescriptorHandle,
-  HolonTypeDescriptorHandle,
   HolonViewAccess,
   HolonViewContext,
-  PropertyDescriptorHandle,
-  RelationshipDescriptorHandle,
-  RelationshipDescriptorKind,
-  ValueTypeDescriptorHandle,
 } from './contracts/holon-view';
 export type {
   SelectorFunction,

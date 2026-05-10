@@ -6,18 +6,12 @@ import type {
   DahnRuntime,
   DahnTarget,
   DahnTheme,
-  DanceDescriptorHandle,
-  HolonTypeDescriptorHandle,
   HolonViewAccess,
   HolonViewContext,
-  PropertyDescriptorHandle,
-  RelationshipDescriptorHandle,
-  RelationshipDescriptorKind,
   Phase0Selector,
   SelectorFunction,
   SelectorInput,
   SelectorOutput,
-  ValueTypeDescriptorHandle,
   VisualizerContext,
   VisualizerDefinition,
   VisualizerElement,
@@ -33,19 +27,15 @@ import type { HolonReference } from './deps';
  */
 
 declare const holonReference: HolonReference;
-declare const holonAccess: HolonViewAccess;
 declare const actions: ActionNode[];
 declare const canvasApi: CanvasApi;
 declare const theme: DahnTheme;
 
-const relationshipKinds: RelationshipDescriptorKind[] = [
-  'declared',
-  'inverse',
-];
-
 const target: DahnTarget = {
   reference: holonReference,
 };
+
+const holonAccess: HolonViewAccess = holonReference;
 
 const canvasDescriptor: CanvasDescriptor = {
   id: 'dahn-2d-minimal',
@@ -90,22 +80,11 @@ void runtime;
 void selectorInput;
 void selectorOutput;
 void visualizerDefinition;
-void relationshipKinds;
 
-declare const valueTypeDescriptor: ValueTypeDescriptorHandle;
-declare const propertyDescriptor: PropertyDescriptorHandle;
-declare const relationshipDescriptor: RelationshipDescriptorHandle;
-declare const danceDescriptor: DanceDescriptorHandle;
-declare const holonTypeDescriptor: HolonTypeDescriptorHandle;
 declare const holonViewContext: HolonViewContext;
 declare const selector: SelectorFunction;
 declare const phase0Selector: Phase0Selector;
 
-void valueTypeDescriptor;
-void propertyDescriptor;
-void relationshipDescriptor;
-void danceDescriptor;
-void holonTypeDescriptor;
 void holonViewContext;
 void selector;
 void phase0Selector;
