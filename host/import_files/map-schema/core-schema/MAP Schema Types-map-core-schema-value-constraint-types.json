@@ -1,0 +1,1165 @@
+{
+  "meta": {
+    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
+    "generated_at": "2026-05-11T11:52:06",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Schema Types-map-core-schema-value-constraint-types.csv"
+    ],
+    "load_with": [
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-abstract-value-types.json",
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "ValueConstraintType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ValueConstraintType",
+        "type_name_plural": "ValueConstraintTypes",
+        "display_name": "Value Constraint Type",
+        "display_name_plural": "Value Constraint Types",
+        "instance_type_kind": "Holon",
+        "description": "Abstract holon type for constraints that refine the accepted values of a ValueType.",
+        "is_abstract_type": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "StringValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "StringValueConstraint",
+        "type_name_plural": "StringValueConstraints",
+        "display_name": "String Value Constraint",
+        "display_name_plural": "String Value Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Abstract constraint-family anchor for string value constraints.",
+        "is_abstract_type": true
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueConstraintType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "IntegerValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "IntegerValueConstraint",
+        "type_name_plural": "IntegerValueConstraints",
+        "display_name": "Integer Value Constraint",
+        "display_name_plural": "Integer Value Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Abstract constraint-family anchor for integer value constraints.",
+        "is_abstract_type": true
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueConstraintType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "BytesValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "BytesValueConstraint",
+        "type_name_plural": "BytesValueConstraints",
+        "display_name": "Bytes Value Constraint",
+        "display_name_plural": "Bytes Value Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Abstract constraint-family anchor for byte sequence value constraints.",
+        "is_abstract_type": true
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueConstraintType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ValueArrayConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ValueArrayConstraint",
+        "type_name_plural": "ValueArrayConstraints",
+        "display_name": "Value Array Constraint",
+        "display_name_plural": "Value Array Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Abstract constraint-family anchor for value array constraints.",
+        "is_abstract_type": true
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueConstraintType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MinimumLength.StringValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MinimumLength",
+        "type_name_plural": "MinimumLengths",
+        "display_name": "Minimum String Length",
+        "display_name_plural": "Minimum String Lengths",
+        "instance_type_kind": "Holon",
+        "description": "Requires string values to have at least the configured number of characters.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#StringValueConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#ConstraintLength.PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MaximumLength.StringValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MaximumLength",
+        "type_name_plural": "MaximumLengths",
+        "display_name": "Maximum String Length",
+        "display_name_plural": "Maximum String Lengths",
+        "instance_type_kind": "Holon",
+        "description": "Requires string values to have at most the configured number of characters.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#StringValueConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#ConstraintLength.PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Pattern.StringValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Pattern",
+        "type_name_plural": "Patterns",
+        "display_name": "String Pattern Constraint",
+        "display_name_plural": "String Pattern Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Requires string values to match the configured regular expression pattern.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#StringValueConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#Pattern.PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MinimumValue.IntegerValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MinimumValue",
+        "type_name_plural": "MinimumValues",
+        "display_name": "Minimum Integer Value",
+        "display_name_plural": "Minimum Integer Values",
+        "instance_type_kind": "Holon",
+        "description": "Requires integer values to be greater than, or optionally equal to, the configured minimum.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#IntegerValueConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#ConstraintIntegerValue.PropertyType"
+            },
+            {
+              "$ref": "#ConstraintIsInclusive.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MaximumValue.IntegerValueConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MaximumValue",
+        "type_name_plural": "MaximumValues",
+        "display_name": "Maximum Integer Value",
+        "display_name_plural": "Maximum Integer Values",
+        "instance_type_kind": "Holon",
+        "description": "Requires integer values to be less than, or optionally equal to, the configured maximum.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#IntegerValueConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#ConstraintIntegerValue.PropertyType"
+            },
+            {
+              "$ref": "#ConstraintIsInclusive.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MinimumItems.ValueArrayConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MinimumItems",
+        "type_name_plural": "MinimumItemsConstraints",
+        "display_name": "Minimum Items",
+        "display_name_plural": "Minimum Items Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Requires value arrays to contain at least the configured number of elements.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueArrayConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#ConstraintItemCount.PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "MaximumItems.ValueArrayConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "MaximumItems",
+        "type_name_plural": "MaximumItemsConstraints",
+        "display_name": "Maximum Items",
+        "display_name_plural": "Maximum Items Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Requires value arrays to contain no more than the configured number of elements.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueArrayConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#ConstraintItemCount.PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "UniqueItems.ValueArrayConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "UniqueItems",
+        "type_name_plural": "UniqueItemsConstraints",
+        "display_name": "Unique Items",
+        "display_name_plural": "Unique Items Constraints",
+        "instance_type_kind": "Holon",
+        "description": "Requires value arrays to contain no duplicate elements.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueArrayConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#ConstraintUniqueItems.PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ConstraintLength.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstraintLength",
+        "type_name_plural": "ConstraintLengths",
+        "display_name": "Constraint Length",
+        "display_name_plural": "Constraint Lengths",
+        "instance_type_kind": "Property",
+        "description": "Limit of allowed character count for a string value.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Pattern.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Pattern",
+        "type_name_plural": "Patterns",
+        "display_name": "Pattern",
+        "display_name_plural": "Patterns",
+        "instance_type_kind": "Property",
+        "description": "An allowed pattern for a string value.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ConstraintIntegerValue.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstraintIntegerValue",
+        "type_name_plural": "ConstraintIntegerValues",
+        "display_name": "Constraint Integer Value",
+        "display_name_plural": "Constraint Integer Values",
+        "instance_type_kind": "Property",
+        "description": "Limit of an integer value.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ConstraintItemCount.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstraintItemCount",
+        "type_name_plural": "ConstraintItemCounts",
+        "display_name": "Constraint Item Count",
+        "display_name_plural": "Constraint Item Counts",
+        "instance_type_kind": "Property",
+        "description": "Limit on the number of items in an array.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ConstraintIsInclusive.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstraintIsInclusive",
+        "type_name_plural": "ConstraintIsInclusives",
+        "display_name": "Constraint Is Inclusive",
+        "display_name_plural": "IsInclusive Constraints",
+        "instance_type_kind": "Property",
+        "description": "If the limit value included in the allowed range.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ConstraintUniqueItems.PropertyType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstraintUniqueItems",
+        "type_name_plural": "ConstraintUniqueItems",
+        "display_name": "Constraint Unique Items",
+        "display_name_plural": "UniqueItems Constraints",
+        "instance_type_kind": "Property",
+        "description": "If all contained items must be unique.",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "#MapBooleanValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(StringValueType)-[ConstrainedBy]->(StringValueConstraint)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstrainedBy",
+        "type_name_plural": "ConstrainedBys",
+        "display_name": "ConstrainedBy Relationship",
+        "display_name_plural": "ConstrainedBy Relationship",
+        "instance_type_kind": "Relationship",
+        "description": "Attaches string-specific value constraints to a string value type.",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#StringValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#StringValueConstraint"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(IntegerValueType)-[ConstrainedBy]->(IntegerValueConstraint)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstrainedBy",
+        "type_name_plural": "ConstrainedBys",
+        "display_name": "ConstrainedBy Relationship",
+        "display_name_plural": "ConstrainedBy Relationship",
+        "instance_type_kind": "Relationship",
+        "description": "Attaches integer-specific value constraints to an integer value type.",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#IntegerValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#IntegerValueConstraint"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(BytesValueType)-[ConstrainedBy]->(BytesValueConstraint)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstrainedBy",
+        "type_name_plural": "ConstrainedBys",
+        "display_name": "ConstrainedBy Relationship",
+        "display_name_plural": "ConstrainedBy Relationship",
+        "instance_type_kind": "Relationship",
+        "description": "Attaches bytes-specific value constraints to a bytes value type.",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#BytesValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#BytesValueConstraint"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueArrayValueType)-[ConstrainedBy]->(ValueArrayConstraint)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "ConstrainedBy",
+        "type_name_plural": "ConstrainedBys",
+        "display_name": "ConstrainedBy Relationship",
+        "display_name_plural": "ConstrainedBy Relationship",
+        "instance_type_kind": "Relationship",
+        "description": "Attaches value-array-specific constraints to a value array type.",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#ValueArrayValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#ValueArrayConstraint"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(StringValueConstraint)-[Constrains]->(StringValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Constrains",
+        "type_name_plural": "Constrains",
+        "display_name": "Constrains Relationship",
+        "display_name_plural": "Constrains Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ConstrainedBy, from a string value constraint to the string value type it constrains.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(StringValueType)-[ConstrainedBy]->(StringValueConstraint)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#StringValueConstraint"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#StringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(IntegerValueConstraint)-[Constrains]->(IntegerValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Constrains",
+        "type_name_plural": "Constrains",
+        "display_name": "Constrains Relationship",
+        "display_name_plural": "Constrains Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ConstrainedBy, from an integer value constraint to the integer value type it constrains.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(IntegerValueType)-[ConstrainedBy]->(IntegerValueConstraint)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#IntegerValueConstraint"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#IntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(BytesValueConstraint)-[Constrains]->(BytesValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Constrains",
+        "type_name_plural": "Constrains",
+        "display_name": "Constrains Relationship",
+        "display_name_plural": "Constrains Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ConstrainedBy, from a bytes value constraint to the bytes value type it constrains.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(BytesValueType)-[ConstrainedBy]->(BytesValueConstraint)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#BytesValueConstraint"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#BytesValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueArrayConstraint)-[Constrains]->(ValueArrayValueType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "Constrains",
+        "type_name_plural": "Constrains",
+        "display_name": "Constrains Relationship",
+        "display_name_plural": "Constrains Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of ConstrainedBy, from a value array constraint to the value array type it constrains.",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(ValueArrayValueType)-[ConstrainedBy]->(ValueArrayConstraint)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#ValueArrayConstraint"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#ValueArrayValueType"
+          }
+        }
+      ]
+    }
+  ]
+}
