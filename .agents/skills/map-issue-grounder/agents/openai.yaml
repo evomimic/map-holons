@@ -1,0 +1,5 @@
+interface:
+  display_name: MAP Issue Grounder
+  short_description: Ground MAP DevDocs PR units into map-holons Enhancement Issues.
+  icon: file-text
+  brand_color: '#4b5563'
