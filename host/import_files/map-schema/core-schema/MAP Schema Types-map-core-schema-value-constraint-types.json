@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-11T11:52:06",
+    "generated_at": "2026-05-11T16:56:56",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-value-constraint-types.csv"
@@ -498,7 +498,45 @@
         {
           "name": "InstanceProperties",
           "target": {
-            "$ref": "#ConstraintUniqueItems.PropertyType"
+            "$ref": "#ConstraintEnabled.PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OrderedItems.ValueArrayConstraint",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "OrderedItems",
+        "type_name_plural": "OrderedItemsConstraints",
+        "display_name": "Ordered Items ",
+        "display_name_plural": "Ordered Items Constraints",
+        "instance_type_kind": "Holon",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.6"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#ValueArrayConstraint"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "#ConstraintEnabled.PropertyType"
           }
         }
       ]
@@ -699,15 +737,15 @@
       ]
     },
     {
-      "key": "ConstraintUniqueItems.PropertyType",
+      "key": "ConstraintEnabled.PropertyType",
       "type": "#TypeDescriptor",
       "properties": {
-        "type_name": "ConstraintUniqueItems",
-        "type_name_plural": "ConstraintUniqueItems",
-        "display_name": "Constraint Unique Items",
-        "display_name_plural": "UniqueItems Constraints",
+        "type_name": "ConstraintEnabled",
+        "type_name_plural": "ConstraintsEnabled",
+        "display_name": "Constraint Enabled",
+        "display_name_plural": "Constraints Enabled",
         "instance_type_kind": "Property",
-        "description": "If all contained items must be unique.",
+        "description": "Boolean parameter indicating whether a boolean-style constraint rule is active.",
         "is_abstract_type": false
       },
       "relationships": [
@@ -738,13 +776,13 @@
       ]
     },
     {
-      "key": "(StringValueType)-[ConstrainedBy]->(StringValueConstraint)",
+      "key": "(StringValueType)-[Constraints]->(StringValueConstraint)",
       "type": "#TypeDescriptor",
       "properties": {
-        "type_name": "ConstrainedBy",
-        "type_name_plural": "ConstrainedBys",
-        "display_name": "ConstrainedBy Relationship",
-        "display_name_plural": "ConstrainedBy Relationship",
+        "type_name": "Constraints",
+        "type_name_plural": "Constraints",
+        "display_name": "Constraints Relationship",
+        "display_name_plural": "Constraints Relationships",
         "instance_type_kind": "Relationship",
         "description": "Attaches string-specific value constraints to a string value type.",
         "is_abstract_type": false,
@@ -788,13 +826,13 @@
       ]
     },
     {
-      "key": "(IntegerValueType)-[ConstrainedBy]->(IntegerValueConstraint)",
+      "key": "(IntegerValueType)-[Constraints]->(IntegerValueConstraint)",
       "type": "#TypeDescriptor",
       "properties": {
-        "type_name": "ConstrainedBy",
-        "type_name_plural": "ConstrainedBys",
-        "display_name": "ConstrainedBy Relationship",
-        "display_name_plural": "ConstrainedBy Relationship",
+        "type_name": "Constraints",
+        "type_name_plural": "Constraints",
+        "display_name": "Constraints Relationship",
+        "display_name_plural": "Constraints Relationships",
         "instance_type_kind": "Relationship",
         "description": "Attaches integer-specific value constraints to an integer value type.",
         "is_abstract_type": false,
@@ -838,13 +876,13 @@
       ]
     },
     {
-      "key": "(BytesValueType)-[ConstrainedBy]->(BytesValueConstraint)",
+      "key": "(BytesValueType)-[Constraints]->(BytesValueConstraint)",
       "type": "#TypeDescriptor",
       "properties": {
-        "type_name": "ConstrainedBy",
-        "type_name_plural": "ConstrainedBys",
-        "display_name": "ConstrainedBy Relationship",
-        "display_name_plural": "ConstrainedBy Relationship",
+        "type_name": "Constraints",
+        "type_name_plural": "Constraints",
+        "display_name": "Constraints Relationship",
+        "display_name_plural": "Constraints Relationships",
         "instance_type_kind": "Relationship",
         "description": "Attaches bytes-specific value constraints to a bytes value type.",
         "is_abstract_type": false,
@@ -888,13 +926,13 @@
       ]
     },
     {
-      "key": "(ValueArrayValueType)-[ConstrainedBy]->(ValueArrayConstraint)",
+      "key": "(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint)",
       "type": "#TypeDescriptor",
       "properties": {
-        "type_name": "ConstrainedBy",
-        "type_name_plural": "ConstrainedBys",
-        "display_name": "ConstrainedBy Relationship",
-        "display_name_plural": "ConstrainedBy Relationship",
+        "type_name": "Constraints",
+        "type_name_plural": "Constraints",
+        "display_name": "Constraints Relationship",
+        "display_name_plural": "Constraints Relationships",
         "instance_type_kind": "Relationship",
         "description": "Attaches value-array-specific constraints to a value array type.",
         "is_abstract_type": false,
@@ -946,7 +984,7 @@
         "display_name": "Constrains Relationship",
         "display_name_plural": "Constrains Relationships",
         "instance_type_kind": "Relationship",
-        "description": "Inverse of ConstrainedBy, from a string value constraint to the string value type it constrains.",
+        "description": "Inverse of Constraints, from a string value constraint to the string value type it constrains.",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -976,7 +1014,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(StringValueType)-[ConstrainedBy]->(StringValueConstraint)"
+            "$ref": "#(StringValueType)-[Constraints]->(StringValueConstraint)"
           }
         },
         {
@@ -1002,7 +1040,7 @@
         "display_name": "Constrains Relationship",
         "display_name_plural": "Constrains Relationships",
         "instance_type_kind": "Relationship",
-        "description": "Inverse of ConstrainedBy, from an integer value constraint to the integer value type it constrains.",
+        "description": "Inverse of Constraints, from an integer value constraint to the integer value type it constrains.",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -1032,7 +1070,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(IntegerValueType)-[ConstrainedBy]->(IntegerValueConstraint)"
+            "$ref": "#(IntegerValueType)-[Constraints]->(IntegerValueConstraint)"
           }
         },
         {
@@ -1058,7 +1096,7 @@
         "display_name": "Constrains Relationship",
         "display_name_plural": "Constrains Relationships",
         "instance_type_kind": "Relationship",
-        "description": "Inverse of ConstrainedBy, from a bytes value constraint to the bytes value type it constrains.",
+        "description": "Inverse of Constraints, from a bytes value constraint to the bytes value type it constrains.",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -1088,7 +1126,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(BytesValueType)-[ConstrainedBy]->(BytesValueConstraint)"
+            "$ref": "#(BytesValueType)-[Constraints]->(BytesValueConstraint)"
           }
         },
         {
@@ -1114,7 +1152,7 @@
         "display_name": "Constrains Relationship",
         "display_name_plural": "Constrains Relationships",
         "instance_type_kind": "Relationship",
-        "description": "Inverse of ConstrainedBy, from a value array constraint to the value array type it constrains.",
+        "description": "Inverse of Constraints, from a value array constraint to the value array type it constrains.",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -1144,7 +1182,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(ValueArrayValueType)-[ConstrainedBy]->(ValueArrayConstraint)"
+            "$ref": "#(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint)"
           }
         },
         {
