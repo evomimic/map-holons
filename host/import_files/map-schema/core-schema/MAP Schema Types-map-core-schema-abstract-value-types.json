@@ -1,14 +1,14 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-11T11:43:23",
+    "generated_at": "2026-05-11T17:23:28",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-abstract-value-types.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-value-constraint-types.json",
-      "MAP Schema Types-map-core-schema-operator-schema.json",
+      "MAP Schema Types-map-core-schema-operator-types.json",
       "MAP Schema Types-map-core-schema-root.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
@@ -131,7 +131,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(StringValueType)-[ConstrainedBy]->(StringValueConstraint)"
+            "$ref": "#(StringValueType)-[Constraints]->(StringValueConstraint)"
           }
         }
       ]
@@ -181,7 +181,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(IntegerValueType)-[ConstrainedBy]->(IntegerValueConstraint)"
+            "$ref": "#(IntegerValueType)-[Constraints]->(IntegerValueConstraint)"
           }
         }
       ]
@@ -259,7 +259,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(BytesValueType)-[ConstrainedBy]->(BytesValueConstraint)"
+            "$ref": "#(BytesValueType)-[Constraints]->(BytesValueConstraint)"
           }
         }
       ]
@@ -370,7 +370,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(ValueArrayValueType)-[ConstrainedBy]->(ValueArrayConstraint)"
+            "$ref": "#(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint)"
           }
         }
       ]

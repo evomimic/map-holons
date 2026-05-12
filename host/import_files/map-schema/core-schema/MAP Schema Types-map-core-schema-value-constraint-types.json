@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-11T16:56:56",
+    "generated_at": "2026-05-11T17:23:28",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-value-constraint-types.csv"
@@ -509,9 +509,10 @@
       "properties": {
         "type_name": "OrderedItems",
         "type_name_plural": "OrderedItemsConstraints",
-        "display_name": "Ordered Items ",
+        "display_name": "Ordered Items",
         "display_name_plural": "Ordered Items Constraints",
         "instance_type_kind": "Holon",
+        "description": "Requires value arrays to preserve item order as part of their semantic value.",
         "is_abstract_type": false
       },
       "relationships": [
@@ -741,9 +742,9 @@
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "ConstraintEnabled",
-        "type_name_plural": "ConstraintsEnabled",
+        "type_name_plural": "ConstraintEnabledValues",
         "display_name": "Constraint Enabled",
-        "display_name_plural": "Constraints Enabled",
+        "display_name_plural": "Constraint Enabled Values",
         "instance_type_kind": "Property",
         "description": "Boolean parameter indicating whether a boolean-style constraint rule is active.",
         "is_abstract_type": false
