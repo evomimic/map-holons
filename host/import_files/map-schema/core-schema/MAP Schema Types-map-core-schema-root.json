@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-05T11:39:21",
+    "generated_at": "2026-05-11T11:43:23",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
