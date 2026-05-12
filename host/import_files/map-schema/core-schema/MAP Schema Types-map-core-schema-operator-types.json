@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-11T17:23:28",
+    "generated_at": "2026-05-12T10:40:15",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-types.csv"
@@ -44,6 +44,17 @@
           "target": {
             "$ref": "#TypeNameRule"
           }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "#Arity.PropertyType"
+            },
+            {
+              "$ref": "#OperatorCategory.PropertyType"
+            }
+          ]
         }
       ]
     },
