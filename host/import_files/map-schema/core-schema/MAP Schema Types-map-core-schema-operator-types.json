@@ -1,10 +1,10 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-06T15:18:44",
+    "generated_at": "2026-05-11T17:23:28",
     "export_mode": "by-file",
     "source_files": [
-      "MAP Schema Types-map-core-schema-operator-schema.csv"
+      "MAP Schema Types-map-core-schema-operator-types.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
@@ -14,50 +14,6 @@
     ]
   },
   "holons": [
-    {
-      "key": "MetaOperatorType",
-      "type": "#TypeDescriptor",
-      "properties": {
-        "type_name": "MetaOperatorType",
-        "type_name_plural": "MetaOperatorTypes",
-        "display_name": "Meta Operator Type",
-        "display_name_plural": "Meta Operator Types",
-        "instance_type_kind": "Holon",
-        "description": "Defines the meta-level obligations for all OperatorTypes. Specifies the structural and semantic expectations that concrete OperatorTypes must fulfill.",
-        "is_abstract_type": true
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "#MetaTypeDescriptor"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "#TypeNameRule"
-          }
-        },
-        {
-          "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "#Arity.PropertyType"
-            },
-            {
-              "$ref": "#OperatorCategory.PropertyType"
-            }
-          ]
-        }
-      ]
-    },
     {
       "key": "OperatorType",
       "type": "#TypeDescriptor",
@@ -80,7 +36,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaOperatorType"
+            "$ref": "#HolonType"
           }
         },
         {
