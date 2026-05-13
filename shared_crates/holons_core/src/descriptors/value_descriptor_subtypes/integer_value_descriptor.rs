@@ -105,11 +105,13 @@ const _: fn() = || {
 mod tests {
     use super::*;
     use crate::descriptors::test_support::{
-        build_context, core_holon_type_name, new_descriptor_holon,
+        build_context, core_holon_type_name, core_value_type_name, new_descriptor_holon,
     };
     use crate::reference_layer::{TransientReference, WritableHolon};
     use base_types::{MapInteger, MapString};
-    use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
+    use type_names::{
+        CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
+    };
 
     fn integer_value(value: i64) -> BaseValue {
         BaseValue::IntegerValue(MapInteger(value))
@@ -184,8 +186,12 @@ mod tests {
             .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 10_i64)?
             .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
         add_extends(&mut maximum, &family)?;
-        let mut value =
-            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        let mut value = new_descriptor_holon(
+            &context,
+            "integer-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
         value.add_related_holons(
             CoreRelationshipTypeName::Constraints,
             vec![minimum.into(), maximum.into()],
@@ -237,6 +243,124 @@ mod tests {
             descriptor.is_valid(&integer_value(4)),
             Err(HolonError::IntegerOutOfRange { value: 4, min: Some(5), .. })
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_honors_exclusive_integer_bounds() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "integer-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "exclusive-minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
+        minimum
+            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
+            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, false)?;
+        add_extends(&mut minimum, &family)?;
+        let mut maximum = new_descriptor_holon(
+            &context,
+            "exclusive-maximum",
+            &core_holon_type_name(CoreHolonTypeName::MaximumValue),
+            "Holon",
+        )?;
+        maximum
+            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 10_i64)?
+            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, false)?;
+        add_extends(&mut maximum, &family)?;
+        let mut value = new_descriptor_holon(
+            &context,
+            "integer-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![minimum.into(), maximum.into()],
+        )?;
+
+        let descriptor = IntegerValueDescriptor::from_holon(value.into());
+
+        assert!(matches!(
+            descriptor.is_valid(&integer_value(5)),
+            Err(HolonError::IntegerOutOfRange { value: 5, min: Some(5), min_inclusive: false, .. })
+        ));
+        assert!(descriptor.is_valid(&integer_value(6)).is_ok());
+        assert!(descriptor.is_valid(&integer_value(9)).is_ok());
+        assert!(matches!(
+            descriptor.is_valid(&integer_value(10)),
+            Err(HolonError::IntegerOutOfRange {
+                value: 10,
+                max: Some(10),
+                max_inclusive: false,
+                ..
+            })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_composes_inherited_and_local_integer_constraints() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "integer-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
+            "Holon",
+        )?;
+        let mut inherited_minimum = new_descriptor_holon(
+            &context,
+            "inherited-minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
+        inherited_minimum
+            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
+            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
+        add_extends(&mut inherited_minimum, &family)?;
+        let mut local_minimum = new_descriptor_holon(
+            &context,
+            "local-minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
+        local_minimum
+            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 10_i64)?
+            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
+        add_extends(&mut local_minimum, &family)?;
+
+        let mut parent = new_descriptor_holon(
+            &context,
+            "parent-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
+        parent.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![inherited_minimum.into()],
+        )?;
+        let mut child =
+            new_descriptor_holon(&context, "child-value", "ConstrainedIntegerValueType", "Value")?;
+        add_extends(&mut child, &parent)?;
+        child.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![local_minimum.into()],
+        )?;
+
+        let descriptor = IntegerValueDescriptor::from_holon(child.into());
+
+        assert!(matches!(
+            descriptor.is_valid(&integer_value(7)),
+            Err(HolonError::IntegerOutOfRange { value: 7, min: Some(10), .. })
+        ));
+        assert!(descriptor.is_valid(&integer_value(10)).is_ok());
         Ok(())
     }
 

@@ -470,10 +470,23 @@ fn schema_invalid(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core_shared_objects::transactions::TransactionContext;
     use crate::descriptors::test_support::{
-        build_context, core_holon_type_name, new_descriptor_holon,
+        build_context, core_holon_type_name, core_value_type_name, new_descriptor_holon,
     };
     use crate::reference_layer::{TransientReference, WritableHolon};
+    use std::sync::Arc;
+    use type_names::CoreValueTypeName;
+
+    fn assert_schema_invalid<T>(
+        result: Result<T, HolonError>,
+        expected_kind: SchemaInvalidityKind,
+    ) {
+        assert!(matches!(
+            result,
+            Err(HolonError::DescriptorSchemaInvalid { kind, .. }) if kind == expected_kind
+        ));
+    }
 
     fn add_extends(
         child: &mut TransientReference,
@@ -481,6 +494,24 @@ mod tests {
     ) -> Result<(), HolonError> {
         child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone().into()])?;
         Ok(())
+    }
+
+    fn constraint_holon_with_family(
+        context: &Arc<TransactionContext>,
+        key: &str,
+        constraint_type: CoreHolonTypeName,
+        family_type: CoreHolonTypeName,
+    ) -> Result<TransientReference, HolonError> {
+        let family = new_descriptor_holon(
+            context,
+            &format!("{key}-family"),
+            &core_holon_type_name(family_type),
+            "Holon",
+        )?;
+        let mut constraint =
+            new_descriptor_holon(context, key, &core_holon_type_name(constraint_type), "Holon")?;
+        add_extends(&mut constraint, &family)?;
+        Ok(constraint)
     }
 
     #[test]
@@ -502,8 +533,12 @@ mod tests {
             .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
             .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
         add_extends(&mut minimum, &family)?;
-        let mut integer_value =
-            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        let mut integer_value = new_descriptor_holon(
+            &context,
+            "integer-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
         integer_value
             .add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
 
@@ -565,18 +600,94 @@ mod tests {
             "Holon",
         )?;
         add_extends(&mut minimum, &family)?;
-        let mut string_value =
-            new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?;
+        let mut string_value = new_descriptor_holon(
+            &context,
+            "string-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
         string_value
             .add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
 
-        assert!(matches!(
+        assert_schema_invalid(
             resolve_string_constraints(&string_value.into()),
-            Err(HolonError::DescriptorSchemaInvalid {
-                kind: SchemaInvalidityKind::IncompatibleConstraintFamily,
-                ..
-            })
-        ));
+            SchemaInvalidityKind::IncompatibleConstraintFamily,
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn integer_resolver_rejects_incompatible_string_bytes_and_value_array_families(
+    ) -> Result<(), HolonError> {
+        for (key, constraint_type, family_type) in [
+            (
+                "string-minimum",
+                CoreHolonTypeName::MinimumLength,
+                CoreHolonTypeName::StringValueConstraint,
+            ),
+            (
+                "bytes-constraint",
+                CoreHolonTypeName::ValueConstraintType,
+                CoreHolonTypeName::BytesValueConstraint,
+            ),
+            (
+                "array-constraint",
+                CoreHolonTypeName::ValueConstraintType,
+                CoreHolonTypeName::ValueArrayConstraint,
+            ),
+        ] {
+            let context = build_context();
+            let constraint =
+                constraint_holon_with_family(&context, key, constraint_type, family_type)?;
+            let mut integer_value = new_descriptor_holon(
+                &context,
+                "integer-value",
+                &core_value_type_name(CoreValueTypeName::IntegerValueType),
+                "Value",
+            )?;
+            integer_value.add_related_holons(
+                CoreRelationshipTypeName::Constraints,
+                vec![constraint.into()],
+            )?;
+
+            assert_schema_invalid(
+                resolve_integer_constraints(&integer_value.into()),
+                SchemaInvalidityKind::IncompatibleConstraintFamily,
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn string_resolver_rejects_incompatible_bytes_and_value_array_families(
+    ) -> Result<(), HolonError> {
+        for (key, family_type) in [
+            ("bytes-constraint", CoreHolonTypeName::BytesValueConstraint),
+            ("array-constraint", CoreHolonTypeName::ValueArrayConstraint),
+        ] {
+            let context = build_context();
+            let constraint = constraint_holon_with_family(
+                &context,
+                key,
+                CoreHolonTypeName::ValueConstraintType,
+                family_type,
+            )?;
+            let mut string_value = new_descriptor_holon(
+                &context,
+                "string-value",
+                &core_value_type_name(CoreValueTypeName::StringValueType),
+                "Value",
+            )?;
+            string_value.add_related_holons(
+                CoreRelationshipTypeName::Constraints,
+                vec![constraint.into()],
+            )?;
+
+            assert_schema_invalid(
+                resolve_string_constraints(&string_value.into()),
+                SchemaInvalidityKind::IncompatibleConstraintFamily,
+            );
+        }
         Ok(())
     }
 
@@ -584,18 +695,44 @@ mod tests {
     fn integer_resolver_rejects_unclassified_constraint() -> Result<(), HolonError> {
         let context = build_context();
         let mystery = new_descriptor_holon(&context, "mystery", "MysteryConstraint", "Holon")?;
-        let mut integer_value =
-            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        let mut integer_value = new_descriptor_holon(
+            &context,
+            "integer-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
         integer_value
             .add_related_holons(CoreRelationshipTypeName::Constraints, vec![mystery.into()])?;
 
-        assert!(matches!(
+        assert_schema_invalid(
             resolve_integer_constraints(&integer_value.into()),
-            Err(HolonError::DescriptorSchemaInvalid {
-                kind: SchemaInvalidityKind::UnclassifiedConstraint,
-                ..
-            })
-        ));
+            SchemaInvalidityKind::UnclassifiedConstraint,
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn integer_resolver_reports_missing_integer_constraint_parameter() -> Result<(), HolonError> {
+        let context = build_context();
+        let minimum = constraint_holon_with_family(
+            &context,
+            "minimum",
+            CoreHolonTypeName::MinimumValue,
+            CoreHolonTypeName::IntegerValueConstraint,
+        )?;
+        let mut integer_value = new_descriptor_holon(
+            &context,
+            "integer-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
+        integer_value
+            .add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
+
+        assert_schema_invalid(
+            resolve_integer_constraints(&integer_value.into()),
+            SchemaInvalidityKind::MissingConstraintParameter,
+        );
         Ok(())
     }
 
@@ -628,20 +765,64 @@ mod tests {
             .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 6_i64)?
             .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, false)?;
         add_extends(&mut maximum, &family)?;
-        let mut integer_value =
-            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        let mut integer_value = new_descriptor_holon(
+            &context,
+            "integer-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
         integer_value.add_related_holons(
             CoreRelationshipTypeName::Constraints,
             vec![minimum.into(), maximum.into()],
         )?;
 
-        assert!(matches!(
+        assert_schema_invalid(
             resolve_integer_constraints(&integer_value.into()),
-            Err(HolonError::DescriptorSchemaInvalid {
-                kind: SchemaInvalidityKind::ContradictoryConstraints,
-                ..
-            })
-        ));
+            SchemaInvalidityKind::ContradictoryConstraints,
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn string_resolver_detects_contradictory_length_interval() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "string-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 10_i64)?;
+        add_extends(&mut minimum, &family)?;
+        let mut maximum = new_descriptor_holon(
+            &context,
+            "maximum",
+            &core_holon_type_name(CoreHolonTypeName::MaximumLength),
+            "Holon",
+        )?;
+        maximum.with_property_value(CorePropertyTypeName::ConstraintLength, 5_i64)?;
+        add_extends(&mut maximum, &family)?;
+        let mut string_value = new_descriptor_holon(
+            &context,
+            "string-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
+        string_value.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![minimum.into(), maximum.into()],
+        )?;
+
+        assert_schema_invalid(
+            resolve_string_constraints(&string_value.into()),
+            SchemaInvalidityKind::ContradictoryConstraints,
+        );
         Ok(())
     }
 
@@ -649,7 +830,7 @@ mod tests {
     fn string_constraint_validation_counts_unicode_scalar_values() -> Result<(), HolonError> {
         let minimum = StringConstraint::MinimumLength(MinimumLengthConstraint { length: 1 });
 
-        assert!(minimum.is_valid("é", "unicode-string").is_ok());
+        assert!(minimum.is_valid("\u{e9}", "unicode-string").is_ok());
         Ok(())
     }
 
@@ -669,18 +850,19 @@ mod tests {
             "Holon",
         )?;
         add_extends(&mut minimum, &family)?;
-        let mut string_value =
-            new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?;
+        let mut string_value = new_descriptor_holon(
+            &context,
+            "string-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
         string_value
             .add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
 
-        assert!(matches!(
+        assert_schema_invalid(
             resolve_string_constraints(&string_value.into()),
-            Err(HolonError::DescriptorSchemaInvalid {
-                kind: SchemaInvalidityKind::MissingConstraintParameter,
-                ..
-            })
-        ));
+            SchemaInvalidityKind::MissingConstraintParameter,
+        );
         Ok(())
     }
 }

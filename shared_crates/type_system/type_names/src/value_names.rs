@@ -4,9 +4,11 @@ use strum_macros::VariantNames;
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreValueTypeName {
+    IntegerValueType,
     MapBytesValueType,
     MapEnumValueType,
     MapValueArrayType,
+    StringValueType,
     ValueBoolean,
     ValueBytes,
     ValueEnum,
@@ -33,6 +35,10 @@ mod tests {
     #[test]
     fn test_variant_string_conversion() {
         assert_eq!(
+            MapString("IntegerValueType".to_string()),
+            CoreValueTypeName::IntegerValueType.as_value_name()
+        );
+        assert_eq!(
             MapString("MapBytesValueType".to_string()),
             CoreValueTypeName::MapBytesValueType.as_value_name()
         );
@@ -43,6 +49,10 @@ mod tests {
         assert_eq!(
             MapString("MapValueArrayType".to_string()),
             CoreValueTypeName::MapValueArrayType.as_value_name()
+        );
+        assert_eq!(
+            MapString("StringValueType".to_string()),
+            CoreValueTypeName::StringValueType.as_value_name()
         );
         assert_eq!(
             MapString("ValueBoolean".to_string()),

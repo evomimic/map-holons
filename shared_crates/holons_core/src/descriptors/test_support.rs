@@ -8,7 +8,9 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use std::any::Any;
 use std::sync::Arc;
-use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
+use type_names::{
+    CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
+};
 
 // Minimal fail-fast holon service for descriptor unit tests.
 //
@@ -116,6 +118,11 @@ pub(crate) fn new_test_holon(
 /// Returns the canonical schema name for a core holon type.
 pub(crate) fn core_holon_type_name(core_holon_type_name: CoreHolonTypeName) -> String {
     core_holon_type_name.as_holon_name().to_string()
+}
+
+/// Returns the canonical schema name for a core value type.
+pub(crate) fn core_value_type_name(core_value_type_name: CoreValueTypeName) -> String {
+    core_value_type_name.as_value_name().to_string()
 }
 
 /// Creates a transient descriptor holon with the shared header properties.
