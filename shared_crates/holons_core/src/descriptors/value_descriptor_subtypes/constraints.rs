@@ -1,7 +1,3 @@
-// Phase 3 introduces the resolved constraint runtime before subtype descriptors
-// call it in Phase 4.
-#![allow(dead_code)]
-
 use crate::descriptors::accessor_helpers::{descriptor_label, require_bool, require_integer};
 use crate::descriptors::inheritance::{flatten_related_members, walk_extends_chain};
 use crate::descriptors::TypeHeader;
@@ -32,10 +28,12 @@ pub(crate) struct MaximumLengthConstraint {
 }
 
 pub(crate) trait IntegerConstraintValidation {
+    /// Validates one concrete integer value against this resolved constraint.
     fn is_valid(&self, value: i64, descriptor_label: &str) -> Result<(), HolonError>;
 }
 
 pub(crate) trait StringConstraintValidation {
+    /// Validates one concrete string value against this resolved constraint.
     fn is_valid(&self, value: &str, descriptor_label: &str) -> Result<(), HolonError>;
 }
 
@@ -157,6 +155,7 @@ impl StringConstraintValidation for StringConstraint {
     }
 }
 
+/// Resolves inherited `Constraints` relationships into executable integer constraints.
 pub(crate) fn resolve_integer_constraints(
     value_type: &HolonReference,
 ) -> Result<Vec<IntegerConstraint>, HolonError> {
@@ -188,6 +187,10 @@ pub(crate) fn resolve_integer_constraints(
                     inclusive: require_constraint_is_inclusive(value_type, &constraint_holon)?,
                 })
             }
+            // Family matched Integer but the concrete kind is either
+            // unclassified (no recognized kind anchor in the Extends chain)
+            // or belongs to a different family's kind set. Both cases are
+            // unsupported on the integer executable path.
             _ => return Err(unsupported_constraint(value_type, &constraint_holon)),
         };
 
@@ -198,6 +201,7 @@ pub(crate) fn resolve_integer_constraints(
     Ok(resolved_constraints)
 }
 
+/// Resolves inherited `Constraints` relationships into executable string constraints.
 pub(crate) fn resolve_string_constraints(
     value_type: &HolonReference,
 ) -> Result<Vec<StringConstraint>, HolonError> {
@@ -227,6 +231,10 @@ pub(crate) fn resolve_string_constraints(
                     length: require_constraint_length(value_type, &constraint_holon)?,
                 })
             }
+            // Family matched String but the concrete kind is either
+            // unclassified (no recognized kind anchor in the Extends chain)
+            // or belongs to a different family's kind set. Both cases are
+            // unsupported on the string executable path.
             _ => return Err(unsupported_constraint(value_type, &constraint_holon)),
         };
 
@@ -250,6 +258,10 @@ fn classify_constraint(
         let type_name = TypeHeader::new(&ancestor).type_name()?;
         family = family.or_else(|| family_from_type_name(type_name.0.as_str()));
         kind = kind.or_else(|| kind_from_type_name(type_name.0.as_str()));
+        // Both classifiers are first-write-wins (via `or_else`), so once each
+        // has been filled there is nothing further up the Extends chain that
+        // could change the result. Stop early to avoid touching ancestors
+        // we have no decision to make about.
         if family.is_some() && kind.is_some() {
             break;
         }
@@ -458,7 +470,9 @@ fn schema_invalid(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::descriptors::test_support::{
+        build_context, core_holon_type_name, new_descriptor_holon,
+    };
     use crate::reference_layer::{TransientReference, WritableHolon};
 
     fn add_extends(
@@ -472,9 +486,18 @@ mod tests {
     #[test]
     fn integer_resolver_returns_typed_minimum_constraint() -> Result<(), HolonError> {
         let context = build_context();
-        let family =
-            new_descriptor_holon(&context, "integer-family", "IntegerValueConstraint", "Holon")?;
-        let mut minimum = new_descriptor_holon(&context, "minimum", "MinimumValue", "Holon")?;
+        let family = new_descriptor_holon(
+            &context,
+            "integer-family",
+            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
         minimum
             .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
             .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
@@ -494,9 +517,18 @@ mod tests {
     #[test]
     fn resolver_discovers_constraints_inherited_by_value_type() -> Result<(), HolonError> {
         let context = build_context();
-        let family =
-            new_descriptor_holon(&context, "integer-family", "IntegerValueConstraint", "Holon")?;
-        let mut minimum = new_descriptor_holon(&context, "minimum", "MinimumValue", "Holon")?;
+        let family = new_descriptor_holon(
+            &context,
+            "integer-family",
+            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
         minimum
             .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
             .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
@@ -520,9 +552,18 @@ mod tests {
     #[test]
     fn string_resolver_rejects_incompatible_integer_family_constraint() -> Result<(), HolonError> {
         let context = build_context();
-        let family =
-            new_descriptor_holon(&context, "integer-family", "IntegerValueConstraint", "Holon")?;
-        let mut minimum = new_descriptor_holon(&context, "minimum", "MinimumValue", "Holon")?;
+        let family = new_descriptor_holon(
+            &context,
+            "integer-family",
+            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
         add_extends(&mut minimum, &family)?;
         let mut string_value =
             new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?;
@@ -561,14 +602,28 @@ mod tests {
     #[test]
     fn integer_resolver_detects_empty_exclusive_interval() -> Result<(), HolonError> {
         let context = build_context();
-        let family =
-            new_descriptor_holon(&context, "integer-family", "IntegerValueConstraint", "Holon")?;
-        let mut minimum = new_descriptor_holon(&context, "minimum", "MinimumValue", "Holon")?;
+        let family = new_descriptor_holon(
+            &context,
+            "integer-family",
+            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
         minimum
             .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
             .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, false)?;
         add_extends(&mut minimum, &family)?;
-        let mut maximum = new_descriptor_holon(&context, "maximum", "MaximumValue", "Holon")?;
+        let mut maximum = new_descriptor_holon(
+            &context,
+            "maximum",
+            &core_holon_type_name(CoreHolonTypeName::MaximumValue),
+            "Holon",
+        )?;
         maximum
             .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 6_i64)?
             .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, false)?;
@@ -601,9 +656,18 @@ mod tests {
     #[test]
     fn missing_constraint_parameter_is_schema_invalid() -> Result<(), HolonError> {
         let context = build_context();
-        let family =
-            new_descriptor_holon(&context, "string-family", "StringValueConstraint", "Holon")?;
-        let mut minimum = new_descriptor_holon(&context, "minimum", "MinimumLength", "Holon")?;
+        let family = new_descriptor_holon(
+            &context,
+            "string-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
         add_extends(&mut minimum, &family)?;
         let mut string_value =
             new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?;
