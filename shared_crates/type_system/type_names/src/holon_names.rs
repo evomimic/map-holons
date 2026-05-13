@@ -4,6 +4,7 @@ use strum_macros::VariantNames;
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreHolonTypeName {
+    BytesValueConstraint,
     Collection,
     CommitResponseType,
     Dance,
@@ -14,10 +15,18 @@ pub enum CoreHolonTypeName {
     HolonLoadError,
     HolonSpace,
     HolonType,
+    IntegerValueConstraint,
     InverseRelationshipType,
+    MaximumLength,
+    MaximumValue,
+    MinimumLength,
+    MinimumValue,
     SchemaHolonType,
     SchemaType,
+    StringValueConstraint,
     TypeDescriptor,
+    ValueArrayConstraint,
+    ValueConstraintType,
 }
 
 impl CoreHolonTypeName {

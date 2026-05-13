@@ -41,8 +41,18 @@ pub enum HolonError {
     HolonNotFound(String),
     #[error("Index {0} into Holons Vector is Out of Range")]
     IndexOutOfRange(String),
-    #[error("Integer {value} is out of range for {context}: expected {min}..={max}")]
-    IntegerOutOfRange { value: i64, min: i64, max: i64, context: String },
+    #[error(
+        "Integer {value} is out of range for descriptor {descriptor}: min={min:?} \
+        inclusive={min_inclusive}, max={max:?} inclusive={max_inclusive}"
+    )]
+    IntegerOutOfRange {
+        value: i64,
+        min: Option<i64>,
+        max: Option<i64>,
+        min_inclusive: bool,
+        max_inclusive: bool,
+        descriptor: String,
+    },
     #[error("Invalid HolonReference, {0}")]
     InvalidHolonReference(String),
     #[error("Invalid wire format for {wire_type}: {reason}")]
@@ -109,6 +119,12 @@ pub enum HolonError {
     ReferenceResolutionFailed { reference_kind: String, reference_id: String, reason: String },
     #[error("Service '{0}' is not available")]
     ServiceNotAvailable(String),
+    #[error("Descriptor schema is invalid for {descriptor}: {kind:?}: {detail}")]
+    DescriptorSchemaInvalid { kind: SchemaInvalidityKind, detail: String, descriptor: String },
+    #[error(
+        "String length {length} is out of range for descriptor {descriptor}: min={min:?}, max={max:?}"
+    )]
+    StringLengthOutOfRange { length: usize, min: Option<i64>, max: Option<i64>, descriptor: String },
     #[error("Transaction {tx_id} is already committed")]
     TransactionAlreadyCommitted { tx_id: u64 },
     #[error("Transaction {tx_id} is currently committing and cannot accept external mutations")]
@@ -133,6 +149,15 @@ pub enum HolonError {
     ValidationError(ValidationError),
     #[error("WasmError {0}")]
     WasmError(String),
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash)]
+pub enum SchemaInvalidityKind {
+    ContradictoryConstraints,
+    MissingConstraintParameter,
+    IncompatibleConstraintFamily,
+    UnsupportedExecutableConstraint,
+    UnclassifiedConstraint,
 }
 
 // Remove this implementation - no longer needed with RwLock
@@ -190,6 +215,8 @@ pub enum HolonErrorKind {
     ReferenceBindingFailed,
     ReferenceResolutionFailed,
     ServiceNotAvailable,
+    DescriptorSchemaInvalid,
+    StringLengthOutOfRange,
     TransactionAlreadyCommitted,
     TransactionCommitInProgress,
     TransactionNotOpen,
@@ -248,6 +275,8 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::ReferenceBindingFailed { .. } => Self::ReferenceBindingFailed,
             HolonError::ReferenceResolutionFailed { .. } => Self::ReferenceResolutionFailed,
             HolonError::ServiceNotAvailable(_) => Self::ServiceNotAvailable,
+            HolonError::DescriptorSchemaInvalid { .. } => Self::DescriptorSchemaInvalid,
+            HolonError::StringLengthOutOfRange { .. } => Self::StringLengthOutOfRange,
             HolonError::TransactionAlreadyCommitted { .. } => Self::TransactionAlreadyCommitted,
             HolonError::TransactionCommitInProgress { .. } => Self::TransactionCommitInProgress,
             HolonError::TransactionNotOpen { .. } => Self::TransactionNotOpen,
