@@ -11,7 +11,7 @@ const CORE_SCHEMA_RELATIVE_PATHS: [&str; 9] = [
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-schema.json",
+    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-root.json",
@@ -29,12 +29,12 @@ pub struct CoreSchemaLoadMetrics {
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 210,
-    committed: 210,
-    links_created: 1128,
+    staged: 209,
+    committed: 209,
+    links_created: 1124,
     errors: 0,
     total_bundles: 9,
-    total_loader_holons: 210,
+    total_loader_holons: 209,
 };
 
 /// Absolute paths to all core schema import files used for loader-client testing.
