@@ -24,7 +24,7 @@ pub use type_kinds::*;
 // Prefer explicit lists over globs to keep the API curated and stable.
 pub use integrity_core_types::{
     HolonError, HolonNodeModel, LocalId, PersistenceAgentId, PersistenceTimestamp, PropertyMap,
-    PropertyName, PropertyValue, RelationshipName, ValidationError,
+    PropertyName, PropertyValue, RelationshipName, SchemaInvalidityKind, ValidationError,
 };
 
 // #[cfg(test)]

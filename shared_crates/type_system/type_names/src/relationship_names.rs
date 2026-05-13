@@ -71,6 +71,7 @@ pub enum CoreRelationshipTypeName {
     AffordsOperator,
     BundleMembers,
     ComponentOf,
+    Constraints,
     Contains,
     Dependents,
     DependsOn,

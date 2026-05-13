@@ -1,3 +1,7 @@
+use crate::descriptors::accessor_helpers::descriptor_label;
+use crate::descriptors::value_descriptor_subtypes::constraints::{
+    resolve_string_constraints, StringConstraintValidation,
+};
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     require_supported_operator, supported_operators, supports_operator, type_name_is,
     unsupported_operator, value_kind_mismatch,
@@ -23,12 +27,19 @@ impl StringValueDescriptor {
         TypeHeader::new(&self.holon)
     }
 
-    /// Validates that a runtime value is a string.
+    /// Validates that a runtime value is a string and satisfies descriptor constraints.
     pub fn is_valid(&self, value: &BaseValue) -> Result<(), HolonError> {
-        match value {
-            BaseValue::StringValue(_) => Ok(()),
-            other => Err(value_kind_mismatch(&self.holon, "String", other)),
+        let string_value = match value {
+            BaseValue::StringValue(value) => &value.0,
+            other => return Err(value_kind_mismatch(&self.holon, "String", other)),
+        };
+
+        let label = descriptor_label(&self.holon);
+        for constraint in resolve_string_constraints(&self.holon)? {
+            constraint.is_valid(string_value, &label)?;
         }
+
+        Ok(())
     }
 
     /// Returns operators afforded by this value descriptor across inheritance.
@@ -93,13 +104,26 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
-    use crate::reference_layer::WritableHolon;
+    use crate::descriptors::test_support::{
+        build_context, core_holon_type_name, core_value_type_name, new_descriptor_holon,
+    };
+    use crate::reference_layer::{TransientReference, WritableHolon};
     use base_types::{MapInteger, MapString};
-    use type_names::CoreRelationshipTypeName;
+    use core_types::SchemaInvalidityKind;
+    use type_names::{
+        CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
+    };
 
     fn string_value(value: &str) -> BaseValue {
         BaseValue::StringValue(MapString(value.to_string()))
+    }
+
+    fn add_extends(
+        child: &mut TransientReference,
+        parent: &TransientReference,
+    ) -> Result<(), HolonError> {
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone().into()])?;
+        Ok(())
     }
 
     #[test]
@@ -131,6 +155,220 @@ mod tests {
             Err(HolonError::ValueKindMismatch { expected, found, .. })
                 if expected == "String" && found == "Integer"
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_enforces_string_length_constraints() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "string-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 2_i64)?;
+        add_extends(&mut minimum, &family)?;
+        let mut maximum = new_descriptor_holon(
+            &context,
+            "maximum",
+            &core_holon_type_name(CoreHolonTypeName::MaximumLength),
+            "Holon",
+        )?;
+        maximum.with_property_value(CorePropertyTypeName::ConstraintLength, 4_i64)?;
+        add_extends(&mut maximum, &family)?;
+        let mut value = new_descriptor_holon(
+            &context,
+            "string-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![minimum.into(), maximum.into()],
+        )?;
+
+        let descriptor = StringValueDescriptor::from_holon(value.into());
+
+        assert!(descriptor.is_valid(&string_value("map")).is_ok());
+        assert!(matches!(
+            descriptor.is_valid(&string_value("m")),
+            Err(HolonError::StringLengthOutOfRange { length: 1, min: Some(2), .. })
+        ));
+        assert!(matches!(
+            descriptor.is_valid(&string_value("holon")),
+            Err(HolonError::StringLengthOutOfRange { length: 5, max: Some(4), .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_propagates_descriptor_schema_invalidity() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "string-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        add_extends(&mut minimum, &family)?;
+        let mut value = new_descriptor_holon(&context, "string-value", "StringValueType", "Value")?;
+        value.add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
+
+        let descriptor = StringValueDescriptor::from_holon(value.into());
+
+        assert!(matches!(
+            descriptor.is_valid(&string_value("map")),
+            Err(HolonError::DescriptorSchemaInvalid {
+                kind: SchemaInvalidityKind::MissingConstraintParameter,
+                ..
+            })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_counts_unicode_scalar_values_for_length_constraints() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "string-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 1_i64)?;
+        add_extends(&mut minimum, &family)?;
+        let mut maximum = new_descriptor_holon(
+            &context,
+            "maximum",
+            &core_holon_type_name(CoreHolonTypeName::MaximumLength),
+            "Holon",
+        )?;
+        maximum.with_property_value(CorePropertyTypeName::ConstraintLength, 1_i64)?;
+        add_extends(&mut maximum, &family)?;
+        let mut value = new_descriptor_holon(
+            &context,
+            "string-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
+        value.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![minimum.into(), maximum.into()],
+        )?;
+
+        let descriptor = StringValueDescriptor::from_holon(value.into());
+
+        assert!(descriptor.is_valid(&string_value("\u{e9}")).is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_enforces_inherited_string_length_constraints() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "string-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 3_i64)?;
+        add_extends(&mut minimum, &family)?;
+        let mut parent = new_descriptor_holon(
+            &context,
+            "parent-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
+        parent.add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
+        let mut child =
+            new_descriptor_holon(&context, "child-value", "ConstrainedStringValueType", "Value")?;
+        add_extends(&mut child, &parent)?;
+
+        let descriptor = StringValueDescriptor::from_holon(child.into());
+
+        assert!(matches!(
+            descriptor.is_valid(&string_value("hi")),
+            Err(HolonError::StringLengthOutOfRange { length: 2, min: Some(3), .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_composes_inherited_and_local_string_length_constraints() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "string-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut inherited_minimum = new_descriptor_holon(
+            &context,
+            "inherited-minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        inherited_minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 2_i64)?;
+        add_extends(&mut inherited_minimum, &family)?;
+        let mut local_minimum = new_descriptor_holon(
+            &context,
+            "local-minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        local_minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 4_i64)?;
+        add_extends(&mut local_minimum, &family)?;
+
+        let mut parent = new_descriptor_holon(
+            &context,
+            "parent-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
+        parent.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![inherited_minimum.into()],
+        )?;
+        let mut child =
+            new_descriptor_holon(&context, "child-value", "ConstrainedStringValueType", "Value")?;
+        add_extends(&mut child, &parent)?;
+        child.add_related_holons(
+            CoreRelationshipTypeName::Constraints,
+            vec![local_minimum.into()],
+        )?;
+
+        let descriptor = StringValueDescriptor::from_holon(child.into());
+
+        assert!(matches!(
+            descriptor.is_valid(&string_value("map")),
+            Err(HolonError::StringLengthOutOfRange { length: 3, min: Some(4), .. })
+        ));
+        assert!(descriptor.is_valid(&string_value("maps")).is_ok());
         Ok(())
     }
 

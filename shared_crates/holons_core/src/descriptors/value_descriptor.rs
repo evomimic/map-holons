@@ -196,11 +196,15 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::descriptors::test_support::{
+        build_context, core_holon_type_name, core_value_type_name, new_descriptor_holon,
+    };
     use crate::reference_layer::WritableHolon;
     use base_types::{MapBoolean, MapEnumValue, MapInteger, MapString};
     use core_types::HolonError;
-    use type_names::CoreRelationshipTypeName;
+    use type_names::{
+        CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
+    };
 
     #[test]
     fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {
@@ -234,6 +238,76 @@ mod tests {
                 if expected == "Integer" && found == "String"
         ));
 
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_dispatches_integer_constraint_failures() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "integer-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
+            "Holon",
+        )?;
+        minimum
+            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
+            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
+        minimum.add_related_holons(CoreRelationshipTypeName::Extends, vec![family.into()])?;
+        let mut value = new_descriptor_holon(
+            &context,
+            "integer-value",
+            &core_value_type_name(CoreValueTypeName::IntegerValueType),
+            "Value",
+        )?;
+        value.add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
+
+        let descriptor = ValueDescriptor::from_holon(value.into());
+
+        assert!(matches!(
+            descriptor.is_valid(&BaseValue::IntegerValue(MapInteger(4))),
+            Err(HolonError::IntegerOutOfRange { value: 4, min: Some(5), .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_dispatches_string_constraint_failures() -> Result<(), HolonError> {
+        let context = build_context();
+        let family = new_descriptor_holon(
+            &context,
+            "string-constraint-family",
+            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
+            "Holon",
+        )?;
+        let mut minimum = new_descriptor_holon(
+            &context,
+            "minimum",
+            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
+            "Holon",
+        )?;
+        minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 3_i64)?;
+        minimum.add_related_holons(CoreRelationshipTypeName::Extends, vec![family.into()])?;
+        let mut value = new_descriptor_holon(
+            &context,
+            "string-value",
+            &core_value_type_name(CoreValueTypeName::StringValueType),
+            "Value",
+        )?;
+        value.add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
+
+        let descriptor = ValueDescriptor::from_holon(value.into());
+
+        assert!(matches!(
+            descriptor.is_valid(&BaseValue::StringValue(MapString("hi".to_string()))),
+            Err(HolonError::StringLengthOutOfRange { length: 2, min: Some(3), .. })
+        ));
         Ok(())
     }
 

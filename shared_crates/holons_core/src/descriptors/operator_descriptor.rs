@@ -46,9 +46,11 @@ impl OperatorDescriptor {
         let arity = accessor_helpers::require_integer(&self.holon, CorePropertyTypeName::Arity)?;
         arity.try_into().map_err(|_| HolonError::IntegerOutOfRange {
             value: arity,
-            min: u8::MIN.into(),
-            max: u8::MAX.into(),
-            context: "OperatorDescriptor::arity".to_string(),
+            min: Some(u8::MIN.into()),
+            max: Some(u8::MAX.into()),
+            min_inclusive: true,
+            max_inclusive: true,
+            descriptor: "OperatorDescriptor::arity".to_string(),
         })
     }
 
@@ -191,8 +193,19 @@ mod tests {
 
         assert!(matches!(
             descriptor.arity(),
-            Err(HolonError::IntegerOutOfRange { value, min, max, context })
-                if value == 256 && min == 0 && max == 255 && context == "OperatorDescriptor::arity"
+            Err(HolonError::IntegerOutOfRange {
+                value,
+                min,
+                max,
+                min_inclusive,
+                max_inclusive,
+                descriptor
+            }) if value == 256
+                && min == Some(0)
+                && max == Some(255)
+                && min_inclusive
+                && max_inclusive
+                && descriptor == "OperatorDescriptor::arity"
         ));
 
         Ok(())
