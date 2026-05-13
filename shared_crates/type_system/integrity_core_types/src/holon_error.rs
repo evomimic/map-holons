@@ -101,6 +101,8 @@ pub enum HolonError {
     MultipleRelatedHolons { relationship: String, descriptor: String, count: usize },
     #[error("{kind} declaration named {name} not found for descriptor {descriptor}")]
     DescriptorDeclarationNotFound { kind: String, name: String, descriptor: String },
+    #[error("Descriptor schema is invalid for {descriptor}: {kind:?}: {detail}")]
+    DescriptorSchemaInvalid { kind: SchemaInvalidityKind, detail: String, descriptor: String },
     #[error(
         "Enum variant {variant} is not declared for value type {value_type} on descriptor {descriptor}"
     )]
@@ -119,8 +121,6 @@ pub enum HolonError {
     ReferenceResolutionFailed { reference_kind: String, reference_id: String, reason: String },
     #[error("Service '{0}' is not available")]
     ServiceNotAvailable(String),
-    #[error("Descriptor schema is invalid for {descriptor}: {kind:?}: {detail}")]
-    DescriptorSchemaInvalid { kind: SchemaInvalidityKind, detail: String, descriptor: String },
     #[error(
         "String length {length} is out of range for descriptor {descriptor}: min={min:?}, max={max:?}"
     )]
@@ -208,6 +208,7 @@ pub enum HolonErrorKind {
     MissingRequiredRelationship,
     MultipleRelatedHolons,
     DescriptorDeclarationNotFound,
+    DescriptorSchemaInvalid,
     EnumVariantNotInSchema,
     NotAccessible,
     NotImplemented,
@@ -215,7 +216,6 @@ pub enum HolonErrorKind {
     ReferenceBindingFailed,
     ReferenceResolutionFailed,
     ServiceNotAvailable,
-    DescriptorSchemaInvalid,
     StringLengthOutOfRange,
     TransactionAlreadyCommitted,
     TransactionCommitInProgress,
@@ -268,6 +268,7 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::MissingRequiredRelationship { .. } => Self::MissingRequiredRelationship,
             HolonError::MultipleRelatedHolons { .. } => Self::MultipleRelatedHolons,
             HolonError::DescriptorDeclarationNotFound { .. } => Self::DescriptorDeclarationNotFound,
+            HolonError::DescriptorSchemaInvalid { .. } => Self::DescriptorSchemaInvalid,
             HolonError::EnumVariantNotInSchema { .. } => Self::EnumVariantNotInSchema,
             HolonError::NotAccessible(_, _) => Self::NotAccessible,
             HolonError::NotImplemented(_) => Self::NotImplemented,
@@ -275,7 +276,6 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::ReferenceBindingFailed { .. } => Self::ReferenceBindingFailed,
             HolonError::ReferenceResolutionFailed { .. } => Self::ReferenceResolutionFailed,
             HolonError::ServiceNotAvailable(_) => Self::ServiceNotAvailable,
-            HolonError::DescriptorSchemaInvalid { .. } => Self::DescriptorSchemaInvalid,
             HolonError::StringLengthOutOfRange { .. } => Self::StringLengthOutOfRange,
             HolonError::TransactionAlreadyCommitted { .. } => Self::TransactionAlreadyCommitted,
             HolonError::TransactionCommitInProgress { .. } => Self::TransactionCommitInProgress,
