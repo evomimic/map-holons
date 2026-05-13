@@ -11,7 +11,7 @@ const CORE_SCHEMA_RELATIVE_PATHS: [&str; 9] = [
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-schema.json",
+    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-root.json",
