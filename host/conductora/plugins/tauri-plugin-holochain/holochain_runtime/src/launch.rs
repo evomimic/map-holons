@@ -43,7 +43,11 @@ pub(crate) async fn launch_holochain_runtime(
         portpicker::pick_unused_port().expect("No ports free")
     };
 
+    let mut dev_dir = None;
+
     let network_config = if config.dev_mode {
+        dev_dir = Some(config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root"));
+
         let mut n = config.network_config;
         n.bootstrap_url = url2::url2!("http://127.0.0.1:1");
         n
@@ -51,15 +55,13 @@ pub(crate) async fn launch_holochain_runtime(
         config.network_config
     };
 
-    let dev_dir = config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root");
-
     let conductor_config = config::conductor_config(
         &filesystem,
         admin_port,
         filesystem.keystore_dir().into(),
         network_config,
         config.dev_mode,
-        Some(dev_dir.clone()),
+        dev_dir
     );
 
     log::debug!("Built conductor config: {:?}.", conductor_config);
@@ -70,7 +72,7 @@ pub(crate) async fn launch_holochain_runtime(
 
     let conductor_handle = match config.dev_mode {
         true => {
-            clean_dev_conductor_state(&dev_dir);
+            clean_dev_conductor_state(&config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root"));
             
             Conductor::builder()
                 .config(conductor_config)
