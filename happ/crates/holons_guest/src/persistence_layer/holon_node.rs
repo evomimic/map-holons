@@ -87,10 +87,8 @@ pub fn get_all_revisions_for_holon_node(
     else {
         return Ok(vec![]);
     };
-    let links_query = LinkQuery::try_new(
-        original_holon_node_hash.clone(),
-        LinkTypes::HolonNodeUpdates,
-    )?;
+    let links_query =
+        LinkQuery::try_new(original_holon_node_hash.clone(), LinkTypes::HolonNodeUpdates)?;
     let links = get_links(links_query, GetStrategy::default())?;
     let get_input: Vec<GetInput> = links
         .into_iter()
@@ -136,10 +134,8 @@ pub fn get_original_holon_node(
 
 #[hdk_extern]
 pub fn get_latest_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
-    let links_query = LinkQuery::try_new(
-        original_holon_node_hash.clone(),
-        LinkTypes::HolonNodeUpdates,
-    )?;
+    let links_query =
+        LinkQuery::try_new(original_holon_node_hash.clone(), LinkTypes::HolonNodeUpdates)?;
     let links = get_links(links_query, GetStrategy::default())?;
     let latest_link =
         links.into_iter().max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));

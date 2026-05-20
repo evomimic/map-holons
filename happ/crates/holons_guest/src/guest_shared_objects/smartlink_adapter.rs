@@ -62,8 +62,7 @@ impl SmartLink {
 // this linkquery defaults on all fields, ie no tag,after,before or author filters, and GetStrategy::default() is network fetch
 pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
     let path = Path::from("all_holon_nodes");
-    let base_address = path.path_entry_hash()
-        .map_err(|e| holon_error_from_wasm_error(e))?;
+    let base_address = path.path_entry_hash().map_err(|e| holon_error_from_wasm_error(e))?;
     let links_query = LinkQuery::try_new(base_address, LinkTypes::AllHolonNodes)
         .map_err(|e| holon_error_from_wasm_error(e))?;
     let links = get_links(links_query, GetStrategy::default())
@@ -127,7 +126,7 @@ pub fn get_relationship_links(
         .tag_prefix(link_tag_filter);
 
     // Retrieve links using the specified link tag filter
-    let links = get_links(links_query,GetStrategy::default())
+    let links = get_links(links_query, GetStrategy::default())
         .map_err(|e| holon_error_from_wasm_error(e))?;
 
     debug!("Got {:?} # links", links.len());

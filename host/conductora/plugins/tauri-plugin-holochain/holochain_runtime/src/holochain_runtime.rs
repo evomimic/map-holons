@@ -63,7 +63,7 @@ impl HolochainRuntime {
         let admin_ws = AdminWebsocket::connect_with_config(
             format!("localhost:{}", self.admin_port),
             Arc::new(config),
-            None
+            None,
         )
         .await
         .map_err(|err| crate::Error::WebsocketConnectionError(format!("{err:?}")))?;

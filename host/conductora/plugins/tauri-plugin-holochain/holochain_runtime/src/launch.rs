@@ -61,7 +61,7 @@ pub(crate) async fn launch_holochain_runtime(
         filesystem.keystore_dir().into(),
         network_config,
         config.dev_mode,
-        dev_dir
+        dev_dir,
     );
 
     log::debug!("Built conductor config: {:?}.", conductor_config);
@@ -72,12 +72,11 @@ pub(crate) async fn launch_holochain_runtime(
 
     let conductor_handle = match config.dev_mode {
         true => {
-            clean_dev_conductor_state(&config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root"));
-            
-            Conductor::builder()
-                .config(conductor_config)
-                .build()
-                .await?
+            clean_dev_conductor_state(
+                &config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root"),
+            );
+
+            Conductor::builder().config(conductor_config).build().await?
         }
         false => {
             let keystore =
@@ -95,11 +94,7 @@ pub(crate) async fn launch_holochain_runtime(
             if !seed_already_exists {
                 keystore
                     .lair_client()
-                    .new_seed(
-                        DEVICE_SEED_LAIR_KEYSTORE_TAG.into(),
-                        None,
-                        true,
-                    )
+                    .new_seed(DEVICE_SEED_LAIR_KEYSTORE_TAG.into(), None, true)
                     .await
                     .map_err(|err| crate::Error::LairError(err))?;
             } else {
@@ -117,7 +112,7 @@ pub(crate) async fn launch_holochain_runtime(
 
     log::info!("Connected to the admin websocket");
 
-    if config.dev_mode{
+    if config.dev_mode {
         log::warn!("Running in DEV MODE: using in-memory keystore and forcing local-only network config. NOT FOR PRODUCTION USE!");
     } else if config.mdns_discovery {
         spawn_mdns_bootstrap(admin_port).await?;

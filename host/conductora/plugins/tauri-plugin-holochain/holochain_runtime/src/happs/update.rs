@@ -51,16 +51,11 @@ pub async fn update_app(
     app_id: String,
     bundle: AppBundle,
 ) -> Result<(), UpdateHappError> {
-    log::info!(
-        "Checking whether the coordinator zomes for app {} need to be updated",
-        app_id
-    );
+    log::info!("Checking whether the coordinator zomes for app {} need to be updated", app_id);
 
     // Get the DNA def from the admin websocket
-    let apps = admin_ws
-        .list_apps(None)
-        .await
-        .map_err(|err| UpdateHappError::ConductorApiError(err))?;
+    let apps =
+        admin_ws.list_apps(None).await.map_err(|err| UpdateHappError::ConductorApiError(err))?;
 
     let mut app = apps
         .into_iter()
@@ -72,13 +67,10 @@ pub async fn update_app(
     let mut updated = false;
 
     for (role_name, new_dna_file) in new_dna_files {
-        let cells = app
-            .cell_info
-            .swap_remove(&role_name)
-            .ok_or(UpdateHappError::RoleNotFound(
-                role_name.clone(),
-                app.installed_app_id.clone(),
-            ))?;
+        let cells = app.cell_info.swap_remove(&role_name).ok_or(UpdateHappError::RoleNotFound(
+            role_name.clone(),
+            app.installed_app_id.clone(),
+        ))?;
 
         for cell in cells {
             let mut zomes: Vec<ZomeManifest> = Vec::new();
@@ -97,20 +89,11 @@ pub async fn update_app(
                 .map_err(|err| UpdateHappError::ConductorApiError(err))?;
 
             for (zome_name, coordinator_zome) in new_dna_file.dna_def().coordinator_zomes.iter() {
-                let deps = coordinator_zome
-                    .clone()
-                    .erase_type()
-                    .dependencies()
-                    .to_vec();
-                let dependencies = deps
-                    .into_iter()
-                    .map(|name| ZomeDependency { name })
-                    .collect();
+                let deps = coordinator_zome.clone().erase_type().dependencies().to_vec();
+                let dependencies = deps.into_iter().map(|name| ZomeDependency { name }).collect();
 
-                if let Some(old_zome_def) = old_dna_def
-                    .coordinator_zomes
-                    .iter()
-                    .find(|(zome, _)| zome.eq(&zome_name))
+                if let Some(old_zome_def) =
+                    old_dna_def.coordinator_zomes.iter().find(|(zome, _)| zome.eq(&zome_name))
                 {
                     if !old_zome_def
                         .1
@@ -197,12 +180,10 @@ async fn resolve_location(
     app_bundle: &Bundle<AppManifest>,
     location: &ResourceIdentifier,
 ) -> Result<(DnaFile, DnaHash), UpdateHappError> {
-    let bytes = app_bundle
-        .get_resource(location)
-        .ok_or(UpdateHappError::ResourceNotFound(
-            location.clone(),
-            app_bundle.manifest().app_name().to_string(),
-        ))?;
+    let bytes = app_bundle.get_resource(location).ok_or(UpdateHappError::ResourceNotFound(
+        location.clone(),
+        app_bundle.manifest().app_name().to_string(),
+    ))?;
     let dna_bundle: DnaBundle = mr_bundle::Bundle::unpack(bytes.as_ref())?.into();
     let (dna_file, original_hash) = dna_bundle.into_dna_file(Default::default()).await?;
     Ok((dna_file, original_hash))

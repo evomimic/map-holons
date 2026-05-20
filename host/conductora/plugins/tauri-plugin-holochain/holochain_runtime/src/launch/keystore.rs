@@ -72,22 +72,15 @@ pub async fn write_config(
     passphrase: SharedLockedArray,
 ) -> LairResult<LairServerConfig> {
     log::debug!("Creating new lair config.");
-    let lair_root = config_path
-        .parent()
-        .ok_or_else(|| one_err::OneErr::from("InvalidLairConfigDir"))?;
+    let lair_root =
+        config_path.parent().ok_or_else(|| one_err::OneErr::from("InvalidLairConfigDir"))?;
 
-    tokio::fs::DirBuilder::new()
-        .recursive(true)
-        .create(&lair_root)
-        .await?;
+    tokio::fs::DirBuilder::new().recursive(true).create(&lair_root).await?;
 
     let config = LairServerConfigInner::new(lair_root, passphrase).await?;
 
-    let mut config_f = tokio::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(config_path)
-        .await?;
+    let mut config_f =
+        tokio::fs::OpenOptions::new().write(true).create_new(true).open(config_path).await?;
 
     config_f.write_all(config.to_string().as_bytes()).await?;
     config_f.shutdown().await?;

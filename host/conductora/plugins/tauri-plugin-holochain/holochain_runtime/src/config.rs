@@ -23,7 +23,7 @@ pub struct HolochainRuntimeConfig {
     /// conductor data will be stored. If not set, a temporary directory will be used.
     pub dev_data_root: Option<std::path::PathBuf>,
 
-    pub mdns_discovery: bool
+    pub mdns_discovery: bool,
 }
 
 impl HolochainRuntimeConfig {

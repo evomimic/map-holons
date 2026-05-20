@@ -41,10 +41,10 @@ pub fn conductor_config(
     } else {
         config.data_root_path = Some(fs.conductor_dir().into());
         config.keystore = KeystoreConfig::LairServerInProc { lair_root: Some(lair_root) };
-       // config.device_seed_lair_tag = Some(DEVICE_SEED_LAIR_KEYSTORE_TAG.into());
+        // config.device_seed_lair_tag = Some(DEVICE_SEED_LAIR_KEYSTORE_TAG.into());
     }
 
-   // config.dpki = DpkiConfig::disabled();
+    // config.dpki = DpkiConfig::disabled();
 
     if dev_mode {
         network_config.bootstrap_url = Url2::parse("http://127.0.0.1:1");
@@ -52,7 +52,6 @@ pub fn conductor_config(
         network_config.target_arc_factor = 0;
         network_config.advanced = None;
     } else {
-
         if network_config.advanced.is_none() {
             let advanced_config = serde_json::json!({
                 "tx5Transport": {
@@ -77,7 +76,11 @@ pub fn conductor_config(
     let allowed_origins = AllowedOrigins::Any;
 
     config.admin_interfaces = Some(vec![AdminInterfaceConfig {
-        driver: InterfaceDriver::Websocket { port: admin_port, danger_bind_addr:None, allowed_origins },
+        driver: InterfaceDriver::Websocket {
+            port: admin_port,
+            danger_bind_addr: None,
+            allowed_origins,
+        },
     }]);
 
     config
