@@ -14,18 +14,43 @@ async-trait = "0.1.51"
 #base64ct = "=1.7.3"
 derive-new = "0.7"
 # Holochain sweettest stack (pin as you already do)
-holochain = { version = "0.5", default-features = false, features = [
+holochain = { version = "=0.6.1", default-features = false, features = [
     "sweettest",
     "wasmer_sys",
-    "datachannel-vendored"
+    "transport-iroh"
 ] }
+
+
+# Workaround: iroh-base-holochain 0.95.1 hard-pins ed25519-dalek = "=3.0.0-pre.1",
+# which fails to compile against released RustCrypto crates. Pin pkcs8 to the
+# same version Holochain's scaffolded zomes pin to, so consumers that mix this
+# plugin with Holochain zomes get a consistent resolution. Remove once
+# iroh-base-holochain publishes a release that unpins ed25519-dalek.
+ed25519 = "=3.0.0-rc.0"
+pkcs8 = "=0.11.0-rc.11"
+
+
 pretty_assertions = "1.4.0"
 #serde = { version = "1", features = ["derive"] }
 #serde_json = "1.0.109"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-sha2 = "0.10.8"
-uuid = { version = "1", features = ["serde"] }
+# RustCrypto RC pins: ed25519-dalek 3.0.0-pre.1 + curve25519-dalek 5.0.0-pre.1
+# require digest::crypto_common which was removed in digest 0.11.3 (stable).
+# Pin sha1/sha2 to their RC releases so the digest RC chain is selected.
+sha2 = "=0.11.0-rc.2"
+sha1 = "=0.11.0-rc.2"
+digest = "=0.11.0-rc.3"
+# holochain_client 0.8.1 uses kitsune2_api 0.4.1 (matching holochain 0.6.1);
+# 0.8.0 used kitsune2_api 0.3.2 which caused a two-version conflict.
+# holochain_client = "=0.8.1"
+
+# Holochain 0.6 upgrade guide recommends pinning rand = "0.9". Without this,
+# uuid v4 (pulled in by holochain) resolves rand → 0.10.1 → chacha20 0.10.0,
+# conflicting with iroh-holochain's exact pin chacha20 =0.10.0-rc.2.
+# rand 0.9.x → chacha20 0.9.x (different compat group, coexists cleanly).
+rand = "0.9"
+uuid = { version = "=1.21.0", features = ["serde"] }
 
 [dependencies.holons_prelude]
 path = "../../shared_crates/holons_prelude"

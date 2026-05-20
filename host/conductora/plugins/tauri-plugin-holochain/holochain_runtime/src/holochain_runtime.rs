@@ -20,7 +20,6 @@ use holochain_types::{
     websocket::AllowedOrigins,
 };
 use lair_keystore_api::types::SharedLockedArray;
-use sbd_server::SbdServer;
 
 use crate::{
     filesystem::{AppBundleStore, BundleStore, FileSystem},
@@ -46,7 +45,6 @@ pub struct HolochainRuntime {
     pub apps_websockets_auths: Arc<Mutex<Vec<AppWebsocketAuth>>>,
     pub admin_port: u16,
     pub conductor_handle: ConductorHandle,
-    pub(crate) _local_sbd_server: Option<SbdServer>,
 }
 
 impl HolochainRuntime {
@@ -65,6 +63,7 @@ impl HolochainRuntime {
         let admin_ws = AdminWebsocket::connect_with_config(
             format!("localhost:{}", self.admin_port),
             Arc::new(config),
+            None
         )
         .await
         .map_err(|err| crate::Error::WebsocketConnectionError(format!("{err:?}")))?;
@@ -88,7 +87,7 @@ impl HolochainRuntime {
         let admin_ws = self.admin_websocket().await?;
 
         let app_port = admin_ws
-            .attach_app_interface(0, allowed_origins.clone(), Some(app_id.clone()))
+            .attach_app_interface(0, None, allowed_origins.clone(), Some(app_id.clone()))
             .await
             .map_err(|err| crate::Error::ConductorApiError(err))?;
 

@@ -23,9 +23,7 @@ pub struct HolochainRuntimeConfig {
     /// conductor data will be stored. If not set, a temporary directory will be used.
     pub dev_data_root: Option<std::path::PathBuf>,
 
-    /// Whether `signal_url` was explicitly configured in storage config.
-    /// Used by launch policy to distinguish missing/null from default runtime values.
-    pub signal_url_configured: bool,
+    pub mdns_discovery: bool
 }
 
 impl HolochainRuntimeConfig {
@@ -37,7 +35,7 @@ impl HolochainRuntimeConfig {
             fallback_to_lan_only: true,
             dev_mode: false,
             dev_data_root: None,
-            signal_url_configured: true,
+            mdns_discovery: false,
         }
     }
 
@@ -47,8 +45,8 @@ impl HolochainRuntimeConfig {
     }
 
     /// Enable dev mode (ephemeral DangerTestKeystore, no lair, ~instant startup).
-    pub fn dev_mode(mut self) -> Self {
-        self.dev_mode = true;
+    pub fn dev_mode(mut self, enabled: bool) -> Self {
+        self.dev_mode = enabled;
         self
     }
 
@@ -57,8 +55,8 @@ impl HolochainRuntimeConfig {
         self
     }
 
-    pub fn signal_url_configured(mut self, configured: bool) -> Self {
-        self.signal_url_configured = configured;
+    pub fn mdns_discovery(mut self, enabled: bool) -> Self {
+        self.mdns_discovery = enabled;
         self
     }
 }

@@ -16,7 +16,7 @@ derive-new = "0.7"
 serde = { version = "1", features = ["derive"] }
 
 # Holochain Dependencies
-hdi = "0.6"
+hdi = "0.7"
 holochain_serialized_bytes = "*"
 
 

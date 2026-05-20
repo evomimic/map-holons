@@ -9,6 +9,7 @@ use holochain_types::web_app::WebAppBundle;
 use mr_bundle::error::MrBundleError;
 use zip::result::ZipError;
 
+#[derive(Clone)]
 pub struct FileSystem {
     pub app_data_dir: PathBuf,
     pub bundle_store: BundleStore,
@@ -20,7 +21,10 @@ impl FileSystem {
         fs::create_dir_all(bundle_store_path.clone())?;
         let bundle_store = BundleStore::new(bundle_store_path)?;
 
-        let fs = FileSystem { app_data_dir, bundle_store };
+        let fs = FileSystem {
+            app_data_dir,
+            bundle_store,
+        };
 
         fs::create_dir_all(fs.keystore_dir())?;
         fs::create_dir_all(fs.conductor_dir())?;
@@ -45,6 +49,7 @@ impl FileSystem {
     }
 }
 
+#[derive(Clone)]
 pub struct BundleStore {
     path: PathBuf,
     pub installed_apps_store: InstalledAppsStore,
@@ -54,7 +59,10 @@ impl BundleStore {
     fn new(path: PathBuf) -> crate::Result<Self> {
         let installed_apps_store = InstalledAppsStore::new(path.join("installed-apps.json"))?;
 
-        let bundle_store = BundleStore { path, installed_apps_store };
+        let bundle_store = BundleStore {
+            path,
+            installed_apps_store,
+        };
         fs::create_dir_all(bundle_store.happ_bundle_store().path)?;
         fs::create_dir_all(bundle_store.ui_store().path)?;
 
@@ -62,11 +70,15 @@ impl BundleStore {
     }
 
     pub fn happ_bundle_store(&self) -> AppBundleStore {
-        AppBundleStore { path: self.path.join("happs") }
+        AppBundleStore {
+            path: self.path.join("happs"),
+        }
     }
 
     fn ui_store(&self) -> UiStore {
-        UiStore { path: self.path.join("uis") }
+        UiStore {
+            path: self.path.join("uis"),
+        }
     }
 
     pub fn get_ui_path(&self, app_id: &InstalledAppId) -> crate::Result<PathBuf> {
@@ -79,7 +91,9 @@ impl BundleStore {
             return Err(crate::Error::AppDoesNotHaveUIError(app_id.clone()));
         };
 
-        let path = self.ui_store().get_path_for_ui_with_hash(&installed_web_app_info.ui_hash);
+        let path = self
+            .ui_store()
+            .get_path_for_ui_with_hash(&installed_web_app_info.ui_hash);
 
         Ok(path)
     }
@@ -93,7 +107,10 @@ impl BundleStore {
         self.installed_apps_store.update(|installed_apps| {
             installed_apps.insert(
                 app_id.clone(),
-                InstalledAppInfo { happ_bundle_hash: happ_bundle_hash.clone(), web_app_info: None },
+                InstalledAppInfo {
+                    happ_bundle_hash: happ_bundle_hash.clone(),
+                    web_app_info: None,
+                },
             );
         })?;
 
@@ -101,7 +118,7 @@ impl BundleStore {
     }
 
     pub fn web_app_bundle_hash(web_app_bundle: &WebAppBundle) -> crate::Result<String> {
-        let web_happ_bundle_hash = sha256::digest(web_app_bundle.encode()?);
+        let web_happ_bundle_hash = sha256::digest(web_app_bundle.pack()?.to_vec());
         Ok(web_happ_bundle_hash)
     }
 
@@ -114,7 +131,10 @@ impl BundleStore {
 
         let happ_bundle = web_app_bundle.happ_bundle().await?;
         let happ_bundle_hash = self.happ_bundle_store().store_app_bundle(&happ_bundle)?;
-        let ui_hash = self.ui_store().extract_and_store_ui(&web_app_bundle).await?;
+        let ui_hash = self
+            .ui_store()
+            .extract_and_store_ui(&web_app_bundle)
+            .await?;
 
         self.installed_apps_store.update(move |installed_apps| {
             installed_apps.insert(
@@ -145,6 +165,7 @@ pub struct InstalledAppInfo {
 
 pub type InstalledAppsInfo = HashMap<String, InstalledAppInfo>;
 
+#[derive(Clone)]
 pub struct InstalledAppsStore {
     json_config_path: PathBuf,
     installed_apps: Arc<RwLock<InstalledAppsInfo>>,
@@ -153,22 +174,25 @@ pub struct InstalledAppsStore {
 impl InstalledAppsStore {
     fn new(json_config_path: PathBuf) -> crate::Result<Self> {
         let apps = if json_config_path.exists() {
-            let s = fs::read_to_string(json_config_path.clone())?;
+            let s = std::fs::read_to_string(json_config_path.clone())?;
 
             let apps: HashMap<String, InstalledAppInfo> = serde_json::from_str(s.as_str())?;
             apps
         } else {
-            let mut file = fs::File::create(json_config_path.clone())?;
+            let mut file = std::fs::File::create(json_config_path.clone())?;
 
             let apps: HashMap<String, InstalledAppInfo> = HashMap::new();
 
             let data = serde_json::to_string(&apps)?;
 
-            file.write_all(data.as_bytes())?;
+            file.write(&data.as_bytes())?;
             apps
         };
 
-        Ok(Self { json_config_path, installed_apps: Arc::new(RwLock::new(apps)) })
+        Ok(Self {
+            json_config_path,
+            installed_apps: Arc::new(RwLock::new(apps)),
+        })
     }
 
     pub fn get(&self) -> crate::Result<InstalledAppsInfo> {
@@ -193,7 +217,7 @@ impl InstalledAppsStore {
 
         let data = serde_json::to_string(&write_lock.clone())?;
 
-        fs::write(self.json_config_path.clone(), data)?;
+        std::fs::write(self.json_config_path.clone(), data)?;
 
         Ok(())
     }
@@ -234,9 +258,9 @@ impl UiStore {
 
         let ui_zip_path = self.path.join("ui.zip");
 
-        fs::write(ui_zip_path.clone(), ui_bytes.into_owned().into_inner())?;
+        fs::write(ui_zip_path.clone(), ui_bytes)?;
 
-        let file = fs::File::open(ui_zip_path.clone())?;
+        let file = std::fs::File::open(ui_zip_path.clone())?;
         unzip_file(file, ui_folder_path)?;
 
         fs::remove_file(ui_zip_path)?;
@@ -255,13 +279,15 @@ pub struct AppBundleStore {
 
 impl AppBundleStore {
     pub fn app_bundle_hash(app_bundle: &AppBundle) -> crate::Result<String> {
-        let bytes = app_bundle.encode()?;
-        let hash = sha256::digest(bytes);
+        let bytes = app_bundle.pack()?;
+        let hash = sha256::digest(bytes.to_vec());
         Ok(hash)
     }
 
     pub fn app_bundle_path(&self, app_bundle: &AppBundle) -> crate::Result<PathBuf> {
-        Ok(self.path.join(format!("{}.happ", Self::app_bundle_hash(app_bundle)?)))
+        Ok(self
+            .path
+            .join(format!("{}.happ", Self::app_bundle_hash(app_bundle)?)))
     }
 
     // pub fn get_webapp(
@@ -281,12 +307,12 @@ impl AppBundleStore {
     // }
 
     pub fn store_app_bundle(&self, app_bundle: &AppBundle) -> crate::Result<String> {
-        let bytes = app_bundle.encode()?;
-        let hash = sha256::digest(&bytes);
+        let bytes = app_bundle.pack()?;
+        let hash = sha256::digest(bytes.to_vec());
         let path = self.path.join(format!("{}.happ", hash));
 
         let mut file = std::fs::File::create(path)?;
-        file.write_all(bytes.as_slice())?;
+        file.write_all(&bytes.iter().as_slice())?;
 
         Ok(hash)
     }

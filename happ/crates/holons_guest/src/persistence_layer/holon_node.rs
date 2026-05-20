@@ -50,17 +50,14 @@ pub fn create_path_to_holon_node(input: CreatePathInput) -> ExternResult<ActionH
 pub fn delete_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<ActionHash> {
     // delete links to Local Holon Space
     let local_space_path = Path::from("local_holon_space");
-    let links = get_links(
-        GetLinksInputBuilder::try_new(
-            local_space_path.path_entry_hash()?,
-            LinkTypes::LocalHolonSpace,
-        )?
-        .build(),
-    )?;
+    let base_address = local_space_path.path_entry_hash()?;
+    let links_query = LinkQuery::try_new(base_address, LinkTypes::LocalHolonSpace)?;
+    let links = get_links(links_query, GetStrategy::default())?;
+
     for link in links {
         if let Some(hash) = link.target.into_action_hash() {
             if hash == original_holon_node_hash {
-                delete_link(link.create_link_hash)?;
+                delete_link(link.create_link_hash, GetOptions::default())?;
             }
         }
     }
@@ -90,13 +87,11 @@ pub fn get_all_revisions_for_holon_node(
     else {
         return Ok(vec![]);
     };
-    let links = get_links(
-        GetLinksInputBuilder::try_new(
-            original_holon_node_hash.clone(),
-            LinkTypes::HolonNodeUpdates,
-        )?
-        .build(),
+    let links_query = LinkQuery::try_new(
+        original_holon_node_hash.clone(),
+        LinkTypes::HolonNodeUpdates,
     )?;
+    let links = get_links(links_query, GetStrategy::default())?;
     let get_input: Vec<GetInput> = links
         .into_iter()
         .map(|link| {
@@ -119,9 +114,8 @@ pub fn get_all_revisions_for_holon_node(
 
 #[hdk_extern]
 pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record>> {
-    let links = get_links(
-        GetLinksInputBuilder::try_new(input.path.path_entry_hash()?, input.link_type)?.build(),
-    )?;
+    let links_query = LinkQuery::try_new(input.path.path_entry_hash()?, input.link_type)?;
+    let links = get_links(links_query, GetStrategy::default())?;
     let latest_link =
         links.into_iter().max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
     let latest_holon_node_hash = match latest_link {
@@ -142,13 +136,11 @@ pub fn get_original_holon_node(
 
 #[hdk_extern]
 pub fn get_latest_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
-    let links = get_links(
-        GetLinksInputBuilder::try_new(
-            original_holon_node_hash.clone(),
-            LinkTypes::HolonNodeUpdates,
-        )?
-        .build(),
+    let links_query = LinkQuery::try_new(
+        original_holon_node_hash.clone(),
+        LinkTypes::HolonNodeUpdates,
     )?;
+    let links = get_links(links_query, GetStrategy::default())?;
     let latest_link =
         links.into_iter().max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
     let latest_holon_node_hash = match latest_link {

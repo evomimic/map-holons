@@ -4,21 +4,20 @@ version = "0.0.0"
 authors = ["guillem@darksoil.studio"]
 description = ""
 edition = "2021"
-rust-version = "1.75"
 links = "tauri-plugin-holochain"
 
 [dependencies]
 tauri = { version = "2" }
 
 # Holochain dependencies
-holochain_types = "0.5"
+holochain_types = "0.6"
 
 # Lair dependencies
-hc_seed_bundle = "0.3"
+hc_seed_bundle = "0.6"
 lair_keystore_api = "0.6"
 
 # Holochain client
-holochain_client = "0.7.1"
+holochain_client = "0.8"
 
 holochain_runtime = { path = "holochain_runtime" }
 

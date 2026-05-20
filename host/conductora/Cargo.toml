@@ -47,7 +47,7 @@ map_commands_runtime = { workspace = true }
 core_types = { path = "../../shared_crates/type_system/core_types" }
 
 #holochain dependencies
-holochain_client = { version = "0.7.1"}
+holochain_client = "0.8"
 tauri-plugin-holochain = { path = "plugins/tauri-plugin-holochain" }
 tokio = { version = "1.5", features = ["rt", "rt-multi-thread"] }
 

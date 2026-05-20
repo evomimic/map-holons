@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+exclude = ["conductora/plugins/tauri-plugin-holochain"]
 members = [
     "conductora",
     "crates/holons_client",
@@ -7,7 +8,7 @@ members = [
     "crates/holons_loader_client",
     "crates/recovery_receptor",
     "crates/shared_types",
-    "conductora/plugins/tauri-plugin-holochain",
+    #"conductora/plugins/tauri-plugin-holochain",
     "crates/map_commands_contract",
     "crates/map_commands_wire",
     "crates/map_commands_runtime"]
@@ -27,7 +28,7 @@ holon_dance_builders = { path = "../shared_crates/holon_dance_builders" }
 shared_validation = { path = "../shared_crates/shared_validation" }
 json_schema_validation = { path = "../shared_crates/json_schema_validation" }
 
-holochain_client = { version = "0.7.1" }
+holochain_client = "0.8"
 tauri = { version = "2", features = ["macros"] }
 tauri-build = "2"
 tauri-plugin-fs = "2"
@@ -47,7 +48,7 @@ holons_client = { path = "crates/holons_client" }
 deprecated_holochain_receptor = { path = "crates/deprecated_holochain_receptor" }
 holons_loader_client = { path = "crates/holons_loader_client" }
 client_shared_types = { path = "crates/shared_types" }
-tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
+#tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
 map_commands_contract = { path = "crates/map_commands_contract" }
 map_commands_wire = { path = "crates/map_commands_wire" }
 map_commands_runtime = { path = "crates/map_commands_runtime" }

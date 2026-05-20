@@ -269,7 +269,7 @@ pub fn load_happ_bundle(holochain_config: &HolochainConfig) -> anyhow::Result<Ap
     tracing::debug!("[HOLOCHAIN SETUP] Happ file loaded successfully ({} bytes)", bytes.len());
 
     // Decode bundle
-    let bundle = AppBundle::decode(&bytes)
+    let bundle = AppBundle::unpack(std::io::Cursor::new(bytes))
         .map_err(|e| anyhow::anyhow!("Failed to decode happ bundle: {}", e))?;
 
     tracing::debug!("[HOLOCHAIN SETUP] Happ bundle decoded successfully");

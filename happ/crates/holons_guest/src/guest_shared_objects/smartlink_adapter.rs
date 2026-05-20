@@ -59,17 +59,15 @@ impl SmartLink {
 
 // UTILITY FUNCTIONS //
 
+// this linkquery defaults on all fields, ie no tag,after,before or author filters, and GetStrategy::default() is network fetch
 pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
     let path = Path::from("all_holon_nodes");
-    let links = get_links(
-        GetLinksInputBuilder::try_new(
-            path.path_entry_hash().map_err(|e| holon_error_from_wasm_error(e))?,
-            LinkTypes::AllHolonNodes,
-        )
-        .map_err(|e| holon_error_from_wasm_error(e))?
-        .build(),
-    )
-    .map_err(|e| holon_error_from_wasm_error(e))?;
+    let base_address = path.path_entry_hash()
+        .map_err(|e| holon_error_from_wasm_error(e))?;
+    let links_query = LinkQuery::try_new(base_address, LinkTypes::AllHolonNodes)
+        .map_err(|e| holon_error_from_wasm_error(e))?;
+    let links = get_links(links_query, GetStrategy::default())
+        .map_err(|e| holon_error_from_wasm_error(e))?;
     let mut holon_ids = Vec::new();
     info!(
         "Retrieved {:?} links for 'all_holon_nodes' path, converting to SmartLinks..",
@@ -93,17 +91,12 @@ pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
 pub fn get_all_relationship_links(local_source_id: &LocalId) -> Result<Vec<SmartLink>, HolonError> {
     //let link_tag_filter: Option<LinkTag> = None;
 
+    let base_address = try_action_hash_from_local_id(local_source_id)?;
+    let links_query = LinkQuery::try_new(base_address, LinkTypes::SmartLink)
+        .map_err(|e| holon_error_from_wasm_error(e))?;
     let mut smartlinks: Vec<SmartLink> = Vec::new();
-
-    let links = get_links(
-        GetLinksInputBuilder::try_new(
-            try_action_hash_from_local_id(local_source_id)?,
-            LinkTypes::SmartLink,
-        )
-        .map_err(|e| holon_error_from_wasm_error(e))?
-        .build(),
-    )
-    .map_err(|e| holon_error_from_wasm_error(e))?;
+    let links = get_links(links_query, GetStrategy::default())
+        .map_err(|e| holon_error_from_wasm_error(e))?;
     debug!("Got {:?} links", links.len());
 
     for link in links {
@@ -128,15 +121,14 @@ pub fn get_relationship_links(
     debug!("getting links for link_tag_filter: {:?}", link_tag_filter.clone());
 
     let mut smartlinks: Vec<SmartLink> = Vec::new();
+    let base_address = source_action_hash.clone();
+    let links_query = LinkQuery::try_new(base_address, LinkTypes::SmartLink)
+        .map_err(|e| holon_error_from_wasm_error(e))?
+        .tag_prefix(link_tag_filter);
 
     // Retrieve links using the specified link tag filter
-    let links = get_links(
-        GetLinksInputBuilder::try_new(source_action_hash.clone(), LinkTypes::SmartLink)
-            .map_err(|e| holon_error_from_wasm_error(e))?
-            .tag_prefix(link_tag_filter)
-            .build(),
-    )
-    .map_err(|e| holon_error_from_wasm_error(e))?;
+    let links = get_links(links_query,GetStrategy::default())
+        .map_err(|e| holon_error_from_wasm_error(e))?;
 
     debug!("Got {:?} # links", links.len());
     // Process each link to convert it into a SmartLink

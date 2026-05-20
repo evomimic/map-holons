@@ -18,8 +18,8 @@ serde = { workspace = true}
 tracing = "0.1"
 
 # Holochain Dependencies
-hdk = "0.5"
-hdi = "0.6"
+hdk = "0.6"
+hdi = "0.7"
 
 # MAP Dependencies
 
