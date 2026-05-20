@@ -28,36 +28,38 @@ When `HC_DEV_MODE` is unset (or falsey), runtime uses normal mode.
 
 | Area | Normal Mode | Dev Mode (`HC_DEV_MODE=1`) |
 |---|---|---|
-| Keystore | `LairServerInProc` | `DangerTestKeystore` |
-| Device seed | `device_seed_lair_tag = "DEVICE_SEED"` | `danger_generate_throwaway_device_seed = true` |
+| Keystore | `LairServerInProc` (in-process lair) | `DangerTestKeystore` (in-memory, ephemeral) |
+| Device seed | Created in lair under tag `"DEVICE_SEED"` | Not used; setup generates an explicit agent key via `generate_agent_pub_key()` |
 | Conductor data root | `fs.conductor_dir()` | derived dev dir under `/tmp/conductora_dev/<hash>` |
-| Signal setup at launch | policy-driven (see below) | skipped entirely (no WAN reachability check, no local signal service launch) |
 | mDNS bootstrap | enabled | skipped |
 | Persistent chain/app state | persisted | wiped each launch (WASM cache preserved) |
 
-## Signal Policy
+## Network Config
 
 ### Dev mode
 
-At launch, dev mode does not run signal setup:
+Conductor network config is forced to local-only placeholders (from `launch/config.rs`):
 
-- no WAN signal host reachability check
-- no local signal server startup
-
-Conductor network config is forced to local-only placeholders:
-
-- `signal_url = ws://127.0.0.1:1`
 - `bootstrap_url = http://127.0.0.1:1`
+- `relay_url = https://127.0.0.1:1`
 - `target_arc_factor = 0`
+- `advanced = None`
 
-This prevents accidental WAN signal usage in dev startup.
+This prevents accidental WAN signal/relay usage in dev startup.
 
 ### Normal mode
 
-Normal mode uses `signal_url_configured` intent from storage config:
+Normal mode applies an `advanced` JSON config enabling plaintext for both transports and tuning reSign intervals:
 
-- `signal_url` missing/null: attempt local signal server startup first.
-- `signal_url` configured: run WAN reachability check; if unreachable and `fallback_to_lan_only=true`, attempt local signal fallback.
+```json
+{
+  "tx5Transport":  { "signalAllowPlainText": true },
+  "irohTransport": { "relayAllowPlainText": true, "coreBootstrap": { "backoffMaxMs": 20000 } },
+  "coreSpace":     { "reSignExpireTimeMs": 20000, "reSignFreqMs": 20000 }
+}
+```
+
+`bootstrap_url` and `relay_url` are taken from the storage config (`HolochainConfig`). If neither is configured, network defaults apply.
 
 ## Dev Data Directory Isolation
 
@@ -117,11 +119,12 @@ RUST_LOG=holochain_runtime=debug,conductora_lib=debug
 
 Key lines to watch:
 
-- `HOLOCHAIN DEV MODE ENABLED: ...`
-- `[LAUNCH] DEV MODE: skipping all signal setup ...`
+- `Running in DEV MODE: using in-memory keystore and forcing local-only network config. NOT FOR PRODUCTION USE!`
+- `[LAUNCH] DEV MODE: using persistent dev conductor dir ...`
 - `[LAUNCH] DEV MODE: wasm DB + wasm-cache found — warm start ...`
+- `[LAUNCH] DEV MODE: no existing wasm cache — cold start, WASM will compile`
 - `[LAUNCH] DEV MODE: conductor state reset in ...`
-- `[LAUNCH] Conductor ready in ...`
+- `[LAUNCH] Total launch_holochain_runtime: ...`
 - `[HOLOCHAIN SETUP] App install/update done in ...`
 
 ## Notes
