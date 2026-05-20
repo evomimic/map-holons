@@ -1,0 +1,6 @@
+[target.wasm32-unknown-unknown]
+# getrandom 0.3 (pulled in by hdi/hdk) requires an explicit wasm32 backend.
+# "custom" is correct for Holochain zomes: hdk provides the __getrandom_v03_custom
+# symbol internally. "wasm_js" must NOT be used — it pulls in wasm-bindgen which
+# Holochain's WASM host does not support (__wbindgen_placeholder__ → runtime crash).
+rustflags = ["--cfg", "getrandom_backend=\"custom\""]

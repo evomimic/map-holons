@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build:happ": "npm run build:zomes && hc app pack workdir --recursive",
-    "build:zomes": "RUSTFLAGS='--cfg getrandom_backend=\"custom\"' CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown",
+    "build:zomes": "CARGO_TARGET_DIR=target cargo build -p holons_integrity -p holons --release --target wasm32-unknown-unknown",
     "check": "cargo check --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown",
     "fmt": "cargo fmt --all",
     "fmt:check": "cargo fmt --all --check",
