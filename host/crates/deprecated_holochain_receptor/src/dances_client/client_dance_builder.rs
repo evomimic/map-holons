@@ -113,7 +113,7 @@ impl ClientDanceBuilder {
 
     //helpers
 
-    fn extract_holon_key(props: &PropertyMap) -> Result<MapString, HolonError> {
+    fn _extract_holon_key(props: &PropertyMap) -> Result<MapString, HolonError> {
         let key_property = props.get(&PropertyName(MapString("key".to_string())));
 
         // Convert PropertyValue to MapString

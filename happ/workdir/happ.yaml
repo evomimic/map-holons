@@ -1,5 +1,5 @@
 ---
-manifest_version: "1"
+manifest_version: "0"
 name: map-holons
 description: ~
 roles:
@@ -9,7 +9,7 @@ roles:
       deferred: false
     dna:
 
-      bundled: "../workdir/map_holons.dna"
+      path: "../workdir/map_holons.dna"
 
       modifiers:
         network_seed: ~

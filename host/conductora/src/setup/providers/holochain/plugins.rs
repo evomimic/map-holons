@@ -10,11 +10,11 @@ pub fn holochain_plugin(
     let mut plugin_config = HolochainPluginConfig::new(
         holochain_dir(hc_cfg)?,
         network_config_from_storage_config(hc_cfg),
-    )
-    .signal_url_configured(hc_cfg.signal_url.is_some());
+    );
+    //.signal_url_configured(hc_cfg.signal_url.is_some());
     if hc_dev_mode_enabled() {
         let dir = dev_conductor_dir(provider_key, &hc_cfg.app_id)?;
-        plugin_config = plugin_config.dev_mode().dev_data_root(dir);
+        plugin_config = plugin_config.dev_mode(true).dev_data_root(dir);
     }
     Ok(tauri_plugin_holochain::async_init(vec_to_locked(vec![]), plugin_config))
 }

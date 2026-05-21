@@ -67,6 +67,20 @@ npm run sweetest
 
 ---
 
+## 🚀 Dev Mode (Fast Restart Loop)
+
+When iterating on Holochain zome logic locally, you can skip lair keystore startup and reset conductor state automatically on each run by setting:
+
+```sh
+HC_DEV_MODE=1
+```
+
+This gives significantly faster restart loops by using an ephemeral in-memory keystore and preserving the compiled WASM cache across restarts.
+
+See [DEV_MODE.md](host/conductora/plugins/tauri-plugin-holochain/DEV_MODE.md) for full details including timing expectations, network config, and useful log lines.
+
+---
+
 ## ✅ Contribution Guidelines
 
 - Keep shared crates (`holons-core`, etc.) free of Tokio or native-only dependencies.

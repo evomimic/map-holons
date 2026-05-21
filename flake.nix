@@ -2,26 +2,15 @@
   description = "Flake for Holochain app development with rust client and nodejs";
 
   inputs = {
-    holonix.url = "github:holochain/holonix?ref=main-0.5";
+    holonix.url = "github:holochain/holonix?ref=main-0.6";
 
     nixpkgs.follows = "holonix/nixpkgs";
     flake-parts.follows = "holonix/flake-parts";
-    rust-overlay.follows = "holonix/rust-overlay";  # reuse, no extra fetch
   };
 
   outputs = inputs@{ flake-parts, ... }: flake-parts.lib.mkFlake { inherit inputs; } {
     systems = builtins.attrNames inputs.holonix.devShells;
-    perSystem = { inputs', pkgs, system, ... }:
-      let
-        pkgsWithRust = import inputs.nixpkgs {
-          inherit system;
-          overlays = [ (import inputs.rust-overlay) ];
-        };
-        rustToolchain = pkgsWithRust.rust-bin.stable."1.87.0".default.override {
-          extensions = [ "rust-src" ];
-          targets = [ "wasm32-unknown-unknown" ];
-        };
-      in {
+    perSystem = { inputs', pkgs, ... }: {
       formatter = pkgs.nixpkgs-fmt;
 
         devShells.default = pkgs.mkShell {
@@ -62,7 +51,6 @@
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
 
           shellHook = ''
-             export PATH="${rustToolchain}/bin:$PATH"
              export PS1='\[\033[1;34m\][holonix:\w]\$\[\033[0m\] '
           '';
         };

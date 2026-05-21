@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # SQLite — must match the version pulled in by lair_keystore 0.6.2 (rusqlite ^0.36)
 # so cargo deduplicates to a single libsqlite3-sys in the build.
-rusqlite = { version = "0.36", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
 
 # Serialization (already workspace deps)
 serde = { version = "1", features = ["derive"] }

@@ -29,8 +29,8 @@ members = [
     "shared_crates/holons_trust_channel",
 
     # Tests
-    "tests/sweetests"
-, "shared_crates/holons_boundary"]
+    "tests/sweetests",
+ "shared_crates/holons_boundary"]
 
 # -------------------------------------------------------------------
 # Unified dependency versions (optional but helpful for consistency)
@@ -66,8 +66,8 @@ holons_loader = { path = "happ/crates/holons_loader" }
 holons_trust_channel = { path = "shared_crates/holons_trust_channel" }
 
 # Holochain
-hdi = "0.6"
-hdk = "0.5"
+hdi = "0.7"
+hdk = "0.6"
 holochain_serialized_bytes = "*"
 
 # External libs

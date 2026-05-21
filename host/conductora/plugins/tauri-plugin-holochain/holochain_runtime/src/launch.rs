@@ -1,47 +1,41 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use async_std::sync::Mutex;
-use holochain_keystore::lair_keystore::spawn_lair_keystore_in_proc;
+use holochain::conductor::{config::ConductorConfig, Conductor};
+use keystore::spawn_lair_keystore_in_proc;
+// use holochain_keystore::lair_keystore::spawn_lair_keystore_in_proc;
 use lair_keystore::dependencies::hc_seed_bundle::SharedLockedArray;
-use url2::url2;
 
-use holochain::conductor::Conductor;
-
-use crate::{
-    filesystem::FileSystem,
-    launch::signal::{can_connect_to_signal_server, run_local_signal_service},
-    HolochainRuntime, HolochainRuntimeConfig,
-};
+use crate::{filesystem::FileSystem, HolochainRuntime, HolochainRuntimeConfig};
 
 mod config;
-//mod keystore;
+mod keystore;
 mod mdns;
-mod signal;
 use mdns::spawn_mdns_bootstrap;
 
 pub const DEVICE_SEED_LAIR_KEYSTORE_TAG: &'static str = "DEVICE_SEED";
+
+/// Write the conductor configuration to a YAML file in the app data directory
+/// so that external tooling can discover the conductor's layout on disk.
+fn write_conductor_config(
+    app_data_dir: &Path,
+    conductor_config: &ConductorConfig,
+) -> std::io::Result<()> {
+    let config_yaml_path = app_data_dir.join("conductor-config.yaml");
+    let yaml = serde_yaml::to_string(conductor_config)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))?;
+    std::fs::write(&config_yaml_path, yaml)?;
+    log::info!("Wrote conductor config to {}", config_yaml_path.display());
+    Ok(())
+}
 
 /// Launch the holochain conductor in the background
 pub(crate) async fn launch_holochain_runtime(
     passphrase: SharedLockedArray,
     config: HolochainRuntimeConfig,
 ) -> crate::error::Result<HolochainRuntime> {
-    let t_total = std::time::Instant::now();
-    let hc_dev_mode_raw = std::env::var("HC_DEV_MODE").ok();
-    let hc_dev_mode_parsed = hc_dev_mode_raw
-        .as_deref()
-        .map(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"))
-        .unwrap_or(false);
-    tracing::info!(
-        "[LAUNCH] Starting holochain runtime (config.dev_mode={}, env.HC_DEV_MODE(raw)={:?}, env.HC_DEV_MODE(parsed)={})",
-        config.dev_mode,
-        hc_dev_mode_raw,
-        hc_dev_mode_parsed
-    );
-    if rustls::crypto::aws_lc_rs::default_provider().install_default().is_err() {
-        tracing::error!("could not set crypto provider for tls");
-    }
-
+    let t_total: std::time::Instant = std::time::Instant::now();
     let filesystem = FileSystem::new(config.holochain_dir).await?;
     let admin_port = if let Some(admin_port) = config.admin_port {
         admin_port
@@ -49,269 +43,94 @@ pub(crate) async fn launch_holochain_runtime(
         portpicker::pick_unused_port().expect("No ports free")
     };
 
-    let mut maybe_local_signal_server: Option<(url2::Url2, sbd_server::SbdServer)> = None;
-    let dev_mode = config.dev_mode;
-    let signal_url_configured = config.signal_url_configured;
-    let configured_signal_url = config.network_config.signal_url.clone();
-    tracing::debug!(
-        "[LAUNCH] Signal preflight: dev_mode={}, signal_url_configured={}, configured_signal_url={}, fallback_to_lan_only={}, dev_data_root_present={}",
-        dev_mode,
-        signal_url_configured,
-        configured_signal_url.as_str(),
-        config.fallback_to_lan_only,
-        config.dev_data_root.is_some()
-    );
+    let mut dev_dir = None;
 
-    let signal_policy = signal_launch_policy(dev_mode, signal_url_configured);
-    tracing::debug!(
-        "[LAUNCH] Signal policy selected: {:?} (dev_mode={}, signal_url_configured={})",
-        signal_policy,
-        dev_mode,
-        signal_url_configured
-    );
+    let network_config = if config.dev_mode {
+        dev_dir = Some(config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root"));
 
-    match signal_policy {
-        SignalLaunchPolicy::SkipSignalSetupInDev => {
-            tracing::warn!(
-                "HOLOCHAIN DEV MODE ENABLED: ephemeral keystore, no signal networking, disposable conductor state"
-            );
-            tracing::debug!(
-                "[LAUNCH] DEV MODE: skipping all signal setup (no local signal server launch, no WAN reachability check)"
-            );
-        }
-        SignalLaunchPolicy::PreferLocalWhenSignalUrlMissing => {
-            tracing::info!(
-                "[LAUNCH] PRODUCTION MODE: with signal_url missing/null in config: attempting local signal server startup"
-            );
-            let my_local_ip = get_local_ip_address();
-            let port = portpicker::pick_unused_port().expect("No ports free");
-            match run_local_signal_service(my_local_ip.to_string(), port).await {
-                Ok(signal_handle) => {
-                    let local_signal_url = url2!("ws://{my_local_ip}:{port}");
-                    tracing::info!(
-                        "[LAUNCH] Local signal server started at {} because signal_url is not configured",
-                        local_signal_url.as_str()
-                    );
-                    maybe_local_signal_server = Some((local_signal_url, signal_handle));
-                }
-                Err(err) => {
-                    tracing::warn!(
-                        "[LAUNCH] Failed to start local signal server with signal_url missing/null ({err:?}); continuing with configured/default signal URL {}",
-                        configured_signal_url.as_str()
-                    );
-                }
-            }
-        }
-        SignalLaunchPolicy::CheckWanWhenSignalUrlConfigured => {
-            tracing::info!(
-                "[LAUNCH] PRODUCTION MODE: with configured signal_url={}; checking WAN signal server reachability",
-                configured_signal_url.as_str()
-            );
-            let connect_result = can_connect_to_signal_server(configured_signal_url.clone()).await;
-            tracing::debug!("[LAUNCH] WAN signal check complete.");
-
-            let run_local_signal_server = if let Err(err) = connect_result {
-                tracing::warn!("Error connecting with the WAN signal server: {err:?}");
-                if config.fallback_to_lan_only {
-                    tracing::warn!(
-                        "[LAUNCH] fallback_to_lan_only=true; attempting local signal server fallback"
-                    );
-                    true
-                } else {
-                    tracing::debug!(
-                        "[LAUNCH] fallback_to_lan_only=false; continuing without local signal fallback"
-                    );
-                    false
-                }
-            } else {
-                tracing::debug!(
-                    "[LAUNCH] WAN signal server is reachable; local fallback not needed"
-                );
-                false
-            };
-
-            if run_local_signal_server {
-                let my_local_ip = get_local_ip_address();
-                let port = portpicker::pick_unused_port().expect("No ports free");
-                match run_local_signal_service(my_local_ip.to_string(), port).await {
-                    Ok(signal_handle) => {
-                        let local_signal_url = url2!("ws://{my_local_ip}:{port}");
-                        tracing::info!(
-                            "[LAUNCH] Local signal fallback server started at {}",
-                            local_signal_url.as_str()
-                        );
-                        maybe_local_signal_server = Some((local_signal_url, signal_handle));
-                    }
-                    Err(err) => {
-                        tracing::warn!(
-                            "[LAUNCH] Failed to start local signal fallback server ({err:?}); continuing with configured signal URL {}",
-                            configured_signal_url.as_str()
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    let local_signal_url_for_config = maybe_local_signal_server.as_ref().map(|s| s.0.clone());
-    if dev_mode && local_signal_url_for_config.is_none() {
-        tracing::info!(
-            "[LAUNCH] DEV MODE: no local signal server handle; conductor_config will use local-only placeholder URLs"
-        );
-    }
-    let effective_signal_url = if let Some(local_signal_url) = local_signal_url_for_config.as_ref()
-    {
-        local_signal_url.as_str().to_string()
-    } else if dev_mode {
-        "ws://127.0.0.1:1 (dev placeholder)".to_string()
+        let mut n = config.network_config;
+        n.bootstrap_url = url2::url2!("http://127.0.0.1:1");
+        n
     } else {
-        configured_signal_url.as_str().to_string()
+        config.network_config
     };
-    tracing::debug!(
-        "[LAUNCH] Effective signal policy: mode={}, signal_url_configured={}, local_signal_server_running={}, configured_signal_url={}, effective_signal_url={}",
-        if dev_mode { "dev" } else { "normal" },
-        signal_url_configured,
-        maybe_local_signal_server.is_some(),
-        configured_signal_url.as_str(),
-        effective_signal_url
-    );
 
     let conductor_config = config::conductor_config(
         &filesystem,
         admin_port,
         filesystem.keystore_dir().into(),
-        config.network_config,
-        local_signal_url_for_config,
-        dev_mode,
-        config.dev_data_root.clone(),
+        network_config,
+        config.dev_mode,
+        dev_dir,
     );
 
-    tracing::info!("[LAUNCH] Building Conductor...");
-    let t1 = std::time::Instant::now();
-    let conductor_handle = if dev_mode {
-        tracing::debug!(
-            "[LAUNCH] DEV MODE conductor path selected; dev_data_root={:?}",
-            config.dev_data_root
-        );
-        // Before starting the conductor, wipe the dev conductor dir so every
-        // restart gets a consistent clean slate (no stale WAL/SHM/schema
-        // mismatches from the previous run).  wasm.db is saved to a sidecar
-        // and restored after the wipe so WASM recompilation is only paid once.
-        //
-        // inside Nix shells TMPDIR is session-specific
-        // (/tmp/nix-shell.XXXX/) so std::env::temp_dir() changes between runs.
-        let dev_dir = config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root");
-        clean_dev_conductor_state(&dev_dir);
+    log::debug!("Built conductor config: {:?}.", conductor_config);
 
-        // DangerTestKeystore is set in the config; no lair process needed.
-        Conductor::builder().config(conductor_config).build().await?
-    } else {
-        tracing::info!("[LAUNCH] Spawning lair keystore (in-proc)...");
-        let t0 = std::time::Instant::now();
-        let keystore =
-            spawn_lair_keystore_in_proc(&filesystem.keystore_config_path(), passphrase.clone())
-                .await
-                .map_err(|err| crate::Error::LairError(err))?;
-        tracing::info!("[LAUNCH] Lair keystore ready in {:.1}s", t0.elapsed().as_secs_f64());
-
-        let seed_already_exists =
-            keystore.lair_client().get_entry(DEVICE_SEED_LAIR_KEYSTORE_TAG.into()).await.is_ok();
-
-        if !seed_already_exists {
-            keystore
-                .lair_client()
-                .new_seed(DEVICE_SEED_LAIR_KEYSTORE_TAG.into(), None, true)
-                .await
-                .map_err(|err| crate::Error::LairError(err))?;
-        }
-
-        Conductor::builder()
-            .config(conductor_config)
-            .passphrase(Some(passphrase))
-            .with_keystore(keystore)
-            .build()
-            .await?
-    };
-    tracing::info!("[LAUNCH] Conductor ready in {:.1}s", t1.elapsed().as_secs_f64());
-
-    if dev_mode {
-        // Dev mode: mDNS peer discovery is irrelevant for single-node CRUD testing; skip it.
-        tracing::debug!("[LAUNCH] DEV MODE: skipping mDNS bootstrap");
-    } else {
-        spawn_mdns_bootstrap(admin_port).await?;
+    if let Err(err) = write_conductor_config(&filesystem.app_data_dir, &conductor_config) {
+        log::error!("Failed to write conductor config to disk: {}", err);
     }
 
-    // *lock = Some(info.clone());
+    let conductor_handle = match config.dev_mode {
+        true => {
+            clean_dev_conductor_state(
+                &config.dev_data_root.clone().expect("dev_mode=true requires dev_data_root"),
+            );
 
+            Conductor::builder().config(conductor_config).build().await?
+        }
+        false => {
+            let keystore =
+                spawn_lair_keystore_in_proc(&filesystem.keystore_config_path(), passphrase.clone())
+                    .map_err(|err| crate::Error::LairError(err))?;
+
+            log::info!("Keystore spawned successfully.");
+
+            let seed_already_exists = keystore
+                .lair_client()
+                .get_entry(DEVICE_SEED_LAIR_KEYSTORE_TAG.into())
+                .await
+                .is_ok();
+
+            if !seed_already_exists {
+                keystore
+                    .lair_client()
+                    .new_seed(DEVICE_SEED_LAIR_KEYSTORE_TAG.into(), None, true)
+                    .await
+                    .map_err(|err| crate::Error::LairError(err))?;
+            } else {
+                log::info!("Device seed already exists in keystore, skipping generation.");
+            }
+
+            Conductor::builder()
+                .config(conductor_config)
+                .passphrase(Some(passphrase))
+                .with_keystore(keystore)
+                .build()
+                .await?
+        }
+    };
+
+    log::info!("Connected to the admin websocket");
+
+    if config.dev_mode {
+        log::warn!("Running in DEV MODE: using in-memory keystore and forcing local-only network config. NOT FOR PRODUCTION USE!");
+    } else if config.mdns_discovery {
+        spawn_mdns_bootstrap(admin_port).await?;
+    }
     tracing::info!(
         "[LAUNCH] Total launch_holochain_runtime: {:.1}s",
         t_total.elapsed().as_secs_f64()
     );
+
     Ok(HolochainRuntime {
         filesystem,
         apps_websockets_auths: Arc::new(Mutex::new(Vec::new())),
         admin_port,
         conductor_handle,
-        _local_sbd_server: maybe_local_signal_server.map(|s| s.1),
     })
 }
 
 //helper functions
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum SignalLaunchPolicy {
-    SkipSignalSetupInDev,
-    PreferLocalWhenSignalUrlMissing,
-    CheckWanWhenSignalUrlConfigured,
-}
-
-fn signal_launch_policy(dev_mode: bool, signal_url_configured: bool) -> SignalLaunchPolicy {
-    if dev_mode {
-        SignalLaunchPolicy::SkipSignalSetupInDev
-    } else if signal_url_configured {
-        SignalLaunchPolicy::CheckWanWhenSignalUrlConfigured
-    } else {
-        SignalLaunchPolicy::PreferLocalWhenSignalUrlMissing
-    }
-}
-
-fn get_local_ip_address() -> std::net::IpAddr {
-    // Method 1: Try local_ip_address crate
-    if let Ok(ip) = local_ip_address::local_ip() {
-        tracing::debug!("Got local IP via local_ip_address crate: {}", ip);
-        return ip;
-    }
-
-    // Method 2: Try connecting to determine route
-    if let Ok(ip) = try_connect_method() {
-        tracing::debug!("Got local IP via connect method: {}", ip);
-        return ip;
-    }
-
-    // Method 3: Parse network interfaces manually
-    if let Ok(ip) = try_interface_method() {
-        tracing::debug!("Got local IP via interface method: {}", ip);
-        return ip;
-    }
-
-    // Method 4: Ultimate fallback - localhost
-    tracing::warn!("Could not determine local IP, using localhost");
-    std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))
-}
-
-fn try_connect_method() -> Result<std::net::IpAddr, Box<dyn std::error::Error>> {
-    use std::net::UdpSocket; //SocketAddr
-
-    let socket = UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("1.1.1.1:80")?; // Cloudflare DNS
-    Ok(socket.local_addr()?.ip())
-}
-
-fn try_interface_method() -> Result<std::net::IpAddr, Box<dyn std::error::Error>> {
-    // You might need to add `pnet` or `if-addrs` crate for this
-    // For now, just return an error to fall through to localhost
-    Err("Interface method not implemented".into())
-}
 
 /// Wipe the dev conductor directory to get a clean state on every restart,
 /// while preserving the compiled WASM cache across restarts so that WASM

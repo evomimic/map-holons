@@ -12,8 +12,16 @@ name = "holons"
 # General Dependencies
 serde = { workspace = true}
 # Holochain Dependencies
-hdk = "0.5"
+hdk = "0.6"
 
+#[target.'cfg(target_arch = "wasm32")'.dependencies]
+# getrandom 0.3 is pulled in via feature unification: uuid v4 → rand 0.9 →
+# rand_core 0.9 → getrandom 0.3. Backend selected via cfg in .cargo/config.toml.
+# Do NOT use features = ["wasm_js"] — that pulls in wasm-bindgen.
+#getrandom = { version = "0.3" }
+
+[dev-dependencies]
+pkcs8 = "=0.11.0-rc.11"
 
 # MAP Dependencies
 
