@@ -68,6 +68,7 @@ impl ToRelationshipName for &RelationshipName {
 pub enum CoreRelationshipTypeName {
     AbandonedHolons,
     AffordedBy,
+    AffordsCommand,
     AffordsOperator,
     BundleMembers,
     ComponentOf,
@@ -123,6 +124,10 @@ mod tests {
         assert_eq!(
             RelationshipName(MapString("ComponentOf".to_string())),
             CoreRelationshipTypeName::ComponentOf.as_relationship_name()
+        );
+        assert_eq!(
+            RelationshipName(MapString("AffordsCommand".to_string())),
+            CoreRelationshipTypeName::AffordsCommand.as_relationship_name()
         );
         assert_eq!(
             RelationshipName(MapString("Extends".to_string())),
