@@ -58,12 +58,13 @@ pub use holons_core::reference_layer::{
     SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
 };
 pub use holons_core::{
-    Descriptor, ExtendsIter, HolonDescriptor, PropertyDescriptor, RelationshipDescriptor,
-    RelationshipDirection, TypeHeader, ValueDescriptor, ancestors, classify_relationship_direction,
-    walk_extends_chain,
+    ancestors, classify_relationship_direction, walk_extends_chain, Descriptor, ExtendsIter,
+    HolonDescriptor, PropertyDescriptor, RelationshipDescriptor, RelationshipDirection, TypeHeader,
+    ValueDescriptor,
 };
 
 pub use type_names::{
-    CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
-    ToPropertyName, ToRelationshipName,
+    CommandName, CoreCommandTypeName, CoreHolonTypeName, CoreOperatorTypeName,
+    CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName, OperatorName, ToCommandName,
+    ToOperatorName, ToPropertyName, ToRelationshipName,
 };
