@@ -3,7 +3,7 @@
   "command": {
     "Transaction": {
       "tx_id": 41,
-      "action": "TransientCount"
+      "action": "GetTransientCount"
     }
   },
   "options": {

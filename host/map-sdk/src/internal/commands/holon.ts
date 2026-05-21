@@ -94,7 +94,7 @@ export function essentialContent(
   return runHolonCommand(
     txId,
     target,
-    { Read: 'EssentialContent' },
+    { Read: 'GetEssentialContent' },
     expectEssentialContent,
     options,
   );
@@ -128,7 +128,7 @@ export function readHolonId(
   return runHolonCommand(
     txId,
     target,
-    { Read: 'HolonId' },
+    { Read: 'GetHolonId' },
     expectHolonId,
     options,
   );
@@ -145,7 +145,7 @@ export function predecessor(
   return runHolonCommand(
     txId,
     target,
-    { Read: 'Predecessor' },
+    { Read: 'GetPredecessor' },
     expectOptionalReference,
     options,
   );
@@ -162,7 +162,7 @@ export function readKey(
   return runHolonCommand(
     txId,
     target,
-    { Read: 'Key' },
+    { Read: 'GetKey' },
     expectOptionalValue,
     options,
   );
@@ -179,7 +179,7 @@ export function readVersionedKey(
   return runHolonCommand(
     txId,
     target,
-    { Read: 'VersionedKey' },
+    { Read: 'GetVersionedKey' },
     expectValue,
     options,
   );
@@ -199,7 +199,7 @@ export function readPropertyValue(
     target,
     {
       Read: {
-        PropertyValue: {
+        GetPropertyValue: {
           name,
         },
       },
@@ -223,7 +223,7 @@ export function readRelatedHolons(
     target,
     {
       Read: {
-        RelatedHolons: {
+        GetRelatedHolons: {
           name,
         },
       },

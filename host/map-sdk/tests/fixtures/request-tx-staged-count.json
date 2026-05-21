@@ -3,7 +3,7 @@
   "command": {
     "Transaction": {
       "tx_id": 41,
-      "action": "StagedCount"
+      "action": "GetStagedCount"
     }
   },
   "options": {

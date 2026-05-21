@@ -10,7 +10,7 @@
         }
       },
       "action": {
-        "Read": "EssentialContent"
+        "Read": "GetEssentialContent"
       }
     }
   },

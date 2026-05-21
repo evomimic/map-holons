@@ -11,7 +11,7 @@
       },
       "action": {
         "Read": {
-          "PropertyValue": {
+          "GetPropertyValue": {
             "name": "title"
           }
         }

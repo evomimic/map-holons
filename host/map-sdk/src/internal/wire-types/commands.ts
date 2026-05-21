@@ -73,8 +73,8 @@ export type TransactionActionWire =
   | { GetStagedHolonByVersionedKey: { key: string } }
   | { GetTransientHolonByBaseKey: { key: string } }
   | { GetTransientHolonByVersionedKey: { key: string } }
-  | 'StagedCount'
-  | 'TransientCount'
+  | 'GetStagedCount'
+  | 'GetTransientCount'
   | { NewHolon: { key: string | null } }
   | { StageNewHolon: { source: TransientReferenceWire } }
   | { StageNewFromClone: { original: HolonReferenceWire; new_key: string } }
@@ -95,14 +95,14 @@ export interface HolonCommandWire {
 // Read-only holon actions.
 export type ReadableHolonActionWire =
   | 'CloneHolon'
-  | 'EssentialContent'
+  | 'GetEssentialContent'
   | 'Summarize'
-  | 'HolonId'
-  | 'Predecessor'
-  | 'Key'
-  | 'VersionedKey'
-  | { PropertyValue: { name: PropertyName } }
-  | { RelatedHolons: { name: RelationshipName } };
+  | 'GetHolonId'
+  | 'GetPredecessor'
+  | 'GetKey'
+  | 'GetVersionedKey'
+  | { GetPropertyValue: { name: PropertyName } }
+  | { GetRelatedHolons: { name: RelationshipName } };
 
 // Mutating holon actions.
 export type WritableHolonActionWire =
@@ -135,12 +135,12 @@ export type MapCommandWire =
 
 const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'CloneHolon',
-  'EssentialContent',
+  'GetEssentialContent',
   'Summarize',
-  'HolonId',
-  'Predecessor',
-  'Key',
-  'VersionedKey',
+  'GetHolonId',
+  'GetPredecessor',
+  'GetKey',
+  'GetVersionedKey',
 ]);
 
 const TRANSACTION_UNIT_ACTIONS = new Set([
@@ -148,8 +148,8 @@ const TRANSACTION_UNIT_ACTIONS = new Set([
   'UndoLast',
   'RedoLast',
   'GetAllHolons',
-  'StagedCount',
-  'TransientCount',
+  'GetStagedCount',
+  'GetTransientCount',
 ]);
 
 /**
@@ -193,10 +193,10 @@ export function isReadableHolonActionWire(
   return (
     (typeof value === 'string' &&
       READABLE_HOLON_UNIT_ACTIONS.has(value as ReadableHolonActionWire)) ||
-    (hasSingleKey(value, 'PropertyValue') &&
-      isStringFieldObject(value.PropertyValue, 'name')) ||
-    (hasSingleKey(value, 'RelatedHolons') &&
-      isStringFieldObject(value.RelatedHolons, 'name'))
+    (hasSingleKey(value, 'GetPropertyValue') &&
+      isStringFieldObject(value.GetPropertyValue, 'name')) ||
+    (hasSingleKey(value, 'GetRelatedHolons') &&
+      isStringFieldObject(value.GetRelatedHolons, 'name'))
   );
 }
 
