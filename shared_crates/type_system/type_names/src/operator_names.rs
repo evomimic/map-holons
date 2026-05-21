@@ -1,10 +1,17 @@
 use base_types::MapString;
 use convert_case::{Case, Casing};
+use std::fmt;
 use strum_macros::VariantNames;
 
 /// A strongly-typed wrapper around the shared descriptor `type_name` for operator types.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OperatorName(pub MapString);
+
+impl fmt::Display for OperatorName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}", self.0)
+    }
+}
 
 /// Converts common operator-name inputs into a typed `OperatorName`.
 pub trait ToOperatorName {

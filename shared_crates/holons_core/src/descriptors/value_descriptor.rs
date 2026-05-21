@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::descriptors::inheritance::walk_extends_chain;
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     supported_operators as collect_supported_operators,
@@ -12,6 +14,7 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::BaseValue;
 use core_types::HolonError;
+use type_names::{CoreOperatorTypeName, ToOperatorName};
 
 /// Runtime wrapper for value-type descriptors.
 ///
@@ -58,6 +61,52 @@ impl ValueDescriptor {
     /// Returns whether this descriptor affords the supplied operator.
     pub fn supports_operator(&self, op: &OperatorDescriptor) -> Result<bool, HolonError> {
         descriptor_supports_operator(&self.holon, op)
+    }
+
+    /// Finds an afforded operator by operator descriptor type name.
+    pub fn get_operator_by_name<N: ToOperatorName>(
+        &self,
+        operator_name: N,
+    ) -> Result<OperatorDescriptor, HolonError> {
+        let requested_name = operator_name.to_operator_name();
+        let requested = requested_name.to_string();
+        let mut seen = HashSet::new();
+        let mut found = None;
+
+        for operator_descriptor in self.supported_operators()? {
+            let declaration_name = operator_descriptor.operator_name()?;
+            let declaration_label = declaration_name.to_string();
+            if !seen.insert(declaration_label.clone()) {
+                return Err(HolonError::DuplicateInheritedDeclaration {
+                    kind: "operator".to_string(),
+                    name: declaration_label,
+                    descriptor: accessor_helpers::descriptor_label(&self.holon),
+                });
+            }
+            if declaration_name == requested_name {
+                found = Some(operator_descriptor);
+            }
+        }
+
+        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+            kind: "operator".to_string(),
+            name: requested,
+            descriptor: accessor_helpers::descriptor_label(&self.holon),
+        })
+    }
+
+    /// Returns whether this descriptor affords an operator with the supplied name.
+    pub fn supports_operator_by_name<N: ToOperatorName>(
+        &self,
+        operator_name: N,
+    ) -> Result<bool, HolonError> {
+        let requested_name = operator_name.to_operator_name();
+        for operator_descriptor in self.supported_operators()? {
+            if operator_descriptor.operator_name()? == requested_name {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     /// Applies an afforded operator to runtime operands using this descriptor's value kind.
@@ -132,7 +181,7 @@ impl ValueDescriptor {
         lhs: &BaseValue,
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
-        if op.type_name()?.0 != "EqualsOperator" {
+        if op.operator_name()? != CoreOperatorTypeName::EqualsOperator.as_operator_name() {
             return self.unsupported_operator(op);
         }
 
@@ -376,10 +425,82 @@ mod tests {
         let names = descriptor
             .supported_operators()?
             .into_iter()
-            .map(|op| op.type_name().map(|name| name.to_string()))
+            .map(|op| op.operator_name().map(|name| name.0.to_string()))
             .collect::<Result<Vec<_>, _>>()?;
 
         assert_eq!(names, vec!["EqualsOperator"]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_operator_by_name_returns_match_and_reports_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let mut value =
+            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        value.add_related_holons(CoreRelationshipTypeName::AffordsOperator, vec![equals.into()])?;
+
+        let descriptor = ValueDescriptor::from_holon(value.into());
+
+        assert_eq!(
+            descriptor.get_operator_by_name("equals_operator")?.operator_name()?.0,
+            MapString("EqualsOperator".to_string())
+        );
+        assert!(matches!(
+            descriptor.get_operator_by_name("less_than_operator"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "operator" && name == "LessThanOperator"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_operator_by_name_detects_duplicate_inherited_declarations() -> Result<(), HolonError> {
+        let context = build_context();
+        let duplicate_parent =
+            new_descriptor_holon(&context, "parent-equals", "EqualsOperator", "Holon")?;
+        let duplicate_child =
+            new_descriptor_holon(&context, "child-equals", "EqualsOperator", "Holon")?;
+        let mut parent =
+            new_descriptor_holon(&context, "integer-parent", "IntegerValueType", "Value")?;
+        let mut child =
+            new_descriptor_holon(&context, "integer-child", "CustomIntegerValueType", "Value")?;
+
+        parent.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![duplicate_parent.into()],
+        )?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+        child.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![duplicate_child.into()],
+        )?;
+
+        let descriptor = ValueDescriptor::from_holon(child.into());
+
+        assert!(matches!(
+            descriptor.get_operator_by_name("equals_operator"),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "operator" && name == "EqualsOperator"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn supports_operator_by_name_reports_membership() -> Result<(), HolonError> {
+        let context = build_context();
+        let equals = new_descriptor_holon(&context, "equals", "EqualsOperator", "Holon")?;
+        let mut value =
+            new_descriptor_holon(&context, "integer-value", "IntegerValueType", "Value")?;
+        value.add_related_holons(CoreRelationshipTypeName::AffordsOperator, vec![equals.into()])?;
+
+        let descriptor = ValueDescriptor::from_holon(value.into());
+
+        assert!(descriptor.supports_operator_by_name("equals_operator")?);
+        assert!(!descriptor.supports_operator_by_name("less_than_operator")?);
 
         Ok(())
     }

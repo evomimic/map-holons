@@ -1,7 +1,7 @@
 use crate::descriptors::{Descriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
-use base_types::MapString;
 use core_types::HolonError;
+use type_names::CommandName;
 
 /// Runtime wrapper for command descriptors.
 ///
@@ -24,8 +24,8 @@ impl CommandDescriptor {
     }
 
     /// Returns the command descriptor's canonical command name.
-    pub fn command_name(&self) -> Result<MapString, HolonError> {
-        self.header().type_name()
+    pub fn command_name(&self) -> Result<CommandName, HolonError> {
+        Ok(CommandName(self.header().type_name()?))
     }
 }
 
@@ -52,6 +52,7 @@ const _: fn() = || {
 mod tests {
     use super::*;
     use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use base_types::MapString;
 
     #[test]
     fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {
@@ -83,7 +84,10 @@ mod tests {
 
         let descriptor = CommandDescriptor::from_holon(holon.into());
 
-        assert_eq!(descriptor.command_name()?, MapString("BeginTransaction".to_string()));
+        assert_eq!(
+            descriptor.command_name()?,
+            CommandName(MapString("BeginTransaction".to_string()))
+        );
 
         Ok(())
     }

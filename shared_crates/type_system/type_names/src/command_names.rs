@@ -1,10 +1,17 @@
 use base_types::MapString;
 use convert_case::{Case, Casing};
+use std::fmt;
 use strum_macros::VariantNames;
 
 /// A strongly-typed wrapper around the shared descriptor `type_name` for command types.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CommandName(pub MapString);
+
+impl fmt::Display for CommandName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}", self.0)
+    }
+}
 
 /// Converts common command-name inputs into a typed `CommandName`.
 pub trait ToCommandName {
