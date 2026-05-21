@@ -6,6 +6,7 @@ use strum_macros::VariantNames;
 pub enum CoreHolonTypeName {
     BytesValueConstraint,
     Collection,
+    CommandType,
     CommitResponseType,
     Dance,
     DanceType,
@@ -45,6 +46,10 @@ mod tests {
         assert_eq!(
             MapString("Collection".to_string()),
             CoreHolonTypeName::Collection.as_holon_name()
+        );
+        assert_eq!(
+            MapString("CommandType".to_string()),
+            CoreHolonTypeName::CommandType.as_holon_name()
         );
         assert_eq!(
             MapString("DeclaredRelationshipType".to_string()),

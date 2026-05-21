@@ -206,6 +206,18 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_verify_core_schema_command_affordances_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Verify core schema command affordances".to_string());
+        self.steps.push(DanceTestStep::VerifyCoreSchemaCommandAffordances { description });
+
+        Ok(())
+    }
+
     pub fn add_verify_core_schema_value_semantics_step(
         &mut self,
         description: Option<String>,

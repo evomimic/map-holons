@@ -1,4 +1,4 @@
-use super::{CommandDescriptor, MutationClassification};
+use super::{CommandLifecyclePolicy, MutationClassification};
 
 /// Space-scoped domain commands.
 ///
@@ -10,9 +10,9 @@ pub enum SpaceCommand {
 }
 
 impl SpaceCommand {
-    pub fn descriptor(&self) -> CommandDescriptor {
+    pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
-            SpaceCommand::BeginTransaction => CommandDescriptor {
+            SpaceCommand::BeginTransaction => CommandLifecyclePolicy {
                 mutation: MutationClassification::Mutating,
                 requires_open_tx: false,
                 requires_commit_guard: false,

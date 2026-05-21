@@ -1,4 +1,4 @@
-use super::{CommandDescriptor, HolonCommand, SpaceCommand, TransactionCommand};
+use super::{CommandLifecyclePolicy, HolonCommand, SpaceCommand, TransactionCommand};
 
 /// Post-binding domain command.
 ///
@@ -12,11 +12,11 @@ pub enum MapCommand {
 }
 
 impl MapCommand {
-    pub fn descriptor(&self) -> CommandDescriptor {
+    pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
-            MapCommand::Space(cmd) => cmd.descriptor(),
-            MapCommand::Transaction(cmd) => cmd.action.descriptor(),
-            MapCommand::Holon(cmd) => cmd.action.descriptor(),
+            MapCommand::Space(cmd) => cmd.policy(),
+            MapCommand::Transaction(cmd) => cmd.action.policy(),
+            MapCommand::Holon(cmd) => cmd.action.policy(),
         }
     }
 

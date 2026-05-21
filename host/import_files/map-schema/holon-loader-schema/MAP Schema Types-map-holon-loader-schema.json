@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-05T10:00:31",
+    "generated_at": "2026-05-20T16:28:35",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-holon-loader-schema.csv"
@@ -34,7 +34,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -86,7 +86,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -138,7 +138,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -190,7 +190,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -237,7 +237,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -301,7 +301,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -356,7 +356,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -374,7 +374,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
+            "$ref": "#(HolonLoadSet.Ho)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         }
       ]
@@ -401,7 +401,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -452,7 +452,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -509,7 +509,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -560,7 +560,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -617,7 +617,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -668,7 +668,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -725,7 +725,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -776,7 +776,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -833,7 +833,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -884,7 +884,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -920,7 +920,7 @@
       ]
     },
     {
-      "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
+      "key": "(HolonLoadSet.Ho)-[Contains]->(HolonLoaderBundle.HolonType)",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "Contains",
@@ -941,7 +941,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -971,7 +971,7 @@
       ]
     },
     {
-      "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)",
+      "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.Ho)",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "ContainedIn",
@@ -992,7 +992,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1010,7 +1010,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
+            "$ref": "#(HolonLoadSet.Ho)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         },
         {
@@ -1043,7 +1043,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1074,7 +1074,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1111,7 +1111,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1148,7 +1148,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1187,7 +1187,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1226,7 +1226,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1265,7 +1265,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1304,7 +1304,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1343,7 +1343,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1382,7 +1382,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1421,7 +1421,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1460,7 +1460,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1499,7 +1499,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1538,7 +1538,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1577,7 +1577,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1616,7 +1616,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -1655,7 +1655,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {

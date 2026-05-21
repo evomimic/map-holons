@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-05T11:39:21",
+    "generated_at": "2026-05-20T16:28:35",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-concrete-value-types.csv"
@@ -29,7 +29,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -62,7 +62,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -95,7 +95,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -128,7 +128,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -161,7 +161,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -194,7 +194,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -227,7 +227,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -260,7 +260,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -291,7 +291,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -328,7 +328,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -365,7 +365,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -404,7 +404,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -435,7 +435,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -472,7 +472,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -509,7 +509,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -546,7 +546,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -583,7 +583,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -620,7 +620,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -657,7 +657,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -694,7 +694,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -731,7 +731,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -768,7 +768,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -805,7 +805,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -842,7 +842,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -879,7 +879,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -916,7 +916,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -953,7 +953,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {

@@ -33,6 +33,7 @@ use tracing::{
 use execution_steps::abandon_staged_changes_executor::execute_abandon_staged_changes;
 use execution_steps::add_related_holons_executor::execute_add_related_holons;
 use execution_steps::begin_transaction_executor::execute_begin_transaction;
+use execution_steps::command_affordance_verification_executor::execute_verify_core_schema_command_affordances;
 use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::descriptor_verification_executor::{
@@ -211,6 +212,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
             DanceTestStep::VerifyCoreSchemaDescriptors { .. } => {
                 execute_verify_core_schema_descriptors(&mut test_execution_state).await
+            }
+            DanceTestStep::VerifyCoreSchemaCommandAffordances { .. } => {
+                execute_verify_core_schema_command_affordances(&mut test_execution_state).await
             }
             DanceTestStep::VerifyCoreSchemaValueSemantics { .. } => {
                 execute_verify_core_schema_value_semantics(&mut test_execution_state).await

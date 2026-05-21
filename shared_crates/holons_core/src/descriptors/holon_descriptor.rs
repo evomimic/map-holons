@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, inheritance::flatten_related_members, Descriptor,
+    accessor_helpers, inheritance::flatten_related_members, CommandDescriptor, Descriptor,
     InverseRelationshipDescriptor, PropertyDescriptor, RelationshipDescriptor, TypeHeader,
 };
 use crate::reference_layer::HolonReference;
+use base_types::MapString;
 use core_types::{HolonError, PropertyName, RelationshipName};
 use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
@@ -54,6 +55,12 @@ impl HolonDescriptor {
             .map(|members| members.into_iter().map(RelationshipDescriptor::from_holon).collect())
     }
 
+    /// Returns effective command descriptors across this descriptor's inheritance chain.
+    pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
+        flatten_related_members(&self.holon, CoreRelationshipTypeName::AffordsCommand)
+            .map(|members| members.into_iter().map(CommandDescriptor::from_holon).collect())
+    }
+
     /// Returns effective property type descriptors across this descriptor's inheritance chain.
     pub fn properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
         self.flatten_property_descriptors(CoreRelationshipTypeName::Properties)
@@ -84,6 +91,33 @@ impl HolonDescriptor {
 
         found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
             kind: "property".to_string(),
+            name: requested,
+            descriptor: accessor_helpers::descriptor_label(&self.holon),
+        })
+    }
+
+    /// Finds an effective command affordance by command descriptor type name.
+    pub fn get_command_by_name(&self, name: MapString) -> Result<CommandDescriptor, HolonError> {
+        let requested = name.to_string();
+        let mut seen = HashSet::new();
+        let mut found = None;
+
+        for descriptor in self.afforded_commands()? {
+            let declaration_name = descriptor.command_name()?.to_string();
+            if !seen.insert(declaration_name.clone()) {
+                return Err(HolonError::DuplicateInheritedDeclaration {
+                    kind: "command".to_string(),
+                    name: declaration_name,
+                    descriptor: accessor_helpers::descriptor_label(&self.holon),
+                });
+            }
+            if declaration_name == requested {
+                found = Some(descriptor);
+            }
+        }
+
+        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+            kind: "command".to_string(),
             name: requested,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
         })
@@ -184,6 +218,10 @@ mod tests {
     fn assert_is_descriptor<T: Descriptor>(descriptor: &T) {
         // Compile-time trait membership plus one trivial runtime use.
         let _ = descriptor.holon().reference_id_string();
+    }
+
+    fn command_names(commands: Vec<CommandDescriptor>) -> Result<Vec<MapString>, HolonError> {
+        commands.into_iter().map(|command| command.command_name()).collect()
     }
 
     #[test]
@@ -409,6 +447,199 @@ mod tests {
             ]
         );
         assert_eq!(properties_names, vec![MapString("PropertyType".to_string())]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_commands_returns_empty_when_no_affords_command_edges_present(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let holon_type = new_descriptor_holon(&context, "no-command-owner", "BookType")?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert!(descriptor.afforded_commands()?.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_commands_returns_self_first_then_inherited() -> Result<(), HolonError> {
+        let context = build_context();
+        let inherited_command =
+            new_descriptor_holon(&context, "inherited-command", "BeginTransaction")?;
+        let local_command = new_descriptor_holon(&context, "local-command", "Commit")?;
+        let mut parent = new_descriptor_holon(&context, "command-parent", "ParentType")?;
+        let mut leaf = new_descriptor_holon(&context, "command-leaf", "LeafType")?;
+
+        parent.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![inherited_command.into()],
+        )?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![local_command.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert_eq!(
+            command_names(descriptor.afforded_commands()?)?,
+            vec![MapString("Commit".to_string()), MapString("BeginTransaction".to_string()),]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_commands_flattens_through_multi_step_extends_chain() -> Result<(), HolonError> {
+        let context = build_context();
+        let root_command = new_descriptor_holon(&context, "root-command", "BeginTransaction")?;
+        let middle_command = new_descriptor_holon(&context, "middle-command", "CloneHolon")?;
+        let leaf_command = new_descriptor_holon(&context, "leaf-command", "Commit")?;
+        let mut root = new_descriptor_holon(&context, "command-root", "RootType")?;
+        let mut middle = new_descriptor_holon(&context, "command-middle", "MiddleType")?;
+        let mut leaf = new_descriptor_holon(&context, "command-chain-leaf", "LeafType")?;
+
+        root.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![root_command.into()],
+        )?;
+        middle.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        middle.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![middle_command.into()],
+        )?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![middle.into()])?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![leaf_command.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert_eq!(
+            command_names(descriptor.afforded_commands()?)?,
+            vec![
+                MapString("Commit".to_string()),
+                MapString("CloneHolon".to_string()),
+                MapString("BeginTransaction".to_string()),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_command_by_name_matches_on_shared_type_name() -> Result<(), HolonError> {
+        let context = build_context();
+        let command = new_descriptor_holon(&context, "commit-command-affordance", "Commit")?;
+        let mut holon_type = new_descriptor_holon(&context, "command-owner", "TransactionType")?;
+
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::AffordsCommand, vec![command.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert_eq!(
+            descriptor.get_command_by_name(MapString("Commit".to_string()))?.command_name()?,
+            MapString("Commit".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_command_by_name_errors_when_not_found() -> Result<(), HolonError> {
+        let context = build_context();
+        let command = new_descriptor_holon(&context, "query-command-affordance", "Query")?;
+        let mut holon_type = new_descriptor_holon(&context, "missing-command-owner", "BookType")?;
+
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::AffordsCommand, vec![command.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert!(matches!(
+            descriptor.get_command_by_name(MapString("Commit".to_string())),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "command" && name == "Commit"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_command_by_name_detects_duplicate_inherited_declarations() -> Result<(), HolonError> {
+        let context = build_context();
+        let duplicate_root = new_descriptor_holon(&context, "duplicate-root-command", "Commit")?;
+        let duplicate_leaf = new_descriptor_holon(&context, "duplicate-leaf-command", "Commit")?;
+        let mut root = new_descriptor_holon(&context, "duplicate-command-root", "RootType")?;
+        let mut leaf = new_descriptor_holon(&context, "duplicate-command-leaf", "LeafType")?;
+
+        root.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![duplicate_root.into()],
+        )?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![duplicate_leaf.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert!(matches!(
+            descriptor.get_command_by_name(MapString("Commit".to_string())),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "command" && name == "Commit"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_commands_errors_on_cyclic_extends() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut descriptor_a = new_descriptor_holon(&context, "command-cycle-a", "CycleA")?;
+        let mut descriptor_b = new_descriptor_holon(&context, "command-cycle-b", "CycleB")?;
+
+        descriptor_a.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![descriptor_b.clone().into()],
+        )?;
+        descriptor_b.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![descriptor_a.clone().into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(descriptor_a.into());
+
+        assert!(matches!(descriptor.afforded_commands(), Err(HolonError::CyclicExtends { .. })));
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_commands_errors_when_multiple_extends_are_declared() -> Result<(), HolonError> {
+        let context = build_context();
+        let parent_a = new_descriptor_holon(&context, "command-parent-a", "ParentA")?;
+        let parent_b = new_descriptor_holon(&context, "command-parent-b", "ParentB")?;
+        let mut child = new_descriptor_holon(&context, "command-child", "ChildType")?;
+
+        child.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![parent_a.into(), parent_b.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(child.into());
+
+        assert!(matches!(
+            descriptor.afforded_commands(),
+            Err(HolonError::MultipleExtends { count, .. }) if count == 2
+        ));
 
         Ok(())
     }

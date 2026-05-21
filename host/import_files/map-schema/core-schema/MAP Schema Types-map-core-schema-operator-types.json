@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-12T10:40:15",
+    "generated_at": "2026-05-20T16:28:35",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-types.csv"
@@ -30,7 +30,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -64,7 +64,7 @@
       "properties": {
         "type_name": "AffordsOperator",
         "type_name_plural": "AffordsOperatorRelationships",
-        "display_name": "AffordsOperator",
+        "display_name": "AffordsOperator Relationship",
         "display_name_plural": "AffordsOperator Relationships",
         "instance_type_kind": "Relationship",
         "description": "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction.",
@@ -79,7 +79,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -114,7 +114,7 @@
       "properties": {
         "type_name": "AffordedBy",
         "type_name_plural": "AffordedByRelationships",
-        "display_name": "AffordedBy",
+        "display_name": "AffordedBy Relationship",
         "display_name_plural": "AffordedBy Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of AffordsOperator, relationship from OperatorType to ValueType.",
@@ -129,7 +129,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -180,7 +180,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -211,7 +211,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -248,7 +248,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -287,7 +287,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -326,7 +326,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -367,7 +367,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -402,7 +402,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {

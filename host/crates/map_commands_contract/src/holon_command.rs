@@ -5,7 +5,7 @@ use core_types::{PropertyName, RelationshipName};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::HolonReference;
 
-use super::CommandDescriptor;
+use super::CommandLifecyclePolicy;
 
 /// Holon-scoped domain command.
 ///
@@ -28,11 +28,13 @@ pub enum HolonAction {
 }
 
 impl HolonAction {
-    pub fn descriptor(&self) -> CommandDescriptor {
+    pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
-            HolonAction::Read(ReadableHolonAction::CloneHolon) => CommandDescriptor::mutating(),
-            HolonAction::Read(_) => CommandDescriptor::holon_read_only(),
-            HolonAction::Write(_) => CommandDescriptor::mutating(),
+            HolonAction::Read(ReadableHolonAction::CloneHolon) => {
+                CommandLifecyclePolicy::mutating()
+            }
+            HolonAction::Read(_) => CommandLifecyclePolicy::holon_read_only(),
+            HolonAction::Write(_) => CommandLifecyclePolicy::mutating(),
         }
     }
 

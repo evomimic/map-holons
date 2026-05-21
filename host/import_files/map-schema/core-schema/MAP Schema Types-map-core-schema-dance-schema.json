@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-05T11:39:21",
+    "generated_at": "2026-05-20T16:28:35",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -29,7 +29,7 @@
         {
           "name": "DependsOn",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         }
       ]
@@ -246,7 +246,7 @@
       "properties": {
         "type_name": "Affords",
         "type_name_plural": "AffordsRelationships",
-        "display_name": "Affords",
+        "display_name": "Affords Relationship",
         "display_name_plural": "Affords Relationships",
         "instance_type_kind": "Relationship",
         "description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
@@ -297,7 +297,7 @@
       "properties": {
         "type_name": "AffordedBy",
         "type_name_plural": "AffordedByRelationships",
-        "display_name": "AffordedBy",
+        "display_name": "AffordedBy Relationship",
         "display_name_plural": "AffordedBy Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of Affords, from DanceType to HolonType.",
@@ -353,7 +353,7 @@
       "properties": {
         "type_name": "ImplementsDance",
         "type_name_plural": "ImplementsDanceRelationships",
-        "display_name": "ImplementsDance",
+        "display_name": "ImplementsDance Relationship",
         "display_name_plural": "ImplementsDance Relationships",
         "instance_type_kind": "Relationship",
         "description": "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched.",
@@ -401,7 +401,7 @@
       "properties": {
         "type_name": "ImplementedFor",
         "type_name_plural": "ImplementedForRelationships",
-        "display_name": "ImplementedFor",
+        "display_name": "ImplementedFor Relationship",
         "display_name_plural": "ImplementedFor Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor.",
@@ -455,7 +455,7 @@
       "properties": {
         "type_name": "ForDance",
         "type_name_plural": "ForDanceRelationships",
-        "display_name": "ForDance",
+        "display_name": "ForDance Relationship",
         "display_name_plural": "ForDance Relationships",
         "instance_type_kind": "Relationship",
         "description": "Pins a DanceImplementation to exactly one DanceType interface it satisfies.",
@@ -505,7 +505,7 @@
       "properties": {
         "type_name": "HasImplementation",
         "type_name_plural": "HasImplementationRelationships",
-        "display_name": "HasImplementation",
+        "display_name": "HasImplementation Relationship",
         "display_name_plural": "HasImplementation Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of ForDance, from DanceType to DanceImplementation.",
@@ -561,7 +561,7 @@
       "properties": {
         "type_name": "Request",
         "type_name_plural": "RequestRelationships",
-        "display_name": "Request",
+        "display_name": "Request Relationship",
         "display_name_plural": "Request Relationships",
         "instance_type_kind": "Relationship",
         "description": "Links a DanceType to the HolonType used as its request body.",
@@ -611,7 +611,7 @@
       "properties": {
         "type_name": "RequestFor",
         "type_name_plural": "RequestForRelationships",
-        "display_name": "RequestFor",
+        "display_name": "RequestFor Relationship",
         "display_name_plural": "RequestFor Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of Request, from HolonType to DanceType.",
@@ -667,7 +667,7 @@
       "properties": {
         "type_name": "Response",
         "type_name_plural": "ResponseRelationships",
-        "display_name": "Response",
+        "display_name": "Response Relationship",
         "display_name_plural": "Response Relationships",
         "instance_type_kind": "Relationship",
         "description": "Links a DanceType to the DanceResponseType used to structure its response.",
@@ -717,7 +717,7 @@
       "properties": {
         "type_name": "ResponseFor",
         "type_name_plural": "ResponseForRelationships",
-        "display_name": "ResponseFor",
+        "display_name": "ResponseFor Relationship",
         "display_name_plural": "ResponseFor Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of Response, from DanceResponseType to DanceType.",
@@ -773,7 +773,7 @@
       "properties": {
         "type_name": "ResponseBody",
         "type_name_plural": "ResponseBody Relationships",
-        "display_name": "ResponseBody",
+        "display_name": "ResponseBody Relationship",
         "display_name_plural": "ResponseBody Relationships",
         "instance_type_kind": "Relationship",
         "description": "Links a DanceResponseType to the ResponseBodyType that will serve as the structured response body.",
@@ -823,7 +823,7 @@
       "properties": {
         "type_name": "ResponseBodyFor",
         "type_name_plural": "ResponseBodyForRelationships",
-        "display_name": "ResponseBodyFor",
+        "display_name": "ResponseBodyFor Relationship",
         "display_name_plural": "ResponseBodyFor Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of ResponseBody, from ResponseBodyType to DanceResponseType.",
@@ -2155,7 +2155,7 @@
       "properties": {
         "type_name": "SavedHolons",
         "type_name_plural": "SavedHolonsRelationships",
-        "display_name": "SavedHolons",
+        "display_name": "SavedHolons Relationship",
         "display_name_plural": "SavedHolons Relationships",
         "instance_type_kind": "Relationship",
         "description": "Declared relationship from a CommitResponse to each holon successfully saved by this commit.",
@@ -2206,7 +2206,7 @@
       "properties": {
         "type_name": "SavedByCommit",
         "type_name_plural": "SavedByCommitRelationships",
-        "display_name": "SavedByCommit",
+        "display_name": "SavedByCommit Relationship",
         "display_name_plural": "SavedByCommit Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
@@ -2263,7 +2263,7 @@
       "properties": {
         "type_name": "AbandonedHolons",
         "type_name_plural": "AbandonedHolonsRelationships",
-        "display_name": "AbandonedHolons",
+        "display_name": "AbandonedHolons Relationship",
         "display_name_plural": "AbandonedHolons Relationships",
         "instance_type_kind": "Relationship",
         "description": "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors.",
@@ -2314,7 +2314,7 @@
       "properties": {
         "type_name": "AbandonedByCommit",
         "type_name_plural": "AbandonedByCommitRelationships",
-        "display_name": "AbandonedByCommit",
+        "display_name": "AbandonedByCommit Relationship",
         "display_name_plural": "AbandonedByCommit Relationships",
         "instance_type_kind": "Relationship",
         "description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",

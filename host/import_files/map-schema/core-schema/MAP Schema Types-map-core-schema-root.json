@@ -1,24 +1,25 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-11T11:43:23",
+    "generated_at": "2026-05-20T21:02:43",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-property-types.json",
+      "MAP Schema Types-map-core-schema-command-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
   },
   "holons": [
     {
-      "key": "MAP Core Schema-v0.0.6",
+      "key": "MAP Core Schema-v0.0.7",
       "type": "#SchemaType",
       "properties": {
-        "type_name": "MAP Core Schema-v0.0.6",
-        "display_name": "MAP Core Schema-v0.0.6",
+        "type_name": "MAP Core Schema-v0.0.7",
+        "display_name": "MAP Core Schema-v0.0.7",
         "instance_type_kind": "Holon",
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.",
         "is_abstract_type": false,
@@ -42,7 +43,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -73,9 +74,56 @@
       },
       "relationships": [
         {
+          "name": "AffordsCommand",
+          "target": [
+            {
+              "$ref": "#CloneHolon.CommandType"
+            },
+            {
+              "$ref": "#GetEssentialContent.CommandType"
+            },
+            {
+              "$ref": "#Summarize.CommandType"
+            },
+            {
+              "$ref": "#GetHolonId.CommandType"
+            },
+            {
+              "$ref": "#GetPredecessor.CommandType"
+            },
+            {
+              "$ref": "#GetKey.CommandType"
+            },
+            {
+              "$ref": "#GetVersionedKey.CommandType"
+            },
+            {
+              "$ref": "#GetPropertyValue.CommandType"
+            },
+            {
+              "$ref": "#GetRelatedHolons.CommandType"
+            },
+            {
+              "$ref": "#WithPropertyValue.CommandType"
+            },
+            {
+              "$ref": "#RemovePropertyValue.CommandType"
+            },
+            {
+              "$ref": "#AddRelatedHolons.CommandType"
+            },
+            {
+              "$ref": "#RemoveRelatedHolons.CommandType"
+            },
+            {
+              "$ref": "#WithDescriptor.CommandType"
+            }
+          ]
+        },
+        {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -119,7 +167,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -152,7 +200,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -185,7 +233,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -218,7 +266,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -277,7 +325,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -303,6 +351,9 @@
             },
             {
               "$ref": "#(HolonType)-[Properties]->(PropertyType)"
+            },
+            {
+              "$ref": "#(HolonType)-[AffordsCommand]->(CommandType)"
             }
           ]
         }
@@ -324,7 +375,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -369,7 +420,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -436,7 +487,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -469,7 +520,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -510,7 +561,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -549,9 +600,15 @@
       },
       "relationships": [
         {
+          "name": "AffordsCommand",
+          "target": {
+            "$ref": "#BeginTransaction.CommandType"
+          }
+        },
+        {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {
@@ -586,7 +643,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.6"
+            "$ref": "#MAP Core Schema-v0.0.7"
           }
         },
         {

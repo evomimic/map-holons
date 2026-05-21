@@ -7,16 +7,16 @@ pub enum MutationClassification {
     RuntimeDetected,
 }
 
-/// Static metadata describing a command's lifecycle requirements.
+/// Static policy describing a command's lifecycle requirements.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CommandDescriptor {
+pub struct CommandLifecyclePolicy {
     pub mutation: MutationClassification,
     pub requires_open_tx: bool,
     pub requires_commit_guard: bool,
 }
 
-impl CommandDescriptor {
-    /// Read-only descriptor for transaction-scoped commands.
+impl CommandLifecyclePolicy {
+    /// Read-only policy for transaction-scoped commands.
     ///
     /// All transaction commands require an open transaction — even lookups —
     /// because a committed transaction must reject all further operations.
@@ -28,7 +28,7 @@ impl CommandDescriptor {
         }
     }
 
-    /// Read-only descriptor for holon-scoped commands.
+    /// Read-only policy for holon-scoped commands.
     ///
     /// Holon reads do not require an open transaction because references from
     /// committed transactions remain alive and accessible.

@@ -6,8 +6,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const CORE_SCHEMA_RELATIVE_PATHS: [&str; 9] = [
+const CORE_SCHEMA_RELATIVE_PATHS: [&str; 10] = [
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
+    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-command-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
@@ -29,12 +30,12 @@ pub struct CoreSchemaLoadMetrics {
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 206,
-    committed: 206,
-    links_created: 1109,
+    staged: 246,
+    committed: 246,
+    links_created: 1290,
     errors: 0,
-    total_bundles: 9,
-    total_loader_holons: 206,
+    total_bundles: 10,
+    total_loader_holons: 246,
 };
 
 /// Absolute paths to all core schema import files used for loader-client testing.
