@@ -2,52 +2,52 @@ use base_types::{BaseValue, MapString};
 use core_types::{LocalId, PropertyName};
 
 use crate::{
-    CommandDescriptor, HolonAction, MutationClassification, ReadableHolonAction, SpaceCommand,
+    CommandLifecyclePolicy, HolonAction, MutationClassification, ReadableHolonAction, SpaceCommand,
     TransactionAction, WritableHolonAction,
 };
 
 #[test]
-fn space_begin_transaction_descriptor() {
-    let desc = SpaceCommand::BeginTransaction.descriptor();
-    assert_eq!(desc.mutation, MutationClassification::Mutating);
-    assert!(!desc.requires_open_tx);
-    assert!(!desc.requires_commit_guard);
+fn space_begin_transaction_policy() {
+    let policy = SpaceCommand::BeginTransaction.policy();
+    assert_eq!(policy.mutation, MutationClassification::Mutating);
+    assert!(!policy.requires_open_tx);
+    assert!(!policy.requires_commit_guard);
 }
 
 #[test]
-fn transaction_action_descriptors() {
-    assert_eq!(TransactionAction::Commit.descriptor(), CommandDescriptor::mutating_with_guard());
+fn transaction_action_policies() {
+    assert_eq!(TransactionAction::Commit.policy(), CommandLifecyclePolicy::mutating_with_guard());
     assert_eq!(
-        TransactionAction::StagedCount.descriptor(),
-        CommandDescriptor::transaction_read_only()
+        TransactionAction::StagedCount.policy(),
+        CommandLifecyclePolicy::transaction_read_only()
     );
     assert_eq!(
-        TransactionAction::TransientCount.descriptor(),
-        CommandDescriptor::transaction_read_only()
+        TransactionAction::TransientCount.policy(),
+        CommandLifecyclePolicy::transaction_read_only()
     );
     assert_eq!(
-        TransactionAction::GetAllHolons.descriptor(),
-        CommandDescriptor::transaction_read_only()
+        TransactionAction::GetAllHolons.policy(),
+        CommandLifecyclePolicy::transaction_read_only()
     );
     assert_eq!(
-        TransactionAction::NewHolon { key: None }.descriptor(),
-        CommandDescriptor::mutating()
+        TransactionAction::NewHolon { key: None }.policy(),
+        CommandLifecyclePolicy::mutating()
     );
     assert_eq!(
-        TransactionAction::DeleteHolon { local_id: LocalId(vec![]) }.descriptor(),
-        CommandDescriptor::mutating()
+        TransactionAction::DeleteHolon { local_id: LocalId(vec![]) }.policy(),
+        CommandLifecyclePolicy::mutating()
     );
 }
 
 #[test]
-fn holon_action_descriptors() {
+fn holon_action_policies() {
     assert_eq!(
-        HolonAction::Read(ReadableHolonAction::Key).descriptor(),
-        CommandDescriptor::holon_read_only()
+        HolonAction::Read(ReadableHolonAction::Key).policy(),
+        CommandLifecyclePolicy::holon_read_only()
     );
     assert_eq!(
-        HolonAction::Read(ReadableHolonAction::CloneHolon).descriptor(),
-        CommandDescriptor::mutating(),
+        HolonAction::Read(ReadableHolonAction::CloneHolon).policy(),
+        CommandLifecyclePolicy::mutating(),
         "CloneHolon creates a transient — mutating despite being a ReadableHolonAction"
     );
     assert_eq!(
@@ -55,7 +55,7 @@ fn holon_action_descriptors() {
             name: PropertyName(MapString::from("x")),
             value: BaseValue::StringValue(MapString::from("v")),
         })
-        .descriptor(),
-        CommandDescriptor::mutating()
+        .policy(),
+        CommandLifecyclePolicy::mutating()
     );
 }

@@ -7,7 +7,7 @@ use holons_core::dances::DanceRequest;
 use holons_core::query_layer::QueryRequest;
 use holons_core::reference_layer::{HolonReference, SmartReference, TransientReference};
 
-use super::{CommandDescriptor, MutationClassification};
+use super::{CommandLifecyclePolicy, MutationClassification};
 
 /// Transaction-scoped domain command.
 ///
@@ -22,7 +22,7 @@ pub struct TransactionCommand {
 /// Domain-level transaction actions.
 ///
 /// Kept flat per the MAP Commands spec. Policy classification (mutating vs read-only)
-/// is enforced by `CommandDescriptor` at runtime, not by enum structure.
+/// is enforced by `CommandLifecyclePolicy` at runtime, not by enum structure.
 #[derive(Debug)]
 pub enum TransactionAction {
     /// Commits the transaction.
@@ -95,22 +95,22 @@ pub enum TransactionAction {
 }
 
 impl TransactionAction {
-    pub fn descriptor(&self) -> CommandDescriptor {
+    pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
-            TransactionAction::Commit => CommandDescriptor::mutating_with_guard(),
+            TransactionAction::Commit => CommandLifecyclePolicy::mutating_with_guard(),
             TransactionAction::UndoLast | TransactionAction::RedoLast => {
-                CommandDescriptor::transaction_read_only()
+                CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::UndoToMarker { .. } | TransactionAction::RedoToMarker { .. } => {
-                CommandDescriptor::transaction_read_only()
+                CommandLifecyclePolicy::transaction_read_only()
             }
-            TransactionAction::LoadHolons { .. } => CommandDescriptor::mutating_with_guard(),
-            TransactionAction::Dance(_) => CommandDescriptor {
+            TransactionAction::LoadHolons { .. } => CommandLifecyclePolicy::mutating_with_guard(),
+            TransactionAction::Dance(_) => CommandLifecyclePolicy {
                 mutation: MutationClassification::RuntimeDetected,
                 requires_open_tx: true,
                 requires_commit_guard: false,
             },
-            TransactionAction::Query(_) => CommandDescriptor::transaction_read_only(),
+            TransactionAction::Query(_) => CommandLifecyclePolicy::transaction_read_only(),
 
             // Lookups
             TransactionAction::GetAllHolons
@@ -120,7 +120,7 @@ impl TransactionAction {
             | TransactionAction::GetTransientHolonByBaseKey { .. }
             | TransactionAction::GetTransientHolonByVersionedKey { .. }
             | TransactionAction::StagedCount
-            | TransactionAction::TransientCount => CommandDescriptor::transaction_read_only(),
+            | TransactionAction::TransientCount => CommandLifecyclePolicy::transaction_read_only(),
 
             // Mutations
             TransactionAction::NewHolon { .. }
@@ -128,7 +128,7 @@ impl TransactionAction {
             | TransactionAction::StageNewFromClone { .. }
             | TransactionAction::StageNewVersion { .. }
             | TransactionAction::StageNewVersionFromId { .. }
-            | TransactionAction::DeleteHolon { .. } => CommandDescriptor::mutating(),
+            | TransactionAction::DeleteHolon { .. } => CommandLifecyclePolicy::mutating(),
         }
     }
 

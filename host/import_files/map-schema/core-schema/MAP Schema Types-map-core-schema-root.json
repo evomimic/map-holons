@@ -1,15 +1,15 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-20T16:28:35",
+    "generated_at": "2026-05-20T21:02:43",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-property-types.json",
-      "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-command-types.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
   },
@@ -74,6 +74,53 @@
       },
       "relationships": [
         {
+          "name": "AffordsCommand",
+          "target": [
+            {
+              "$ref": "#CloneHolon.CommandType"
+            },
+            {
+              "$ref": "#GetEssentialContent.CommandType"
+            },
+            {
+              "$ref": "#Summarize.CommandType"
+            },
+            {
+              "$ref": "#GetHolonId.CommandType"
+            },
+            {
+              "$ref": "#GetPredecessor.CommandType"
+            },
+            {
+              "$ref": "#GetKey.CommandType"
+            },
+            {
+              "$ref": "#GetVersionedKey.CommandType"
+            },
+            {
+              "$ref": "#GetPropertyValue.CommandType"
+            },
+            {
+              "$ref": "#GetRelatedHolons.CommandType"
+            },
+            {
+              "$ref": "#WithPropertyValue.CommandType"
+            },
+            {
+              "$ref": "#RemovePropertyValue.CommandType"
+            },
+            {
+              "$ref": "#AddRelatedHolons.CommandType"
+            },
+            {
+              "$ref": "#RemoveRelatedHolons.CommandType"
+            },
+            {
+              "$ref": "#WithDescriptor.CommandType"
+            }
+          ]
+        },
+        {
           "name": "ComponentOf",
           "target": {
             "$ref": "#MAP Core Schema-v0.0.7"
@@ -101,12 +148,6 @@
               "$ref": "#AllowsAdditionalRelationships.PropertyType"
             }
           ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "#(HolonType)-[AffordsCommand]->(CommandType)"
-          }
         }
       ]
     },
@@ -310,6 +351,9 @@
             },
             {
               "$ref": "#(HolonType)-[Properties]->(PropertyType)"
+            },
+            {
+              "$ref": "#(HolonType)-[AffordsCommand]->(CommandType)"
             }
           ]
         }
@@ -555,6 +599,12 @@
         "allows_additional_relationships": false
       },
       "relationships": [
+        {
+          "name": "AffordsCommand",
+          "target": {
+            "$ref": "#BeginTransaction.CommandType"
+          }
+        },
         {
           "name": "ComponentOf",
           "target": {

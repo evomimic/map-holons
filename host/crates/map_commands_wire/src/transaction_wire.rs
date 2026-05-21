@@ -23,7 +23,7 @@ pub struct TransactionCommandWire {
 /// Wire-level transaction actions.
 ///
 /// Flat enum per the MAP Commands spec. Policy classification is enforced by
-/// `CommandDescriptor` at runtime, not by enum structure.
+/// `CommandLifecyclePolicy` at runtime, not by enum structure.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TransactionActionWire {
     /// Commits the transaction.

@@ -12,7 +12,7 @@ use super::{holon_handler, space_handler, transaction_handler};
 /// The MAP Commands execution boundary.
 ///
 /// All MAP command execution flows through `Runtime::execute_command`. It
-/// enforces lifecycle policy via `CommandDescriptor` and routes to
+/// enforces lifecycle policy via `CommandLifecyclePolicy` and routes to
 /// scope-specific handlers.
 ///
 /// Wire binding (IPC envelope → domain command) is handled by the caller
@@ -46,7 +46,7 @@ impl Runtime {
         command: MapCommand,
         policy: ExecutionPolicy,
     ) -> Result<MapResult, HolonError> {
-        let descriptor = command.descriptor();
+        let lifecycle_policy = command.policy();
         let command_label = command.label();
 
         let is_commit = match &command {
@@ -61,7 +61,7 @@ impl Runtime {
         };
 
         // Open-transaction check: reject commands that require an open transaction
-        if descriptor.requires_open_tx {
+        if lifecycle_policy.requires_open_tx {
             if let Some(ref ctx) = context {
                 if !ctx.is_open() {
                     let tx_id = ctx.tx_id().value();
@@ -79,7 +79,7 @@ impl Runtime {
         }
 
         // Commit guard: hold across handler execution for commit-guarded commands
-        let _commit_guard = if descriptor.requires_commit_guard {
+        let _commit_guard = if lifecycle_policy.requires_commit_guard {
             if let Some(ref ctx) = context {
                 Some(ctx.begin_host_commit_ingress_guard()?)
             } else {
@@ -90,8 +90,8 @@ impl Runtime {
         };
 
         // Mutation entry check: for non-commit-guarded mutating commands
-        if !descriptor.requires_commit_guard
-            && descriptor.mutation == MutationClassification::Mutating
+        if !lifecycle_policy.requires_commit_guard
+            && lifecycle_policy.mutation == MutationClassification::Mutating
         {
             if let Some(ref ctx) = context {
                 ctx.ensure_host_mutation_entry_allowed()?;
@@ -104,7 +104,7 @@ impl Runtime {
         // Persist after every mutable non-commit command so the store can clear
         // the redo stack unconditionally. EU creation only happens when
         // snapshot_after=true; crash-recovery state is always written.
-        if descriptor.mutation != MutationClassification::ReadOnly && !is_commit {
+        if lifecycle_policy.mutation != MutationClassification::ReadOnly && !is_commit {
             if let Some(tx_id) = tx_id_for_snapshot {
                 self.session.persist_success(&tx_id, command_label, policy).await?;
             }

@@ -64,6 +64,9 @@ pub enum DanceTestStep {
     VerifyCoreSchemaDescriptors {
         description: String,
     },
+    VerifyCoreSchemaCommandAffordances {
+        description: String,
+    },
     VerifyCoreSchemaValueSemantics {
         description: String,
     },
@@ -184,6 +187,9 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyCoreSchemaDescriptors { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyCoreSchemaCommandAffordances { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyCoreSchemaValueSemantics { description } => {
