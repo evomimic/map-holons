@@ -207,7 +207,7 @@ async fn staged_count_returns_zero_for_new_tx() {
 
     let result = runtime
         .execute_command(
-            tx_cmd(&runtime, &tx_id, TransactionAction::StagedCount),
+            tx_cmd(&runtime, &tx_id, TransactionAction::GetStagedCount),
             ExecutionPolicy::default(),
         )
         .await
@@ -226,7 +226,7 @@ async fn transient_count_returns_zero_for_new_tx() {
 
     let result = runtime
         .execute_command(
-            tx_cmd(&runtime, &tx_id, TransactionAction::TransientCount),
+            tx_cmd(&runtime, &tx_id, TransactionAction::GetTransientCount),
             ExecutionPolicy::default(),
         )
         .await
@@ -293,7 +293,7 @@ async fn new_holon_then_transient_count() {
     // Transient count should be 1
     let result = runtime
         .execute_command(
-            tx_cmd(&runtime, &tx_id, TransactionAction::TransientCount),
+            tx_cmd(&runtime, &tx_id, TransactionAction::GetTransientCount),
             ExecutionPolicy::default(),
         )
         .await
@@ -335,10 +335,10 @@ async fn new_holon_stage_then_staged_count() {
         other => panic!("expected Staged reference, got {:?}", other),
     }
 
-    // StagedCount should be 1
+    // GetStagedCount should be 1
     let result = runtime
         .execute_command(
-            tx_cmd(&runtime, &tx_id, TransactionAction::StagedCount),
+            tx_cmd(&runtime, &tx_id, TransactionAction::GetStagedCount),
             ExecutionPolicy::default(),
         )
         .await
@@ -397,11 +397,11 @@ async fn stage_and_close(runtime: &Runtime, tx_id: &TxId, key: &str) {
 async fn staged_count(runtime: &Runtime, tx_id: &TxId) -> i64 {
     let result = runtime
         .execute_command(
-            tx_cmd(runtime, tx_id, TransactionAction::StagedCount),
+            tx_cmd(runtime, tx_id, TransactionAction::GetStagedCount),
             ExecutionPolicy::default(),
         )
         .await
-        .expect("StagedCount should succeed");
+        .expect("GetStagedCount should succeed");
     match result {
         MapResult::Value(BaseValue::IntegerValue(MapInteger(n))) => n,
         other => panic!("expected IntegerValue, got {:?}", other),

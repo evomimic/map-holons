@@ -70,11 +70,11 @@ pub async fn handle_transaction(
             let transient = context.lookup().get_transient_holon_by_versioned_key(&key)?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
         }
-        TransactionAction::StagedCount => {
+        TransactionAction::GetStagedCount => {
             let count = context.lookup().staged_count()?;
             Ok(MapResult::Value(BaseValue::IntegerValue(MapInteger(count))))
         }
-        TransactionAction::TransientCount => {
+        TransactionAction::GetTransientCount => {
             let count = context.lookup().transient_count()?;
             Ok(MapResult::Value(BaseValue::IntegerValue(MapInteger(count))))
         }

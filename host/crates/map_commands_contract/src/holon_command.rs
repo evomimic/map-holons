@@ -41,14 +41,14 @@ impl HolonAction {
     pub fn label(&self) -> &'static str {
         match self {
             HolonAction::Read(ReadableHolonAction::CloneHolon) => "clone_holon",
-            HolonAction::Read(ReadableHolonAction::EssentialContent) => "essential_content",
+            HolonAction::Read(ReadableHolonAction::GetEssentialContent) => "get_essential_content",
             HolonAction::Read(ReadableHolonAction::Summarize) => "summarize",
-            HolonAction::Read(ReadableHolonAction::HolonId) => "holon_id",
-            HolonAction::Read(ReadableHolonAction::Predecessor) => "predecessor",
-            HolonAction::Read(ReadableHolonAction::Key) => "key",
-            HolonAction::Read(ReadableHolonAction::VersionedKey) => "versioned_key",
-            HolonAction::Read(ReadableHolonAction::PropertyValue { .. }) => "property_value",
-            HolonAction::Read(ReadableHolonAction::RelatedHolons { .. }) => "related_holons",
+            HolonAction::Read(ReadableHolonAction::GetHolonId) => "get_holon_id",
+            HolonAction::Read(ReadableHolonAction::GetPredecessor) => "get_predecessor",
+            HolonAction::Read(ReadableHolonAction::GetKey) => "get_key",
+            HolonAction::Read(ReadableHolonAction::GetVersionedKey) => "get_versioned_key",
+            HolonAction::Read(ReadableHolonAction::GetPropertyValue { .. }) => "get_property_value",
+            HolonAction::Read(ReadableHolonAction::GetRelatedHolons { .. }) => "get_related_holons",
             HolonAction::Write(_) => "holon_write",
         }
     }
@@ -66,28 +66,28 @@ pub enum ReadableHolonAction {
     CloneHolon,
 
     /// `ReadableHolon::essential_content()` → `EssentialHolonContent`
-    EssentialContent,
+    GetEssentialContent,
 
     /// `ReadableHolon::summarize()` → `String`
     Summarize,
 
     /// `ReadableHolon::holon_id()` → `HolonId`
-    HolonId,
+    GetHolonId,
 
     /// `ReadableHolon::predecessor()` → `Option<HolonReference>`
-    Predecessor,
+    GetPredecessor,
 
     /// `ReadableHolon::key()` → `Option<MapString>`
-    Key,
+    GetKey,
 
     /// `ReadableHolon::versioned_key()` → `MapString`
-    VersionedKey,
+    GetVersionedKey,
 
     /// `ReadableHolon::property_value(name)` → `Option<PropertyValue>`
-    PropertyValue { name: PropertyName },
+    GetPropertyValue { name: PropertyName },
 
     /// `ReadableHolon::related_holons(name)` → `HolonCollection`
-    RelatedHolons { name: RelationshipName },
+    GetRelatedHolons { name: RelationshipName },
 }
 
 /// Mutating holon actions.
