@@ -350,7 +350,7 @@ fn operator_type_names(descriptors: Result<Vec<OperatorDescriptor>, HolonError>)
     descriptors
         .expect("operator descriptor list")
         .into_iter()
-        .map(|descriptor| descriptor.type_name().expect("operator descriptor type_name").0)
+        .map(|descriptor| descriptor.operator_name().expect("operator descriptor name").to_string())
         .collect()
 }
 

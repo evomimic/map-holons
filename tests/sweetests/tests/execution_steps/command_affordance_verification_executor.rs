@@ -5,61 +5,64 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use pretty_assertions::assert_eq;
 use tracing::info;
 
-const STABLE_COMMAND_TYPES: &[(&str, &str)] = &[
-    ("BeginTransaction.CommandType", "BeginTransaction"),
-    ("CloneHolon.CommandType", "CloneHolon"),
-    ("GetEssentialContent.CommandType", "GetEssentialContent"),
-    ("Summarize.CommandType", "Summarize"),
-    ("GetHolonId.CommandType", "GetHolonId"),
-    ("GetPredecessor.CommandType", "GetPredecessor"),
-    ("GetKey.CommandType", "GetKey"),
-    ("GetVersionedKey.CommandType", "GetVersionedKey"),
-    ("GetPropertyValue.CommandType", "GetPropertyValue"),
-    ("GetRelatedHolons.CommandType", "GetRelatedHolons"),
-    ("WithPropertyValue.CommandType", "WithPropertyValue"),
-    ("RemovePropertyValue.CommandType", "RemovePropertyValue"),
-    ("AddRelatedHolons.CommandType", "AddRelatedHolons"),
-    ("RemoveRelatedHolons.CommandType", "RemoveRelatedHolons"),
-    ("WithDescriptor.CommandType", "WithDescriptor"),
-    ("Commit.CommandType", "Commit"),
-    ("UndoLast.CommandType", "UndoLast"),
-    ("RedoLast.CommandType", "RedoLast"),
-    ("UndoToMarker.CommandType", "UndoToMarker"),
-    ("RedoToMarker.CommandType", "RedoToMarker"),
-    ("LoadHolons.CommandType", "LoadHolons"),
-    ("Dance.CommandType", "Dance"),
-    ("Query.CommandType", "Query"),
-    ("GetAllHolons.CommandType", "GetAllHolons"),
-    ("GetStagedHolonByBaseKey.CommandType", "GetStagedHolonByBaseKey"),
-    ("GetStagedHolonsByBaseKey.CommandType", "GetStagedHolonsByBaseKey"),
-    ("GetStagedHolonByVersionedKey.CommandType", "GetStagedHolonByVersionedKey"),
-    ("GetTransientHolonByBaseKey.CommandType", "GetTransientHolonByBaseKey"),
-    ("GetTransientHolonByVersionedKey.CommandType", "GetTransientHolonByVersionedKey"),
-    ("GetStagedCount.CommandType", "GetStagedCount"),
-    ("GetTransientCount.CommandType", "GetTransientCount"),
-    ("NewHolon.CommandType", "NewHolon"),
-    ("StageNewHolon.CommandType", "StageNewHolon"),
-    ("StageNewFromClone.CommandType", "StageNewFromClone"),
-    ("StageNewVersion.CommandType", "StageNewVersion"),
-    ("StageNewVersionFromId.CommandType", "StageNewVersionFromId"),
-    ("DeleteHolon.CommandType", "DeleteHolon"),
+const STABLE_COMMAND_TYPES: &[(&str, CoreCommandTypeName)] = &[
+    ("BeginTransaction.CommandType", CoreCommandTypeName::BeginTransaction),
+    ("CloneHolon.CommandType", CoreCommandTypeName::CloneHolon),
+    ("GetEssentialContent.CommandType", CoreCommandTypeName::GetEssentialContent),
+    ("Summarize.CommandType", CoreCommandTypeName::Summarize),
+    ("GetHolonId.CommandType", CoreCommandTypeName::GetHolonId),
+    ("GetPredecessor.CommandType", CoreCommandTypeName::GetPredecessor),
+    ("GetKey.CommandType", CoreCommandTypeName::GetKey),
+    ("GetVersionedKey.CommandType", CoreCommandTypeName::GetVersionedKey),
+    ("GetPropertyValue.CommandType", CoreCommandTypeName::GetPropertyValue),
+    ("GetRelatedHolons.CommandType", CoreCommandTypeName::GetRelatedHolons),
+    ("WithPropertyValue.CommandType", CoreCommandTypeName::WithPropertyValue),
+    ("RemovePropertyValue.CommandType", CoreCommandTypeName::RemovePropertyValue),
+    ("AddRelatedHolons.CommandType", CoreCommandTypeName::AddRelatedHolons),
+    ("RemoveRelatedHolons.CommandType", CoreCommandTypeName::RemoveRelatedHolons),
+    ("WithDescriptor.CommandType", CoreCommandTypeName::WithDescriptor),
+    ("Commit.CommandType", CoreCommandTypeName::Commit),
+    ("UndoLast.CommandType", CoreCommandTypeName::UndoLast),
+    ("RedoLast.CommandType", CoreCommandTypeName::RedoLast),
+    ("UndoToMarker.CommandType", CoreCommandTypeName::UndoToMarker),
+    ("RedoToMarker.CommandType", CoreCommandTypeName::RedoToMarker),
+    ("LoadHolons.CommandType", CoreCommandTypeName::LoadHolons),
+    ("Dance.CommandType", CoreCommandTypeName::Dance),
+    ("Query.CommandType", CoreCommandTypeName::Query),
+    ("GetAllHolons.CommandType", CoreCommandTypeName::GetAllHolons),
+    ("GetStagedHolonByBaseKey.CommandType", CoreCommandTypeName::GetStagedHolonByBaseKey),
+    ("GetStagedHolonsByBaseKey.CommandType", CoreCommandTypeName::GetStagedHolonsByBaseKey),
+    ("GetStagedHolonByVersionedKey.CommandType", CoreCommandTypeName::GetStagedHolonByVersionedKey),
+    ("GetTransientHolonByBaseKey.CommandType", CoreCommandTypeName::GetTransientHolonByBaseKey),
+    (
+        "GetTransientHolonByVersionedKey.CommandType",
+        CoreCommandTypeName::GetTransientHolonByVersionedKey,
+    ),
+    ("GetStagedCount.CommandType", CoreCommandTypeName::GetStagedCount),
+    ("GetTransientCount.CommandType", CoreCommandTypeName::GetTransientCount),
+    ("NewHolon.CommandType", CoreCommandTypeName::NewHolon),
+    ("StageNewHolon.CommandType", CoreCommandTypeName::StageNewHolon),
+    ("StageNewFromClone.CommandType", CoreCommandTypeName::StageNewFromClone),
+    ("StageNewVersion.CommandType", CoreCommandTypeName::StageNewVersion),
+    ("StageNewVersionFromId.CommandType", CoreCommandTypeName::StageNewVersionFromId),
+    ("DeleteHolon.CommandType", CoreCommandTypeName::DeleteHolon),
 ];
 
-const HOLON_TYPE_AFFORDED_COMMANDS: &[&str] = &[
-    "CloneHolon",
-    "GetEssentialContent",
-    "Summarize",
-    "GetHolonId",
-    "GetPredecessor",
-    "GetKey",
-    "GetVersionedKey",
-    "GetPropertyValue",
-    "GetRelatedHolons",
-    "WithPropertyValue",
-    "RemovePropertyValue",
-    "AddRelatedHolons",
-    "RemoveRelatedHolons",
-    "WithDescriptor",
+const HOLON_TYPE_AFFORDED_COMMANDS: &[CoreCommandTypeName] = &[
+    CoreCommandTypeName::CloneHolon,
+    CoreCommandTypeName::GetEssentialContent,
+    CoreCommandTypeName::Summarize,
+    CoreCommandTypeName::GetHolonId,
+    CoreCommandTypeName::GetPredecessor,
+    CoreCommandTypeName::GetKey,
+    CoreCommandTypeName::GetVersionedKey,
+    CoreCommandTypeName::GetPropertyValue,
+    CoreCommandTypeName::GetRelatedHolons,
+    CoreCommandTypeName::WithPropertyValue,
+    CoreCommandTypeName::RemovePropertyValue,
+    CoreCommandTypeName::AddRelatedHolons,
+    CoreCommandTypeName::RemoveRelatedHolons,
+    CoreCommandTypeName::WithDescriptor,
 ];
 
 /// Verifies command descriptor inventory and schema-backed command affordance lookup.
@@ -69,7 +72,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     let command_type = CommandDescriptor::from_holon(find_holon_by_key(&holons, "CommandType"));
     assert_eq!(
         command_type.command_name().expect("CommandType command_name"),
-        MapString("CommandType".to_string())
+        CommandName(MapString("CommandType".to_string()))
     );
     assert!(command_type.header().is_abstract_type().expect("CommandType is_abstract_type"));
 
@@ -77,7 +80,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
         let command = CommandDescriptor::from_holon(find_holon_by_key(&holons, key));
         assert_eq!(
             command.command_name().expect("concrete command command_name"),
-            MapString((*expected_type_name).to_string()),
+            expected_type_name.as_command_name(),
             "{key} should expose its command identity through type_name"
         );
     }
@@ -143,11 +146,11 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     );
     assert_eq!(
         holon_type_descriptor
-            .get_command_by_name(MapString("GetKey".to_string()))
+            .get_command_by_name(CoreCommandTypeName::GetKey)
             .expect("GetKey lookup")
             .command_name()
             .expect("resolved GetKey command_name"),
-        MapString("GetKey".to_string())
+        CoreCommandTypeName::GetKey.as_command_name()
     );
     assert!(matches!(
         holon_type_descriptor.get_command_by_name(MapString("NonexistentCommand".to_string())),
@@ -165,8 +168,8 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
 
     let holon_space_type_descriptor =
         HolonDescriptor::from_holon(find_holon_by_key(&holons, "HolonSpaceType"));
-    let mut holon_space_commands: Vec<&str> = HOLON_TYPE_AFFORDED_COMMANDS.to_vec();
-    holon_space_commands.push("BeginTransaction");
+    let mut holon_space_commands: Vec<CoreCommandTypeName> = HOLON_TYPE_AFFORDED_COMMANDS.to_vec();
+    holon_space_commands.push(CoreCommandTypeName::BeginTransaction);
     assert_command_set_eq(
         command_names(holon_space_type_descriptor.afforded_commands()),
         &holon_space_commands,
@@ -228,17 +231,22 @@ fn assert_contains(values: &[String], expected: &str) {
     );
 }
 
-fn command_names(descriptors: Result<Vec<CommandDescriptor>, HolonError>) -> Vec<String> {
+fn command_names(descriptors: Result<Vec<CommandDescriptor>, HolonError>) -> Vec<CommandName> {
     descriptors
         .expect("command descriptor list")
         .into_iter()
-        .map(|descriptor| descriptor.command_name().expect("command_name").to_string())
+        .map(|descriptor| descriptor.command_name().expect("command_name"))
         .collect()
 }
 
-fn assert_command_set_eq(actual: Vec<String>, expected: &[&str], message: &str) {
+fn assert_command_set_eq(
+    actual: Vec<CommandName>,
+    expected: &[CoreCommandTypeName],
+    message: &str,
+) {
     let mut actual = actual;
-    let mut expected = expected.iter().map(|name| (*name).to_string()).collect::<Vec<_>>();
+    let mut expected =
+        expected.iter().map(CoreCommandTypeName::as_command_name).collect::<Vec<_>>();
     actual.sort();
     expected.sort();
     assert_eq!(actual, expected, "{message}");
