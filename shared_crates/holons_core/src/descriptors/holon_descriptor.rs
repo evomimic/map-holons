@@ -5,9 +5,11 @@ use crate::descriptors::{
     InverseRelationshipDescriptor, PropertyDescriptor, RelationshipDescriptor, TypeHeader,
 };
 use crate::reference_layer::HolonReference;
-use base_types::MapString;
-use core_types::{HolonError, PropertyName, RelationshipName};
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
+use core_types::{HolonError, PropertyName};
+use type_names::{
+    CorePropertyTypeName, CoreRelationshipTypeName, ToCommandName, ToPropertyName,
+    ToRelationshipName,
+};
 
 /// Runtime wrapper for holon-type descriptors.
 ///
@@ -69,22 +71,24 @@ impl HolonDescriptor {
     /// Finds an effective instance property by property type identity.
     pub fn get_property_by_name(
         &self,
-        name: PropertyName,
+        name: impl ToPropertyName,
     ) -> Result<PropertyDescriptor, HolonError> {
-        let requested = name.to_string();
+        let requested_name = name.to_property_name();
+        let requested = requested_name.to_string();
         let mut seen = HashSet::new();
         let mut found = None;
 
         for descriptor in self.instance_properties()? {
-            let declaration_name = descriptor.header().type_name()?.to_string();
-            if !seen.insert(declaration_name.clone()) {
+            let declaration_name = PropertyName(descriptor.header().type_name()?);
+            let declaration_label = declaration_name.to_string();
+            if !seen.insert(declaration_label.clone()) {
                 return Err(HolonError::DuplicateInheritedDeclaration {
                     kind: "property".to_string(),
-                    name: declaration_name,
+                    name: declaration_label,
                     descriptor: accessor_helpers::descriptor_label(&self.holon),
                 });
             }
-            if declaration_name == requested {
+            if declaration_name == requested_name {
                 found = Some(descriptor);
             }
         }
@@ -97,21 +101,26 @@ impl HolonDescriptor {
     }
 
     /// Finds an effective command affordance by command descriptor type name.
-    pub fn get_command_by_name(&self, name: MapString) -> Result<CommandDescriptor, HolonError> {
-        let requested = name.to_string();
+    pub fn get_command_by_name(
+        &self,
+        name: impl ToCommandName,
+    ) -> Result<CommandDescriptor, HolonError> {
+        let requested_name = name.to_command_name();
+        let requested = requested_name.to_string();
         let mut seen = HashSet::new();
         let mut found = None;
 
         for descriptor in self.afforded_commands()? {
-            let declaration_name = descriptor.command_name()?.to_string();
-            if !seen.insert(declaration_name.clone()) {
+            let declaration_name = descriptor.command_name()?;
+            let declaration_label = declaration_name.to_string();
+            if !seen.insert(declaration_label.clone()) {
                 return Err(HolonError::DuplicateInheritedDeclaration {
                     kind: "command".to_string(),
-                    name: declaration_name,
+                    name: declaration_label,
                     descriptor: accessor_helpers::descriptor_label(&self.holon),
                 });
             }
-            if declaration_name == requested {
+            if declaration_name == requested_name {
                 found = Some(descriptor);
             }
         }
@@ -126,22 +135,24 @@ impl HolonDescriptor {
     /// Finds an effective instance relationship by base relationship name.
     pub fn get_relationship_by_name(
         &self,
-        name: RelationshipName,
+        name: impl ToRelationshipName,
     ) -> Result<RelationshipDescriptor, HolonError> {
-        let requested = name.to_string();
+        let requested_name = name.to_relationship_name();
+        let requested = requested_name.to_string();
         let mut seen = HashSet::new();
         let mut found = None;
 
         for descriptor in self.instance_relationships()? {
-            let declaration_name = descriptor.base_relationship_name()?.to_string();
-            if !seen.insert(declaration_name.clone()) {
+            let declaration_name = descriptor.base_relationship_name()?;
+            let declaration_label = declaration_name.to_string();
+            if !seen.insert(declaration_label.clone()) {
                 return Err(HolonError::DuplicateInheritedDeclaration {
                     kind: "relationship".to_string(),
-                    name: declaration_name,
+                    name: declaration_label,
                     descriptor: accessor_helpers::descriptor_label(&self.holon),
                 });
             }
-            if declaration_name == requested {
+            if declaration_name == requested_name {
                 found = Some(descriptor);
             }
         }
@@ -156,7 +167,7 @@ impl HolonDescriptor {
     /// Finds the inverse descriptor for an effective declared relationship name.
     pub fn get_inverse_relationship_by_name(
         &self,
-        declared_name: RelationshipName,
+        declared_name: impl ToRelationshipName,
     ) -> Result<InverseRelationshipDescriptor, HolonError> {
         let declared = self
             .get_relationship_by_name(declared_name)?
@@ -199,7 +210,10 @@ mod tests {
     use base_types::MapString;
     use core_types::{HolonError, PropertyName, RelationshipName};
     use std::sync::Arc;
-    use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
+    use type_names::{
+        CommandName, CoreCommandTypeName, CoreHolonTypeName, CorePropertyTypeName,
+        CoreRelationshipTypeName,
+    };
 
     fn new_descriptor_holon(
         context: &Arc<TransactionContext>,
@@ -220,7 +234,7 @@ mod tests {
         let _ = descriptor.holon().reference_id_string();
     }
 
-    fn command_names(commands: Vec<CommandDescriptor>) -> Result<Vec<MapString>, HolonError> {
+    fn command_names(commands: Vec<CommandDescriptor>) -> Result<Vec<CommandName>, HolonError> {
         commands.into_iter().map(|command| command.command_name()).collect()
     }
 
@@ -487,7 +501,10 @@ mod tests {
 
         assert_eq!(
             command_names(descriptor.afforded_commands()?)?,
-            vec![MapString("Commit".to_string()), MapString("BeginTransaction".to_string()),]
+            vec![
+                CommandName(MapString("Commit".to_string())),
+                CommandName(MapString("BeginTransaction".to_string())),
+            ]
         );
 
         Ok(())
@@ -523,9 +540,9 @@ mod tests {
         assert_eq!(
             command_names(descriptor.afforded_commands()?)?,
             vec![
-                MapString("Commit".to_string()),
-                MapString("CloneHolon".to_string()),
-                MapString("BeginTransaction".to_string()),
+                CommandName(MapString("Commit".to_string())),
+                CommandName(MapString("CloneHolon".to_string())),
+                CommandName(MapString("BeginTransaction".to_string())),
             ]
         );
 
@@ -544,8 +561,48 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(holon_type.into());
 
         assert_eq!(
-            descriptor.get_command_by_name(MapString("Commit".to_string()))?.command_name()?,
-            MapString("Commit".to_string())
+            descriptor.get_command_by_name(CoreCommandTypeName::Commit)?.command_name()?,
+            CommandName(MapString("Commit".to_string()))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_property_by_name_accepts_conversion_trait_inputs() -> Result<(), HolonError> {
+        let context = build_context();
+        let property = new_descriptor_holon(&context, "display-name-property", "DisplayName")?;
+        let mut holon_type = new_descriptor_holon(&context, "property-owner", "BookType")?;
+        holon_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![property.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert_eq!(
+            descriptor.get_property_by_name("display_name")?.header().type_name()?,
+            MapString("DisplayName".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_relationship_by_name_accepts_conversion_trait_inputs() -> Result<(), HolonError> {
+        let context = build_context();
+        let relationship = new_descriptor_holon(&context, "relationship-match", "AuthoredBy")?;
+        let mut holon_type = new_descriptor_holon(&context, "relationship-owner", "BookType")?;
+        holon_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![relationship.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert_eq!(
+            descriptor.get_relationship_by_name("authored_by")?.base_relationship_name()?,
+            RelationshipName(MapString("AuthoredBy".to_string()))
         );
 
         Ok(())

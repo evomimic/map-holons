@@ -311,7 +311,7 @@ const transactionCases: TransactionCase<unknown>[] = [
   {
     name: 'stagedCount',
     run: () => stagedCount(txId),
-    action: 'StagedCount',
+    action: 'GetStagedCount',
     okResult: { Value: integerValue },
     expected: integerValue,
     wrongResult: 'None',
@@ -319,7 +319,7 @@ const transactionCases: TransactionCase<unknown>[] = [
   {
     name: 'transientCount',
     run: () => transientCount(txId),
-    action: 'TransientCount',
+    action: 'GetTransientCount',
     okResult: { Value: integerValue },
     expected: integerValue,
     wrongResult: 'None',

@@ -42,7 +42,7 @@ fn unsupported_operator_error(
     operator_descriptor: &OperatorDescriptor,
 ) -> Result<HolonError, HolonError> {
     Ok(HolonError::UnsupportedOperator {
-        operator: operator_descriptor.type_name()?.to_string(),
+        operator: operator_descriptor.operator_name()?.0.to_string(),
         value_type: value_type_name(holon)?,
         descriptor: accessor_helpers::descriptor_label(holon),
     })
@@ -61,9 +61,9 @@ pub(crate) fn supports_operator(
     holon: &HolonReference,
     operator_descriptor: &OperatorDescriptor,
 ) -> Result<bool, HolonError> {
-    let operator_name = operator_descriptor.type_name()?;
+    let operator_name = operator_descriptor.operator_name()?;
     for supported_operator in supported_operators(holon)? {
-        if supported_operator.type_name()? == operator_name {
+        if supported_operator.operator_name()? == operator_name {
             return Ok(true);
         }
     }
@@ -87,5 +87,5 @@ pub(crate) fn type_name_is(
     operator_descriptor: &OperatorDescriptor,
     expected: &str,
 ) -> Result<bool, HolonError> {
-    Ok(operator_descriptor.type_name()?.0 == expected)
+    Ok(operator_descriptor.operator_name()?.0 .0 == expected)
 }

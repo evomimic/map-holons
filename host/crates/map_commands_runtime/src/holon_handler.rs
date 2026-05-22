@@ -23,7 +23,7 @@ fn handle_read(
             let transient = target.clone_holon()?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
         }
-        ReadableHolonAction::EssentialContent => {
+        ReadableHolonAction::GetEssentialContent => {
             let content = target.essential_content()?;
             Ok(MapResult::EssentialContent(content))
         }
@@ -31,27 +31,27 @@ fn handle_read(
             let summary = target.summarize()?;
             Ok(MapResult::Value(BaseValue::StringValue(MapString::from(summary))))
         }
-        ReadableHolonAction::HolonId => {
+        ReadableHolonAction::GetHolonId => {
             let id = target.holon_id()?;
             Ok(MapResult::HolonId(id))
         }
-        ReadableHolonAction::Predecessor => match target.predecessor()? {
+        ReadableHolonAction::GetPredecessor => match target.predecessor()? {
             Some(r) => Ok(MapResult::Reference(r)),
             None => Ok(MapResult::None),
         },
-        ReadableHolonAction::Key => match target.key()? {
+        ReadableHolonAction::GetKey => match target.key()? {
             Some(s) => Ok(MapResult::Value(BaseValue::StringValue(s))),
             None => Ok(MapResult::None),
         },
-        ReadableHolonAction::VersionedKey => {
+        ReadableHolonAction::GetVersionedKey => {
             let key = target.versioned_key()?;
             Ok(MapResult::Value(BaseValue::StringValue(key)))
         }
-        ReadableHolonAction::PropertyValue { name } => match target.property_value(name)? {
+        ReadableHolonAction::GetPropertyValue { name } => match target.property_value(name)? {
             Some(v) => Ok(MapResult::Value(v)),
             None => Ok(MapResult::None),
         },
-        ReadableHolonAction::RelatedHolons { name } => {
+        ReadableHolonAction::GetRelatedHolons { name } => {
             let collection_arc = target.related_holons(name)?;
             let collection = collection_arc
                 .read()

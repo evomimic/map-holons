@@ -369,7 +369,7 @@ export function stagedCount(
   txId: TxId,
   options?: RequestOptionsOverrides,
 ): Promise<BaseValue> {
-  return runTransactionCommand(txId, 'StagedCount', expectValue, options);
+  return runTransactionCommand(txId, 'GetStagedCount', expectValue, options);
 }
 
 /**
@@ -379,7 +379,7 @@ export function transientCount(
   txId: TxId,
   options?: RequestOptionsOverrides,
 ): Promise<BaseValue> {
-  return runTransactionCommand(txId, 'TransientCount', expectValue, options);
+  return runTransactionCommand(txId, 'GetTransientCount', expectValue, options);
 }
 
 /**

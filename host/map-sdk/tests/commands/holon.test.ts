@@ -148,7 +148,7 @@ const holonCases: HolonCase<unknown>[] = [
   {
     name: 'essentialContent',
     run: () => essentialContent(txId, target),
-    action: { Read: 'EssentialContent' },
+    action: { Read: 'GetEssentialContent' },
     okResult: { EssentialContent: essential },
     expected: essential,
     wrongResult: { Reference: transientReference },
@@ -164,7 +164,7 @@ const holonCases: HolonCase<unknown>[] = [
   {
     name: 'readHolonId',
     run: () => readHolonId(txId, target),
-    action: { Read: 'HolonId' },
+    action: { Read: 'GetHolonId' },
     okResult: { HolonId: holonId },
     expected: holonId,
     wrongResult: { Value: integerValue },
@@ -172,7 +172,7 @@ const holonCases: HolonCase<unknown>[] = [
   {
     name: 'predecessor',
     run: () => predecessor(txId, target),
-    action: { Read: 'Predecessor' },
+    action: { Read: 'GetPredecessor' },
     okResult: { Reference: transientReference },
     expected: transientReference,
     wrongResult: { Value: stringValue },
@@ -180,7 +180,7 @@ const holonCases: HolonCase<unknown>[] = [
   {
     name: 'readKey',
     run: () => readKey(txId, target),
-    action: { Read: 'Key' },
+    action: { Read: 'GetKey' },
     okResult: { Value: stringValue },
     expected: stringValue,
     wrongResult: { Reference: transientReference },
@@ -188,7 +188,7 @@ const holonCases: HolonCase<unknown>[] = [
   {
     name: 'readVersionedKey',
     run: () => readVersionedKey(txId, target),
-    action: { Read: 'VersionedKey' },
+    action: { Read: 'GetVersionedKey' },
     okResult: { Value: stringValue },
     expected: stringValue,
     wrongResult: 'None',
@@ -196,7 +196,7 @@ const holonCases: HolonCase<unknown>[] = [
   {
     name: 'readPropertyValue',
     run: () => readPropertyValue(txId, target, 'title'),
-    action: { Read: { PropertyValue: { name: 'title' } } },
+    action: { Read: { GetPropertyValue: { name: 'title' } } },
     okResult: { Value: stringValue },
     expected: stringValue,
     wrongResult: { Reference: transientReference },
@@ -204,7 +204,7 @@ const holonCases: HolonCase<unknown>[] = [
   {
     name: 'readRelatedHolons',
     run: () => readRelatedHolons(txId, target, 'related_to'),
-    action: { Read: { RelatedHolons: { name: 'related_to' } } },
+    action: { Read: { GetRelatedHolons: { name: 'related_to' } } },
     okResult: { Collection: collection },
     expected: collection,
     wrongResult: { References: [transientReference] },
@@ -304,14 +304,14 @@ describe('holon command builders', () => {
     invokeMapCommandMock.mockResolvedValue(okResponse('None'));
 
     await expect(predecessor(txId, target)).resolves.toBeNull();
-    expectHolonRequest({ Read: 'Predecessor' });
+    expectHolonRequest({ Read: 'GetPredecessor' });
 
     invokeMapCommandMock.mockReset();
     resetRequestIdCounter();
     invokeMapCommandMock.mockResolvedValue(okResponse('None'));
 
     await expect(readKey(txId, target)).resolves.toBeNull();
-    expectHolonRequest({ Read: 'Key' });
+    expectHolonRequest({ Read: 'GetKey' });
   });
 
   it('passes request option overrides through holon builders', async () => {

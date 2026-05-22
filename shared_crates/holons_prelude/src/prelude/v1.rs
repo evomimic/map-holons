@@ -64,6 +64,7 @@ pub use holons_core::{
 };
 
 pub use type_names::{
-    CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
-    ToPropertyName, ToRelationshipName,
+    CommandName, CoreCommandTypeName, CoreHolonTypeName, CoreOperatorTypeName,
+    CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName, OperatorName, ToCommandName,
+    ToOperatorName, ToPropertyName, ToRelationshipName,
 };

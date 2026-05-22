@@ -150,7 +150,7 @@ mod tests {
         let names = descriptor
             .supported_operators()?
             .into_iter()
-            .map(|op| op.type_name().map(|name| name.to_string()))
+            .map(|op| op.operator_name().map(|name| name.0.to_string()))
             .collect::<Result<Vec<_>, _>>()?;
 
         assert_eq!(names, vec!["EqualsOperator"]);

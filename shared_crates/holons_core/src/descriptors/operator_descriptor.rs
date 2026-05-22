@@ -5,7 +5,7 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::MapString;
 use core_types::HolonError;
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, OperatorName};
 
 /// Runtime wrapper for operator descriptors.
 ///
@@ -26,9 +26,9 @@ impl OperatorDescriptor {
         TypeHeader::new(&self.holon)
     }
 
-    /// Returns the operator descriptor's canonical type name.
-    pub fn type_name(&self) -> Result<MapString, HolonError> {
-        self.header().type_name()
+    /// Returns the operator descriptor's canonical operator name.
+    pub fn operator_name(&self) -> Result<OperatorName, HolonError> {
+        Ok(OperatorName(self.header().type_name()?))
     }
 
     /// Returns the optional human-facing display name.
@@ -142,7 +142,10 @@ mod tests {
 
         let descriptor = OperatorDescriptor::from_holon(holon.into());
 
-        assert_eq!(descriptor.type_name()?, MapString("EqualsOperator".to_string()));
+        assert_eq!(
+            descriptor.operator_name()?,
+            OperatorName(MapString("EqualsOperator".to_string()))
+        );
         assert_eq!(descriptor.display_name()?, Some(MapString("Equals".to_string())));
         assert_eq!(descriptor.description()?, Some(MapString("Returns equality.".to_string())));
         assert_eq!(descriptor.arity()?, 2);
@@ -150,6 +153,22 @@ mod tests {
         assert_eq!(
             descriptor.afforded_by()?[0].header().type_name()?,
             MapString("IntegerValueType".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn operator_name_uses_shared_type_name() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon =
+            new_descriptor_holon(&context, "less-than-operator", "LessThanOperator", "Holon")?;
+
+        let descriptor = OperatorDescriptor::from_holon(holon.into());
+
+        assert_eq!(
+            descriptor.operator_name()?,
+            OperatorName(MapString("LessThanOperator".to_string()))
         );
 
         Ok(())

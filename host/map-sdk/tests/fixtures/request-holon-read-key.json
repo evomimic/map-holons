@@ -10,7 +10,7 @@
         }
       },
       "action": {
-        "Read": "Key"
+        "Read": "GetKey"
       }
     }
   },

@@ -18,11 +18,11 @@ fn space_begin_transaction_policy() {
 fn transaction_action_policies() {
     assert_eq!(TransactionAction::Commit.policy(), CommandLifecyclePolicy::mutating_with_guard());
     assert_eq!(
-        TransactionAction::StagedCount.policy(),
+        TransactionAction::GetStagedCount.policy(),
         CommandLifecyclePolicy::transaction_read_only()
     );
     assert_eq!(
-        TransactionAction::TransientCount.policy(),
+        TransactionAction::GetTransientCount.policy(),
         CommandLifecyclePolicy::transaction_read_only()
     );
     assert_eq!(
@@ -42,7 +42,7 @@ fn transaction_action_policies() {
 #[test]
 fn holon_action_policies() {
     assert_eq!(
-        HolonAction::Read(ReadableHolonAction::Key).policy(),
+        HolonAction::Read(ReadableHolonAction::GetKey).policy(),
         CommandLifecyclePolicy::holon_read_only()
     );
     assert_eq!(

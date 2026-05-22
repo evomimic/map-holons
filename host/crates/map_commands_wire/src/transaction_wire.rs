@@ -70,10 +70,10 @@ pub enum TransactionActionWire {
     GetTransientHolonByVersionedKey { key: MapString },
 
     /// `staged_count()` → `i64`
-    StagedCount,
+    GetStagedCount,
 
     /// `transient_count()` → `i64`
-    TransientCount,
+    GetTransientCount,
 
     // ── Mutation actions ─────────────────────────────────────────────
     /// `new_holon(key)` → `TransientReference`
@@ -146,8 +146,8 @@ impl TransactionActionWire {
             TransactionActionWire::GetTransientHolonByVersionedKey { key } => {
                 Ok(TransactionAction::GetTransientHolonByVersionedKey { key })
             }
-            TransactionActionWire::StagedCount => Ok(TransactionAction::StagedCount),
-            TransactionActionWire::TransientCount => Ok(TransactionAction::TransientCount),
+            TransactionActionWire::GetStagedCount => Ok(TransactionAction::GetStagedCount),
+            TransactionActionWire::GetTransientCount => Ok(TransactionAction::GetTransientCount),
 
             // Mutation actions — some require context binding
             TransactionActionWire::NewHolon { key } => Ok(TransactionAction::NewHolon { key }),

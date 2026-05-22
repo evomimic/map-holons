@@ -69,10 +69,10 @@ pub enum TransactionAction {
     GetTransientHolonByVersionedKey { key: MapString },
 
     /// `staged_count()` → `i64`
-    StagedCount,
+    GetStagedCount,
 
     /// `transient_count()` → `i64`
-    TransientCount,
+    GetTransientCount,
 
     // ── Mutation actions (MutationFacade) ─────────────────────────────
     /// `new_holon(key)` → `TransientReference`
@@ -119,8 +119,10 @@ impl TransactionAction {
             | TransactionAction::GetStagedHolonByVersionedKey { .. }
             | TransactionAction::GetTransientHolonByBaseKey { .. }
             | TransactionAction::GetTransientHolonByVersionedKey { .. }
-            | TransactionAction::StagedCount
-            | TransactionAction::TransientCount => CommandLifecyclePolicy::transaction_read_only(),
+            | TransactionAction::GetStagedCount
+            | TransactionAction::GetTransientCount => {
+                CommandLifecyclePolicy::transaction_read_only()
+            }
 
             // Mutations
             TransactionAction::NewHolon { .. }
@@ -154,8 +156,8 @@ impl TransactionAction {
             TransactionAction::GetTransientHolonByVersionedKey { .. } => {
                 "get_transient_holon_by_versioned_key"
             }
-            TransactionAction::StagedCount => "staged_count",
-            TransactionAction::TransientCount => "transient_count",
+            TransactionAction::GetStagedCount => "get_staged_count",
+            TransactionAction::GetTransientCount => "get_transient_count",
             TransactionAction::NewHolon { .. } => "new_holon",
             TransactionAction::StageNewHolon { .. } => "stage_new_holon",
             TransactionAction::StageNewFromClone { .. } => "stage_new_from_clone",

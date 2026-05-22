@@ -166,12 +166,12 @@ fn generate_fixtures() {
     write_fixture(
         &fixtures_dir,
         "request-tx-staged-count.json",
-        &request(12, tx_command(41, TransactionActionWire::StagedCount), default_options()),
+        &request(12, tx_command(41, TransactionActionWire::GetStagedCount), default_options()),
     );
     write_fixture(
         &fixtures_dir,
         "request-tx-transient-count.json",
-        &request(13, tx_command(41, TransactionActionWire::TransientCount), default_options()),
+        &request(13, tx_command(41, TransactionActionWire::GetTransientCount), default_options()),
     );
     write_fixture(
         &fixtures_dir,
@@ -199,7 +199,7 @@ fn generate_fixtures() {
             holon_command(
                 41,
                 staged_reference(41, uuid_b()),
-                HolonActionWire::Read(ReadableHolonActionWire::PropertyValue {
+                HolonActionWire::Read(ReadableHolonActionWire::GetPropertyValue {
                     name: property_name("title"),
                 }),
             ),
@@ -214,7 +214,7 @@ fn generate_fixtures() {
             holon_command(
                 41,
                 smart_reference(41, local_holon_id(&[61, 62, 63]), None),
-                HolonActionWire::Read(ReadableHolonActionWire::RelatedHolons {
+                HolonActionWire::Read(ReadableHolonActionWire::GetRelatedHolons {
                     name: relationship_name("children"),
                 }),
             ),
@@ -229,7 +229,7 @@ fn generate_fixtures() {
             holon_command(
                 41,
                 staged_reference(41, uuid_b()),
-                HolonActionWire::Read(ReadableHolonActionWire::EssentialContent),
+                HolonActionWire::Read(ReadableHolonActionWire::GetEssentialContent),
             ),
             default_options(),
         ),
@@ -242,7 +242,7 @@ fn generate_fixtures() {
             holon_command(
                 41,
                 staged_reference(41, uuid_b()),
-                HolonActionWire::Read(ReadableHolonActionWire::Key),
+                HolonActionWire::Read(ReadableHolonActionWire::GetKey),
             ),
             default_options(),
         ),
