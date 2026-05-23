@@ -1,5 +1,5 @@
 use core_types::{ContentSet, FileData};
-use holons_loader_client::BOOTSTRAP_IMPORT_SCHEMA_PATH;
+use holons_loader_client::BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH;
 use holons_prelude::prelude::*;
 use std::{
     fs,
@@ -49,7 +49,7 @@ pub fn map_core_schema_paths() -> Vec<PathBuf> {
 }
 
 pub fn build_core_schema_content_set() -> Result<ContentSet, HolonError> {
-    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
+    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH);
     let schema = read_file_data(&schema_path, "validation schema")?;
     let files_to_load = map_core_schema_paths()
         .into_iter()

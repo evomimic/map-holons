@@ -1,5 +1,5 @@
 use core_types::ContentSet;
-use holons_loader_client::BOOTSTRAP_IMPORT_SCHEMA_PATH;
+use holons_loader_client::BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH;
 use holons_prelude::prelude::*;
 use std::path::PathBuf;
 
@@ -22,7 +22,7 @@ pub fn domain_schema_path() -> PathBuf {
 }
 
 pub fn build_book_person_inverse_content_set() -> Result<ContentSet, HolonError> {
-    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
+    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH);
     let schema = read_file_data(&schema_path, "validation schema")?;
 
     let files_to_load =
