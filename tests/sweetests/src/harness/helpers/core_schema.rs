@@ -1,17 +1,18 @@
 use core_types::{ContentSet, FileData};
-use holons_loader_client::BOOTSTRAP_IMPORT_SCHEMA_PATH;
+use holons_loader_client::BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH;
 use holons_prelude::prelude::*;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 
-const CORE_SCHEMA_RELATIVE_PATHS: [&str; 10] = [
+const CORE_SCHEMA_RELATIVE_PATHS: [&str; 11] = [
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-command-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
+    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-loader-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
@@ -30,12 +31,12 @@ pub struct CoreSchemaLoadMetrics {
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 246,
-    committed: 246,
-    links_created: 1290,
+    staged: 282,
+    committed: 282,
+    links_created: 1505,
     errors: 0,
-    total_bundles: 10,
-    total_loader_holons: 246,
+    total_bundles: 11,
+    total_loader_holons: 282,
 };
 
 /// Absolute paths to all core schema import files used for loader-client testing.
@@ -48,7 +49,7 @@ pub fn map_core_schema_paths() -> Vec<PathBuf> {
 }
 
 pub fn build_core_schema_content_set() -> Result<ContentSet, HolonError> {
-    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_SCHEMA_PATH);
+    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH);
     let schema = read_file_data(&schema_path, "validation schema")?;
     let files_to_load = map_core_schema_paths()
         .into_iter()

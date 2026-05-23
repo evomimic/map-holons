@@ -1,10 +1,10 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-20T16:28:35",
+    "generated_at": "2026-05-23T11:57:15",
     "export_mode": "by-file",
     "source_files": [
-      "MAP Schema Types-map-holon-loader-schema.csv"
+      "MAP Schema Types-map-core-schema-loader-types.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
@@ -374,7 +374,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(HolonLoadSet.Ho)-[Contains]->(HolonLoaderBundle.HolonType)"
+            "$ref": "#(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         }
       ]
@@ -920,7 +920,7 @@
       ]
     },
     {
-      "key": "(HolonLoadSet.Ho)-[Contains]->(HolonLoaderBundle.HolonType)",
+      "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
       "type": "#TypeDescriptor",
       "properties": {
         "type_name": "Contains",
@@ -1010,7 +1010,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(HolonLoadSet.Ho)-[Contains]->(HolonLoaderBundle.HolonType)"
+            "$ref": "#(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         },
         {
