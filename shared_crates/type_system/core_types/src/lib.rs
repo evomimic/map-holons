@@ -15,9 +15,11 @@
 //! and are shared across guest and client implementations.
 
 pub mod ids;
+pub mod loader_content;
 pub mod type_kinds;
 
 pub use ids::*;
+pub use loader_content::*;
 pub use type_kinds::*;
 
 //Re-export selected integrity_core_types at the root.
