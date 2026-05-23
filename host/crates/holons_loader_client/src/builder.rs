@@ -481,6 +481,8 @@ mod tests {
     use super::*;
     use serde::Deserialize;
     use serde_json::json;
+    use std::collections::BTreeSet;
+    use std::{fs, path::PathBuf};
 
     #[derive(Debug, Deserialize)]
     struct TargetWrapper {
@@ -491,6 +493,135 @@ mod tests {
     fn parse_targets(target_json: serde_json::Value) -> Result<Vec<String>, serde_json::Error> {
         serde_json::from_value::<TargetWrapper>(json!({ "target": target_json }))
             .map(|parsed| parsed.target)
+    }
+
+    #[derive(Debug)]
+    struct SchemaExportIndex {
+        descriptor_keys: BTreeSet<String>,
+        type_names: BTreeSet<String>,
+    }
+
+    fn load_core_schema_export_index() -> SchemaExportIndex {
+        let core_schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("import_files")
+            .join("map-schema")
+            .join("core-schema");
+
+        let mut schema_paths = fs::read_dir(&core_schema_dir)
+            .unwrap_or_else(|error| {
+                panic!("failed to read core schema dir {}: {error}", core_schema_dir.display())
+            })
+            .map(|entry| {
+                entry
+                    .unwrap_or_else(|error| panic!("failed to read core schema dir entry: {error}"))
+                    .path()
+            })
+            .filter(|path| {
+                path.extension().and_then(|extension| extension.to_str()) == Some("json")
+            })
+            .collect::<Vec<_>>();
+        schema_paths.sort();
+
+        let mut descriptor_keys = BTreeSet::new();
+        let mut type_names = BTreeSet::new();
+
+        for schema_path in schema_paths {
+            let raw_contents = fs::read_to_string(&schema_path).unwrap_or_else(|error| {
+                panic!("failed to read core schema export {}: {error}", schema_path.display())
+            });
+            let document: serde_json::Value =
+                serde_json::from_str(&raw_contents).unwrap_or_else(|error| {
+                    panic!("failed to parse core schema export {}: {error}", schema_path.display())
+                });
+
+            let holons =
+                document.get("holons").and_then(|value| value.as_array()).unwrap_or_else(|| {
+                    panic!("core schema export {} is missing holons[]", schema_path.display())
+                });
+
+            for holon in holons {
+                if let Some(key) = holon.get("key").and_then(|value| value.as_str()) {
+                    descriptor_keys.insert(key.to_string());
+                }
+                if let Some(type_name) = holon
+                    .get("properties")
+                    .and_then(|properties| properties.get("type_name"))
+                    .and_then(|value| value.as_str())
+                {
+                    type_names.insert(type_name.to_string());
+                }
+            }
+        }
+
+        SchemaExportIndex { descriptor_keys, type_names }
+    }
+
+    fn assert_type_names_exist(schema_index: &SchemaExportIndex, expected_names: &[String]) {
+        let missing_names = expected_names
+            .iter()
+            .filter(|name| !schema_index.type_names.contains(*name))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        assert!(
+            missing_names.is_empty(),
+            "core schema export is missing loader-used type_name values: {missing_names:?}"
+        );
+    }
+
+    fn assert_descriptor_keys_exist(schema_index: &SchemaExportIndex, expected_keys: &[&str]) {
+        let missing_keys = expected_keys
+            .iter()
+            .filter(|key| !schema_index.descriptor_keys.contains(**key))
+            .copied()
+            .collect::<Vec<_>>();
+
+        assert!(
+            missing_keys.is_empty(),
+            "core schema export is missing loader graph descriptor keys: {missing_keys:?}"
+        );
+    }
+
+    #[test]
+    fn loader_client_vocabulary_exists_in_core_schema_exports() {
+        let schema_index = load_core_schema_export_index();
+
+        let required_property_type_names = [
+            CorePropertyTypeName::Filename,
+            CorePropertyTypeName::HolonKey,
+            CorePropertyTypeName::RelationshipName,
+            CorePropertyTypeName::StartUtf8ByteOffset,
+        ]
+        .iter()
+        .map(|name| name.as_property_name().to_string())
+        .collect::<Vec<_>>();
+
+        let required_relationship_type_names = [
+            CoreRelationshipTypeName::BundleMembers,
+            CoreRelationshipTypeName::Contains,
+            CoreRelationshipTypeName::DescribedBy,
+            CoreRelationshipTypeName::HasRelationshipReference,
+            CoreRelationshipTypeName::ReferenceSource,
+            CoreRelationshipTypeName::ReferenceTarget,
+        ]
+        .iter()
+        .map(|name| name.as_relationship_name().to_string())
+        .collect::<Vec<_>>();
+
+        assert_type_names_exist(&schema_index, &required_property_type_names);
+        assert_type_names_exist(&schema_index, &required_relationship_type_names);
+        assert_descriptor_keys_exist(
+            &schema_index,
+            &[
+                "HolonLoadSet.HolonType",
+                "HolonLoaderBundle.HolonType",
+                "LoaderHolon.HolonType",
+                "LoaderRelationshipReference.HolonType",
+                "LoaderHolonReference.HolonType",
+            ],
+        );
     }
 
     #[test]
