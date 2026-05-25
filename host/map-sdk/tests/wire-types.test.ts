@@ -9,10 +9,6 @@ import {
   isFileData,
   isMapIpcRequest,
   isMapIpcResponse,
-  isQueryRequestWire,
-  isQueryResultWire,
-  isRow,
-  isRowSet,
   isTransactionActionWire,
 } from '../src/internal/wire-types/index';
 
@@ -21,7 +17,7 @@ const fixtureFiles = readdirSync(fixturesDir).sort();
 
 describe('wire type fixtures', () => {
   it('discovers the generated fixture set', () => {
-    expect(fixtureFiles.length).toBe(42);
+    expect(fixtureFiles.length).toBe(40);
   });
 
   for (const fixtureFile of fixtureFiles) {
@@ -72,91 +68,6 @@ describe('LoadHolons wire type guard', () => {
             },
           },
         },
-      }),
-    ).toBe(false);
-  });
-});
-
-describe('shared operand wire type guards', () => {
-  it('accepts Value-backed row shapes', () => {
-    expect(
-      isRow({
-        title: { StringValue: 'alpha' },
-        rank: { IntegerValue: 7 },
-      }),
-    ).toBe(true);
-  });
-
-  it('accepts ordered rowset shapes', () => {
-    expect(
-      isRowSet({
-        rows: [
-          { title: { StringValue: 'alpha' } },
-          { published: { BooleanValue: true } },
-        ],
-      }),
-    ).toBe(true);
-  });
-
-  it('rejects conflated scalar, row, and rowset shapes', () => {
-    expect(isRow({ StringValue: 'alpha' })).toBe(false);
-    expect(isRowSet({ title: { StringValue: 'alpha' } })).toBe(false);
-    expect(
-      isRow({
-        nested: {
-          title: { StringValue: 'alpha' },
-        },
-      }),
-    ).toBe(false);
-  });
-});
-
-describe('query contract wire type guards', () => {
-  it('accepts substrate-facing query request shapes', () => {
-    expect(
-      isQueryRequestWire({
-        target_refs: [],
-        query: {
-          LegacyRelationshipTraversal: {
-            relationship_name: 'children',
-          },
-        },
-        parameters: {
-          status: { StringValue: 'Active' },
-        },
-      }),
-    ).toBe(true);
-  });
-
-  it('accepts materialized query result envelope shapes', () => {
-    expect(
-      isQueryResultWire({
-        data: {
-          RowSet: {
-            rows: [{ title: { StringValue: 'alpha' } }],
-          },
-        },
-        diagnostics: [{ code: 'ok', message: 'shape stabilized' }],
-      }),
-    ).toBe(true);
-  });
-
-  it('rejects malformed query contract shapes', () => {
-    expect(
-      isQueryRequestWire({
-        target_refs: [],
-        query: {
-          relationship_name: 'children',
-        },
-        parameters: null,
-      }),
-    ).toBe(false);
-    expect(
-      isQueryResultWire({
-        data: {
-          RowSet: { title: { StringValue: 'alpha' } },
-        },
-        diagnostics: [],
       }),
     ).toBe(false);
   });

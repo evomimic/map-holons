@@ -12,7 +12,6 @@ import {
   getTransientHolonByVersionedKey,
   loadHolons,
   newHolon,
-  query,
   redoLast,
   stageNewFromClone,
   stageNewHolon,
@@ -34,8 +33,6 @@ import type {
   HolonReferenceWire,
   LocalId,
   MapResultWire,
-  QueryRequestWire,
-  QueryResultWire,
   RequestOptions,
   SmartReferenceWire,
   TransactionActionWire,
@@ -126,35 +123,6 @@ const danceResponse: DanceResponseWire = {
     HolonReference: transientReference,
   },
   descriptor: stagedReference,
-};
-
-const queryRequest: QueryRequestWire = {
-  target_refs: [stagedReference],
-  query: {
-    LegacyRelationshipTraversal: {
-      relationship_name: 'related_to',
-    },
-  },
-  parameters: {
-    status: {
-      StringValue: 'Active',
-    },
-  },
-};
-
-const queryResult: QueryResultWire = {
-  data: {
-    RowSet: {
-      rows: [
-        {
-          title: {
-            StringValue: 'alpha',
-          },
-        },
-      ],
-    },
-  },
-  diagnostics: [],
 };
 
 const contentSet: ContentSet = {
@@ -331,14 +299,6 @@ const transactionCases: TransactionCase<unknown>[] = [
     okResult: { DanceResponse: danceResponse },
     expected: danceResponse,
     wrongResult: { Value: integerValue },
-  },
-  {
-    name: 'query',
-    run: () => query(txId, queryRequest),
-    action: { Query: queryRequest },
-    okResult: { QueryResult: queryResult },
-    expected: queryResult,
-    wrongResult: { Collection: holonCollection },
   },
   {
     name: 'undoLast',

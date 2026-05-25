@@ -23,7 +23,6 @@ import {
   isString,
   isTransientReferenceWire,
 } from './references';
-import { type QueryRequestWire, isQueryRequestWire } from './query';
 
 // ===========================================
 // Command Scope Types
@@ -66,7 +65,6 @@ export type TransactionActionWire =
   | { RedoToMarker: { marker_id: string } }
   | { LoadHolons: { content_set: ContentSet } }
   | { Dance: DanceRequestWire }
-  | { Query: QueryRequestWire }
   | 'GetAllHolons'
   | { GetStagedHolonByBaseKey: { key: string } }
   | { GetStagedHolonsByBaseKey: { key: string } }
@@ -243,7 +241,6 @@ export function isTransactionActionWire(
       isRecord(value.LoadHolons) &&
       isContentSet(value.LoadHolons['content_set'])) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
-    (hasSingleKey(value, 'Query') && isQueryRequestWire(value.Query)) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&
       isStringFieldObject(value.GetStagedHolonByBaseKey, 'key')) ||
     (hasSingleKey(value, 'GetStagedHolonsByBaseKey') &&

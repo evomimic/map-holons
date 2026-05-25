@@ -4,12 +4,7 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use pretty_assertions::assert_eq;
 use tracing::debug;
 
-/// Queries relationships via `TransactionAction::Dance` (temporary fallback).
-///
-/// `TransactionAction::Query` currently returns `NotImplemented`, so we wrap the
-/// existing dance request in `TransactionAction::Dance(...)` to route through Runtime.
-///
-/// TODO: Migrate to native `TransactionAction::Query` once implemented.
+/// Queries relationships via the retained deprecated `query_relationships` Dance.
 pub async fn execute_query_relationships(
     state: &mut TestExecutionState,
     step_token: TestReference,

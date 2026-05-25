@@ -8,10 +8,10 @@
 // Public Modules
 pub mod core_shared_objects;
 pub mod descriptors;
+pub mod query_layer;
 pub mod reference_layer;
 // Utility modules (if needed outside the crate)
 pub mod dances;
-pub mod query_layer;
 pub mod utils;
 
 // pub use core_shared_objects::*;

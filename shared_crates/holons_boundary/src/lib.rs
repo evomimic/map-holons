@@ -23,17 +23,14 @@ pub mod core_shared_objects {
     pub use crate::session_state::SerializableHolonPool;
 }
 
-pub mod query_layer {
-    pub use crate::context_binding::{
-        NodeCollectionWire, NodeWire, QueryDiagnosticWire, QueryPathMapWire, QueryRequestWire,
-        QueryResultDataWire, QueryResultWire, RowSetWire, RowWire,
-    };
-}
-
 pub mod dances {
     pub use crate::context_binding::{DanceRequestWire, DanceTypeWire, RequestBodyWire};
     pub use crate::context_binding::{DanceResponseWire, ResponseBodyWire};
     pub use crate::session_state::SessionStateWire;
+}
+
+pub mod query_layer {
+    pub use crate::context_binding::{NodeCollectionWire, NodeWire, QueryPathMapWire};
 }
 
 pub use core_shared_objects::*;

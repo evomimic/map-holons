@@ -71,6 +71,7 @@ impl MapRequestBody {
     pub fn new_query_expression(query_expression: QueryExpression) -> Self {
         Self::QueryExpression(query_expression)
     }
+
     pub fn new_load_holons(content_set: ContentSet) -> Self {
         Self::LoadHolons(content_set)
     }

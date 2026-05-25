@@ -4,7 +4,7 @@ use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use holons_core::core_shared_objects::HolonCollection;
 use holons_core::dances::DanceResponse;
-use holons_core::query_layer::{NodeCollection, QueryResult};
+use holons_core::query_layer::NodeCollection;
 use holons_core::reference_layer::HolonReference;
 
 /// Domain-level result variants from command execution.
@@ -40,11 +40,8 @@ pub enum MapResult {
     /// Returns an indexed collection of holons.
     Collection(HolonCollection),
 
-    /// Returns a node collection (query result).
+    /// Returns a deprecated relationship-query node collection.
     NodeCollection(NodeCollection),
-
-    /// Returns a materialized query result envelope.
-    QueryResult(QueryResult),
 
     /// Universal scalar return — covers MapString, MapInteger, MapBoolean, PropertyValue.
     Value(BaseValue),

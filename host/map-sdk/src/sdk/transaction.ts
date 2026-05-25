@@ -17,8 +17,6 @@ import {
 } from './references';
 import {
   type ContentSet,
-  type QueryRequest,
-  type QueryResult,
   extractNumber,
   type SmartReference,
 } from './types';
@@ -189,16 +187,6 @@ export class MapTransaction {
     return extractNumber(value);
   }
 
-  /**
-   * Invoke the stabilized query contract path for this transaction.
-   *
-   * This remains contract-first in `PRO2`: the call routes through Commands
-   * into the shared query substrate boundary without implying that the
-   * descriptor-aware substrate semantics are already implemented.
-   */
-  async query(request: QueryRequest): Promise<QueryResult> {
-    return internalTransaction.query(txIdFor(this), request);
-  }
 }
 
 // ===========================================

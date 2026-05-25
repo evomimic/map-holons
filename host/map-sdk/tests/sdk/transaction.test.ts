@@ -8,8 +8,6 @@ import type {
   HolonId,
   HolonReferenceWire,
   LocalId,
-  QueryRequestWire,
-  QueryResultWire,
 } from '../../src/internal/wire-types';
 
 const {
@@ -23,7 +21,6 @@ const {
   getTransientHolonByVersionedKeyMock,
   loadHolonsMock,
   newHolonMock,
-  queryMock,
   stagedCountMock,
   stageNewFromCloneMock,
   stageNewHolonMock,
@@ -41,7 +38,6 @@ const {
   getTransientHolonByVersionedKeyMock: vi.fn(),
   loadHolonsMock: vi.fn(),
   newHolonMock: vi.fn(),
-  queryMock: vi.fn(),
   stagedCountMock: vi.fn(),
   stageNewFromCloneMock: vi.fn(),
   stageNewHolonMock: vi.fn(),
@@ -61,7 +57,6 @@ vi.mock('../../src/internal/commands/transaction', () => ({
   getTransientHolonByVersionedKey: getTransientHolonByVersionedKeyMock,
   loadHolons: loadHolonsMock,
   newHolon: newHolonMock,
-  query: queryMock,
   stagedCount: stagedCountMock,
   stageNewFromClone: stageNewFromCloneMock,
   stageNewHolon: stageNewHolonMock,
@@ -130,25 +125,6 @@ const holonId: HolonId = {
 };
 
 const localId: LocalId = [9, 8, 7];
-const queryRequest: QueryRequestWire = {
-  target_refs: [stagedReference],
-  query: {
-    LegacyRelationshipTraversal: {
-      relationship_name: 'children',
-    },
-  },
-  parameters: null,
-};
-const queryResult: QueryResultWire = {
-  data: null,
-  diagnostics: [
-    {
-      code: 'todo',
-      message: 'query substrate not implemented',
-    },
-  ],
-};
-
 function transaction(): MapTransaction {
   return createMapTransaction(txId);
 }
@@ -177,7 +153,6 @@ describe('MapTransaction', () => {
     getTransientHolonByVersionedKeyMock.mockReset();
     loadHolonsMock.mockReset();
     newHolonMock.mockReset();
-    queryMock.mockReset();
     stagedCountMock.mockReset();
     stageNewFromCloneMock.mockReset();
     stageNewHolonMock.mockReset();
@@ -285,13 +260,6 @@ describe('MapTransaction', () => {
 
     await expect(transaction().loadHolons(contentSet)).resolves.toBeUndefined();
     expect(loadHolonsMock).toHaveBeenCalledWith(txId, contentSet);
-  });
-
-  it('delegates query using the stable query contract path', async () => {
-    queryMock.mockResolvedValue(queryResult);
-
-    await expect(transaction().query(queryRequest)).resolves.toEqual(queryResult);
-    expect(queryMock).toHaveBeenCalledWith(txId, queryRequest);
   });
 
   it('wraps getAllHolons results as a HolonCollection', async () => {
