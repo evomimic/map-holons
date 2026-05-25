@@ -70,6 +70,7 @@ pub enum CoreRelationshipTypeName {
     AffordedBy,
     AffordsCommand,
     AffordsOperator,
+    AffordsTransactionModel,
     BundleMembers,
     ComponentOf,
     Constraints,
@@ -101,6 +102,7 @@ pub enum CoreRelationshipTypeName {
     Successor,
     TargetOf,
     TargetType,
+    TransactionModelAffordedBy,
     UsesKeyRule,
     ValueType,
     ValueTypeFor,
@@ -130,6 +132,10 @@ mod tests {
             CoreRelationshipTypeName::AffordsCommand.as_relationship_name()
         );
         assert_eq!(
+            RelationshipName(MapString("AffordsTransactionModel".to_string())),
+            CoreRelationshipTypeName::AffordsTransactionModel.as_relationship_name()
+        );
+        assert_eq!(
             RelationshipName(MapString("Extends".to_string())),
             CoreRelationshipTypeName::Extends.as_relationship_name()
         );
@@ -140,6 +146,10 @@ mod tests {
         assert_eq!(
             RelationshipName(MapString("Properties".to_string())),
             CoreRelationshipTypeName::Properties.as_relationship_name()
+        );
+        assert_eq!(
+            RelationshipName(MapString("TransactionModelAffordedBy".to_string())),
+            CoreRelationshipTypeName::TransactionModelAffordedBy.as_relationship_name()
         );
     }
 

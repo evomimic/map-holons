@@ -23,8 +23,8 @@ pub use core_shared_objects::{
 pub use core_types::HolonError;
 pub use descriptors::{
     ancestors, classify_relationship_direction, walk_extends_chain, Descriptor, ExtendsIter,
-    HolonDescriptor, PropertyDescriptor, RelationshipDescriptor, RelationshipDirection, TypeHeader,
-    ValueDescriptor,
+    HolonDescriptor, HolonSpaceDescriptor, PropertyDescriptor, RelationshipDescriptor,
+    RelationshipDirection, TransactionDescriptor, TypeHeader, ValueDescriptor,
 };
 pub use reference_layer::{
     HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
