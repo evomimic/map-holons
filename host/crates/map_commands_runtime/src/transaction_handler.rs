@@ -4,8 +4,6 @@ use holons_core::reference_layer::HolonReference;
 
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
-use crate::query_adapter::handle_query_request;
-
 use super::runtime_session::RuntimeSession;
 
 /// Handles transaction-scoped commands.
@@ -40,7 +38,6 @@ pub async fn handle_transaction(
             let response = context.initiate_ingress_dance(request, false).await?;
             Ok(MapResult::DanceResponse(response))
         }
-        TransactionAction::Query(request) => handle_query_request(context, request).await,
         TransactionAction::LoadHolons { content_set } => {
             let response =
                 holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;

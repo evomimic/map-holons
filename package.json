@@ -38,7 +38,7 @@
 
     "regen:sdk-fixtures": "npm run regen:sdk-fixtures -w map-host",
 
-    "clean": "npm run clean:rust:deep && npm run clean:ui",
+    "clean": "npm run clean:rust:deep && npm run clean:hc:deep -w map-host && npm run clean:ui",
     "clean:rust": "npm run clean:rust -w map-host && npm run clean:rust -w map-happ",
     "clean:rust:deep": "npm run clean:rust:deep -w map-host && npm run clean:rust:deep -w map-happ",
     "clean:ui": "npm run clean:ui -w map-host"

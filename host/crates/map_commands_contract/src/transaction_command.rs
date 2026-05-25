@@ -4,7 +4,6 @@ use base_types::MapString;
 use core_types::{ContentSet, HolonId, LocalId};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceRequest;
-use holons_core::query_layer::QueryRequest;
 use holons_core::reference_layer::{HolonReference, SmartReference, TransientReference};
 
 use super::{CommandLifecyclePolicy, MutationClassification};
@@ -45,9 +44,6 @@ pub enum TransactionAction {
 
     /// Executes a dance request within this transaction.
     Dance(DanceRequest),
-
-    /// Executes a substrate-facing query request within this transaction.
-    Query(QueryRequest),
 
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
@@ -110,8 +106,6 @@ impl TransactionAction {
                 requires_open_tx: true,
                 requires_commit_guard: false,
             },
-            TransactionAction::Query(_) => CommandLifecyclePolicy::transaction_read_only(),
-
             // Lookups
             TransactionAction::GetAllHolons
             | TransactionAction::GetStagedHolonByBaseKey { .. }
@@ -143,7 +137,6 @@ impl TransactionAction {
             TransactionAction::RedoToMarker { .. } => "redo_to_marker",
             TransactionAction::LoadHolons { .. } => "load_holons",
             TransactionAction::Dance(_) => "dance",
-            TransactionAction::Query(_) => "query",
             TransactionAction::GetAllHolons => "get_all_holons",
             TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
             TransactionAction::GetStagedHolonsByBaseKey { .. } => "get_staged_holons_by_base_key",

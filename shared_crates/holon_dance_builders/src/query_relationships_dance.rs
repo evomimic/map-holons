@@ -5,8 +5,6 @@ use holons_core::{
     query_layer::{NodeCollection, QueryExpression},
 };
 
-///
-/// Builds a DanceRequest for getting related holons optionally filtered by relationship name.
 pub fn build_query_relationships_dance_request(
     node_collection: NodeCollection,
     query_expression: QueryExpression,

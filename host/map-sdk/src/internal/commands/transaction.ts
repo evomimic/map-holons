@@ -4,7 +4,6 @@ import {
   expectCollection,
   expectDanceResponse,
   expectNone,
-  expectQueryResult,
   expectRedoComplete,
   expectRedoToMarkerComplete,
   expectReference,
@@ -24,8 +23,6 @@ import type {
   HolonReferenceWire,
   LocalId,
   MapResultWire,
-  QueryRequestWire,
-  QueryResultWire,
   SmartReferenceWire,
   TransactionActionWire,
   TransientReferenceWire,
@@ -396,24 +393,6 @@ export function dance(
       Dance: request,
     },
     expectDanceResponse,
-    options,
-  );
-}
-
-/**
- * Execute a transaction-scoped query request.
- */
-export function query(
-  txId: TxId,
-  request: QueryRequestWire,
-  options?: RequestOptionsOverrides,
-): Promise<QueryResultWire> {
-  return runTransactionCommand(
-    txId,
-    {
-      Query: request,
-    },
-    expectQueryResult,
     options,
   );
 }

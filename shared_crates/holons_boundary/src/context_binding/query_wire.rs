@@ -37,6 +37,7 @@ impl NodeWire {
     pub fn new(source_holon: HolonReferenceWire, relationships: Option<QueryPathMapWire>) -> Self {
         Self { source_holon, relationships }
     }
+
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<Node, HolonError> {
         Ok(Node::new(
             self.source_holon.bind(context)?,
@@ -60,6 +61,7 @@ impl QueryPathMapWire {
     pub fn new(map: BTreeMap<RelationshipName, NodeCollectionWire>) -> Self {
         Self(map)
     }
+
     pub fn bind(self, context: &Arc<TransactionContext>) -> Result<QueryPathMap, HolonError> {
         let mut map = BTreeMap::new();
         for (relationship_name, node_collection_wire) in self.0 {

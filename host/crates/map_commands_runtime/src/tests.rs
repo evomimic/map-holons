@@ -10,7 +10,6 @@ use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::core_shared_objects::{
     Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
 };
-use holons_core::query_layer::{QueryExpression, QueryRequest, QuerySpec};
 use holons_core::reference_layer::{
     HolonReference, HolonServiceApi, StagedReference, TransientReference,
 };
@@ -235,36 +234,6 @@ async fn transient_count_returns_zero_for_new_tx() {
     match result {
         MapResult::Value(BaseValue::IntegerValue(MapInteger(0))) => {}
         other => panic!("expected Value(IntegerValue(0)), got {:?}", other),
-    }
-}
-
-#[tokio::test]
-async fn query_routes_through_the_substrate_boundary_seam() {
-    let runtime = build_test_runtime();
-    let tx_id = begin_tx(&runtime).await;
-
-    let command = tx_cmd(
-        &runtime,
-        &tx_id,
-        TransactionAction::Query(QueryRequest::new(
-            Vec::new(),
-            QuerySpec::LegacyRelationshipTraversal(QueryExpression::new(RelationshipName(
-                MapString::from("children"),
-            ))),
-            None,
-        )),
-    );
-
-    let result = runtime.execute_command(command, ExecutionPolicy::default()).await;
-
-    match result {
-        Err(HolonError::NotImplemented(message)) => {
-            assert!(
-                message.contains("query substrate boundary"),
-                "message should reference the shared substrate boundary"
-            );
-        }
-        other => panic!("expected query substrate boundary error, got {:?}", other),
     }
 }
 

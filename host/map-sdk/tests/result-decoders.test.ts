@@ -10,7 +10,6 @@ import {
   expectNone,
   expectOptionalReference,
   expectOptionalValue,
-  expectQueryResult,
   expectReference,
   expectReferences,
   expectTransactionCreated,
@@ -25,7 +24,6 @@ import type {
   HolonReferenceWire,
   MapResultWire,
   NodeCollectionWire,
-  QueryResultWire,
 } from '../src/internal/wire-types';
 
 // ===========================================
@@ -94,24 +92,6 @@ const danceResponse: DanceResponseWire = {
     HolonReference: transientReference,
   },
   descriptor: stagedReference,
-};
-
-const queryResult: QueryResultWire = {
-  data: {
-    RowSet: {
-      rows: [
-        {
-          title: baseValue,
-        },
-      ],
-    },
-  },
-  diagnostics: [
-    {
-      code: 'legacy_bridge',
-      message: 'query substrate not implemented yet',
-    },
-  ],
 };
 
 // ===========================================
@@ -206,20 +186,6 @@ describe('result decoders', () => {
 
   it('throws on the wrong result variant when expecting NodeCollection', () => {
     expect(() => expectNodeCollection({ Collection: holonCollection })).toThrow(
-      MalformedResponseError,
-    );
-  });
-
-  it('decodes QueryResult results', () => {
-    expect(
-      expectQueryResult({
-        QueryResult: queryResult,
-      }),
-    ).toEqual(queryResult);
-  });
-
-  it('throws on the wrong result variant when expecting QueryResult', () => {
-    expect(() => expectQueryResult({ NodeCollection: nodeCollection })).toThrow(
       MalformedResponseError,
     );
   });

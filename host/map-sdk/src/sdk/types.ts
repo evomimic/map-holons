@@ -4,18 +4,8 @@ import type {
   HolonId,
   LocalId,
   PropertyName,
-  Row,
-  RowSet,
   RelationshipName,
-  Value,
 } from '../internal/wire-types/references';
-import type {
-  QueryDiagnosticWire,
-  QueryRequestWire,
-  QueryResultDataWire,
-  QueryResultWire,
-  QuerySpecWire,
-} from '../internal/wire-types/query';
 import type {
   ContentSet as InternalContentSet,
   FileData as InternalFileData,
@@ -29,10 +19,7 @@ export type {
   HolonId,
   LocalId,
   PropertyName,
-  Row,
-  RowSet,
   RelationshipName,
-  Value,
 } from '../internal/wire-types/references';
 export {
   DomainError,
@@ -117,12 +104,6 @@ export interface WritableHolon extends ReadableHolon {
   ): Promise<void>;
   withDescriptor(descriptor: HolonReference): Promise<void>;
 }
-
-export type QueryRequest = QueryRequestWire;
-export type QuerySpec = QuerySpecWire;
-export type QueryResult = QueryResultWire;
-export type QueryResultData = QueryResultDataWire;
-export type QueryDiagnostic = QueryDiagnosticWire;
 
 // ===========================================
 // Public Value Extractors

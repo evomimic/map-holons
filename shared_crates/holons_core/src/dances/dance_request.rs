@@ -68,6 +68,7 @@ impl RequestBody {
     pub fn new_query_expression(query_expression: QueryExpression) -> Self {
         Self::QueryExpression(query_expression)
     }
+
     pub fn summarize(&self) -> String {
         match &self {
             RequestBody::Holon(holon) => format!("  Holon summary: {}", holon.summarize()),
