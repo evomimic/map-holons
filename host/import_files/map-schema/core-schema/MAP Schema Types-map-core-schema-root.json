@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-24T17:56:00",
+    "generated_at": "2026-05-25T15:12:51",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -606,6 +606,12 @@
           }
         },
         {
+          "name": "AffordsTransactionModel",
+          "target": {
+            "$ref": "#TransactionType"
+          }
+        },
+        {
           "name": "ComponentOf",
           "target": {
             "$ref": "#MAP Core Schema-v0.0.7"
@@ -621,12 +627,6 @@
           "name": "UsesKeyRule",
           "target": {
             "$ref": "#TypeNameRule"
-          }
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "#(HolonSpaceType)-[AffordsTransactionModel]->(TransactionType)"
           }
         }
       ]
