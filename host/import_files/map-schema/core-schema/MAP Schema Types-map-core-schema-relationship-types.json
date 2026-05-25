@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-20T16:28:35",
+    "generated_at": "2026-05-24T17:56:00",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -1601,6 +1601,114 @@
           "name": "TargetType",
           "target": {
             "$ref": "#FormatRule.KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpaceType)-[AffordsTransactionModel]->(TransactionType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "AffordsTransactionModel",
+        "type_name_plural": "AffordsTransactionModelRelationships",
+        "display_name": "AffordsTransactionModel Relationship",
+        "display_name_plural": "AffordsTransactionModel Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Declares that a HolonSpaceType affords exactly one TransactionType, anchoring the transaction command-scope API surface discoverable from the space descriptor.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#HolonSpaceType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#TransactionType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TransactionType)-[TransactionModelAffordedBy]->(HolonSpaceType)",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TransactionModelAffordedBy",
+        "type_name_plural": "TransactionModelAffordedByRelationships",
+        "display_name": "TransactionModelAffordedBy Relationship",
+        "display_name_plural": "TransactionModelAffordedBy Relationships",
+        "instance_type_kind": "Relationship",
+        "description": "Inverse of AffordsTransactionModel, from TransactionType back to the HolonSpaceType that affords it.",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "#(HolonSpaceType)-[AffordsTransactionModel]->(TransactionType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "#TransactionType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "#HolonSpaceType"
           }
         }
       ]
