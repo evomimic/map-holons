@@ -33,35 +33,23 @@ The variable name on an ExecutionPlan that selects the externally returned non-p
 _Avoid_: Implicit final binding
 
 **New-World Query Contract**:
-The descriptor-aware, bound-first query/navigation contract built around HolonReference, BoundHolonCollection, and holon-backed ExecutionPlans.
-_Avoid_: Legacy query bridge
+The descriptor-aware, bound-first future query/navigation direction built around HolonReference, HolonCollection, descriptor-afforded Dances, and later holon-backed ExecutionPlans.
+_Avoid_: Legacy query bridge, command-owned query envelope
 
 **Runtime Shared Type**:
 A canonical value or reference family reused across MAP surfaces without owning a surface's request or response envelope.
 _Avoid_: Surface envelope, command wrapper
 
 **Runtime Envelope**:
-A surface-owned request or response container for commands, dances, queries, or trust-channel transport.
+A surface-owned request or response container for commands, dances, future navigation surfaces, or trust-channel transport.
 _Avoid_: Runtime shared type
 
-**NavigationQueryRequest**:
-The new-world transaction-bound request for executing MAP navigation/query work.
-_Avoid_: QueryRequest when old-world compatibility remains ambiguous
-
-**NavigationQuerySpec**:
-The new-world request discriminator for navigation/query execution modes.
-_Avoid_: QuerySpec when old-world compatibility remains ambiguous
-
-**NavigationQueryResult**:
-The new-world query result envelope whose shape is determined by the executed navigation algebra, with projections produced only by Project.
-_Avoid_: NodeCollection
-
-**NavigationQuery Command Action**:
-The new-world transaction command action that adapts command ingress into the navigation query substrate.
-_Avoid_: Reusing old-world Query action
+**Descriptor-Backed Navigation Dance**:
+A future descriptor-afforded Dance that performs navigation over holon-native runtime shapes.
+_Avoid_: Transaction query command, NodeCollection as future algebra substrate
 
 **Transient Execution Artifact**:
-A transaction-scoped transient holon created during read-only navigation query execution to preserve bound-first intermediate or result state.
+A future transaction-scoped transient holon created during read-only navigation work to preserve bound-first intermediate or result state.
 _Avoid_: Staged mutation, undoable command result
 
 **NavigationBindingSet**:
@@ -76,21 +64,13 @@ _Avoid_: Public query result contract
 A typed Rust facade over a HolonReference pointing at a holon-backed ExecutionPlan, without descriptor validation in PRO3.
 _Avoid_: Raw HolonReference when the plan role matters
 
-**Old-World Query Types**:
-Deprecated compatibility types retained only to avoid breaking existing tests and transitional consumers.
+**Old-World Relationship Traversal Types**:
+Deprecated compatibility types retained only for the existing `query_relationships` and `fetch_all_related_holons` dance path.
 _Avoid_: New query design foundation, Legacy-prefixed renames
 
-**QueryRequest**:
-The retained old-world query envelope used for compatibility with transitional query/navigation behavior.
-_Avoid_: New-world navigation query envelope
-
-**QuerySpec**:
-The retained old-world query body discriminator used by the compatibility query envelope.
-_Avoid_: NavigationQuerySpec
-
-**QueryResult**:
-The retained old-world query result envelope used by compatibility query pathways.
-_Avoid_: NavigationQueryResult
+**Retired Query Envelopes**:
+The removed transaction-level query request/result contract family, including QueryRequest, QuerySpec, QueryResult, QueryResultData, and QueryDiagnostic.
+_Avoid_: Compatibility resurrection, replacement query command seam
 
 **Spec Revision Session**:
 A coherent design-update session that batches fine-grained decisions before applying one version bump per affected source spec.
@@ -141,25 +121,22 @@ The single connective used by a FilterStep to combine its FilterExpressions.
 _Avoid_: Nested predicate tree for PRO3
 
 **Query Result**:
-The outcome of query execution, which may be bound-first through HolonReference or BoundHolonCollection, or materialized as BaseValue, Row, or RowSet at projection boundaries.
+The future outcome of descriptor-backed navigation work, which should be holon-native and bound-first unless a later projection boundary explicitly defines a materialized shape.
 _Avoid_: Query expression
 
 **Materialized Projection**:
-A scalar, row, or rowset shape produced when a contract, projection, ordering, distinctness, pagination, ABI, or serialization boundary requires values.
+A future projection shape produced when a descriptor-backed projection, ABI, or serialization boundary requires values.
 _Avoid_: Internal execution state
 
 **ProjectStep**:
-The default PRO3 materialization boundary that converts bound query state into BaseValue, Row, or RowSet.
+The future materialization boundary that converts bound navigation state into descriptor-defined projection output.
 _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 
 ## Relationships
 
-- A **NavigationQueryRequest** contains a **NavigationQuerySpec**.
-- In PRO3, a **NavigationQuerySpec** executes an **ExecutionPlanReference** rather than carrying an inline plan DTO.
-- **QueryRequest**, **QuerySpec**, and **QueryResult** remain old-world compatibility envelopes.
-- **NavigationQueryRequest**, **NavigationQuerySpec**, and **NavigationQueryResult** are the new-world query/navigation envelopes for PRO3.
-- A **NavigationQuery Command Action** carries a **NavigationQueryRequest**.
-- A **NavigationQuery Command Action** is command-read-only while still allowing **Transient Execution Artifacts**.
+- Query PRO3 removes the transaction-level query envelope family rather than replacing it with a new command-owned query envelope.
+- The only retained old-world query compatibility surface is the deprecated relationship traversal dance path: `query_relationships`, `fetch_all_related_holons`, and their `Node` / `NodeCollection` / `QueryPathMap` / `QueryExpression` support types.
+- Future descriptor-backed navigation behavior belongs in descriptor-afforded Dances and later Query PRS / Dance PRS work.
 - A **Runtime Envelope** may carry **Runtime Shared Types** but is not itself a **Runtime Shared Type**.
 - An **ExecutionPlan** has an **Output Binding** for non-project results.
 - An **ExecutionPlan** reaches its starting **PlanNode** through **RootNode**.
@@ -179,10 +156,9 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - A **Filter** step consumes a **NavigationBindingSet** and produces a filtered **NavigationBindingSet**.
 - A **Filter** step contains one or more **FilterExpressions** combined by exactly one **BooleanConnective** in PRO3.
 - **Distinct**, **OrderBy**, **Skip**, and **Limit** should preserve **NavigationBindingSet** as their carrier in PRO3.
-- A **ProjectStep** is the default operation that converts a **NavigationBindingSet** into a **Materialized Projection**.
-- A **NavigationQueryResult** returns a **Materialized Projection** only when the executed algebra reaches **ProjectStep**.
-- Without **ProjectStep**, a **NavigationQueryResult** returns the bound value selected by the **Output Binding**.
-- **Old-World Query Types** may remain for compatibility, but **New-World Query Contract** design must not depend on them.
+- A future **ProjectStep** converts a **NavigationBindingSet** into a **Materialized Projection** only after descriptor-backed navigation work defines that projection contract.
+- Without a future **ProjectStep**, navigation results should remain holon-native and selected by the **Output Binding**.
+- **Old-World Relationship Traversal Types** may remain for compatibility, but **New-World Query Contract** design must not depend on them.
 - A **Spec Revision Session** closes when the team produces a stable artifact for one coherent design slice, such as a revised issue body.
 
 ## Example dialogue
@@ -194,15 +170,15 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 
 - "query expression" has been used to mean both the executable navigation/query structure and the returned query data. Resolved: use **ExecutionPlan**, **PlanNode**, and **PlanStep** for executable structure; use **Query Result** for returned data.
 - Existing `Node`, `NodeCollection`, `QueryPathMap`, and `QueryExpression` names should stay unchanged while deprecated compatibility code remains. Resolved: do not rename them to `Legacy*`, do not extend them, and do not use them as foundations for new query/navigation design.
-- `QueryRequest`, `DanceRequest`, command wrappers, and query result envelopes are **Runtime Envelopes**, not **Runtime Shared Types**. Resolved: their disposition belongs in the corresponding surface/query docs, while `runtime-shared-types.md` governs carried runtime value/reference families.
-- `QueryRequest`, `QuerySpec`, and `QueryResult` are old-world compatibility envelopes. Resolved: PRO3 introduces distinct **NavigationQueryRequest**, **NavigationQuerySpec**, and **NavigationQueryResult** envelopes instead of extending old-world query envelopes.
-- Existing `TransactionAction::Query(QueryRequest)` remains old-world compatibility. Resolved: PRO3 adds a distinct **NavigationQuery Command Action** for new-world query/navigation execution.
-- `NavigationQuerySpec` executable bodies are reference-first in PRO3. Resolved: execute **ExecutionPlanReference** only; inline plan DTO execution is deferred.
+- `DanceRequest`, command wrappers, and future navigation envelopes are **Runtime Envelopes**, not **Runtime Shared Types**. Resolved: their disposition belongs in the corresponding surface/query docs, while `runtime-shared-types.md` governs carried runtime value/reference families.
+- `QueryRequest`, `QuerySpec`, and `QueryResult` were old-world query envelopes. Resolved: PRO3 removes them rather than retaining or replacing them.
+- Existing `TransactionAction::Query(QueryRequest)` was an unimplemented old-world command seam. Resolved: PRO3 removes it; future navigation should enter through descriptor-afforded Dances rather than a new transaction query action.
+- Future navigation executable bodies are reference-first. Resolved: execute **ExecutionPlanReference** only after descriptor-backed navigation work introduces that contract; inline plan DTO execution is deferred.
 - **ExecutionPlanReference** is a role-signaling facade in PRO3. Resolved: descriptor conformance validation is deferred.
 - Query/plan/expand validation is deferred for Issue 508. Resolved: PRO3 may identify validation touchpoints, but does not enforce descriptor-backed structural validation.
-- **NavigationQuery Command Action** is read-only from the command lifecycle perspective. Resolved: query execution may allocate **Transient Execution Artifacts** without becoming an undoable or staged mutation.
-- Projection result shaping belongs to **ProjectStep**. Resolved: non-Project query/navigation commands must not independently return `BaseValue`, `Row`, or `RowSet` projections.
-- "Query Command" was ambiguous between a Commands-layer action and an algebra operation. Resolved: use **NavigationQuery Command Action** for Commands ingress and **PlanStep** or **Algebra Operation** for `Project`, `Expand`, `Filter`, and related query algebra steps.
+- Future descriptor-backed navigation Dances are read-only from the command lifecycle perspective. Resolved: navigation execution may allocate **Transient Execution Artifacts** without becoming an undoable or staged mutation.
+- Projection result shaping belongs to future **ProjectStep** work. Resolved: non-Project navigation behavior must not independently return row-shaped projections.
+- "Query Command" was ambiguous between a Commands-layer action and an algebra operation. Resolved: avoid query command ingress; use descriptor-afforded Dances for navigation behavior and **PlanStep** or **Algebra Operation** for `Project`, `Expand`, `Filter`, and related query algebra steps.
 - Non-project navigation query results are selected explicitly. Resolved: **ExecutionPlan** carries an **Output Binding**; **NavigationBindingSet** remains internal.
 - **BoundHolonCollection** is the typed facade over its backing **HolonReference**. Resolved: do not introduce a separate `BoundHolonCollectionReference` name for PRO3.
 - **BoundHolonCollection** member access follows the reference-layer relationship pattern. Resolved: expose a **Members Collection** handle and let callers use `HolonCollection` accessors rather than duplicating member-list convenience methods on the facade.
