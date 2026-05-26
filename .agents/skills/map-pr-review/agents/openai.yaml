@@ -1,0 +1,5 @@
+interface:
+  display_name: MAP PR Review
+  short_description: Review map-holons PRs against linked issues, CI, and manual verification.
+  icon: git-pull-request
+  brand_color: '#2563eb'

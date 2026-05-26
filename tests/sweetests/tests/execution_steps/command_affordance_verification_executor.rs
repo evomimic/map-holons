@@ -3,14 +3,18 @@
 //! This executor is not a command-routing or command-execution test. It loads the
 //! current holon collection through an assertion transaction, selects known schema
 //! descriptors by key, verifies the stable concrete `CommandType` inventory,
-//! checks the `AffordsCommand` / `AffordedBy` descriptor graph, and exercises
+//! checks the `AffordsCommand` / `AffordedBy` descriptor graph, verifies the
+//! `HolonSpaceType` -> `TransactionType` transaction-model anchor, and exercises
 //! typed command-name lookup through `CoreCommandTypeName` and `CommandName`.
 //!
 //! The goal is to catch drift between the MAP Core schema JSON, the Rust command
-//! type-name inventory, and the descriptor accessor ergonomics introduced by PR4
-//! and PR4a.
+//! type-name inventory, and the descriptor accessor ergonomics introduced by PR4,
+//! PR4a, and PR4b.
 
-use holons_core::descriptors::{CommandDescriptor, HolonDescriptor, RelationshipDescriptor};
+use holons_core::descriptors::{
+    CommandDescriptor, HolonDescriptor, HolonSpaceDescriptor, RelationshipDescriptor,
+    TransactionDescriptor,
+};
 use holons_prelude::prelude::*;
 use holons_test::TestExecutionState;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
@@ -78,6 +82,34 @@ const HOLON_TYPE_AFFORDED_COMMANDS: &[CoreCommandTypeName] = &[
     CoreCommandTypeName::AddRelatedHolons,
     CoreCommandTypeName::RemoveRelatedHolons,
     CoreCommandTypeName::WithDescriptor,
+];
+
+// The transaction-scope command surface anchored by the schema-backed `TransactionType`.
+// `BeginTransaction` intentionally stays on `HolonSpaceType`; it creates access to this model
+// but is not itself a command available from an active transaction model.
+const TRANSACTION_AFFORDED_COMMANDS: &[CoreCommandTypeName] = &[
+    CoreCommandTypeName::Commit,
+    CoreCommandTypeName::UndoLast,
+    CoreCommandTypeName::RedoLast,
+    CoreCommandTypeName::UndoToMarker,
+    CoreCommandTypeName::RedoToMarker,
+    CoreCommandTypeName::LoadHolons,
+    CoreCommandTypeName::Dance,
+    CoreCommandTypeName::Query,
+    CoreCommandTypeName::GetAllHolons,
+    CoreCommandTypeName::GetStagedHolonByBaseKey,
+    CoreCommandTypeName::GetStagedHolonsByBaseKey,
+    CoreCommandTypeName::GetStagedHolonByVersionedKey,
+    CoreCommandTypeName::GetTransientHolonByBaseKey,
+    CoreCommandTypeName::GetTransientHolonByVersionedKey,
+    CoreCommandTypeName::GetStagedCount,
+    CoreCommandTypeName::GetTransientCount,
+    CoreCommandTypeName::NewHolon,
+    CoreCommandTypeName::StageNewHolon,
+    CoreCommandTypeName::StageNewFromClone,
+    CoreCommandTypeName::StageNewVersion,
+    CoreCommandTypeName::StageNewVersionFromId,
+    CoreCommandTypeName::DeleteHolon,
 ];
 
 /// Verifies command descriptor inventory and schema-backed command affordance lookup.
@@ -199,9 +231,155 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
         "HolonSpaceType should afford BeginTransaction and inherit HolonType commands",
     );
 
+    // `TransactionType` is the concrete descriptor home for transaction-scope commands.
+    let transaction_type_descriptor =
+        TransactionDescriptor::from_holon(find_holon_by_key(&holons, "TransactionType"));
+    assert_eq!(
+        transaction_type_descriptor.header().type_name().expect("TransactionType type_name"),
+        MapString("TransactionType".to_string())
+    );
+    assert!(
+        !transaction_type_descriptor
+            .header()
+            .is_abstract_type()
+            .expect("TransactionType is_abstract_type"),
+        "TransactionType should be concrete"
+    );
+
+    // Descriptor discovery starts at `HolonSpaceType`, follows exactly one
+    // `AffordsTransactionModel` edge, and returns the same `TransactionType` model.
+    let discovered_transaction_model =
+        HolonSpaceDescriptor::from_holon(find_holon_by_key(&holons, "HolonSpaceType"))
+            .transaction_model()
+            .expect("HolonSpaceType transaction_model");
+    assert_eq!(
+        discovered_transaction_model
+            .header()
+            .type_name()
+            .expect("discovered transaction model type_name"),
+        MapString("TransactionType".to_string())
+    );
+
+    // Direct `TransactionType` affordances are exactly the transaction-scoped command inventory.
+    // The descriptor-level accessor below is intentionally broader because it flattens inherited
+    // `HolonType` affordances through `Extends`, matching the Rust descriptor contract.
+    assert_command_set_eq(
+        direct_command_names(
+            transaction_type_descriptor.holon(),
+            CoreRelationshipTypeName::AffordsCommand,
+        ),
+        TRANSACTION_AFFORDED_COMMANDS,
+        "TransactionType should directly afford exactly the transaction-scoped commands",
+    );
+
+    // Effective transaction-model command discovery comes from descriptor relationships: the
+    // local transaction commands plus inherited baseline `HolonType` commands.
+    let mut effective_transaction_commands: Vec<CoreCommandTypeName> =
+        HOLON_TYPE_AFFORDED_COMMANDS.to_vec();
+    effective_transaction_commands.extend_from_slice(TRANSACTION_AFFORDED_COMMANDS);
+    let transaction_command_names = command_names(transaction_type_descriptor.afforded_commands());
+    assert_command_set_eq(
+        transaction_command_names.clone(),
+        &effective_transaction_commands,
+        "TransactionDescriptor should flatten inherited HolonType commands plus transaction-scoped commands",
+    );
+    assert_command_absent(
+        &transaction_command_names,
+        CoreCommandTypeName::BeginTransaction,
+        "TransactionType must not afford BeginTransaction",
+    );
+    assert_eq!(
+        transaction_type_descriptor
+            .get_command_by_name(CoreCommandTypeName::Commit)
+            .expect("Commit lookup through TransactionType")
+            .command_name()
+            .expect("resolved Commit command_name"),
+        CoreCommandTypeName::Commit.as_command_name()
+    );
+
+    // The transaction model relationship is a singular declared edge from
+    // `HolonSpaceType` to `TransactionType`, with an inverse edge back to its owner space type.
+    let transaction_model_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(HolonSpaceType)-[AffordsTransactionModel]->(TransactionType)",
+    ))
+    .try_into_declared_relationship_descriptor()
+    .expect("AffordsTransactionModel should be a declared relationship descriptor");
+    assert_eq!(
+        transaction_model_relationship
+            .base_relationship_name()
+            .expect("AffordsTransactionModel base_relationship_name")
+            .to_string(),
+        "AffordsTransactionModel"
+    );
+    assert_eq!(
+        transaction_model_relationship
+            .source_type()
+            .expect("AffordsTransactionModel source_type")
+            .header()
+            .type_name()
+            .expect("AffordsTransactionModel source type_name"),
+        MapString("HolonSpaceType".to_string())
+    );
+    assert_eq!(
+        transaction_model_relationship
+            .target_type()
+            .expect("AffordsTransactionModel target_type")
+            .header()
+            .type_name()
+            .expect("AffordsTransactionModel target type_name"),
+        MapString("TransactionType".to_string())
+    );
+    assert_eq!(
+        transaction_model_relationship
+            .min_cardinality()
+            .expect("AffordsTransactionModel min_cardinality"),
+        1
+    );
+    assert_eq!(
+        transaction_model_relationship
+            .max_cardinality()
+            .expect("AffordsTransactionModel max_cardinality"),
+        1
+    );
+    assert!(
+        !transaction_model_relationship
+            .allows_duplicates()
+            .expect("AffordsTransactionModel allows_duplicates"),
+        "AffordsTransactionModel should be singular"
+    );
+    assert_eq!(
+        transaction_model_relationship
+            .deletion_semantic()
+            .expect("AffordsTransactionModel deletion_semantic"),
+        Some(MapString("Allow".to_string()))
+    );
+
+    let transaction_model_inverse = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(TransactionType)-[TransactionModelAffordedBy]->(HolonSpaceType)",
+    ))
+    .try_into_inverse_relationship_descriptor()
+    .expect("TransactionModelAffordedBy should be an inverse relationship descriptor");
+    assert_eq!(
+        transaction_model_inverse
+            .inverse_of()
+            .expect("TransactionModelAffordedBy inverse_of")
+            .base_relationship_name()
+            .expect("TransactionModelAffordedBy inverse_of base name")
+            .to_string(),
+        "AffordsTransactionModel"
+    );
+    assert_eq!(
+        transaction_model_inverse
+            .deletion_semantic()
+            .expect("TransactionModelAffordedBy deletion_semantic"),
+        Some(MapString("Allow".to_string()))
+    );
+
     info!(
-        "verified core schema command inventory and HolonType command affordances: {:?}",
-        HOLON_TYPE_AFFORDED_COMMANDS
+        "verified core schema command inventory, HolonType affordances, and TransactionType affordances: {:?}",
+        TRANSACTION_AFFORDED_COMMANDS
     );
 }
 
@@ -256,11 +434,36 @@ fn assert_contains(values: &[String], expected: &str) {
     );
 }
 
+fn assert_command_absent(values: &[CommandName], unexpected: CoreCommandTypeName, message: &str) {
+    let unexpected = unexpected.as_command_name();
+    assert!(
+        !values.iter().any(|actual| actual == &unexpected),
+        "{message}: found unexpected command {unexpected}"
+    );
+}
+
 fn command_names(descriptors: Result<Vec<CommandDescriptor>, HolonError>) -> Vec<CommandName> {
     descriptors
         .expect("command descriptor list")
         .into_iter()
         .map(|descriptor| descriptor.command_name().expect("command_name"))
+        .collect()
+}
+
+fn direct_command_names(
+    descriptor: &HolonReference,
+    relationship_name: CoreRelationshipTypeName,
+) -> Vec<CommandName> {
+    let collection =
+        descriptor.related_holons(relationship_name).expect("direct command relationship");
+    let collection = collection.read().expect("direct command relationship lock");
+
+    collection
+        .get_members()
+        .into_iter()
+        .cloned()
+        .map(CommandDescriptor::from_holon)
+        .map(|descriptor| descriptor.command_name().expect("direct command_name"))
         .collect()
 }
 

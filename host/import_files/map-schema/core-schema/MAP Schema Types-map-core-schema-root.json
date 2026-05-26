@@ -1,14 +1,14 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-20T21:02:43",
+    "generated_at": "2026-05-25T15:12:51",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
     ],
     "load_with": [
-      "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-command-types.json",
+      "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
@@ -606,6 +606,12 @@
           }
         },
         {
+          "name": "AffordsTransactionModel",
+          "target": {
+            "$ref": "#TransactionType"
+          }
+        },
+        {
           "name": "ComponentOf",
           "target": {
             "$ref": "#MAP Core Schema-v0.0.7"
@@ -668,6 +674,112 @@
               "$ref": "#ErrorMessage.PropertyType"
             }
           ]
+        }
+      ]
+    },
+    {
+      "key": "TransactionType",
+      "type": "#TypeDescriptor",
+      "properties": {
+        "type_name": "TransactionType",
+        "type_name_plural": "TransactionTypes",
+        "display_name": "Transaction Type",
+        "display_name_plural": "Transaction Types",
+        "instance_type_kind": "Holon",
+        "description": "TransactionType is the descriptor for the MAP transaction model — the command-scope API surface that becomes available when a transaction is active. A HolonSpaceType affords exactly one TransactionType through the AffordsTransactionModel relationship. TransactionType does not model persistent transaction records, audit history, or runtime execution state.",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "AffordsCommand",
+          "target": [
+            {
+              "$ref": "#Commit.CommandType"
+            },
+            {
+              "$ref": "#UndoLast.CommandType"
+            },
+            {
+              "$ref": "#RedoLast.CommandType"
+            },
+            {
+              "$ref": "#UndoToMarker.CommandType"
+            },
+            {
+              "$ref": "#RedoToMarker.CommandType"
+            },
+            {
+              "$ref": "#LoadHolons.CommandType"
+            },
+            {
+              "$ref": "#Dance.CommandType"
+            },
+            {
+              "$ref": "#Query.CommandType"
+            },
+            {
+              "$ref": "#GetAllHolons.CommandType"
+            },
+            {
+              "$ref": "#GetStagedHolonByBaseKey.CommandType"
+            },
+            {
+              "$ref": "#GetStagedHolonsByBaseKey.CommandType"
+            },
+            {
+              "$ref": "#GetStagedHolonByVersionedKey.CommandType"
+            },
+            {
+              "$ref": "#GetTransientHolonByBaseKey.CommandType"
+            },
+            {
+              "$ref": "#GetTransientHolonByVersionedKey.CommandType"
+            },
+            {
+              "$ref": "#GetStagedCount.CommandType"
+            },
+            {
+              "$ref": "#GetTransientCount.CommandType"
+            },
+            {
+              "$ref": "#NewHolon.CommandType"
+            },
+            {
+              "$ref": "#StageNewHolon.CommandType"
+            },
+            {
+              "$ref": "#StageNewFromClone.CommandType"
+            },
+            {
+              "$ref": "#StageNewVersion.CommandType"
+            },
+            {
+              "$ref": "#StageNewVersionFromId.CommandType"
+            },
+            {
+              "$ref": "#DeleteHolon.CommandType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "#MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "#HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "#TypeNameRule"
+          }
         }
       ]
     }
