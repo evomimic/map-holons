@@ -1,4 +1,6 @@
-use crate::descriptors::{accessor_helpers, Descriptor, InverseRelationshipDescriptor};
+use crate::descriptors::{
+    accessor_helpers, DeclaredRelationshipDescriptor, Descriptor, InverseRelationshipDescriptor,
+};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use crate::StagedReference;
 use core_types::{HolonError, RelationshipName};
@@ -31,6 +33,9 @@ pub fn resolve_inverse_relationship_name(
         staged_inverse_descriptors_for_declared(&declared_descriptor, staged_references)?;
 
     match matching_inverse_descriptors.as_slice() {
+        // Commit is ultimately trying to materialize HasInverse. A missing or
+        // ambiguous bootstrap fallback means that required local schema contract
+        // still cannot be upheld.
         [] => Err(HolonError::MissingRequiredRelationship {
             relationship: CoreRelationshipTypeName::HasInverse.as_relationship_name().to_string(),
             descriptor: accessor_helpers::descriptor_label(declared_descriptor.holon()),
@@ -45,7 +50,7 @@ pub fn resolve_inverse_relationship_name(
 }
 
 fn staged_inverse_descriptors_for_declared(
-    declared_descriptor: &crate::descriptors::DeclaredRelationshipDescriptor,
+    declared_descriptor: &DeclaredRelationshipDescriptor,
     staged_references: &[StagedReference],
 ) -> Result<Vec<InverseRelationshipDescriptor>, HolonError> {
     let declared_reference_id = declared_descriptor.holon().reference_id_string();
@@ -62,6 +67,8 @@ fn staged_inverse_descriptors_for_declared(
         };
 
         let inverse_of = candidate_descriptor.inverse_of()?;
+        // Match the candidate's InverseOf target to the declared descriptor by
+        // stable staged reference identity, not by display text.
         if inverse_of.holon().reference_id_string() == declared_reference_id {
             matching_inverse_descriptors.push(candidate_descriptor);
         }
@@ -183,6 +190,51 @@ mod tests {
 
         let inverse_name =
             resolve_inverse_relationship_name(&(&fixture.source).into(), &authored_by(), &[])?;
+
+        assert_eq!(inverse_name, RelationshipName(MapString("Authors".to_string())));
+        Ok(())
+    }
+
+    #[test]
+    fn materialized_has_inverse_takes_precedence_over_staged_fallback() -> Result<(), HolonError> {
+        let fixture = build_relationship_schema("AuthoredBy", "Authors", true)?;
+        let inverse_type = fixture.context.mutation().stage_new_holon(new_descriptor_holon(
+            &fixture.context,
+            "fallback-inverse-relationship-type",
+            &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
+            "Relationship",
+        )?)?;
+        let target_type = fixture.context.mutation().stage_new_holon(new_holon_type_descriptor(
+            &fixture.context,
+            "fallback-person-type",
+            "PersonType",
+        )?)?;
+        let source_type = fixture.context.mutation().stage_new_holon(new_holon_type_descriptor(
+            &fixture.context,
+            "fallback-book-type",
+            "BookType",
+        )?)?;
+        let fallback_inverse_transient = new_relationship_descriptor_holon(
+            &fixture.context,
+            "fallback-inverse-relationship",
+            "FallbackAuthors",
+            source_type.into(),
+            target_type.into(),
+        )?;
+        let mut fallback_inverse =
+            fixture.context.mutation().stage_new_holon(fallback_inverse_transient)?;
+        fallback_inverse
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse_type.into()])?;
+        fallback_inverse.add_related_holons(
+            CoreRelationshipTypeName::InverseOf,
+            vec![(&fixture.declared).into()],
+        )?;
+
+        let inverse_name = resolve_inverse_relationship_name(
+            &(&fixture.source).into(),
+            &authored_by(),
+            &[fallback_inverse],
+        )?;
 
         assert_eq!(inverse_name, RelationshipName(MapString("Authors".to_string())));
         Ok(())
