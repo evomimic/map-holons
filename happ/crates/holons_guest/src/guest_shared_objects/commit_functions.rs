@@ -41,6 +41,39 @@ pub enum CommitOutcome {
     NoAction,
 }
 
+type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>;
+
+/// Captures the committed source selected for relationship persistence.
+///
+/// Phase 2 currently anchors relationship SmartLinks to the newly committed
+/// source holon. Keeping that rule in one place lets later versioning work
+/// retarget forward and inverse persistence together.
+struct RelationshipCommitSource {
+    source_local_id: LocalId,
+    source_key: Option<MapString>,
+    source_reference: HolonReference,
+}
+
+impl RelationshipCommitSource {
+    fn from_committed_staged_holon(
+        staged_reference: &StagedReference,
+        staged_holon: &StagedHolon,
+    ) -> Option<Self> {
+        match staged_holon.get_staged_state() {
+            StagedState::Committed(local_id) => Some(Self {
+                source_local_id: local_id,
+                source_key: staged_holon.key(),
+                source_reference: staged_reference.into(),
+            }),
+            _ => None,
+        }
+    }
+
+    fn source_local_id(&self) -> &LocalId {
+        &self.source_local_id
+    }
+}
+
 /// `commit`
 ///
 /// Executes a two-pass commit of all staged holons and their relationships,
@@ -202,7 +235,7 @@ pub fn commit(
         //
         // NOTE: This must NOT early-return from `commit()`; non-staged holons are simply skipped
         // in Pass 2 (relationship persistence is only for staged holons in Committed state).
-        let snapshot: Option<(LocalId, Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>)> = {
+        let snapshot: Option<(RelationshipCommitSource, RelationshipCollectionSnapshot)> = {
             let holon_read = rc_holon.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
                     "Failed to acquire read lock on staged holon during relationship commit snapshot: {}",
@@ -211,8 +244,12 @@ pub fn commit(
             })?;
 
             match &*holon_read {
-                Holon::Staged(staged_holon) => match staged_holon.get_staged_state() {
-                    StagedState::Committed(local_id) => {
+                Holon::Staged(staged_holon) => {
+                    // Select source anchor before cloning staged relationship work.
+                    if let Some(source) = RelationshipCommitSource::from_committed_staged_holon(
+                        staged_reference,
+                        staged_holon,
+                    ) {
                         // Clone the relationship map out (cloning Arcs is cheap).
                         let staged_relationship_map = staged_holon.get_staged_relationship_map()?;
                         let pairs = staged_relationship_map
@@ -221,11 +258,12 @@ pub fn commit(
                             .map(|(name, collection_rc)| (name.clone(), collection_rc.clone()))
                             .collect::<Vec<_>>();
 
-                        Some((local_id.clone(), pairs))
+                        Some((source, pairs))
+                    } else {
+                        // Only committed holons participate in relationship persistence.
+                        None
                     }
-                    // Only committed holons participate in relationship persistence.
-                    _ => None,
-                },
+                }
                 other => {
                     trace!(
                         "Skipping relationship commit for {:?} (not a staged holon: {:?}).",
@@ -237,7 +275,7 @@ pub fn commit(
             }
         };
 
-        let Some((source_local_id, relationship_collections)) = snapshot else {
+        let Some((relationship_source, relationship_collections)) = snapshot else {
             continue;
         };
 
@@ -258,12 +296,9 @@ pub fn commit(
                 ))
             })?;
 
-            if let Err(err) = commit_relationship(
-                context,
-                source_local_id.clone(),
-                name.clone(),
-                &holon_collection,
-            ) {
+            if let Err(err) =
+                commit_relationship(context, &relationship_source, name.clone(), &holon_collection)
+            {
                 first_error = Some(err);
                 break;
             }
@@ -394,53 +429,16 @@ fn commit_holon(
     }
 }
 
-/// commit_relationship() saves a `Saved` holon's relationships as SmartLinks. It should only be invoked
-/// AFTER staged_holons have been successfully committed, thus only accepts a StagedHolon object.
-///
-/// If the staged_state is `Committed`, commit_relationship iterates through the holon's
-/// `relationship_map` and calls commit on each member's HolonCollection.
-/// Any other states are ignored.
-///
-/// The function only returns OK if ALL commits are successful.
-#[allow(dead_code)]
-fn commit_relationships(
-    context: &Arc<TransactionContext>,
-    holon: &StagedHolon,
-) -> Result<(), HolonError> {
-    debug!("Entered Holon::commit_relationships");
-
-    match holon.get_staged_state() {
-        StagedState::Committed(local_id) => {
-            for (name, holon_collection_rc) in holon.get_staged_relationship_map()?.map.iter() {
-                debug!("COMMITTING {:#?} relationship", name.0.clone());
-                let holon_collection = holon_collection_rc.read().map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Failed to acquire read lock on relationship collection for {}: {}",
-                        name.0 .0, e
-                    ))
-                })?;
-                commit_relationship(context, local_id.clone(), name.clone(), &holon_collection)?;
-            }
-
-            Ok(())
-        }
-        _ => {
-            // Ignore all other states, just return Ok
-            Ok(())
-        }
-    }
-}
-
 /// The method
 fn commit_relationship(
     context: &Arc<TransactionContext>,
-    source_id: LocalId,
+    source: &RelationshipCommitSource,
     name: RelationshipName,
     collection: &HolonCollection,
 ) -> Result<(), HolonError> {
     collection.is_accessible(AccessType::Commit)?;
 
-    save_smartlinks_for_collection(context, source_id.clone(), name.clone(), collection)?;
+    save_smartlinks_for_collection(context, source, name.clone(), collection)?;
 
     Ok(())
 }
@@ -455,17 +453,24 @@ fn commit_relationship(
 /// persisted during this commit pass.
 fn save_smartlinks_for_collection(
     _context: &Arc<TransactionContext>,
-    source_id: LocalId,
+    source: &RelationshipCommitSource,
     name: RelationshipName,
     collection: &HolonCollection,
 ) -> Result<(), HolonError> {
+    let source_id = source.source_local_id();
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+
     debug!(
         "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
         source_id,
         name.0 .0.clone()
     );
-
-    let key_prop = CorePropertyTypeName::Key.as_property_name();
+    trace!(
+        "Relationship source ref_kind={} ref_id={} source_key={:?}",
+        source.source_reference.reference_kind_string(),
+        source.source_reference.reference_id_string(),
+        source.source_key
+    );
 
     let members = collection.get_members();
     debug!("Relationship {:?} has {} members to commit", name.0 .0, members.len());
