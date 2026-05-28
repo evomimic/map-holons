@@ -1,5 +1,6 @@
 use crate::descriptors::{
     accessor_helpers, DeclaredRelationshipDescriptor, Descriptor, InverseRelationshipDescriptor,
+    TypeHeader,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use crate::StagedReference;
@@ -57,9 +58,14 @@ fn staged_inverse_descriptors_for_declared(
     let mut matching_inverse_descriptors = Vec::new();
 
     for staged_reference in staged_references {
-        // The commit closure contains ordinary instance holons too; only staged
-        // inverse relationship descriptors are fallback candidates.
+        // Only concrete relationship descriptors can be authored inverse declarations.
+        // Abstract roots like `InverseRelationshipType` narrow through their own
+        // type name, but they intentionally do not carry an `InverseOf` edge.
         let candidate_reference = HolonReference::from(staged_reference);
+        if !is_concrete_relationship_descriptor(&candidate_reference) {
+            continue;
+        }
+
         let Ok(candidate_descriptor) =
             InverseRelationshipDescriptor::try_from_holon(candidate_reference)
         else {
@@ -75,6 +81,21 @@ fn staged_inverse_descriptors_for_declared(
     }
 
     Ok(matching_inverse_descriptors)
+}
+
+fn is_concrete_relationship_descriptor(candidate_reference: &HolonReference) -> bool {
+    let header = TypeHeader::new(candidate_reference);
+
+    // The bootstrap closure includes descriptors, abstract descriptor roots, and
+    // ordinary holons. Only concrete relationship descriptors can declare an inverse.
+    let Ok(instance_type_kind) = header.instance_type_kind() else {
+        return false;
+    };
+    if instance_type_kind.0 != "Relationship" {
+        return false;
+    }
+
+    matches!(header.is_abstract_type(), Ok(false))
 }
 
 #[cfg(test)]
@@ -251,6 +272,75 @@ mod tests {
         )?;
 
         assert_eq!(inverse_name, RelationshipName(MapString("Authors".to_string())));
+        Ok(())
+    }
+
+    #[test]
+    fn bootstrap_fallback_skips_abstract_inverse_relationship_type_root() -> Result<(), HolonError>
+    {
+        let fixture = build_relationship_schema("AuthoredBy", "Authors", false)?;
+        let mut abstract_inverse_type =
+            new_test_holon(&fixture.context, "abstract-inverse-relationship-type")?;
+        abstract_inverse_type
+            .with_property_value(
+                type_names::CorePropertyTypeName::TypeName,
+                core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
+            )?
+            .with_property_value(type_names::CorePropertyTypeName::IsAbstractType, true)?
+            .with_property_value(type_names::CorePropertyTypeName::InstanceTypeKind, "Holon")?;
+        let abstract_inverse_type =
+            fixture.context.mutation().stage_new_holon(abstract_inverse_type)?;
+
+        let inverse_name = resolve_inverse_relationship_name(
+            &(&fixture.source).into(),
+            &authored_by(),
+            &[abstract_inverse_type, fixture.inverse.clone()],
+        )?;
+
+        assert_eq!(inverse_name, RelationshipName(MapString("Authors".to_string())));
+        Ok(())
+    }
+
+    #[test]
+    fn concrete_inverse_candidate_missing_inverse_of_errors() -> Result<(), HolonError> {
+        let fixture = build_relationship_schema("AuthoredBy", "Authors", false)?;
+        let inverse_type = fixture.context.mutation().stage_new_holon(new_descriptor_holon(
+            &fixture.context,
+            "broken-inverse-relationship-type",
+            &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
+            "Holon",
+        )?)?;
+        let target_type = fixture.context.mutation().stage_new_holon(new_holon_type_descriptor(
+            &fixture.context,
+            "broken-person-type",
+            "PersonType",
+        )?)?;
+        let source_type = fixture.context.mutation().stage_new_holon(new_holon_type_descriptor(
+            &fixture.context,
+            "broken-book-type",
+            "BookType",
+        )?)?;
+        let broken_inverse_transient = new_relationship_descriptor_holon(
+            &fixture.context,
+            "broken-inverse-relationship",
+            "BrokenAuthors",
+            source_type.into(),
+            target_type.into(),
+        )?;
+        let mut broken_inverse =
+            fixture.context.mutation().stage_new_holon(broken_inverse_transient)?;
+        broken_inverse
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse_type.into()])?;
+
+        assert!(matches!(
+            resolve_inverse_relationship_name(
+                &(&fixture.source).into(),
+                &authored_by(),
+                &[broken_inverse, fixture.inverse.clone()],
+            ),
+            Err(HolonError::MissingRequiredRelationship { relationship, .. })
+                if relationship == "InverseOf"
+        ));
         Ok(())
     }
 
