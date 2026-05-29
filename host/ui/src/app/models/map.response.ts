@@ -2,6 +2,7 @@
 // TypeScript equivalent of Rust DanceResponse and ResponseBody
 // Auto-generated from Rust serde structures
 // ===========================================
+// Legacy old-world response envelope retained during PR2 contract alignment.
 
 import {
   MapString,
@@ -34,6 +35,7 @@ export interface MapResponse {
 // ===========================================
 // Response Status Codes
 // ===========================================
+// Status-code-based successful response classification is legacy old-world behavior.
 
 export enum ResponseStatusCode {
   OK = "OK",                      // 200

@@ -4,7 +4,9 @@ use strum_macros::VariantNames;
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreValueTypeName {
+    DanceDiagnosticSeverity,
     IntegerValueType,
+    InvocationSource,
     MapBytesValueType,
     MapEnumValueType,
     MapValueArrayType,

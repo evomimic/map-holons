@@ -1,3 +1,6 @@
+//! Legacy old-world dance request envelope retained for compatibility during
+//! PR2 contract alignment. New-world invocation state lives in `contract.rs`.
+
 use crate::core_shared_objects::{Holon, ReadableHolonState};
 use crate::query_layer::{NodeCollection, QueryExpression};
 use crate::reference_layer::TransientReference;

@@ -2,6 +2,7 @@
 // TypeScript equivalent of Rust DanceRequest and RequestBody
 // Auto-generated from Rust serde structures
 // ===========================================
+// Legacy old-world request envelope retained during PR2 contract alignment.
 
 import {
   MapString,
