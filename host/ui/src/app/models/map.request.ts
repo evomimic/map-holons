@@ -22,9 +22,8 @@ import {
   TxId
 } from './shared-types';
 
-import { Holon, StagedHolon, TransientHolon } from './holon';
+import { Holon, StagedHolon} from './holon';
 import { HolonSpace, mockContentSpace } from './interface.space';
-import { SessionState } from './map.response';
 
 
 // ===========================================

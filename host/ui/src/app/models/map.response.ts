@@ -10,7 +10,6 @@ import {
   HolonCollection,
   NodeCollection,
   TemporaryId,
-  MapStringFactory,
   MapInteger,
   PropertyMap,
   ValidationState,
