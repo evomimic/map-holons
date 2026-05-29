@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 
 /// Canonical runtime result for dance execution in PRO1.
 ///
-/// This is a tx-bound runtime contract. It is intentionally kept separate from
-/// any future IPC-safe wire form because it may contain tx-bound references.
+/// This is the schema-aligned tx-bound success/error contract for the new-world
+/// dance model. It stays intentionally separate from any IPC-safe wire form
+/// because it may contain tx-bound references.
 pub type DanceExecutionResult = Result<DanceOutcome, HolonError>;
 
 /// Canonical runtime invocation envelope for dances in PRO1.
@@ -16,20 +17,20 @@ pub type DanceExecutionResult = Result<DanceOutcome, HolonError>;
 /// contain tx-bound references.
 #[derive(Debug, Clone)]
 pub struct DanceInvocation {
-    pub identity: DanceIdentity,
+    pub dance: DanceIdentity,
     pub target: DanceTarget,
-    pub parameters: DanceParameters,
+    pub request: DanceRequestState,
     pub context: DanceContext,
 }
 
 impl DanceInvocation {
     pub fn new(
-        identity: DanceIdentity,
+        dance: DanceIdentity,
         target: DanceTarget,
-        parameters: DanceParameters,
+        request: DanceRequestState,
         context: DanceContext,
     ) -> Self {
-        Self { identity, target, parameters, context }
+        Self { dance, target, request, context }
     }
 }
 
@@ -63,46 +64,56 @@ impl DanceTarget {
     }
 }
 
-/// Structured dance parameters for PRO1.
+/// Structured request-state contract for PRO1 dance invocation.
 ///
-/// The canonical PRO1 posture is a reference to a transient parameter holon.
+/// The canonical PR2 posture is a reference to a transient request holon.
 #[derive(Debug, Clone)]
-pub enum DanceParameters {
+pub enum DanceRequestState {
     None,
-    ParameterHolon(HolonReference),
+    RequestHolon(HolonReference),
 }
 
-impl DanceParameters {
-    pub fn parameter_holon(parameter_ref: HolonReference) -> Result<Self, HolonError> {
-        if !parameter_ref.is_transient() {
+impl DanceRequestState {
+    pub fn request_holon(request_ref: HolonReference) -> Result<Self, HolonError> {
+        if !request_ref.is_transient() {
             return Err(HolonError::InvalidParameter(format!(
-                "DanceParameters::ParameterHolon requires a Transient reference in PRO1; got {}",
-                parameter_ref.reference_kind_string()
+                "DanceRequestState::RequestHolon requires a Transient reference in PR2; got {}",
+                request_ref.reference_kind_string()
             )));
         }
 
-        Ok(Self::ParameterHolon(parameter_ref))
+        Ok(Self::RequestHolon(request_ref))
+    }
+
+    pub fn request_ref(&self) -> Option<&HolonReference> {
+        match self {
+            Self::None => None,
+            Self::RequestHolon(reference) => Some(reference),
+        }
+    }
+
+    pub fn parameter_holon(parameter_ref: HolonReference) -> Result<Self, HolonError> {
+        Self::request_holon(parameter_ref)
     }
 
     pub fn parameter_ref(&self) -> Option<&HolonReference> {
-        match self {
-            Self::None => None,
-            Self::ParameterHolon(reference) => Some(reference),
-        }
+        self.request_ref()
     }
 }
+
+pub type DanceParameters = DanceRequestState;
 
 /// Invocation-time execution metadata for a dance.
 #[derive(Debug, Clone)]
 pub struct DanceContext {
-    pub invocation_source: DanceInvocationSource,
+    pub invocation_source: InvocationSource,
     pub capability_ref: Option<HolonReference>,
     pub affording_type_ref: Option<HolonReference>,
 }
 
 impl DanceContext {
     pub fn new(
-        invocation_source: DanceInvocationSource,
+        invocation_source: InvocationSource,
         capability_ref: Option<HolonReference>,
         affording_type_ref: Option<HolonReference>,
     ) -> Self {
@@ -110,25 +121,27 @@ impl DanceContext {
     }
 
     pub fn client_command() -> Self {
-        Self::new(DanceInvocationSource::ClientCommand, None, None)
+        Self::new(InvocationSource::ClientCommand, None, None)
     }
 
     pub fn trust_channel() -> Self {
-        Self::new(DanceInvocationSource::TrustChannel, None, None)
+        Self::new(InvocationSource::TrustChannel, None, None)
     }
 
     pub fn internal() -> Self {
-        Self::new(DanceInvocationSource::Internal, None, None)
+        Self::new(InvocationSource::Internal, None, None)
     }
 }
 
 /// Distinguishes the ingress posture of a dance invocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DanceInvocationSource {
+pub enum InvocationSource {
     ClientCommand,
     TrustChannel,
     Internal,
 }
+
+pub type DanceInvocationSource = InvocationSource;
 
 /// Canonical successful outcome envelope for a dance in PRO1.
 #[derive(Debug, Clone)]
@@ -210,7 +223,7 @@ impl DanceEvent {
 mod tests {
     use super::{
         DanceContext, DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent, DanceIdentity,
-        DanceInvocationSource, DanceOutcome, DanceParameters, DanceResult,
+        DanceOutcome, DanceRequestState, DanceResult, InvocationSource,
     };
     use crate::descriptors::test_support::{build_context, new_test_holon};
     use crate::HolonReference;
@@ -223,12 +236,12 @@ mod tests {
         let context = build_context();
         let transient = new_test_holon(&context, "params").expect("create transient test holon");
 
-        let parameters = DanceParameters::parameter_holon(HolonReference::from(transient))
+        let parameters = DanceRequestState::request_holon(HolonReference::from(transient))
             .expect("valid params");
 
         assert!(matches!(
             parameters,
-            DanceParameters::ParameterHolon(reference) if reference.is_transient()
+            DanceRequestState::RequestHolon(reference) if reference.is_transient()
         ));
     }
 
@@ -239,7 +252,7 @@ mod tests {
         let staged =
             context.mutation().stage_new_holon(transient).expect("stage transient test holon");
 
-        let error = DanceParameters::parameter_holon(HolonReference::from(staged))
+        let error = DanceRequestState::request_holon(HolonReference::from(staged))
             .expect_err("staged ref should be rejected");
 
         assert!(
@@ -251,13 +264,10 @@ mod tests {
     fn context_helpers_select_expected_invocation_source() {
         assert_eq!(
             DanceContext::client_command().invocation_source,
-            DanceInvocationSource::ClientCommand
+            InvocationSource::ClientCommand
         );
-        assert_eq!(
-            DanceContext::trust_channel().invocation_source,
-            DanceInvocationSource::TrustChannel
-        );
-        assert_eq!(DanceContext::internal().invocation_source, DanceInvocationSource::Internal);
+        assert_eq!(DanceContext::trust_channel().invocation_source, InvocationSource::TrustChannel);
+        assert_eq!(DanceContext::internal().invocation_source, InvocationSource::Internal);
     }
 
     #[test]
@@ -294,7 +304,7 @@ mod tests {
         );
 
         assert_eq!(
-            to_value(DanceInvocationSource::TrustChannel).expect("serialize source"),
+            to_value(InvocationSource::TrustChannel).expect("serialize source"),
             json!("TrustChannel")
         );
     }

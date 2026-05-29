@@ -1,3 +1,7 @@
+//! Legacy old-world dance response envelope retained for compatibility during
+//! PR2 contract alignment. New-world successful response state lives in
+//! `contract.rs`.
+
 use crate::core_shared_objects::{holon::summarize_holons, Holon, ReadableHolonState};
 use crate::query_layer::NodeCollection;
 use crate::{HolonCollection, HolonReference};

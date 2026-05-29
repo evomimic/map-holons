@@ -2,6 +2,7 @@
 // TypeScript equivalent of Rust DanceRequest and RequestBody
 // Auto-generated from Rust serde structures
 // ===========================================
+// Legacy old-world request envelope retained during PR2 contract alignment.
 
 import {
   MapString,
@@ -21,9 +22,8 @@ import {
   TxId
 } from './shared-types';
 
-import { Holon, StagedHolon, TransientHolon } from './holon';
+import { Holon, StagedHolon} from './holon';
 import { HolonSpace, mockContentSpace } from './interface.space';
-import { SessionState } from './map.response';
 
 
 // ===========================================

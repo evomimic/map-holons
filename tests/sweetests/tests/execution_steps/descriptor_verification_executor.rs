@@ -75,6 +75,146 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "(HolonType)-[Properties]->(PropertyType)",
     );
 
+    let dance_type = find_holon_by_key(&holons, "DanceType");
+    let dance_type_descriptor = HolonDescriptor::from_holon(dance_type.clone());
+    let request_type_relationship = dance_type_descriptor
+        .get_relationship_by_name(RelationshipName(MapString::from("RequestType")))
+        .expect("DanceType.RequestType lookup");
+    assert_relationship_shape(
+        request_type_relationship.base_relationship_name(),
+        request_type_relationship.source_type(),
+        request_type_relationship.target_type(),
+        request_type_relationship.full_relationship_name(),
+        "RequestType",
+        "DanceType",
+        "HolonType",
+        "(DanceType)-[RequestType]->(HolonType)",
+    );
+    let response_relationship = dance_type_descriptor
+        .get_relationship_by_name(RelationshipName(MapString::from("Response")))
+        .expect("DanceType.Response lookup");
+    assert_relationship_shape(
+        response_relationship.base_relationship_name(),
+        response_relationship.source_type(),
+        response_relationship.target_type(),
+        response_relationship.full_relationship_name(),
+        "Response",
+        "DanceType",
+        "DanceResponseType",
+        "(DanceType)-[Response]->(DanceResponseType)",
+    );
+
+    let dance_response_type = find_holon_by_key(&holons, "DanceResponseType");
+    let dance_response_descriptor = HolonDescriptor::from_holon(dance_response_type.clone());
+    let response_body_relationship = dance_response_descriptor
+        .get_relationship_by_name(RelationshipName(MapString::from("ResponseBody")))
+        .expect("DanceResponseType.ResponseBody lookup");
+    assert_relationship_shape(
+        response_body_relationship.base_relationship_name(),
+        response_body_relationship.source_type(),
+        response_body_relationship.target_type(),
+        response_body_relationship.full_relationship_name(),
+        "ResponseBody",
+        "DanceResponseType",
+        "HolonType",
+        "(DanceResponseType)-[ResponseBody]->(HolonType)",
+    );
+    assert_contains(
+        &relationship_base_names(dance_response_descriptor.instance_relationships()),
+        "Diagnostics",
+    );
+
+    let projection = find_holon_by_key(&holons, "Projection");
+    let projection_descriptor = HolonDescriptor::from_holon(projection.clone());
+    assert_eq!(
+        projection_descriptor.header().type_name().expect("Projection type_name"),
+        MapString("Projection".to_string())
+    );
+    assert_contains(&related_holon_keys(&projection, "Extends"), "HolonType");
+
+    let dance_invocation = find_holon_by_key(&holons, "DanceInvocation");
+    let dance_invocation_descriptor = HolonDescriptor::from_holon(dance_invocation.clone());
+    let invocation_property_names =
+        property_type_names(dance_invocation_descriptor.instance_properties());
+    assert_contains(&invocation_property_names, "Context");
+    let invocation_relationship_names =
+        relationship_base_names(dance_invocation_descriptor.instance_relationships());
+    assert_contains(&invocation_relationship_names, "InvokesDance");
+    assert_contains(&invocation_relationship_names, "Target");
+    assert_contains(&invocation_relationship_names, "Request");
+    let context_property = dance_invocation_descriptor
+        .get_property_by_name(PropertyName(MapString::from("Context")))
+        .expect("DanceInvocation.Context lookup");
+    assert_eq!(
+        context_property
+            .value_type()
+            .expect("DanceInvocation.Context value_type")
+            .header()
+            .type_name()
+            .expect("DanceInvocation.Context value type_name"),
+        MapString("InvocationSource".to_string())
+    );
+
+    let dance_diagnostic = find_holon_by_key(&holons, "DanceDiagnostic");
+    let dance_diagnostic_descriptor = HolonDescriptor::from_holon(dance_diagnostic);
+    let diagnostic_property_names =
+        property_type_names(dance_diagnostic_descriptor.instance_properties());
+    assert_contains(&diagnostic_property_names, "DanceDiagnosticSeverity");
+    assert_contains(&diagnostic_property_names, "DiagnosticCode");
+    assert_contains(&diagnostic_property_names, "DiagnosticMessage");
+
+    let invocation_source = find_holon_by_key(&holons, "InvocationSource");
+    assert_enum_variants_rewritten_to_declared_side(
+        &holons,
+        "InvocationSource",
+        &[
+            "InvocationSource.ClientCommand",
+            "InvocationSource.TrustChannel",
+            "InvocationSource.Internal",
+        ],
+    );
+    assert_contains(
+        &related_holon_keys(&invocation_source, "Variants"),
+        "InvocationSource.ClientCommand",
+    );
+
+    assert_enum_variants_rewritten_to_declared_side(
+        &holons,
+        "DanceDiagnosticSeverity",
+        &["DanceDiagnosticSeverity.Info", "DanceDiagnosticSeverity.Warning"],
+    );
+
+    assert_description_contains(
+        HolonDescriptor::from_holon(find_holon_by_key(&holons, "ResponseBodyType"))
+            .header()
+            .description(),
+        "Deprecated old-world",
+    );
+    assert_description_contains(
+        HolonDescriptor::from_holon(find_holon_by_key(&holons, "ResponseStatusCode"))
+            .header()
+            .description(),
+        "Deprecated old-world",
+    );
+    assert_description_contains(
+        HolonDescriptor::from_holon(find_holon_by_key(
+            &holons,
+            "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
+        ))
+        .header()
+        .description(),
+        "Deprecated old-world",
+    );
+    assert_description_contains(
+        HolonDescriptor::from_holon(find_holon_by_key(
+            &holons,
+            "(DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor)",
+        ))
+        .header()
+        .description(),
+        "Deprecated old-world",
+    );
+
     info!("verified representative core schema descriptor access");
 }
 
@@ -393,6 +533,21 @@ fn assert_contains(values: &[String], expected: &str) {
     assert!(
         values.iter().any(|actual| actual == expected),
         "expected {values:?} to contain {expected}"
+    );
+}
+
+fn assert_description_contains(
+    description: Result<Option<MapString>, HolonError>,
+    expected_fragment: &str,
+) {
+    let description = description.expect("descriptor description lookup").unwrap_or_else(|| {
+        panic!("expected descriptor description containing {expected_fragment}")
+    });
+    assert!(
+        description.0.contains(expected_fragment),
+        "expected descriptor description {:?} to contain {:?}",
+        description,
+        expected_fragment
     );
 }
 
