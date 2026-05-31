@@ -1,5 +1,6 @@
 use holons_core::descriptors::{
-    HolonDescriptor, OperatorCategory, OperatorDescriptor, RelationshipDescriptor, ValueDescriptor,
+    DanceDescriptor, HolonDescriptor, OperatorCategory, OperatorDescriptor, RelationshipDescriptor,
+    ValueDescriptor,
 };
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
@@ -14,6 +15,7 @@ use holons_test::TestExecutionState;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use pretty_assertions::assert_eq;
 use tracing::info;
+use type_names::DanceName;
 
 /// Verifies representative foundational descriptor access over loaded MAP core schema data.
 pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionState) {
@@ -77,6 +79,13 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
 
     let dance_type = find_holon_by_key(&holons, "DanceType");
     let dance_type_descriptor = HolonDescriptor::from_holon(dance_type.clone());
+    let dance_descriptor = DanceDescriptor::from_holon(dance_type.clone());
+    assert!(!property_type_names(dance_type_descriptor.instance_properties())
+        .contains(&"DanceName".to_string()));
+    assert_eq!(
+        dance_descriptor.dance_name().expect("DanceType dance_name"),
+        DanceName(MapString("DanceType".to_string()))
+    );
     let request_type_relationship = dance_type_descriptor
         .get_relationship_by_name(RelationshipName(MapString::from("RequestType")))
         .expect("DanceType.RequestType lookup");
@@ -102,6 +111,15 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "DanceType",
         "DanceResponseType",
         "(DanceType)-[Response]->(DanceResponseType)",
+    );
+    assert_eq!(dance_descriptor.request_type().expect("DanceType request_type").is_none(), true);
+    assert_contains(
+        &relationship_base_names(dance_type_descriptor.instance_relationships()),
+        "RequestType",
+    );
+    assert_contains(
+        &relationship_base_names(dance_type_descriptor.instance_relationships()),
+        "Response",
     );
 
     let dance_response_type = find_holon_by_key(&holons, "DanceResponseType");

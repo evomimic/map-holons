@@ -1,5 +1,7 @@
 pub(crate) mod accessor_helpers;
 pub mod command_descriptor;
+pub mod dance_descriptor;
+pub mod dance_response_descriptor;
 pub mod declared_relationship_descriptor;
 pub mod descriptor;
 pub mod holon_descriptor;
@@ -20,6 +22,8 @@ pub mod value_descriptor;
 pub mod value_descriptor_subtypes;
 
 pub use command_descriptor::CommandDescriptor;
+pub use dance_descriptor::DanceDescriptor;
+pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
 pub use descriptor::Descriptor;
 pub use holon_descriptor::HolonDescriptor;

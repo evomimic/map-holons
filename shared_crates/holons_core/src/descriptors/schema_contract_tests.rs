@@ -3,8 +3,8 @@ use super::test_support::{
     new_property_descriptor_holon, new_relationship_descriptor_holon,
 };
 use crate::descriptors::{
-    CommandDescriptor, Descriptor, HolonDescriptor, HolonSpaceDescriptor, RelationshipDescriptor,
-    TransactionDescriptor,
+    CommandDescriptor, DanceDescriptor, Descriptor, HolonDescriptor, HolonSpaceDescriptor,
+    RelationshipDescriptor, TransactionDescriptor,
 };
 use crate::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use base_types::MapString;
@@ -26,6 +26,10 @@ fn command_type(
 
 fn command_names(commands: Vec<CommandDescriptor>) -> Result<Vec<CommandName>, HolonError> {
     commands.into_iter().map(|command| command.command_name()).collect()
+}
+
+fn dance_names(dances: Vec<DanceDescriptor>) -> Result<Vec<type_names::DanceName>, HolonError> {
+    dances.into_iter().map(|dance| dance.dance_name()).collect()
 }
 
 #[test]
@@ -328,6 +332,76 @@ fn transaction_descriptor_get_command_by_name_reports_missing_command() -> Resul
         transaction_descriptor.get_command_by_name(CoreCommandTypeName::Commit),
         Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
             if kind == "command" && name == "Commit"
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn dance_descriptor_afforded_dances_return_flattened_dance_set() -> Result<(), HolonError> {
+    let context = build_context();
+    let inherited_dance =
+        new_descriptor_holon(&context, "inherited-query-dance", "Query", "Holon")?;
+    let local_dance = new_descriptor_holon(&context, "local-dance", "Dance", "Holon")?;
+    let mut parent = new_holon_type_descriptor(&context, "dance-parent", "ParentType")?;
+    let mut dance_type = new_holon_type_descriptor(&context, "dance-owner", "DanceType")?;
+
+    parent.add_related_holons(CoreRelationshipTypeName::Affords, vec![inherited_dance.into()])?;
+    dance_type.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+    dance_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![local_dance.into()])?;
+
+    let dance_descriptor = HolonDescriptor::from_holon(dance_type.into());
+
+    assert_eq!(
+        dance_names(dance_descriptor.afforded_dances()?)?,
+        vec![
+            type_names::DanceName(MapString("Dance".to_string())),
+            type_names::DanceName(MapString("Query".to_string())),
+        ]
+    );
+
+    Ok(())
+}
+
+#[test]
+fn dance_descriptor_get_dance_by_name_resolves_type_name() -> Result<(), HolonError> {
+    let context = build_context();
+    let dance = new_descriptor_holon(&context, "commit-dance", "Commit", "Holon")?;
+    let mut dance_type = new_holon_type_descriptor(&context, "dance-with-commit", "DanceType")?;
+
+    dance_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![dance.into()])?;
+
+    let dance_descriptor = HolonDescriptor::from_holon(dance_type.into());
+
+    assert_eq!(
+        dance_descriptor.get_dance_by_name("commit")?.dance_name()?,
+        type_names::DanceName(MapString("Commit".to_string()))
+    );
+
+    Ok(())
+}
+
+#[test]
+fn dance_descriptor_get_dance_by_name_errors_when_duplicate_inherited_declarations_exist(
+) -> Result<(), HolonError> {
+    let context = build_context();
+    let duplicate_root =
+        new_descriptor_holon(&context, "duplicate-root-dance", "Query", "Holon")?;
+    let duplicate_leaf =
+        new_descriptor_holon(&context, "duplicate-leaf-dance", "Query", "Holon")?;
+    let mut root = new_holon_type_descriptor(&context, "duplicate-dance-root", "ParentType")?;
+    let mut leaf = new_holon_type_descriptor(&context, "duplicate-dance-leaf", "DanceType")?;
+
+    root.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_root.into()])?;
+    leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+    leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_leaf.into()])?;
+
+    let dance_descriptor = HolonDescriptor::from_holon(leaf.into());
+
+    assert!(matches!(
+        dance_descriptor.get_dance_by_name("Query"),
+        Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+            if kind == "dance" && name == "Query"
     ));
 
     Ok(())
