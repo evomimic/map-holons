@@ -5,7 +5,7 @@ use crate::setup::common_setup::{register_receptor, serialize_props};
 use crate::setup::providers::holochain::plugins::hc_dev_mode_enabled;
 use crate::setup::window_setup::ProviderWindowSetup;
 use async_trait::async_trait;
-use client_shared_types::base_receptor::{ReceptorType};
+use client_shared_types::base_receptor::ReceptorType;
 use client_shared_types::deprecated_base_receptor::DeprecatedBaseReceptor;
 use deprecated_holochain_receptor::HolochainConductorClient;
 use holochain_client::{AdminWebsocket, AppInfo, AppWebsocket};
@@ -14,7 +14,6 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager, Theme};
 use tauri_plugin_holochain::AgentPubKey;
 use tauri_plugin_holochain::{AppBundle, HolochainExt};
-
 
 pub struct HolochainSetup;
 

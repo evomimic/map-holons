@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use holons_client::{LocalRecoveryReceptor, init_client_runtime};//, receptor_factory};
+use holons_client::{init_client_runtime, LocalRecoveryReceptor}; //, receptor_factory};
 use map_commands_runtime::{Runtime, RuntimeSession};
 use tauri::{AppHandle, Manager};
 
@@ -12,13 +12,12 @@ pub type RuntimeInitiatorState =
 
 /// Typed state slot for the local recovery receptor.
 /// Written by local/setup.rs, read by init_from_state.
-pub type RecoveryReceptorState =
-    std::sync::RwLock<Option<Arc<LocalRecoveryReceptor>>>;
+pub type RecoveryReceptorState = std::sync::RwLock<Option<Arc<LocalRecoveryReceptor>>>;
 
 /// Typed state slot for the Holochain conductor client.
 /// Written by holochain/setup.rs, read by all_spaces and status commands.
 //pub type HolochainReceptorState =
- //   std::sync::RwLock<Option<Arc<HolochainConductorClient>>>;
+//   std::sync::RwLock<Option<Arc<HolochainConductorClient>>>;
 
 /// Initialize the MAP Commands runtime from the initiator stored in app state.
 ///
