@@ -8,7 +8,11 @@ use crate::dances_client::ClientDanceBuilder;
 use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
 use client_shared_types::{
-    ReceptorType, deprecated_base_receptor::DeprecatedBaseReceptor, holon_space::{HolonSpace, SpaceInfo}, map_request::{MapRequest, MapRequestBody}, map_response::MapResponse
+    deprecated_base_receptor::DeprecatedBaseReceptor,
+    holon_space::{HolonSpace, SpaceInfo},
+    map_request::{MapRequest, MapRequestBody},
+    map_response::MapResponse,
+    ReceptorType,
 };
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -16,7 +20,6 @@ use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseS
 use holons_core::reference_layer::HolonReference;
 use holons_loader_client::load_holons_from_files;
 use holons_trust_channel::TrustChannel;
-
 
 /// POC-safe Holochain Receptor.
 /// Enough to satisfy Conductora runtime configuration.

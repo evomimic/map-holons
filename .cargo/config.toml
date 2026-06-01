@@ -1,0 +1,7 @@
+[target.'cfg(target_arch = "wasm32")']
+# getrandom 0.3/0.4 need an explicit wasm32 backend. Use "custom" (not "wasm_js")
+# because wasm_js pulls in wasm-bindgen, which Holochain's WASM host does not
+# provide (__wbindgen_placeholder__ imports → ModuleBuild error at runtime).
+# Both getrandom 0.3.x and 0.4.x look for __getrandom_v03_custom in the cdylib.
+# Holochain zomes must use hdk::random::random_bytes() — never uuid::new_v4().
+rustflags = ['--cfg', 'getrandom_backend="custom"']

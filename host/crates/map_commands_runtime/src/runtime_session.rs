@@ -17,7 +17,10 @@ pub struct RuntimeSession {
 }
 
 impl RuntimeSession {
-    pub fn new(space_manager: Arc<HolonSpaceManager>, recovery: Option<Arc<LocalRecoveryReceptor>>) -> Self {
+    pub fn new(
+        space_manager: Arc<HolonSpaceManager>,
+        recovery: Option<Arc<LocalRecoveryReceptor>>,
+    ) -> Self {
         Self {
             space_manager,
             recovery,

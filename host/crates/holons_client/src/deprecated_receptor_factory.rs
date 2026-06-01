@@ -1,7 +1,8 @@
 use super::deprecated_receptor_cache::{ReceptorCache, ReceptorKey};
 use crate::{LocalRecoveryReceptor, Receptor};
 use client_shared_types::{
-    base_receptor::{ReceptorType}, deprecated_base_receptor::DeprecatedBaseReceptor, holon_space::SpaceInfo
+    base_receptor::ReceptorType, deprecated_base_receptor::DeprecatedBaseReceptor,
+    holon_space::SpaceInfo,
 };
 use core_types::HolonError;
 use deprecated_holochain_receptor::HolochainReceptor;
@@ -96,7 +97,10 @@ impl DeprecatedReceptorFactory {
     }
 
     /// Load receptors directly from a list of ReceptorConfig
-    pub async fn load_from_configs(&self, configs: Vec<DeprecatedBaseReceptor>) -> Result<usize, HolonError> {
+    pub async fn load_from_configs(
+        &self,
+        configs: Vec<DeprecatedBaseReceptor>,
+    ) -> Result<usize, HolonError> {
         // Clear existing cache
         self.cache.clear()?;
         self.is_loaded.store(false, Ordering::SeqCst);

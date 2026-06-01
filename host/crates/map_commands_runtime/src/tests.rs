@@ -15,7 +15,7 @@ use holons_core::reference_layer::{
 };
 
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
-use holons_client::{LocalRecoveryReceptor};
+use holons_client::LocalRecoveryReceptor;
 use recovery_receptor::{RecoveryStore, TransactionRecoveryStore};
 
 use map_commands_contract::{
@@ -331,7 +331,7 @@ fn build_test_recovery_receptor() -> Arc<LocalRecoveryReceptor> {
         //client_handler: Some(store as Arc<dyn Any + Send + Sync>),
         properties: HashMap::new(),
     };
-    Arc::new(LocalRecoveryReceptor::from_base(base,store))//.expect("receptor should create")
+    Arc::new(LocalRecoveryReceptor::from_base(base, store)) //.expect("receptor should create")
 }
 
 fn build_test_runtime_with_recovery() -> Runtime {

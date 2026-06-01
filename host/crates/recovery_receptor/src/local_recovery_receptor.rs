@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
-use client_shared_types::base_receptor::{BaseReceptor,ReceptorType};
-use client_shared_types::deprecated_base_receptor::{DeprecatedBaseReceptor};
+use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use client_shared_types::deprecated_base_receptor::DeprecatedBaseReceptor;
 
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
