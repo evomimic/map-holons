@@ -24,15 +24,27 @@ pub enum HostSignal {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum HolonsZomeSignal {
-    LinkCreated { action: serde_json::Value, link_type: serde_json::Value },
-    LinkDeleted { action: serde_json::Value, link_type: serde_json::Value },
-    EntryCreated { action: serde_json::Value, app_entry: serde_json::Value },
+    LinkCreated {
+        action: serde_json::Value,
+        link_type: serde_json::Value,
+    },
+    LinkDeleted {
+        action: serde_json::Value,
+        link_type: serde_json::Value,
+    },
+    EntryCreated {
+        action: serde_json::Value,
+        app_entry: serde_json::Value,
+    },
     EntryUpdated {
         action: serde_json::Value,
         app_entry: serde_json::Value,
         original_app_entry: serde_json::Value,
     },
-    EntryDeleted { action: serde_json::Value, original_app_entry: serde_json::Value },
+    EntryDeleted {
+        action: serde_json::Value,
+        original_app_entry: serde_json::Value,
+    },
 }
 
 /// Decode a raw `holochain_types::signal::Signal` into a typed `HostSignal`.

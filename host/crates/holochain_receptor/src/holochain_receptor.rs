@@ -114,8 +114,9 @@ impl StorageReceptor for HolochainReceptor {
 
     fn get_space_info(
         &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SpaceInfo, HolonError>> + Send + '_>>
-    {
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<SpaceInfo, HolonError>> + Send + '_>,
+    > {
         let client = self.client.clone();
         Box::pin(async move { client.get_all_spaces().await })
     }

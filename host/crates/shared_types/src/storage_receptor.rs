@@ -1,7 +1,7 @@
-use std::pin::Pin;
 use std::future::Future;
-use std::sync::RwLock;
+use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 use core_types::HolonError;
 
