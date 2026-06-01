@@ -1,10 +1,10 @@
-use client_shared_types::base_receptor::BaseReceptor; //, ReceptorType};
+use client_shared_types::deprecated_base_receptor::DeprecatedBaseReceptor;
 use std::sync::Mutex;
 
 /// Registry for collecting `ReceptorConfig` entries from different setup modules
 #[derive(Default)]
 pub struct ReceptorConfigRegistry {
-    configs: Mutex<Vec<BaseReceptor>>,
+    configs: Mutex<Vec<DeprecatedBaseReceptor>>,
 }
 
 impl ReceptorConfigRegistry {
@@ -14,12 +14,12 @@ impl ReceptorConfigRegistry {
     }
 
     /// Register a receptor config
-    pub fn register(&self, config: BaseReceptor) {
+    pub fn register(&self, config: DeprecatedBaseReceptor) {
         self.configs.lock().unwrap().push(config);
     }
 
     /// Retrieve all registered receptor configs
-    pub fn all(&self) -> Vec<BaseReceptor> {
+    pub fn all(&self) -> Vec<DeprecatedBaseReceptor> {
         let configs = self.configs.lock().unwrap().clone();
         //Self::ensure_local_receptor_first(&mut configs);
         configs

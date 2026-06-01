@@ -8,10 +8,7 @@ use crate::dances_client::ClientDanceBuilder;
 use crate::holochain_conductor_client::HolochainConductorClient;
 use base_types::MapString;
 use client_shared_types::{
-    base_receptor::{BaseReceptor, ReceptorType},
-    holon_space::{HolonSpace, SpaceInfo},
-    map_request::{MapRequest, MapRequestBody},
-    map_response::MapResponse,
+    ReceptorType, deprecated_base_receptor::DeprecatedBaseReceptor, holon_space::{HolonSpace, SpaceInfo}, map_request::{MapRequest, MapRequestBody}, map_response::MapResponse
 };
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -19,6 +16,7 @@ use holons_core::dances::{DanceInitiator, DanceResponse, ResponseBody, ResponseS
 use holons_core::reference_layer::HolonReference;
 use holons_loader_client::load_holons_from_files;
 use holons_trust_channel::TrustChannel;
+
 
 /// POC-safe Holochain Receptor.
 /// Enough to satisfy Conductora runtime configuration.
@@ -41,7 +39,7 @@ impl HolochainReceptor {
         matches!(request_name, "get_all_holons" | "get_holon_by_id" | "query_relationships")
     }
 
-    pub fn new(base: BaseReceptor) -> Self {
+    pub fn new(base: DeprecatedBaseReceptor) -> Self {
         // Downcast the stored client into our concrete conductor client
         let client_any =
             base.client_handler.as_ref().expect("Client is required for HolochainReceptor").clone();

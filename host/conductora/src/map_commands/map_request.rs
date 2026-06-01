@@ -1,13 +1,13 @@
 use client_shared_types::map_response::MapResponseWire;
 use client_shared_types::{base_receptor::ReceptorType, map_request::MapRequestWire};
 use core_types::HolonError;
-use holons_client::receptor_factory::ReceptorFactory;
+use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
 use tauri::{command, State};
 
 #[command]
 pub async fn map_request(
     map_request: MapRequestWire,
-    receptor_factory: State<'_, ReceptorFactory>,
+    receptor_factory: State<'_, DeprecatedReceptorFactory>,
 ) -> Result<MapResponseWire, HolonError> {
     tracing::debug!("[TAURI COMMAND] 'map_request' command invoked for space: {:?}", map_request);
     // a map_request is currently using "holochain" receptor type only
