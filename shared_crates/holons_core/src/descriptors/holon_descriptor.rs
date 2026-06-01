@@ -140,10 +140,7 @@ impl HolonDescriptor {
     }
 
     /// Finds an effective dance affordance by dance descriptor type name.
-    pub fn get_dance_by_name(
-        &self,
-        name: impl ToDanceName,
-    ) -> Result<DanceDescriptor, HolonError> {
+    pub fn get_dance_by_name(&self, name: impl ToDanceName) -> Result<DanceDescriptor, HolonError> {
         let requested_name = name.to_dance_name();
         let requested = requested_name.to_string();
         let mut seen = HashSet::new();
@@ -619,7 +616,8 @@ mod tests {
         let mut parent = new_descriptor_holon(&context, "dance-parent", "ParentType")?;
         let mut leaf = new_descriptor_holon(&context, "dance-leaf", "LeafType")?;
 
-        parent.add_related_holons(CoreRelationshipTypeName::Affords, vec![inherited_dance.into()])?;
+        parent
+            .add_related_holons(CoreRelationshipTypeName::Affords, vec![inherited_dance.into()])?;
         leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
         leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![local_dance.into()])?;
 
@@ -732,10 +730,14 @@ mod tests {
         let mut descriptor_a = new_descriptor_holon(&context, "dance-cycle-a", "CycleA")?;
         let mut descriptor_b = new_descriptor_holon(&context, "dance-cycle-b", "CycleB")?;
 
-        descriptor_a
-            .add_related_holons(CoreRelationshipTypeName::Extends, vec![descriptor_b.clone().into()])?;
-        descriptor_b
-            .add_related_holons(CoreRelationshipTypeName::Extends, vec![descriptor_a.clone().into()])?;
+        descriptor_a.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![descriptor_b.clone().into()],
+        )?;
+        descriptor_b.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![descriptor_a.clone().into()],
+        )?;
 
         let descriptor = HolonDescriptor::from_holon(descriptor_a.into());
 

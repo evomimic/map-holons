@@ -17,7 +17,6 @@ use pretty_assertions::assert_eq;
 use tracing::info;
 use type_names::DanceName;
 
-
 /// Verifies representative foundational descriptor access over loaded MAP core schema data.
 pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_core_schema_descriptors").await;
@@ -480,9 +479,7 @@ fn find_holon_by_key(holons: &HolonCollection, key: &str) -> HolonReference {
         .unwrap_or_else(|| panic!("expected loaded holon with key {key}"))
 }
 
-fn property_type_names(
-    descriptors: Result<Vec<PropertyDescriptor>, HolonError>,
-) -> Vec<String> {
+fn property_type_names(descriptors: Result<Vec<PropertyDescriptor>, HolonError>) -> Vec<String> {
     descriptors
         .expect("property descriptor list")
         .into_iter()

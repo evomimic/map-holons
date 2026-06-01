@@ -37,4 +37,3 @@ impl Descriptor for DanceResponseDescriptor {
         &self.holon
     }
 }
-

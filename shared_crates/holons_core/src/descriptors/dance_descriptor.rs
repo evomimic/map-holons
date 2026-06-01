@@ -3,8 +3,8 @@ use crate::descriptors::{
 };
 use crate::reference_layer::HolonReference;
 use core_types::HolonError;
-use type_names::{DanceName, ToDanceName};
 use type_names::CoreRelationshipTypeName;
+use type_names::{DanceName, ToDanceName};
 
 /// Runtime wrapper for dance descriptors.
 pub struct DanceDescriptor {
@@ -113,7 +113,8 @@ mod tests {
         let context = build_context();
         let request_type = new_descriptor_holon(&context, "request-type", "Projection", "Holon")?;
         let mut holon = new_descriptor_holon(&context, "dance-with-request", "Query", "Holon")?;
-        holon.add_related_holons(CoreRelationshipTypeName::RequestType, vec![request_type.into()])?;
+        holon
+            .add_related_holons(CoreRelationshipTypeName::RequestType, vec![request_type.into()])?;
         let descriptor = DanceDescriptor::from_holon(holon.into());
 
         assert_eq!(
@@ -131,7 +132,8 @@ mod tests {
             new_descriptor_holon(&context, "request-type-a", "ProjectionA", "Holon")?;
         let request_type_b =
             new_descriptor_holon(&context, "request-type-b", "ProjectionB", "Holon")?;
-        let mut holon = new_descriptor_holon(&context, "dance-with-many-requests", "Query", "Holon")?;
+        let mut holon =
+            new_descriptor_holon(&context, "dance-with-many-requests", "Query", "Holon")?;
         holon.add_related_holons(
             CoreRelationshipTypeName::RequestType,
             vec![request_type_a.into(), request_type_b.into()],
@@ -182,8 +184,7 @@ mod tests {
     #[test]
     fn response_body_returns_optional_related_target() -> Result<(), HolonError> {
         let context = build_context();
-        let response_body =
-            new_descriptor_holon(&context, "response-body", "Projection", "Holon")?;
+        let response_body = new_descriptor_holon(&context, "response-body", "Projection", "Holon")?;
         let mut response =
             new_descriptor_holon(&context, "dance-response", "DanceResponseType", "Holon")?;
         response.add_related_holons(

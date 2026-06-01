@@ -385,10 +385,8 @@ fn dance_descriptor_get_dance_by_name_resolves_type_name() -> Result<(), HolonEr
 fn dance_descriptor_get_dance_by_name_errors_when_duplicate_inherited_declarations_exist(
 ) -> Result<(), HolonError> {
     let context = build_context();
-    let duplicate_root =
-        new_descriptor_holon(&context, "duplicate-root-dance", "Query", "Holon")?;
-    let duplicate_leaf =
-        new_descriptor_holon(&context, "duplicate-leaf-dance", "Query", "Holon")?;
+    let duplicate_root = new_descriptor_holon(&context, "duplicate-root-dance", "Query", "Holon")?;
+    let duplicate_leaf = new_descriptor_holon(&context, "duplicate-leaf-dance", "Query", "Holon")?;
     let mut root = new_holon_type_descriptor(&context, "duplicate-dance-root", "ParentType")?;
     let mut leaf = new_holon_type_descriptor(&context, "duplicate-dance-leaf", "DanceType")?;
 
