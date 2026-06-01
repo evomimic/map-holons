@@ -7,7 +7,8 @@ use crate::setup::window_setup::ProviderWindowSetup;
 use async_trait::async_trait;
 use client_shared_types::base_receptor::ReceptorType;
 use client_shared_types::deprecated_base_receptor::DeprecatedBaseReceptor;
-use deprecated_holochain_receptor::HolochainConductorClient;
+use client_shared_types::storage_receptor::{ActiveStorageReceptor, StorageReceptor};
+use holochain_receptor::{HolochainConductorClient, HolochainReceptor};
 use holochain_client::{AdminWebsocket, AppInfo, AppWebsocket};
 use holons_trust_channel::TrustChannel;
 use std::sync::{Arc, Mutex};
@@ -87,23 +88,56 @@ impl HolochainSetup {
             t_appws.elapsed().as_secs_f64()
         );
 
-        // After successful setup, build and register the receptor
-        let (receptor_cfg, client) =
-            Self::build_receptor(app_ws, admin_ws, &handle, name, hc_cfg).await?;
-        register_receptor(&handle, receptor_cfg).await?;
+        // Validate cell_details early — needed by both the new and deprecated paths.
+        let cell_details = hc_cfg
+            .cell_details
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("cell_details missing in HolochainConfig"))?;
+        if cell_details.is_empty() {
+            return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
+        }
+        let cell0 = &cell_details[0];
+        let agent = app_ws.my_pub_key.clone();
 
-        // Store the runtime initiator for Runtime construction
-        // this is a global state write for holochain conductor client, hard to abstract right now
+        // --- New HolochainReceptor path (signal pipeline + ActiveStorageReceptor) ---
+        // Cloned websockets are Arc-backed: all clones share the same conductor connection.
+        let receptor = HolochainReceptor::new(
+            name.to_string(),
+            serialize_props(hc_cfg),
+            app_ws.clone(),
+            admin_ws.clone(),
+            cell0.role_name.clone(),
+            cell0.zome_name.clone(),
+            cell0.zome_function.clone(),
+            agent,
+        )
+        .await;
+
+        // Store in generic slot — any code needing space info or signal access reads from here.
+        if let Some(state) = handle.try_state::<ActiveStorageReceptor>() {
+            *state.write().expect("ActiveStorageReceptor lock poisoned") =
+                Some(receptor.clone() as Arc<dyn StorageReceptor>);
+        } else {
+            tracing::warn!(
+                "[HOLOCHAIN SETUP] ActiveStorageReceptor missing; space queries will not be available."
+            );
+        }
+
+        // Feed DanceInitiator into RuntimeInitiatorState so init_from_state can build the Runtime.
         if let Some(state) = handle.try_state::<RuntimeInitiatorState>() {
             let initiator: Arc<dyn holons_core::dances::DanceInitiator> =
-                Arc::new(TrustChannel::new(client));
-            let mut guard = state.write().expect("RuntimeInitiatorState lock poisoned");
-            *guard = Some(initiator);
+                Arc::new(TrustChannel::new(receptor.client.clone()));
+            *state.write().expect("RuntimeInitiatorState lock poisoned") = Some(initiator);
         } else {
             tracing::warn!(
                 "[HOLOCHAIN SETUP] RuntimeInitiatorState missing; runtime will not initialize."
             );
         }
+
+        // --- Existing deprecated path (kept for legacy DeprecatedHolochainReceptor consumers) ---
+        let (receptor_cfg, _client) =
+            Self::build_receptor(app_ws, admin_ws, &handle, name, hc_cfg).await?;
+        register_receptor(&handle, receptor_cfg).await?;
         tracing::info!(
             "[HOLOCHAIN SETUP] Total setup time: {:.1}s",
             t_setup.elapsed().as_secs_f64()

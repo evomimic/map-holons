@@ -11,6 +11,7 @@ use crate::{
     },
 };
 
+use client_shared_types::storage_receptor::ActiveStorageReceptor;
 use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
 
 pub struct AppBuilder;
@@ -65,6 +66,7 @@ impl AppBuilder {
             .manage(storage_manager.clone())
             .manage::<ProviderRuntimeSelection>(runtime_selection.clone())
             .manage::<runtime::RuntimeInitiatorState>(RwLock::new(None))
+            .manage::<ActiveStorageReceptor>(RwLock::new(None))
             .manage(DeprecatedReceptorFactory::new())
             .manage(ReceptorConfigRegistry::new())
             .manage::<runtime::RecoveryReceptorState>(RwLock::new(None))
