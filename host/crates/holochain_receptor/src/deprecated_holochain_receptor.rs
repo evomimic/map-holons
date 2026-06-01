@@ -24,7 +24,7 @@ use holons_trust_channel::TrustChannel;
 /// POC-safe Holochain Receptor.
 /// Enough to satisfy Conductora runtime configuration.
 /// Does NOT implement full space loading / root holon discovery yet.
-pub struct HolochainReceptor {
+pub struct DeprecatedHolochainReceptor {
     receptor_id: String,
     receptor_type: ReceptorType,
     properties: HashMap<String, String>,
@@ -33,7 +33,7 @@ pub struct HolochainReceptor {
     _home_space_holon: HolonSpace,
 }
 
-impl HolochainReceptor {
+impl DeprecatedHolochainReceptor {
     fn is_commit_dance_request(request_name: &str) -> bool {
         matches!(request_name, "commit")
     }
@@ -72,7 +72,7 @@ impl HolochainReceptor {
     }
 }
 
-impl HolochainReceptor {
+impl DeprecatedHolochainReceptor {
     pub fn transaction_context(&self) -> Arc<TransactionContext> {
         Arc::clone(&self.context)
     }
@@ -151,7 +151,7 @@ impl HolochainReceptor {
     }
 }
 
-impl Debug for HolochainReceptor {
+impl Debug for DeprecatedHolochainReceptor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HolochainReceptor")
             .field("receptor_id", &self.receptor_id)
@@ -163,27 +163,27 @@ impl Debug for HolochainReceptor {
 
 #[cfg(test)]
 mod tests {
-    use super::HolochainReceptor;
+    use super::DeprecatedHolochainReceptor;
 
     #[test]
     fn commit_route_classification_is_exact() {
-        assert!(HolochainReceptor::is_commit_dance_request("commit"));
-        assert!(!HolochainReceptor::is_commit_dance_request("get_all_holons"));
-        assert!(!HolochainReceptor::is_commit_dance_request("load_holons"));
+        assert!(DeprecatedHolochainReceptor::is_commit_dance_request("commit"));
+        assert!(!DeprecatedHolochainReceptor::is_commit_dance_request("get_all_holons"));
+        assert!(!DeprecatedHolochainReceptor::is_commit_dance_request("load_holons"));
     }
 
     #[test]
     fn read_only_route_classification_includes_supported_reads() {
-        assert!(HolochainReceptor::is_read_only_request("get_all_holons"));
-        assert!(HolochainReceptor::is_read_only_request("get_holon_by_id"));
-        assert!(HolochainReceptor::is_read_only_request("query_relationships"));
+        assert!(DeprecatedHolochainReceptor::is_read_only_request("get_all_holons"));
+        assert!(DeprecatedHolochainReceptor::is_read_only_request("get_holon_by_id"));
+        assert!(DeprecatedHolochainReceptor::is_read_only_request("query_relationships"));
     }
 
     #[test]
     fn read_only_route_classification_excludes_mutations() {
-        assert!(!HolochainReceptor::is_read_only_request("commit"));
-        assert!(!HolochainReceptor::is_read_only_request("create_new_holon"));
-        assert!(!HolochainReceptor::is_read_only_request("stage_new_holon"));
-        assert!(!HolochainReceptor::is_read_only_request("load_holons"));
+        assert!(!DeprecatedHolochainReceptor::is_read_only_request("commit"));
+        assert!(!DeprecatedHolochainReceptor::is_read_only_request("create_new_holon"));
+        assert!(!DeprecatedHolochainReceptor::is_read_only_request("stage_new_holon"));
+        assert!(!DeprecatedHolochainReceptor::is_read_only_request("load_holons"));
     }
 }

@@ -3,8 +3,12 @@ mod client_shared_objects;
 mod conductor_dance_caller;
 mod dances_client;
 pub mod holochain_conductor_client;
+pub mod deprecated_holochain_receptor;
+pub mod host_signal;
 pub mod holochain_receptor;
 
 // Re-export key types and traits for external use
 pub use holochain_conductor_client::HolochainConductorClient;
+pub use deprecated_holochain_receptor::DeprecatedHolochainReceptor;
 pub use holochain_receptor::HolochainReceptor;
+pub use host_signal::{decode_signal, HostSignal, HolonsZomeSignal};
