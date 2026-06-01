@@ -8,20 +8,19 @@ use holons_core::{
     },
     HolonPool,
 };
-
-use crate::Receptor;
+use recovery_receptor::local_recovery_receptor::LocalRecoveryReceptor;
 
 //#[derive(Debug)]
 pub struct ClientSession {
     context: Arc<TransactionContext>,
-    recovery: Option<Arc<Receptor>>,
+    recovery: Option<Arc<LocalRecoveryReceptor>>,
 }
 
 impl ClientSession {
     /// Open a new session for a new transaction, optionally with a recovery receptor for state persistence.
     pub fn open_new(
         space_manager: Arc<HolonSpaceManager>,
-        recovery: Option<Arc<Receptor>>,
+        recovery: Option<Arc<LocalRecoveryReceptor>>,
     ) -> Result<Self, HolonError> {
         let context = space_manager
             .get_transaction_manager()
@@ -33,7 +32,7 @@ impl ClientSession {
     /// Open a session for an existing transaction, restoring state from the recovery receptor if available.
     pub fn recover(
         space_manager: Arc<HolonSpaceManager>,
-        recovery: Option<Arc<Receptor>>,
+        recovery: Option<Arc<LocalRecoveryReceptor>>,
         tx_id: String,
     ) -> Result<Self, HolonError> {
         let tx_id = TxId::from_str(&tx_id)
@@ -62,15 +61,11 @@ impl ClientSession {
             return Ok(());
         };
 
-        match recovery.as_ref() {
-            Receptor::LocalRecovery(r) => {
-                if let Some(snapshot) = r.recover_latest(&self.tx_id().value().to_string())? {
-                    snapshot.restore_into(&self.context)?;
-                }
-                Ok(())
-            }
-            _ => Ok(()),
+        let r = recovery.as_ref();
+        if let Some(snapshot) = r.recover_latest(&self.tx_id().value().to_string())? {
+            snapshot.restore_into(&self.context)?;
         }
+        Ok(())
     }
 
     /// Undo the last transaction command, if possible.
@@ -78,23 +73,20 @@ impl ClientSession {
         let Some(recovery) = self.recovery.as_ref() else {
             return Ok(());
         };
-
-        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            let tx_id_str = self.tx_id().value().to_string();
-            if !r.can_undo(&tx_id_str)? {
-                return Err(HolonError::Misc(format!(
-                    "No undo snapshot available for tx_id={}",
-                    &self.tx_id().value()
-                )));
-            }
-            // Stack was non-empty before the call. After popping the last EU,
-            // None means there is no prior snapshot — restore to baseline.
-            match r.undo(&tx_id_str).await? {
-                Some(snapshot) => snapshot.restore_into(&self.context)?,
-                None => {
-                    self.context.import_staged_holons(HolonPool::new())?;
-                    self.context.import_transient_holons(HolonPool::new())?;
-                }
+        let tx_id_str = self.tx_id().value().to_string();
+        if !recovery.can_undo(&tx_id_str)? {
+            return Err(HolonError::Misc(format!(
+                "No undo snapshot available for tx_id={}",
+                &self.tx_id().value()
+            )));
+        }
+        // Stack was non-empty before the call. After popping the last EU,
+        // None means there is no prior snapshot — restore to baseline.
+        match recovery.undo(&tx_id_str).await? {
+            Some(snapshot) => snapshot.restore_into(&self.context)?,
+            None => {
+                self.context.import_staged_holons(HolonPool::new())?;
+                self.context.import_transient_holons(HolonPool::new())?;
             }
         }
         Ok(())
@@ -105,19 +97,14 @@ impl ClientSession {
         let Some(recovery) = self.recovery.as_ref() else {
             return Ok(());
         };
-
-        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            if let Some(tx_snapshot) = r.redo(&self.tx_id().value().to_string()).await? {
-                tx_snapshot.restore_into(&self.context)?;
-                return Ok(());
-            } else {
-                return Err(HolonError::Misc(format!(
-                    "No redo snapshot available for tx_id={}",
-                    &self.tx_id().value()
-                )));
-            }
+        if let Some(tx_snapshot) = recovery.redo(&self.tx_id().value().to_string()).await? {
+            tx_snapshot.restore_into(&self.context)?;
+            return Ok(());
         } else {
-            Ok(())
+            return Err(HolonError::Misc(format!(
+                "No redo snapshot available for tx_id={}",
+                &self.tx_id().value()
+            )));
         }
     }
 
@@ -126,16 +113,13 @@ impl ClientSession {
         let Some(recovery) = self.recovery.as_ref() else {
             return Ok(());
         };
-
-        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            let tx_id = self.tx_id().value().to_string();
-            match r.undo_to_marker(&tx_id, marker_id).await? {
-                Some(snapshot) => snapshot.restore_into(&self.context)?,
-                None => {
-                    // Marker was the first EU — restore to baseline.
-                    self.context.import_staged_holons(HolonPool::new())?;
-                    self.context.import_transient_holons(HolonPool::new())?;
-                }
+        let tx_id = self.tx_id().value().to_string();
+        match recovery.undo_to_marker(&tx_id, marker_id).await? {
+            Some(snapshot) => snapshot.restore_into(&self.context)?,
+            None => {
+                // Marker was the first EU — restore to baseline.
+                self.context.import_staged_holons(HolonPool::new())?;
+                self.context.import_transient_holons(HolonPool::new())?;
             }
         }
         Ok(())
@@ -146,13 +130,10 @@ impl ClientSession {
         let Some(recovery) = self.recovery.as_ref() else {
             return Ok(());
         };
-
-        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            let tx_id = self.tx_id().value().to_string();
-            match r.redo_to_marker(&tx_id, marker_id).await? {
-                Some(snapshot) => snapshot.restore_into(&self.context)?,
-                None => {} // no-op (no redo units found — already handled as Err by store)
-            }
+        let tx_id = self.tx_id().value().to_string();
+        match recovery.redo_to_marker(&tx_id, marker_id).await? {
+            Some(snapshot) => snapshot.restore_into(&self.context)?,
+            None => {} // no-op (no redo units found — already handled as Err by store)
         }
         Ok(())
     }
@@ -169,21 +150,16 @@ impl ClientSession {
         let Some(recovery) = self.recovery.as_ref() else {
             return Ok(());
         };
-
-        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            return r
-                .persist(
-                    &self.context,
-                    description,
-                    disable_undo,
-                    snapshot_after,
-                    marker_id,
-                    marker_label,
-                )
-                .await;
-        } else {
-            Ok(())
-        }
+        return recovery
+            .persist(
+                &self.context,
+                description,
+                disable_undo,
+                snapshot_after,
+                marker_id,
+                marker_label,
+            )
+            .await;
     }
 
     /// Cleanup recovery state for this transaction, if applicable.
@@ -191,11 +167,6 @@ impl ClientSession {
         let Some(recovery) = self.recovery.as_ref() else {
             return Ok(());
         };
-
-        if let Receptor::LocalRecovery(r) = recovery.as_ref() {
-            return r.cleanup(&self.tx_id().value().to_string()).await;
-        } else {
-            Ok(())
-        }
+        return recovery.cleanup(&self.tx_id().value().to_string()).await;
     }
 }

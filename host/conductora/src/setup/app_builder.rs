@@ -67,7 +67,7 @@ impl AppBuilder {
             .manage::<runtime::RuntimeInitiatorState>(RwLock::new(None))
             .manage(DeprecatedReceptorFactory::new())
             .manage(ReceptorConfigRegistry::new())
-            //.manage::<runtime::RecoveryReceptorState>(RwLock::new(None))     
+            .manage::<runtime::RecoveryReceptorState>(RwLock::new(None))     
             //.manage::<runtime::HolochainReceptorState>(RwLock::new(None)) 
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .invoke_handler(tauri::generate_handler![
