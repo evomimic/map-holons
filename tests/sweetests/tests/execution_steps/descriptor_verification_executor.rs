@@ -1,6 +1,9 @@
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
-    HolonDescriptor, OperatorCategory, OperatorDescriptor, RelationshipDescriptor, ValueDescriptor,
+    DanceDescriptor, HolonDescriptor, OperatorCategory, OperatorDescriptor, RelationshipDescriptor,
+    ValueDescriptor,
 };
+use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP_KEY,
@@ -13,7 +16,9 @@ use holons_test::harness::helpers::{
 use holons_test::TestExecutionState;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use pretty_assertions::assert_eq;
+use std::sync::Arc;
 use tracing::info;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, DanceName};
 
 /// Verifies representative foundational descriptor access over loaded MAP core schema data.
 pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionState) {
@@ -77,6 +82,13 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
 
     let dance_type = find_holon_by_key(&holons, "DanceType");
     let dance_type_descriptor = HolonDescriptor::from_holon(dance_type.clone());
+    let dance_descriptor = DanceDescriptor::from_holon(dance_type.clone());
+    assert!(!property_type_names(dance_type_descriptor.instance_properties())
+        .contains(&"DanceName".to_string()));
+    assert_eq!(
+        dance_descriptor.dance_name().expect("DanceType dance_name"),
+        DanceName(MapString("DanceType".to_string()))
+    );
     let request_type_relationship = dance_type_descriptor
         .get_relationship_by_name(RelationshipName(MapString::from("RequestType")))
         .expect("DanceType.RequestType lookup");
@@ -103,6 +115,47 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "DanceResponseType",
         "(DanceType)-[Response]->(DanceResponseType)",
     );
+    assert_eq!(dance_descriptor.request_type().expect("DanceType request_type").is_none(), true);
+    assert_contains(
+        &relationship_base_names(dance_type_descriptor.instance_relationships()),
+        "RequestType",
+    );
+    assert_contains(
+        &relationship_base_names(dance_type_descriptor.instance_relationships()),
+        "Response",
+    );
+    let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(HolonType)-[Affords]->(DanceType)",
+    ))
+    .try_into_declared_relationship_descriptor()
+    .expect("Affords should be a declared relationship descriptor");
+    assert_relationship_shape(
+        affordance_relationship.base_relationship_name(),
+        affordance_relationship.source_type(),
+        affordance_relationship.target_type(),
+        affordance_relationship.full_relationship_name(),
+        "Affords",
+        "HolonType",
+        "DanceType",
+        "(HolonType)-[Affords]->(DanceType)",
+    );
+    let afforded_by_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(DanceType)-[AffordedBy]->(HolonType)",
+    ))
+    .try_into_inverse_relationship_descriptor()
+    .expect("AffordedBy should be an inverse relationship descriptor");
+    assert_eq!(
+        afforded_by_relationship
+            .inverse_of()
+            .expect("AffordedBy inverse_of")
+            .base_relationship_name()
+            .expect("AffordedBy inverse_of base name")
+            .to_string(),
+        "Affords"
+    );
+    assert_loaded_schema_backed_dance_discovery(state, &holons).await;
 
     let dance_response_type = find_holon_by_key(&holons, "DanceResponseType");
     let dance_response_descriptor = HolonDescriptor::from_holon(dance_response_type.clone());
@@ -184,38 +237,147 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         &["DanceDiagnosticSeverity.Info", "DanceDiagnosticSeverity.Warning"],
     );
 
-    assert_description_contains(
-        HolonDescriptor::from_holon(find_holon_by_key(&holons, "ResponseBodyType"))
-            .header()
-            .description(),
-        "Deprecated old-world",
+    info!("verified representative core schema descriptor access");
+}
+
+async fn assert_loaded_schema_backed_dance_discovery(
+    state: &mut TestExecutionState,
+    holons: &HolonCollection,
+) {
+    let context = state
+        .open_assertion_context("verify_core_schema_dance_affordances")
+        .await
+        .unwrap_or_else(|error| {
+            panic!("verify_core_schema_dance_affordances: failed to open assertion transaction: {error:?}")
+        });
+
+    let holon_type = find_holon_by_key(holons, HOLON_TYPE_KEY);
+    let dance_type = find_holon_by_key(holons, "DanceType");
+    let dance_response_type = find_holon_by_key(holons, "DanceResponseType");
+    let projection = find_holon_by_key(holons, "Projection");
+
+    let mut query_response_type =
+        new_descriptor_holon(&context, "query-response-type", "QueryResponseType", "Holon")
+            .expect("query response type");
+    query_response_type
+        .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_response_type.clone()])
+        .expect("QueryResponseType extends DanceResponseType");
+    query_response_type
+        .add_related_holons(CoreRelationshipTypeName::ResponseBody, vec![projection.clone()])
+        .expect("QueryResponseType response body");
+
+    let mut inspect_response_type =
+        new_descriptor_holon(&context, "inspect-response-type", "InspectResponseType", "Holon")
+            .expect("inspect response type");
+    inspect_response_type
+        .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_response_type.clone()])
+        .expect("InspectResponseType extends DanceResponseType");
+    inspect_response_type
+        .add_related_holons(CoreRelationshipTypeName::ResponseBody, vec![projection.clone()])
+        .expect("InspectResponseType response body");
+
+    let mut query_dance =
+        new_descriptor_holon(&context, "query-dance-type", "Query", "Holon").expect("Query dance");
+    query_dance
+        .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
+        .expect("Query extends DanceType");
+    query_dance
+        .add_related_holons(CoreRelationshipTypeName::RequestType, vec![projection.clone()])
+        .expect("Query request type");
+    query_dance
+        .add_related_holons(
+            CoreRelationshipTypeName::Response,
+            vec![HolonReference::from(&query_response_type)],
+        )
+        .expect("Query response");
+
+    let mut inspect_dance =
+        new_descriptor_holon(&context, "inspect-dance-type", "Inspect", "Holon")
+            .expect("Inspect dance");
+    inspect_dance
+        .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
+        .expect("Inspect extends DanceType");
+    inspect_dance
+        .add_related_holons(CoreRelationshipTypeName::RequestType, vec![projection.clone()])
+        .expect("Inspect request type");
+    inspect_dance
+        .add_related_holons(
+            CoreRelationshipTypeName::Response,
+            vec![HolonReference::from(&inspect_response_type)],
+        )
+        .expect("Inspect response");
+
+    let mut parent_owner =
+        new_descriptor_holon(&context, "dance-parent-owner", "DanceParentOwner", "Holon")
+            .expect("dance parent owner");
+    parent_owner
+        .add_related_holons(CoreRelationshipTypeName::Extends, vec![holon_type.clone()])
+        .expect("DanceParentOwner extends HolonType");
+    parent_owner
+        .add_related_holons(
+            CoreRelationshipTypeName::Affords,
+            vec![HolonReference::from(&query_dance)],
+        )
+        .expect("DanceParentOwner affords Query");
+
+    let mut child_owner =
+        new_descriptor_holon(&context, "dance-child-owner", "DanceChildOwner", "Holon")
+            .expect("dance child owner");
+    child_owner
+        .add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&parent_owner)],
+        )
+        .expect("DanceChildOwner extends DanceParentOwner");
+    child_owner
+        .add_related_holons(
+            CoreRelationshipTypeName::Affords,
+            vec![HolonReference::from(&inspect_dance)],
+        )
+        .expect("DanceChildOwner affords Inspect");
+
+    let child_descriptor = HolonDescriptor::from_holon(HolonReference::from(&child_owner));
+    assert_eq!(
+        dance_type_names(child_descriptor.afforded_dances()),
+        vec![
+            DanceName(MapString("Inspect".to_string())),
+            DanceName(MapString("Query".to_string())),
+        ]
     );
-    assert_description_contains(
-        HolonDescriptor::from_holon(find_holon_by_key(&holons, "ResponseStatusCode"))
-            .header()
-            .description(),
-        "Deprecated old-world",
-    );
-    assert_description_contains(
-        HolonDescriptor::from_holon(find_holon_by_key(
-            &holons,
-            "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
-        ))
-        .header()
-        .description(),
-        "Deprecated old-world",
-    );
-    assert_description_contains(
-        HolonDescriptor::from_holon(find_holon_by_key(
-            &holons,
-            "(DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor)",
-        ))
-        .header()
-        .description(),
-        "Deprecated old-world",
+    assert_eq!(
+        child_descriptor
+            .get_dance_by_name("inspect")
+            .expect("Inspect lookup")
+            .dance_name()
+            .expect("Inspect dance_name"),
+        DanceName(MapString("Inspect".to_string()))
     );
 
-    info!("verified representative core schema descriptor access");
+    let inherited_query = child_descriptor
+        .get_dance_by_name("query")
+        .expect("Query lookup through inherited Affords");
+    assert_eq!(
+        inherited_query
+            .request_type()
+            .expect("Query request_type")
+            .expect("Query request type target")
+            .header()
+            .type_name()
+            .expect("Query request type_name"),
+        MapString("Projection".to_string())
+    );
+    assert_eq!(
+        inherited_query
+            .response()
+            .expect("Query response")
+            .response_body()
+            .expect("Query response_body")
+            .expect("Query response body target")
+            .header()
+            .type_name()
+            .expect("Query response body type_name"),
+        MapString("Projection".to_string())
+    );
 }
 
 /// Verifies declared/inverse relationship subtype narrowing over loaded MAP core schema data.
@@ -461,9 +623,31 @@ fn find_holon_by_key(holons: &HolonCollection, key: &str) -> HolonReference {
         .unwrap_or_else(|| panic!("expected loaded holon with key {key}"))
 }
 
-fn property_type_names(
-    descriptors: Result<Vec<holons_core::descriptors::PropertyDescriptor>, HolonError>,
-) -> Vec<String> {
+fn new_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: &str,
+    instance_type_kind: &str,
+) -> Result<TransientReference, HolonError> {
+    let mut descriptor = context.mutation().new_holon(Some(MapString(key.to_string())))?;
+    descriptor
+        .with_property_value(CorePropertyTypeName::TypeName, type_name)?
+        .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
+        .with_property_value(CorePropertyTypeName::InstanceTypeKind, instance_type_kind)?
+        .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
+        .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
+    Ok(descriptor)
+}
+
+fn dance_type_names(descriptors: Result<Vec<DanceDescriptor>, HolonError>) -> Vec<DanceName> {
+    descriptors
+        .expect("dance descriptor list")
+        .into_iter()
+        .map(|descriptor| descriptor.dance_name().expect("dance_name"))
+        .collect()
+}
+
+fn property_type_names(descriptors: Result<Vec<PropertyDescriptor>, HolonError>) -> Vec<String> {
     descriptors
         .expect("property descriptor list")
         .into_iter()

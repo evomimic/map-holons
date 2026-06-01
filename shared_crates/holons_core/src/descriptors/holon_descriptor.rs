@@ -1,13 +1,14 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, inheritance::flatten_related_members, CommandDescriptor, Descriptor,
-    InverseRelationshipDescriptor, PropertyDescriptor, RelationshipDescriptor, TypeHeader,
+    accessor_helpers, inheritance::flatten_related_members, CommandDescriptor, DanceDescriptor,
+    Descriptor, InverseRelationshipDescriptor, PropertyDescriptor, RelationshipDescriptor,
+    TypeHeader,
 };
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, PropertyName};
 use type_names::{
-    CorePropertyTypeName, CoreRelationshipTypeName, ToCommandName, ToPropertyName,
+    CorePropertyTypeName, CoreRelationshipTypeName, ToCommandName, ToDanceName, ToPropertyName,
     ToRelationshipName,
 };
 
@@ -61,6 +62,12 @@ impl HolonDescriptor {
     pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
         flatten_related_members(&self.holon, CoreRelationshipTypeName::AffordsCommand)
             .map(|members| members.into_iter().map(CommandDescriptor::from_holon).collect())
+    }
+
+    /// Returns effective dance descriptors across this descriptor's inheritance chain.
+    pub fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
+        flatten_related_members(&self.holon, CoreRelationshipTypeName::Affords)
+            .map(|members| members.into_iter().map(DanceDescriptor::from_holon).collect())
     }
 
     /// Returns effective property type descriptors across this descriptor's inheritance chain.
@@ -127,6 +134,35 @@ impl HolonDescriptor {
 
         found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
             kind: "command".to_string(),
+            name: requested,
+            descriptor: accessor_helpers::descriptor_label(&self.holon),
+        })
+    }
+
+    /// Finds an effective dance affordance by dance descriptor type name.
+    pub fn get_dance_by_name(&self, name: impl ToDanceName) -> Result<DanceDescriptor, HolonError> {
+        let requested_name = name.to_dance_name();
+        let requested = requested_name.to_string();
+        let mut seen = HashSet::new();
+        let mut found = None;
+
+        for descriptor in self.afforded_dances()? {
+            let declaration_name = descriptor.dance_name()?;
+            let declaration_label = declaration_name.to_string();
+            if !seen.insert(declaration_label.clone()) {
+                return Err(HolonError::DuplicateInheritedDeclaration {
+                    kind: "dance".to_string(),
+                    name: declaration_label,
+                    descriptor: accessor_helpers::descriptor_label(&self.holon),
+                });
+            }
+            if declaration_name == requested_name {
+                found = Some(descriptor);
+            }
+        }
+
+        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+            kind: "dance".to_string(),
             name: requested,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
         })
@@ -212,7 +248,7 @@ mod tests {
     use std::sync::Arc;
     use type_names::{
         CommandName, CoreCommandTypeName, CoreHolonTypeName, CorePropertyTypeName,
-        CoreRelationshipTypeName,
+        CoreRelationshipTypeName, DanceName,
     };
 
     fn new_descriptor_holon(
@@ -236,6 +272,10 @@ mod tests {
 
     fn command_names(commands: Vec<CommandDescriptor>) -> Result<Vec<CommandName>, HolonError> {
         commands.into_iter().map(|command| command.command_name()).collect()
+    }
+
+    fn dance_names(dances: Vec<DanceDescriptor>) -> Result<Vec<DanceName>, HolonError> {
+        dances.into_iter().map(|dance| dance.dance_name()).collect()
     }
 
     #[test]
@@ -564,6 +604,166 @@ mod tests {
             descriptor.get_command_by_name(CoreCommandTypeName::Commit)?.command_name()?,
             CommandName(MapString("Commit".to_string()))
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_dances_returns_self_first_then_inherited() -> Result<(), HolonError> {
+        let context = build_context();
+        let inherited_dance = new_descriptor_holon(&context, "inherited-dance", "Query")?;
+        let local_dance = new_descriptor_holon(&context, "local-dance", "Dance")?;
+        let mut parent = new_descriptor_holon(&context, "dance-parent", "ParentType")?;
+        let mut leaf = new_descriptor_holon(&context, "dance-leaf", "LeafType")?;
+
+        parent
+            .add_related_holons(CoreRelationshipTypeName::Affords, vec![inherited_dance.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![local_dance.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert_eq!(
+            dance_names(descriptor.afforded_dances()?)?,
+            vec![
+                DanceName(MapString("Dance".to_string())),
+                DanceName(MapString("Query".to_string())),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_dances_flattens_through_multi_step_extends_chain() -> Result<(), HolonError> {
+        let context = build_context();
+        let root_dance = new_descriptor_holon(&context, "root-dance", "Dance")?;
+        let middle_dance = new_descriptor_holon(&context, "middle-dance", "Query")?;
+        let leaf_dance = new_descriptor_holon(&context, "leaf-dance", "LoadHolons")?;
+        let mut root = new_descriptor_holon(&context, "dance-root", "RootType")?;
+        let mut middle = new_descriptor_holon(&context, "dance-middle", "MiddleType")?;
+        let mut leaf = new_descriptor_holon(&context, "dance-chain-leaf", "LeafType")?;
+
+        root.add_related_holons(CoreRelationshipTypeName::Affords, vec![root_dance.into()])?;
+        middle.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        middle.add_related_holons(CoreRelationshipTypeName::Affords, vec![middle_dance.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![middle.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![leaf_dance.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert_eq!(
+            dance_names(descriptor.afforded_dances()?)?,
+            vec![
+                DanceName(MapString("LoadHolons".to_string())),
+                DanceName(MapString("Query".to_string())),
+                DanceName(MapString("Dance".to_string())),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_dance_by_name_matches_on_shared_type_name() -> Result<(), HolonError> {
+        let context = build_context();
+        let dance = new_descriptor_holon(&context, "dance-affordance", "Query")?;
+        let mut holon_type = new_descriptor_holon(&context, "dance-owner", "TransactionType")?;
+
+        holon_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![dance.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert_eq!(
+            descriptor.get_dance_by_name("query")?.dance_name()?,
+            DanceName(MapString("Query".to_string()))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_dance_by_name_errors_when_not_found() -> Result<(), HolonError> {
+        let context = build_context();
+        let dance = new_descriptor_holon(&context, "query-dance-affordance", "Query")?;
+        let mut holon_type = new_descriptor_holon(&context, "missing-dance-owner", "BookType")?;
+
+        holon_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![dance.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert!(matches!(
+            descriptor.get_dance_by_name("Commit"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "dance" && name == "Commit"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_dance_by_name_detects_duplicate_inherited_declarations() -> Result<(), HolonError> {
+        let context = build_context();
+        let duplicate_root = new_descriptor_holon(&context, "duplicate-root-dance", "Query")?;
+        let duplicate_leaf = new_descriptor_holon(&context, "duplicate-leaf-dance", "Query")?;
+        let mut root = new_descriptor_holon(&context, "duplicate-dance-root", "RootType")?;
+        let mut leaf = new_descriptor_holon(&context, "duplicate-dance-leaf", "LeafType")?;
+
+        root.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_root.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_leaf.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert!(matches!(
+            descriptor.get_dance_by_name("Query"),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "dance" && name == "Query"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_dances_errors_on_cyclic_extends() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut descriptor_a = new_descriptor_holon(&context, "dance-cycle-a", "CycleA")?;
+        let mut descriptor_b = new_descriptor_holon(&context, "dance-cycle-b", "CycleB")?;
+
+        descriptor_a.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![descriptor_b.clone().into()],
+        )?;
+        descriptor_b.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![descriptor_a.clone().into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(descriptor_a.into());
+
+        assert!(matches!(descriptor.afforded_dances(), Err(HolonError::CyclicExtends { .. })));
+
+        Ok(())
+    }
+
+    #[test]
+    fn afforded_dances_errors_when_multiple_extends_are_declared() -> Result<(), HolonError> {
+        let context = build_context();
+        let parent_a = new_descriptor_holon(&context, "dance-parent-a", "ParentA")?;
+        let parent_b = new_descriptor_holon(&context, "dance-parent-b", "ParentB")?;
+        let mut child = new_descriptor_holon(&context, "dance-child", "ChildType")?;
+
+        child.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![parent_a.into(), parent_b.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(child.into());
+
+        assert!(matches!(
+            descriptor.afforded_dances(),
+            Err(HolonError::MultipleExtends { count, .. }) if count == 2
+        ));
 
         Ok(())
     }

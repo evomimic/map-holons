@@ -71,9 +71,6 @@
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "#DanceName.PropertyType"
-            },
-            {
               "$ref": "#DanceDescription.PropertyType"
             }
           ]
