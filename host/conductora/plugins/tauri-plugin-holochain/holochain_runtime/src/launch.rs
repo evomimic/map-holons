@@ -233,6 +233,12 @@ fn clean_dev_conductor_state(conductor_dir: &std::path::Path) {
         }
     }
 
+    // Ensure the wasm-cache directory exists even after a full wipe.
+    // holochain_wasmer_host crashes (SIGSEGV via libunwind on ARM64) when it
+    // tries to access a wasm-cache directory that doesn't exist, because the
+    // io::Error is treated as a fatal WasmHostError rather than a clean miss.
+    let _ = std::fs::create_dir_all(&wasm_cache_dir);
+
     tracing::warn!(
         "[LAUNCH] DEV MODE: conductor state reset in {:.2}s (wasm cache preserved in-place)",
         t.elapsed().as_secs_f64()

@@ -118,6 +118,8 @@ impl AppBuilder {
                 .await;
 
                 if let Err(e) = startup_result {
+                    // eprintln flushes synchronously before process::exit kills async writers
+                    eprintln!("[APP BUILDER] FATAL startup error: {:#}", e);
                     tracing::error!("[APP BUILDER] startup failed: {}", e);
                     std::process::exit(1);
                 }

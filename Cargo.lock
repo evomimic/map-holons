@@ -3017,7 +3017,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
- "type_names",
 ]
 
 [[package]]
@@ -3386,7 +3385,9 @@ dependencies = [
  "hdk",
  "holons_core",
  "holons_guest",
+ "holons_guest_integrity",
  "holons_integrity",
+ "integrity_core_types",
  "pkcs8 0.11.0-rc.11",
  "serde",
 ]

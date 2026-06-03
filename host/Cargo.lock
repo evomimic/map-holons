@@ -3683,7 +3683,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
- "type_names",
 ]
 
 [[package]]
@@ -3966,8 +3965,6 @@ dependencies = [
 [[package]]
 name = "holochain_wasmer_host"
 version = "0.0.102"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e1e9f9730f9c3333a90f6d3cfd868e67133e788105abc48cab29558521892b2"
 dependencies = [
  "bimap",
  "bytes",

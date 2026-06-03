@@ -52,3 +52,6 @@ map_commands_contract = { path = "crates/map_commands_contract" }
 map_commands_wire = { path = "crates/map_commands_wire" }
 map_commands_runtime = { path = "crates/map_commands_runtime" }
 recovery_receptor = { path = "crates/recovery_receptor" }
+
+[patch.crates-io]
+holochain_wasmer_host = { path = "patches/holochain_wasmer_host" }
