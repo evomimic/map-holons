@@ -1,7 +1,7 @@
-use super::receptor_cache::{ReceptorCache, ReceptorKey};
+use super::deprecated_receptor_cache::{ReceptorCache, ReceptorKey};
 use crate::{LocalRecoveryReceptor, Receptor};
 use client_shared_types::{
-    base_receptor::{BaseReceptor, ReceptorType},
+    base_receptor::ReceptorType, deprecated_base_receptor::DeprecatedBaseReceptor,
     holon_space::SpaceInfo,
 };
 use core_types::HolonError;
@@ -10,12 +10,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct ReceptorFactory {
+pub struct DeprecatedReceptorFactory {
     cache: ReceptorCache,
     is_loaded: Arc<AtomicBool>,
 }
 
-impl ReceptorFactory {
+impl DeprecatedReceptorFactory {
     pub fn new() -> Self {
         Self { cache: ReceptorCache::new(), is_loaded: Arc::new(AtomicBool::new(false)) }
     }
@@ -28,7 +28,7 @@ impl ReceptorFactory {
     /// Create receptor from base configuration
     async fn create_receptor_from_base(
         &self,
-        base: BaseReceptor,
+        base: DeprecatedBaseReceptor,
     ) -> Result<Arc<Receptor>, Box<dyn std::error::Error>> {
         match base.receptor_type {
             ReceptorType::Local => Err(Box::new(HolonError::NotImplemented(
@@ -97,7 +97,10 @@ impl ReceptorFactory {
     }
 
     /// Load receptors directly from a list of ReceptorConfig
-    pub async fn load_from_configs(&self, configs: Vec<BaseReceptor>) -> Result<usize, HolonError> {
+    pub async fn load_from_configs(
+        &self,
+        configs: Vec<DeprecatedBaseReceptor>,
+    ) -> Result<usize, HolonError> {
         // Clear existing cache
         self.cache.clear()?;
         self.is_loaded.store(false, Ordering::SeqCst);
@@ -132,7 +135,7 @@ impl ReceptorFactory {
 }
 
 // Add Debug implementation
-impl std::fmt::Debug for ReceptorFactory {
+impl std::fmt::Debug for DeprecatedReceptorFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ReceptorFactory")
             .field("cache", &self.cache)

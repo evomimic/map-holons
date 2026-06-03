@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use core_types::HolonError;
-use holons_client::{ClientSession, Receptor};
+use holons_client::{ClientSession, LocalRecoveryReceptor};
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::TransientReference;
@@ -11,13 +11,16 @@ use crate::ExecutionPolicy;
 
 pub struct RuntimeSession {
     space_manager: Arc<HolonSpaceManager>,
-    recovery: Option<Arc<Receptor>>,
+    recovery: Option<Arc<LocalRecoveryReceptor>>,
     active_sessions: RwLock<HashMap<TxId, Arc<ClientSession>>>,
     archived_sessions: RwLock<HashMap<TxId, Arc<ClientSession>>>,
 }
 
 impl RuntimeSession {
-    pub fn new(space_manager: Arc<HolonSpaceManager>, recovery: Option<Arc<Receptor>>) -> Self {
+    pub fn new(
+        space_manager: Arc<HolonSpaceManager>,
+        recovery: Option<Arc<LocalRecoveryReceptor>>,
+    ) -> Self {
         Self {
             space_manager,
             recovery,
@@ -31,10 +34,8 @@ impl RuntimeSession {
             return Ok(0);
         };
 
-        let tx_ids = match recovery.as_ref() {
-            Receptor::LocalRecovery(r) => r.list_open_sessions()?,
-            _ => return Ok(0),
-        };
+        let r = recovery.as_ref();
+        let tx_ids = r.list_open_sessions()?;
 
         let mut restored = 0usize;
         let mut active = self.active_sessions.write().map_err(|e| {

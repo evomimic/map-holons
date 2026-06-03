@@ -5,7 +5,8 @@ use crate::setup::common_setup::{register_receptor, serialize_props};
 use crate::setup::providers::holochain::plugins::hc_dev_mode_enabled;
 use crate::setup::window_setup::ProviderWindowSetup;
 use async_trait::async_trait;
-use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use client_shared_types::base_receptor::ReceptorType;
+use client_shared_types::deprecated_base_receptor::DeprecatedBaseReceptor;
 use deprecated_holochain_receptor::HolochainConductorClient;
 use holochain_client::{AdminWebsocket, AppInfo, AppWebsocket};
 use holons_trust_channel::TrustChannel;
@@ -178,7 +179,7 @@ impl HolochainSetup {
         _handle: &AppHandle,
         name: &str,
         hc_cfg: &HolochainConfig,
-    ) -> anyhow::Result<(BaseReceptor, Arc<HolochainConductorClient>)> {
+    ) -> anyhow::Result<(DeprecatedBaseReceptor, Arc<HolochainConductorClient>)> {
         let agent = app_ws.my_pub_key.clone();
         let cell_details = hc_cfg
             .cell_details
@@ -196,7 +197,7 @@ impl HolochainSetup {
         .await;
         let props = serialize_props(hc_cfg);
 
-        let receptor = BaseReceptor {
+        let receptor = DeprecatedBaseReceptor {
             receptor_id: name.to_string(),
             receptor_type: ReceptorType::Holochain,
             client_handler: Some(client.clone() as Arc<dyn std::any::Any + Send + Sync>),

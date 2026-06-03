@@ -15,7 +15,7 @@ use holons_core::reference_layer::{
 };
 
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
-use holons_client::{LocalRecoveryReceptor, Receptor};
+use holons_client::LocalRecoveryReceptor;
 use recovery_receptor::{RecoveryStore, TransactionRecoveryStore};
 
 use map_commands_contract::{
@@ -320,7 +320,7 @@ async fn new_holon_stage_then_staged_count() {
 
 // ── Recovery-backed runtime helpers ────────────────────────────────
 
-fn build_test_recovery_receptor() -> Arc<Receptor> {
+fn build_test_recovery_receptor() -> Arc<LocalRecoveryReceptor> {
     let store = Arc::new(
         TransactionRecoveryStore::new(Path::new(":memory:"))
             .expect("in-memory recovery store should init"),
@@ -328,12 +328,10 @@ fn build_test_recovery_receptor() -> Arc<Receptor> {
     let base = BaseReceptor {
         receptor_id: "test-recovery".to_string(),
         receptor_type: ReceptorType::LocalRecovery,
-        client_handler: Some(store as Arc<dyn Any + Send + Sync>),
+        //client_handler: Some(store as Arc<dyn Any + Send + Sync>),
         properties: HashMap::new(),
     };
-    Arc::new(Receptor::LocalRecovery(
-        LocalRecoveryReceptor::new(base).expect("receptor should create"),
-    ))
+    Arc::new(LocalRecoveryReceptor::from_base(base, store)) //.expect("receptor should create")
 }
 
 fn build_test_runtime_with_recovery() -> Runtime {

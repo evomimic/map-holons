@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use client_shared_types::ReceptorType;
-use holons_client::{init_client_runtime, receptor_factory, Receptor};
+use holons_client::{init_client_runtime, LocalRecoveryReceptor}; //, receptor_factory};
 use map_commands_runtime::{Runtime, RuntimeSession};
 use tauri::{AppHandle, Manager};
 
@@ -10,6 +9,15 @@ use crate::runtime::RuntimeState;
 /// Stored by providers (e.g. Holochain) and consumed by runtime init.
 pub type RuntimeInitiatorState =
     std::sync::RwLock<Option<Arc<dyn holons_core::dances::DanceInitiator>>>;
+
+/// Typed state slot for the local recovery receptor.
+/// Written by local/setup.rs, read by init_from_state.
+pub type RecoveryReceptorState = std::sync::RwLock<Option<Arc<LocalRecoveryReceptor>>>;
+
+/// Typed state slot for the Holochain conductor client.
+/// Written by holochain/setup.rs, read by all_spaces and status commands.
+//pub type HolochainReceptorState =
+//   std::sync::RwLock<Option<Arc<HolochainConductorClient>>>;
 
 /// Initialize the MAP Commands runtime from the initiator stored in app state.
 ///
@@ -30,7 +38,9 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
     };
 
     let space_manager = init_client_runtime(Some(initiator));
-    let recovery_receptor = get_recovery_receptor_from_factory(handle);
+
+    let recovery_receptor =
+        handle.try_state::<RecoveryReceptorState>().and_then(|state| state.read().ok()?.clone());
 
     let session =
         Arc::new(RuntimeSession::new(Arc::clone(&space_manager), recovery_receptor.clone()));
@@ -71,22 +81,4 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
 
     tracing::error!("[RUNTIME] RuntimeState missing; runtime could not be stored.");
     false
-}
-
-fn get_recovery_receptor_from_factory(handle: &AppHandle) -> Option<Arc<Receptor>> {
-    let factory = handle.try_state::<receptor_factory::ReceptorFactory>()?;
-
-    match factory.get_default_receptor_by_type(&ReceptorType::LocalRecovery) {
-        Ok(receptor) => {
-            tracing::info!("[RUNTIME] Local recovery receptor found.");
-            Some(receptor)
-        }
-        Err(err) => {
-            tracing::warn!(
-                "[RUNTIME] Local recovery receptor unavailable ({}); recovery features disabled.",
-                err
-            );
-            None
-        }
-    }
 }

@@ -1,10 +1,10 @@
 use client_shared_types::holon_space::SpaceInfo;
-use holons_client::receptor_factory::ReceptorFactory;
+use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
 use tauri::{command, State};
 
 #[command]
 pub async fn root_space(
-    _receptor_factory: State<'_, ReceptorFactory>,
+    _receptor_factory: State<'_, DeprecatedReceptorFactory>,
 ) -> Result<SpaceInfo, String> {
     tracing::warn!(
         "[TAURI COMMAND] 'root_space' invoked but not implemented; returning typed error"

@@ -1,11 +1,13 @@
 use crate::config::providers::local::LocalConfig;
 use crate::config::providers::ProviderConfig;
 use crate::config::StorageProvider;
-use crate::setup::common_setup::{register_receptor, serialize_props};
+use crate::runtime::init_runtime::RecoveryReceptorState;
+use crate::setup::common_setup::serialize_props;
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use recovery_receptor::local_recovery_receptor::LocalRecoveryReceptor;
 use recovery_receptor::{RecoveryStore, TransactionRecoveryStore};
 use std::sync::Arc;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager}; // alias lives in runtime, not here
 
 pub struct LocalSetup;
 
@@ -22,9 +24,9 @@ impl LocalSetup {
         //let t_setup = std::time::Instant::now();
         let is_recovery = local_cfg.features.iter().any(|f| f == "recovery");
         if is_recovery {
-            let receptor_cfg: BaseReceptor =
-                Self::build_recovery_receptor(&handle, name, local_cfg).await?;
-            register_receptor(&handle, receptor_cfg).await?;
+            //let receptor_cfg: BaseReceptor =
+            Self::build_recovery_receptor(&handle, name, local_cfg).await?;
+            // register_receptor(&handle, receptor_cfg).await?;
         } else {
             return Err(anyhow::anyhow!(
                 "Local storage '{}' enabled without 'recovery' feature: Registering a non-recovery receptor is currently not allowed as we have not defined other local receptors.",name));
@@ -37,19 +39,33 @@ impl LocalSetup {
         handle: &AppHandle,
         name: &str,
         local_config: &LocalConfig,
-    ) -> anyhow::Result<BaseReceptor> {
+    ) -> anyhow::Result<()> {
         tracing::info!("[LOCAL SETUP] Recovery feature enabled for Local storage.");
         let snapshot_store = create_snapshot_store(handle, local_config, name).await?;
-
         // continue with receptor config creation as normal
         let props = serialize_props(local_config);
+        let receptor = Arc::new(LocalRecoveryReceptor::from_base(
+            BaseReceptor {
+                // clean BaseReceptor (no client_handler)
+                receptor_id: name.to_string(),
+                receptor_type: ReceptorType::LocalRecovery,
+                properties: props.clone(),
+            },
+            Arc::clone(&snapshot_store),
+        ));
+        if let Some(state) = handle.try_state::<RecoveryReceptorState>() {
+            if let Ok(mut guard) = state.write() {
+                *guard = Some(receptor);
+                tracing::info!("[LOCAL SETUP] LocalRecoveryReceptor stored in typed state.");
+            }
+        }
+        Ok(())
 
-        Ok(BaseReceptor {
-            receptor_id: name.to_string(),
-            receptor_type: ReceptorType::LocalRecovery,
-            client_handler: Some(snapshot_store as Arc<dyn std::any::Any + Send + Sync>),
-            properties: props,
-        })
+        // Ok(BaseReceptor {
+        //     receptor_id: name.to_string(),
+        //     receptor_type: ReceptorType::LocalRecovery,
+        //     properties: props,
+        // })
     }
 }
 

@@ -3,6 +3,8 @@ use std::fmt;
 use std::sync::Arc;
 
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
+use client_shared_types::deprecated_base_receptor::DeprecatedBaseReceptor;
+
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 
@@ -17,8 +19,9 @@ pub struct LocalRecoveryReceptor {
 }
 
 impl LocalRecoveryReceptor {
-    pub fn new(base_receptor: BaseReceptor) -> Result<Self, HolonError> {
-        let client_any = base_receptor
+    //deprecated function for factory
+    pub fn new(base: DeprecatedBaseReceptor) -> Result<Self, HolonError> {
+        let client_any = base
             .client_handler
             .as_ref()
             .expect("a handler is required for LocalRecoveryReceptor")
@@ -27,16 +30,24 @@ impl LocalRecoveryReceptor {
         let recovery_store = client_any.downcast::<TransactionRecoveryStore>().map_err(|_| {
             HolonError::DowncastFailure(format!(
                 "Failed to cast client handler for LocalRecoveryReceptor '{}'",
-                base_receptor.receptor_id
+                base.receptor_id
             ))
         })?;
 
         Ok(Self {
+            receptor_id: base.receptor_id,
+            receptor_type: base.receptor_type,
+            properties: base.properties,
+            recovery_store,
+        })
+    }
+    pub fn from_base(base_receptor: BaseReceptor, store: Arc<TransactionRecoveryStore>) -> Self {
+        Self {
             receptor_id: base_receptor.receptor_id.clone(),
             receptor_type: base_receptor.receptor_type,
             properties: base_receptor.properties.clone(),
-            recovery_store,
-        })
+            recovery_store: store,
+        }
     }
 
     pub fn list_open_sessions(&self) -> Result<Vec<String>, HolonError> {

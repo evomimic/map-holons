@@ -1,7 +1,7 @@
 use crate::{
     config::providers::ProviderConfig, setup::receptor_config_registry::ReceptorConfigRegistry,
 };
-use client_shared_types::base_receptor::BaseReceptor;
+use client_shared_types::deprecated_base_receptor::DeprecatedBaseReceptor;
 use tauri::{AppHandle, Manager};
 
 pub fn serialize_props<C: ProviderConfig>(config: &C) -> std::collections::HashMap<String, String> {
@@ -26,7 +26,7 @@ pub fn serialize_props<C: ProviderConfig>(config: &C) -> std::collections::HashM
 /// Register a built receptor config into the application state
 pub async fn register_receptor(
     handle: &AppHandle,
-    receptor_cfg: BaseReceptor,
+    receptor_cfg: DeprecatedBaseReceptor,
 ) -> anyhow::Result<()> {
     // Get the registry from app state and register the new config
     let registry = handle.state::<ReceptorConfigRegistry>();

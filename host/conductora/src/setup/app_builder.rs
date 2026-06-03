@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-use holons_client::receptor_factory::ReceptorFactory;
+use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
 
 pub struct AppBuilder;
 
@@ -65,8 +65,10 @@ impl AppBuilder {
             .manage(storage_manager.clone())
             .manage::<ProviderRuntimeSelection>(runtime_selection.clone())
             .manage::<runtime::RuntimeInitiatorState>(RwLock::new(None))
-            .manage(ReceptorFactory::new())
+            .manage(DeprecatedReceptorFactory::new())
             .manage(ReceptorConfigRegistry::new())
+            .manage::<runtime::RecoveryReceptorState>(RwLock::new(None))
+            //.manage::<runtime::HolochainReceptorState>(RwLock::new(None))
             .manage::<runtime::RuntimeState>(RwLock::new(None))
             .invoke_handler(tauri::generate_handler![
                 commands::root_space,
@@ -128,7 +130,7 @@ impl AppBuilder {
     async fn load_receptor_configs(handle: &AppHandle) -> anyhow::Result<()> {
         if let Some(registry) = handle.try_state::<ReceptorConfigRegistry>() {
             let configs = registry.all();
-            if let Some(factory) = handle.try_state::<ReceptorFactory>() {
+            if let Some(factory) = handle.try_state::<DeprecatedReceptorFactory>() {
                 factory
                     .load_from_configs(configs)
                     .await

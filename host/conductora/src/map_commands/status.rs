@@ -1,10 +1,10 @@
 use crate::runtime::RuntimeState;
-use holons_client::receptor_factory::ReceptorFactory;
+use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
 use tauri::{command, State};
 
 #[command]
 pub async fn is_service_ready(
-    receptor_factory: State<'_, ReceptorFactory>,
+    receptor_factory: State<'_, DeprecatedReceptorFactory>,
     runtime_state: State<'_, RuntimeState>,
 ) -> Result<bool, String> {
     tracing::debug!("[TAURI COMMAND] 'is_service_ready' command invoked");

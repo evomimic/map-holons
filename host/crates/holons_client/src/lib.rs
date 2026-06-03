@@ -2,8 +2,8 @@ pub mod client_context;
 pub mod client_session;
 pub mod client_shared_objects;
 pub mod dances_client;
-pub mod receptor_cache;
-pub mod receptor_factory;
+pub mod deprecated_receptor_cache;
+pub mod deprecated_receptor_factory;
 
 use std::sync::Arc;
 
