@@ -24,13 +24,14 @@ These are the rules most likely to be violated by a locally plausible change:
   runtime assumptions, or host-only dependencies.
 * `TransactionContext` is the transaction-scoped execution surface. Route runtime mutation, lookup,
   and commit through it; do not introduce parallel operation APIs.
-* Runtime references are bound, self-resolving handles. Do not serialize them for convenience or
-  thread context through ordinary reference operations.
+* Runtime references are bound, self-resolving handles. Do not serialize bound runtime reference
+  handles directly or thread context through ordinary reference operations.
 * Wire types stop at transport boundaries. Bind wire → runtime at ingress and project runtime →
   wire at egress; do not leak `*Wire` types into domain execution.
 * Do not bypass the Reference Layer to access storage/DHT, or add parallel ingress paths where one
   is designated.
-* Do not invoke Cargo build/check/test commands from the repository root. Use root npm scripts.
+* Do not build/check/test the root Cargo workspace directly. Prefer root npm scripts; use
+  workspace-specific or `--manifest-path` Cargo commands only when intentional.
 * Do not hand-edit canonical MAP Core Schema import JSON unless explicitly instructed.
 * Diagnose before changing. Keep edits scoped and explicit.
 
@@ -66,9 +67,10 @@ Placement heuristic:
 
 If not, it belongs in `host/` only. Tests do not relax execution-context constraints.
 
-Shared crates intentionally are not their own workspace. They are resolved separately by each
-consuming workspace, so feature leakage from host builds can mask WASM failures. Validate the hApp
-workspace and its reachable shared-crate graph with:
+Shared crates are path dependencies consumed separately by the host and hApp workspaces, not a
+standalone workspace with one universal feature set. A host/native build does not prove WASM
+safety. Validate shared-crate changes through the hApp workspace when the crate is
+guest/WASM-reachable:
 
 ```sh
 npm run check -w map-happ
@@ -110,7 +112,8 @@ The host command pipeline intentionally separates:
 
 ## Transaction and Reference Model
 
-All runtime mutation, lookup, and commit work occurs through `TransactionContext` and its facades:
+All runtime mutation, lookup, and commit work should use established `TransactionContext`
+APIs/facades, currently including:
 
 ```rust
 let mutation = context.mutation();
@@ -159,7 +162,7 @@ let children = reference.related_holons(CoreRelationshipTypeName::HasChild)?;
 Do not reintroduce old-style helpers that pass context into ordinary reference operations.
 
 Runtime references (`HolonReference`, `TransientReference`, `StagedReference`, `SmartReference`)
-are bound handles, not serializable data. Corresponding `*Wire` references in `holons_boundary` are
+are bound handles, not boundary data. Corresponding `*Wire` references in `holons_boundary` are
 context-free serializable boundary types. Bind only at ingress.
 
 ## Build, Test, and Dependencies
