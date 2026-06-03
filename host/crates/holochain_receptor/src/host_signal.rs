@@ -1,6 +1,7 @@
 use holochain_client::CellId;
 use holochain_types::prelude::ZomeName;
 use holochain_types::signal::{Signal, SystemSignal};
+use integrity_core_types::{HolonNodeModel, LocalId};
 
 /// Typed host-side signal produced by the decode adapter after `on_signal` fires.
 #[derive(Debug, Clone)]
@@ -17,34 +18,16 @@ pub enum HostSignal {
 
 /// Host-side mirror of the holons coordinator `Signal` enum.
 ///
-/// `LinkTypes` and `EntryTypes` are defined in the `holons_integrity` guest crate and cannot
-/// be compiled on the host, so those fields are kept as `serde_json::Value` and deserialized
-/// from msgpack via `rmp_serde`. The `action` field retains the same opaque treatment to
-/// avoid pulling in guest-only HDK types.
+/// Uses MAP domain types (`LocalId`, `HolonNodeModel`) that compile on the host
+/// without any dependency on guest-only HDK or integrity crates.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum HolonsZomeSignal {
-    LinkCreated {
-        action: serde_json::Value,
-        link_type: serde_json::Value,
-    },
-    LinkDeleted {
-        action: serde_json::Value,
-        link_type: serde_json::Value,
-    },
-    EntryCreated {
-        action: serde_json::Value,
-        app_entry: serde_json::Value,
-    },
-    EntryUpdated {
-        action: serde_json::Value,
-        app_entry: serde_json::Value,
-        original_app_entry: serde_json::Value,
-    },
-    EntryDeleted {
-        action: serde_json::Value,
-        original_app_entry: serde_json::Value,
-    },
+    LinkCreated { action_id: LocalId, link_type: String },
+    LinkDeleted { action_id: LocalId, link_type: String },
+    HolonCreated { action_id: LocalId, holon: HolonNodeModel },
+    HolonUpdated { action_id: LocalId, holon: HolonNodeModel, original_holon: HolonNodeModel },
+    HolonDeleted { action_id: LocalId, original_holon: HolonNodeModel },
 }
 
 /// Decode a raw `holochain_types::signal::Signal` into a typed `HostSignal`.
@@ -80,6 +63,9 @@ mod tests {
     use super::*;
     use holochain_types::signal::SystemSignal;
     use holochain_zome_types::prelude::EntryHash;
+    use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap};
+
+    // ── helpers ──────────────────────────────────────────────────────────────
 
     fn make_cell_id() -> CellId {
         use holochain_zome_types::prelude::{AgentPubKey, DnaHash};
@@ -95,6 +81,34 @@ mod tests {
         holochain_zome_types::prelude::AppSignal::new(ExternIO(bytes))
     }
 
+    /// Simulate what the guest zome does: encode a `HolonsZomeSignal` to msgpack,
+    /// wrap it as a Holochain `Signal::App` from the "holons" zome, then decode it
+    /// on the host via `decode_signal`.
+    fn roundtrip(zs: HolonsZomeSignal) -> HostSignal {
+        let bytes = rmp_serde::to_vec_named(&zs).expect("msgpack encode");
+        let signal = Signal::App {
+            cell_id: make_cell_id(),
+            zome_name: make_zome_name("holons"),
+            signal: make_app_signal(bytes),
+        };
+        decode_signal(signal, "holons")
+    }
+
+    /// A realistic 39-byte `LocalId` (same length as a Holochain `ActionHash`).
+    fn action_id(seed: u8) -> LocalId {
+        LocalId(vec![seed; 39])
+    }
+
+    fn empty_holon() -> HolonNodeModel {
+        HolonNodeModel::new(None, PropertyMap::new())
+    }
+
+    fn holon_with_original(original_seed: u8) -> HolonNodeModel {
+        HolonNodeModel::new(Some(action_id(original_seed)), PropertyMap::new())
+    }
+
+    // ── routing ──────────────────────────────────────────────────────────────
+
     #[test]
     fn system_signal_passes_through() {
         let entry_hash = EntryHash::from_raw_32(vec![0u8; 32]);
@@ -107,13 +121,20 @@ mod tests {
 
     #[test]
     fn non_target_zome_becomes_other_app() {
+        let bytes = rmp_serde::to_vec_named(&HolonsZomeSignal::HolonCreated {
+            action_id: action_id(1),
+            holon: empty_holon(),
+        })
+        .unwrap();
         let signal = Signal::App {
             cell_id: make_cell_id(),
-            zome_name: make_zome_name("other_zome"),
-            signal: make_app_signal(b"anything".to_vec()),
+            zome_name: make_zome_name("some_other_zome"),
+            signal: make_app_signal(bytes),
         };
         match decode_signal(signal, "holons") {
-            HostSignal::OtherApp { .. } => {}
+            HostSignal::OtherApp { zome_name, .. } => {
+                assert_eq!(zome_name.0.as_ref(), "some_other_zome");
+            }
             other => panic!("expected OtherApp, got {:?}", other),
         }
     }
@@ -123,7 +144,7 @@ mod tests {
         let signal = Signal::App {
             cell_id: make_cell_id(),
             zome_name: make_zome_name("holons"),
-            signal: make_app_signal(b"not valid msgpack for HolonsZomeSignal".to_vec()),
+            signal: make_app_signal(b"not valid msgpack".to_vec()),
         };
         match decode_signal(signal, "holons") {
             HostSignal::DecodeError { .. } => {}
@@ -132,21 +153,119 @@ mod tests {
     }
 
     #[test]
-    fn valid_holons_signal_decodes() {
-        // Build a HolonsZomeSignal and round-trip through msgpack
-        let zs = HolonsZomeSignal::EntryCreated {
-            action: serde_json::Value::Null,
-            app_entry: serde_json::Value::Null,
-        };
-        let bytes = rmp_serde::to_vec_named(&zs).expect("encode");
-        let signal = Signal::App {
-            cell_id: make_cell_id(),
-            zome_name: make_zome_name("holons"),
-            signal: make_app_signal(bytes),
-        };
-        match decode_signal(signal, "holons") {
-            HostSignal::Holons { .. } => {}
+    fn cell_id_and_zome_name_are_preserved() {
+        match roundtrip(HolonsZomeSignal::HolonCreated {
+            action_id: action_id(1),
+            holon: empty_holon(),
+        }) {
+            HostSignal::Holons { zome_name, .. } => {
+                assert_eq!(zome_name.0.as_ref(), "holons");
+            }
             other => panic!("expected Holons, got {:?}", other),
+        }
+    }
+
+    // ── HolonCreated ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn holon_created_decodes_with_correct_fields() {
+        let id = action_id(0xAB);
+        let holon = holon_with_original(0x01);
+
+        match roundtrip(HolonsZomeSignal::HolonCreated {
+            action_id: id.clone(),
+            holon: holon.clone(),
+        }) {
+            HostSignal::Holons { signal: HolonsZomeSignal::HolonCreated { action_id, holon: h }, .. } => {
+                assert_eq!(action_id.0, id.0);
+                assert_eq!(h.original_id, holon.original_id);
+            }
+            other => panic!("expected HolonCreated, got {:?}", other),
+        }
+    }
+
+    // ── HolonUpdated ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn holon_updated_decodes_with_correct_fields() {
+        let id = action_id(0xBC);
+        let holon = empty_holon();
+        let original = holon_with_original(0x02);
+
+        match roundtrip(HolonsZomeSignal::HolonUpdated {
+            action_id: id.clone(),
+            holon: holon.clone(),
+            original_holon: original.clone(),
+        }) {
+            HostSignal::Holons {
+                signal: HolonsZomeSignal::HolonUpdated { action_id, holon: h, original_holon: o },
+                ..
+            } => {
+                assert_eq!(action_id.0, id.0);
+                assert_eq!(h.original_id, holon.original_id);
+                assert_eq!(o.original_id, original.original_id);
+            }
+            other => panic!("expected HolonUpdated, got {:?}", other),
+        }
+    }
+
+    // ── HolonDeleted ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn holon_deleted_decodes_with_correct_fields() {
+        let id = action_id(0xCD);
+        let original = holon_with_original(0x03);
+
+        match roundtrip(HolonsZomeSignal::HolonDeleted {
+            action_id: id.clone(),
+            original_holon: original.clone(),
+        }) {
+            HostSignal::Holons {
+                signal: HolonsZomeSignal::HolonDeleted { action_id, original_holon: o },
+                ..
+            } => {
+                assert_eq!(action_id.0, id.0);
+                assert_eq!(o.original_id, original.original_id);
+            }
+            other => panic!("expected HolonDeleted, got {:?}", other),
+        }
+    }
+
+    // ── LinkCreated / LinkDeleted ─────────────────────────────────────────────
+
+    #[test]
+    fn link_created_decodes_with_correct_fields() {
+        let id = action_id(0xDE);
+        match roundtrip(HolonsZomeSignal::LinkCreated {
+            action_id: id.clone(),
+            link_type: "SmartLink".to_string(),
+        }) {
+            HostSignal::Holons {
+                signal: HolonsZomeSignal::LinkCreated { action_id, link_type },
+                ..
+            } => {
+                assert_eq!(action_id.0, id.0);
+                assert_eq!(link_type, "SmartLink");
+            }
+            other => panic!("expected LinkCreated, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn link_deleted_decodes_with_correct_fields() {
+        let id = action_id(0xEF);
+        match roundtrip(HolonsZomeSignal::LinkDeleted {
+            action_id: id.clone(),
+            link_type: "AllHolonNodes".to_string(),
+        }) {
+            HostSignal::Holons {
+                signal: HolonsZomeSignal::LinkDeleted { action_id, link_type },
+                ..
+            } => {
+                assert_eq!(action_id.0, id.0);
+                assert_eq!(link_type, "AllHolonNodes");
+            }
+            other => panic!("expected LinkDeleted, got {:?}", other),
         }
     }
 }

@@ -17,7 +17,6 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
 #holochain dependencies
 holochain_client = { version = "0.8" }
 holochain_types = "0.6"
-holochain_zome_types = "0.6"
 
 #map dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }
@@ -29,5 +28,7 @@ holons_trust_channel = { path = "../../../shared_crates/holons_trust_channel" }
 holons_loader_client = { path = "../holons_loader_client" }
 core_types = { path = "../../../shared_crates/type_system/core_types" }
 base_types = { path = "../../../shared_crates/type_system/base_types" }
-type_names = { path = "../../../shared_crates/type_system/type_names" }
 holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
+
+[dev-dependencies]
+holochain_zome_types = "0.6"

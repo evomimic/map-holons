@@ -671,7 +671,9 @@ dependencies = [
  "hdk",
  "holons_core",
  "holons_guest",
+ "holons_guest_integrity",
  "holons_integrity",
+ "integrity_core_types",
  "pkcs8",
  "serde",
 ]

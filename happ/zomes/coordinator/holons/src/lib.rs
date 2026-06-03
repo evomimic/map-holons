@@ -3,7 +3,9 @@ pub mod guest {
     pub use holons_guest::*;
 }
 use hdk::prelude::*;
+use holons_guest_integrity::{HolonNode, local_id_from_action_hash};
 use holons_integrity::*;
+use integrity_core_types::LocalId;
 
 #[hdk_extern]
 pub fn init(_: ()) -> ExternResult<InitCallbackResult> {
@@ -12,27 +14,11 @@ pub fn init(_: ()) -> ExternResult<InitCallbackResult> {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum Signal {
-    LinkCreated {
-        action: SignedActionHashed,
-        link_type: LinkTypes,
-    },
-    LinkDeleted {
-        action: SignedActionHashed,
-        link_type: LinkTypes,
-    },
-    EntryCreated {
-        action: SignedActionHashed,
-        app_entry: EntryTypes,
-    },
-    EntryUpdated {
-        action: SignedActionHashed,
-        app_entry: EntryTypes,
-        original_app_entry: EntryTypes,
-    },
-    EntryDeleted {
-        action: SignedActionHashed,
-        original_app_entry: EntryTypes,
-    },
+    LinkCreated { action_id: LocalId, link_type: String },
+    LinkDeleted { action_id: LocalId, link_type: String },
+    HolonCreated { action_id: LocalId, holon: HolonNode },
+    HolonUpdated { action_id: LocalId, holon: HolonNode, original_holon: HolonNode },
+    HolonDeleted { action_id: LocalId, original_holon: HolonNode },
 }
 #[hdk_extern(infallible)]
 pub fn post_commit(committed_actions: Vec<SignedActionHashed>) {
@@ -48,7 +34,11 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
             if let Ok(Some(link_type)) =
                 LinkTypes::from_type(create_link.zome_index, create_link.link_type)
             {
-                emit_signal(Signal::LinkCreated { action, link_type })?;
+                let action_id = local_id_from_action_hash(action.hashed.hash.clone());
+                emit_signal(Signal::LinkCreated {
+                    action_id,
+                    link_type: format!("{:?}", link_type),
+                })?;
             }
             Ok(())
         }
@@ -61,7 +51,11 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
                     if let Ok(Some(link_type)) =
                         LinkTypes::from_type(create_link.zome_index, create_link.link_type)
                     {
-                        emit_signal(Signal::LinkDeleted { action, link_type })?;
+                        let action_id = local_id_from_action_hash(action.hashed.hash.clone());
+                        emit_signal(Signal::LinkDeleted {
+                            action_id,
+                            link_type: format!("{:?}", link_type),
+                        })?;
                     }
                     Ok(())
                 }
@@ -73,24 +67,33 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
             }
         }
         Action::Create(_create) => {
-            if let Ok(Some(app_entry)) = get_entry_for_action(&action.hashed.hash) {
-                emit_signal(Signal::EntryCreated { action, app_entry })?;
+            if let Ok(Some(EntryTypes::HolonNode(holon))) =
+                get_entry_for_action(&action.hashed.hash)
+            {
+                let action_id = local_id_from_action_hash(action.hashed.hash.clone());
+                emit_signal(Signal::HolonCreated { action_id, holon })?;
             }
             Ok(())
         }
         Action::Update(update) => {
-            if let Ok(Some(app_entry)) = get_entry_for_action(&action.hashed.hash) {
-                if let Ok(Some(original_app_entry)) =
+            if let Ok(Some(EntryTypes::HolonNode(holon))) =
+                get_entry_for_action(&action.hashed.hash)
+            {
+                if let Ok(Some(EntryTypes::HolonNode(original_holon))) =
                     get_entry_for_action(&update.original_action_address)
                 {
-                    emit_signal(Signal::EntryUpdated { action, app_entry, original_app_entry })?;
+                    let action_id = local_id_from_action_hash(action.hashed.hash.clone());
+                    emit_signal(Signal::HolonUpdated { action_id, holon, original_holon })?;
                 }
             }
             Ok(())
         }
         Action::Delete(delete) => {
-            if let Ok(Some(original_app_entry)) = get_entry_for_action(&delete.deletes_address) {
-                emit_signal(Signal::EntryDeleted { action, original_app_entry })?;
+            if let Ok(Some(EntryTypes::HolonNode(original_holon))) =
+                get_entry_for_action(&delete.deletes_address)
+            {
+                let action_id = local_id_from_action_hash(action.hashed.hash.clone());
+                emit_signal(Signal::HolonDeleted { action_id, original_holon })?;
             }
             Ok(())
         }
