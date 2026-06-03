@@ -19,7 +19,6 @@ use tauri_plugin_holochain::{AppBundle, HolochainExt};
 pub struct HolochainSetup;
 
 impl HolochainSetup {
-    /// Main setup function for Holochain integration
     pub async fn setup(
         handle: AppHandle,
         name: &str,
@@ -33,14 +32,10 @@ impl HolochainSetup {
         let app_id = &hc_cfg.app_id;
         let dev_mode = hc_dev_mode_enabled();
 
-        // Load and validate happ bundle early
-        let happ = match load_happ_bundle(hc_cfg) {
-            Ok(bundle) => bundle,
-            Err(e) => {
-                tracing::error!("[HOLOCHAIN SETUP] Failed to load happ bundle: {}", e);
-                return Err(anyhow::anyhow!("Failed to load happ bundle: {}", e));
-            }
-        };
+        let happ = load_happ_bundle(hc_cfg).map_err(|e| {
+            tracing::error!("[HOLOCHAIN SETUP] Failed to load happ bundle: {}", e);
+            anyhow::anyhow!("Failed to load happ bundle: {}", e)
+        })?;
         tracing::debug!(
             "[HOLOCHAIN SETUP] happ bundle loaded in {:.1}s",
             t_setup.elapsed().as_secs_f64()
@@ -56,19 +51,17 @@ impl HolochainSetup {
         let installed_apps = admin_ws
             .list_apps(None)
             .await
-            .map_err(|err| tauri_plugin_holochain::Error::ConductorApiError(err))?;
+            .map_err(tauri_plugin_holochain::Error::ConductorApiError)?;
 
         let t_install = std::time::Instant::now();
         if dev_mode && Self::is_app_installed(&installed_apps, app_id.clone()) {
             // Dev mode but app is already installed (wipe didn't clear it, e.g. first-ever run
             // or wipe failed). Skip update_app_if_necessary — the bundle store record
             // may not exist for the dev conductor dir, causing a spurious "app not found" error.
-            // The existing running app is sufficient for dev purposes.
             tracing::warn!("[HOLOCHAIN SETUP] Dev mode: app '{}' already installed (wipe may have been skipped on this run). Skipping update check.", app_id);
         } else if dev_mode {
-            // Dev mode: conductor state (except wasm.db) wiped before the
-            // conductor started (see clean_dev_conductor_state in launch.rs), so
-            // there is no stale app record.  Install fresh with an ephemeral key.
+            // Dev mode: conductor state (except wasm.db) wiped before the conductor started
+            // (see clean_dev_conductor_state in launch.rs). Install fresh with an ephemeral key.
             Self::handle_new_app_installation(&handle, &admin_ws, happ, app_id.clone(), true)
                 .await?;
         } else if Self::is_app_installed(&installed_apps, app_id.clone()) {
@@ -81,6 +74,7 @@ impl HolochainSetup {
             "[HOLOCHAIN SETUP] App install/update done in {:.1}s",
             t_install.elapsed().as_secs_f64()
         );
+
         let t_appws = std::time::Instant::now();
         let app_ws = handle.holochain()?.app_websocket(app_id.clone()).await?;
         tracing::debug!(
@@ -88,7 +82,6 @@ impl HolochainSetup {
             t_appws.elapsed().as_secs_f64()
         );
 
-        // Validate cell_details early — needed by both the new and deprecated paths.
         let cell_details = hc_cfg
             .cell_details
             .as_ref()
@@ -99,8 +92,8 @@ impl HolochainSetup {
         let cell0 = &cell_details[0];
         let agent = app_ws.my_pub_key.clone();
 
-        // --- New HolochainReceptor path (signal pipeline + ActiveStorageReceptor) ---
-        // Cloned websockets are Arc-backed: all clones share the same conductor connection.
+        // New receptor path: signal pipeline + ActiveStorageReceptor.
+        // Websocket clones are Arc-backed — all clones share the same conductor connection.
         let receptor = HolochainReceptor::new(
             name.to_string(),
             serialize_props(hc_cfg),
@@ -113,7 +106,6 @@ impl HolochainSetup {
         )
         .await;
 
-        // Store in generic slot — any code needing space info or signal access reads from here.
         if let Some(state) = handle.try_state::<ActiveStorageReceptor>() {
             *state.write().expect("ActiveStorageReceptor lock poisoned") =
                 Some(receptor.clone() as Arc<dyn StorageReceptor>);
@@ -123,7 +115,6 @@ impl HolochainSetup {
             );
         }
 
-        // Feed DanceInitiator into RuntimeInitiatorState so init_from_state can build the Runtime.
         if let Some(state) = handle.try_state::<RuntimeInitiatorState>() {
             let initiator: Arc<dyn holons_core::dances::DanceInitiator> =
                 Arc::new(TrustChannel::new(receptor.client.clone()));
@@ -134,9 +125,9 @@ impl HolochainSetup {
             );
         }
 
-        // --- Existing deprecated path (kept for legacy DeprecatedHolochainReceptor consumers) ---
+        // Deprecated path — kept for legacy DeprecatedHolochainReceptor consumers.
         let (receptor_cfg, _client) =
-            Self::build_receptor(app_ws, admin_ws, &handle, name, hc_cfg).await?;
+            Self::build_receptor(app_ws, admin_ws, name, hc_cfg, cell0).await?;
         register_receptor(&handle, receptor_cfg).await?;
         tracing::info!(
             "[HOLOCHAIN SETUP] Total setup time: {:.1}s",
@@ -146,25 +137,22 @@ impl HolochainSetup {
         Ok(())
     }
 
-    /// Check if the app is already installed
     fn is_app_installed(app_infos: &[AppInfo], app_id: String) -> bool {
         app_infos.iter().any(|app_info| app_info.installed_app_id.as_str() == app_id)
     }
 
-    /// Handle setup for existing app installation
     async fn handle_existing_app(
         handle: &AppHandle,
         happ: AppBundle,
         app_id: String,
     ) -> anyhow::Result<()> {
         let app_ws = handle.holochain()?.app_websocket(app_id.clone()).await?;
-        tracing::info!("[HOLOCHAIN SETUP] App '{}' already installed.", app_id.clone());
+        tracing::info!("[HOLOCHAIN SETUP] App '{}' already installed.", app_id);
 
         handle.holochain()?.update_app_if_necessary(app_id.clone(), happ).await?;
 
-        // Verify connection
         match app_ws.app_info().await {
-            Ok(_app_info) => {
+            Ok(_) => {
                 tracing::info!(
                     "[HOLOCHAIN SETUP] App websocket connected successfully. Agent: {:?}",
                     app_ws.my_pub_key
@@ -179,7 +167,6 @@ impl HolochainSetup {
         Ok(())
     }
 
-    /// Handle new app installation
     async fn handle_new_app_installation(
         handle: &AppHandle,
         admin_ws: &AdminWebsocket,
@@ -189,8 +176,8 @@ impl HolochainSetup {
     ) -> anyhow::Result<()> {
         tracing::debug!("[HOLOCHAIN SETUP] App '{}' not found. Installing...", app_id);
 
-        // In dev mode DangerTestKeystore has no device_seed_lair_tag, so holochain
-        // cannot auto-derive an agent key. Generate one explicitly.
+        // DangerTestKeystore has no device_seed_lair_tag in dev mode, so the conductor
+        // cannot auto-derive an agent key — generate one explicitly.
         let agent_key: Option<AgentPubKey> = if dev_mode {
             let key = admin_ws
                 .generate_agent_pub_key()
@@ -210,22 +197,15 @@ impl HolochainSetup {
     async fn build_receptor(
         app_ws: AppWebsocket,
         admin_ws: AdminWebsocket,
-        _handle: &AppHandle,
         name: &str,
         hc_cfg: &HolochainConfig,
+        cell_detail: &CellDetail,
     ) -> anyhow::Result<(DeprecatedBaseReceptor, Arc<HolochainConductorClient>)> {
         let agent = app_ws.my_pub_key.clone();
-        let cell_details = hc_cfg
-            .cell_details
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("cell_details missing in HolochainConfig"))?;
-        if cell_details.is_empty() {
-            return Err(anyhow::anyhow!("cell_details is empty in HolochainConfig"));
-        }
         let client = Self::setup_holochain_client(
             app_ws.clone(),
             admin_ws.clone(),
-            cell_details[0].clone(),
+            cell_detail.clone(),
             agent,
         )
         .await;
@@ -246,72 +226,49 @@ impl HolochainSetup {
         admin_ws: AdminWebsocket,
         cell_detail: CellDetail,
         agent: AgentPubKey,
-        //cell_id: CellId,
     ) -> Arc<HolochainConductorClient> {
-        let app_ws_arc = Arc::new(Mutex::new(Some(app_ws)));
-        let admin_ws_arc = Arc::new(Mutex::new(Some(admin_ws)));
-        let rolename = cell_detail.role_name;
-        let zomename = cell_detail.zome_name;
-        let zomefunction = cell_detail.zome_function;
-
         Arc::new(HolochainConductorClient {
-            app_ws: app_ws_arc,
-            admin_ws: admin_ws_arc,
-            rolename,
-            zomename,
-            zomefunction,
+            app_ws: Arc::new(Mutex::new(Some(app_ws))),
+            admin_ws: Arc::new(Mutex::new(Some(admin_ws))),
+            rolename: cell_detail.role_name,
+            zomename: cell_detail.zome_name,
+            zomefunction: cell_detail.zome_function,
             agent,
-            //cell_id,
         })
     }
 }
 
-/// Load and validate the happ bundle from filesystem
+/// Load and validate the happ bundle from the filesystem path specified in config.
 pub fn load_happ_bundle(holochain_config: &HolochainConfig) -> anyhow::Result<AppBundle> {
-    // Get the path from HolochainConfig or use a sensible default
     let happ_relative = holochain_config.happ_path.clone().unwrap_or_else(|| {
         let default = "happ/workdir/map-holons.happ".to_string();
-        tracing::warn!("[HAPP LOADER] ⚠️  happ_path not set in config, using default: {}", default);
+        tracing::warn!("[HAPP LOADER] happ_path not set in config, using default: {}", default);
         default
     });
 
-    tracing::debug!("[HAPP LOADER] ✅ Using happ_path from config: {}", happ_relative);
+    tracing::debug!("[HAPP LOADER] Using happ_path: {}", happ_relative);
 
-    // Resolve relative to the workspace root, not current_dir
+    // Resolve relative to workspace root, not current_dir (which varies by runner context).
     let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|p| p.parent())
         .ok_or_else(|| anyhow::anyhow!("Failed to determine workspace root"))?;
 
     let happ_path = workspace_root.join(&happ_relative);
+    tracing::debug!("[HAPP LOADER] Resolved path: {:?}", happ_path);
 
-    tracing::debug!("[HAPP LOADER] Workspace root: {:?}", workspace_root);
-    tracing::debug!("[HAPP LOADER] Loading happ from: {:?}", happ_path);
-    tracing::debug!("[HAPP LOADER] Current directory: {:?}", std::env::current_dir());
-
-    // Check if file exists
     if !happ_path.exists() {
-        tracing::error!("[HAPP LOADER] ❌ File not found: {:?}", happ_path);
-        return Err(anyhow::anyhow!(format!("Happ file not found at: {:?}", happ_path)));
+        return Err(anyhow::anyhow!("Happ file not found at: {:?}", happ_path));
     }
 
-    tracing::debug!("[HAPP LOADER] ✅ File found");
-
-    // Read file
     let bytes = std::fs::read(&happ_path)
         .map_err(|e| anyhow::anyhow!("Failed to read happ file: {}", e))?;
+    tracing::debug!("[HAPP LOADER] Loaded {} bytes", bytes.len());
 
-    tracing::debug!("[HOLOCHAIN SETUP] Happ file loaded successfully ({} bytes)", bytes.len());
-
-    // Decode bundle
-    let bundle = AppBundle::unpack(std::io::Cursor::new(bytes))
-        .map_err(|e| anyhow::anyhow!("Failed to decode happ bundle: {}", e))?;
-
-    tracing::debug!("[HOLOCHAIN SETUP] Happ bundle decoded successfully");
-    Ok(bundle)
+    AppBundle::unpack(std::io::Cursor::new(bytes))
+        .map_err(|e| anyhow::anyhow!("Failed to decode happ bundle: {}", e))
 }
 
-// Holochain window setup
 pub struct HolochainWindowSetup;
 
 #[async_trait]
@@ -323,7 +280,6 @@ impl ProviderWindowSetup for HolochainWindowSetup {
 
         let main_window_builder = handle
             .holochain()?
-            //.ok_or(anyhow::anyhow!("Holochain plugin not available"))?
             .main_window_builder(String::from("main"), false, Some(app_id.to_string()), None)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to build holochain window: {}", e))?;
