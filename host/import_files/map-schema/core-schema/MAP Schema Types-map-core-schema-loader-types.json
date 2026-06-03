@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-23T11:57:15",
+    "generated_at": "2026-06-03T10:12:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -18,13 +18,13 @@
   "holons": [
     {
       "key": "LoaderHolon.HolonType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoaderHolon",
         "type_name_plural": "LoaderHolons",
         "display_name": "Loader Holon",
         "display_name_plural": "Loader Holons",
-        "instance_type_kind": "Holon",
+        "type_kind": "Holon",
         "description": "Representation of a parsed holon from JSON input, including properties and unresolved references.",
         "is_abstract_type": false,
         "allows_additional_properties": true,
@@ -70,13 +70,13 @@
     },
     {
       "key": "LoaderRelationshipReference.HolonType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoaderRelationshipReference",
         "type_name_plural": "LoaderRelationshipReferences",
         "display_name": "Loader Relationship Reference",
         "display_name_plural": "Loader Relationship References",
-        "instance_type_kind": "Holon",
+        "type_kind": "Holon",
         "description": "Represents an unresolved relationship reference from a LoaderHolon, including source/target references.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -122,13 +122,13 @@
     },
     {
       "key": "LoaderHolonReference.HolonType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoaderHolonReference",
         "type_name_plural": "LoaderHolonReferences",
         "display_name": "Loader Holon Reference",
         "display_name_plural": "Loader Holon References",
-        "instance_type_kind": "Holon",
+        "type_kind": "Holon",
         "description": "Represents an unresolved reference to a holon, either local (by key or ID) or external (via proxy + key/ID).",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -174,13 +174,13 @@
     },
     {
       "key": "HolonLoaderBundle.HolonType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonLoaderBundle",
         "type_name_plural": "HolonLoaderBundles",
         "display_name": "HolonLoaderBundle",
         "display_name_plural": "HolonLoaderBundles",
-        "instance_type_kind": "Holon",
+        "type_kind": "Holon",
         "description": "Container holon for a collection of LoaderHolons supplied by the loader client.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -221,13 +221,13 @@
     },
     {
       "key": "HolonLoadResponse.DanceResponseType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonLoadResponse",
         "type_name_plural": "HolonLoadResponses",
         "display_name": "HolonLoadResponse",
         "display_name_plural": "HolonLoadResponses",
-        "instance_type_kind": "Holon",
+        "type_kind": "Holon",
         "description": "Message-only holon summarizing the outcome of a holon load operation (not persisted by the loader commit).",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -278,20 +278,20 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonErrorType)"
+            "$ref": "#(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError.HolonType)"
           }
         }
       ]
     },
     {
-      "key": "HolonLoadError.HolonErrorType",
-      "type": "#TypeDescriptor",
+      "key": "HolonLoadError.HolonError.HolonType",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonLoadError",
         "type_name_plural": "HolonLoadErrors",
         "display_name": "Holon Load Error",
         "display_name_plural": "Holon Load Errors",
-        "instance_type_kind": "Holon",
+        "type_kind": "Holon",
         "description": "Represents a single error in the Holon Loader process.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -307,7 +307,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonErrorType"
+            "$ref": "#HolonError.HolonType"
           }
         },
         {
@@ -340,13 +340,13 @@
     },
     {
       "key": "HolonLoadSet.HolonType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonLoadSet",
         "type_name_plural": "HolonLoadSets",
         "display_name": "HolonLoadSet",
         "display_name_plural": "HolonLoadSets",
-        "instance_type_kind": "Holon",
+        "type_kind": "Holon",
         "description": "Container holon for a set of HolonLoaderBundles supplied by the loader client.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -381,13 +381,13 @@
     },
     {
       "key": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasRelationshipReference",
         "type_name_plural": "HasRelationshipReferences",
         "display_name": "HasRelationshipReference",
         "display_name_plural": "HasRelationshipReference Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declared relationship from a LoaderHolon to each unresolved relationship reference it contains.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -432,13 +432,13 @@
     },
     {
       "key": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RelationshipReferenceOf",
         "type_name_plural": "RelationshipReferenceOfs",
         "display_name": "RelationshipReferenceOf",
         "display_name_plural": "RelationshipReferenceOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -489,13 +489,13 @@
     },
     {
       "key": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceSource",
         "type_name_plural": "ReferenceSources",
         "display_name": "ReferenceSource",
         "display_name_plural": "ReferenceSource Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declared relationship from a LoaderRelationshipReference to the holon that acts as the relationship source.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -540,13 +540,13 @@
     },
     {
       "key": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceSourceOf",
         "type_name_plural": "ReferenceSourceOfs",
         "display_name": "ReferenceSourceOf",
         "display_name_plural": "ReferenceSourceOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -597,13 +597,13 @@
     },
     {
       "key": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceTarget",
         "type_name_plural": "ReferenceTargets",
         "display_name": "ReferenceTarget",
         "display_name_plural": "ReferenceTarget Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declared relationship from a LoaderRelationshipReference to the holons that act as relationship targets.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -648,13 +648,13 @@
     },
     {
       "key": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceTargetOf",
         "type_name_plural": "ReferenceTargetOfs",
         "display_name": "ReferenceTargetOf",
         "display_name_plural": "ReferenceTargetOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target.",
         "is_abstract_type": false,
         "deletion_semantic": "Cascade",
@@ -705,13 +705,13 @@
     },
     {
       "key": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "BundleMembers",
         "type_name_plural": "BundleMembers",
         "display_name": "BundleMembers",
         "display_name_plural": "BundleMembers Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -756,13 +756,13 @@
     },
     {
       "key": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "BundleMemberOf",
         "type_name_plural": "BundleMemberOfs",
         "display_name": "BundleMemberOf",
         "display_name_plural": "BundleMemberOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -812,14 +812,14 @@
       ]
     },
     {
-      "key": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonErrorType)",
-      "type": "#TypeDescriptor",
+      "key": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasLoadError",
         "type_name_plural": "HasLoadErrors",
         "display_name": "HasLoadError",
         "display_name_plural": "HasLoadError Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declared relationship from a HolonLoadResponse to one or more HolonError holons.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -857,20 +857,20 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#HolonLoadError.HolonErrorType"
+            "$ref": "#HolonLoadError.HolonError.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(HolonLoadError.HolonErrorType)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)",
-      "type": "#TypeDescriptor",
+      "key": "(HolonLoadError.HolonError.HolonType)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoadErrorOf",
         "type_name_plural": "LoadErrorOfs",
         "display_name": "LoadErrorOf",
         "display_name_plural": "LoadErrorOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -902,13 +902,13 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonErrorType)"
+            "$ref": "#(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#HolonLoadError.HolonErrorType"
+            "$ref": "#HolonLoadError.HolonError.HolonType"
           }
         },
         {
@@ -921,13 +921,13 @@
     },
     {
       "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Contains",
         "type_name_plural": "Contains",
         "display_name": "Contains",
         "display_name_plural": "Contains Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declared relationship from a HolonLoadSet to each HolonLoaderBundle it contains.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -972,13 +972,13 @@
     },
     {
       "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.Ho)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ContainedIn",
         "type_name_plural": "ContainedIns",
         "display_name": "ContainedIn",
         "display_name_plural": "ContainedIn Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -1029,13 +1029,13 @@
     },
     {
       "key": "LoadCommitStatus",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoadCommitStatus",
         "type_name_plural": "LoadCommitStatuses",
         "display_name": "LoadCommitStatus",
         "display_name_plural": "LoadCommitStatuses",
-        "instance_type_kind": "Value.Enum",
+        "type_kind": "Value.Enum",
         "description": "An enum representing the commit outcome of a holon load.",
         "is_abstract_type": false
       },
@@ -1062,11 +1062,11 @@
     },
     {
       "key": "LoadCommitStatus.Complete",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Complete",
         "display_name": "Complete",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "An enum variant indicating a complete commit.",
         "is_abstract_type": false
       },
@@ -1099,11 +1099,11 @@
     },
     {
       "key": "LoadCommitStatus.Incomplete",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Incomplete",
         "display_name": "Incomplete",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "An enum variant indicating an incomplete commit.",
         "is_abstract_type": false
       },
@@ -1136,11 +1136,11 @@
     },
     {
       "key": "LoadCommitStatus.Skipped",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Skipped",
         "display_name": "Skipped",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "An enum variant indicating that commit was skipped.",
         "is_abstract_type": false
       },
@@ -1173,13 +1173,13 @@
     },
     {
       "key": "Key.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Key",
         "type_name_plural": "Keys",
         "display_name": "key",
         "display_name_plural": "keys",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Optional key to identify the holon instance within the import set.",
         "is_abstract_type": false
       },
@@ -1212,13 +1212,13 @@
     },
     {
       "key": "RelationshipName.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RelationshipName",
         "type_name_plural": "RelationshipNames",
         "display_name": "relationship_name",
         "display_name_plural": "relationship_names",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Name of the relationship as declared in the JSON input.",
         "is_abstract_type": false
       },
@@ -1251,13 +1251,13 @@
     },
     {
       "key": "HolonKey.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonKey",
         "type_name_plural": "HolonKeys",
         "display_name": "holon_key",
         "display_name_plural": "holon_keys",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Local key for the referenced holon.",
         "is_abstract_type": false
       },
@@ -1290,13 +1290,13 @@
     },
     {
       "key": "HolonId.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonId",
         "type_name_plural": "HolonIds",
         "display_name": "holon_id",
         "display_name_plural": "holon_ids",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "ActionHash identifier of a referenced holon.",
         "is_abstract_type": false
       },
@@ -1329,13 +1329,13 @@
     },
     {
       "key": "ProxyKey.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ProxyKey",
         "type_name_plural": "ProxyKeys",
         "display_name": "proxy_key",
         "display_name_plural": "proxy_keys",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Key of the ProxySpace through which this external reference is routed.",
         "is_abstract_type": false
       },
@@ -1368,13 +1368,13 @@
     },
     {
       "key": "ProxyId.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ProxyId",
         "type_name_plural": "ProxyId",
         "display_name": "proxy_id",
         "display_name_plural": "proxy_ids",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "ActionHash of the ProxySpace holon, used to route external references.",
         "is_abstract_type": false
       },
@@ -1407,13 +1407,13 @@
     },
     {
       "key": "HolonsStaged.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonsStaged",
         "type_name_plural": "HolonsStageds",
         "display_name": "holons_staged",
         "display_name_plural": "holons_stageds",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Number of holons staged during the load operation.",
         "is_abstract_type": false
       },
@@ -1446,13 +1446,13 @@
     },
     {
       "key": "HolonsCommitted.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonsCommitted",
         "type_name_plural": "HolonsCommitteds",
         "display_name": "holons_committed",
         "display_name_plural": "holons_committeds",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Number of holons successfully committed.",
         "is_abstract_type": false
       },
@@ -1485,13 +1485,13 @@
     },
     {
       "key": "LinksCreated.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LinksCreated",
         "type_name_plural": "LinksCreateds",
         "display_name": "links_created",
         "display_name_plural": "links_createds",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Number of links successfully created.",
         "is_abstract_type": false
       },
@@ -1524,13 +1524,13 @@
     },
     {
       "key": "Filename.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Filename",
         "type_name_plural": "Filenames",
         "display_name": "filename",
         "display_name_plural": "filenames",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "The name of a file.",
         "is_abstract_type": false
       },
@@ -1563,13 +1563,13 @@
     },
     {
       "key": "LoaderHolonKey.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoaderHolonKey",
         "type_name_plural": "LoaderHolonKeys",
         "display_name": "loader_holon_key",
         "display_name_plural": "loader_holon_keys",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Key to reference a loader holon within a load set.",
         "is_abstract_type": false
       },
@@ -1602,13 +1602,13 @@
     },
     {
       "key": "StartUtf8ByteOffset.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "StartUtf8ByteOffset",
         "type_name_plural": "StartUtf8ByteOffsets",
         "display_name": "start_utf8_byte_offset",
         "display_name_plural": "start_utf8_byte_offsets",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Byte offset that signifies the start of a segment of a source file.",
         "is_abstract_type": false
       },
@@ -1641,13 +1641,13 @@
     },
     {
       "key": "LoadCommitStatus.PropertyType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoadCommitStatus",
         "type_name_plural": "LoadCommitStatuses",
         "display_name": "load_commit_status",
         "display_name_plural": "load_commit_statuses",
-        "instance_type_kind": "Property",
+        "type_kind": "Property",
         "description": "Represents the commit status for a holon loading operation.",
         "is_abstract_type": false
       },

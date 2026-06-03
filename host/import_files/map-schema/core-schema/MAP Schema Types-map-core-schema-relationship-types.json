@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-24T17:56:00",
+    "generated_at": "2026-06-03T10:12:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -14,14 +14,14 @@
   },
   "holons": [
     {
-      "key": "(TypeDescriptor)-[ComponentOf]->(SchemaType)",
-      "type": "#TypeDescriptor",
+      "key": "(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ComponentOf",
         "type_name_plural": "ComponentOfRelationships",
         "display_name": "ComponentOf",
         "display_name_plural": "ComponentOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Links a type descriptor to the schema that contains it.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -52,26 +52,26 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#SchemaType"
+            "$ref": "#Schema.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(SchemaType)-[Components]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Components",
         "type_name_plural": "ComponentsRelationships",
         "display_name": "Components",
         "display_name_plural": "Components Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of ComponentOf, from SchemaType to TypeDescriptor.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -103,32 +103,32 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(TypeDescriptor)-[ComponentOf]->(SchemaType)"
+            "$ref": "#(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#SchemaType"
+            "$ref": "#Schema.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(TypeDescriptor)-[InstanceProperties]->(PropertyType)",
-      "type": "#TypeDescriptor",
+      "key": "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "InstanceProperties",
         "type_name_plural": "InstancePropertiesRelationships",
         "display_name": "InstanceProperties",
         "display_name_plural": "InstanceProperties Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Connects a type descriptor to its expected property types.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -160,7 +160,7 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         },
         {
@@ -172,14 +172,14 @@
       ]
     },
     {
-      "key": "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "InstancePropertyFor",
         "type_name_plural": "InstancePropertyForRelationships",
         "display_name": "InstancePropertyFor",
         "display_name_plural": "InstancePropertyFor Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of InstanceProperties, from PropertyType to TypeDescriptor.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -210,7 +210,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(TypeDescriptor)-[InstanceProperties]->(PropertyType)"
+            "$ref": "#(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)"
           }
         },
         {
@@ -222,20 +222,20 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType)",
-      "type": "#TypeDescriptor",
+      "key": "(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "InstanceRelationships",
         "type_name_plural": "InstanceRelationships",
         "display_name": "Instance Relationships",
         "display_name_plural": "Instance Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Connects a type descriptor to its expected relationship types.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -266,7 +266,7 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#MetaHolonType"
           }
         },
         {
@@ -278,14 +278,14 @@
       ]
     },
     {
-      "key": "(DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "InstanceRelationshipFor",
         "type_name_plural": "InstanceRelationshipForRelationships",
         "display_name": "InstanceRelationshipFor",
         "display_name_plural": "InstanceRelationshipFor Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -316,7 +316,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType)"
+            "$ref": "#(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
           }
         },
         {
@@ -328,20 +328,20 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(HolonType)-[DescribedBy]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DescribedBy",
         "type_name_plural": "DescribedByRelationships",
         "display_name": "DescribedBy",
         "display_name_plural": "DescribedBy Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Links a holon to the type descriptor that describes it.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -378,20 +378,20 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(TypeDescriptor)-[Instances]->(HolonType)",
-      "type": "#TypeDescriptor",
+      "key": "(TypeDescriptor.HolonType)-[Instances]->(HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Instances",
         "type_name_plural": "InstancesRelationships",
         "display_name": "Instances",
         "display_name_plural": "Instances Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of DescribedBy, from TypeDescriptor to an instance of that type.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -422,13 +422,13 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(HolonType)-[DescribedBy]->(TypeDescriptor)"
+            "$ref": "#(HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         },
         {
@@ -440,14 +440,14 @@
       ]
     },
     {
-      "key": "(HolonType)-[OwnedBy]->(HolonSpaceType)",
-      "type": "#TypeDescriptor",
+      "key": "(HolonType)-[OwnedBy]->(HolonSpace.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "OwnedBy",
         "type_name_plural": "OwnedByRelationships",
         "display_name": "OwnedBy",
         "display_name_plural": "OwnedBy Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Indicates which holon space owns the given holon.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -484,20 +484,20 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#HolonSpaceType"
+            "$ref": "#HolonSpace.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(HolonSpaceType)-[Owns]->(HolonType)",
-      "type": "#TypeDescriptor",
+      "key": "(HolonSpace.HolonType)-[Owns]->(HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Owns",
         "type_name_plural": "OwnsRelationships",
         "display_name": "Owns",
         "display_name_plural": "Owns Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of OwnedBy, from HolonSpace to Holon.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -528,13 +528,13 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(HolonType)-[OwnedBy]->(HolonSpaceType)"
+            "$ref": "#(HolonType)-[OwnedBy]->(HolonSpace.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#HolonSpaceType"
+            "$ref": "#HolonSpace.HolonType"
           }
         },
         {
@@ -547,13 +547,13 @@
     },
     {
       "key": "(HolonType)-[Properties]->(PropertyType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Properties",
         "type_name_plural": "PropertiesRelationships",
         "display_name": "Properties",
         "display_name_plural": "Properties Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Links a holon to its properties.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -597,13 +597,13 @@
     },
     {
       "key": "(PropertyType)-[PropertyOf]->(HolonType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "PropertyOf",
         "type_name_plural": "PropertyOfRelationships",
         "display_name": "PropertyOf",
         "display_name_plural": "PropertyOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of Properties, from PropertyType to HolonType.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -653,13 +653,13 @@
     },
     {
       "key": "(PropertyType)-[ValueType]->(ValueType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ValueType",
         "type_name_plural": "ValueTypeRelationships",
         "display_name": "ValueType",
         "display_name_plural": "ValueType Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Specifies the value type constraint for a property.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -703,13 +703,13 @@
     },
     {
       "key": "(ValueType)-[ValueTypeFor]->(PropertyType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ValueTypeFor",
         "type_name_plural": "ValueTypeForRelationships",
         "display_name": "ValueTypeFor",
         "display_name_plural": "ValueTypeFor Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of ValueType, from ValueType to PropertyType.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -758,14 +758,14 @@
       ]
     },
     {
-      "key": "(MetaRelationshipType)-[SourceType]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "SourceType",
         "type_name_plural": "SourceTypeRelationships",
         "display_name": "SourceType",
         "display_name_plural": "SourceType Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Defines the source holon type for a relationship type.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -802,20 +802,20 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(TypeDescriptor)-[SourceOf]->(MetaRelationshipType)",
-      "type": "#TypeDescriptor",
+      "key": "(TypeDescriptor.HolonType)-[SourceOf]->(MetaRelationshipType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "SourceOf",
         "type_name_plural": "SourceOfRelationships",
         "display_name": "SourceOf",
         "display_name_plural": "SourceOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of SourceType, from holon to relationship type.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -846,13 +846,13 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(MetaRelationshipType)-[SourceType]->(TypeDescriptor)"
+            "$ref": "#(MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         },
         {
@@ -864,14 +864,14 @@
       ]
     },
     {
-      "key": "(MetaRelationshipType)-[TargetType]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "TargetType",
         "type_name_plural": "TargetTypeRelationships",
         "display_name": "TargetType",
         "display_name_plural": "TargetType Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Defines the target holon type for a meta relationship type.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -908,20 +908,20 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(TypeDescriptor)-[TargetOf]->(MetaRelationshipType)",
-      "type": "#TypeDescriptor",
+      "key": "(TypeDescriptor.HolonType)-[TargetOf]->(MetaRelationshipType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "TargetOf",
         "type_name_plural": "TargetOfRelationships",
         "display_name": "TargetOf",
         "display_name_plural": "TargetOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of TargetType, from HolonType to MetaRelationshipType.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -952,13 +952,13 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(MetaRelationshipType)-[TargetType]->(TypeDescriptor)"
+            "$ref": "#(MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         },
         {
@@ -971,13 +971,13 @@
     },
     {
       "key": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "InverseOf",
         "type_name_plural": "InverseOfRelationships",
         "display_name": "InverseOf",
         "display_name_plural": "InverseOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Links an inverse relationship type to the declared relationship it reverses.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1021,13 +1021,13 @@
     },
     {
       "key": "(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasInverse",
         "type_name_plural": "HasInverseRelationships",
         "display_name": "HasInverse",
         "display_name_plural": "HasInverse Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of InverseOf, from DeclaredRelationshipType to InverseRelationshipType.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1077,13 +1077,13 @@
     },
     {
       "key": "(EnumValueType)-[Variants]->(EnumVariantValueType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Variants",
         "type_name_plural": "VariantsRelationships",
         "display_name": "Variants",
         "display_name_plural": "Variants Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declares the allowed symbolic variants of an enum value type.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1127,13 +1127,13 @@
     },
     {
       "key": "(EnumVariantValueType)-[VariantOf]->(EnumValueType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "VariantOf",
         "type_name_plural": "VariantOfRelationships",
         "display_name": "VariantOf",
         "display_name_plural": "VariantOf Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of Variants, from EnumVariantType to EnumValueType.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1182,14 +1182,14 @@
       ]
     },
     {
-      "key": "(SchemaType)-[DependsOn]->(SchemaType)",
-      "type": "#TypeDescriptor",
+      "key": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DependsOn",
         "type_name_plural": "DependsOnRelationships",
         "display_name": "DependsOn",
         "display_name_plural": "DependsOn Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Indicates that one schema holon depends on another.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1220,26 +1220,26 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#SchemaType"
+            "$ref": "#Schema.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#SchemaType"
+            "$ref": "#Schema.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(SchemaType)-[Dependents]->(SchemaType)",
-      "type": "#TypeDescriptor",
+      "key": "(Schema.HolonType)-[Dependents]->(Schema.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Dependents",
         "type_name_plural": "DependentsRelationships",
         "display_name": "Dependents",
         "display_name_plural": "Dependents Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of DependsOn, indicating which schemas depend on this one.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1270,32 +1270,32 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(SchemaType)-[DependsOn]->(SchemaType)"
+            "$ref": "#(Schema.HolonType)-[DependsOn]->(Schema.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#SchemaType"
+            "$ref": "#Schema.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#SchemaType"
+            "$ref": "#Schema.HolonType"
           }
         }
       ]
     },
     {
       "key": "(ValueArrayValueType)-[ElementValueType]->(ValueType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ElementValueType",
         "type_name_plural": "ElementValueTypeRelationships",
         "display_name": "ElementValueType",
         "display_name_plural": "ElementValueType Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Specifies the element value type of a value array.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1339,13 +1339,13 @@
     },
     {
       "key": "(ValueType)-[ElementValueTypeFor]->(ValueArrayValueType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ElementValueTypeFor",
         "type_name_plural": "ElementValueTypeForRelationships",
         "display_name": "ElementValueTypeFor",
         "display_name_plural": "ElementValueTypeFor Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of ElementValueType, from ValueType to ValueArrayType.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1394,14 +1394,14 @@
       ]
     },
     {
-      "key": "(TypeDescriptor)-[Extends]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Extends",
         "type_name_plural": "ExtendsRelationships",
         "display_name": "Extends",
         "display_name_plural": "Extends Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inheritance link, this TypeDescriptor extends another TypeDescriptor (single parent).",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1432,26 +1432,26 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(TypeDescriptor)-[ExtendedBy]->(TypeDescriptor)",
-      "type": "#TypeDescriptor",
+      "key": "(TypeDescriptor.HolonType)-[ExtendedBy]->(TypeDescriptor.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ExtendedBy",
         "type_name_plural": "ExtendedByRelationships",
         "display_name": "ExtendedBy",
         "display_name_plural": "ExtendedBy Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of Extends, the parent TypeDescriptor is extended by zero or more children.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1482,32 +1482,32 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(TypeDescriptor)-[Extends]->(TypeDescriptor)"
+            "$ref": "#(TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TypeDescriptor"
+            "$ref": "#TypeDescriptor.HolonType"
           }
         }
       ]
     },
     {
       "key": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "TemplateParameters",
         "type_name_plural": "TemplateParametersRelationships",
         "display_name": "TemplateParameters Relationship",
         "display_name_plural": "TemplateParameters Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Ordered list of PropertyTypes used as positional parameters for template_string ($0, $1, ...).",
         "is_abstract_type": false,
         "is_definitional": true,
@@ -1551,13 +1551,13 @@
     },
     {
       "key": "(PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType)",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "TemplateParameterFor",
         "type_name_plural": "TemplateParameterForRelationships",
         "display_name": "TemplateParameterFor Relationship",
         "display_name_plural": "TemplateParameterFor Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of TemplateParameters, indicates that this PropertyType is used as a positional parameter in one or more Format.KeyRuleType instances.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1606,14 +1606,14 @@
       ]
     },
     {
-      "key": "(HolonSpaceType)-[AffordsTransactionModel]->(TransactionType)",
-      "type": "#TypeDescriptor",
+      "key": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AffordsTransactionModel",
         "type_name_plural": "AffordsTransactionModelRelationships",
         "display_name": "AffordsTransactionModel Relationship",
         "display_name_plural": "AffordsTransactionModel Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Declares that a HolonSpaceType affords exactly one TransactionType, anchoring the transaction command-scope API surface discoverable from the space descriptor.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -1645,26 +1645,26 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#HolonSpaceType"
+            "$ref": "#HolonSpace.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#TransactionType"
+            "$ref": "#Transaction.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(TransactionType)-[TransactionModelAffordedBy]->(HolonSpaceType)",
-      "type": "#TypeDescriptor",
+      "key": "(Transaction.HolonType)-[TransactionModelAffordedBy]->(HolonSpace.HolonType)",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "type_name": "TransactionModelAffordedBy",
         "type_name_plural": "TransactionModelAffordedByRelationships",
         "display_name": "TransactionModelAffordedBy Relationship",
         "display_name_plural": "TransactionModelAffordedBy Relationships",
-        "instance_type_kind": "Relationship",
+        "type_kind": "Relationship",
         "description": "Inverse of AffordsTransactionModel, from TransactionType back to the HolonSpaceType that affords it.",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
@@ -1696,19 +1696,19 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(HolonSpaceType)-[AffordsTransactionModel]->(TransactionType)"
+            "$ref": "#(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#TransactionType"
+            "$ref": "#Transaction.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#HolonSpaceType"
+            "$ref": "#HolonSpace.HolonType"
           }
         }
       ]

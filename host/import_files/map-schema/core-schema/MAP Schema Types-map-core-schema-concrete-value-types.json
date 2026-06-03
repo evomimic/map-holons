@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-05-20T16:28:35",
+    "generated_at": "2026-06-03T10:12:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-concrete-value-types.csv"
@@ -15,14 +15,14 @@
   "holons": [
     {
       "key": "MapStringValueType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "MapStringValueType",
         "type_name_plural": "MapStringValueTypes",
         "display_name": "MapStringValueType",
         "display_name_plural": "MapStringValueTypes",
-        "instance_type_kind": "Value.String",
+        "type_kind": "Value.String",
         "description": "Concrete value type representing strings."
       },
       "relationships": [
@@ -48,14 +48,14 @@
     },
     {
       "key": "MapIntegerValueType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "MapIntegerValueType",
         "type_name_plural": "MapIntegerValueTypes",
         "display_name": "MapIntegerValueType",
         "display_name_plural": "MapIntegerValueTypes",
-        "instance_type_kind": "Value.Integer",
+        "type_kind": "Value.Integer",
         "description": "Concrete value type representing integers."
       },
       "relationships": [
@@ -81,14 +81,14 @@
     },
     {
       "key": "MapBooleanValueType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "MapBooleanValueType",
         "type_name_plural": "MapBooleanValueTypes",
         "display_name": "MapBooleanValueType",
         "display_name_plural": "MapBooleanValueTypes",
-        "instance_type_kind": "Value.Boolean",
+        "type_kind": "Value.Boolean",
         "description": "Concrete value type representing booleans."
       },
       "relationships": [
@@ -114,14 +114,14 @@
     },
     {
       "key": "MapBytesValueType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "MapBytesValueType",
         "type_name_plural": "MapBytesValueTypes",
         "display_name": "MapBytesValueType",
         "display_name_plural": "MapBytesValueTypes",
-        "instance_type_kind": "Value.Bytes",
+        "type_kind": "Value.Bytes",
         "description": "Concrete value type representing byte sequences."
       },
       "relationships": [
@@ -147,14 +147,14 @@
     },
     {
       "key": "MapEnumValueType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "MapEnumValueType",
         "type_name_plural": "MapEnumValueTypes",
         "display_name": "MapEnumValueType",
         "display_name_plural": "MapEnumValueTypes",
-        "instance_type_kind": "Value.Enum",
+        "type_kind": "Value.Enum",
         "description": "Concrete value type representing enums."
       },
       "relationships": [
@@ -180,14 +180,14 @@
     },
     {
       "key": "MapEnumVariantValueType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "MapEnumVariantValueType",
         "type_name_plural": "MapEnumVariantValueTypes",
         "display_name": "MapEnumVariant Value Type",
         "display_name_plural": "MapEnumVariant Value Types",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Abstract type for variants of enum-based value types."
       },
       "relationships": [
@@ -213,14 +213,14 @@
     },
     {
       "key": "MapValueArrayType",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "MapValueArrayType",
         "type_name_plural": "MapValueArrayTypes",
         "display_name": "MapValueArrayType",
         "display_name_plural": "MapValueArrayTypes",
-        "instance_type_kind": "Value.Array",
+        "type_kind": "Value.Array",
         "description": "Concrete value type representing arrays of values."
       },
       "relationships": [
@@ -246,14 +246,14 @@
     },
     {
       "key": "DeletionSemantic",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "DeletionSemantic",
         "type_name_plural": "DeletionSemantics",
         "display_name": "DeletionSemantic",
         "display_name_plural": "DeletionSemantics",
-        "instance_type_kind": "Value.Enum",
+        "type_kind": "Value.Enum",
         "description": "Enum value type for deletion semantics."
       },
       "relationships": [
@@ -279,12 +279,12 @@
     },
     {
       "key": "DeletionSemantic.Allow",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Allow",
         "display_name": "Allow",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets."
       },
       "relationships": [
@@ -316,12 +316,12 @@
     },
     {
       "key": "DeletionSemantic.Block",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Block",
         "display_name": "Block",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Prevent deletion of the source holon if any target holons are related through this relationship."
       },
       "relationships": [
@@ -353,12 +353,12 @@
     },
     {
       "key": "DeletionSemantic.Cascade",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Cascade",
         "display_name": "Cascade",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "If the source holon is deleted, also delete any related target holons."
       },
       "relationships": [
@@ -390,14 +390,14 @@
     },
     {
       "key": "TypeKind",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "TypeKind",
         "type_name_plural": "TypeKinds",
         "display_name": "TypeKind",
         "display_name_plural": "TypeKinds",
-        "instance_type_kind": "Value.Enum",
+        "type_kind": "Value.Enum",
         "description": "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship)."
       },
       "relationships": [
@@ -423,12 +423,12 @@
     },
     {
       "key": "TypeKind.Property",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Property",
         "display_name": "Property",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Represents a property type. Variant of the TypeKind enum."
       },
       "relationships": [
@@ -460,12 +460,12 @@
     },
     {
       "key": "TypeKind.Relationship",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Relationship",
         "display_name": "Relationship",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Represents a relationship type. Variant of the TypeKind enum."
       },
       "relationships": [
@@ -497,12 +497,12 @@
     },
     {
       "key": "TypeKind.EnumVariant",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "EnumVariant",
         "display_name": "EnumVariant",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Represents an enum variant type. Variant of the TypeKind enum."
       },
       "relationships": [
@@ -534,12 +534,12 @@
     },
     {
       "key": "TypeKind.Holon",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Holon",
         "display_name": "Holon",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Represents a holon type.  Variant of the TypeKind enum."
       },
       "relationships": [
@@ -571,12 +571,12 @@
     },
     {
       "key": "TypeKind.Collection",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Collection",
         "display_name": "Collection",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Represents a collection type. Variant of the TypeKind enum."
       },
       "relationships": [
@@ -608,12 +608,12 @@
     },
     {
       "key": "TypeKind.Dance",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Dance",
         "display_name": "Dance",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Represents a dance service type. Variant of the TypeKind enum."
       },
       "relationships": [
@@ -645,12 +645,12 @@
     },
     {
       "key": "TypeKind.Value.String",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Value.String",
         "display_name": "Value.String",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Value type wrapping base type representing strings."
       },
       "relationships": [
@@ -682,12 +682,12 @@
     },
     {
       "key": "TypeKind.ValueArray.String",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "ValueArray.String",
         "display_name": "ValueArray.String",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "ValueArray type wrapping base type representing strings."
       },
       "relationships": [
@@ -719,12 +719,12 @@
     },
     {
       "key": "TypeKind.Value.Integer",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Value.Integer",
         "display_name": "Value.Integer",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Value type wrapping base type representing integers."
       },
       "relationships": [
@@ -756,12 +756,12 @@
     },
     {
       "key": "TypeKind.ValueArray.Integer",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "ValueArray.Integer",
         "display_name": "ValueArray.Integer",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "ValueArray type wrapping base type representing integers."
       },
       "relationships": [
@@ -793,12 +793,12 @@
     },
     {
       "key": "TypeKind.Value.Boolean",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Value.Boolean",
         "display_name": "Value.Boolean",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Value type wrapping base type representing booleans."
       },
       "relationships": [
@@ -830,12 +830,12 @@
     },
     {
       "key": "TypeKind.ValueArray.Boolean",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "ValueArray.Boolean",
         "display_name": "ValueArray.Boolean",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "ValueArray type wrapping base type representing booleans."
       },
       "relationships": [
@@ -867,12 +867,12 @@
     },
     {
       "key": "TypeKind.Value.Enum",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Value.Enum",
         "display_name": "Value.Enum",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Value type wrapping base type representing enumerations."
       },
       "relationships": [
@@ -904,12 +904,12 @@
     },
     {
       "key": "TypeKind.Value.Bytes",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "Value.Bytes",
         "display_name": "Value.Bytes",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "Value type wrapping base type representing byte sequences."
       },
       "relationships": [
@@ -941,12 +941,12 @@
     },
     {
       "key": "TypeKind.ValueArray.Bytes",
-      "type": "#TypeDescriptor",
+      "type": "#TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
         "type_name": "ValueArray.Bytes",
         "display_name": "ValueArray.Bytes",
-        "instance_type_kind": "EnumVariant",
+        "type_kind": "EnumVariant",
         "description": "ValueArray type wrapping base type representing byte sequences."
       },
       "relationships": [
