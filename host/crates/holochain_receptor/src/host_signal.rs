@@ -176,7 +176,10 @@ mod tests {
             action_id: id.clone(),
             holon: holon.clone(),
         }) {
-            HostSignal::Holons { signal: HolonsZomeSignal::HolonCreated { action_id, holon: h }, .. } => {
+            HostSignal::Holons {
+                signal: HolonsZomeSignal::HolonCreated { action_id, holon: h },
+                ..
+            } => {
                 assert_eq!(action_id.0, id.0);
                 assert_eq!(h.original_id, holon.original_id);
             }

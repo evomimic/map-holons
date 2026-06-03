@@ -3,7 +3,7 @@ pub mod guest {
     pub use holons_guest::*;
 }
 use hdk::prelude::*;
-use holons_guest_integrity::{HolonNode, local_id_from_action_hash};
+use holons_guest_integrity::{local_id_from_action_hash, HolonNode};
 use holons_integrity::*;
 use integrity_core_types::LocalId;
 
