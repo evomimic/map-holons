@@ -39,6 +39,7 @@ These are the rules most likely to be violated by a locally plausible change:
 
 Consult before making architectural assumptions:
 
+* `map-dev-docs` is expected to be available as a sibling checkout or equivalent local workspace when present. It is the authoritative source of truth for MAP design specs, architectural intent, and naming. In `map-holons`, all behavioral, architectural, and cross-boundary guidance must come from `map-dev-docs`; do not create parallel doctrine in local files such as `CONTEXT.md`. Local notes may only summarize, index, or point to the authoritative specs, and they must remain strictly subordinate to them. If any local file conflicts with `map-dev-docs`, treat the docs repository as decisive and call out the conflict instead of choosing a local interpretation. 
 * `ARCHITECTURE.md` — workspace and execution-context boundaries.
 * `CONTEXT.md` and folder-local context/design notes — current vocabulary and subsystem intent.
 * `README.md` — setup and developer documentation.
@@ -112,28 +113,13 @@ The host command pipeline intentionally separates:
 
 ## Transaction and Reference Model
 
-All runtime mutation, lookup, and commit work should use established `TransactionContext`
-APIs/facades, currently including:
+At the Commands layer, client JSON IPC ingress is partitioned into `SpaceCommand`, `TransactionCommand`, and `HolonCommand`. That partitioning is an ingress concern only; it should not leak upward into the shared-object API surface or downward into unrelated runtime code.
 
-```rust
-let mutation = context.mutation();
+In the shared objects layer, prefer `HolonReference` and the established `ReadableHolon` / `WritableHolon` traits over operating on reference variants directly, unless a specific lifecycle constraint requires `TransientReference`, `StagedReference`, or `SmartReference`. Ordinary holon operations should be invoked through the reference itself, not by passing a separate `TransactionContext` into each call.
 
-let mut transient = mutation.new_holon(Some(MapString("example-key".to_string())))?;
-transient.with_property_value(CorePropertyTypeName::Title, "Example")?;
+`HolonReference` and its variants are bound, self-resolving handles. Their ordinary read/write operations resolve through the transaction context already carried by the handle. Do not reintroduce APIs that require supplying `TransactionContext` for normal `HolonReference` or `HolonCollection` operations.
 
-let staged = mutation.stage_new_holon(transient)?;
-
-let commit_response = context.commit()?;
-```
-
-Lookup pattern:
-
-```rust
-let holon = context.lookup().get_holon(...)?;
-let results = context.lookup().evaluate_query(...)?;
-```
-
-Do not add standalone surfaces that route around transaction lifecycle policy.
+Do not add parallel mutation, lookup, or commit surfaces that bypass the established reference layer or transaction lifecycle policy.
 
 Reference phases:
 
@@ -150,20 +136,6 @@ Use the established high-level reference types and traits:
 * `WritableHolon`
 
 Do not ad-hoc cast phases or invent alternate lifecycles.
-
-References carry a `TransactionContextHandle` internally. Ordinary reference operations resolve
-through that handle:
-
-```rust
-let title = reference.property_value(CorePropertyTypeName::Title)?;
-let children = reference.related_holons(CoreRelationshipTypeName::HasChild)?;
-```
-
-Do not reintroduce old-style helpers that pass context into ordinary reference operations.
-
-Runtime references (`HolonReference`, `TransientReference`, `StagedReference`, `SmartReference`)
-are bound handles, not boundary data. Corresponding `*Wire` references in `holons_boundary` are
-context-free serializable boundary types. Bind only at ingress.
 
 ## Build, Test, and Dependencies
 
