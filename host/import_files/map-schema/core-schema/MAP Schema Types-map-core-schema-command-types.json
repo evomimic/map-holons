@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-06-03T10:12:11",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "generated_at": "2026-06-05T11:50:33",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.csv"
@@ -14,13 +14,12 @@
   "holons": [
     {
       "key": "CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "CommandType",
         "type_name_plural": "CommandTypes",
         "display_name": "Command Type",
         "display_name_plural": "Command Types",
-        "type_kind": "Holon",
         "description": "Abstract descriptor type for core MAP command affordances discoverable through descriptor-local command lookup.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -30,32 +29,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         }
       ]
     },
     {
       "key": "BeginTransaction.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "BeginTransaction",
         "type_name_plural": "BeginTransactionCommands",
         "display_name": "Begin Transaction Command",
         "display_name_plural": "Begin Transaction Commands",
-        "type_kind": "Holon",
         "description": "Opens a new transaction for a holon space.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -65,32 +63,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "CloneHolon.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "CloneHolon",
         "type_name_plural": "CloneHolonCommands",
         "display_name": "Clone Holon Command",
         "display_name_plural": "Clone Holon Commands",
-        "type_kind": "Holon",
         "description": "Creates a transient clone of the target holon.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -100,32 +97,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetEssentialContent.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetEssentialContent",
         "type_name_plural": "GetEssentialContentCommands",
         "display_name": "Get Essential Content Command",
         "display_name_plural": "Get Essential Content Commands",
-        "type_kind": "Holon",
         "description": "Returns the target holon's essential content.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -135,32 +131,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "Summarize.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Summarize",
         "type_name_plural": "SummarizeCommands",
         "display_name": "Summarize Command",
         "display_name_plural": "Summarize Commands",
-        "type_kind": "Holon",
         "description": "Returns a concise string summary of the target holon.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -170,32 +165,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetHolonId.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetHolonId",
         "type_name_plural": "GetHolonIdCommands",
         "display_name": "Get Holon Id Command",
         "display_name_plural": "Get Holon Id Commands",
-        "type_kind": "Holon",
         "description": "Returns the target holon's saved holon identifier.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -205,32 +199,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetPredecessor.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetPredecessor",
         "type_name_plural": "GetPredecessorCommands",
         "display_name": "Get Predecessor Command",
         "display_name_plural": "Get Predecessor Commands",
-        "type_kind": "Holon",
         "description": "Returns the target holon's predecessor reference, if present.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -240,32 +233,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetKey.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetKey",
         "type_name_plural": "GetKeyCommands",
         "display_name": "Get Key Command",
         "display_name_plural": "Get Key Commands",
-        "type_kind": "Holon",
         "description": "Returns the target holon's primary key value, if present.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -275,32 +267,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetVersionedKey.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetVersionedKey",
         "type_name_plural": "GetVersionedKeyCommands",
         "display_name": "Get Versioned Key Command",
         "display_name_plural": "Get Versioned Key Commands",
-        "type_kind": "Holon",
         "description": "Returns the target holon's versioned key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -310,32 +301,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetPropertyValue.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetPropertyValue",
         "type_name_plural": "GetPropertyValueCommands",
         "display_name": "Get Property Value Command",
         "display_name_plural": "Get Property Value Commands",
-        "type_kind": "Holon",
         "description": "Returns the value of a named property on the target holon, if present.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -345,32 +335,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetRelatedHolons.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetRelatedHolons",
         "type_name_plural": "GetRelatedHolonsCommands",
         "display_name": "Get Related Holons Command",
         "display_name_plural": "Get Related Holons Commands",
-        "type_kind": "Holon",
         "description": "Returns holons related to the target holon through a named relationship.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -380,32 +369,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "WithPropertyValue.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "WithPropertyValue",
         "type_name_plural": "WithPropertyValueCommands",
         "display_name": "With Property Value Command",
         "display_name_plural": "With Property Value Commands",
-        "type_kind": "Holon",
         "description": "Sets or updates a named property value on the target holon.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -415,32 +403,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "RemovePropertyValue.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RemovePropertyValue",
         "type_name_plural": "RemovePropertyValueCommands",
         "display_name": "Remove Property Value Command",
         "display_name_plural": "Remove Property Value Commands",
-        "type_kind": "Holon",
         "description": "Removes a named property value from the target holon.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -450,32 +437,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "AddRelatedHolons.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AddRelatedHolons",
         "type_name_plural": "AddRelatedHolonsCommands",
         "display_name": "Add Related Holons Command",
         "display_name_plural": "Add Related Holons Commands",
-        "type_kind": "Holon",
         "description": "Adds one or more related holons under a named relationship on the target holon.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -485,32 +471,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "RemoveRelatedHolons.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RemoveRelatedHolons",
         "type_name_plural": "RemoveRelatedHolonsCommands",
         "display_name": "Remove Related Holons Command",
         "display_name_plural": "Remove Related Holons Commands",
-        "type_kind": "Holon",
         "description": "Removes one or more related holons from a named relationship on the target holon.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -520,32 +505,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "WithDescriptor.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "WithDescriptor",
         "type_name_plural": "WithDescriptorCommands",
         "display_name": "With Descriptor Command",
         "display_name_plural": "With Descriptor Commands",
-        "type_kind": "Holon",
         "description": "Attaches a type descriptor holon to the target holon.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -555,32 +539,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "Commit.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Commit",
         "type_name_plural": "CommitCommands",
         "display_name": "Commit Command",
         "display_name_plural": "Commit Commands",
-        "type_kind": "Holon",
         "description": "Commits the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -590,32 +573,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "UndoLast.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "UndoLast",
         "type_name_plural": "UndoLastCommands",
         "display_name": "Undo Last Command",
         "display_name_plural": "Undo Last Commands",
-        "type_kind": "Holon",
         "description": "Undoes the last mutation in the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -625,32 +607,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "RedoLast.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RedoLast",
         "type_name_plural": "RedoLastCommands",
         "display_name": "Redo Last Command",
         "display_name_plural": "Redo Last Commands",
-        "type_kind": "Holon",
         "description": "Redoes the last undone mutation in the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -660,32 +641,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "UndoToMarker.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "UndoToMarker",
         "type_name_plural": "UndoToMarkerCommands",
         "display_name": "Undo To Marker Command",
         "display_name_plural": "Undo To Marker Commands",
-        "type_kind": "Holon",
         "description": "Undoes mutations in the active transaction up to a specified marker.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -695,32 +675,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "RedoToMarker.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RedoToMarker",
         "type_name_plural": "RedoToMarkerCommands",
         "display_name": "Redo To Marker Command",
         "display_name_plural": "Redo To Marker Commands",
-        "type_kind": "Holon",
         "description": "Redoes mutations in the active transaction up to a specified marker.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -730,32 +709,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "LoadHolons.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoadHolons",
         "type_name_plural": "LoadHolonsCommands",
         "display_name": "Load Holons Command",
         "display_name_plural": "Load Holons Commands",
-        "type_kind": "Holon",
         "description": "Loads holons from uploaded or imported file content into the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -765,32 +743,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "Dance.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Dance",
         "type_name_plural": "DanceCommands",
         "display_name": "Dance Command",
         "display_name_plural": "Dance Commands",
-        "type_kind": "Holon",
         "description": "Executes a dance request within the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -800,32 +777,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "Query.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Query",
         "type_name_plural": "QueryCommands",
         "display_name": "Query Command",
         "display_name_plural": "Query Commands",
-        "type_kind": "Holon",
         "description": "Executes a query request within the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -835,32 +811,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetAllHolons.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetAllHolons",
         "type_name_plural": "GetAllHolonsCommands",
         "display_name": "Get All Holons Command",
         "display_name_plural": "Get All Holons Commands",
-        "type_kind": "Holon",
         "description": "Returns all holons visible in the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -870,32 +845,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetStagedHolonByBaseKey.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetStagedHolonByBaseKey",
         "type_name_plural": "GetStagedHolonByBaseKeyCommands",
         "display_name": "Get Staged Holon By Base Key Command",
         "display_name_plural": "Get Staged Holon By Base Key Commands",
-        "type_kind": "Holon",
         "description": "Returns the staged holon matching a specified base key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -905,32 +879,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetStagedHolonsByBaseKey.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetStagedHolonsByBaseKey",
         "type_name_plural": "GetStagedHolonsByBaseKeyCommands",
         "display_name": "Get Staged Holons By Base Key Command",
         "display_name_plural": "Get Staged Holons By Base Key Commands",
-        "type_kind": "Holon",
         "description": "Returns all staged holons matching a specified base key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -940,32 +913,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetStagedHolonByVersionedKey.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetStagedHolonByVersionedKey",
         "type_name_plural": "GetStagedHolonByVersionedKeyCommands",
         "display_name": "Get Staged Holon By Versioned Key Command",
         "display_name_plural": "Get Staged Holon By Versioned Key Commands",
-        "type_kind": "Holon",
         "description": "Returns the staged holon matching a specified versioned key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -975,32 +947,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetTransientHolonByBaseKey.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetTransientHolonByBaseKey",
         "type_name_plural": "GetTransientHolonByBaseKeyCommands",
         "display_name": "Get Transient Holon By Base Key Command",
         "display_name_plural": "Get Transient Holon By Base Key Commands",
-        "type_kind": "Holon",
         "description": "Returns the transient holon matching a specified base key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1010,32 +981,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetTransientHolonByVersionedKey.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetTransientHolonByVersionedKey",
         "type_name_plural": "GetTransientHolonByVersionedKeyCommands",
         "display_name": "Get Transient Holon By Versioned Key Command",
         "display_name_plural": "Get Transient Holon By Versioned Key Commands",
-        "type_kind": "Holon",
         "description": "Returns the transient holon matching a specified versioned key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1045,32 +1015,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetStagedCount.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetStagedCount",
         "type_name_plural": "GetStagedCountCommands",
         "display_name": "Get Staged Count Command",
         "display_name_plural": "Get Staged Count Commands",
-        "type_kind": "Holon",
         "description": "Returns the number of staged holons in the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1080,32 +1049,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "GetTransientCount.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "GetTransientCount",
         "type_name_plural": "GetTransientCountCommands",
         "display_name": "Get Transient Count Command",
         "display_name_plural": "Get Transient Count Commands",
-        "type_kind": "Holon",
         "description": "Returns the number of transient holons in the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1115,32 +1083,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "NewHolon.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "NewHolon",
         "type_name_plural": "NewHolonCommands",
         "display_name": "New Holon Command",
         "display_name_plural": "New Holon Commands",
-        "type_kind": "Holon",
         "description": "Creates a new transient holon, optionally with a key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1150,32 +1117,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "StageNewHolon.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "StageNewHolon",
         "type_name_plural": "StageNewHolonCommands",
         "display_name": "Stage New Holon Command",
         "display_name_plural": "Stage New Holon Commands",
-        "type_kind": "Holon",
         "description": "Stages a transient holon as a new holon in the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1185,32 +1151,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "StageNewFromClone.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "StageNewFromClone",
         "type_name_plural": "StageNewFromCloneCommands",
         "display_name": "Stage New From Clone Command",
         "display_name_plural": "Stage New From Clone Commands",
-        "type_kind": "Holon",
         "description": "Stages a new holon cloned from an existing holon reference with a new key.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1220,32 +1185,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "StageNewVersion.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "StageNewVersion",
         "type_name_plural": "StageNewVersionCommands",
         "display_name": "Stage New Version Command",
         "display_name_plural": "Stage New Version Commands",
-        "type_kind": "Holon",
         "description": "Stages a new version of an existing smart reference.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1255,32 +1219,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "StageNewVersionFromId.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "StageNewVersionFromId",
         "type_name_plural": "StageNewVersionFromIdCommands",
         "display_name": "Stage New Version From Id Command",
         "display_name_plural": "Stage New Version From Id Commands",
-        "type_kind": "Holon",
         "description": "Stages a new version of an existing holon identified by holon ID.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1290,32 +1253,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "DeleteHolon.CommandType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DeleteHolon",
         "type_name_plural": "DeleteHolonCommands",
         "display_name": "Delete Holon Command",
         "display_name_plural": "Delete Holon Commands",
-        "type_kind": "Holon",
         "description": "Deletes a holon identified by local ID from the active transaction.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -1325,32 +1287,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "(HolonType)-[AffordsCommand]->(CommandType)",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AffordsCommand",
         "type_name_plural": "AffordsCommandRelationships",
         "display_name": "AffordsCommand Relationship",
         "display_name_plural": "AffordsCommand Relationships",
-        "type_kind": "Relationship",
         "description": "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup.",
         "is_abstract_type": false,
         "is_definitional": true,
@@ -1364,44 +1325,43 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#DeclaredRelationshipType"
+            "$ref": "DeclaredRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#RelationshipRule.KeyRuleType"
+            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         }
       ]
     },
     {
       "key": "(CommandType)-[AffordedBy]->(HolonType)",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AffordedBy",
         "type_name_plural": "AffordedByRelationships",
         "display_name": "AffordedBy Relationship",
         "display_name_plural": "AffordedBy Relationships",
-        "type_kind": "Relationship",
         "description": "Inverse of AffordsCommand, relationship from CommandType to HolonType.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -1415,37 +1375,37 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#InverseRelationshipType"
+            "$ref": "InverseRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#RelationshipRule.KeyRuleType"
+            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(HolonType)-[AffordsCommand]->(CommandType)"
+            "$ref": "(HolonType)-[AffordsCommand]->(CommandType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#CommandType"
+            "$ref": "CommandType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         }
       ]

@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-06-03T10:12:11",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "generated_at": "2026-06-05T11:50:33",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-test-schema-book-person-inverse.csv"
@@ -15,32 +15,28 @@
   "holons": [
     {
       "key": "BookAuthorInverseSchema",
-      "type": "#Schema.HolonType",
+      "type": "Schema.HolonType",
       "properties": {
         "type_name": "BookAuthorInverseSchema",
-        "display_name": "BookAuthorInverseSchema",
-        "type_kind": "Holon",
-        "description": "Minimal test schema with an inverse relationship and extending the core schema.",
-        "is_abstract_type": false
+        "description": "Minimal test schema with an inverse relationship and extending the core schema."
       },
       "relationships": [
         {
           "name": "DependsOn",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         }
       ]
     },
     {
       "key": "Book.HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Book",
         "type_name_plural": "Books",
         "display_name": "Book",
         "display_name_plural": "Books",
-        "type_kind": "Holon",
         "description": "A book.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -50,44 +46,43 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#BookAuthorInverseSchema"
+            "$ref": "BookAuthorInverseSchema"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
           "name": "InstanceProperties",
           "target": {
-            "$ref": "#Title.PropertyType"
+            "$ref": "Title.PropertyType"
           }
         },
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(Book.HolonType)-[AuthoredBy]->(Person.HolonType)"
+            "$ref": "(Book)-[AuthoredBy]->(Person)"
           }
         }
       ]
     },
     {
       "key": "Person.HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Person",
         "type_name_plural": "Persons",
         "display_name": "Person",
         "display_name_plural": "People",
-        "type_kind": "Holon",
         "description": "A person.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -97,38 +92,37 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#BookAuthorInverseSchema"
+            "$ref": "BookAuthorInverseSchema"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
           "name": "InstanceProperties",
           "target": {
-            "$ref": "#Name.PropertyType"
+            "$ref": "Name.PropertyType"
           }
         }
       ]
     },
     {
-      "key": "(Book.HolonType)-[AuthoredBy]->(Person.HolonType)",
-      "type": "#TypeDescriptor.HolonType",
+      "key": "(Book)-[AuthoredBy]->(Person)",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AuthoredBy",
         "type_name_plural": "AuthoredByRelationships",
         "display_name": "AuthoredBy",
         "display_name_plural": "AuthoredBy Relationships",
-        "type_kind": "Relationship",
         "description": "Defines the author of a book.",
         "is_abstract_type": false,
         "is_definitional": true,
@@ -141,44 +135,43 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#BookAuthorInverseSchema"
+            "$ref": "BookAuthorInverseSchema"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#DeclaredRelationshipType"
+            "$ref": "DeclaredRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#RelationshipRule.KeyRuleType"
+            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#Book.HolonType"
+            "$ref": "Book.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#Person.HolonType"
+            "$ref": "Person.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(Person.HolonType)-[Authors]->(Book.HolonType)",
-      "type": "#TypeDescriptor.HolonType",
+      "key": "(Person)-[Authors]->(Book)",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Authors",
         "type_name_plural": "AuthorsRelationships",
         "display_name": "Authors",
         "display_name_plural": "Authors Relationships",
-        "type_kind": "Relationship",
         "description": "Specifies a book that a Person has authored.  Inverse of AuthoredBy.",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -191,50 +184,49 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#BookAuthorInverseSchema"
+            "$ref": "BookAuthorInverseSchema"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#InverseRelationshipType"
+            "$ref": "InverseRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#RelationshipRule.KeyRuleType"
+            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "#(Book.HolonType)-[AuthoredBy]->(Person.HolonType)"
+            "$ref": "(Book)-[AuthoredBy]->(Person)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "#Person.HolonType"
+            "$ref": "Person.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "#Book.HolonType"
+            "$ref": "Book.HolonType"
           }
         }
       ]
     },
     {
       "key": "Name.PropertyType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Name",
         "type_name_plural": "Names",
         "display_name": "Name",
         "display_name_plural": "Names",
-        "type_kind": "Property",
         "description": "Proper name.",
         "is_abstract_type": false
       },
@@ -242,38 +234,37 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#BookAuthorInverseSchema"
+            "$ref": "BookAuthorInverseSchema"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#PropertyType"
+            "$ref": "PropertyType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
           "name": "ValueType",
           "target": {
-            "$ref": "#MapStringValueType"
+            "$ref": "MapStringValueType"
           }
         }
       ]
     },
     {
       "key": "Title.PropertyType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Title",
         "type_name_plural": "Titles",
         "display_name": "Title",
         "display_name_plural": "Title",
-        "type_kind": "Property",
         "description": "A title.",
         "is_abstract_type": false
       },
@@ -281,25 +272,25 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#BookAuthorInverseSchema"
+            "$ref": "BookAuthorInverseSchema"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#PropertyType"
+            "$ref": "PropertyType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
           "name": "ValueType",
           "target": {
-            "$ref": "#MapStringValueType"
+            "$ref": "MapStringValueType"
           }
         }
       ]

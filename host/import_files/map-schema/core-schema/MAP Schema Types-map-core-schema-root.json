@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generator": "MAP CSV->JSON Notebook (row-wise SchemaType detection)",
-    "generated_at": "2026-06-03T10:12:11",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "generated_at": "2026-06-05T11:50:33",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -16,24 +16,20 @@
   "holons": [
     {
       "key": "MAP Core Schema-v0.0.7",
-      "type": "#Schema.HolonType",
+      "type": "Schema.HolonType",
       "properties": {
         "type_name": "MAP Core Schema-v0.0.7",
-        "display_name": "MAP Core Schema-v0.0.7",
-        "type_kind": "Holon",
-        "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.",
-        "is_abstract_type": false
+        "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself."
       }
     },
     {
       "key": "TypeDescriptor.HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "TypeDescriptor",
         "type_name_plural": "TypeDescriptors",
         "display_name": "Type Descriptor",
         "display_name_plural": "Type Descriptors",
-        "type_kind": "Holon",
         "description": "The TypeDescriptor is a concrete, self-describing type in the MAP Type System that defines the structure, metadata, and behavioral obligations of all other types—including itself. It plays a dual role: as a descriptor, it declares the properties and relationships that instances of a given type must populate (via InstanceProperties and InstanceRelationships); as a holon, it is an instantiable entity that belongs to a schema, is owned by a holon space, and participates in MAP’s introspectable type graph. All concrete type definitions in MAP—such as property types, relationship types, and holon types—are instances of TypeDescriptor, making it the cornerstone of MAP’s fully self-describing architecture..",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -43,32 +39,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonType",
         "type_name_plural": "HolonTypes",
         "display_name": "Abstract Holon Type",
         "display_name_plural": "Abstract Holon Types",
-        "type_kind": "Holon",
         "description": "HolonType is an abstract type descriptor that defines the structural role of all types used to describe holons in the MAP system. It serves as an anchor for concrete type descriptors—such as BookType, PersonType, or SchemaHolonType—which extend it to define specific categories of holons. By extending HolonType, these concrete types inherit a common set of structural obligations that govern how holons relate to their type and to the holon space in which they reside. This type is not intended to be instantiated directly.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -79,78 +74,77 @@
           "name": "AffordsCommand",
           "target": [
             {
-              "$ref": "#CloneHolon.CommandType"
+              "$ref": "CloneHolon.CommandType"
             },
             {
-              "$ref": "#GetEssentialContent.CommandType"
+              "$ref": "GetEssentialContent.CommandType"
             },
             {
-              "$ref": "#Summarize.CommandType"
+              "$ref": "Summarize.CommandType"
             },
             {
-              "$ref": "#GetHolonId.CommandType"
+              "$ref": "GetHolonId.CommandType"
             },
             {
-              "$ref": "#GetPredecessor.CommandType"
+              "$ref": "GetPredecessor.CommandType"
             },
             {
-              "$ref": "#GetKey.CommandType"
+              "$ref": "GetKey.CommandType"
             },
             {
-              "$ref": "#GetVersionedKey.CommandType"
+              "$ref": "GetVersionedKey.CommandType"
             },
             {
-              "$ref": "#GetPropertyValue.CommandType"
+              "$ref": "GetPropertyValue.CommandType"
             },
             {
-              "$ref": "#GetRelatedHolons.CommandType"
+              "$ref": "GetRelatedHolons.CommandType"
             },
             {
-              "$ref": "#WithPropertyValue.CommandType"
+              "$ref": "WithPropertyValue.CommandType"
             },
             {
-              "$ref": "#RemovePropertyValue.CommandType"
+              "$ref": "RemovePropertyValue.CommandType"
             },
             {
-              "$ref": "#AddRelatedHolons.CommandType"
+              "$ref": "AddRelatedHolons.CommandType"
             },
             {
-              "$ref": "#RemoveRelatedHolons.CommandType"
+              "$ref": "RemoveRelatedHolons.CommandType"
             },
             {
-              "$ref": "#WithDescriptor.CommandType"
+              "$ref": "WithDescriptor.CommandType"
             }
           ]
         },
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaHolonType"
+            "$ref": "MetaHolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         }
       ]
     },
     {
       "key": "PropertyType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "PropertyType",
         "type_name_plural": "PropertyTypes",
         "display_name": "Abstract Property Type",
         "display_name_plural": "Abstract Property Types",
-        "type_kind": "Holon",
         "description": "PropertyType is an abstract type descriptor.  It serves as an anchor for concrete property relationships.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -160,32 +154,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaPropertyType"
+            "$ref": "MetaPropertyType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         }
       ]
     },
     {
       "key": "DeclaredRelationshipType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DeclaredRelationshipType",
         "type_name_plural": "DeclaredRelationshipTypes",
         "display_name": "Declared Relationship Type",
         "display_name_plural": "Declared Relationship Types",
-        "type_kind": "Holon",
         "description": "Describes explicitly declared relationship types between holons.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -195,32 +188,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaDeclaredRelationshipType"
+            "$ref": "MetaDeclaredRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         }
       ]
     },
     {
       "key": "InverseRelationshipType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "InverseRelationshipType",
         "type_name_plural": "InverseRelationshipTypes",
         "display_name": "Inverse Relationship Type",
         "display_name_plural": "Inverse Relationship Types",
-        "type_kind": "Holon",
         "description": "Describes inverse relationship types derived from declared ones.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -230,32 +222,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaInverseRelationshipType"
+            "$ref": "MetaInverseRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         }
       ]
     },
     {
       "key": "MetaTypeDescriptor",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MetaTypeDescriptor",
         "type_name_plural": "MetaTypeDescriptors",
         "display_name": "Meta Type Descriptor",
         "display_name_plural": "Meta Type Descriptors",
-        "type_kind": "Holon",
         "description": "Specifies the properties and relationships that all TypeDescriptors populate.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -265,38 +256,41 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         },
         {
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "#TypeName.PropertyType"
+              "$ref": "TypeName.PropertyType"
             },
             {
-              "$ref": "#TypeNamePlural.PropertyType"
+              "$ref": "TypeNamePlural.PropertyType"
             },
             {
-              "$ref": "#DisplayName.PropertyType"
+              "$ref": "DisplayName.PropertyType"
             },
             {
-              "$ref": "#DisplayNamePlural.PropertyType"
+              "$ref": "DisplayNamePlural.PropertyType"
             },
             {
-              "$ref": "#Description.PropertyType"
+              "$ref": "Description.PropertyType"
             },
             {
-              "$ref": "#IsAbstractType.PropertyType"
+              "$ref": "IsAbstractType.PropertyType"
             },
             {
-              "$ref": "#TypeKind.PropertyType"
+              "$ref": "TypeKind.PropertyType"
+            },
+            {
+              "$ref": "InstanceName.PropertyType"
             }
           ]
         },
@@ -304,13 +298,13 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "#(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)"
+              "$ref": "(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)"
             },
             {
-              "$ref": "#(TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)"
+              "$ref": "(TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)"
             },
             {
-              "$ref": "#(TypeDescriptor.HolonType)-[UsesKeyRule]->(KeyRuleType)"
+              "$ref": "(TypeDescriptor.HolonType)-[UsesKeyRule]->(KeyRuleType)"
             }
           ]
         }
@@ -318,13 +312,12 @@
     },
     {
       "key": "MetaHolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MetaHolonType",
         "type_name_plural": "MetaHolonTypes",
         "display_name": "Meta Holon Type",
         "display_name_plural": "Meta Holon Types",
-        "type_kind": "Holon",
         "description": "Describes types whose instances are holons.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -334,29 +327,29 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaTypeDescriptor"
+            "$ref": "MetaTypeDescriptor"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         },
         {
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "#AllowsAdditionalProperties.PropertyType"
+              "$ref": "AllowsAdditionalProperties.PropertyType"
             },
             {
-              "$ref": "#AllowsAdditionalRelationships.PropertyType"
+              "$ref": "AllowsAdditionalRelationships.PropertyType"
             }
           ]
         },
@@ -364,22 +357,22 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "#(HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)"
+              "$ref": "(HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)"
             },
             {
-              "$ref": "#(HolonType)-[OwnedBy]->(HolonSpace.HolonType)"
+              "$ref": "(HolonType)-[OwnedBy]->(HolonSpace.HolonType)"
             },
             {
-              "$ref": "#(HolonType)-[Properties]->(PropertyType)"
+              "$ref": "(HolonType)-[Properties]->(PropertyType)"
             },
             {
-              "$ref": "#(HolonType)-[AffordsCommand]->(CommandType)"
+              "$ref": "(HolonType)-[AffordsCommand]->(CommandType)"
             },
             {
-              "$ref": "#(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)"
+              "$ref": "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)"
             },
             {
-              "$ref": "#(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
+              "$ref": "(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
             }
           ]
         }
@@ -387,13 +380,12 @@
     },
     {
       "key": "MetaPropertyType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MetaPropertyType",
         "type_name_plural": "MetaPropertyTypes",
         "display_name": "Meta Property Type",
         "display_name_plural": "Meta Property Types",
-        "type_kind": "Holon",
         "description": "Describes PropertyTypes used to define scalar properties of holons.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -403,44 +395,43 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaTypeDescriptor"
+            "$ref": "MetaTypeDescriptor"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         },
         {
           "name": "InstanceProperties",
           "target": {
-            "$ref": "#IsRequired.PropertyType"
+            "$ref": "IsRequired.PropertyType"
           }
         },
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(PropertyType)-[ValueType]->(ValueType)"
+            "$ref": "(PropertyType)-[ValueType]->(ValueType)"
           }
         }
       ]
     },
     {
       "key": "MetaRelationshipType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MetaRelationshipType",
         "type_name_plural": "MetaRelationshipTypes",
         "display_name": "Meta Relationship Type",
         "display_name_plural": "Meta Relationship Types",
-        "type_kind": "Holon",
         "description": "Describes relationship types between holons.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -450,41 +441,41 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaTypeDescriptor"
+            "$ref": "MetaTypeDescriptor"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         },
         {
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "#IsDefinitional.PropertyType"
+              "$ref": "IsDefinitional.PropertyType"
             },
             {
-              "$ref": "#IsOrdered.PropertyType"
+              "$ref": "IsOrdered.PropertyType"
             },
             {
-              "$ref": "#AllowsDuplicates.PropertyType"
+              "$ref": "AllowsDuplicates.PropertyType"
             },
             {
-              "$ref": "#MinCardinality.PropertyType"
+              "$ref": "MinCardinality.PropertyType"
             },
             {
-              "$ref": "#MaxCardinality.PropertyType"
+              "$ref": "MaxCardinality.PropertyType"
             },
             {
-              "$ref": "#DeletionSemantic.PropertyType"
+              "$ref": "DeletionSemantic.PropertyType"
             }
           ]
         },
@@ -492,10 +483,10 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "#(MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)"
+              "$ref": "(MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)"
             },
             {
-              "$ref": "#(MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)"
+              "$ref": "(MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)"
             }
           ]
         }
@@ -503,13 +494,12 @@
     },
     {
       "key": "MetaDeclaredRelationshipType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MetaDeclaredRelationshipType",
         "type_name_plural": "MetaDeclaredRelationshipTypes",
         "display_name": "Meta Declared Relationship Type",
         "display_name_plural": "Meta Declared Relationship Types",
-        "type_kind": "Holon",
         "description": "Describes explicitly declared relationship types between holons.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -519,32 +509,31 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaRelationshipType"
+            "$ref": "MetaRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         }
       ]
     },
     {
       "key": "MetaInverseRelationshipType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MetaInverseRelationshipType",
         "type_name_plural": "MetaInverseRelationshipTypes",
         "display_name": "Meta Inverse Relationship Type",
         "display_name_plural": "Meta Inverse Relationship Types",
-        "type_kind": "Holon",
         "description": "Describes inverse relationship types derived from declared ones.",
         "is_abstract_type": true,
         "allows_additional_properties": false,
@@ -554,38 +543,37 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#MetaRelationshipType"
+            "$ref": "MetaRelationshipType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#TypeNameRule"
+            "$ref": "TypeNameRule"
           }
         },
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
+            "$ref": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
           }
         }
       ]
     },
     {
       "key": "Schema.HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Schema",
         "type_name_plural": "Schemas",
         "display_name": "Schema",
         "display_name_plural": "Schemas",
-        "type_kind": "Holon",
         "description": "Describes schema holons - holons that anchor a cohesive schema. Includes the ability to define inter-schema dependencies.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -595,38 +583,48 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Description.PropertyType"
+            },
+            {
+              "$ref": "InstanceName.PropertyType"
+            }
+          ]
         },
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "#(Schema.HolonType)-[DependsOn]->(Schema.HolonType)"
+            "$ref": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)"
           }
         }
       ]
     },
     {
       "key": "HolonSpace.HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonSpace",
         "type_name_plural": "HolonSpaces",
         "display_name": "Holon Space",
         "display_name_plural": "Holon Spaces",
-        "type_kind": "Holon",
         "description": "Describes HolonSpace holons. A HolonSpace is a holon that, itself, is a container for holons. It maps 1:1 with a DHT. It also proxies inbound and outbound calls to other HolonSpaces of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies. With minimal InstanceProperties and no InstanceRelationships, a HolonSpace is very stable = i.e., owned holons and space proxies can be added to a space without requiring a new version of the HolonSpace.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -636,44 +634,43 @@
         {
           "name": "AffordsCommand",
           "target": {
-            "$ref": "#BeginTransaction.CommandType"
+            "$ref": "BeginTransaction.CommandType"
           }
         },
         {
           "name": "AffordsTransactionModel",
           "target": {
-            "$ref": "#Transaction.HolonType"
+            "$ref": "Transaction.HolonType"
           }
         },
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
     },
     {
       "key": "HolonError.HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonError",
         "type_name_plural": "HolonErrors",
         "display_name": "Holon Error",
         "display_name_plural": "Holon Errors",
-        "type_kind": "Holon",
         "description": "Describes the structure of error holons.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -683,29 +680,29 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "#ErrorType.PropertyType"
+              "$ref": "ErrorType.PropertyType"
             },
             {
-              "$ref": "#ErrorMessage.PropertyType"
+              "$ref": "ErrorMessage.PropertyType"
             }
           ]
         }
@@ -713,13 +710,12 @@
     },
     {
       "key": "Transaction.HolonType",
-      "type": "#TypeDescriptor.HolonType",
+      "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Transaction",
         "type_name_plural": "Transactions",
         "display_name": "Transaction",
         "display_name_plural": "Transactions",
-        "type_kind": "Holon",
         "description": "TransactionType is the descriptor for the MAP transaction model — the command-scope API surface that becomes available when a transaction is active. A HolonSpaceType affords exactly one TransactionType through the AffordsTransactionModel relationship. TransactionType does not model persistent transaction records, audit history, or runtime execution state.",
         "is_abstract_type": false,
         "allows_additional_properties": false,
@@ -730,89 +726,89 @@
           "name": "AffordsCommand",
           "target": [
             {
-              "$ref": "#Commit.CommandType"
+              "$ref": "Commit.CommandType"
             },
             {
-              "$ref": "#UndoLast.CommandType"
+              "$ref": "UndoLast.CommandType"
             },
             {
-              "$ref": "#RedoLast.CommandType"
+              "$ref": "RedoLast.CommandType"
             },
             {
-              "$ref": "#UndoToMarker.CommandType"
+              "$ref": "UndoToMarker.CommandType"
             },
             {
-              "$ref": "#RedoToMarker.CommandType"
+              "$ref": "RedoToMarker.CommandType"
             },
             {
-              "$ref": "#LoadHolons.CommandType"
+              "$ref": "LoadHolons.CommandType"
             },
             {
-              "$ref": "#Dance.CommandType"
+              "$ref": "Dance.CommandType"
             },
             {
-              "$ref": "#Query.CommandType"
+              "$ref": "Query.CommandType"
             },
             {
-              "$ref": "#GetAllHolons.CommandType"
+              "$ref": "GetAllHolons.CommandType"
             },
             {
-              "$ref": "#GetStagedHolonByBaseKey.CommandType"
+              "$ref": "GetStagedHolonByBaseKey.CommandType"
             },
             {
-              "$ref": "#GetStagedHolonsByBaseKey.CommandType"
+              "$ref": "GetStagedHolonsByBaseKey.CommandType"
             },
             {
-              "$ref": "#GetStagedHolonByVersionedKey.CommandType"
+              "$ref": "GetStagedHolonByVersionedKey.CommandType"
             },
             {
-              "$ref": "#GetTransientHolonByBaseKey.CommandType"
+              "$ref": "GetTransientHolonByBaseKey.CommandType"
             },
             {
-              "$ref": "#GetTransientHolonByVersionedKey.CommandType"
+              "$ref": "GetTransientHolonByVersionedKey.CommandType"
             },
             {
-              "$ref": "#GetStagedCount.CommandType"
+              "$ref": "GetStagedCount.CommandType"
             },
             {
-              "$ref": "#GetTransientCount.CommandType"
+              "$ref": "GetTransientCount.CommandType"
             },
             {
-              "$ref": "#NewHolon.CommandType"
+              "$ref": "NewHolon.CommandType"
             },
             {
-              "$ref": "#StageNewHolon.CommandType"
+              "$ref": "StageNewHolon.CommandType"
             },
             {
-              "$ref": "#StageNewFromClone.CommandType"
+              "$ref": "StageNewFromClone.CommandType"
             },
             {
-              "$ref": "#StageNewVersion.CommandType"
+              "$ref": "StageNewVersion.CommandType"
             },
             {
-              "$ref": "#StageNewVersionFromId.CommandType"
+              "$ref": "StageNewVersionFromId.CommandType"
             },
             {
-              "$ref": "#DeleteHolon.CommandType"
+              "$ref": "DeleteHolon.CommandType"
             }
           ]
         },
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "#MAP Core Schema-v0.0.7"
+            "$ref": "MAP Core Schema-v0.0.7"
           }
         },
         {
           "name": "Extends",
           "target": {
-            "$ref": "#HolonType"
+            "$ref": "HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "#ExtendedTypeRule.KeyRuleType"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
