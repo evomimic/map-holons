@@ -144,10 +144,8 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
 #[test]
 fn holon_space_descriptor_returns_single_transaction_model() -> Result<(), HolonError> {
     let context = build_context();
-    let mut holon_space =
-        new_holon_type_descriptor(&context, "holon-space-type", "HolonSpaceType")?;
-    let transaction_type =
-        new_holon_type_descriptor(&context, "transaction-type", "TransactionType")?;
+    let mut holon_space = new_holon_type_descriptor(&context, "holon-space-type", "HolonSpace")?;
+    let transaction_type = new_holon_type_descriptor(&context, "transaction-type", "Transaction")?;
 
     holon_space.add_related_holons(
         CoreRelationshipTypeName::AffordsTransactionModel,
@@ -159,10 +157,7 @@ fn holon_space_descriptor_returns_single_transaction_model() -> Result<(), Holon
 
     assert_descriptor(&holon_space_descriptor);
     assert_descriptor(&transaction_descriptor);
-    assert_eq!(
-        transaction_descriptor.header().type_name()?,
-        MapString("TransactionType".to_string())
-    );
+    assert_eq!(transaction_descriptor.header().type_name()?, MapString("Transaction".to_string()));
 
     Ok(())
 }
@@ -170,7 +165,7 @@ fn holon_space_descriptor_returns_single_transaction_model() -> Result<(), Holon
 #[test]
 fn transaction_model_errors_when_required_relationship_is_missing() -> Result<(), HolonError> {
     let context = build_context();
-    let holon_space = new_holon_type_descriptor(&context, "missing-model", "HolonSpaceType")?;
+    let holon_space = new_holon_type_descriptor(&context, "missing-model", "HolonSpace")?;
     let holon_space_descriptor = HolonSpaceDescriptor::from_holon(holon_space.into());
 
     assert!(matches!(
@@ -185,11 +180,11 @@ fn transaction_model_errors_when_required_relationship_is_missing() -> Result<()
 #[test]
 fn transaction_model_errors_when_multiple_models_are_related() -> Result<(), HolonError> {
     let context = build_context();
-    let mut holon_space = new_holon_type_descriptor(&context, "multiple-models", "HolonSpaceType")?;
+    let mut holon_space = new_holon_type_descriptor(&context, "multiple-models", "HolonSpace")?;
     let transaction_type_a =
-        new_holon_type_descriptor(&context, "transaction-type-a", "TransactionType")?;
+        new_holon_type_descriptor(&context, "transaction-type-a", "Transaction")?;
     let transaction_type_b =
-        new_holon_type_descriptor(&context, "transaction-type-b", "TransactionType")?;
+        new_holon_type_descriptor(&context, "transaction-type-b", "Transaction")?;
 
     holon_space.add_related_holons(
         CoreRelationshipTypeName::AffordsTransactionModel,
@@ -220,7 +215,7 @@ fn transaction_descriptor_afforded_commands_returns_flattened_command_set() -> R
         command_type(&context, "local-staged-count-command", CoreCommandTypeName::GetStagedCount)?;
     let mut parent = new_holon_type_descriptor(&context, "transaction-parent", "ParentType")?;
     let mut transaction_type =
-        new_holon_type_descriptor(&context, "transaction-command-owner", "TransactionType")?;
+        new_holon_type_descriptor(&context, "transaction-command-owner", "Transaction")?;
 
     parent.add_related_holons(
         CoreRelationshipTypeName::AffordsCommand,
@@ -248,7 +243,7 @@ fn transaction_descriptor_get_command_by_core_name_resolves_commit() -> Result<(
     let context = build_context();
     let command = command_type(&context, "commit-command", CoreCommandTypeName::Commit)?;
     let mut transaction_type =
-        new_holon_type_descriptor(&context, "transaction-with-commit", "TransactionType")?;
+        new_holon_type_descriptor(&context, "transaction-with-commit", "Transaction")?;
 
     transaction_type
         .add_related_holons(CoreRelationshipTypeName::AffordsCommand, vec![command.into()])?;
@@ -269,7 +264,7 @@ fn transaction_descriptor_get_command_by_string_canonicalizes_name() -> Result<(
     let command =
         command_type(&context, "get-staged-count-command", CoreCommandTypeName::GetStagedCount)?;
     let mut transaction_type =
-        new_holon_type_descriptor(&context, "transaction-with-staged-count", "TransactionType")?;
+        new_holon_type_descriptor(&context, "transaction-with-staged-count", "Transaction")?;
 
     transaction_type
         .add_related_holons(CoreRelationshipTypeName::AffordsCommand, vec![command.into()])?;
@@ -295,7 +290,7 @@ fn transaction_descriptor_get_command_by_name_detects_duplicate_inherited_declar
     let mut parent =
         new_holon_type_descriptor(&context, "duplicate-transaction-parent", "ParentType")?;
     let mut transaction_type =
-        new_holon_type_descriptor(&context, "duplicate-transaction-type", "TransactionType")?;
+        new_holon_type_descriptor(&context, "duplicate-transaction-type", "Transaction")?;
 
     parent.add_related_holons(
         CoreRelationshipTypeName::AffordsCommand,
@@ -321,7 +316,7 @@ fn transaction_descriptor_get_command_by_name_reports_missing_command() -> Resul
     let context = build_context();
     let command = command_type(&context, "query-command", CoreCommandTypeName::Query)?;
     let mut transaction_type =
-        new_holon_type_descriptor(&context, "transaction-missing-command", "TransactionType")?;
+        new_holon_type_descriptor(&context, "transaction-missing-command", "Transaction")?;
 
     transaction_type
         .add_related_holons(CoreRelationshipTypeName::AffordsCommand, vec![command.into()])?;

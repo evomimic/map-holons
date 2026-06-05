@@ -8,9 +8,9 @@ use crate::reference_layer::HolonReference;
 use core_types::HolonError;
 use type_names::{CoreRelationshipTypeName, ToCommandName};
 
-/// Runtime wrapper for the schema-backed `TransactionType` descriptor.
+/// Runtime wrapper for the schema-backed `Transaction` descriptor.
 ///
-/// `TransactionType` is the command-scope descriptor model for transaction
+/// `Transaction` is the command-scope descriptor model for transaction
 /// affordances. It is not the live runtime `TransactionContext`.
 pub struct TransactionDescriptor {
     holon: HolonReference,
