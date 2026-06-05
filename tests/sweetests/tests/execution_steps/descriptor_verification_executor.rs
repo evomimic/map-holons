@@ -1,3 +1,4 @@
+use core_types::TypeKind;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
     DanceDescriptor, HolonDescriptor, OperatorCategory, OperatorDescriptor, RelationshipDescriptor,
@@ -27,15 +28,15 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     let schema_type = find_holon_by_key(&holons, SCHEMA_TYPE_KEY);
     let schema_type_descriptor = HolonDescriptor::from_holon(schema_type);
     assert_eq!(
-        schema_type_descriptor.header().type_name().expect("SchemaType type_name"),
-        MapString(SCHEMA_TYPE_KEY.to_string())
+        schema_type_descriptor.header().type_name().expect("Schema type_name"),
+        MapString("Schema".to_string())
     );
     assert!(!schema_type_descriptor
         .allows_additional_properties()
-        .expect("SchemaType allows_additional_properties"));
+        .expect("Schema allows_additional_properties"));
     assert!(!schema_type_descriptor
         .allows_additional_relationships()
-        .expect("SchemaType allows_additional_relationships"));
+        .expect("Schema allows_additional_relationships"));
 
     let holon_type = find_holon_by_key(&holons, HOLON_TYPE_KEY);
     let holon_type_descriptor = HolonDescriptor::from_holon(holon_type);
@@ -257,7 +258,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
     let projection = find_holon_by_key(holons, "Projection");
 
     let mut query_response_type =
-        new_descriptor_holon(&context, "query-response-type", "QueryResponseType", "Holon")
+        new_descriptor_holon(&context, "query-response-type", "QueryResponseType", TypeKind::Holon)
             .expect("query response type");
     query_response_type
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_response_type.clone()])
@@ -266,9 +267,13 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::ResponseBody, vec![projection.clone()])
         .expect("QueryResponseType response body");
 
-    let mut inspect_response_type =
-        new_descriptor_holon(&context, "inspect-response-type", "InspectResponseType", "Holon")
-            .expect("inspect response type");
+    let mut inspect_response_type = new_descriptor_holon(
+        &context,
+        "inspect-response-type",
+        "InspectResponseType",
+        TypeKind::Holon,
+    )
+    .expect("inspect response type");
     inspect_response_type
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_response_type.clone()])
         .expect("InspectResponseType extends DanceResponseType");
@@ -277,7 +282,8 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("InspectResponseType response body");
 
     let mut query_dance =
-        new_descriptor_holon(&context, "query-dance-type", "Query", "Holon").expect("Query dance");
+        new_descriptor_holon(&context, "query-dance-type", "Query", TypeKind::Holon)
+            .expect("Query dance");
     query_dance
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Query extends DanceType");
@@ -292,7 +298,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("Query response");
 
     let mut inspect_dance =
-        new_descriptor_holon(&context, "inspect-dance-type", "Inspect", "Holon")
+        new_descriptor_holon(&context, "inspect-dance-type", "Inspect", TypeKind::Holon)
             .expect("Inspect dance");
     inspect_dance
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
@@ -308,7 +314,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("Inspect response");
 
     let mut parent_owner =
-        new_descriptor_holon(&context, "dance-parent-owner", "DanceParentOwner", "Holon")
+        new_descriptor_holon(&context, "dance-parent-owner", "DanceParentOwner", TypeKind::Holon)
             .expect("dance parent owner");
     parent_owner
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![holon_type.clone()])
@@ -321,7 +327,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("DanceParentOwner affords Query");
 
     let mut child_owner =
-        new_descriptor_holon(&context, "dance-child-owner", "DanceChildOwner", "Holon")
+        new_descriptor_holon(&context, "dance-child-owner", "DanceChildOwner", TypeKind::Holon)
             .expect("dance child owner");
     child_owner
         .add_related_holons(
@@ -627,13 +633,13 @@ fn new_descriptor_holon(
     context: &Arc<TransactionContext>,
     key: &str,
     type_name: &str,
-    instance_type_kind: &str,
+    type_kind: TypeKind,
 ) -> Result<TransientReference, HolonError> {
     let mut descriptor = context.mutation().new_holon(Some(MapString(key.to_string())))?;
     descriptor
         .with_property_value(CorePropertyTypeName::TypeName, type_name)?
         .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-        .with_property_value(CorePropertyTypeName::InstanceTypeKind, instance_type_kind)?
+        .with_property_value(CorePropertyTypeName::TypeKind, type_kind.as_schema_key())?
         .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
         .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
     Ok(descriptor)
