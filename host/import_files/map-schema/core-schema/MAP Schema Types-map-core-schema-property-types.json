@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T11:50:33",
+    "generated_at": "2026-06-05T12:09:05",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-property-types.csv"
@@ -289,46 +289,6 @@
           "name": "ValueType",
           "target": {
             "$ref": "MapStringValueType"
-          }
-        }
-      ]
-    },
-    {
-      "key": "InstanceTypeKind.PropertyType",
-      "type": "TypeDescriptor.HolonType",
-      "properties": {
-        "is_abstract_type": false,
-        "type_name": "InstanceTypeKind",
-        "type_name_plural": "InstanceTypeKinds",
-        "display_name": "instanceTypeKind",
-        "display_name_plural": "instanceTypeKinds",
-        "description": "Specifies the type kind (e.g., Holon, Property, Relationship, etc.) for instances.",
-        "type_kind": "TypeKind.Property",
-        "is_required": true
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "ValueType",
-          "target": {
-            "$ref": "TypeKind"
           }
         }
       ]

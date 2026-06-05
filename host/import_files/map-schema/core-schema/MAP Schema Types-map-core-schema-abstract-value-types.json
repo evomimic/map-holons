@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T11:50:33",
+    "generated_at": "2026-06-05T12:09:05",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-abstract-value-types.csv"
@@ -24,6 +24,7 @@
         "display_name": "Meta Value Type",
         "display_name_plural": "Meta Value Types",
         "description": "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill.",
+        "type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -58,6 +59,7 @@
         "display_name": "Value Type",
         "display_name_plural": "Value Types",
         "description": "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas.",
+        "type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -97,7 +99,8 @@
         "type_name_plural": "StringValueTypes",
         "display_name": "StringValueType",
         "display_name_plural": "StringValueTypes",
-        "description": "Abstract type for string-based value types."
+        "description": "Abstract type for string-based value types.",
+        "type_kind": "TypeKind.Value.String"
       },
       "relationships": [
         {
@@ -146,7 +149,8 @@
         "type_name_plural": "IntegerValueTypes",
         "display_name": "IntegerValueType",
         "display_name_plural": "IntegerValueTypes",
-        "description": "Abstract type for integer-based value types."
+        "description": "Abstract type for integer-based value types.",
+        "type_kind": "TypeKind.Value.Integer"
       },
       "relationships": [
         {
@@ -195,7 +199,8 @@
         "type_name_plural": "BooleanValueTypes",
         "display_name": "BooleanValueType",
         "display_name_plural": "BooleanValueTypes",
-        "description": "Abstract type for boolean-based value types."
+        "description": "Abstract type for boolean-based value types.",
+        "type_kind": "TypeKind.Value.Boolean"
       },
       "relationships": [
         {
@@ -233,7 +238,8 @@
         "type_name_plural": "BytesValueTypes",
         "display_name": "BytesValueType",
         "display_name_plural": "BytesValueTypes",
-        "description": "Abstract type for byte sequence value types."
+        "description": "Abstract type for byte sequence value types.",
+        "type_kind": "TypeKind.Value.Bytes"
       },
       "relationships": [
         {
@@ -271,7 +277,8 @@
         "type_name_plural": "EnumValueTypes",
         "display_name": "EnumValueType",
         "display_name_plural": "EnumValueTypes",
-        "description": "Abstract type for enum-based value types."
+        "description": "Abstract type for enum-based value types.",
+        "type_kind": "TypeKind.Value.Enum"
       },
       "relationships": [
         {
@@ -309,7 +316,8 @@
         "type_name_plural": "EnumVariantValueTypes",
         "display_name": "EnumVariant Value Type",
         "display_name_plural": "EnumVariant Value Types",
-        "description": "Abstract type for variants of enum-based value types."
+        "description": "Abstract type for variants of enum-based value types.",
+        "type_kind": "TypeKind.EnumVariant"
       },
       "relationships": [
         {
@@ -341,7 +349,8 @@
         "type_name_plural": "ValueArrayValueTypes",
         "display_name": "ValueArrayType",
         "display_name_plural": "ValueArrayTypes",
-        "description": "Abstract type for value array types."
+        "description": "Abstract type for value array types.",
+        "type_kind": "TypeKind.Value.Array"
       },
       "relationships": [
         {

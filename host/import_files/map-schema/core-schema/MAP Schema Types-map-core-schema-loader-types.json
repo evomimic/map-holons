@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T11:50:33",
+    "generated_at": "2026-06-05T12:09:05",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -25,6 +25,7 @@
         "display_name": "Loader Holon",
         "display_name_plural": "Loader Holons",
         "description": "Representation of a parsed holon from JSON input, including properties and unresolved references.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": true,
         "allows_additional_relationships": true
@@ -76,6 +77,7 @@
         "display_name": "Loader Relationship Reference",
         "display_name_plural": "Loader Relationship References",
         "description": "Represents an unresolved relationship reference from a LoaderHolon, including source/target references.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -127,6 +129,7 @@
         "display_name": "Loader Holon Reference",
         "display_name_plural": "Loader Holon References",
         "description": "Represents an unresolved reference to a holon, either local (by key or ID) or external (via proxy + key/ID).",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -178,6 +181,7 @@
         "display_name": "HolonLoaderBundle",
         "display_name_plural": "HolonLoaderBundles",
         "description": "Container holon for a collection of LoaderHolons supplied by the loader client.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -224,6 +228,7 @@
         "display_name": "HolonLoadResponse",
         "display_name_plural": "HolonLoadResponses",
         "description": "Message-only holon summarizing the outcome of a holon load operation (not persisted by the loader commit).",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -287,6 +292,7 @@
         "display_name": "Holon Load Error",
         "display_name_plural": "Holon Load Errors",
         "description": "Represents a single error in the Holon Loader process.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -341,6 +347,7 @@
         "display_name": "HolonLoadSet",
         "display_name_plural": "HolonLoadSets",
         "description": "Container holon for a set of HolonLoaderBundles supplied by the loader client.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -381,6 +388,7 @@
         "display_name": "HasRelationshipReference",
         "display_name_plural": "HasRelationshipReference Relationships",
         "description": "Declared relationship from a LoaderHolon to each unresolved relationship reference it contains.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -431,6 +439,7 @@
         "display_name": "RelationshipReferenceOf",
         "display_name_plural": "RelationshipReferenceOf Relationships",
         "description": "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -487,6 +496,7 @@
         "display_name": "ReferenceSource",
         "display_name_plural": "ReferenceSource Relationships",
         "description": "Declared relationship from a LoaderRelationshipReference to the holon that acts as the relationship source.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": true,
@@ -537,6 +547,7 @@
         "display_name": "ReferenceSourceOf",
         "display_name_plural": "ReferenceSourceOf Relationships",
         "description": "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -593,6 +604,7 @@
         "display_name": "ReferenceTarget",
         "display_name_plural": "ReferenceTarget Relationships",
         "description": "Declared relationship from a LoaderRelationshipReference to the holons that act as relationship targets.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": true,
@@ -643,6 +655,7 @@
         "display_name": "ReferenceTargetOf",
         "display_name_plural": "ReferenceTargetOf Relationships",
         "description": "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Cascade",
         "is_definitional": false,
@@ -699,6 +712,7 @@
         "display_name": "BundleMembers",
         "display_name_plural": "BundleMembers Relationships",
         "description": "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -749,6 +763,7 @@
         "display_name": "BundleMemberOf",
         "display_name_plural": "BundleMemberOf Relationships",
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -805,6 +820,7 @@
         "display_name": "HasLoadError",
         "display_name_plural": "HasLoadError Relationships",
         "description": "Declared relationship from a HolonLoadResponse to one or more HolonError holons.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -855,6 +871,7 @@
         "display_name": "LoadErrorOf",
         "display_name_plural": "LoadErrorOf Relationships",
         "description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -911,6 +928,7 @@
         "display_name": "Contains",
         "display_name_plural": "Contains Relationships",
         "description": "Declared relationship from a HolonLoadSet to each HolonLoaderBundle it contains.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -961,6 +979,7 @@
         "display_name": "ContainedIn",
         "display_name_plural": "ContainedIn Relationships",
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -1017,6 +1036,7 @@
         "display_name": "LoadCommitStatus",
         "display_name_plural": "LoadCommitStatuses",
         "description": "An enum representing the commit outcome of a holon load.",
+        "type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1047,6 +1067,7 @@
         "type_name": "Complete",
         "display_name": "Complete",
         "description": "An enum variant indicating a complete commit.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1083,6 +1104,7 @@
         "type_name": "Incomplete",
         "display_name": "Incomplete",
         "description": "An enum variant indicating an incomplete commit.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1119,6 +1141,7 @@
         "type_name": "Skipped",
         "display_name": "Skipped",
         "description": "An enum variant indicating that commit was skipped.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1157,6 +1180,7 @@
         "display_name": "key",
         "display_name_plural": "keys",
         "description": "Optional key to identify the holon instance within the import set.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1195,6 +1219,7 @@
         "display_name": "relationship_name",
         "display_name_plural": "relationship_names",
         "description": "Name of the relationship as declared in the JSON input.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1233,6 +1258,7 @@
         "display_name": "holon_key",
         "display_name_plural": "holon_keys",
         "description": "Local key for the referenced holon.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1271,6 +1297,7 @@
         "display_name": "holon_id",
         "display_name_plural": "holon_ids",
         "description": "ActionHash identifier of a referenced holon.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1309,6 +1336,7 @@
         "display_name": "proxy_key",
         "display_name_plural": "proxy_keys",
         "description": "Key of the ProxySpace through which this external reference is routed.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1347,6 +1375,7 @@
         "display_name": "proxy_id",
         "display_name_plural": "proxy_ids",
         "description": "ActionHash of the ProxySpace holon, used to route external references.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1385,6 +1414,7 @@
         "display_name": "holons_staged",
         "display_name_plural": "holons_stageds",
         "description": "Number of holons staged during the load operation.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1423,6 +1453,7 @@
         "display_name": "holons_committed",
         "display_name_plural": "holons_committeds",
         "description": "Number of holons successfully committed.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1461,6 +1492,7 @@
         "display_name": "links_created",
         "display_name_plural": "links_createds",
         "description": "Number of links successfully created.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1499,6 +1531,7 @@
         "display_name": "filename",
         "display_name_plural": "filenames",
         "description": "The name of a file.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1537,6 +1570,7 @@
         "display_name": "loader_holon_key",
         "display_name_plural": "loader_holon_keys",
         "description": "Key to reference a loader holon within a load set.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1575,6 +1609,7 @@
         "display_name": "start_utf8_byte_offset",
         "display_name_plural": "start_utf8_byte_offsets",
         "description": "Byte offset that signifies the start of a segment of a source file.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1613,6 +1648,7 @@
         "display_name": "load_commit_status",
         "display_name_plural": "load_commit_statuses",
         "description": "Represents the commit status for a holon loading operation.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [

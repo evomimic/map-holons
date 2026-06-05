@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T11:50:33",
+    "generated_at": "2026-06-05T12:09:05",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -18,7 +18,8 @@
       "type": "Schema.HolonType",
       "properties": {
         "type_name": "MAP Dance Schema-v0.0.3",
-        "description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema."
+        "description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema.",
+        "type_kind": "TypeKind.Holon"
       },
       "relationships": [
         {
@@ -38,6 +39,7 @@
         "display_name": "Dance Type",
         "display_name_plural": "Dance Types",
         "description": "Abstract holon type for descriptors of executable dances, linking to a specific request and response holon type.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -94,6 +96,7 @@
         "display_name": "Dance Response Type",
         "display_name_plural": "Dance Response Types",
         "description": "Abstract holon type for response objects returned from dances. Includes response body and status code.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -140,6 +143,7 @@
         "display_name": "Response Body Type",
         "display_name_plural": "Response Body Types",
         "description": "Abstract holon type for structured response bodies returned from dances.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -174,6 +178,7 @@
         "display_name": "Dance Implementation",
         "display_name_plural": "Dance Implementations",
         "description": "Concrete binding of a DanceType for a specific TypeDescriptor, with executable details (engine, module, entrypoint, ABI, version/compat).",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -240,6 +245,7 @@
         "display_name": "Affords Relationship",
         "display_name_plural": "Affords Relationships",
         "description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": true,
@@ -290,6 +296,7 @@
         "display_name": "AffordedBy Relationship",
         "display_name_plural": "AffordedBy Relationships",
         "description": "Inverse of Affords, from DanceType to HolonType.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -345,6 +352,7 @@
         "display_name": "ImplementsDance Relationship",
         "display_name_plural": "ImplementsDance Relationships",
         "description": "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -392,6 +400,7 @@
         "display_name": "ImplementedFor Relationship",
         "display_name_plural": "ImplementedFor Relationships",
         "description": "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -445,6 +454,7 @@
         "display_name": "ForDance Relationship",
         "display_name_plural": "ForDance Relationships",
         "description": "Pins a DanceImplementation to exactly one DanceType interface it satisfies.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -494,6 +504,7 @@
         "display_name": "HasImplementation Relationship",
         "display_name_plural": "HasImplementation Relationships",
         "description": "Inverse of ForDance, from DanceType to DanceImplementation.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -549,6 +560,7 @@
         "display_name": "Request Relationship",
         "display_name_plural": "Request Relationships",
         "description": "Links a DanceType to the HolonType used as its request body.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -598,6 +610,7 @@
         "display_name": "RequestFor Relationship",
         "display_name_plural": "RequestFor Relationships",
         "description": "Inverse of Request, from HolonType to DanceType.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -653,6 +666,7 @@
         "display_name": "Response Relationship",
         "display_name_plural": "Response Relationships",
         "description": "Links a DanceType to the DanceResponseType used to structure its response.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -702,6 +716,7 @@
         "display_name": "ResponseFor Relationship",
         "display_name_plural": "ResponseFor Relationships",
         "description": "Inverse of Response, from DanceResponseType to DanceType.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -757,6 +772,7 @@
         "display_name": "ResponseBody Relationship",
         "display_name_plural": "ResponseBody Relationships",
         "description": "Links a DanceResponseType to the ResponseBodyType that will serve as the structured response body.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -806,6 +822,7 @@
         "display_name": "ResponseBodyFor Relationship",
         "display_name_plural": "ResponseBodyFor Relationships",
         "description": "Inverse of ResponseBody, from ResponseBodyType to DanceResponseType.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -861,6 +878,7 @@
         "display_name": "dance_name",
         "display_name_plural": "dance_names",
         "description": "Unique string identifier for a DanceType descriptor, used in dispatch tables.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -899,6 +917,7 @@
         "display_name": "dance_description",
         "display_name_plural": "dance_descriptions",
         "description": "Human-readable explanation of what the dance does or when it should be invoked.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -937,6 +956,7 @@
         "display_name": "response_status_code",
         "display_name_plural": "response_status_codes",
         "description": "Machine-readable status code indicating the result of the dance.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -975,6 +995,7 @@
         "display_name": "engine",
         "display_name_plural": "engines",
         "description": "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin).",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1013,6 +1034,7 @@
         "display_name": "module_ref",
         "display_name_plural": "module_refs",
         "description": "Content-address or locator of the executable module (e.g., hash/URL/capability address).",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1051,6 +1073,7 @@
         "display_name": "entrypoint",
         "display_name_plural": "entrypoints",
         "description": "Function/export name to invoke inside the module.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1089,6 +1112,7 @@
         "display_name": "abi_id",
         "display_name_plural": "abi_ids",
         "description": "Identifier of the stable smart contract ABI expected by the module/entrypoint.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1127,6 +1151,7 @@
         "display_name": "version",
         "display_name_plural": "versions",
         "description": "Semantic version or content hash pin of the implementation.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1165,6 +1190,7 @@
         "display_name": "compat",
         "display_name_plural": "compats",
         "description": "Compatibility range or constraints (e.g., ABI or schema versions).",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1203,6 +1229,7 @@
         "display_name": "dance_summary",
         "display_name_plural": "dance_summaries",
         "description": "Human-readable summary of a dance outcome.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1241,6 +1268,7 @@
         "display_name": "Response Status Code",
         "display_name_plural": "Response Status Codes",
         "description": "Standard set of status codes returned by dances, aligned with HTTP semantics.",
+        "type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1273,6 +1301,7 @@
         "display_name": "OK",
         "display_name_plural": "OKs",
         "description": "200 — Request succeeded.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1311,6 +1340,7 @@
         "display_name": "Accepted",
         "display_name_plural": "Accepteds",
         "description": "202 — Request accepted but not yet processed.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1349,6 +1379,7 @@
         "display_name": "Bad Request",
         "display_name_plural": "Bad Requests",
         "description": "400 — The request was malformed or invalid.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1387,6 +1418,7 @@
         "display_name": "Unauthorized",
         "display_name_plural": "Unauthorized",
         "description": "401 — The requester is not authenticated.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1425,6 +1457,7 @@
         "display_name": "Forbidden",
         "display_name_plural": "Forbidden",
         "description": "403 — The requester lacks permission.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1463,6 +1496,7 @@
         "display_name": "Not Found",
         "display_name_plural": "Not Founds",
         "description": "404 — The target resource was not found.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1501,6 +1535,7 @@
         "display_name": "Conflict",
         "display_name_plural": "Conflicts",
         "description": "409 — Conflict with the current state of the resource.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1539,6 +1574,7 @@
         "display_name": "Unprocessable Entity",
         "display_name_plural": "Unprocessable Entities",
         "description": "422 — Semantic validation failed.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1577,6 +1613,7 @@
         "display_name": "Server Error",
         "display_name_plural": "Server Errors",
         "description": "500 — Unexpected internal error.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1615,6 +1652,7 @@
         "display_name": "Not Implemented",
         "display_name_plural": "Not Implemented",
         "description": "501 — Functionality required to fulfill the request is not supported.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1653,6 +1691,7 @@
         "display_name": "Service Unavailable",
         "display_name_plural": "Service Unavailable",
         "description": "503 — The server is currently unable to handle the request (overload/maintenance).",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1691,6 +1730,7 @@
         "display_name": "Dance Engine",
         "display_name_plural": "Dance Engines",
         "description": "Enum value type for execution engines used by DanceImplementations.",
+        "type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1723,6 +1763,7 @@
         "display_name": "WasmWasi",
         "display_name_plural": "WasmWasi",
         "description": "Execute a WASM module under WASI (preferred).",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1761,6 +1802,7 @@
         "display_name": "Process",
         "display_name_plural": "Processes",
         "description": "Spawn a separate OS process with protocol pipes.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1799,6 +1841,7 @@
         "display_name": "RustDylib",
         "display_name_plural": "RustDylibs",
         "description": "Dynamically load a Rust dylib via FFI (platform-coupled).",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1837,6 +1880,7 @@
         "display_name": "Builtin",
         "display_name_plural": "Builtins",
         "description": "Call a registered host builtin function.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1875,6 +1919,7 @@
         "display_name": "Commit Response",
         "display_name_plural": "Commit Responses",
         "description": "Response body summarizing the result of a commit request.",
+        "type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -1920,6 +1965,7 @@
         "display_name": "commits_attempted",
         "display_name_plural": "commits_attempted",
         "description": "Number of holons the commit operation attempted to save.",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1958,6 +2004,7 @@
         "display_name": "CommitRequestStatus",
         "display_name_plural": "CommitRequestStatus",
         "description": "Enum value type for commit request outcomes (Complete, Incomplete).",
+        "type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1990,6 +2037,7 @@
         "display_name": "Complete",
         "display_name_plural": "Completes",
         "description": "All staged holons committed; no staged holons remain.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2028,6 +2076,7 @@
         "display_name": "Incomplete",
         "display_name_plural": "Incompletes",
         "description": "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution.",
+        "type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2066,6 +2115,7 @@
         "display_name": "commit_request_status",
         "display_name_plural": "commit_request_statuses",
         "description": "Overall status of the commit request (Complete or Incomplete).",
+        "type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2104,6 +2154,7 @@
         "display_name": "SavedHolons Relationship",
         "display_name_plural": "SavedHolons Relationships",
         "description": "Declared relationship from a CommitResponse to each holon successfully saved by this commit.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -2154,6 +2205,7 @@
         "display_name": "SavedByCommit Relationship",
         "display_name_plural": "SavedByCommit Relationships",
         "description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -2210,6 +2262,7 @@
         "display_name": "AbandonedHolons Relationship",
         "display_name_plural": "AbandonedHolons Relationships",
         "description": "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -2260,6 +2313,7 @@
         "display_name": "AbandonedByCommit Relationship",
         "display_name_plural": "AbandonedByCommit Relationships",
         "description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
+        "type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
