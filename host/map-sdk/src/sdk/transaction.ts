@@ -1,11 +1,11 @@
-import { DomainError } from '../internal/errors';
+import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
   HolonId,
   LocalId,
   SmartReferenceWire,
   TxId,
-} from '../internal/wire-types/references';
+} from '../internal';
 import { HolonCollection } from './collection';
 import {
   createHolonReference,
