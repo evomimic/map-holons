@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DomainError } from '../../src/internal/errors';
+import { DomainError } from '../../src';
 import type {
   BaseValue,
   ContentSet,
@@ -65,7 +65,7 @@ vi.mock('../../src/internal/commands/transaction', () => ({
   transientCount: transientCountMock,
 }));
 
-import { HolonCollection } from '../../src/sdk/collection';
+import { HolonCollection } from '../../src';
 import {
   createHolonReference,
   createTransientHolonReference,
