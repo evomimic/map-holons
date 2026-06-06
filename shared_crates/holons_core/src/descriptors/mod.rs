@@ -29,8 +29,8 @@ pub use descriptor::Descriptor;
 pub use holon_descriptor::HolonDescriptor;
 pub use holon_space_descriptor::HolonSpaceDescriptor;
 pub use inheritance::{
-    ancestors, classify_relationship_direction, walk_extends_chain, ExtendsIter,
-    RelationshipDirection,
+    ancestors, classify_relationship_direction, effective_descriptor_lineage, walk_extends_chain,
+    ExtendsIter, RelationshipDirection,
 };
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use operator_category::OperatorCategory;

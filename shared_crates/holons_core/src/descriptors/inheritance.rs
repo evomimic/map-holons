@@ -2,8 +2,9 @@ use std::collections::HashSet;
 
 use crate::descriptors::accessor_helpers::{descriptor_label, lock_error, search_extends_chain};
 use crate::reference_layer::{HolonReference, ReadableHolon};
+use base_types::BaseValue;
 use core_types::HolonError;
-use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
+use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Direction of a relationship type descriptor relative to its declared edge.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -48,6 +49,61 @@ pub fn walk_extends_chain(start: &HolonReference) -> ExtendsIter {
 /// rather than a short-circuiting iterator walk.
 pub fn ancestors(start: &HolonReference) -> Result<Vec<HolonReference>, HolonError> {
     walk_extends_chain(start).collect()
+}
+
+/// Computes the effective descriptor lineage for a holon(per MAP Type System) v1.2.
+///
+/// Ordinary instances use the `Extends` lineage of their `DescribedBy` descriptor.
+/// Descriptor holons additionally contribute their own `Extends` lineage before
+/// the effective lineage of their describing `TypeDescriptor` descriptor.
+pub fn effective_descriptor_lineage(
+    holon: &HolonReference,
+) -> Result<Vec<HolonReference>, HolonError> {
+    let Some(described_by_descriptor) = described_by_descriptor(holon)? else {
+        return ancestors(holon);
+    };
+
+    if is_type_descriptor_descriptor(&described_by_descriptor)? {
+        let mut lineage = ancestors(holon)?;
+        append_unique(&mut lineage, ancestors(&described_by_descriptor)?);
+        return Ok(lineage);
+    }
+
+    ancestors(&described_by_descriptor)
+}
+
+fn described_by_descriptor(holon: &HolonReference) -> Result<Option<HolonReference>, HolonError> {
+    let collection_arc = holon.related_holons(CoreRelationshipTypeName::DescribedBy)?;
+    let collection = collection_arc.read().map_err(lock_error)?;
+    let members = collection.get_members();
+
+    match members.as_slice() {
+        [] => Ok(None),
+        [single] => Ok(Some(single.clone())),
+        _ => Err(HolonError::DuplicateError(
+            "DescribedBy".into(),
+            "Expected exactly one descriptor target".into(),
+        )),
+    }
+}
+
+fn is_type_descriptor_descriptor(descriptor: &HolonReference) -> Result<bool, HolonError> {
+    let expected = CoreHolonTypeName::TypeDescriptor.as_holon_name();
+    match descriptor.property_value(CorePropertyTypeName::TypeName)? {
+        Some(BaseValue::StringValue(type_name)) => Ok(type_name == expected),
+        Some(BaseValue::EnumValue(type_name)) => Ok(type_name.0 == expected),
+        Some(_) | None => Ok(false),
+    }
+}
+
+fn append_unique(lineage: &mut Vec<HolonReference>, additional: Vec<HolonReference>) {
+    let mut seen = lineage.iter().map(HolonReference::reference_id_string).collect::<HashSet<_>>();
+
+    for descriptor in additional {
+        if seen.insert(descriptor.reference_id_string()) {
+            lineage.push(descriptor);
+        }
+    }
 }
 
 /// Classifies whether a relationship type descriptor is declared or inverse.
@@ -226,6 +282,84 @@ mod tests {
                 HolonReference::from(&leaf),
                 HolonReference::from(&middle),
                 HolonReference::from(&root),
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_descriptor_lineage_for_instance_uses_described_by_extends_chain(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let holon_type = new_descriptor_holon(&context, "HolonType", "HolonType", "Holon")?;
+        let mut book_type = new_descriptor_holon(&context, "Book.HolonType", "Book", "Holon")?;
+        let mut book = new_test_holon(&context, "book-instance")?;
+
+        book_type.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&holon_type)],
+        )?;
+        book.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&book_type)],
+        )?;
+
+        assert_eq!(
+            effective_descriptor_lineage(&HolonReference::from(&book))?,
+            vec![HolonReference::from(&book_type), HolonReference::from(&holon_type)]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_descriptor_lineage_for_descriptor_combines_own_and_describing_lineages(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let meta_type_descriptor =
+            new_descriptor_holon(&context, "MetaTypeDescriptor", "MetaTypeDescriptor", "Holon")?;
+        let mut meta_holon_type =
+            new_descriptor_holon(&context, "MetaHolonType", "MetaHolonType", "Holon")?;
+        let mut holon_type = new_descriptor_holon(&context, "HolonType", "HolonType", "Holon")?;
+        let mut type_descriptor =
+            new_descriptor_holon(&context, "TypeDescriptor.HolonType", "TypeDescriptor", "Holon")?;
+        let mut descriptor_holon = new_descriptor_holon(
+            &context,
+            "MetaTypeDescriptor.Instance",
+            "MetaTypeDescriptor",
+            "Holon",
+        )?;
+
+        meta_holon_type.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&meta_type_descriptor)],
+        )?;
+        holon_type.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&meta_holon_type)],
+        )?;
+        type_descriptor.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&holon_type)],
+        )?;
+        descriptor_holon.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&meta_type_descriptor)],
+        )?;
+        descriptor_holon.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor)],
+        )?;
+
+        assert_eq!(
+            effective_descriptor_lineage(&HolonReference::from(&descriptor_holon))?,
+            vec![
+                HolonReference::from(&descriptor_holon),
+                HolonReference::from(&meta_type_descriptor),
+                HolonReference::from(&type_descriptor),
+                HolonReference::from(&holon_type),
+                HolonReference::from(&meta_holon_type),
             ]
         );
 
