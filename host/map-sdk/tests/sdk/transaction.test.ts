@@ -255,11 +255,22 @@ describe('MapTransaction', () => {
     expect(deleteHolonMock).toHaveBeenCalledWith(txId, localId);
   });
 
-  it('delegates loadHolons and discards the internal payload', async () => {
+  it('wraps loadHolons results as transient references', async () => {
     loadHolonsMock.mockResolvedValue(transientReference);
 
-    await expect(transaction().loadHolons(contentSet)).resolves.toBeUndefined();
+    const holon = await transaction().loadHolons(contentSet);
+
     expect(loadHolonsMock).toHaveBeenCalledWith(txId, contentSet);
+    expect(holon).toBeInstanceOf(TransientHolonReference);
+  });
+
+  it('returns a loadHolons transient handle with direct readable methods', async () => {
+    loadHolonsMock.mockResolvedValue(transientReference);
+
+    const holon = await transaction().loadHolons(contentSet);
+
+    expect(holon.propertyValue).toEqual(expect.any(Function));
+    expect(holon.relatedHolons).toEqual(expect.any(Function));
   });
 
   it('wraps getAllHolons results as a HolonCollection', async () => {
