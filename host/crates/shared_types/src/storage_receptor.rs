@@ -13,8 +13,10 @@ use crate::holon_space::SpaceInfo;
 /// making it independent of the concrete receptor type (Holochain, Local, etc.)
 /// that was wired up at config time.
 ///
-/// Signal-subscription methods (`subscribe_raw`, `subscribe_decoded`) are on the
-/// concrete type only. Callers that need them should downcast via `Arc::downcast`.
+/// Signal-subscription methods are on the concrete type only. The MAP-facing
+/// public API is `subscribe_notifications() -> Receiver<StorageNotification>`;
+/// `subscribe_decoded()` is adapter-internal. Callers should downcast via
+/// `Arc::downcast` to access these on `HolochainReceptor`.
 pub trait StorageReceptor: Send + Sync {
     fn receptor_id(&self) -> &str;
 
