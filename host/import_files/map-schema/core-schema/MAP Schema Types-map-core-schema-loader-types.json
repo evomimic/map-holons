@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T12:09:05",
+    "generated_at": "2026-06-05T17:22:41",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -1061,7 +1061,7 @@
       ]
     },
     {
-      "key": "Unnamed record.Complete",
+      "key": "LoadCommitStatus.Complete",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Complete",
@@ -1098,7 +1098,7 @@
       ]
     },
     {
-      "key": "Unnamed record.Incomplete",
+      "key": "LoadCommitStatus.Incomplete",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Incomplete",
@@ -1135,7 +1135,7 @@
       ]
     },
     {
-      "key": "Unnamed record.Skipped",
+      "key": "LoadCommitStatus.Skipped",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Skipped",

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T12:09:05",
+    "generated_at": "2026-06-05T17:22:41",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-property-types.csv"
@@ -774,15 +774,15 @@
       ]
     },
     {
-      "key": "InstanceName.PropertyType",
+      "key": "SchemaName.PropertyType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
-        "type_name": "InstanceName",
-        "type_name_plural": "InstanceNames",
-        "display_name": "instanceName",
-        "display_name_plural": "instanceNames",
-        "description": "The unique identifier for a holon data instance.",
+        "type_name": "SchemaName",
+        "type_name_plural": "SchemaNames",
+        "display_name": "schemaName",
+        "display_name_plural": "schemaNames",
+        "description": "The name of a type schema.  Defines a collection of type descriptor holons.",
         "type_kind": "TypeKind.Property",
         "is_required": true
       },
