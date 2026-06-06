@@ -1,11 +1,11 @@
-import { DomainError } from '../internal/errors';
+import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
   HolonId,
   LocalId,
   SmartReferenceWire,
   TxId,
-} from '../internal/wire-types/references';
+} from '../internal';
 import { HolonCollection } from './collection';
 import {
   createHolonReference,
@@ -108,8 +108,10 @@ export class MapTransaction {
    * or effectively commit the active transaction rather than behaving like a
    * normal in-transaction mutation.
    */
-  async loadHolons(contentSet: ContentSet): Promise<void> {
-    await internalTransaction.loadHolons(txIdFor(this), contentSet);
+  async loadHolons(contentSet: ContentSet): Promise<TransientHolonReference> {
+    const txId = txIdFor(this);
+    const wireRef = await internalTransaction.loadHolons(txId, contentSet);
+    return createTransientHolonReference(txId, wireRef);
   }
 
   async getAllHolons(): Promise<HolonCollection> {
