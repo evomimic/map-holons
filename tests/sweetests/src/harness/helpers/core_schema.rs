@@ -33,7 +33,7 @@ pub struct CoreSchemaLoadMetrics {
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
     staged: 303,
     committed: 303,
-    links_created: 1652,
+    links_created: 1653,
     errors: 0,
     total_bundles: 11,
     total_loader_holons: 303,

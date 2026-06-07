@@ -178,7 +178,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "Diagnostics",
     );
 
-    let projection = find_holon_by_key(&holons, "Projection");
+    let projection = find_holon_by_key(&holons, "Projection.HolonType");
     let projection_descriptor = HolonDescriptor::from_holon(projection.clone());
     assert_eq!(
         projection_descriptor.header().type_name().expect("Projection type_name"),
@@ -186,7 +186,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
     assert_contains(&related_holon_keys(&projection, "Extends"), "HolonType");
 
-    let dance_invocation = find_holon_by_key(&holons, "DanceInvocation");
+    let dance_invocation = find_holon_by_key(&holons, "DanceInvocation.HolonType");
     let dance_invocation_descriptor = HolonDescriptor::from_holon(dance_invocation.clone());
     let invocation_property_names =
         property_type_names(dance_invocation_descriptor.instance_properties());
@@ -209,7 +209,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         MapString("InvocationSource".to_string())
     );
 
-    let dance_diagnostic = find_holon_by_key(&holons, "DanceDiagnostic");
+    let dance_diagnostic = find_holon_by_key(&holons, "DanceDiagnostic.HolonType");
     let dance_diagnostic_descriptor = HolonDescriptor::from_holon(dance_diagnostic);
     let diagnostic_property_names =
         property_type_names(dance_diagnostic_descriptor.instance_properties());
@@ -255,7 +255,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
     let holon_type = find_holon_by_key(holons, HOLON_TYPE_KEY);
     let dance_type = find_holon_by_key(holons, "DanceType");
     let dance_response_type = find_holon_by_key(holons, "DanceResponseType");
-    let projection = find_holon_by_key(holons, "Projection");
+    let projection = find_holon_by_key(holons, "Projection.HolonType");
 
     let mut query_response_type =
         new_descriptor_holon(&context, "query-response-type", "QueryResponseType", TypeKind::Holon)
