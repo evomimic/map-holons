@@ -639,7 +639,7 @@ fn new_descriptor_holon(
     descriptor
         .with_property_value(CorePropertyTypeName::TypeName, type_name)?
         .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-        .with_property_value(CorePropertyTypeName::TypeKind, type_kind.as_schema_key())?
+        .with_property_value(CorePropertyTypeName::InstanceTypeKind, type_kind.as_schema_key())?
         .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
         .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
     Ok(descriptor)

@@ -312,7 +312,7 @@ fn build_inverse_with_inline_schema_bundle(
             BaseValue::StringValue(MapString(name.to_string())),
         )?;
         transient_reference.with_property_value(
-            CorePropertyTypeName::TypeKind,
+            CorePropertyTypeName::InstanceTypeKind,
             BaseValue::StringValue(MapString(type_kind.as_schema_key())),
         )?;
     }

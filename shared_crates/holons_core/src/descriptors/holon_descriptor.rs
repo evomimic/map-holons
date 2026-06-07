@@ -261,7 +261,10 @@ mod tests {
         descriptor
             .with_property_value(CorePropertyTypeName::TypeName, type_name)?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-            .with_property_value(CorePropertyTypeName::TypeKind, TypeKind::Holon.as_schema_key())?;
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                TypeKind::Holon.as_schema_key(),
+            )?;
         Ok(descriptor)
     }
 

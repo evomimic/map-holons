@@ -949,7 +949,7 @@ impl LoaderRefResolver {
     fn is_relationship_type_kind(holon_reference: &HolonReference) -> bool {
         debug!("[resolver] entering is_relationship_type_kind");
 
-        let property_name: PropertyName = CorePropertyTypeName::TypeKind.as_property_name();
+        let property_name: PropertyName = CorePropertyTypeName::InstanceTypeKind.as_property_name();
         let expected = TypeKind::Relationship.as_schema_key();
 
         match holon_reference.property_value(&property_name) {
@@ -1477,7 +1477,10 @@ mod tests {
         descriptor
             .with_property_value(CorePropertyTypeName::TypeName, type_name)?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-            .with_property_value(CorePropertyTypeName::TypeKind, type_kind.as_schema_key())?;
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                type_kind.as_schema_key(),
+            )?;
         Ok(descriptor)
     }
 

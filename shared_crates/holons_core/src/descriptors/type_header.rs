@@ -49,7 +49,7 @@ impl<'a> TypeHeader<'a> {
 
     /// Returns the required TypeKind schema key from the header.
     pub fn type_kind(&self) -> Result<MapString, HolonError> {
-        self.require_string(CorePropertyTypeName::TypeKind)
+        self.require_string(CorePropertyTypeName::InstanceTypeKind)
     }
 
     fn require_string(&self, prop: CorePropertyTypeName) -> Result<MapString, HolonError> {
@@ -100,7 +100,7 @@ mod tests {
             .and_then(|holon| holon.with_property_value(CorePropertyTypeName::IsAbstractType, true))
             .and_then(|holon| {
                 holon.with_property_value(
-                    CorePropertyTypeName::TypeKind,
+                    CorePropertyTypeName::InstanceTypeKind,
                     TypeKind::Holon.as_schema_key(),
                 )
             })?;
@@ -133,7 +133,10 @@ mod tests {
         let mut holon = new_test_holon(&context, "missing-type-name")?;
         holon
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-            .with_property_value(CorePropertyTypeName::TypeKind, TypeKind::Holon.as_schema_key())?;
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                TypeKind::Holon.as_schema_key(),
+            )?;
 
         let holon_ref = HolonReference::Transient(holon);
         let header = TypeHeader::new(&holon_ref);
@@ -153,7 +156,10 @@ mod tests {
         holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-            .with_property_value(CorePropertyTypeName::TypeKind, TypeKind::Holon.as_schema_key())?;
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                TypeKind::Holon.as_schema_key(),
+            )?;
 
         let holon_ref = HolonReference::Transient(holon);
         let header = TypeHeader::new(&holon_ref);
@@ -173,7 +179,10 @@ mod tests {
         holon
             .with_property_value(CorePropertyTypeName::TypeName, true)?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-            .with_property_value(CorePropertyTypeName::TypeKind, TypeKind::Holon.as_schema_key())?;
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                TypeKind::Holon.as_schema_key(),
+            )?;
 
         let holon_ref = HolonReference::Transient(holon);
         let header = TypeHeader::new(&holon_ref);
@@ -193,7 +202,10 @@ mod tests {
         let mut missing_bool_holon = new_test_holon(&context, "missing-is-abstract")?;
         missing_bool_holon
             .with_property_value(CorePropertyTypeName::TypeName, "HolonType")?
-            .with_property_value(CorePropertyTypeName::TypeKind, TypeKind::Holon.as_schema_key())?;
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                TypeKind::Holon.as_schema_key(),
+            )?;
 
         let missing_bool_ref = HolonReference::Transient(missing_bool_holon);
         let missing_bool_header = TypeHeader::new(&missing_bool_ref);
