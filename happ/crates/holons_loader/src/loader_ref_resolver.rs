@@ -945,7 +945,7 @@ impl LoaderRefResolver {
         Ok(None)
     }
 
-    /// Returns true if the holon's `TypeKind == "TypeKind.Relationship"`.
+    /// Returns true if the holon's `InstanceTypeKind == "TypeKind.Relationship"`.
     fn is_relationship_type_kind(holon_reference: &HolonReference) -> bool {
         debug!("[resolver] entering is_relationship_type_kind");
 

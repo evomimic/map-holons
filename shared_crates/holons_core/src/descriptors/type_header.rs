@@ -47,7 +47,7 @@ impl<'a> TypeHeader<'a> {
         self.require_bool(CorePropertyTypeName::IsAbstractType)
     }
 
-    /// Returns the required TypeKind schema key from the header.
+    /// Returns the required InstanceTypeKind schema key from the header.
     pub fn type_kind(&self) -> Result<MapString, HolonError> {
         self.require_string(CorePropertyTypeName::InstanceTypeKind)
     }
@@ -225,7 +225,7 @@ mod tests {
 
         assert!(matches!(
             missing_kind_header.type_kind(),
-            Err(HolonError::EmptyField(field)) if field == "TypeKind"
+            Err(HolonError::EmptyField(field)) if field == "InstanceTypeKind"
         ));
 
         Ok(())
