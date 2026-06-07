@@ -48,7 +48,7 @@ impl<'a> TypeHeader<'a> {
     }
 
     /// Returns the required InstanceTypeKind schema key from the header.
-    pub fn type_kind(&self) -> Result<MapString, HolonError> {
+    pub fn instance_type_kind(&self) -> Result<MapString, HolonError> {
         self.require_string(CorePropertyTypeName::InstanceTypeKind)
     }
 
@@ -122,7 +122,7 @@ mod tests {
             Some(MapString("Descriptor header test holon".to_string()))
         );
         assert!(header.is_abstract_type()?);
-        assert_eq!(header.type_kind()?, MapString(TypeKind::Holon.as_schema_key()));
+        assert_eq!(header.instance_type_kind()?, MapString(TypeKind::Holon.as_schema_key()));
 
         Ok(())
     }
@@ -224,7 +224,7 @@ mod tests {
         let missing_kind_header = TypeHeader::new(&missing_kind_ref);
 
         assert!(matches!(
-            missing_kind_header.type_kind(),
+            missing_kind_header.instance_type_kind(),
             Err(HolonError::EmptyField(field)) if field == "InstanceTypeKind"
         ));
 
