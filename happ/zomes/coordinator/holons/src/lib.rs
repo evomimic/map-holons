@@ -14,9 +14,21 @@ pub fn init(_: ()) -> ExternResult<InitCallbackResult> {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum Signal {
-    LinkCreated { action_id: LocalId, link_type: String, timestamp: PersistenceTimestamp },
-    LinkDeleted { action_id: LocalId, link_type: String, timestamp: PersistenceTimestamp },
-    HolonCreated { action_id: LocalId, affected_holon: LocalId, timestamp: PersistenceTimestamp },
+    LinkCreated {
+        action_id: LocalId,
+        link_type: String,
+        timestamp: PersistenceTimestamp,
+    },
+    LinkDeleted {
+        action_id: LocalId,
+        link_type: String,
+        timestamp: PersistenceTimestamp,
+    },
+    HolonCreated {
+        action_id: LocalId,
+        affected_holon: LocalId,
+        timestamp: PersistenceTimestamp,
+    },
     HolonUpdated {
         action_id: LocalId,
         affected_holon: LocalId,

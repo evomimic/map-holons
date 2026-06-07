@@ -25,9 +25,21 @@ pub enum HostSignal {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum HolonsZomeSignal {
-    LinkCreated { action_id: LocalId, link_type: String, timestamp: PersistenceTimestamp },
-    LinkDeleted { action_id: LocalId, link_type: String, timestamp: PersistenceTimestamp },
-    HolonCreated { action_id: LocalId, affected_holon: LocalId, timestamp: PersistenceTimestamp },
+    LinkCreated {
+        action_id: LocalId,
+        link_type: String,
+        timestamp: PersistenceTimestamp,
+    },
+    LinkDeleted {
+        action_id: LocalId,
+        link_type: String,
+        timestamp: PersistenceTimestamp,
+    },
+    HolonCreated {
+        action_id: LocalId,
+        affected_holon: LocalId,
+        timestamp: PersistenceTimestamp,
+    },
     HolonUpdated {
         action_id: LocalId,
         affected_holon: LocalId,
@@ -206,12 +218,7 @@ mod tests {
         }) {
             HostSignal::Holons {
                 signal:
-                    HolonsZomeSignal::HolonUpdated {
-                        action_id,
-                        affected_holon,
-                        previous_holon,
-                        ..
-                    },
+                    HolonsZomeSignal::HolonUpdated { action_id, affected_holon, previous_holon, .. },
                 ..
             } => {
                 assert_eq!(action_id.0, vec![0xBC; 39]);
@@ -233,8 +240,7 @@ mod tests {
             timestamp: ts(),
         }) {
             HostSignal::Holons {
-                signal:
-                    HolonsZomeSignal::HolonDeleted { affected_holon, previous_holon, .. },
+                signal: HolonsZomeSignal::HolonDeleted { affected_holon, previous_holon, .. },
                 ..
             } => {
                 assert_eq!(affected_holon.0, vec![0x33; 39]);
@@ -272,8 +278,7 @@ mod tests {
             timestamp: ts(),
         }) {
             HostSignal::Holons {
-                signal: HolonsZomeSignal::LinkDeleted { link_type, .. },
-                ..
+                signal: HolonsZomeSignal::LinkDeleted { link_type, .. }, ..
             } => {
                 assert_eq!(link_type, "AllHolonNodes");
             }
