@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T12:26:46",
+    "generated_at": "2026-06-06T18:27:37",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-test-schema-book-person-inverse.csv"
@@ -18,8 +18,9 @@
       "type": "Schema.HolonType",
       "properties": {
         "type_name": "BookAuthorInverseSchema",
+        "display_name": "BookAuthorInverseSchema",
         "description": "Minimal test schema with an inverse relationship and extending the core schema.",
-        "type_kind": "TypeKind.Holon"
+        "instance_type_kind": "TypeKind.Holon"
       },
       "relationships": [
         {
@@ -39,7 +40,7 @@
         "display_name": "Book",
         "display_name_plural": "Books",
         "description": "A book.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -86,7 +87,7 @@
         "display_name": "Person",
         "display_name_plural": "People",
         "description": "A person.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -127,7 +128,7 @@
         "display_name": "AuthoredBy",
         "display_name_plural": "AuthoredBy Relationships",
         "description": "Defines the author of a book.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -177,7 +178,7 @@
         "display_name": "Authors",
         "display_name_plural": "Authors Relationships",
         "description": "Specifies a book that a Person has authored.  Inverse of AuthoredBy.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -233,7 +234,7 @@
         "display_name": "Name",
         "display_name_plural": "Names",
         "description": "Proper name.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -272,7 +273,7 @@
         "display_name": "Title",
         "display_name_plural": "Title",
         "description": "A title.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [

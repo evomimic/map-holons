@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T17:22:41",
+    "generated_at": "2026-06-06T18:27:37",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -18,8 +18,9 @@
       "type": "Schema.HolonType",
       "properties": {
         "type_name": "MAP Dance Schema-v0.0.3",
+        "display_name": "MAP Dance Schema-v0.0.3",
         "description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema.",
-        "type_kind": "TypeKind.Holon"
+        "instance_type_kind": "TypeKind.Holon"
       },
       "relationships": [
         {
@@ -38,8 +39,8 @@
         "type_name_plural": "DanceTypes",
         "display_name": "Dance Type",
         "display_name_plural": "Dance Types",
-        "description": "Abstract holon type for descriptors of executable dances, linking to a specific request and response holon type.",
-        "type_kind": "TypeKind.Holon",
+        "description": "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type and a response holon type.",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -65,20 +66,15 @@
         },
         {
           "name": "InstanceProperties",
-          "target": [
-            {
-              "$ref": "DanceName.PropertyType"
-            },
-            {
-              "$ref": "DanceDescription.PropertyType"
-            }
-          ]
+          "target": {
+            "$ref": "DanceDescription.PropertyType"
+          }
         },
         {
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(DanceType)-[Request]->(HolonType)"
+              "$ref": "(DanceType)-[RequestType]->(HolonType)"
             },
             {
               "$ref": "(DanceType)-[Response]->(DanceResponseType)"
@@ -95,8 +91,8 @@
         "type_name_plural": "DanceResponseTypes",
         "display_name": "Dance Response Type",
         "display_name_plural": "Dance Response Types",
-        "description": "Abstract holon type for response objects returned from dances. Includes response body and status code.",
-        "type_kind": "TypeKind.Holon",
+        "description": "Abstract holon type for successful response holons returned from dances. Response bodies and diagnostics are ordinary holons.",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -121,16 +117,15 @@
           }
         },
         {
-          "name": "InstanceProperties",
-          "target": {
-            "$ref": "ResponseStatusCode.PropertyType"
-          }
-        },
-        {
           "name": "InstanceRelationships",
-          "target": {
-            "$ref": "(DanceResponseType)-[ResponseBody]->(ResponseBodyType)"
-          }
+          "target": [
+            {
+              "$ref": "(DanceResponseType)-[ResponseBody]->(HolonType)"
+            },
+            {
+              "$ref": "(DanceResponseType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
+            }
+          ]
         }
       ]
     },
@@ -142,8 +137,8 @@
         "type_name_plural": "ResponseBodyTypes",
         "display_name": "Response Body Type",
         "display_name_plural": "Response Body Types",
-        "description": "Abstract holon type for structured response bodies returned from dances.",
-        "type_kind": "TypeKind.Holon",
+        "description": "Deprecated old-world abstract holon type for structured response bodies returned from dances. New-world response bodies are ordinary concrete holon types.",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -170,6 +165,55 @@
       ]
     },
     {
+      "key": "DanceInvocation.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DanceInvocation",
+        "type_name_plural": "DanceInvocations",
+        "display_name": "Dance Invocation",
+        "display_name_plural": "Dance Invocations",
+        "description": "Concrete holon type for invocation records that capture the dance being invoked, the target holon, the request holon, and ingress context.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType)"
+            },
+            {
+              "$ref": "(DanceInvocation.HolonType)-[Target]->(HolonType)"
+            },
+            {
+              "$ref": "(DanceInvocation.HolonType)-[Request]->(HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "DanceImplementation.HolonType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
@@ -177,8 +221,8 @@
         "type_name_plural": "DanceImplementations",
         "display_name": "Dance Implementation",
         "display_name_plural": "Dance Implementations",
-        "description": "Concrete binding of a DanceType for a specific TypeDescriptor, with executable details (engine, module, entrypoint, ABI, version/compat).",
-        "type_kind": "TypeKind.Holon",
+        "description": "Concrete binding of a DanceType with executable details (engine, module, entrypoint, ABI, version/compat).",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -237,6 +281,90 @@
       ]
     },
     {
+      "key": "DanceDiagnostic.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DanceDiagnostic",
+        "type_name_plural": "DanceDiagnostic",
+        "display_name": "Dance Diagnostic",
+        "display_name_plural": "Dance Diagnostics",
+        "description": "Concrete holon type for non-fatal diagnostic notes attached to successful dance responses.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "DanceDiagnosticSeverity.PropertyType"
+            },
+            {
+              "$ref": "DiagnosticCode.PropertyType"
+            },
+            {
+              "$ref": "DiagnosticMessage.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Projection.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Projection",
+        "type_name_plural": "Projections",
+        "display_name": "Projection",
+        "display_name_plural": "Projections",
+        "description": "Concrete shell holon type for value-shaped property-map holons used as request, parameter, response-body, or projected-result shapes.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "ExtendedTypeRule.KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
       "key": "(HolonType)-[Affords]->(DanceType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
@@ -245,7 +373,7 @@
         "display_name": "Affords Relationship",
         "display_name_plural": "Affords Relationships",
         "description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": true,
@@ -296,7 +424,7 @@
         "display_name": "AffordedBy Relationship",
         "display_name_plural": "AffordedBy Relationships",
         "description": "Inverse of Affords, from DanceType to HolonType.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -352,7 +480,7 @@
         "display_name": "ImplementsDance Relationship",
         "display_name_plural": "ImplementsDance Relationships",
         "description": "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -400,7 +528,7 @@
         "display_name": "ImplementedFor Relationship",
         "display_name_plural": "ImplementedFor Relationships",
         "description": "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -454,7 +582,7 @@
         "display_name": "ForDance Relationship",
         "display_name_plural": "ForDance Relationships",
         "description": "Pins a DanceImplementation to exactly one DanceType interface it satisfies.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -504,7 +632,7 @@
         "display_name": "HasImplementation Relationship",
         "display_name_plural": "HasImplementation Relationships",
         "description": "Inverse of ForDance, from DanceType to DanceImplementation.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -552,15 +680,15 @@
       ]
     },
     {
-      "key": "(DanceType)-[Request]->(HolonType)",
+      "key": "(DanceType)-[RequestType]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
-        "type_name": "Request",
-        "type_name_plural": "RequestRelationships",
-        "display_name": "Request Relationship",
-        "display_name_plural": "Request Relationships",
-        "description": "Links a DanceType to the HolonType used as its request body.",
-        "type_kind": "TypeKind.Relationship",
+        "type_name": "RequestType",
+        "type_name_plural": "RequestTypeRelationships",
+        "display_name": "RequestType Relationship",
+        "display_name_plural": "RequestType Relationships",
+        "description": "Links a DanceType to the HolonType used as its request contract.",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -602,15 +730,15 @@
       ]
     },
     {
-      "key": "(HolonType)-[RequestFor]->(DanceType)",
+      "key": "(HolonType)-[RequestTypeFor]->(DanceType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
-        "type_name": "RequestFor",
-        "type_name_plural": "RequestForRelationships",
-        "display_name": "RequestFor Relationship",
-        "display_name_plural": "RequestFor Relationships",
-        "description": "Inverse of Request, from HolonType to DanceType.",
-        "type_kind": "TypeKind.Relationship",
+        "type_name": "RequestTypeFor",
+        "type_name_plural": "RequestTypeForRelationships",
+        "display_name": "RequestTypeFor Relationship",
+        "display_name_plural": "RequestTypeFor Relationships",
+        "description": "Inverse of RequestType, from HolonType to DanceType.",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -640,7 +768,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "(DanceType)-[Request]->(HolonType)"
+            "$ref": "(DanceType)-[RequestType]->(HolonType)"
           }
         },
         {
@@ -666,7 +794,7 @@
         "display_name": "Response Relationship",
         "display_name_plural": "Response Relationships",
         "description": "Links a DanceType to the DanceResponseType used to structure its response.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -716,7 +844,7 @@
         "display_name": "ResponseFor Relationship",
         "display_name_plural": "ResponseFor Relationships",
         "description": "Inverse of Response, from DanceResponseType to DanceType.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -764,15 +892,15 @@
       ]
     },
     {
-      "key": "(DanceResponseType)-[ResponseBody]->(ResponseBodyType)",
+      "key": "(DanceResponseType)-[ResponseBody]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ResponseBody",
         "type_name_plural": "ResponseBody Relationships",
         "display_name": "ResponseBody Relationship",
         "display_name_plural": "ResponseBody Relationships",
-        "description": "Links a DanceResponseType to the ResponseBodyType that will serve as the structured response body.",
-        "type_kind": "TypeKind.Relationship",
+        "description": "Links a DanceResponseType to the concrete holon type that will serve as the structured response body.",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -808,21 +936,21 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "ResponseBodyType"
+            "$ref": "HolonType"
           }
         }
       ]
     },
     {
-      "key": "(ResponseBodyType)-[ResponseBodyFor]->(DanceResponseType)",
+      "key": "(HolonType)-[ResponseBodyFor]->(DanceResponseType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ResponseBodyFor",
         "type_name_plural": "ResponseBodyForRelationships",
         "display_name": "ResponseBodyFor Relationship",
         "display_name_plural": "ResponseBodyFor Relationships",
-        "description": "Inverse of ResponseBody, from ResponseBodyType to DanceResponseType.",
-        "type_kind": "TypeKind.Relationship",
+        "description": "Inverse of ResponseBody, from HolonType to DanceResponseType.",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -852,13 +980,381 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "(DanceResponseType)-[ResponseBody]->(ResponseBodyType)"
+            "$ref": "(DanceResponseType)-[ResponseBody]->(HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "ResponseBodyType"
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DanceResponseType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InvokesDance",
+        "type_name_plural": "InvokesDanceRelationships",
+        "display_name": "InvokesDance Relationship",
+        "display_name_plural": "InvokesDance Relationships",
+        "description": "Links a DanceInvocation holon to the DanceType it invokes.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "DanceInvocation.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DanceType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[Target]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Target",
+        "type_name_plural": "TargetRelationships",
+        "display_name": "Target Relationship",
+        "display_name_plural": "Target Relationships",
+        "description": "Links a DanceInvocation holon to the target holon it acts on, when the dance is target-based.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "DanceInvocation.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[TargetOf]->(DanceInvocation.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "TargetOf",
+        "type_name_plural": "TargetOfRelationships",
+        "display_name": "TargetOf Relationship",
+        "display_name_plural": "TargetOf Relationships",
+        "description": "Inverse of Target, between HolonType and DanceInvocation.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(DanceInvocation.HolonType)-[Target]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DanceInvocation.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[Request]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Request",
+        "type_name_plural": "RequestRelationships",
+        "display_name": "Request Relationship",
+        "display_name_plural": "Request Relationships",
+        "description": "Links a DanceInvocation holon to the concrete request holon supplied for that invocation.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "DanceInvocation.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[RequestFor]->(DanceInvocation.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "RequestFor",
+        "type_name_plural": "RequestForRelationships",
+        "display_name": "RequestFor Relationship",
+        "display_name_plural": "RequestFor Relationships",
+        "description": "Inverse of Request, from HolonType to DanceInvocation.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(DanceInvocation.HolonType)-[Request]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DanceInvocation.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DanceResponseType)-[Diagnostics]->(DanceDiagnostic.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Diagnostics",
+        "type_name_plural": "DiagnosticsRelationships",
+        "display_name": "Diagnostics Relationship",
+        "display_name_plural": "Diagnostics Relationships",
+        "description": "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "DanceResponseType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DanceDiagnostic.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DiagnosticFor",
+        "type_name_plural": "DiagnosticForRelationships",
+        "display_name": "DiagnosticFor Relationship",
+        "display_name_plural": "DiagnosticFor Relationships",
+        "description": "Inverse of Diagnostics, from DanceDiagnostic to DanceRequestType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "RelationshipRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(DanceResponseType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "DanceDiagnostic.HolonType"
           }
         },
         {
@@ -878,7 +1374,7 @@
         "display_name": "dance_name",
         "display_name_plural": "dance_names",
         "description": "Unique string identifier for a DanceType descriptor, used in dispatch tables.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -917,7 +1413,163 @@
         "display_name": "dance_description",
         "display_name_plural": "dance_descriptions",
         "description": "Human-readable explanation of what the dance does or when it should be invoked.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Context.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Context",
+        "type_name_plural": "Contexts",
+        "display_name": "context",
+        "display_name_plural": "contexts",
+        "description": "Ingress context for a DanceInvocation, recorded as an InvocationSource enum value.",
+        "instance_type_kind": "TypeKind.Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "InvocationSource"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DanceDiagnosticSeverity",
+        "type_name_plural": "DanceDiagnosticSeverities",
+        "display_name": "dance_diagnostic_severity",
+        "display_name_plural": "dance_diagnostic_severities",
+        "description": "Severity classification for a DanceDiagnostic holon.",
+        "instance_type_kind": "TypeKind.Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "DanceDiagnosticSeverity"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DiagnosticCode.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DiagnosticCode",
+        "type_name_plural": "DiagnosticCodes",
+        "display_name": "diagnostic_code",
+        "display_name_plural": "diagnostic_codes",
+        "description": "Stable machine-readable code for a DanceDiagnostic holon.",
+        "instance_type_kind": "TypeKind.Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "ExtendedTypeRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DiagnosticMessage.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DiagnosticMessage",
+        "type_name_plural": "DiagnosticMessages",
+        "display_name": "diagnostic_message",
+        "display_name_plural": "diagnostic_messages",
+        "description": "Human-readable message for a DanceDiagnostic holon.",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -956,7 +1608,7 @@
         "display_name": "response_status_code",
         "display_name_plural": "response_status_codes",
         "description": "Machine-readable status code indicating the result of the dance.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -995,7 +1647,7 @@
         "display_name": "engine",
         "display_name_plural": "engines",
         "description": "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin).",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1034,7 +1686,7 @@
         "display_name": "module_ref",
         "display_name_plural": "module_refs",
         "description": "Content-address or locator of the executable module (e.g., hash/URL/capability address).",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1073,7 +1725,7 @@
         "display_name": "entrypoint",
         "display_name_plural": "entrypoints",
         "description": "Function/export name to invoke inside the module.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1112,7 +1764,7 @@
         "display_name": "abi_id",
         "display_name_plural": "abi_ids",
         "description": "Identifier of the stable smart contract ABI expected by the module/entrypoint.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1151,7 +1803,7 @@
         "display_name": "version",
         "display_name_plural": "versions",
         "description": "Semantic version or content hash pin of the implementation.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1190,7 +1842,7 @@
         "display_name": "compat",
         "display_name_plural": "compats",
         "description": "Compatibility range or constraints (e.g., ABI or schema versions).",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1229,7 +1881,7 @@
         "display_name": "dance_summary",
         "display_name_plural": "dance_summaries",
         "description": "Human-readable summary of a dance outcome.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1260,6 +1912,267 @@
       ]
     },
     {
+      "key": "InvocationSource",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InvocationSource",
+        "type_name_plural": "InvocationSources",
+        "display_name": "Invocation Source",
+        "display_name_plural": "Invocation Sources",
+        "description": "Enum value type that records how a DanceInvocation entered the runtime.",
+        "instance_type_kind": "TypeKind.Value.Enum",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "InvocationSource.ClientCommand",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ClientCommand",
+        "type_name_plural": "ClientCommands",
+        "display_name": "Client Command",
+        "display_name_plural": "Client Commands",
+        "description": "Invocation entered the runtime through a client command ingress path.",
+        "instance_type_kind": "TypeKind.EnumVariant",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "InvocationSource"
+          }
+        }
+      ]
+    },
+    {
+      "key": "InvocationSource.TrustChannel",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "TrustChannel",
+        "type_name_plural": "TrustChannels",
+        "display_name": "Trust Channel",
+        "display_name_plural": "Trust Channels",
+        "description": "Invocation entered the runtime through a trust-channel ingress path.",
+        "instance_type_kind": "TypeKind.EnumVariant",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "InvocationSource"
+          }
+        }
+      ]
+    },
+    {
+      "key": "InvocationSource.Internal",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Internal",
+        "type_name_plural": "Internals",
+        "display_name": "Internal",
+        "display_name_plural": "Internals",
+        "description": "Invocation originated from trusted internal runtime code.",
+        "instance_type_kind": "TypeKind.EnumVariant",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "InvocationSource"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DanceDiagnosticSeverity",
+        "type_name_plural": "DanceDiagnosticSeverities",
+        "display_name": "Dance Diagnostic Severity",
+        "display_name_plural": "Dance Diagnostic Severities",
+        "description": "Enum value type for the severity of a DanceDiagnostic holon.",
+        "instance_type_kind": "TypeKind.Value.Enum",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "TypeNameRule"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity.Info",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Info",
+        "type_name_plural": "Infos",
+        "display_name": "Info",
+        "display_name_plural": "Infos",
+        "description": "Informational non-fatal diagnostic note.",
+        "instance_type_kind": "TypeKind.EnumVariant",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "DanceDiagnosticSeverity"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity.Warning",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Warning",
+        "type_name_plural": "Warnings",
+        "display_name": "Warning",
+        "display_name_plural": "Warnings",
+        "description": "Warning-level non-fatal diagnostic note.",
+        "instance_type_kind": "TypeKind.EnumVariant",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.3"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "EnumVariantRule"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "DanceDiagnosticSeverity"
+          }
+        }
+      ]
+    },
+    {
       "key": "ResponseStatusCode",
       "type": "TypeDescriptor.HolonType",
       "properties": {
@@ -1267,8 +2180,8 @@
         "type_name_plural": "ResponseStatusCodes",
         "display_name": "Response Status Code",
         "display_name_plural": "Response Status Codes",
-        "description": "Standard set of status codes returned by dances, aligned with HTTP semantics.",
-        "type_kind": "TypeKind.Value.Enum",
+        "description": "Deprecated old-world enum value type for dance status codes. New-world success and failure are expressed by the outer Result contract.",
+        "instance_type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1301,7 +2214,7 @@
         "display_name": "OK",
         "display_name_plural": "OKs",
         "description": "200 — Request succeeded.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1340,7 +2253,7 @@
         "display_name": "Accepted",
         "display_name_plural": "Accepteds",
         "description": "202 — Request accepted but not yet processed.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1379,7 +2292,7 @@
         "display_name": "Bad Request",
         "display_name_plural": "Bad Requests",
         "description": "400 — The request was malformed or invalid.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1418,7 +2331,7 @@
         "display_name": "Unauthorized",
         "display_name_plural": "Unauthorized",
         "description": "401 — The requester is not authenticated.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1457,7 +2370,7 @@
         "display_name": "Forbidden",
         "display_name_plural": "Forbidden",
         "description": "403 — The requester lacks permission.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1496,7 +2409,7 @@
         "display_name": "Not Found",
         "display_name_plural": "Not Founds",
         "description": "404 — The target resource was not found.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1535,7 +2448,7 @@
         "display_name": "Conflict",
         "display_name_plural": "Conflicts",
         "description": "409 — Conflict with the current state of the resource.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1574,7 +2487,7 @@
         "display_name": "Unprocessable Entity",
         "display_name_plural": "Unprocessable Entities",
         "description": "422 — Semantic validation failed.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1613,7 +2526,7 @@
         "display_name": "Server Error",
         "display_name_plural": "Server Errors",
         "description": "500 — Unexpected internal error.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1652,7 +2565,7 @@
         "display_name": "Not Implemented",
         "display_name_plural": "Not Implemented",
         "description": "501 — Functionality required to fulfill the request is not supported.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1691,7 +2604,7 @@
         "display_name": "Service Unavailable",
         "display_name_plural": "Service Unavailable",
         "description": "503 — The server is currently unable to handle the request (overload/maintenance).",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1730,7 +2643,7 @@
         "display_name": "Dance Engine",
         "display_name_plural": "Dance Engines",
         "description": "Enum value type for execution engines used by DanceImplementations.",
-        "type_kind": "TypeKind.Value.Enum",
+        "instance_type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1763,7 +2676,7 @@
         "display_name": "WasmWasi",
         "display_name_plural": "WasmWasi",
         "description": "Execute a WASM module under WASI (preferred).",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1802,7 +2715,7 @@
         "display_name": "Process",
         "display_name_plural": "Processes",
         "description": "Spawn a separate OS process with protocol pipes.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1841,7 +2754,7 @@
         "display_name": "RustDylib",
         "display_name_plural": "RustDylibs",
         "description": "Dynamically load a Rust dylib via FFI (platform-coupled).",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1880,7 +2793,7 @@
         "display_name": "Builtin",
         "display_name_plural": "Builtins",
         "description": "Call a registered host builtin function.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -1911,15 +2824,15 @@
       ]
     },
     {
-      "key": "CommitResponse.ResponseBodyType",
+      "key": "CommitResponse.Projection.HolonType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "CommitResponse",
         "type_name_plural": "CommitResponses",
         "display_name": "Commit Response",
         "display_name_plural": "Commit Responses",
-        "description": "Response body summarizing the result of a commit request.",
-        "type_kind": "TypeKind.Holon",
+        "description": "Concrete commit response-body holon type retained under its existing key during parallel buildout. Instances are projection-shaped response holons.",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -1934,7 +2847,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "ResponseBodyType"
+            "$ref": "Projection.HolonType"
           }
         },
         {
@@ -1965,7 +2878,7 @@
         "display_name": "commits_attempted",
         "display_name_plural": "commits_attempted",
         "description": "Number of holons the commit operation attempted to save.",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2004,7 +2917,7 @@
         "display_name": "CommitRequestStatus",
         "display_name_plural": "CommitRequestStatus",
         "description": "Enum value type for commit request outcomes (Complete, Incomplete).",
-        "type_kind": "TypeKind.Value.Enum",
+        "instance_type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2037,7 +2950,7 @@
         "display_name": "Complete",
         "display_name_plural": "Completes",
         "description": "All staged holons committed; no staged holons remain.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2076,7 +2989,7 @@
         "display_name": "Incomplete",
         "display_name_plural": "Incompletes",
         "description": "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2115,7 +3028,7 @@
         "display_name": "commit_request_status",
         "display_name_plural": "commit_request_statuses",
         "description": "Overall status of the commit request (Complete or Incomplete).",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -2146,7 +3059,7 @@
       ]
     },
     {
-      "key": "(CommitResponse)-[SavedHolons]->(HolonType)",
+      "key": "(CommitResponse.Projection.HolonType)-[SavedHolons]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "SavedHolons",
@@ -2154,7 +3067,7 @@
         "display_name": "SavedHolons Relationship",
         "display_name_plural": "SavedHolons Relationships",
         "description": "Declared relationship from a CommitResponse to each holon successfully saved by this commit.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -2185,7 +3098,7 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "CommitResponse.ResponseBodyType"
+            "$ref": "CommitResponse.Projection.HolonType"
           }
         },
         {
@@ -2197,7 +3110,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[SavedByCommit]->(CommitResponse)",
+      "key": "(HolonType)-[SavedByCommit]->(CommitResponse.Projection.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "SavedByCommit",
@@ -2205,7 +3118,7 @@
         "display_name": "SavedByCommit Relationship",
         "display_name_plural": "SavedByCommit Relationships",
         "description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -2236,7 +3149,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "(CommitResponse)-[SavedHolons]->(HolonType)"
+            "$ref": "(CommitResponse.Projection.HolonType)-[SavedHolons]->(HolonType)"
           }
         },
         {
@@ -2248,13 +3161,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "CommitResponse.ResponseBodyType"
+            "$ref": "CommitResponse.Projection.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(CommitResponse)-[AbandonedHolons]->(HolonType)",
+      "key": "(CommitResponse.Projection.HolonType)-[AbandonedHolons]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AbandonedHolons",
@@ -2262,7 +3175,7 @@
         "display_name": "AbandonedHolons Relationship",
         "display_name_plural": "AbandonedHolons Relationships",
         "description": "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -2293,7 +3206,7 @@
         {
           "name": "SourceType",
           "target": {
-            "$ref": "CommitResponse.ResponseBodyType"
+            "$ref": "CommitResponse.Projection.HolonType"
           }
         },
         {
@@ -2305,7 +3218,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[AbandonedByCommit]->(CommitResponse)",
+      "key": "(HolonType)-[AbandonedByCommit]->(CommitResponse.Projection.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AbandonedByCommit",
@@ -2313,7 +3226,7 @@
         "display_name": "AbandonedByCommit Relationship",
         "display_name_plural": "AbandonedByCommit Relationships",
         "description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "deletion_semantic": "Allow",
         "is_definitional": false,
@@ -2344,7 +3257,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "(CommitResponse)-[AbandonedHolons]->(HolonType)"
+            "$ref": "(CommitResponse.Projection.HolonType)-[AbandonedHolons]->(HolonType)"
           }
         },
         {
@@ -2356,7 +3269,7 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "CommitResponse.ResponseBodyType"
+            "$ref": "CommitResponse.Projection.HolonType"
           }
         }
       ]

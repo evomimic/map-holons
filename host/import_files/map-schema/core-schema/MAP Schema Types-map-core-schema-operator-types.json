@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T17:22:41",
+    "generated_at": "2026-06-06T18:27:37",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-types.csv"
@@ -23,7 +23,7 @@
         "display_name": "Operator Type",
         "display_name_plural": "Operator Types",
         "description": "Abstract descriptor for operator affordances. OperatorTypes are core-defined operations applicable to ValueTypes, used for validation, query construction, and filter expressions.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -69,7 +69,7 @@
         "display_name": "AffordsOperator Relationship",
         "display_name_plural": "AffordsOperator Relationships",
         "description": "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -119,7 +119,7 @@
         "display_name": "AffordedBy Relationship",
         "display_name_plural": "AffordedBy Relationships",
         "description": "Inverse of AffordsOperator, relationship from OperatorType to ValueType.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -175,7 +175,7 @@
         "display_name": "OperatorCategory",
         "display_name_plural": "OperatorCategories",
         "description": "Enum value type categorizing operators (e.g., Comparison, StringMatch).",
-        "type_kind": "TypeKind.Value.Enum",
+        "instance_type_kind": "TypeKind.Value.Enum",
         "is_abstract_type": false
       },
       "relationships": [
@@ -206,7 +206,7 @@
         "type_name": "Equality",
         "display_name": "Equality",
         "description": "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types.",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -243,7 +243,7 @@
         "type_name": "Ordering",
         "display_name": "Ordering",
         "description": "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string).",
-        "type_kind": "TypeKind.EnumVariant",
+        "instance_type_kind": "TypeKind.EnumVariant",
         "is_abstract_type": false
       },
       "relationships": [
@@ -282,7 +282,7 @@
         "display_name": "arity",
         "display_name_plural": "arities",
         "description": "Number of operands the operator accepts (1 = unary, 2 = binary).",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -321,7 +321,7 @@
         "display_name": "operator_category",
         "display_name_plural": "operator_categories",
         "description": "Categorical grouping of an operator (e.g., Comparison, StringMatch).",
-        "type_kind": "TypeKind.Property",
+        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -360,7 +360,7 @@
         "display_name": "Equals",
         "display_name_plural": "Equals Operators",
         "description": "Returns true iff lhs and rhs are equal under the value type's equality semantics.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false,
@@ -397,7 +397,7 @@
         "display_name": "Less Than",
         "display_name_plural": "Less Than Operators",
         "description": "Returns true iff lhs < rhs.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false,

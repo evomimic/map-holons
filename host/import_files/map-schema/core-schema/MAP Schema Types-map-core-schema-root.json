@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T17:22:41",
+    "generated_at": "2026-06-06T18:27:37",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -19,8 +19,9 @@
       "type": "Schema.HolonType",
       "properties": {
         "type_name": "MAP Core Schema-v0.0.7",
+        "display_name": "MAP Core Schema-v0.0.7",
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.",
-        "type_kind": "TypeKind.Holon"
+        "instance_type_kind": "TypeKind.Holon"
       }
     },
     {
@@ -32,7 +33,7 @@
         "display_name": "Type Descriptor",
         "display_name_plural": "Type Descriptors",
         "description": "The TypeDescriptor is a concrete, self-describing type in the MAP Type System that defines the structure, metadata, and behavioral obligations of all other types—including itself. It plays a dual role: as a descriptor, it declares the properties and relationships that instances of a given type must populate (via InstanceProperties and InstanceRelationships); as a holon, it is an instantiable entity that belongs to a schema, is owned by a holon space, and participates in MAP’s introspectable type graph. All concrete type definitions in MAP—such as property types, relationship types, and holon types—are instances of TypeDescriptor, making it the cornerstone of MAP’s fully self-describing architecture..",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -67,7 +68,7 @@
         "display_name": "Abstract Holon Type",
         "display_name_plural": "Abstract Holon Types",
         "description": "HolonType is an abstract type descriptor that defines the structural role of all types used to describe holons in the MAP system. It serves as an anchor for concrete type descriptors—such as BookType, PersonType, or SchemaHolonType—which extend it to define specific categories of holons. By extending HolonType, these concrete types inherit a common set of structural obligations that govern how holons relate to their type and to the holon space in which they reside. This type is not intended to be instantiated directly.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -149,7 +150,7 @@
         "display_name": "Abstract Property Type",
         "display_name_plural": "Abstract Property Types",
         "description": "PropertyType is an abstract type descriptor.  It serves as an anchor for concrete property relationships.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -184,7 +185,7 @@
         "display_name": "Declared Relationship Type",
         "display_name_plural": "Declared Relationship Types",
         "description": "Describes explicitly declared relationship types between holons.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -219,7 +220,7 @@
         "display_name": "Inverse Relationship Type",
         "display_name_plural": "Inverse Relationship Types",
         "description": "Describes inverse relationship types derived from declared ones.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -254,7 +255,7 @@
         "display_name": "Meta Type Descriptor",
         "display_name_plural": "Meta Type Descriptors",
         "description": "Specifies the properties and relationships that all TypeDescriptors populate.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -326,7 +327,7 @@
         "display_name": "Meta Holon Type",
         "display_name_plural": "Meta Holon Types",
         "description": "Describes types whose instances are holons.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -395,7 +396,7 @@
         "display_name": "Meta Property Type",
         "display_name_plural": "Meta Property Types",
         "description": "Describes PropertyTypes used to define scalar properties of holons.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -442,7 +443,7 @@
         "display_name": "Meta Relationship Type",
         "display_name_plural": "Meta Relationship Types",
         "description": "Describes relationship types between holons.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -511,7 +512,7 @@
         "display_name": "Meta Declared Relationship Type",
         "display_name_plural": "Meta Declared Relationship Types",
         "description": "Describes explicitly declared relationship types between holons.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -546,7 +547,7 @@
         "display_name": "Meta Inverse Relationship Type",
         "display_name_plural": "Meta Inverse Relationship Types",
         "description": "Describes inverse relationship types derived from declared ones.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -587,7 +588,7 @@
         "display_name": "Schema",
         "display_name_plural": "Schemas",
         "description": "Describes schema holons - holons that anchor a cohesive schema. Includes the ability to define inter-schema dependencies.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -639,7 +640,7 @@
         "display_name": "Holon Space",
         "display_name_plural": "Holon Spaces",
         "description": "Describes HolonSpace holons. A HolonSpace is a holon that, itself, is a container for holons. It maps 1:1 with a DHT. It also proxies inbound and outbound calls to other HolonSpaces of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies. With minimal InstanceProperties and no InstanceRelationships, a HolonSpace is very stable = i.e., owned holons and space proxies can be added to a space without requiring a new version of the HolonSpace.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -686,7 +687,7 @@
         "display_name": "Holon Error",
         "display_name_plural": "Holon Errors",
         "description": "Describes the structure of error holons.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -732,7 +733,7 @@
         "display_name": "Transaction",
         "display_name_plural": "Transactions",
         "description": "TransactionType is the descriptor for the MAP transaction model — the command-scope API surface that becomes available when a transaction is active. A HolonSpaceType affords exactly one TransactionType through the AffordsTransactionModel relationship. TransactionType does not model persistent transaction records, audit history, or runtime execution state.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-05T17:22:41",
+    "generated_at": "2026-06-06T18:27:37",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
@@ -18,8 +18,9 @@
       "type": "Schema.HolonType",
       "properties": {
         "type_name": "MAP Key Rule Schema",
+        "display_name": "MAP Key Rule Schema",
         "description": "Groups all type descriptors related to holon key derivation strategies in MAP.",
-        "type_kind": "TypeKind.Holon"
+        "instance_type_kind": "TypeKind.Holon"
       },
       "relationships": [
         {
@@ -40,7 +41,7 @@
         "display_name": "Abstract Key Rule Type",
         "display_name_plural": "Abstract Key Rule Types",
         "description": "Abstract holon type describing how keys are derived for other holons. Subtypes such as Format.KeyRuleType and Relationship.KeyRuleType define specific key derivation strategies. This type should not be instantiated directly, but it SHOULD be ExtendedBy the various specific KeyRuleTypes.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -75,7 +76,7 @@
         "display_name": "Format Key Rule Type",
         "display_name_plural": "Format Key Rule Types",
         "description": "Key rule defined by a template_string plus an ordered list of PropertyTypes used as template parameters.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -122,7 +123,7 @@
         "display_name": "Enum Variant Rule",
         "display_name_plural": "Enum Variant Rules",
         "description": "For enum-variant descriptors, derive keys as {EnumName}.{VariantName} (e.g., DeletionSemantic.Allow, TypeKind.Holon).",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -157,7 +158,7 @@
         "display_name": "Type Name Rule",
         "display_name_plural": "Type Name Rules",
         "description": "Generates a key from the holon's type_name property only.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -192,7 +193,7 @@
         "display_name": "TypeKind Rules",
         "display_name_plural": "TypeKind Rules",
         "description": "Generates a key from the holon's type_name and type_kind properties.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -227,7 +228,7 @@
         "display_name": "Relationship Key Rule Type",
         "display_name_plural": "Relationship Key Rule Types",
         "description": "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -262,7 +263,7 @@
         "display_name": "Extended Type Key Rule Type",
         "display_name_plural": "Extended Type Key Rule Types",
         "description": "Hardcoded rule: <type_name>.<extends.key>",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -297,7 +298,7 @@
         "display_name": "None Key Rule Type",
         "display_name_plural": "None Key Rule Types",
         "description": "Indicates a keyless holon. Must be embedded and never referenced.",
-        "type_kind": "TypeKind.Holon",
+        "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -332,7 +333,7 @@
         "display_name": "UsesKeyRule",
         "display_name_plural": "UsesKeyRule Relationships",
         "description": "Declares the KeyRuleType used to derive keys for instances of a type.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -382,7 +383,7 @@
         "display_name": "KeyRuleFor",
         "display_name_plural": "KeyRuleFor Relationships",
         "description": "Inverse of UsesKeyRule, from KeyRuleType to TypeDescriptor.",
-        "type_kind": "TypeKind.Relationship",
+        "instance_type_kind": "TypeKind.Relationship",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
