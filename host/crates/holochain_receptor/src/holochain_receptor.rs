@@ -7,9 +7,9 @@ use tokio::sync::broadcast;
 use holochain_client::{AdminWebsocket, AgentPubKey, AppWebsocket};
 use holochain_types::signal::Signal;
 
+use crate::action_event::{to_action_event, ActionEvent};
 use crate::holochain_conductor_client::HolochainConductorClient;
 use crate::host_signal::{decode_signal, HostSignal};
-use crate::storage_notification::{to_storage_notification, StorageNotification};
 use client_shared_types::holon_space::SpaceInfo;
 use client_shared_types::storage_receptor::StorageReceptor;
 use client_shared_types::ReceptorType;
@@ -36,7 +36,7 @@ pub struct HolochainReceptor {
     pub client: Arc<HolochainConductorClient>,
     raw_tx: broadcast::Sender<Signal>,
     decoded_tx: broadcast::Sender<HostSignal>,
-    notification_tx: broadcast::Sender<StorageNotification>,
+    action_event_tx: broadcast::Sender<ActionEvent>,
 }
 
 impl HolochainReceptor {
@@ -57,12 +57,11 @@ impl HolochainReceptor {
     ) -> Arc<Self> {
         let (raw_tx, _) = broadcast::channel::<Signal>(SIGNAL_CHANNEL_CAPACITY);
         let (decoded_tx, _) = broadcast::channel::<HostSignal>(SIGNAL_CHANNEL_CAPACITY);
-        let (notification_tx, _) =
-            broadcast::channel::<StorageNotification>(SIGNAL_CHANNEL_CAPACITY);
+        let (action_event_tx, _) = broadcast::channel::<ActionEvent>(SIGNAL_CHANNEL_CAPACITY);
 
         let raw_tx_cb = raw_tx.clone();
         let decoded_tx_cb = decoded_tx.clone();
-        let notification_tx_cb = notification_tx.clone();
+        let action_event_tx_cb = action_event_tx.clone();
         let target_zome = zomename.clone();
 
         // Register before the websocket is wrapped — the only safe point.
@@ -71,7 +70,7 @@ impl HolochainReceptor {
             .on_signal(move |signal| {
                 let decoded = decode_signal(signal.clone(), &target_zome);
                 if let HostSignal::Holons { ref signal, .. } = decoded {
-                    let _ = notification_tx_cb.send(to_storage_notification(signal));
+                    let _ = action_event_tx_cb.send(to_action_event(signal));
                 }
                 let _ = raw_tx_cb.send(signal);
                 let _ = decoded_tx_cb.send(decoded);
@@ -94,7 +93,7 @@ impl HolochainReceptor {
             client,
             raw_tx,
             decoded_tx,
-            notification_tx,
+            action_event_tx,
         })
     }
 
@@ -107,19 +106,19 @@ impl HolochainReceptor {
     /// Subscribe to adapter-internal decoded [`HostSignal`] events.
     ///
     /// This is adapter-internal. External consumers should use
-    /// [`subscribe_notifications`] which emits identification-only
-    /// [`StorageNotification`]s that do not carry holon state.
+    /// [`subscribe_action_events`](Self::subscribe_action_events) which emits
+    /// identification-only [`ActionEvent`]s that do not carry holon state.
     pub(crate) fn subscribe_decoded(&self) -> broadcast::Receiver<HostSignal> {
         self.decoded_tx.subscribe()
     }
 
-    /// Subscribe to MAP-facing [`StorageNotification`] events.
+    /// Subscribe to MAP-facing [`ActionEvent`] events.
     ///
-    /// Each notification identifies which holon changed and how, without
-    /// carrying holon state. Consumers resolve the current state through the
-    /// normal `HolonReference` / cache path using `notification.holon_id`.
-    pub fn subscribe_notifications(&self) -> broadcast::Receiver<StorageNotification> {
-        self.notification_tx.subscribe()
+    /// Each event identifies which holon changed and how, without carrying holon
+    /// state. Consumers resolve the current state through the normal
+    /// `HolonReference` / cache path using `event.affected_holon`.
+    pub fn subscribe_action_events(&self) -> broadcast::Receiver<ActionEvent> {
+        self.action_event_tx.subscribe()
     }
 
     /// Query live space info from the conductor (delegates to `HolochainConductorClient`).

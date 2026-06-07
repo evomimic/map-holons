@@ -1,7 +1,7 @@
 use holochain_client::CellId;
 use holochain_types::prelude::ZomeName;
 use holochain_types::signal::{Signal, SystemSignal};
-use integrity_core_types::{HolonNodeModel, LocalId};
+use integrity_core_types::{LocalId, PersistenceTimestamp};
 
 /// Typed host-side signal produced by the decode adapter after `on_signal` fires.
 #[derive(Debug, Clone)]
@@ -18,16 +18,28 @@ pub enum HostSignal {
 
 /// Host-side mirror of the holons coordinator `Signal` enum.
 ///
-/// Uses MAP domain types (`LocalId`, `HolonNodeModel`) that compile on the host
-/// without any dependency on guest-only HDK or integrity crates.
+/// Carries only MAP identifiers (`LocalId`), the action timestamp, and (for links)
+/// the link type string. No holon state crosses the wire — `HolonNode`/`HolonNodeModel`
+/// are intentionally absent. This type is adapter-internal; the public boundary is
+/// [`ActionEvent`](crate::ActionEvent).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum HolonsZomeSignal {
-    LinkCreated { action_id: LocalId, link_type: String },
-    LinkDeleted { action_id: LocalId, link_type: String },
-    HolonCreated { action_id: LocalId, holon: HolonNodeModel },
-    HolonUpdated { action_id: LocalId, holon: HolonNodeModel, original_holon: HolonNodeModel },
-    HolonDeleted { action_id: LocalId, original_holon: HolonNodeModel },
+    LinkCreated { action_id: LocalId, link_type: String, timestamp: PersistenceTimestamp },
+    LinkDeleted { action_id: LocalId, link_type: String, timestamp: PersistenceTimestamp },
+    HolonCreated { action_id: LocalId, affected_holon: LocalId, timestamp: PersistenceTimestamp },
+    HolonUpdated {
+        action_id: LocalId,
+        affected_holon: LocalId,
+        previous_holon: LocalId,
+        timestamp: PersistenceTimestamp,
+    },
+    HolonDeleted {
+        action_id: LocalId,
+        affected_holon: LocalId,
+        previous_holon: LocalId,
+        timestamp: PersistenceTimestamp,
+    },
 }
 
 /// Decode a raw `holochain_types::signal::Signal` into a typed `HostSignal`.
@@ -63,7 +75,6 @@ mod tests {
     use super::*;
     use holochain_types::signal::SystemSignal;
     use holochain_zome_types::prelude::EntryHash;
-    use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap};
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -81,9 +92,8 @@ mod tests {
         holochain_zome_types::prelude::AppSignal::new(ExternIO(bytes))
     }
 
-    /// Simulate what the guest zome does: encode a `HolonsZomeSignal` to msgpack,
-    /// wrap it as a Holochain `Signal::App` from the "holons" zome, then decode it
-    /// on the host via `decode_signal`.
+    /// Encode a `HolonsZomeSignal` to msgpack, wrap it as a Holochain `Signal::App`
+    /// from the "holons" zome, then decode it on the host via `decode_signal`.
     fn roundtrip(zs: HolonsZomeSignal) -> HostSignal {
         let bytes = rmp_serde::to_vec_named(&zs).expect("msgpack encode");
         let signal = Signal::App {
@@ -99,12 +109,8 @@ mod tests {
         LocalId(vec![seed; 39])
     }
 
-    fn empty_holon() -> HolonNodeModel {
-        HolonNodeModel::new(None, PropertyMap::new())
-    }
-
-    fn holon_with_original(original_seed: u8) -> HolonNodeModel {
-        HolonNodeModel::new(Some(action_id(original_seed)), PropertyMap::new())
+    fn ts() -> PersistenceTimestamp {
+        PersistenceTimestamp(1_700_000_000_000_000)
     }
 
     // ── routing ──────────────────────────────────────────────────────────────
@@ -123,7 +129,8 @@ mod tests {
     fn non_target_zome_becomes_other_app() {
         let bytes = rmp_serde::to_vec_named(&HolonsZomeSignal::HolonCreated {
             action_id: action_id(1),
-            holon: empty_holon(),
+            affected_holon: action_id(1),
+            timestamp: ts(),
         })
         .unwrap();
         let signal = Signal::App {
@@ -156,7 +163,8 @@ mod tests {
     fn cell_id_and_zome_name_are_preserved() {
         match roundtrip(HolonsZomeSignal::HolonCreated {
             action_id: action_id(1),
-            holon: empty_holon(),
+            affected_holon: action_id(1),
+            timestamp: ts(),
         }) {
             HostSignal::Holons { zome_name, .. } => {
                 assert_eq!(zome_name.0.as_ref(), "holons");
@@ -169,19 +177,18 @@ mod tests {
 
     #[test]
     fn holon_created_decodes_with_correct_fields() {
-        let id = action_id(0xAB);
-        let holon = holon_with_original(0x01);
-
         match roundtrip(HolonsZomeSignal::HolonCreated {
-            action_id: id.clone(),
-            holon: holon.clone(),
+            action_id: action_id(0xAB),
+            affected_holon: action_id(0xAB),
+            timestamp: ts(),
         }) {
             HostSignal::Holons {
-                signal: HolonsZomeSignal::HolonCreated { action_id, holon: h },
+                signal: HolonsZomeSignal::HolonCreated { action_id, affected_holon, timestamp },
                 ..
             } => {
-                assert_eq!(action_id.0, id.0);
-                assert_eq!(h.original_id, holon.original_id);
+                assert_eq!(action_id.0, vec![0xAB; 39]);
+                assert_eq!(affected_holon.0, vec![0xAB; 39]);
+                assert_eq!(timestamp, ts());
             }
             other => panic!("expected HolonCreated, got {:?}", other),
         }
@@ -191,22 +198,25 @@ mod tests {
 
     #[test]
     fn holon_updated_decodes_with_correct_fields() {
-        let id = action_id(0xBC);
-        let holon = empty_holon();
-        let original = holon_with_original(0x02);
-
         match roundtrip(HolonsZomeSignal::HolonUpdated {
-            action_id: id.clone(),
-            holon: holon.clone(),
-            original_holon: original.clone(),
+            action_id: action_id(0xBC),
+            affected_holon: action_id(0x11),
+            previous_holon: action_id(0x22),
+            timestamp: ts(),
         }) {
             HostSignal::Holons {
-                signal: HolonsZomeSignal::HolonUpdated { action_id, holon: h, original_holon: o },
+                signal:
+                    HolonsZomeSignal::HolonUpdated {
+                        action_id,
+                        affected_holon,
+                        previous_holon,
+                        ..
+                    },
                 ..
             } => {
-                assert_eq!(action_id.0, id.0);
-                assert_eq!(h.original_id, holon.original_id);
-                assert_eq!(o.original_id, original.original_id);
+                assert_eq!(action_id.0, vec![0xBC; 39]);
+                assert_eq!(affected_holon.0, vec![0x11; 39]);
+                assert_eq!(previous_holon.0, vec![0x22; 39]);
             }
             other => panic!("expected HolonUpdated, got {:?}", other),
         }
@@ -216,19 +226,19 @@ mod tests {
 
     #[test]
     fn holon_deleted_decodes_with_correct_fields() {
-        let id = action_id(0xCD);
-        let original = holon_with_original(0x03);
-
         match roundtrip(HolonsZomeSignal::HolonDeleted {
-            action_id: id.clone(),
-            original_holon: original.clone(),
+            action_id: action_id(0xCD),
+            affected_holon: action_id(0x33),
+            previous_holon: action_id(0x44),
+            timestamp: ts(),
         }) {
             HostSignal::Holons {
-                signal: HolonsZomeSignal::HolonDeleted { action_id, original_holon: o },
+                signal:
+                    HolonsZomeSignal::HolonDeleted { affected_holon, previous_holon, .. },
                 ..
             } => {
-                assert_eq!(action_id.0, id.0);
-                assert_eq!(o.original_id, original.original_id);
+                assert_eq!(affected_holon.0, vec![0x33; 39]);
+                assert_eq!(previous_holon.0, vec![0x44; 39]);
             }
             other => panic!("expected HolonDeleted, got {:?}", other),
         }
@@ -238,16 +248,16 @@ mod tests {
 
     #[test]
     fn link_created_decodes_with_correct_fields() {
-        let id = action_id(0xDE);
         match roundtrip(HolonsZomeSignal::LinkCreated {
-            action_id: id.clone(),
+            action_id: action_id(0xDE),
             link_type: "SmartLink".to_string(),
+            timestamp: ts(),
         }) {
             HostSignal::Holons {
-                signal: HolonsZomeSignal::LinkCreated { action_id, link_type },
+                signal: HolonsZomeSignal::LinkCreated { action_id, link_type, .. },
                 ..
             } => {
-                assert_eq!(action_id.0, id.0);
+                assert_eq!(action_id.0, vec![0xDE; 39]);
                 assert_eq!(link_type, "SmartLink");
             }
             other => panic!("expected LinkCreated, got {:?}", other),
@@ -256,16 +266,15 @@ mod tests {
 
     #[test]
     fn link_deleted_decodes_with_correct_fields() {
-        let id = action_id(0xEF);
         match roundtrip(HolonsZomeSignal::LinkDeleted {
-            action_id: id.clone(),
+            action_id: action_id(0xEF),
             link_type: "AllHolonNodes".to_string(),
+            timestamp: ts(),
         }) {
             HostSignal::Holons {
-                signal: HolonsZomeSignal::LinkDeleted { action_id, link_type },
+                signal: HolonsZomeSignal::LinkDeleted { link_type, .. },
                 ..
             } => {
-                assert_eq!(action_id.0, id.0);
                 assert_eq!(link_type, "AllHolonNodes");
             }
             other => panic!("expected LinkDeleted, got {:?}", other),
