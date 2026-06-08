@@ -1,0 +1,41 @@
+[package]
+name = "holochain_wasmer_host"
+version.workspace = true
+description = "wasm host code"
+documentation = "https://docs.rs/holochain_wasmer_host"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+name = "holochain_wasmer_host"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[dependencies]
+wasmer.workspace = true
+wasmer-middlewares = { workspace = true, optional = true }
+
+holochain_wasmer_common.workspace = true
+holochain_serialized_bytes.workspace = true
+serde.workspace = true
+tracing.workspace = true
+parking_lot.workspace = true
+bimap.workspace = true
+bytes.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[features]
+default = ["error_as_host", "wasmer_sys_dev"]
+debug_memory = []
+error_as_host = ["holochain_wasmer_common/error_as_host"]
+wasmer_sys = ["dep:wasmer-middlewares", "wasmer/sys"]
+wasmer_sys_dev = ["wasmer_sys", "wasmer/default"]
+wasmer_sys_prod = ["wasmer_sys", "wasmer/llvm"]
+wasmer_wamr = ["wasmer/wamr"]

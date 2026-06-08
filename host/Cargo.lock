@@ -11,9 +11,9 @@ dependencies = [
  "async-trait",
  "client_shared_types",
  "core_types",
- "deprecated_holochain_receptor",
  "futures",
  "holochain_client",
+ "holochain_receptor",
  "holons_client",
  "holons_core",
  "holons_trust_channel",
@@ -1772,29 +1772,6 @@ name = "deflate64"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26bf8fc351c5ed29b5c2f0cbbac1b209b74f60ecd62e675a998df72c49af5204"
-
-[[package]]
-name = "deprecated_holochain_receptor"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "base_types",
- "client_shared_types",
- "core_types",
- "futures-executor",
- "holochain_client",
- "holochain_types",
- "holon_dance_builders",
- "holons_boundary",
- "holons_core",
- "holons_loader_client",
- "holons_trust_channel",
- "integrity_core_types",
- "serde_bytes",
- "tokio",
- "tracing",
- "type_names",
-]
 
 [[package]]
 name = "der"
@@ -3683,6 +3660,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "holochain_receptor"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base_types",
+ "client_shared_types",
+ "core_types",
+ "futures-executor",
+ "holochain_client",
+ "holochain_types",
+ "holochain_zome_types",
+ "holon_dance_builders",
+ "holons_boundary",
+ "holons_core",
+ "holons_loader_client",
+ "holons_trust_channel",
+ "integrity_core_types",
+ "rmp-serde",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "holochain_runtime"
 version = "0.1.0"
 dependencies = [
@@ -3962,8 +3965,6 @@ dependencies = [
 [[package]]
 name = "holochain_wasmer_host"
 version = "0.0.102"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e1e9f9730f9c3333a90f6d3cfd868e67133e788105abc48cab29558521892b2"
 dependencies = [
  "bimap",
  "bytes",
@@ -4055,8 +4056,8 @@ dependencies = [
  "base_types",
  "client_shared_types",
  "core_types",
- "deprecated_holochain_receptor",
  "futures-executor",
+ "holochain_receptor",
  "holon_dance_builders",
  "holons_boundary",
  "holons_core",

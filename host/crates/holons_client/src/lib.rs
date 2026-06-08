@@ -12,13 +12,13 @@ pub use client_session::ClientSession;
 pub use client_shared_objects::*;
 use client_shared_types::{MapRequest, MapResponse, SpaceInfo};
 use core_types::HolonError;
-pub use deprecated_holochain_receptor::HolochainReceptor;
+pub use holochain_receptor::DeprecatedHolochainReceptor;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 pub use recovery_receptor::local_recovery_receptor::LocalRecoveryReceptor;
 
 pub enum Receptor {
     //Local(LocalReceptor),
-    Holochain(HolochainReceptor),
+    Holochain(DeprecatedHolochainReceptor),
     LocalRecovery(LocalRecoveryReceptor),
 }
 

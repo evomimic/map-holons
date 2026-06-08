@@ -31,5 +31,11 @@ path = "../../../../shared_crates/holons_core"
 [dependencies.holons_integrity]
 path = "../../integrity/holons_integrity"
 
+[dependencies.holons_guest_integrity]
+path = "../../../crates/holons_guest_integrity"
+
+[dependencies.integrity_core_types]
+path = "../../../../shared_crates/type_system/integrity_core_types"
+
 [dependencies.holons_guest]
 path = "../../../crates/holons_guest"

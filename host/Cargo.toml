@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "conductora",
     "crates/holons_client",
-    "crates/deprecated_holochain_receptor",
+    "crates/holochain_receptor",
     "crates/holons_loader_client",
     "crates/recovery_receptor",
     "crates/shared_types",
@@ -44,7 +44,7 @@ url2 = "0.0.6"
 
 # Internal crate paths (optional for IDE support)
 holons_client = { path = "crates/holons_client" }
-deprecated_holochain_receptor = { path = "crates/deprecated_holochain_receptor" }
+holochain_receptor = { path = "crates/holochain_receptor" }
 holons_loader_client = { path = "crates/holons_loader_client" }
 client_shared_types = { path = "crates/shared_types" }
 tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
@@ -52,3 +52,6 @@ map_commands_contract = { path = "crates/map_commands_contract" }
 map_commands_wire = { path = "crates/map_commands_wire" }
 map_commands_runtime = { path = "crates/map_commands_runtime" }
 recovery_receptor = { path = "crates/recovery_receptor" }
+
+[patch.crates-io]
+holochain_wasmer_host = { path = "patches/holochain_wasmer_host" }

@@ -5,7 +5,7 @@ use client_shared_types::{
     holon_space::SpaceInfo,
 };
 use core_types::HolonError;
-use deprecated_holochain_receptor::HolochainReceptor;
+use holochain_receptor::DeprecatedHolochainReceptor;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -40,7 +40,7 @@ impl DeprecatedReceptorFactory {
             }
             ReceptorType::Holochain => {
                 tracing::info!("Creating HolochainReceptor from base configuration");
-                Ok(Arc::new(Receptor::Holochain(HolochainReceptor::new(base))))
+                Ok(Arc::new(Receptor::Holochain(DeprecatedHolochainReceptor::new(base))))
             }
         }
     }

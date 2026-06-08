@@ -1,15 +1,18 @@
 [package]
-name = "deprecated_holochain_receptor"
+name = "holochain_receptor"
 version = "0.1.0"
 edition = "2021"
 #edition = "2024"
 
 [dependencies]
 tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
 serde_bytes = "*"
+serde_json = "1"
+rmp-serde = "1"
 async-trait = "0.1"
 futures-executor = "0.3"
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync"] }
 
 #holochain dependencies
 holochain_client = { version = "0.8" }
@@ -25,5 +28,7 @@ holons_trust_channel = { path = "../../../shared_crates/holons_trust_channel" }
 holons_loader_client = { path = "../holons_loader_client" }
 core_types = { path = "../../../shared_crates/type_system/core_types" }
 base_types = { path = "../../../shared_crates/type_system/base_types" }
-type_names = { path = "../../../shared_crates/type_system/type_names" }
 holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
+
+[dev-dependencies]
+holochain_zome_types = "0.6"
