@@ -3,13 +3,13 @@ use crate::reference_layer::HolonReference;
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 
-/// Runtime wrapper for the schema-backed `HolonSpaceType` descriptor.
+/// Runtime wrapper for the schema-backed `HolonSpace` descriptor.
 pub struct HolonSpaceDescriptor {
     holon: HolonReference,
 }
 
 impl HolonSpaceDescriptor {
-    /// Wraps an already-resolved `HolonSpaceType` descriptor holon reference.
+    /// Wraps an already-resolved `HolonSpace` descriptor holon reference.
     pub fn from_holon(holon: HolonReference) -> Self {
         Self { holon }
     }

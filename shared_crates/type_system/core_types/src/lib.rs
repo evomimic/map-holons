@@ -9,7 +9,7 @@
 //! - **Semantic Names**: such as `PropertyName`, `RelationshipName`, and `SchemaName`
 //! - **Identifiers**: such as `LocalId`, `ExternalId`, and `HolonId`
 //! - **Structural Types**: like `PropertyMap`, `RelationshipMap`
-//! - **Type Classifiers**: such as `ValueType` and `TypeKind` (formerly `TypeKind`)
+//! - **Type Classifiers**: such as `ValueType` and `TypeKind`
 //!
 //! These types define the shape and meaning of data in MAP holons and descriptors,
 //! and are shared across guest and client implementations.

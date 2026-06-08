@@ -17,7 +17,7 @@ pub async fn execute_abandon_staged_changes(
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    let mut staged_reference = match source_reference {
+    let staged_reference = match source_reference {
         HolonReference::Staged(staged_reference) => staged_reference,
         other => panic!("abandon_staged_changes: expected Staged reference, got {:?}", other),
     };

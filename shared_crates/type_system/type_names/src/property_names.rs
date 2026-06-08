@@ -123,7 +123,6 @@ pub enum CorePropertyTypeName {
     TotalBundles,
     TotalLoaderHolons,
     Type,
-    TypeKind,
     TypeName,
     TypeNamePlural,
     HolonsCommitted,

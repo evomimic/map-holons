@@ -71,9 +71,9 @@ pub enum CoreHolonTypeName {
     DanceInvocation,
     DeclaredRelationshipType,
     Holon,
-    HolonErrorType,
+    HolonError,
     HolonLoadError,
-    HolonSpaceType,
+    HolonSpace,
     HolonType,
     IntegerValueConstraint,
     InverseRelationshipType,
@@ -82,10 +82,9 @@ pub enum CoreHolonTypeName {
     MinimumLength,
     MinimumValue,
     Projection,
-    SchemaHolonType,
-    SchemaType,
+    Schema,
     StringValueConstraint,
-    TransactionType,
+    Transaction,
     TypeDescriptor,
     ValueArrayConstraint,
     ValueConstraintType,
@@ -119,8 +118,8 @@ mod tests {
         assert_eq!(MapString("Dance".to_string()), CoreHolonTypeName::Dance.as_holon_name());
         assert_eq!(MapString("Holon".to_string()), CoreHolonTypeName::Holon.as_holon_name());
         assert_eq!(
-            MapString("HolonSpaceType".to_string()),
-            CoreHolonTypeName::HolonSpaceType.as_holon_name()
+            MapString("HolonSpace".to_string()),
+            CoreHolonTypeName::HolonSpace.as_holon_name()
         );
         assert_eq!(
             MapString("HolonType".to_string()),
@@ -130,13 +129,14 @@ mod tests {
             MapString("InverseRelationshipType".to_string()),
             CoreHolonTypeName::InverseRelationshipType.as_holon_name()
         );
+        assert_eq!(MapString("Schema".to_string()), CoreHolonTypeName::Schema.as_holon_name());
         assert_eq!(
-            MapString("SchemaHolonType".to_string()),
-            CoreHolonTypeName::SchemaHolonType.as_holon_name()
+            MapString("Transaction".to_string()),
+            CoreHolonTypeName::Transaction.as_holon_name()
         );
         assert_eq!(
-            MapString("TransactionType".to_string()),
-            CoreHolonTypeName::TransactionType.as_holon_name()
+            MapString("HolonError".to_string()),
+            CoreHolonTypeName::HolonError.as_holon_name()
         );
     }
 

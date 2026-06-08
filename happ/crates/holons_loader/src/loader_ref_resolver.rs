@@ -787,52 +787,6 @@ impl LoaderRefResolver {
         ))
     }
 
-    /// Resolve the *type descriptor* for an endpoint:
-    /// - If the endpoint is an instance holon, follow its single `DescribedBy` relationship to obtain
-    ///   the concrete type descriptor holon.
-    /// - If the endpoint is already a type descriptor holon, return it unchanged (do not follow
-    ///   to the meta TypeDescriptor).
-    /// - If no `DescribedBy` relationship is found and the endpoint is not clearly a descriptor,
-    ///   return an `EmptyField` error because after Pass‑2a every holon should have a resolved descriptor;
-    ///   missing descriptors at this stage are unexpected and indicate malformed input or earlier failure.
-    fn resolve_type_descriptor(endpoint: &HolonReference) -> Result<HolonReference, HolonError> {
-        let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
-        let type_name_prop: PropertyName = CorePropertyTypeName::TypeName.as_property_name();
-        let type_descriptor_name = CoreHolonTypeName::TypeDescriptor.as_holon_name();
-
-        // Read `DescribedBy` targets (propagate access errors).
-        // NOTE: Safe to hold this read lock in resolver paths; bundles & RTD sets are immutable during Pass-2.
-        let related_handle = endpoint.related_holons(&described_by)?;
-        let related_guard = related_handle.read().map_err(|_| {
-            HolonError::FailedToBorrow("DescribedBy collection read lock poisoned".into())
-        })?;
-        let described_members = related_guard.get_members(); // &Vec<HolonReference>
-
-        match described_members.len() {
-            0 => Err(HolonError::EmptyField("DescribedBy".into())),
-            1 => {
-                let candidate_ref = &described_members[0];
-
-                // If the `DescribedBy` target is *meta* TypeDescriptor, endpoint is a TypeDescriptor instance.
-                if let Ok(candidate_type_name) =
-                    Self::read_string_property(candidate_ref, &type_name_prop)
-                {
-                    if candidate_type_name == type_descriptor_name {
-                        // Endpoint is itself a TypeDescriptor (do not climb to meta)
-                        return Ok(endpoint.clone());
-                    }
-                }
-
-                // Otherwise the candidate is the concrete type descriptor for the instance endpoint.
-                Ok(candidate_ref.clone())
-            }
-            _ => Err(HolonError::DuplicateError(
-                "DescribedBy".into(),
-                "Expected exactly one descriptor target".into(),
-            )),
-        }
-    }
-
     /// Finds the first relationship type descriptor matching an endpoint pair's effective types.
     ///
     /// Endpoint descriptors are searched across their `Extends` ancestors in
@@ -845,12 +799,8 @@ impl LoaderRefResolver {
         source_endpoint: &HolonReference,
         target_endpoint: &HolonReference,
     ) -> Result<Option<(HolonReference, RelationshipDirection)>, HolonError> {
-        let source_descriptor = Self::resolve_type_descriptor(source_endpoint)?;
-        let target_descriptor = Self::resolve_type_descriptor(target_endpoint)?;
-        let source_ancestors =
-            Self::effective_descriptor_ancestors(source_endpoint, &source_descriptor)?;
-        let target_ancestors =
-            Self::effective_descriptor_ancestors(target_endpoint, &target_descriptor)?;
+        let source_ancestors = effective_descriptor_lineage(source_endpoint)?;
+        let target_ancestors = effective_descriptor_lineage(target_endpoint)?;
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
         let target_descriptor_keys = Self::keyed_descriptor_ancestors(
             &target_ancestors,
@@ -891,73 +841,6 @@ impl LoaderRefResolver {
         }
 
         Ok(None)
-    }
-
-    fn effective_descriptor_ancestors(
-        endpoint: &HolonReference,
-        resolved_descriptor: &HolonReference,
-    ) -> Result<Vec<HolonReference>, HolonError> {
-        let mut descriptor_ancestors = ancestors(resolved_descriptor)?;
-
-        // Type descriptor holons are both descriptors in their own right and instances of
-        // TypeDescriptor. Their Extends lineage captures domain inheritance (for example
-        // SchemaType -> HolonType), while generic schema relationships such as
-        // (TypeDescriptor)-[ComponentOf]->(SchemaType) are declared against the
-        // descriptor they are DescribedBy. Include that meta descriptor after the
-        // concrete Extends chain so more-specific RTDs still win.
-        let Some(described_by_descriptor) = Self::described_by_type_descriptor(endpoint)? else {
-            return Ok(descriptor_ancestors);
-        };
-
-        let key_property_name = CorePropertyTypeName::Key.as_property_name();
-        let described_by_key =
-            Self::read_string_property(&described_by_descriptor, &key_property_name).ok();
-        let already_present = described_by_key.as_ref().is_some_and(|described_by_key| {
-            descriptor_ancestors.iter().any(|ancestor| {
-                Self::read_string_property(ancestor, &key_property_name)
-                    .is_ok_and(|ancestor_key| ancestor_key == *described_by_key)
-            })
-        });
-
-        if !already_present {
-            descriptor_ancestors.push(described_by_descriptor);
-        }
-
-        Ok(descriptor_ancestors)
-    }
-
-    fn described_by_type_descriptor(
-        endpoint: &HolonReference,
-    ) -> Result<Option<HolonReference>, HolonError> {
-        let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
-        let type_name_prop: PropertyName = CorePropertyTypeName::TypeName.as_property_name();
-        let type_descriptor_name = CoreHolonTypeName::TypeDescriptor.as_holon_name();
-
-        let related_handle = endpoint.related_holons(&described_by)?;
-        let related_guard = related_handle.read().map_err(|_| {
-            HolonError::FailedToBorrow("DescribedBy collection read lock poisoned".into())
-        })?;
-        let described_members = related_guard.get_members();
-
-        match described_members.len() {
-            0 => Ok(None),
-            1 => {
-                let candidate = &described_members[0];
-                match Self::read_string_property(candidate, &type_name_prop) {
-                    Ok(type_name) if type_name == type_descriptor_name => {
-                        Ok(Some(candidate.clone()))
-                    }
-                    Ok(_)
-                    | Err(HolonError::EmptyField(_))
-                    | Err(HolonError::UnexpectedValueType(_, _)) => Ok(None),
-                    Err(error) => Err(error),
-                }
-            }
-            _ => Err(HolonError::DuplicateError(
-                "DescribedBy".into(),
-                "Expected exactly one descriptor target".into(),
-            )),
-        }
     }
 
     fn keyed_descriptor_ancestors(
@@ -1062,12 +945,12 @@ impl LoaderRefResolver {
         Ok(None)
     }
 
-    /// Returns true if the holon's `InstanceTypeKind == "Relationship"`.
+    /// Returns true if the holon's `InstanceTypeKind == "TypeKind.Relationship"`.
     fn is_relationship_type_kind(holon_reference: &HolonReference) -> bool {
         debug!("[resolver] entering is_relationship_type_kind");
 
         let property_name: PropertyName = CorePropertyTypeName::InstanceTypeKind.as_property_name();
-        let expected = TypeKind::Relationship.to_string();
+        let expected = TypeKind::Relationship.as_schema_key();
 
         match holon_reference.property_value(&property_name) {
             Ok(Some(PropertyValue::StringValue(MapString(actual)))) => actual == expected,
@@ -1588,7 +1471,7 @@ mod tests {
         context: &Arc<TransactionContext>,
         key: &str,
         type_name: &str,
-        instance_type_kind: TypeKind,
+        type_kind: TypeKind,
     ) -> Result<TransientReference, HolonError> {
         let mut descriptor = new_holon(context, key)?;
         descriptor
@@ -1596,7 +1479,7 @@ mod tests {
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
             .with_property_value(
                 CorePropertyTypeName::InstanceTypeKind,
-                instance_type_kind.to_string(),
+                type_kind.as_schema_key(),
             )?;
         Ok(descriptor)
     }
@@ -1613,7 +1496,7 @@ mod tests {
     ) -> Result<HolonReference, HolonError> {
         let mut staged_type_descriptor = context.mutation().stage_new_holon(new_descriptor(
             context,
-            "TypeDescriptor",
+            "TypeDescriptor.HolonType",
             "TypeDescriptor",
             TypeKind::Holon,
         )?)?;
@@ -1831,12 +1714,17 @@ mod tests {
 
         let type_descriptor = stage(
             &context,
-            new_descriptor(&context, "TypeDescriptor", "TypeDescriptor", TypeKind::Holon)?,
+            new_descriptor(
+                &context,
+                "TypeDescriptor.HolonType",
+                "TypeDescriptor",
+                TypeKind::Holon,
+            )?,
         )?;
         let holon_type =
             stage(&context, new_descriptor(&context, "HolonType", "HolonType", TypeKind::Holon)?)?;
         let mut schema_type =
-            new_descriptor(&context, "SchemaType", "SchemaType", TypeKind::Holon)?;
+            new_descriptor(&context, "Schema.HolonType", "Schema", TypeKind::Holon)?;
         schema_type.add_related_holons(
             CoreRelationshipTypeName::DescribedBy,
             vec![type_descriptor.clone()],
@@ -1847,8 +1735,8 @@ mod tests {
         let expected_relationship_type = relationship_type_descriptor(
             &context,
             "ComponentOf",
-            "TypeDescriptor",
-            "SchemaType",
+            "TypeDescriptor.HolonType",
+            "Schema.HolonType",
             declared_meta,
         )?;
         let schema_endpoint =
@@ -1883,10 +1771,15 @@ mod tests {
 
         let type_descriptor = stage(
             &context,
-            new_descriptor(&context, "TypeDescriptor", "TypeDescriptor", TypeKind::Holon)?,
+            new_descriptor(
+                &context,
+                "TypeDescriptor.HolonType",
+                "TypeDescriptor",
+                TypeKind::Holon,
+            )?,
         )?;
         let mut schema_type =
-            new_descriptor(&context, "SchemaType", "SchemaType", TypeKind::Holon)?;
+            new_descriptor(&context, "Schema.HolonType", "Schema", TypeKind::Holon)?;
         schema_type
             .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![type_descriptor])?;
         let schema_type = stage(&context, schema_type)?;
@@ -1894,15 +1787,15 @@ mod tests {
         relationship_type_descriptor(
             &context,
             "ComponentOf",
-            "TypeDescriptor",
-            "SchemaType",
+            "TypeDescriptor.HolonType",
+            "Schema.HolonType",
             declared_meta.clone(),
         )?;
         let expected_relationship_type = relationship_type_descriptor(
             &context,
             "ComponentOf",
-            "SchemaType",
-            "SchemaType",
+            "Schema.HolonType",
+            "Schema.HolonType",
             declared_meta,
         )?;
         let schema_endpoint =
@@ -1937,10 +1830,15 @@ mod tests {
 
         let type_descriptor = stage(
             &context,
-            new_descriptor(&context, "TypeDescriptor", "TypeDescriptor", TypeKind::Holon)?,
+            new_descriptor(
+                &context,
+                "TypeDescriptor.HolonType",
+                "TypeDescriptor",
+                TypeKind::Holon,
+            )?,
         )?;
         let mut schema_type =
-            new_descriptor(&context, "SchemaType", "SchemaType", TypeKind::Holon)?;
+            new_descriptor(&context, "Schema.HolonType", "Schema", TypeKind::Holon)?;
         schema_type.add_related_holons(
             CoreRelationshipTypeName::DescribedBy,
             vec![type_descriptor.clone()],
@@ -1950,13 +1848,13 @@ mod tests {
         let expected_relationship_type = relationship_type_descriptor(
             &context,
             "InstanceRelationships",
-            "TypeDescriptor",
+            "TypeDescriptor.HolonType",
             "DeclaredRelationshipType",
             declared_meta.clone(),
         )?;
         let mut depends_on = new_descriptor(
             &context,
-            "(SchemaType)-[DependsOn]->(SchemaType)",
+            "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)",
             "DependsOn",
             TypeKind::Relationship,
         )?;
@@ -1997,12 +1895,12 @@ mod tests {
             &context,
             "SourceType",
             "DeclaredRelationshipType",
-            "TypeDescriptor",
+            "TypeDescriptor.HolonType",
             declared_meta.clone(),
         )?;
         let mut implements_dance = new_descriptor(
             &context,
-            "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
+            "(TypeDescriptor.HolonType)-[ImplementsDance]->(DanceImplementation.HolonType)",
             "ImplementsDance",
             TypeKind::Relationship,
         )?;

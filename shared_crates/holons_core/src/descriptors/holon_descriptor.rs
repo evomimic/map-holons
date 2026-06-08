@@ -244,7 +244,7 @@ mod tests {
     use crate::reference_layer::{ReadableHolon, WritableHolon};
     use crate::TransientReference;
     use base_types::MapString;
-    use core_types::{HolonError, PropertyName, RelationshipName};
+    use core_types::{HolonError, PropertyName, RelationshipName, TypeKind};
     use std::sync::Arc;
     use type_names::{
         CommandName, CoreCommandTypeName, CoreHolonTypeName, CorePropertyTypeName,
@@ -261,7 +261,10 @@ mod tests {
         descriptor
             .with_property_value(CorePropertyTypeName::TypeName, type_name)?
             .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-            .with_property_value(CorePropertyTypeName::InstanceTypeKind, "Holon")?;
+            .with_property_value(
+                CorePropertyTypeName::InstanceTypeKind,
+                TypeKind::Holon.as_schema_key(),
+            )?;
         Ok(descriptor)
     }
 
@@ -593,7 +596,7 @@ mod tests {
     fn get_command_by_name_matches_on_shared_type_name() -> Result<(), HolonError> {
         let context = build_context();
         let command = new_descriptor_holon(&context, "commit-command-affordance", "Commit")?;
-        let mut holon_type = new_descriptor_holon(&context, "command-owner", "TransactionType")?;
+        let mut holon_type = new_descriptor_holon(&context, "command-owner", "Transaction")?;
 
         holon_type
             .add_related_holons(CoreRelationshipTypeName::AffordsCommand, vec![command.into()])?;
@@ -668,7 +671,7 @@ mod tests {
     fn get_dance_by_name_matches_on_shared_type_name() -> Result<(), HolonError> {
         let context = build_context();
         let dance = new_descriptor_holon(&context, "dance-affordance", "Query")?;
-        let mut holon_type = new_descriptor_holon(&context, "dance-owner", "TransactionType")?;
+        let mut holon_type = new_descriptor_holon(&context, "dance-owner", "Transaction")?;
 
         holon_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![dance.into()])?;
 
