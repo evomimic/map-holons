@@ -60,7 +60,6 @@ export class JsonDataUploader implements OnInit {
   async ngOnInit() {
         const contentStore = this.contentController.getStoreById(this.spaceId);
         this.store.set(contentStore);
-        console.log('ContentSpace initialized with id:', this.spaceId);
     await this.loadSchema();
   }
 
@@ -79,9 +78,7 @@ export class JsonDataUploader implements OnInit {
       // Check if running in Tauri (production) or web (mock mode)
       if (!environment.mock || isTauri()) {
         const schemaPath = await resolveResource('resources/bootstrap-import.schema.json');
-        console.log("Resolved schema path:", schemaPath);
-        schemaContent = await readTextFile(schemaPath)
-        console.log("Read schema content:", schemaContent);
+        schemaContent = await readTextFile(schemaPath);
       } else {
         // Web/Mock environment - load from assets directory
           const response = await fetch('/bootstrap-import.schema.json');
@@ -122,7 +119,6 @@ export class JsonDataUploader implements OnInit {
               content,
               validationResult: null
             });
-            console.log(`Added file: ${file.name}`);
           }
           this.dataFiles.set([...currentFiles]);
         });
@@ -217,9 +213,7 @@ export class JsonDataUploader implements OnInit {
   }
 
   async savetohost() {
-      console.log('[Uploader] savetohost() entered');
       const storeInstance = this.store();
-      console.log('[Uploader] store() resolved to:', storeInstance ? 'present' : 'missing');
     if (storeInstance) {
       // Check if all files are validated and valid
       const validFiles = this.dataFiles().filter(
@@ -249,8 +243,6 @@ export class JsonDataUploader implements OnInit {
       this.cdr.markForCheck();
 
       try {
-        console.log('[Uploader] Preparing content set for uploadHolons(...)');
-        
         // Prepare batch data with all valid files
         const filedata: FileData[] = validFiles.map(dataFile => ({
           filename: dataFile.filename,
@@ -267,13 +259,8 @@ export class JsonDataUploader implements OnInit {
           files_to_load: filedata
         };
 
-        console.log("Sending file data to Host:", filedata);
-        console.log('[Uploader] Calling storeInstance.uploadHolons(...) now');
-        console.log('[Uploader] Awaiting SDK uploadHolons(...) result');
         const loaderReference = await storeInstance.uploadHolons(file_and_schema_Data);
-        console.log('[Uploader] SDK uploadHolons resolved with loader reference:', loaderReference);
         this.loaderResultStatus = 'Loading loader result...';
-        console.log('[Uploader] Scheduling loader result read...');
         void this.loadLoaderResult(loaderReference);
         this.successMessage = 'Operation submitted, waiting for loader result.';
         this.clearForms();
@@ -318,9 +305,7 @@ export class JsonDataUploader implements OnInit {
 
   private async loadLoaderResult(loaderReference: HolonReference): Promise<void> {
     try {
-      console.log('[Uploader] Reading loader result holon...');
       this.loaderResult = await presentLoaderResult(loaderReference);
-      console.log('[Uploader] Loader result holon read complete:', this.loaderResult);
       this.loaderResultStatus = 'Loader result received.';
       if (Number(this.loaderResult.errorCount) > 0) {
         this.successMessage = '';

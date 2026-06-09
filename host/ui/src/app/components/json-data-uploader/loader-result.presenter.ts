@@ -38,7 +38,6 @@ const LOAD_ERROR_PROPERTY_NAMES = {
 export async function presentLoaderResult(
   loaderHolon: ReadableHolon,
 ): Promise<LoaderResultView> {
-  console.log('[LoaderResult] Reading core loader result properties...');
   const [
     holonsStaged,
     holonsCommitted,
@@ -72,7 +71,6 @@ async function readIntegerProperty(
   holon: ReadableHolon,
   propertyName: string,
 ): Promise<string> {
-  console.log('[LoaderResult] Reading integer property:', propertyName);
   const value = await holon.propertyValue(propertyName);
   if (value === null) {
     return 'n/a';
@@ -89,7 +87,6 @@ async function readStringProperty(
   holon: ReadableHolon,
   propertyName: string,
 ): Promise<string> {
-  console.log('[LoaderResult] Reading string property:', propertyName);
   const value = await holon.propertyValue(propertyName);
   if (value === null) {
     return 'n/a';
@@ -105,9 +102,7 @@ async function readStringProperty(
 async function readLoadErrors(
   loaderHolon: ReadableHolon,
 ): Promise<LoaderErrorView[]> {
-  console.log('[LoaderResult] Reading HasLoadError relationships...');
   const errorCollection = await loaderHolon.relatedHolons('HasLoadError');
-  console.log('[LoaderResult] HasLoadError member count:', errorCollection.length);
 
   return Promise.all(
     errorCollection.members.map(async (errorHolon: ReadableHolon) => ({

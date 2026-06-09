@@ -42,13 +42,9 @@ export function createContentStore(
     const ContentStore = signalStore(
 
       withState(initialState),
-           // --- THIS IS THE DIAGNOSTIC SPY ---
-      // Add this block to log every change to staging_area.
       withComputed((store) => ({
         _stagingAreaTracker: computed(() => {
-          const area = store.staged_holons();
-          console.log(`%c[TRACKER] staged_holons signal updated. New value:`, 'color: #9C27B0; font-weight: bold;', area);
-          return area;
+          return store.staged_holons();
         })
       })),
       /* withComputed((store) => ({
@@ -223,35 +219,15 @@ export function createContentStore(
         },
 
         async uploadHolons(contentSet: ContentSet): Promise<HolonReference> {
-          console.log('%c[STORE] loadHolons called with contentSet:', 'color: #4CAF50; font-weight: bold;', contentSet);
           patchState(store, { loading: true });
 
           try {
-            console.log('%c[STORE] Beginning SDK transaction for loadHolons...', 'color: #03A9F4; font-weight: bold;');
             const transaction = await mapClient.beginTransaction();
-            console.log('%c[STORE] SDK transaction begun:', 'color: #03A9F4; font-weight: bold;', transaction);
-            console.log('%c[STORE] Calling transaction.loadHolons(...)', 'color: #03A9F4; font-weight: bold;');
             const loaderReference = await transaction.loadHolons(contentSet);
-            console.log('%c[STORE] load_holons loader reference received:', 'color: #03A9F4; font-weight: bold;', loaderReference);
 
             patchState(store, { loading: false });
             return loaderReference;
           } catch (error) {
-            console.error('[STORE] Error during loadHolons:', error);
-            if (error && typeof error === 'object') {
-              const domainLikeError = error as {
-                code?: unknown;
-                variant?: unknown;
-                payload?: unknown;
-                cause?: unknown;
-              };
-              console.error('[STORE] Error details:', {
-                code: domainLikeError.code,
-                variant: domainLikeError.variant,
-                payload: domainLikeError.payload,
-                cause: domainLikeError.cause,
-              });
-            }
             patchState(store, { loading: false });
             throw error;
           }
@@ -261,10 +237,8 @@ export function createContentStore(
       withHooks({
         onInit(){
           //loadall();
-          console.log('Holon store loaded:');
         },
         onDestroy() {
-          console.log('on destroy')
         }
       })
     )
