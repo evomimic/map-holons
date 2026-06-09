@@ -1,12 +1,12 @@
-import { computed, inject, Injector, runInInjectionContext, Signal } from '@angular/core';
-import { signalStore, withHooks, withMethods, withState, patchState, DeepSignal, withComputed,  } from '@ngrx/signals';
+import { computed, Injector } from '@angular/core';
+import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 //import { Cell } from '../helpers/interface.cell';
 import { HolonSpace } from '../models/interface.space';
-import { Holon, SavedHolon, StagedHolon, StagedHolonFactory, TransientHolon } from '../models/holon';
+import { SavedHolon, StagedHolon, TransientHolon } from '../models/holon';
 import { HolonsClient } from '../clients/holons.client';
-import { SignalStore, StoreState } from '../models/interface.store';
+import { StoreState } from '../models/interface.store';
 import { getCommittedHolons, getStagedHolons, getTransientHolons, MapResponse } from '../models/map.response';
-import { ContentSet, HolonId, PropertyMap, StagedReference, TransientReference } from '../models/shared-types';
+import { ContentSet, HolonId, PropertyMap, StagedReference } from '../models/shared-types';
 import { MapClient, type HolonReference } from '../../dahn/deps/map-sdk';
 
 export interface ContentStoreState extends StoreState{
@@ -259,7 +259,7 @@ export function createContentStore(
 
       })),
       withHooks({
-        onInit({ loadall }){
+        onInit(){
           //loadall();
           console.log('Holon store loaded:');
         },

@@ -1,7 +1,6 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, signal, Output, EventEmitter, Input, WritableSignal, effect } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output, WritableSignal, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { invoke } from '@tauri-apps/api/core';
 import { SchemaValidatorService } from '../../services/schema-validation.service';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { resolveResource } from '@tauri-apps/api/path';
@@ -74,7 +73,6 @@ export class JsonDataUploader implements OnInit {
     this.schemaLoading.set(true);
 
     try {
-      let schemaUrl: string;
       let schemaContent: string;
       const schemaLocalPath = 'bootstrap-import.schema.json';
       
@@ -86,7 +84,6 @@ export class JsonDataUploader implements OnInit {
         console.log("Read schema content:", schemaContent);
       } else {
         // Web/Mock environment - load from assets directory
-          schemaUrl = `/${schemaLocalPath}`;
           const response = await fetch('/bootstrap-import.schema.json');
           if (!response.ok) {
             throw new Error(`Failed to load schema: ${response.statusText}`);
