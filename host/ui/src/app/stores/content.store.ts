@@ -1,12 +1,13 @@
-import { computed, inject, Injector, runInInjectionContext, Signal } from '@angular/core';
-import { signalStore, withHooks, withMethods, withState, patchState, DeepSignal, withComputed,  } from '@ngrx/signals';
+import { computed, Injector } from '@angular/core';
+import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 //import { Cell } from '../helpers/interface.cell';
 import { HolonSpace } from '../models/interface.space';
-import { Holon, SavedHolon, StagedHolon, StagedHolonFactory, TransientHolon } from '../models/holon';
+import { SavedHolon, StagedHolon, TransientHolon } from '../models/holon';
 import { HolonsClient } from '../clients/holons.client';
-import { SignalStore, StoreState } from '../models/interface.store';
+import { StoreState } from '../models/interface.store';
 import { getCommittedHolons, getStagedHolons, getTransientHolons, MapResponse } from '../models/map.response';
-import { ContentSet, HolonId, PropertyMap, StagedReference, TransientReference } from '../models/shared-types';
+import { ContentSet, HolonId, PropertyMap, StagedReference } from '../models/shared-types';
+import { MapClient, type HolonReference } from '../../dahn/deps/map-sdk';
 
 export interface ContentStoreState extends StoreState{
   transient_holons: TransientHolon[];
@@ -27,6 +28,7 @@ export function createContentStore(
   initialSpace: HolonSpace
 ) {
     const client = injector.get(HolonsClient);
+    const mapClient = new MapClient();
 
     const initialState: ContentStoreState = {
       space: initialSpace,
@@ -40,13 +42,9 @@ export function createContentStore(
     const ContentStore = signalStore(
 
       withState(initialState),
-           // --- THIS IS THE DIAGNOSTIC SPY ---
-      // Add this block to log every change to staging_area.
       withComputed((store) => ({
         _stagingAreaTracker: computed(() => {
-          const area = store.staged_holons();
-          console.log(`%c[TRACKER] staged_holons signal updated. New value:`, 'color: #9C27B0; font-weight: bold;', area);
-          return area;
+          return store.staged_holons();
         })
       })),
       /* withComputed((store) => ({
@@ -220,45 +218,16 @@ export function createContentStore(
           }
         },
 
-        async uploadHolons(contentSet: ContentSet) {
-          console.log('%c[STORE] loadHolons called with contentSet:', 'color: #4CAF50; font-weight: bold;', contentSet);
+        async uploadHolons(contentSet: ContentSet): Promise<HolonReference> {
           patchState(store, { loading: true });
 
           try {
+            const transaction = await mapClient.beginTransaction();
+            const loaderReference = await transaction.loadHolons(contentSet);
 
-              const mapResponse = await client.uploadHolons(store.space()!, contentSet);
-
-            console.log('%c[STORE] load_holons response received:', 'color: #03A9F4; font-weight: bold;', mapResponse);
-
-            // Handle the MapResponse from the server
-           // const mapResponse = response as MapResponse;
-
-            const transientFromServer = getTransientHolons(mapResponse);
-            const stagedFromServer = getStagedHolons(mapResponse);
-            const committedFromServer = getCommittedHolons(mapResponse);
-
-            console.log('%c[STORE] Transient data from load_holons:', 'color: #03A9F4;', transientFromServer);
-            console.log('%c[STORE] Staged data from load_holons:', 'color: #03A9F4;', stagedFromServer);
-            console.log('%c[STORE] Committed data from load_holons:', 'color: #03A9F4;', committedFromServer);
-
-            // Merge with existing committed holons
-            const allCommitted = [...store.committed_holons(), ...committedFromServer];
-
-            patchState(store, {
-              transient_holons: transientFromServer,
-              staged_holons: stagedFromServer,
-              committed_holons: allCommitted,
-              last_map_response: mapResponse,
-              loading: false
-            });
-
-            console.log('%c[STORE] State after loadHolons:', 'color: #4CAF50;', {
-              transient_count: transientFromServer.length,
-              staged_count: stagedFromServer.length,
-              committed_count: allCommitted.length
-            });
+            patchState(store, { loading: false });
+            return loaderReference;
           } catch (error) {
-            console.error('[STORE] Error during loadHolons:', error);
             patchState(store, { loading: false });
             throw error;
           }
@@ -266,12 +235,10 @@ export function createContentStore(
 
       })),
       withHooks({
-        onInit({ loadall }){
+        onInit(){
           //loadall();
-          console.log('Holon store loaded:');
         },
         onDestroy() {
-          console.log('on destroy')
         }
       })
     )

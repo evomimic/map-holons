@@ -93,6 +93,7 @@ impl RecoveryStore for TransactionRecoveryStore {
 
         conn.execute_batch(SCHEMA_SQL)
             .map_err(|e| HolonError::Misc(format!("Schema init failed: {e}")))?;
+        ensure_schema_compatibility(&conn)?;
 
         tracing::debug!("[RECOVERY STORE] Ready at {path:?}");
         Ok(Self { conn: Mutex::new(conn) })
@@ -744,4 +745,40 @@ fn load_snapshot(
 
     serde_json::from_slice(&blob)
         .map_err(|e| HolonError::Misc(format!("Deserialize snapshot '{checkpoint_id}': {e}")))
+}
+
+fn ensure_schema_compatibility(conn: &Connection) -> Result<(), HolonError> {
+    ensure_recovery_session_column(
+        conn,
+        "undo_checkpointing_enabled",
+        "ALTER TABLE recovery_session ADD COLUMN undo_checkpointing_enabled INTEGER NOT NULL DEFAULT 1",
+    )?;
+
+    Ok(())
+}
+
+fn ensure_recovery_session_column(
+    conn: &Connection,
+    column_name: &str,
+    alter_sql: &str,
+) -> Result<(), HolonError> {
+    let mut stmt = conn
+        .prepare("PRAGMA table_info(recovery_session)")
+        .map_err(|e| HolonError::Misc(format!("Inspect recovery_session schema: {e}")))?;
+
+    let column_names = stmt
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|e| HolonError::Misc(format!("Read recovery_session schema rows: {e}")))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| HolonError::Misc(format!("Collect recovery_session schema rows: {e}")))?;
+
+    if column_names.iter().any(|name| name == column_name) {
+        return Ok(());
+    }
+
+    conn.execute(alter_sql, [])
+        .map_err(|e| HolonError::Misc(format!("Add recovery_session.{column_name}: {e}")))?;
+
+    tracing::info!("[RECOVERY STORE] Added missing recovery_session column '{column_name}'");
+    Ok(())
 }

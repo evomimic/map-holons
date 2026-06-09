@@ -1,16 +1,15 @@
-import { Component, OnInit, ChangeDetectionStrategy, signal, Output, EventEmitter, Input, WritableSignal, effect } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output, WritableSignal, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { invoke } from '@tauri-apps/api/core';
 import { SchemaValidatorService } from '../../services/schema-validation.service';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { resolveResource } from '@tauri-apps/api/path';
 import { environment } from '../../../environments/environment.mock';
 import { ContentSet, FileData } from '../../models/shared-types';
 import { ContentStoreInstance } from '../../stores/content.store';
-import { SpaceController } from '../../contollers/space.controller';
 import { ContentController } from '../../contollers/content.controller';
-import { ResponseStatusCode } from '../../models/map.response';
+import { type HolonReference } from '../../../dahn/deps/map-sdk';
+import { presentLoaderResult, type LoaderResultView } from './loader-result.presenter';
 
 // Helper function to check if the app is running in a Tauri window
 const isTauri = () => !!(window as any).__TAURI__;
@@ -47,16 +46,20 @@ export class JsonDataUploader implements OnInit {
   isLoading: boolean = false;
   successMessage: string = '';
   errorMessage: string = '';
+  loaderResult: LoaderResultView | null = null;
+  loaderResultStatus: string = '';
+  showLoadErrors = false;
+  showLoaderResult = false;
 
   constructor(
     private schemaValidatorService: SchemaValidatorService,
-    private contentController: ContentController)
+    private contentController: ContentController,
+    private cdr: ChangeDetectorRef)
     {}
 
   async ngOnInit() {
         const contentStore = this.contentController.getStoreById(this.spaceId);
         this.store.set(contentStore);
-        console.log('ContentSpace initialized with id:', this.spaceId);
     await this.loadSchema();
   }
 
@@ -69,19 +72,15 @@ export class JsonDataUploader implements OnInit {
     this.schemaLoading.set(true);
 
     try {
-      let schemaUrl: string;
       let schemaContent: string;
       const schemaLocalPath = 'bootstrap-import.schema.json';
       
       // Check if running in Tauri (production) or web (mock mode)
       if (!environment.mock || isTauri()) {
         const schemaPath = await resolveResource('resources/bootstrap-import.schema.json');
-        console.log("Resolved schema path:", schemaPath);
-        schemaContent = await readTextFile(schemaPath)
-        console.log("Read schema content:", schemaContent);
+        schemaContent = await readTextFile(schemaPath);
       } else {
         // Web/Mock environment - load from assets directory
-          schemaUrl = `/${schemaLocalPath}`;
           const response = await fetch('/bootstrap-import.schema.json');
           if (!response.ok) {
             throw new Error(`Failed to load schema: ${response.statusText}`);
@@ -120,7 +119,6 @@ export class JsonDataUploader implements OnInit {
               content,
               validationResult: null
             });
-            console.log(`Added file: ${file.name}`);
           }
           this.dataFiles.set([...currentFiles]);
         });
@@ -230,9 +228,21 @@ export class JsonDataUploader implements OnInit {
       this.isLoading = true;
       this.errorMessage = '';
       this.successMessage = '';
+      this.loaderResult = {
+        holonsStaged: 'n/a',
+        holonsCommitted: 'n/a',
+        errorCount: 'n/a',
+        danceSummary: 'Waiting for loader result...',
+        linksCreated: 'n/a',
+        loadCommitStatus: 'n/a',
+        loadErrors: [],
+      };
+      this.loaderResultStatus = 'Submitting...';
+      this.showLoaderResult = true;
+      this.showLoadErrors = false;
+      this.cdr.markForCheck();
 
       try {
-        
         // Prepare batch data with all valid files
         const filedata: FileData[] = validFiles.map(dataFile => ({
           filename: dataFile.filename,
@@ -249,21 +259,18 @@ export class JsonDataUploader implements OnInit {
           files_to_load: filedata
         };
 
-        console.log("Sending file data to Host:", filedata);
-        this.successMessage = `✓ ${validFiles.length} file(s) submitted to the host}`;
-        await storeInstance.uploadHolons(file_and_schema_Data)
-
-        let last_response = storeInstance.last_map_response;
-        if (last_response && last_response()?.status_code !== ResponseStatusCode.OK) {
-          this.errorMessage = `Error from Host: ${last_response()?.description || 'Unknown error'}`;
-        } else {
-          this.successMessage = `Operation completed successfully, for ${validFiles.length} file(s).`;
-        }
+        const loaderReference = await storeInstance.uploadHolons(file_and_schema_Data);
+        this.loaderResultStatus = 'Loading loader result...';
+        void this.loadLoaderResult(loaderReference);
+        this.successMessage = 'Operation submitted, waiting for loader result.';
         this.clearForms();
+        this.cdr.markForCheck();
       } catch (error) {
         this.errorMessage = `Tauri Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        this.cdr.markForCheck();
       } finally {
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     } else {
       this.errorMessage = 'Content store is not initialized.';
@@ -274,5 +281,46 @@ export class JsonDataUploader implements OnInit {
     this.schemaJson.set('');
     this.schemaFilename = '';
     this.dataFiles.set([]);
+  }
+
+  toggleLoadErrors(): void {
+    this.showLoadErrors = !this.showLoadErrors;
+  }
+
+  hasLoadErrors(): boolean {
+    return !!this.loaderResult && Number(this.loaderResult.errorCount) > 0;
+  }
+
+  displayLoaderField(value: string): string {
+    if (value !== 'n/a') {
+      return value;
+    }
+
+    if (this.loaderResultStatus.includes('could not be read') || this.errorMessage) {
+      return 'unavailable';
+    }
+
+    return value;
+  }
+
+  private async loadLoaderResult(loaderReference: HolonReference): Promise<void> {
+    try {
+      this.loaderResult = await presentLoaderResult(loaderReference);
+      this.loaderResultStatus = 'Loader result received.';
+      if (Number(this.loaderResult.errorCount) > 0) {
+        this.successMessage = '';
+        this.errorMessage = `Load completed with ${this.loaderResult.errorCount} error(s).`;
+      } else {
+        this.successMessage = 'Load completed successfully.';
+        this.errorMessage = '';
+      }
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('[Uploader] Failed to read loader result holon:', error);
+      this.loaderResultStatus = 'Loader result could not be read.';
+      this.errorMessage = 'Load completed, but the loader summary could not be read.';
+      this.successMessage = '';
+      this.cdr.markForCheck();
+    }
   }
 }

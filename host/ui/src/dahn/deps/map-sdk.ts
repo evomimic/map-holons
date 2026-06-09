@@ -6,10 +6,20 @@
  */
 export type {
   BaseValue,
+  ContentSet,
   EssentialHolonContent,
+  FileData,
   HolonCollection,
   HolonId,
   HolonReference,
+  ReadableHolon,
   PropertyName,
   RelationshipName,
+} from '../../../../map-sdk/src';
+
+export {
+  MapClient,
+  MapTransaction,
+  extractNumber,
+  extractString,
 } from '../../../../map-sdk/src';
