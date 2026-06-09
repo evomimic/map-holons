@@ -7,6 +7,7 @@ import { HolonsClient } from '../clients/holons.client';
 import { SignalStore, StoreState } from '../models/interface.store';
 import { getCommittedHolons, getStagedHolons, getTransientHolons, MapResponse } from '../models/map.response';
 import { ContentSet, HolonId, PropertyMap, StagedReference, TransientReference } from '../models/shared-types';
+import { MapClient, type HolonReference } from '../../dahn/deps/map-sdk';
 
 export interface ContentStoreState extends StoreState{
   transient_holons: TransientHolon[];
@@ -27,6 +28,7 @@ export function createContentStore(
   initialSpace: HolonSpace
 ) {
     const client = injector.get(HolonsClient);
+    const mapClient = new MapClient();
 
     const initialState: ContentStoreState = {
       space: initialSpace,
@@ -220,45 +222,36 @@ export function createContentStore(
           }
         },
 
-        async uploadHolons(contentSet: ContentSet) {
+        async uploadHolons(contentSet: ContentSet): Promise<HolonReference> {
           console.log('%c[STORE] loadHolons called with contentSet:', 'color: #4CAF50; font-weight: bold;', contentSet);
           patchState(store, { loading: true });
 
           try {
+            console.log('%c[STORE] Beginning SDK transaction for loadHolons...', 'color: #03A9F4; font-weight: bold;');
+            const transaction = await mapClient.beginTransaction();
+            console.log('%c[STORE] SDK transaction begun:', 'color: #03A9F4; font-weight: bold;', transaction);
+            console.log('%c[STORE] Calling transaction.loadHolons(...)', 'color: #03A9F4; font-weight: bold;');
+            const loaderReference = await transaction.loadHolons(contentSet);
+            console.log('%c[STORE] load_holons loader reference received:', 'color: #03A9F4; font-weight: bold;', loaderReference);
 
-              const mapResponse = await client.uploadHolons(store.space()!, contentSet);
-
-            console.log('%c[STORE] load_holons response received:', 'color: #03A9F4; font-weight: bold;', mapResponse);
-
-            // Handle the MapResponse from the server
-           // const mapResponse = response as MapResponse;
-
-            const transientFromServer = getTransientHolons(mapResponse);
-            const stagedFromServer = getStagedHolons(mapResponse);
-            const committedFromServer = getCommittedHolons(mapResponse);
-
-            console.log('%c[STORE] Transient data from load_holons:', 'color: #03A9F4;', transientFromServer);
-            console.log('%c[STORE] Staged data from load_holons:', 'color: #03A9F4;', stagedFromServer);
-            console.log('%c[STORE] Committed data from load_holons:', 'color: #03A9F4;', committedFromServer);
-
-            // Merge with existing committed holons
-            const allCommitted = [...store.committed_holons(), ...committedFromServer];
-
-            patchState(store, {
-              transient_holons: transientFromServer,
-              staged_holons: stagedFromServer,
-              committed_holons: allCommitted,
-              last_map_response: mapResponse,
-              loading: false
-            });
-
-            console.log('%c[STORE] State after loadHolons:', 'color: #4CAF50;', {
-              transient_count: transientFromServer.length,
-              staged_count: stagedFromServer.length,
-              committed_count: allCommitted.length
-            });
+            patchState(store, { loading: false });
+            return loaderReference;
           } catch (error) {
             console.error('[STORE] Error during loadHolons:', error);
+            if (error && typeof error === 'object') {
+              const domainLikeError = error as {
+                code?: unknown;
+                variant?: unknown;
+                payload?: unknown;
+                cause?: unknown;
+              };
+              console.error('[STORE] Error details:', {
+                code: domainLikeError.code,
+                variant: domainLikeError.variant,
+                payload: domainLikeError.payload,
+                cause: domainLikeError.cause,
+              });
+            }
             patchState(store, { loading: false });
             throw error;
           }

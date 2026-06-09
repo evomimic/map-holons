@@ -285,6 +285,8 @@ impl ProviderWindowSetup for HolochainWindowSetup {
             .map_err(|e| anyhow::anyhow!("Failed to build holochain window: {}", e))?;
 
         let _main_window = main_window_builder
+            .inner_size(1280.0, 1040.0)
+            .min_inner_size(1100.0, 900.0)
             .theme(Some(Theme::Dark))
             .build()
             .map_err(|e| anyhow::anyhow!("Failed to build main window: {}", e))?;

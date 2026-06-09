@@ -155,6 +155,75 @@
     </div>
   }
 
+  @if (showLoaderResult) {
+    <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-sm font-semibold text-slate-900">Loader result</p>
+          <p class="text-xs text-slate-600">{{ loaderResultStatus || 'Summary reported by the HolonLoadResponse holon.' }}</p>
+        </div>
+        @if (hasLoadErrors()) {
+          <button
+            type="button"
+            (click)="toggleLoadErrors()"
+            class="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white">
+            {{ showLoadErrors ? 'Hide load errors' : 'Show load errors' }}
+          </button>
+        }
+      </div>
+
+      @if (loaderResult; as result) {
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="rounded-md bg-white p-3 border border-slate-200">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500">Holons staged</p>
+            <p class="mt-1 text-lg font-semibold text-slate-900">{{ displayLoaderField(result.holonsStaged) }}</p>
+          </div>
+          <div class="rounded-md bg-white p-3 border border-slate-200">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500">Holons committed</p>
+            <p class="mt-1 text-lg font-semibold text-slate-900">{{ displayLoaderField(result.holonsCommitted) }}</p>
+          </div>
+          <div class="rounded-md bg-white p-3 border border-slate-200">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500">Error count</p>
+            <p class="mt-1 text-lg font-semibold text-slate-900">{{ displayLoaderField(result.errorCount) }}</p>
+          </div>
+          <div class="rounded-md bg-white p-3 border border-slate-200">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500">Dance summary</p>
+            <p class="mt-1 text-sm text-slate-700">{{ displayLoaderField(result.danceSummary) }}</p>
+          </div>
+          <div class="rounded-md bg-white p-3 border border-slate-200">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500">Links created</p>
+            <p class="mt-1 text-lg font-semibold text-slate-900">{{ displayLoaderField(result.linksCreated) }}</p>
+          </div>
+          <div class="rounded-md bg-white p-3 border border-slate-200">
+            <p class="text-[11px] uppercase tracking-wide text-slate-500">Commit status</p>
+            <p class="mt-1 text-sm font-semibold text-slate-900">{{ displayLoaderField(result.loadCommitStatus) }}</p>
+          </div>
+        </div>
+
+        @if (showLoadErrors && result.loadErrors.length > 0) {
+          <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+            <p class="text-sm font-semibold text-amber-900">Load errors</p>
+            <div class="mt-3 space-y-2">
+              @for (error of result.loadErrors; track $index) {
+                <div class="rounded-md bg-white border border-amber-200 p-3 text-xs sm:text-sm">
+                  <p class="font-semibold text-slate-900">{{ error.filename }}</p>
+                  <p class="text-slate-700">Type: {{ error.errorType }}</p>
+                  <p class="text-slate-700">Message: {{ error.errorMessage }}</p>
+                  <p class="text-slate-700">Loader key: {{ error.loaderHolonKey }}</p>
+                  <p class="text-slate-700">Start byte offset: {{ error.startUtf8ByteOffset }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="mt-4 rounded-md bg-white border border-slate-200 p-3 text-sm text-slate-700">
+          Loader result is pending.
+        </div>
+      }
+    </div>
+  }
+
   <!-- Action Buttons -->
   <div class="flex gap-2 justify-start">
     <button

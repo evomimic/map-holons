@@ -14,8 +14,10 @@
 		"windows": [
 			{
 				"title": "MAP Holons client",
-				"width": 800,
-				"height": 600,
+				"width": 1280,
+				"height": 1040,
+				"minWidth": 1100,
+				"minHeight": 900,
 				"resizable": true,
 				"fullscreen": false,
 				"theme": "Dark"

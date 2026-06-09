@@ -22,6 +22,8 @@ impl ProviderWindowSetup for DefaultWindowSetup {
 
         let _main_window =
             WebviewWindowBuilder::new(handle, "main", WebviewUrl::App("index.html".into()))
+                .inner_size(1280.0, 1040.0)
+                .min_inner_size(1100.0, 900.0)
                 .theme(Some(Theme::Dark))
                 .build()
                 .map_err(|e| anyhow::anyhow!("Failed to create default window: {}", e))?;

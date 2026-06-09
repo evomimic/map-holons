@@ -60,12 +60,21 @@ impl RuntimeSession {
     }
 
     pub async fn begin_transaction(&self) -> Result<TxId, HolonError> {
+        eprintln!("[RUNTIME] begin_transaction: opening new client session");
         let session = Arc::new(ClientSession::open_new(
             Arc::clone(&self.space_manager),
             self.recovery.clone(),
         )?);
 
+        eprintln!(
+            "[RUNTIME] begin_transaction: opened session tx_id={}, persisting initial recovery snapshot",
+            session.tx_id().value()
+        );
         session.persist("begin_transaction", false, false, None, None).await?;
+        eprintln!(
+            "[RUNTIME] begin_transaction: initial persistence complete for tx_id={}",
+            session.tx_id().value()
+        );
 
         let tx_id = session.tx_id();
         let mut active = self.active_sessions.write().map_err(|e| {
@@ -75,6 +84,7 @@ impl RuntimeSession {
             ))
         })?;
         active.insert(tx_id, session);
+        eprintln!("[RUNTIME] begin_transaction: session registered tx_id={}", tx_id.value());
 
         Ok(tx_id)
     }
