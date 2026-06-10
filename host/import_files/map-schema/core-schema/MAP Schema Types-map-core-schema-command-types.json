@@ -1,14 +1,13 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-09T17:03:22",
+    "generated_at": "2026-06-10T10:32:46",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.csv"
     ],
     "load_with": [
-      "MAP Schema Types-map-core-schema-root.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json"
+      "MAP Schema Types-map-core-schema-root.json"
     ]
   },
   "holons": [
@@ -37,12 +36,6 @@
           "name": "Extends",
           "target": {
             "$ref": "HolonType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
