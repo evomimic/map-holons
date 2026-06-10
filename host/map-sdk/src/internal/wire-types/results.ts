@@ -5,7 +5,6 @@ import {
   type HolonErrorWire,
   type HolonId,
   type HolonReferenceWire,
-  type NodeCollectionWire,
   hasSingleKey,
   isBaseValue,
   isDanceResponseWire,
@@ -13,7 +12,6 @@ import {
   isHolonErrorWire,
   isHolonId,
   isHolonReferenceWire,
-  isNodeCollectionWire,
   isNumber,
   isRecord,
   isString,
@@ -50,7 +48,6 @@ export type MapResultWire =
   | { Reference: HolonReferenceWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
-  | { NodeCollection: NodeCollectionWire }
   | { Value: BaseValue }
   | { HolonId: HolonId }
   | { EssentialContent: EssentialHolonContent }
@@ -88,8 +85,6 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
       value.References.every(isHolonReferenceWire)) ||
     (hasSingleKey(value, 'Collection') &&
       isHolonCollectionWire(value.Collection)) ||
-    (hasSingleKey(value, 'NodeCollection') &&
-      isNodeCollectionWire(value.NodeCollection)) ||
     (hasSingleKey(value, 'Value') && isBaseValue(value.Value)) ||
     (hasSingleKey(value, 'HolonId') && isHolonId(value.HolonId)) ||
     (hasSingleKey(value, 'EssentialContent') &&

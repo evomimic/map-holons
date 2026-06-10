@@ -1,8 +1,6 @@
 use base_types::BaseValue;
 use core_types::HolonId;
-use holons_boundary::{
-    DanceResponseWire, HolonCollectionWire, HolonReferenceWire, NodeCollectionWire,
-};
+use holons_boundary::{DanceResponseWire, HolonCollectionWire, HolonReferenceWire};
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use serde::{Deserialize, Serialize};
@@ -42,9 +40,6 @@ pub enum MapResultWire {
     /// Returns an indexed collection of holons.
     Collection(HolonCollectionWire),
 
-    /// Returns a deprecated relationship-query node collection.
-    NodeCollection(NodeCollectionWire),
-
     /// Universal scalar return.
     Value(BaseValue),
 
@@ -72,9 +67,6 @@ impl From<MapResult> for MapResultWire {
                 MapResultWire::References(refs.iter().map(HolonReferenceWire::from).collect())
             }
             MapResult::Collection(c) => MapResultWire::Collection(HolonCollectionWire::from(&c)),
-            MapResult::NodeCollection(c) => {
-                MapResultWire::NodeCollection(NodeCollectionWire::from(&c))
-            }
             MapResult::Value(v) => MapResultWire::Value(v),
             MapResult::HolonId(id) => MapResultWire::HolonId(id),
             MapResult::EssentialContent(c) => MapResultWire::EssentialContent(c),

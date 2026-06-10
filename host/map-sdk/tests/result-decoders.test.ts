@@ -6,7 +6,6 @@ import {
   expectDanceResponse,
   expectEssentialContent,
   expectHolonId,
-  expectNodeCollection,
   expectNone,
   expectOptionalReference,
   expectOptionalValue,
@@ -23,7 +22,6 @@ import type {
   HolonId,
   HolonReferenceWire,
   MapResultWire,
-  NodeCollectionWire,
 } from '../src/internal/wire-types';
 
 // ===========================================
@@ -58,18 +56,6 @@ const holonCollection: HolonCollectionWire = {
   keyed_index: {
     alpha: 0,
     beta: 1,
-  },
-};
-
-const nodeCollection: NodeCollectionWire = {
-  members: [
-    {
-      source_holon: stagedReference,
-      relationships: null,
-    },
-  ],
-  query_spec: {
-    relationship_name: 'related_to',
   },
 };
 
@@ -172,20 +158,6 @@ describe('result decoders', () => {
 
   it('throws on the wrong result variant when expecting Collection', () => {
     expect(() => expectCollection({ References: [transientReference] })).toThrow(
-      MalformedResponseError,
-    );
-  });
-
-  it('decodes NodeCollection results', () => {
-    expect(
-      expectNodeCollection({
-        NodeCollection: nodeCollection,
-      }),
-    ).toEqual(nodeCollection);
-  });
-
-  it('throws on the wrong result variant when expecting NodeCollection', () => {
-    expect(() => expectNodeCollection({ Collection: holonCollection })).toThrow(
       MalformedResponseError,
     );
   });

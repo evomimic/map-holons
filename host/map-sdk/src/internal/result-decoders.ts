@@ -7,7 +7,6 @@ import type {
   HolonId,
   HolonReferenceWire,
   MapResultWire,
-  NodeCollectionWire,
   TxId,
 } from './wire-types';
 
@@ -148,21 +147,6 @@ export function expectCollection(result: MapResultWire): HolonCollectionWire {
   }
 
   throw unexpectedResultVariant('Collection', result);
-}
-
-/**
- * Decode a `MapResultWire::NodeCollection` payload.
- */
-export function expectNodeCollection(result: MapResultWire): NodeCollectionWire {
-  if (
-    typeof result === 'object' &&
-    result !== null &&
-    'NodeCollection' in result
-  ) {
-    return result.NodeCollection;
-  }
-
-  throw unexpectedResultVariant('NodeCollection', result);
 }
 
 /**
