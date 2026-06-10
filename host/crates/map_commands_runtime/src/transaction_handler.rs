@@ -53,6 +53,7 @@ pub async fn handle_transaction(
         }
         TransactionAction::GetStagedHolonsByBaseKey { key } => {
             let staged_refs = context.lookup().get_staged_holons_by_base_key(&key)?;
+            // Intentional exception: duplicate base-key staging lookup stays reference-shaped.
             Ok(MapResult::References(staged_refs.into_iter().map(HolonReference::Staged).collect()))
         }
         TransactionAction::GetStagedHolonByVersionedKey { key } => {

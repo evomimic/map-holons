@@ -55,7 +55,8 @@ export function isRequestOptions(value: unknown): value is RequestOptions {
     isRecord(value) &&
     (value['marker_id'] === null || typeof value['marker_id'] === 'string') &&
     (value['marker_label'] === null || typeof value['marker_label'] === 'string') &&
-    typeof value['snapshot_after'] === 'boolean'
+    typeof value['snapshot_after'] === 'boolean' &&
+    typeof value['disable_undo'] === 'boolean'
   );
 }
 

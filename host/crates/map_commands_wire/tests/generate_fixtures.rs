@@ -392,19 +392,14 @@ fn generate_fixtures() {
     );
     write_fixture(
         &fixtures_dir,
-        "response-ok-node-collection.json",
-        &response(113, Ok(MapResultWire::NodeCollection(sample_node_collection()))),
-    );
-    write_fixture(
-        &fixtures_dir,
         "response-err-holon-not-found.json",
-        &response(114, Err(HolonError::HolonNotFound("missing-holon".to_string()))),
+        &response(113, Err(HolonError::HolonNotFound("missing-holon".to_string()))),
     );
     write_fixture(
         &fixtures_dir,
         "response-err-tx-not-open.json",
         &response(
-            115,
+            114,
             Err(HolonError::TransactionNotOpen { tx_id: 41, state: "Committed".to_string() }),
         ),
     );
@@ -412,7 +407,7 @@ fn generate_fixtures() {
         &fixtures_dir,
         "response-err-cross-tx-reference.json",
         &response(
-            116,
+            115,
             Err(HolonError::CrossTransactionReference {
                 reference_kind: "Staged".to_string(),
                 reference_id: uuid_b().to_string(),
@@ -425,7 +420,7 @@ fn generate_fixtures() {
         &fixtures_dir,
         "response-err-validation.json",
         &response(
-            117,
+            116,
             Err(HolonError::ValidationError(ValidationError::PropertyError(
                 "title is required".to_string(),
             ))),

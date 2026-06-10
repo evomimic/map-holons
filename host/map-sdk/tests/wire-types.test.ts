@@ -9,6 +9,7 @@ import {
   isFileData,
   isMapIpcRequest,
   isMapIpcResponse,
+  isRequestOptions,
   isTransactionActionWire,
 } from '../src/internal/wire-types/index';
 
@@ -17,7 +18,7 @@ const fixtureFiles = readdirSync(fixturesDir).sort();
 
 describe('wire type fixtures', () => {
   it('discovers the generated fixture set', () => {
-    expect(fixtureFiles.length).toBe(40);
+    expect(fixtureFiles.length).toBe(39);
   });
 
   for (const fixtureFile of fixtureFiles) {
@@ -33,6 +34,29 @@ describe('wire type fixtures', () => {
       expect(isValid).toBe(true);
     });
   }
+});
+
+describe('request options wire type guard', () => {
+  it('accepts disable_undo as part of the canonical request options shape', () => {
+    expect(
+      isRequestOptions({
+        marker_id: null,
+        marker_label: 'checkpoint',
+        snapshot_after: true,
+        disable_undo: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects request options missing disable_undo', () => {
+    expect(
+      isRequestOptions({
+        marker_id: null,
+        marker_label: 'checkpoint',
+        snapshot_after: true,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('LoadHolons wire type guard', () => {

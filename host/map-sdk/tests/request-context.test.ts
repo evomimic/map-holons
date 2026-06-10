@@ -101,6 +101,14 @@ describe('request context', () => {
     });
   });
 
+  it('validates disable_undo as part of request options', () => {
+    const request = buildRequest(beginTransactionCommand, {
+      disable_undo: true,
+    });
+
+    expect(request.options.disable_undo).toBe(true);
+  });
+
   it('increments request ids across successive buildRequest calls', () => {
     const first = buildRequest(beginTransactionCommand);
     const second = buildRequest(beginTransactionCommand);
