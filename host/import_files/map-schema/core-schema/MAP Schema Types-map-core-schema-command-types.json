@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-09T17:03:22",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.csv"
@@ -13,7 +13,7 @@
   },
   "holons": [
     {
-      "key": "CommandType",
+      "key": "CommandType.HolonType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "CommandType",
@@ -42,7 +42,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
@@ -71,13 +71,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -106,13 +100,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -141,13 +129,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -176,13 +158,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -211,13 +187,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -246,13 +216,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -281,13 +245,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -316,13 +274,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -351,13 +303,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -386,13 +332,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -421,13 +361,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -456,13 +390,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -491,13 +419,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -526,13 +448,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -561,13 +477,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -596,13 +506,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -631,13 +535,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -666,13 +564,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -701,13 +593,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -736,13 +622,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -771,13 +651,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -806,13 +680,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -841,13 +709,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -876,13 +738,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -911,13 +767,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -946,13 +796,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -981,13 +825,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1016,13 +854,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1051,13 +883,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1086,13 +912,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1121,13 +941,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1156,13 +970,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1191,13 +999,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1226,13 +1028,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1261,13 +1057,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1296,13 +1086,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
@@ -1331,19 +1115,13 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "CommandType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(HolonType)-[AffordsCommand]->(CommandType)",
+      "key": "(HolonType)-[AffordsCommand]->(CommandType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AffordsCommand",
@@ -1374,12 +1152,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonType"
@@ -1388,13 +1160,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "CommandType"
+            "$ref": "CommandType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(CommandType)-[AffordedBy]->(HolonType)",
+      "key": "(CommandType.HolonType)-[AffordedBy]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AffordedBy",
@@ -1425,21 +1197,15 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonType)-[AffordsCommand]->(CommandType)"
+            "$ref": "(HolonType)-[AffordsCommand]->(CommandType.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "CommandType"
+            "$ref": "CommandType.HolonType"
           }
         },
         {

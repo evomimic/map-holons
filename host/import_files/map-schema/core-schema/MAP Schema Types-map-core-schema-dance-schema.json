@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T19:31:47",
+    "generated_at": "2026-06-09T17:03:22",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -17,10 +17,8 @@
       "key": "MAP Dance Schema-v0.0.3",
       "type": "Schema.HolonType",
       "properties": {
-        "type_name": "MAP Dance Schema-v0.0.3",
-        "display_name": "MAP Dance Schema-v0.0.3",
         "description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema.",
-        "instance_type_kind": "TypeKind.Holon"
+        "schema_name": "MAP Dance Schema-v0.0.3"
       },
       "relationships": [
         {
@@ -32,7 +30,7 @@
       ]
     },
     {
-      "key": "DanceType",
+      "key": "DanceType.HolonType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DanceType",
@@ -61,7 +59,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         },
         {
@@ -74,17 +72,17 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(DanceType)-[RequestType]->(HolonType)"
+              "$ref": "(DanceType.HolonType)-[RequestType]->(HolonType)"
             },
             {
-              "$ref": "(DanceType)-[Response]->(DanceResponseType)"
+              "$ref": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)"
             }
           ]
         }
       ]
     },
     {
-      "key": "DanceResponseType",
+      "key": "DanceResponseType.HolonType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DanceResponseType",
@@ -113,24 +111,24 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         },
         {
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(DanceResponseType)-[ResponseBody]->(HolonType)"
+              "$ref": "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType)"
             },
             {
-              "$ref": "(DanceResponseType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
+              "$ref": "(DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
             }
           ]
         }
       ]
     },
     {
-      "key": "ResponseBodyType",
+      "key": "ResponseBodyType.HolonType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ResponseBodyType",
@@ -159,7 +157,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -207,7 +205,7 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType)"
+              "$ref": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)"
             },
             {
               "$ref": "(DanceInvocation.HolonType)-[Target]->(HolonType)"
@@ -281,7 +279,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(DanceImplementation.HolonType)-[ForDance]->(DanceType)"
+            "$ref": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)"
           }
         }
       ]
@@ -371,7 +369,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[Affords]->(DanceType)",
+      "key": "(HolonType)-[Affords]->(DanceType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Affords",
@@ -402,12 +400,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonType"
@@ -416,13 +408,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(DanceType)-[AffordedBy]->(HolonType)",
+      "key": "(DanceType.HolonType)-[AffordedBy]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AffordedBy",
@@ -452,21 +444,15 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonType)-[Affords]->(DanceType)"
+            "$ref": "(HolonType)-[Affords]->(DanceType.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         },
         {
@@ -503,12 +489,6 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
@@ -554,12 +534,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
             "$ref": "(TypeDescriptor.HolonType)-[ImplementsDance]->(DanceImplementation.HolonType)"
@@ -580,7 +554,7 @@
       ]
     },
     {
-      "key": "(DanceImplementation.HolonType)-[ForDance]->(DanceType)",
+      "key": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ForDance",
@@ -610,12 +584,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceImplementation.HolonType"
@@ -624,13 +592,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(DanceType)-[HasImplementation]->(DanceImplementation.HolonType)",
+      "key": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasImplementation",
@@ -660,21 +628,15 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(DanceImplementation.HolonType)-[ForDance]->(DanceType)"
+            "$ref": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         },
         {
@@ -686,7 +648,7 @@
       ]
     },
     {
-      "key": "(DanceType)-[RequestType]->(HolonType)",
+      "key": "(DanceType.HolonType)-[RequestType]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RequestType",
@@ -716,15 +678,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         },
         {
@@ -736,7 +692,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[RequestTypeFor]->(DanceType)",
+      "key": "(HolonType)-[RequestTypeFor]->(DanceType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RequestTypeFor",
@@ -766,15 +722,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(DanceType)-[RequestType]->(HolonType)"
+            "$ref": "(DanceType.HolonType)-[RequestType]->(HolonType)"
           }
         },
         {
@@ -786,13 +736,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(DanceType)-[Response]->(DanceResponseType)",
+      "key": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Response",
@@ -822,27 +772,21 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceResponseType"
+            "$ref": "DanceResponseType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(DanceResponseType)-[ResponseFor]->(DanceType)",
+      "key": "(DanceResponseType.HolonType)-[ResponseFor]->(DanceType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ResponseFor",
@@ -872,33 +816,27 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(DanceType)-[Response]->(DanceResponseType)"
+            "$ref": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)"
           }
         },
         {
           "name": "SourceType",
           "target": {
-            "$ref": "DanceResponseType"
+            "$ref": "DanceResponseType.HolonType"
           }
         },
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(DanceResponseType)-[ResponseBody]->(HolonType)",
+      "key": "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ResponseBody",
@@ -928,15 +866,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
-            "$ref": "DanceResponseType"
+            "$ref": "DanceResponseType.HolonType"
           }
         },
         {
@@ -948,7 +880,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[ResponseBodyFor]->(DanceResponseType)",
+      "key": "(HolonType)-[ResponseBodyFor]->(DanceResponseType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ResponseBodyFor",
@@ -978,15 +910,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(DanceResponseType)-[ResponseBody]->(HolonType)"
+            "$ref": "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType)"
           }
         },
         {
@@ -998,13 +924,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceResponseType"
+            "$ref": "DanceResponseType.HolonType"
           }
         }
       ]
     },
     {
-      "key": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType)",
+      "key": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "InvokesDance",
@@ -1034,12 +960,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceInvocation.HolonType"
@@ -1048,7 +968,7 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceType"
+            "$ref": "DanceType.HolonType"
           }
         }
       ]
@@ -1081,12 +1001,6 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
@@ -1131,12 +1045,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
@@ -1190,12 +1098,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceInvocation.HolonType"
@@ -1240,12 +1142,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
             "$ref": "(DanceInvocation.HolonType)-[Request]->(HolonType)"
@@ -1266,7 +1162,7 @@
       ]
     },
     {
-      "key": "(DanceResponseType)-[Diagnostics]->(DanceDiagnostic.HolonType)",
+      "key": "(DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Diagnostics",
@@ -1296,15 +1192,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
-            "$ref": "DanceResponseType"
+            "$ref": "DanceResponseType.HolonType"
           }
         },
         {
@@ -1316,7 +1206,7 @@
       ]
     },
     {
-      "key": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType)",
+      "key": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DiagnosticFor",
@@ -1346,15 +1236,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(DanceResponseType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
+            "$ref": "(DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
           }
         },
         {
@@ -1366,7 +1250,7 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "DanceResponseType"
+            "$ref": "DanceResponseType.HolonType"
           }
         }
       ]
@@ -1945,7 +1829,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -1978,7 +1862,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2017,7 +1901,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2056,7 +1940,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2095,7 +1979,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -2128,7 +2012,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2167,7 +2051,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2206,7 +2090,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -2239,7 +2123,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2278,7 +2162,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2317,7 +2201,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2356,7 +2240,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2395,7 +2279,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2434,7 +2318,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2473,7 +2357,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2512,7 +2396,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2551,7 +2435,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2590,7 +2474,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2629,7 +2513,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2668,7 +2552,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -2701,7 +2585,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2740,7 +2624,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2779,7 +2663,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2818,7 +2702,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -2830,7 +2714,7 @@
       ]
     },
     {
-      "key": "CommitResponse.Projection.HolonType",
+      "key": "CommitResponse.Projection",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "CommitResponse",
@@ -2942,7 +2826,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -2975,7 +2859,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -3014,7 +2898,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -3065,7 +2949,7 @@
       ]
     },
     {
-      "key": "(CommitResponse.Projection.HolonType)-[SavedHolons]->(HolonType)",
+      "key": "(CommitResponse.Projection)-[SavedHolons]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "SavedHolons",
@@ -3096,15 +2980,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
-            "$ref": "CommitResponse.Projection.HolonType"
+            "$ref": "CommitResponse.Projection"
           }
         },
         {
@@ -3116,7 +2994,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[SavedByCommit]->(CommitResponse.Projection.HolonType)",
+      "key": "(HolonType)-[SavedByCommit]->(CommitResponse.Projection)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "SavedByCommit",
@@ -3147,15 +3025,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(CommitResponse.Projection.HolonType)-[SavedHolons]->(HolonType)"
+            "$ref": "(CommitResponse.Projection)-[SavedHolons]->(HolonType)"
           }
         },
         {
@@ -3167,13 +3039,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "CommitResponse.Projection.HolonType"
+            "$ref": "CommitResponse.Projection"
           }
         }
       ]
     },
     {
-      "key": "(CommitResponse.Projection.HolonType)-[AbandonedHolons]->(HolonType)",
+      "key": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AbandonedHolons",
@@ -3204,15 +3076,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
-            "$ref": "CommitResponse.Projection.HolonType"
+            "$ref": "CommitResponse.Projection"
           }
         },
         {
@@ -3224,7 +3090,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[AbandonedByCommit]->(CommitResponse.Projection.HolonType)",
+      "key": "(HolonType)-[AbandonedByCommit]->(CommitResponse.Projection)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "AbandonedByCommit",
@@ -3255,15 +3121,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(CommitResponse.Projection.HolonType)-[AbandonedHolons]->(HolonType)"
+            "$ref": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType)"
           }
         },
         {
@@ -3275,7 +3135,7 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "CommitResponse.Projection.HolonType"
+            "$ref": "CommitResponse.Projection"
           }
         }
       ]

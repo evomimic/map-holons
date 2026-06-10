@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-09T17:03:22",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-concrete-value-types.csv"
@@ -41,7 +41,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -74,7 +74,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -107,7 +107,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -140,7 +140,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -173,7 +173,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -206,7 +206,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         }
       ]
@@ -239,7 +239,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -272,7 +272,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -303,7 +303,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -340,7 +340,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -377,7 +377,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -416,7 +416,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -447,7 +447,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -484,7 +484,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -521,7 +521,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -558,7 +558,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -595,7 +595,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -632,7 +632,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -669,7 +669,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -706,7 +706,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -743,7 +743,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -780,7 +780,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -817,7 +817,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -854,7 +854,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {

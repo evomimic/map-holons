@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-09T17:03:22",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -63,7 +63,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(LoaderHolon)-[HasRelationshipReference]->(LoaderRelationshipReference)"
+            "$ref": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)"
           }
         }
       ]
@@ -111,10 +111,10 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(LoaderRelationshipReference)-[ReferenceSource]->(LoaderHolonReference)"
+              "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)"
             },
             {
-              "$ref": "(LoaderRelationshipReference)-[ReferenceTarget]->(LoaderHolonReference)"
+              "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)"
             }
           ]
         }
@@ -214,13 +214,13 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(HolonLoaderBundle)-[BundleMembers]->(LoaderHolon)"
+            "$ref": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)"
           }
         }
       ]
     },
     {
-      "key": "HolonLoadResponse.DanceResponseType",
+      "key": "HolonLoadResponse",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HolonLoadResponse",
@@ -243,7 +243,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "DanceResponseType"
+            "$ref": "DanceResponseType.HolonType"
           }
         },
         {
@@ -278,7 +278,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError)"
+            "$ref": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError.HolonError)"
           }
         }
       ]
@@ -374,13 +374,13 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(HolonLoadSet)-[Contains]->(HolonLoaderBundle)"
+            "$ref": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         }
       ]
     },
     {
-      "key": "(LoaderHolon)-[HasRelationshipReference]->(LoaderRelationshipReference)",
+      "key": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasRelationshipReference",
@@ -411,12 +411,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderHolon.HolonType"
@@ -431,7 +425,7 @@
       ]
     },
     {
-      "key": "(LoaderRelationshipReference)-[RelationshipReferenceOf]->(LoaderHolon)",
+      "key": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RelationshipReferenceOf",
@@ -462,15 +456,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(LoaderHolon)-[HasRelationshipReference]->(LoaderRelationshipReference)"
+            "$ref": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)"
           }
         },
         {
@@ -488,7 +476,7 @@
       ]
     },
     {
-      "key": "(LoaderRelationshipReference)-[ReferenceSource]->(LoaderHolonReference)",
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceSource",
@@ -519,12 +507,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderRelationshipReference.HolonType"
@@ -539,7 +521,7 @@
       ]
     },
     {
-      "key": "(LoaderHolonReference)-[ReferenceSourceOf]->(LoaderRelationshipReference)",
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceSourceOf",
@@ -570,15 +552,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(LoaderRelationshipReference)-[ReferenceSource]->(LoaderHolonReference)"
+            "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)"
           }
         },
         {
@@ -596,7 +572,7 @@
       ]
     },
     {
-      "key": "(LoaderRelationshipReference)-[ReferenceTarget]->(LoaderHolonReference)",
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceTarget",
@@ -627,12 +603,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderRelationshipReference.HolonType"
@@ -647,7 +617,7 @@
       ]
     },
     {
-      "key": "(LoaderHolonReference)-[ReferenceTargetOf]->(LoaderRelationshipReference)",
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceTargetOf",
@@ -678,15 +648,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(LoaderRelationshipReference)-[ReferenceTarget]->(LoaderHolonReference)"
+            "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)"
           }
         },
         {
@@ -704,7 +668,7 @@
       ]
     },
     {
-      "key": "(HolonLoaderBundle)-[BundleMembers]->(LoaderHolon)",
+      "key": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "BundleMembers",
@@ -735,12 +699,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoaderBundle.HolonType"
@@ -755,7 +713,7 @@
       ]
     },
     {
-      "key": "(LoaderHolon)-[BundleMemberOf]->(HolonLoaderBundle)",
+      "key": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "BundleMemberOf",
@@ -786,15 +744,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonLoaderBundle)-[BundleMembers]->(LoaderHolon)"
+            "$ref": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)"
           }
         },
         {
@@ -812,7 +764,7 @@
       ]
     },
     {
-      "key": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError)",
+      "key": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError.HolonError)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasLoadError",
@@ -843,15 +795,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
-            "$ref": "HolonLoadResponse.DanceResponseType"
+            "$ref": "HolonLoadResponse"
           }
         },
         {
@@ -863,7 +809,7 @@
       ]
     },
     {
-      "key": "(HolonLoadError)-[LoadErrorOf]->(HolonLoadResponse)",
+      "key": "(HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoadErrorOf",
@@ -894,15 +840,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError)"
+            "$ref": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError.HolonError)"
           }
         },
         {
@@ -914,13 +854,13 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "HolonLoadResponse.DanceResponseType"
+            "$ref": "HolonLoadResponse"
           }
         }
       ]
     },
     {
-      "key": "(HolonLoadSet)-[Contains]->(HolonLoaderBundle)",
+      "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Contains",
@@ -951,12 +891,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoadSet.HolonType"
@@ -971,7 +905,7 @@
       ]
     },
     {
-      "key": "(HolonLoaderBundle)-[ContainedIn]->(HolonLoadSet)",
+      "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ContainedIn",
@@ -1002,15 +936,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonLoadSet)-[Contains]->(HolonLoaderBundle)"
+            "$ref": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         },
         {
@@ -1055,13 +983,13 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
     },
     {
-      "key": "LoadCommitStatus.Complete",
+      "key": "Complete",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Complete",
@@ -1086,7 +1014,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -1098,7 +1026,7 @@
       ]
     },
     {
-      "key": "LoadCommitStatus.Incomplete",
+      "key": "Incomplete",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Incomplete",
@@ -1123,7 +1051,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {
@@ -1135,7 +1063,7 @@
       ]
     },
     {
-      "key": "LoadCommitStatus.Skipped",
+      "key": "Skipped",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Skipped",
@@ -1160,7 +1088,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "EnumVariantRule.FormatRule"
           }
         },
         {

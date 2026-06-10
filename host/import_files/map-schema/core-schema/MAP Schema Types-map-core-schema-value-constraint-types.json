@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-09T17:03:22",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-value-constraint-types.csv"
@@ -9,13 +9,13 @@
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
       "MAP Schema Types-map-core-schema-abstract-value-types.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json",
-      "MAP Schema Types-map-core-schema-concrete-value-types.json"
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json"
     ]
   },
   "holons": [
     {
-      "key": "ValueConstraintType",
+      "key": "ValueConstraintType.HolonType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ValueConstraintType",
@@ -44,7 +44,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -73,13 +73,13 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "ValueConstraintType"
+            "$ref": "ValueConstraintType.HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -108,13 +108,13 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "ValueConstraintType"
+            "$ref": "ValueConstraintType.HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -143,13 +143,13 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "ValueConstraintType"
+            "$ref": "ValueConstraintType.HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -178,19 +178,19 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "ValueConstraintType"
+            "$ref": "ValueConstraintType.HolonType"
           }
         },
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
     },
     {
-      "key": "MinimumLength.StringValueConstraint",
+      "key": "MinimumLength",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MinimumLength",
@@ -231,7 +231,7 @@
       ]
     },
     {
-      "key": "MaximumLength.StringValueConstraint",
+      "key": "MaximumLength",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MaximumLength",
@@ -272,7 +272,7 @@
       ]
     },
     {
-      "key": "MinimumValue.IntegerValueConstraint",
+      "key": "MinimumValue",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MinimumValue",
@@ -318,7 +318,7 @@
       ]
     },
     {
-      "key": "MaximumValue.IntegerValueConstraint",
+      "key": "MaximumValue",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MaximumValue",
@@ -364,7 +364,7 @@
       ]
     },
     {
-      "key": "MinimumItems.ValueArrayConstraint",
+      "key": "MinimumItems",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MinimumItems",
@@ -405,7 +405,7 @@
       ]
     },
     {
-      "key": "MaximumItems.ValueArrayConstraint",
+      "key": "MaximumItems",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "MaximumItems",
@@ -446,7 +446,7 @@
       ]
     },
     {
-      "key": "UniqueItems.ValueArrayConstraint",
+      "key": "UniqueItems",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "UniqueItems",
@@ -712,12 +712,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "StringValueType"
@@ -759,12 +753,6 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
@@ -812,12 +800,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "BytesValueType"
@@ -862,12 +844,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "ValueArrayValueType"
@@ -909,12 +885,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
@@ -968,12 +938,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
             "$ref": "(IntegerValueType)-[Constraints]->(IntegerValueConstraint)"
@@ -1024,12 +988,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
             "$ref": "(BytesValueType)-[Constraints]->(BytesValueConstraint)"
@@ -1077,12 +1035,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-09T17:03:22",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -18,10 +18,8 @@
       "key": "MAP Core Schema-v0.0.7",
       "type": "Schema.HolonType",
       "properties": {
-        "type_name": "MAP Core Schema-v0.0.7",
-        "display_name": "MAP Core Schema-v0.0.7",
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.",
-        "instance_type_kind": "TypeKind.Holon"
+        "schema_name": "MAP Core Schema-v0.0.7"
       }
     },
     {
@@ -49,12 +47,6 @@
           "name": "Extends",
           "target": {
             "$ref": "HolonType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
@@ -136,7 +128,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
@@ -171,7 +163,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
@@ -206,7 +198,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "RelationshipRule.KeyRuleType"
           }
         }
       ]
@@ -241,7 +233,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "RelationshipRule.KeyRuleType"
           }
         }
       ]
@@ -270,7 +262,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         },
         {
@@ -346,12 +338,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
-        },
-        {
           "name": "InstanceProperties",
           "target": [
             {
@@ -375,7 +361,7 @@
               "$ref": "(HolonType)-[Properties]->(PropertyType)"
             },
             {
-              "$ref": "(HolonType)-[AffordsCommand]->(CommandType)"
+              "$ref": "(HolonType)-[AffordsCommand]->(CommandType.HolonType)"
             },
             {
               "$ref": "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)"
@@ -412,12 +398,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MetaTypeDescriptor"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
           }
         },
         {
@@ -459,12 +439,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MetaTypeDescriptor"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
           }
         },
         {
@@ -529,12 +503,6 @@
           "target": {
             "$ref": "MetaRelationshipType"
           }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
         }
       ]
     },
@@ -563,12 +531,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MetaRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
           }
         },
         {
@@ -609,7 +571,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "SchemaNameRule.KeyRuleType"
           }
         },
         {
