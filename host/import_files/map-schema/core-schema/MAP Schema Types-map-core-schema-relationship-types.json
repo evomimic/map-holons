@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-10T16:20:44",
+    "generated_at": "2026-06-10T16:37:43",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -1663,7 +1663,7 @@
       ]
     },
     {
-      "key": "(HolonType)-[ElementTypeFor]->(HolonType)",
+      "key": "(HolonType)-[ElementTypeFor]->(HolonCollection.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ElementTypeFor",
@@ -1708,7 +1708,7 @@
         {
           "name": "TargetType",
           "target": {
-            "$ref": "HolonType"
+            "$ref": "HolonCollection.HolonType"
           }
         }
       ]
