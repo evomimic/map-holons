@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-10T10:32:46",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-concrete-value-types.csv"
@@ -41,7 +41,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -74,7 +74,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -107,7 +107,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -140,7 +140,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -173,7 +173,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -206,7 +206,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "EnumVariantRule.KeyRuleType"
           }
         }
       ]
@@ -239,7 +239,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -272,7 +272,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -298,12 +298,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {
@@ -338,12 +332,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
-          }
-        },
-        {
           "name": "VariantOf",
           "target": {
             "$ref": "DeletionSemantic"
@@ -372,12 +360,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {
@@ -416,7 +398,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -442,12 +424,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {
@@ -482,12 +458,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
-          }
-        },
-        {
           "name": "VariantOf",
           "target": {
             "$ref": "TypeKind"
@@ -516,12 +486,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {
@@ -556,12 +520,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
-          }
-        },
-        {
           "name": "VariantOf",
           "target": {
             "$ref": "TypeKind"
@@ -590,12 +548,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {
@@ -630,12 +582,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
-          }
-        },
-        {
           "name": "VariantOf",
           "target": {
             "$ref": "TypeKind"
@@ -664,12 +610,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {
@@ -704,12 +644,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
-          }
-        },
-        {
           "name": "VariantOf",
           "target": {
             "$ref": "TypeKind"
@@ -738,12 +672,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {
@@ -778,12 +706,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
-          }
-        },
-        {
           "name": "VariantOf",
           "target": {
             "$ref": "TypeKind"
@@ -815,12 +737,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
-          }
-        },
-        {
           "name": "VariantOf",
           "target": {
             "$ref": "TypeKind"
@@ -849,12 +765,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
           }
         },
         {

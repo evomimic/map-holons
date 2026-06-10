@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-10T10:32:46",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-abstract-value-types.csv"
@@ -44,7 +44,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -77,15 +77,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
-        },
-        {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(ValueType)-[AffordsOperator]->(OperatorType)"
+            "$ref": "(ValueType)-[AffordsOperator]->(OperatorType.HolonType)"
           }
         }
       ]
@@ -127,15 +121,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
-        },
-        {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(StringValueType)-[Constraints]->(StringValueConstraint)"
+            "$ref": "(StringValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)"
           }
         }
       ]
@@ -177,15 +165,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
-        },
-        {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(IntegerValueType)-[Constraints]->(IntegerValueConstraint)"
+            "$ref": "(IntegerValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)"
           }
         }
       ]
@@ -220,12 +202,6 @@
           "target": {
             "$ref": "ValueType"
           }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
         }
       ]
     },
@@ -255,15 +231,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
-        },
-        {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(BytesValueType)-[Constraints]->(BytesValueConstraint)"
+            "$ref": "(BytesValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)"
           }
         }
       ]
@@ -298,12 +268,6 @@
           "target": {
             "$ref": "ValueType"
           }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
         }
       ]
     },
@@ -330,12 +294,6 @@
           "name": "Extends",
           "target": {
             "$ref": "ValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
           }
         }
       ]
@@ -366,15 +324,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
-        },
-        {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint)"
+            "$ref": "(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)"
           }
         }
       ]

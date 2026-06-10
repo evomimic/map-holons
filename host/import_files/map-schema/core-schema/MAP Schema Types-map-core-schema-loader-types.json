@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-10T10:32:46",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -9,10 +9,8 @@
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
       "MAP Schema Types-map-core-schema-concrete-value-types.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json",
       "MAP Schema Types-map-core-schema-property-types.json",
-      "MAP Schema Types-map-core-schema-dance-schema.json",
-      "MAP Schema Types-map-core-schema-abstract-value-types.json"
+      "MAP Schema Types-map-core-schema-dance-schema.json"
     ]
   },
   "holons": [
@@ -44,12 +42,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InstanceProperties",
           "target": [
             {
@@ -63,7 +55,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(LoaderHolon)-[HasRelationshipReference]->(LoaderRelationshipReference)"
+            "$ref": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)"
           }
         }
       ]
@@ -96,12 +88,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InstanceProperties",
           "target": {
             "$ref": "RelationshipName.PropertyType"
@@ -111,10 +97,10 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(LoaderRelationshipReference)-[ReferenceSource]->(LoaderHolonReference)"
+              "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)"
             },
             {
-              "$ref": "(LoaderRelationshipReference)-[ReferenceTarget]->(LoaderHolonReference)"
+              "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)"
             }
           ]
         }
@@ -145,12 +131,6 @@
           "name": "Extends",
           "target": {
             "$ref": "HolonType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -200,12 +180,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InstanceProperties",
           "target": {
             "$ref": "Filename.PropertyType"
@@ -214,7 +188,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(HolonLoaderBundle)-[BundleMembers]->(LoaderHolon)"
+            "$ref": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)"
           }
         }
       ]
@@ -243,13 +217,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "DanceResponseType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "DanceResponseType.HolonType"
           }
         },
         {
@@ -278,7 +246,7 @@
         {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError)"
+            "$ref": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)"
           }
         }
       ]
@@ -308,12 +276,6 @@
           "name": "Extends",
           "target": {
             "$ref": "HolonError.HolonType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -366,21 +328,15 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InstanceRelationships",
           "target": {
-            "$ref": "(HolonLoadSet)-[Contains]->(HolonLoaderBundle)"
+            "$ref": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         }
       ]
     },
     {
-      "key": "(LoaderHolon)-[HasRelationshipReference]->(LoaderRelationshipReference)",
+      "key": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasRelationshipReference",
@@ -411,12 +367,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderHolon.HolonType"
@@ -431,7 +381,7 @@
       ]
     },
     {
-      "key": "(LoaderRelationshipReference)-[RelationshipReferenceOf]->(LoaderHolon)",
+      "key": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "RelationshipReferenceOf",
@@ -462,15 +412,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(LoaderHolon)-[HasRelationshipReference]->(LoaderRelationshipReference)"
+            "$ref": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)"
           }
         },
         {
@@ -488,7 +432,7 @@
       ]
     },
     {
-      "key": "(LoaderRelationshipReference)-[ReferenceSource]->(LoaderHolonReference)",
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceSource",
@@ -519,12 +463,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderRelationshipReference.HolonType"
@@ -539,7 +477,7 @@
       ]
     },
     {
-      "key": "(LoaderHolonReference)-[ReferenceSourceOf]->(LoaderRelationshipReference)",
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceSourceOf",
@@ -570,15 +508,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(LoaderRelationshipReference)-[ReferenceSource]->(LoaderHolonReference)"
+            "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)"
           }
         },
         {
@@ -596,7 +528,7 @@
       ]
     },
     {
-      "key": "(LoaderRelationshipReference)-[ReferenceTarget]->(LoaderHolonReference)",
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceTarget",
@@ -627,12 +559,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderRelationshipReference.HolonType"
@@ -647,7 +573,7 @@
       ]
     },
     {
-      "key": "(LoaderHolonReference)-[ReferenceTargetOf]->(LoaderRelationshipReference)",
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ReferenceTargetOf",
@@ -678,15 +604,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(LoaderRelationshipReference)-[ReferenceTarget]->(LoaderHolonReference)"
+            "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)"
           }
         },
         {
@@ -704,7 +624,7 @@
       ]
     },
     {
-      "key": "(HolonLoaderBundle)-[BundleMembers]->(LoaderHolon)",
+      "key": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "BundleMembers",
@@ -735,12 +655,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoaderBundle.HolonType"
@@ -755,7 +669,7 @@
       ]
     },
     {
-      "key": "(LoaderHolon)-[BundleMemberOf]->(HolonLoaderBundle)",
+      "key": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "BundleMemberOf",
@@ -786,15 +700,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonLoaderBundle)-[BundleMembers]->(LoaderHolon)"
+            "$ref": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)"
           }
         },
         {
@@ -812,7 +720,7 @@
       ]
     },
     {
-      "key": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError)",
+      "key": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "HasLoadError",
@@ -843,12 +751,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoadResponse.DanceResponseType"
@@ -863,7 +765,7 @@
       ]
     },
     {
-      "key": "(HolonLoadError)-[LoadErrorOf]->(HolonLoadResponse)",
+      "key": "(HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "LoadErrorOf",
@@ -894,15 +796,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonLoadResponse)-[HasLoadError]->(HolonLoadError)"
+            "$ref": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)"
           }
         },
         {
@@ -920,7 +816,7 @@
       ]
     },
     {
-      "key": "(HolonLoadSet)-[Contains]->(HolonLoaderBundle)",
+      "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Contains",
@@ -951,12 +847,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoadSet.HolonType"
@@ -971,7 +861,7 @@
       ]
     },
     {
-      "key": "(HolonLoaderBundle)-[ContainedIn]->(HolonLoadSet)",
+      "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "ContainedIn",
@@ -1002,15 +892,9 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonLoadSet)-[Contains]->(HolonLoaderBundle)"
+            "$ref": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
           }
         },
         {
@@ -1051,12 +935,6 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
-          }
         }
       ]
     },
@@ -1080,13 +958,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "EnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "MapEnumVariantValueType"
           }
         },
         {
@@ -1117,13 +989,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "EnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "MapEnumVariantValueType"
           }
         },
         {
@@ -1154,13 +1020,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "EnumVariantValueType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "EnumVariantRule"
+            "$ref": "MapEnumVariantValueType"
           }
         },
         {
@@ -1197,12 +1057,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "ValueType",
           "target": {
             "$ref": "MapStringValueType"
@@ -1233,12 +1087,6 @@
           "name": "Extends",
           "target": {
             "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -1275,12 +1123,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "ValueType",
           "target": {
             "$ref": "MapStringValueType"
@@ -1311,12 +1153,6 @@
           "name": "Extends",
           "target": {
             "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -1353,12 +1189,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "ValueType",
           "target": {
             "$ref": "MapStringValueType"
@@ -1389,12 +1219,6 @@
           "name": "Extends",
           "target": {
             "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -1431,12 +1255,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "ValueType",
           "target": {
             "$ref": "MapIntegerValueType"
@@ -1467,12 +1285,6 @@
           "name": "Extends",
           "target": {
             "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -1509,12 +1321,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "ValueType",
           "target": {
             "$ref": "MapIntegerValueType"
@@ -1545,12 +1351,6 @@
           "name": "Extends",
           "target": {
             "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -1587,12 +1387,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "ValueType",
           "target": {
             "$ref": "MapStringValueType"
@@ -1626,12 +1420,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "ValueType",
           "target": {
             "$ref": "MapIntegerValueType"
@@ -1662,12 +1450,6 @@
           "name": "Extends",
           "target": {
             "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {

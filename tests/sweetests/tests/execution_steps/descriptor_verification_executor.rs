@@ -81,7 +81,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "(HolonType)-[Properties]->(PropertyType)",
     );
 
-    let dance_type = find_holon_by_key(&holons, "DanceType");
+    let dance_type = find_holon_by_key(&holons, "DanceType.HolonType");
     let dance_type_descriptor = HolonDescriptor::from_holon(dance_type.clone());
     let dance_descriptor = DanceDescriptor::from_holon(dance_type.clone());
     assert!(!property_type_names(dance_type_descriptor.instance_properties())
@@ -127,7 +127,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
     let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(HolonType)-[Affords]->(DanceType)",
+        "(HolonType)-[Affords]->(DanceType.HolonType)",
     ))
     .try_into_declared_relationship_descriptor()
     .expect("Affords should be a declared relationship descriptor");
@@ -143,7 +143,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
     let afforded_by_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(DanceType)-[AffordedBy]->(HolonType)",
+        "(DanceType.HolonType)-[AffordedBy]->(HolonType)",
     ))
     .try_into_inverse_relationship_descriptor()
     .expect("AffordedBy should be an inverse relationship descriptor");
@@ -158,7 +158,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
     assert_loaded_schema_backed_dance_discovery(state, &holons).await;
 
-    let dance_response_type = find_holon_by_key(&holons, "DanceResponseType");
+    let dance_response_type = find_holon_by_key(&holons, "DanceResponseType.HolonType");
     let dance_response_descriptor = HolonDescriptor::from_holon(dance_response_type.clone());
     let response_body_relationship = dance_response_descriptor
         .get_relationship_by_name(RelationshipName(MapString::from("ResponseBody")))
@@ -253,8 +253,8 @@ async fn assert_loaded_schema_backed_dance_discovery(
         });
 
     let holon_type = find_holon_by_key(holons, HOLON_TYPE_KEY);
-    let dance_type = find_holon_by_key(holons, "DanceType");
-    let dance_response_type = find_holon_by_key(holons, "DanceResponseType");
+    let dance_type = find_holon_by_key(holons, "DanceType.HolonType");
+    let dance_response_type = find_holon_by_key(holons, "DanceResponseType.HolonType");
     let projection = find_holon_by_key(holons, "Projection.HolonType");
 
     let mut query_response_type =

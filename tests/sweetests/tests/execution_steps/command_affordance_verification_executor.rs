@@ -119,7 +119,8 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     let holons = loaded_holons(state, "verify_core_schema_command_affordances").await;
 
     // `CommandType` is the abstract descriptor family root, not a concrete command inventory item.
-    let command_type = CommandDescriptor::from_holon(find_holon_by_key(&holons, "CommandType"));
+    let command_type =
+        CommandDescriptor::from_holon(find_holon_by_key(&holons, "CommandType.HolonType"));
     assert_eq!(
         command_type.command_name().expect("CommandType command_name"),
         CommandName(MapString("CommandType".to_string()))
@@ -139,7 +140,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     // `AffordsCommand` is the declared descriptor edge from holon types to command types.
     let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(HolonType)-[AffordsCommand]->(CommandType)",
+        "(HolonType)-[AffordsCommand]->(CommandType.HolonType)",
     ))
     .try_into_declared_relationship_descriptor()
     .expect("AffordsCommand should be a declared relationship descriptor");
@@ -172,7 +173,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     // `AffordedBy` must be the inverse view of the same command affordance relationship.
     let inverse_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(CommandType)-[AffordedBy]->(HolonType)",
+        "(CommandType.HolonType)-[AffordedBy]->(HolonType)",
     ))
     .try_into_inverse_relationship_descriptor()
     .expect("AffordedBy should be an inverse relationship descriptor");

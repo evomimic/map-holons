@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-06T18:27:37",
+    "generated_at": "2026-06-10T10:32:46",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
@@ -17,10 +17,8 @@
       "key": "MAP Key Rule Schema",
       "type": "Schema.HolonType",
       "properties": {
-        "type_name": "MAP Key Rule Schema",
-        "display_name": "MAP Key Rule Schema",
         "description": "Groups all type descriptors related to holon key derivation strategies in MAP.",
-        "instance_type_kind": "TypeKind.Holon"
+        "schema_name": "MAP Key Rule Schema"
       },
       "relationships": [
         {
@@ -61,7 +59,7 @@
         {
           "name": "UsesKeyRule",
           "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
@@ -70,7 +68,7 @@
       "key": "FormatRule.KeyRuleType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
-        "is_abstract_type": false,
+        "is_abstract_type": true,
         "type_name": "FormatRule",
         "type_name_plural": "FormatRules",
         "display_name": "Format Key Rule Type",
@@ -94,12 +92,6 @@
           }
         },
         {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
-        },
-        {
           "name": "InstanceProperties",
           "target": {
             "$ref": "TemplateString.PropertyType"
@@ -114,7 +106,7 @@
       ]
     },
     {
-      "key": "EnumVariantRule",
+      "key": "EnumVariantRule.KeyRuleType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
@@ -137,19 +129,13 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "FormatRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "KeyRuleType"
           }
         }
       ]
     },
     {
-      "key": "TypeNameRule",
+      "key": "TypeNameRule.KeyRuleType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
@@ -172,19 +158,13 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "FormatRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "KeyRuleType"
           }
         }
       ]
     },
     {
-      "key": "TypeKindRule",
+      "key": "TypeKindRule.KeyRuleType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "is_abstract_type": false,
@@ -207,13 +187,7 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "FormatRule.KeyRuleType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "TypeNameRule"
+            "$ref": "KeyRuleType"
           }
         }
       ]
@@ -244,12 +218,6 @@
           "target": {
             "$ref": "KeyRuleType"
           }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
         }
       ]
     },
@@ -262,7 +230,7 @@
         "type_name_plural": "ExtendedTypeRules",
         "display_name": "Extended Type Key Rule Type",
         "display_name_plural": "Extended Type Key Rule Types",
-        "description": "Hardcoded rule: <type_name>.<extends.key>",
+        "description": "A hardcoded rule that derives a descriptor key from the descriptor’s local type_name plus the type_name of its immediate extended descriptor.\nFormat: {type_name}.{extends.type_name}",
         "instance_type_kind": "TypeKind.Holon",
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -278,12 +246,6 @@
           "name": "Extends",
           "target": {
             "$ref": "KeyRuleType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         }
       ]
@@ -314,11 +276,34 @@
           "target": {
             "$ref": "KeyRuleType"
           }
+        }
+      ]
+    },
+    {
+      "key": "SchemaNameRule.KeyRuleType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "SchemaNameRule",
+        "type_name_plural": "SchemaNameRules",
+        "display_name": "Schema Name Rule",
+        "display_name_plural": "Schema Name Rules",
+        "description": "Generates a key from the holon's schema_name property only.",
+        "instance_type_kind": "TypeKind.Holon",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Key Rule Schema"
+          }
         },
         {
-          "name": "UsesKeyRule",
+          "name": "Extends",
           "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "KeyRuleType"
           }
         }
       ]
@@ -351,12 +336,6 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {
@@ -401,12 +380,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "RelationshipRule.KeyRuleType"
           }
         },
         {

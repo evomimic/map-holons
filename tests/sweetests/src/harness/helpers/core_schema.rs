@@ -31,12 +31,12 @@ pub struct CoreSchemaLoadMetrics {
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 303,
-    committed: 303,
-    links_created: 1653,
+    staged: 304,
+    committed: 304,
+    links_created: 1382,
     errors: 0,
     total_bundles: 11,
-    total_loader_holons: 303,
+    total_loader_holons: 304,
 };
 
 /// Absolute paths to all core schema import files used for loader-client testing.
