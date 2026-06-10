@@ -110,15 +110,15 @@ fn bind_command(runtime: &Runtime, command: MapCommandWire) -> Result<MapCommand
 mod tests {
     use std::sync::{Arc, RwLock};
 
+    use base_types::{BaseValue, MapString};
     use core_types::{HolonError, HolonId, LocalId, RelationshipName};
+    use holons_boundary::HolonReferenceWire;
     use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
     use holons_core::core_shared_objects::transactions::TransactionContext;
     use holons_core::core_shared_objects::{
         Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
     };
-    use holons_core::reference_layer::{
-        HolonServiceApi, StagedReference, TransientReference,
-    };
+    use holons_core::reference_layer::{HolonServiceApi, StagedReference, TransientReference};
 
     use super::*;
 
@@ -154,6 +154,15 @@ mod tests {
             tx_id: tx_id(tx),
             action: map_commands_wire::TransactionActionWire::GetTransientCount,
         })
+    }
+
+    fn default_request_options() -> map_commands_wire::RequestOptions {
+        map_commands_wire::RequestOptions {
+            marker_id: None,
+            marker_label: None,
+            snapshot_after: false,
+            disable_undo: false,
+        }
     }
 
     impl HolonServiceApi for TestHolonService {
@@ -299,12 +308,7 @@ mod tests {
         let result = dispatch_inner(
             &map_commands_wire::RequestId::new(1),
             MapCommandWire::Space(map_commands_wire::SpaceCommandWire::BeginTransaction),
-            map_commands_wire::RequestOptions {
-                marker_id: None,
-                marker_label: None,
-                snapshot_after: false,
-                disable_undo: false,
-            },
+            default_request_options(),
             &state,
         )
         .await;
@@ -323,17 +327,106 @@ mod tests {
         let result = dispatch_inner(
             &map_commands_wire::RequestId::new(1),
             MapCommandWire::Space(map_commands_wire::SpaceCommandWire::BeginTransaction),
-            map_commands_wire::RequestOptions {
-                marker_id: None,
-                marker_label: None,
-                snapshot_after: false,
-                disable_undo: false,
-            },
+            default_request_options(),
             &state,
         )
         .await
         .expect("dispatch should succeed");
 
         assert!(matches!(result, map_commands_contract::MapResult::TransactionCreated { .. }));
+    }
+
+    #[tokio::test]
+    async fn dispatch_inner_binds_and_executes_transaction_command() {
+        let state = runtime_state(Some(build_test_runtime()));
+        let tx_id = match dispatch_inner(
+            &map_commands_wire::RequestId::new(1),
+            MapCommandWire::Space(map_commands_wire::SpaceCommandWire::BeginTransaction),
+            default_request_options(),
+            &state,
+        )
+        .await
+        .expect("begin transaction should succeed")
+        {
+            map_commands_contract::MapResult::TransactionCreated { tx_id } => tx_id,
+            other => panic!("expected TransactionCreated, got {:?}", other),
+        };
+
+        let result = dispatch_inner(
+            &map_commands_wire::RequestId::new(2),
+            MapCommandWire::Transaction(map_commands_wire::TransactionCommandWire {
+                tx_id,
+                action: map_commands_wire::TransactionActionWire::GetTransientCount,
+            }),
+            default_request_options(),
+            &state,
+        )
+        .await
+        .expect("transaction dispatch should succeed");
+
+        assert!(matches!(
+            result,
+            map_commands_contract::MapResult::Value(BaseValue::IntegerValue(_))
+        ));
+    }
+
+    #[tokio::test]
+    async fn dispatch_inner_binds_and_executes_holon_command() {
+        let state = runtime_state(Some(build_test_runtime()));
+        let tx_id = match dispatch_inner(
+            &map_commands_wire::RequestId::new(1),
+            MapCommandWire::Space(map_commands_wire::SpaceCommandWire::BeginTransaction),
+            default_request_options(),
+            &state,
+        )
+        .await
+        .expect("begin transaction should succeed")
+        {
+            map_commands_contract::MapResult::TransactionCreated { tx_id } => tx_id,
+            other => panic!("expected TransactionCreated, got {:?}", other),
+        };
+
+        let transient = match dispatch_inner(
+            &map_commands_wire::RequestId::new(2),
+            MapCommandWire::Transaction(map_commands_wire::TransactionCommandWire {
+                tx_id,
+                action: map_commands_wire::TransactionActionWire::NewHolon {
+                    key: Some(MapString::from("alpha")),
+                },
+            }),
+            default_request_options(),
+            &state,
+        )
+        .await
+        .expect("new holon should succeed")
+        {
+            map_commands_contract::MapResult::Reference(
+                holons_core::reference_layer::HolonReference::Transient(transient),
+            ) => transient,
+            other => panic!("expected transient reference, got {:?}", other),
+        };
+
+        let result = dispatch_inner(
+            &map_commands_wire::RequestId::new(3),
+            MapCommandWire::Holon(map_commands_wire::HolonCommandWire {
+                tx_id,
+                target: HolonReferenceWire::from(
+                    holons_core::reference_layer::HolonReference::Transient(transient),
+                ),
+                action: map_commands_wire::HolonActionWire::Read(
+                    map_commands_wire::ReadableHolonActionWire::GetKey,
+                ),
+            }),
+            default_request_options(),
+            &state,
+        )
+        .await
+        .expect("holon dispatch should succeed");
+
+        assert!(matches!(
+            result,
+            map_commands_contract::MapResult::Value(BaseValue::StringValue(value))
+                if value == MapString::from("alpha")
+        ));
     }
 }
