@@ -82,20 +82,38 @@ export interface HolonCollectionWire {
   keyed_index: Record<string, number>;
 }
 
+/**
+ * Deprecated compatibility payload retained only for legacy dance/query flows.
+ *
+ * This remains operational so old-world dance ingress keeps working, but it is
+ * not a canonical command-foundation type for new work.
+ */
 export interface QueryExpression {
   relationship_name: RelationshipName;
 }
 
+/**
+ * Deprecated compatibility payload retained only inside legacy dance/query
+ * request and response bodies.
+ */
 export interface NodeWire {
   source_holon: HolonReferenceWire;
   relationships: QueryPathMapWire | null;
 }
 
+/**
+ * Deprecated compatibility payload family retained only for legacy dance/query
+ * traversal results and requests.
+ */
 export interface NodeCollectionWire {
   members: NodeWire[];
   query_spec: QueryExpression | null;
 }
 
+/**
+ * Deprecated compatibility payload retained only inside old-world query dance
+ * traversal structures.
+ */
 export type QueryPathMapWire = Record<string, NodeCollectionWire>;
 
 // ===========================================
@@ -167,6 +185,7 @@ export type HolonWire =
 
 export type DanceTypeWire =
   | 'Standalone'
+  // Deprecated compatibility branch for old-world query traversal dances.
   | { QueryMethod: NodeCollectionWire }
   | { CommandMethod: HolonReferenceWire }
   | { CloneMethod: HolonReferenceWire }
@@ -181,8 +200,15 @@ export type RequestBodyWire =
   | { HolonId: HolonId }
   | { ParameterValues: PropertyMap }
   | { StagedRef: StagedReferenceWire }
+  // Deprecated compatibility branch retained only for old-world query dance flows.
   | { QueryExpression: QueryExpression };
 
+/**
+ * Retained legacy dance ingress payload.
+ *
+ * `DanceRequestWire` remains operational for compatibility, but should not be
+ * treated as the long-term command payload center for new work.
+ */
 export interface DanceRequestWire {
   dance_name: MapString;
   dance_type: DanceTypeWire;
@@ -208,8 +234,14 @@ export type ResponseBodyWire =
   | { HolonCollection: HolonCollectionWire }
   | { Holons: HolonWire[] }
   | { HolonReference: HolonReferenceWire }
+  // Deprecated compatibility branch retained only for old-world query dance results.
   | { NodeCollection: NodeCollectionWire };
 
+/**
+ * Transitional dance response payload retained as the command-result exception
+ * for dance execution. Legacy query-shaped bodies may still appear inside it as
+ * compatibility payloads.
+ */
 export interface DanceResponseWire {
   status_code: ResponseStatusCode;
   description: MapString;
@@ -477,6 +509,10 @@ export function isHolonReferenceWire(value: unknown): value is HolonReferenceWir
 // ===========================================
 // Collection / Query Guards
 // ===========================================
+//
+// The query-shaped guards below remain so legacy dance/query payloads stay
+// decodable. They should not be mistaken for the canonical new command
+// contract posture.
 
 export function isCollectionState(value: unknown): value is CollectionState {
   return typeof value === 'string' && COLLECTION_STATES.has(value as CollectionState);
@@ -740,6 +776,9 @@ export function isHolonWire(value: unknown): value is HolonWire {
 // ===========================================
 // Dance / Query Guards
 // ===========================================
+//
+// These guards intentionally preserve the retained legacy dance ingress and its
+// nested compatibility payload family alongside the newer command-result posture.
 
 export function isDanceTypeWire(value: unknown): value is DanceTypeWire {
   return (

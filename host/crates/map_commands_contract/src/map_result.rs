@@ -33,10 +33,12 @@ pub enum MapResult {
     /// Returns a holon reference.
     Reference(HolonReference),
 
-    /// Returns a collection of holon references.
+    /// Deliberate exception for duplicate-base-key staging lookup.
+    ///
+    /// General plural command results should prefer `Collection(HolonCollection)`.
     References(Vec<HolonReference>),
 
-    /// Returns an indexed collection of holons.
+    /// Canonical plural command result carrier.
     Collection(HolonCollection),
 
     /// Universal scalar return — covers MapString, MapInteger, MapBoolean, PropertyValue.
@@ -48,6 +50,6 @@ pub enum MapResult {
     /// Returns the essential content of a holon.
     EssentialContent(EssentialHolonContent),
 
-    /// Returns a dance response.
+    /// Transitional dance-result exception retained for legacy and in-flight dance paths.
     DanceResponse(DanceResponse),
 }

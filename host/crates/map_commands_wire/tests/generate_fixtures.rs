@@ -177,6 +177,8 @@ fn generate_fixtures() {
         "request-tx-dance.json",
         &request(
             14,
+            // Retained legacy dance ingress example. Keep operational, but do
+            // not treat it as the foundation for new command-surface work.
             tx_command(41, TransactionActionWire::Dance(sample_dance_request())),
             mutation_options("dance request"),
         ),
@@ -388,6 +390,9 @@ fn generate_fixtures() {
     write_fixture(
         &fixtures_dir,
         "response-ok-dance-response.json",
+        // Transitional `DanceResponse` result example using a legacy
+        // query-shaped body. The outer result variant remains the command-side
+        // exception while the nested node collection stays compatibility-only.
         &response(112, Ok(MapResultWire::DanceResponse(sample_dance_response()))),
     );
     write_fixture(
@@ -580,6 +585,8 @@ fn sample_collection() -> HolonCollectionWire {
     }
 }
 
+/// Legacy compatibility node payload used only inside retained old-world query
+/// dance fixtures.
 fn sample_node_collection() -> NodeCollectionWire {
     let leaf = NodeCollectionWire {
         members: vec![NodeWire {
@@ -601,18 +608,21 @@ fn sample_node_collection() -> NodeCollectionWire {
     }
 }
 
+/// Legacy compatibility dance request fixture exercising the retained
+/// old-world dance ingress.
 fn sample_dance_request() -> DanceRequestWire {
     DanceRequestWire {
-        dance_name: map_string("load-descriptor"),
+        dance_name: map_string("legacy-query-compat"),
         dance_type: DanceTypeWire::QueryMethod(sample_node_collection()),
         body: RequestBodyWire::ParameterValues(sample_property_map()),
     }
 }
 
+/// Transitional dance-response fixture carrying a legacy query-shaped body.
 fn sample_dance_response() -> DanceResponseWire {
     DanceResponseWire {
         status_code: ResponseStatusCode::OK,
-        description: map_string("dance completed"),
+        description: map_string("legacy compatibility dance completed"),
         body: ResponseBodyWire::NodeCollection(sample_node_collection()),
         descriptor: Some(smart_reference(41, local_holon_id(&[151, 152, 153]), None)),
     }

@@ -4,7 +4,8 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use pretty_assertions::assert_eq;
 use tracing::debug;
 
-/// Queries relationships via the retained deprecated `query_relationships` Dance.
+/// Queries relationships via the retained deprecated `query_relationships`
+/// dance compatibility path.
 pub async fn execute_query_relationships(
     state: &mut TestExecutionState,
     step_token: TestReference,
@@ -23,7 +24,8 @@ pub async fn execute_query_relationships(
     let node_collection =
         NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
 
-    // 2. BUILD — wrap dance request in TransactionAction::Dance
+    // 2. BUILD — wrap the legacy compatibility dance request in
+    // `TransactionAction::Dance`
     let dance_request = build_query_relationships_dance_request(node_collection, query_expression)
         .expect("Failed to build query_relationships request");
     debug!("Dance Request (via TransactionAction::Dance): {:#?}", dance_request);

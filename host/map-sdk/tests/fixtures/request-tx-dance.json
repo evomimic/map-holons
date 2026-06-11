@@ -5,7 +5,7 @@
       "tx_id": 41,
       "action": {
         "Dance": {
-          "dance_name": "load-descriptor",
+          "dance_name": "legacy-query-compat",
           "dance_type": {
             "QueryMethod": {
               "members": [
