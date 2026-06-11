@@ -52,6 +52,11 @@ export interface ContentSet {
 /**
  * Flat transaction action enum mirroring Rust `TransactionActionWire`.
  *
+ * Canonical command work should treat `HolonCollection` as the ordinary
+ * plural result posture. The retained `Dance` action is the legacy dance
+ * ingress, and `GetStagedHolonsByBaseKey` remains the intentional
+ * reference-shaped plural exception.
+ *
  * Serde encoding rules:
  * - unit variants -> bare strings
  * - struct variants -> single-key objects
@@ -64,9 +69,13 @@ export type TransactionActionWire =
   | { UndoToMarker: { marker_id: string } }
   | { RedoToMarker: { marker_id: string } }
   | { LoadHolons: { content_set: ContentSet } }
+  // Retained legacy dance ingress. Keep operational, but do not treat as the
+  // foundation for new command-surface work.
   | { Dance: DanceRequestWire }
   | 'GetAllHolons'
   | { GetStagedHolonByBaseKey: { key: string } }
+  // Deliberate exception: duplicate-base-key staging lookup stays
+  // reference-shaped rather than using HolonCollection.
   | { GetStagedHolonsByBaseKey: { key: string } }
   | { GetStagedHolonByVersionedKey: { key: string } }
   | { GetTransientHolonByBaseKey: { key: string } }

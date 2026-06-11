@@ -281,6 +281,9 @@ export function getStagedHolonByBaseKey(
 
 /**
  * Return all staged holons bound to a base key.
+ *
+ * This remains the deliberate reference-shaped plural exception. Canonical
+ * plural command results should prefer `HolonCollectionWire`.
  */
 export function getStagedHolonsByBaseKey(
   txId: TxId,
@@ -380,7 +383,11 @@ export function transientCount(
 }
 
 /**
- * Execute a transaction-scoped dance request.
+ * Execute a transaction-scoped legacy dance request.
+ *
+ * This retained ingress stays operational for compatibility, including
+ * old-world query traversal dances. The command layer still treats the
+ * resulting `DanceResponseWire` as a transitional exception.
  */
 export function dance(
   txId: TxId,

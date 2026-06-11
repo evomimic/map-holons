@@ -111,14 +111,14 @@ const integerValue: BaseValue = {
 };
 
 const danceRequest: DanceRequestWire = {
-  dance_name: 'sync',
+  dance_name: 'legacy-query-compat',
   dance_type: 'Standalone',
   body: 'None',
 };
 
 const danceResponse: DanceResponseWire = {
   status_code: 'Accepted',
-  description: 'queued',
+  description: 'queued legacy compatibility dance',
   body: {
     HolonReference: transientReference,
   },
@@ -383,5 +383,25 @@ describe('transaction command builders', () => {
     invokeMapCommandMock.mockResolvedValue(okResponse('RedoComplete'));
     await redoLast(txId);
     expectTransactionRequest('RedoLast', defaultOptions);
+  });
+
+  it('treats Collection as the canonical plural result shape for getAllHolons', async () => {
+    invokeMapCommandMock.mockResolvedValue(okResponse({ Collection: holonCollection }));
+
+    await expect(getAllHolons(txId)).resolves.toEqual(holonCollection);
+  });
+
+  it('keeps References as the deliberate plural exception for staged base-key lookup', async () => {
+    invokeMapCommandMock.mockResolvedValue(okResponse({ References: [stagedReference] }));
+
+    await expect(getStagedHolonsByBaseKey(txId, 'alpha')).resolves.toEqual([
+      stagedReference,
+    ]);
+  });
+
+  it('keeps DanceResponse as the transitional exception for legacy dance ingress', async () => {
+    invokeMapCommandMock.mockResolvedValue(okResponse({ DanceResponse: danceResponse }));
+
+    await expect(dance(txId, danceRequest)).resolves.toEqual(danceResponse);
   });
 });

@@ -43,7 +43,11 @@ pub enum TransactionActionWire {
     /// Loads holons from uploaded/imported file content.
     LoadHolons { content_set: ContentSet },
 
-    /// Executes a dance request within this transaction.
+    /// Executes the retained legacy dance ingress within this transaction.
+    ///
+    /// This wire shape stays operational for compatibility, including
+    /// old-world query traversal dances, but is not the preferred
+    /// foundation for new command-surface work.
     Dance(DanceRequestWire),
 
     // ── Lookup actions ───────────────────────────────────────────────
@@ -54,6 +58,8 @@ pub enum TransactionActionWire {
     GetStagedHolonByBaseKey { key: MapString },
 
     /// `get_staged_holons_by_base_key(key)` → `Vec<StagedReference>`
+    ///
+    /// This remains the deliberate reference-shaped plural exception.
     GetStagedHolonsByBaseKey { key: MapString },
 
     /// `get_staged_holon_by_versioned_key(key)` → `StagedReference`

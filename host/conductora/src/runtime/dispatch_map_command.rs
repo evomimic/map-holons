@@ -43,7 +43,8 @@ async fn dispatch_inner(
 
     log_marker_context(request_id, &options);
 
-    // Bind wire → domain
+    // Bind wire → domain before runtime execution so compatibility-only
+    // ingress payloads never leak below the adapter seam.
     let command = bind_command(&runtime, command)?;
 
     // Execute via runtime (policy enforcement + handler routing)

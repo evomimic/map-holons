@@ -73,7 +73,7 @@ const essentialContent: EssentialHolonContent = {
 
 const danceResponse: DanceResponseWire = {
   status_code: 'Accepted',
-  description: 'dance accepted',
+  description: 'legacy compatibility dance accepted',
   body: {
     HolonReference: transientReference,
   },
@@ -134,7 +134,7 @@ describe('result decoders', () => {
     );
   });
 
-  it('decodes References results', () => {
+  it('decodes References results for the deliberate staging lookup exception', () => {
     expect(
       expectReferences({
         References: [transientReference, stagedReference],
@@ -148,7 +148,7 @@ describe('result decoders', () => {
     );
   });
 
-  it('decodes Collection results', () => {
+  it('decodes Collection results as the canonical plural command posture', () => {
     expect(
       expectCollection({
         Collection: holonCollection,
@@ -217,7 +217,7 @@ describe('result decoders', () => {
     );
   });
 
-  it('decodes DanceResponse results', () => {
+  it('decodes DanceResponse results as the transitional dance exception', () => {
     expect(
       expectDanceResponse({
         DanceResponse: danceResponse,

@@ -36,6 +36,9 @@ pub async fn handle_transaction(
         }
         TransactionAction::Dance(request) => {
             let response = context.initiate_ingress_dance(request, false).await?;
+            // Deliberate transitional exception: dance execution still returns
+            // a `DanceResponse` instead of projecting onto the canonical
+            // command result family.
             Ok(MapResult::DanceResponse(response))
         }
         TransactionAction::LoadHolons { content_set } => {
@@ -53,7 +56,8 @@ pub async fn handle_transaction(
         }
         TransactionAction::GetStagedHolonsByBaseKey { key } => {
             let staged_refs = context.lookup().get_staged_holons_by_base_key(&key)?;
-            // Intentional exception: duplicate base-key staging lookup stays reference-shaped.
+            // Deliberate exception: duplicate base-key staging lookup stays
+            // reference-shaped rather than returning `HolonCollection`.
             Ok(MapResult::References(staged_refs.into_iter().map(HolonReference::Staged).collect()))
         }
         TransactionAction::GetStagedHolonByVersionedKey { key } => {

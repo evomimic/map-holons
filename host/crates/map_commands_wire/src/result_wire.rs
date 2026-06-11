@@ -34,10 +34,12 @@ pub enum MapResultWire {
     /// Returns a holon reference.
     Reference(HolonReferenceWire),
 
-    /// Returns a collection of holon references.
+    /// Deliberate exception for duplicate-base-key staging lookup.
+    ///
+    /// General plural command results should prefer `Collection(HolonCollectionWire)`.
     References(Vec<HolonReferenceWire>),
 
-    /// Returns an indexed collection of holons.
+    /// Canonical plural command result carrier at the IPC boundary.
     Collection(HolonCollectionWire),
 
     /// Universal scalar return.
@@ -49,7 +51,7 @@ pub enum MapResultWire {
     /// Returns the essential content of a holon.
     EssentialContent(EssentialHolonContent),
 
-    /// Returns a dance response.
+    /// Transitional dance-result exception retained at the IPC boundary.
     DanceResponse(DanceResponseWire),
 }
 

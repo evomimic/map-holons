@@ -4,7 +4,7 @@
     "Ok": {
       "DanceResponse": {
         "status_code": "OK",
-        "description": "dance completed",
+        "description": "legacy compatibility dance completed",
         "body": {
           "NodeCollection": {
             "members": [
