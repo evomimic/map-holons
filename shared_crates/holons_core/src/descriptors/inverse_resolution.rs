@@ -1,9 +1,10 @@
 use crate::descriptors::{
-    accessor_helpers, DeclaredRelationshipDescriptor, Descriptor, InverseRelationshipDescriptor,
-    TypeHeader,
+    accessor_helpers, effective_relationship_declaration, DeclaredRelationshipDescriptor,
+    Descriptor, InverseRelationshipDescriptor, TypeHeader,
 };
-use crate::reference_layer::{HolonReference, ReadableHolon};
+use crate::reference_layer::HolonReference;
 use crate::StagedReference;
+use core_types::TypeKind;
 use core_types::{HolonError, RelationshipName};
 use type_names::CoreRelationshipTypeName;
 
@@ -18,10 +19,8 @@ pub fn resolve_inverse_relationship_name(
     forward_name: &RelationshipName,
     staged_references: &[StagedReference],
 ) -> Result<RelationshipName, HolonError> {
-    // Resolve the declared descriptor through the source holon's schema.
-    let source_descriptor = source_ref.holon_descriptor()?;
-    let declared_descriptor = source_descriptor
-        .get_relationship_by_name(forward_name.clone())?
+    // Resolve the declared descriptor through the source holon's effective surface.
+    let declared_descriptor = effective_relationship_declaration(source_ref, forward_name)?
         .try_into_declared_relationship_descriptor()?;
 
     // Prefer the normal materialized HasInverse path.
@@ -91,7 +90,8 @@ fn is_concrete_relationship_descriptor(candidate_reference: &HolonReference) -> 
     let Ok(instance_type_kind) = header.instance_type_kind() else {
         return false;
     };
-    if instance_type_kind.0 != "Relationship" {
+    let relationship_type_kind = TypeKind::Relationship.as_schema_key();
+    if instance_type_kind.0 != relationship_type_kind && instance_type_kind.0 != "Relationship" {
         return false;
     }
 
@@ -413,8 +413,101 @@ mod tests {
 
         assert!(matches!(
             resolve_inverse_relationship_name(&(&source).into(), &authored_by(), &[]),
-            Err(HolonError::MissingDescribedBy { .. })
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "relationship" && name == "AuthoredBy"
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn resolves_descriptor_holon_relationship_through_own_extends_lineage() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let type_descriptor = context.mutation().stage_new_holon(new_holon_type_descriptor(
+            &context,
+            "type-descriptor",
+            "TypeDescriptor",
+        )?)?;
+        let meta_relationship_type = context.mutation().stage_new_holon(
+            new_holon_type_descriptor(&context, "meta-relationship-type", "MetaRelationshipType")?,
+        )?;
+        let mut declared_relationship_type =
+            context.mutation().stage_new_holon(new_descriptor_holon(
+                &context,
+                "declared-relationship-type-for-source-type",
+                &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+                "Relationship",
+            )?)?;
+        let inverse_relationship_type =
+            context.mutation().stage_new_holon(new_descriptor_holon(
+                &context,
+                "inverse-relationship-type-for-source-type",
+                &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
+                "Relationship",
+            )?)?;
+
+        let source_type_transient = new_relationship_descriptor_holon(
+            &context,
+            "source-type",
+            "SourceType",
+            (&meta_relationship_type).into(),
+            (&type_descriptor).into(),
+        )?;
+        let source_for_transient = new_relationship_descriptor_holon(
+            &context,
+            "source-for",
+            "SourceFor",
+            (&type_descriptor).into(),
+            (&meta_relationship_type).into(),
+        )?;
+        let mut source_type = context.mutation().stage_new_holon(source_type_transient)?;
+        let mut source_for = context.mutation().stage_new_holon(source_for_transient)?;
+
+        declared_relationship_type.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![(&meta_relationship_type).into()],
+        )?;
+        source_type.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![declared_relationship_type.into()],
+        )?;
+        source_type
+            .add_related_holons(CoreRelationshipTypeName::HasInverse, vec![(&source_for).into()])?;
+        source_for.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![inverse_relationship_type.into()],
+        )?;
+        source_for
+            .add_related_holons(CoreRelationshipTypeName::InverseOf, vec![(&source_type).into()])?;
+
+        let mut meta_relationship_type = meta_relationship_type;
+        meta_relationship_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![(&source_type).into()],
+        )?;
+
+        let mut concrete_relationship =
+            context.mutation().stage_new_holon(new_relationship_descriptor_holon(
+                &context,
+                "affords-operator",
+                "AffordsOperator",
+                (&meta_relationship_type).into(),
+                (&type_descriptor).into(),
+            )?)?;
+        concrete_relationship
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![(&source_type).into()])?;
+        concrete_relationship.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![type_descriptor.into()],
+        )?;
+
+        let inverse_name = resolve_inverse_relationship_name(
+            &(&concrete_relationship).into(),
+            &RelationshipName(MapString("SourceType".to_string())),
+            &[],
+        )?;
+
+        assert_eq!(inverse_name, RelationshipName(MapString("SourceFor".to_string())));
         Ok(())
     }
 
