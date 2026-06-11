@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-10T10:32:46",
+    "generated_at": "2026-06-10T16:37:43",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -1517,6 +1517,198 @@
           "name": "TargetType",
           "target": {
             "$ref": "HolonSpace.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[CollectionMembers]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "CollectionMembers",
+        "type_name_plural": "CollectionMembersRelationships",
+        "display_name": "CollectionMembers",
+        "display_name_plural": "CollectionMembers Relationships",
+        "description": "Declared relationship from a persisted collection holon to the holons contained by the collection.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": true,
+        "allows_duplicates": true,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[MemberOfCollection]->(HolonCollection.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "MemberOfCollection",
+        "type_name_plural": "MemberOfCollectionRelationships",
+        "display_name": "MemberOfCollection",
+        "display_name_plural": "MemberOfCollection Relationships",
+        "description": "Inverse of CollectionMembers. Links a holon to a persisted collection holon that contains it.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[CollectionMembers]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[ElementType]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ElementType",
+        "type_name_plural": "ElementTypes",
+        "display_name": "Element Type",
+        "display_name_plural": "Element Types",
+        "description": "Declares the holon type carried by a persisted collection holon.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[ElementTypeFor]->(HolonCollection.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ElementTypeFor",
+        "type_name_plural": "ElementTypeForRelationships",
+        "display_name": "ElementTypeFor",
+        "display_name_plural": "ElementTypeFor Relationships",
+        "description": "Inverse of ElementType. Links a holon type to persisted collection types that declare it as their element type.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[ElementType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
           }
         }
       ]

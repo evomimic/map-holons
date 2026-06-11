@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-10T10:32:46",
+    "generated_at": "2026-06-10T16:37:43",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -631,12 +631,6 @@
           "target": {
             "$ref": "HolonType"
           }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
-          }
         }
       ]
     },
@@ -665,12 +659,6 @@
           "name": "Extends",
           "target": {
             "$ref": "HolonType"
-          }
-        },
-        {
-          "name": "UsesKeyRule",
-          "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
           }
         },
         {
@@ -783,12 +771,60 @@
           "target": {
             "$ref": "HolonType"
           }
+        }
+      ]
+    },
+    {
+      "key": "HolonCollection.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "HolonCollection",
+        "type_name_plural": "HolonCollections",
+        "display_name": "Holon Collection",
+        "display_name_plural": "Holon Collections",
+        "description": "Concrete collection type descriptor for persisted collection holons.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
         },
         {
-          "name": "UsesKeyRule",
+          "name": "Extends",
           "target": {
-            "$ref": "ExtendedTypeRule.KeyRuleType"
+            "$ref": "HolonType"
           }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "CollectionType.PropertyType"
+            },
+            {
+              "$ref": "IsOrdered.PropertyType"
+            },
+            {
+              "$ref": "AllowsDuplicates.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[CollectionMembers]->(HolonType)"
+            },
+            {
+              "$ref": "(HolonCollection.HolonType)-[ElementType]->(HolonType)"
+            }
+          ]
         }
       ]
     }
