@@ -7,11 +7,12 @@ use holons_core::descriptors::{
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP_KEY,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
     CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY,
     DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY, DELETION_SEMANTIC_CASCADE_KEY,
     DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY, OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY,
-    OPERATOR_CATEGORY_ORDERING_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, SCHEMA_TYPE_KEY,
+    OPERATOR_CATEGORY_ORDERING_KEY, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
+    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE, SCHEMA_TYPE_KEY,
     VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
@@ -600,6 +601,34 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
     );
 
     info!("verified representative Book/Person descriptor access");
+}
+
+/// Verifies persisted bidirectional SmartLink traversal over committed
+/// Book/Person *instances* (issue #442).
+///
+/// Commit Pass 2 persists each declared forward edge and materializes the
+/// corresponding inverse edge on the target, so this asserts both directions:
+/// - forward: Book --AuthoredBy--> Person and Book --DescribedBy--> Book.HolonType
+/// - inverse: Person --Authors--> Book and Book.HolonType --Instances--> Book
+pub async fn execute_verify_book_person_instance_links(state: &mut TestExecutionState) {
+    let holons = loaded_holons(state, "verify_book_person_instance_links").await;
+
+    let book = find_holon_by_key(&holons, BOOK_KEY);
+    let person = find_holon_by_key(&holons, PERSON_1_KEY);
+    let book_type = find_holon_by_key(&holons, BOOK_DESCRIPTOR_KEY);
+    let person_type = find_holon_by_key(&holons, PERSON_DESCRIPTOR_KEY);
+
+    // Forward declared edges persisted from the staged relationships.
+    assert_contains(&related_holon_keys(&book, BOOK_TO_PERSON_RELATIONSHIP), PERSON_1_KEY);
+    assert_contains(&related_holon_keys(&book, "DescribedBy"), BOOK_DESCRIPTOR_KEY);
+    assert_contains(&related_holon_keys(&person, "DescribedBy"), PERSON_DESCRIPTOR_KEY);
+
+    // Inverse edges materialized on the targets by commit Pass 2.
+    assert_contains(&related_holon_keys(&person, PERSON_TO_BOOK_REL_INVERSE), BOOK_KEY);
+    assert_contains(&related_holon_keys(&book_type, "Instances"), BOOK_KEY);
+    assert_contains(&related_holon_keys(&person_type, "Instances"), PERSON_1_KEY);
+
+    info!("verified bidirectional Book/Person instance SmartLink traversal");
 }
 
 async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> HolonCollection {

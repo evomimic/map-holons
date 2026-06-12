@@ -183,6 +183,19 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_verify_book_person_instance_links_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Verify forward and inverse Book/Person instance SmartLink traversal".to_string()
+        });
+        self.steps.push(DanceTestStep::VerifyBookPersonInstanceLinks { description });
+
+        Ok(())
+    }
+
     pub fn add_verify_core_schema_descriptor_subtypes_step(
         &mut self,
         description: Option<String>,
