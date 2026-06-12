@@ -1,6 +1,6 @@
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
 use std::collections::BTreeMap;
@@ -59,6 +59,7 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
 
     test_case.add_commit_step(
         &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         None,
         Some("Commit first transaction".to_string()),
     )?;
@@ -92,6 +93,7 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
     // Attempt to re-commit the already-committed transaction.
     test_case.add_commit_step(
         &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         Some(HolonErrorKind::TransactionAlreadyCommitted),
         Some("Re-commit rejected on committed tx".to_string()),
     )?;
@@ -128,6 +130,7 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
 
     test_case.add_commit_step(
         &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         None,
         Some("Commit second transaction".to_string()),
     )?;

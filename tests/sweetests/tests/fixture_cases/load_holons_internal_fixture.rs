@@ -35,7 +35,7 @@
 
 use core_types::TypeKind;
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedLoadStatus, TestCaseInit};
 use rstest::*;
 use std::sync::Arc;
 
@@ -467,6 +467,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0), // errors_encountered (empty set short-circuit path)
         MapInteger(1), // total_bundles
         MapInteger(0), // total_loader_holons
+        ExpectedLoadStatus::Skipped,
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1), None)?;
 
@@ -487,6 +488,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0),              // errors_encountered
         MapInteger(1),              // total_bundles
         MapInteger(n_nodes as i64), // total_loader_holons
+        ExpectedLoadStatus::Complete,
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
     test_case.add_begin_transaction_step(
@@ -516,6 +518,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),                 // one pass-2 invalid-type error
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
+        ExpectedLoadStatus::Skipped,
     )?;
     test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
     test_case.add_begin_transaction_step(
@@ -547,6 +550,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0),
         MapInteger(1),                // total_bundles
         MapInteger(inv_nodes as i64), // total_loader_holons
+        ExpectedLoadStatus::Complete,
     )?;
 
     // DB after inverse step:
@@ -608,6 +612,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),                        // pass-2 schema/relationship error
         MapInteger(2),                        // total_bundles
         MapInteger(multi_bundle_nodes_total), // total_loader_holons
+        ExpectedLoadStatus::Skipped,
     )?;
 
     // Final DB count is unchanged because relationship persistence failed.
@@ -664,6 +669,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),               // errors_encountered (one DuplicateError)
         MapInteger(2),               // total_bundles
         MapInteger(dup_total_nodes), // total_loader_holons
+        ExpectedLoadStatus::Skipped,
     )?;
 
     // DB must remain unchanged after duplicate-key failure.

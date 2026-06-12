@@ -39,6 +39,10 @@ pub type SnapshotId = TemporaryId;
 /// - `Transient`: the holon is expected to be a transient snapshot at this point in the flow.
 /// - `Staged`: the holon is expected to be staged (pre-commit).
 /// - `Saved`: the holon is expected to be committed (post-commit).
+/// - `SavedLookup`: the holon was committed outside the fixture's ledger (e.g. by a
+///   schema load) and is resolved at execution time by key. Its snapshot is a
+///   key-only stub: it carries identity, never full expected content, and it
+///   contributes to no fixture counts.
 ///
 /// Notes:
 /// - A new token is minted with a unique id for each snapshot representation of a state change.
@@ -48,6 +52,7 @@ pub enum TestHolonState {
     Transient,
     Staged,
     Saved,
+    SavedLookup,
     Abandoned,
     Deleted,
 }
@@ -58,6 +63,7 @@ impl fmt::Display for TestHolonState {
             TestHolonState::Transient => write!(f, "Transient"),
             TestHolonState::Staged => write!(f, "Staged"),
             TestHolonState::Saved => write!(f, "Saved"),
+            TestHolonState::SavedLookup => write!(f, "SavedLookup"),
             TestHolonState::Abandoned => write!(f, "Abandoned"),
             TestHolonState::Deleted => write!(f, "Deleted"),
         }

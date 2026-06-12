@@ -80,6 +80,7 @@ impl ExecutionHolons {
     /// - `TestHolonState::Transient`  → must find a recorded `TransientReference`.
     /// - `TestHolonState::Staged`     → must find a recorded `StagedReference` **not committed**.
     /// - `TestHolonState::Saved`      → must find a recorded `StagedReference` **committed**.
+    /// - `TestHolonState::SavedLookup` → must find a recorded `SmartReference` (resolved by key at execution time); treated like `Saved`.
     /// - `TestHolonState::Abandoned`  → must find a recorded `StagedReference` **abandoned**.
     /// - `TestHolonState::Deleted`  → return Error
     pub fn resolve_execution_reference(
@@ -145,7 +146,10 @@ impl ExecutionHolons {
                             state, other
                         )))
                     }
-                    (TestHolonState::Saved, HolonReference::Smart(smart_reference)) => {
+                    (
+                        TestHolonState::Saved | TestHolonState::SavedLookup,
+                        HolonReference::Smart(smart_reference),
+                    ) => {
                         let context_handle = TransactionContextHandle::new(context.clone());
                         let rebound_reference =
                             match smart_reference.smart_property_values().cloned() {
@@ -162,9 +166,12 @@ impl ExecutionHolons {
 
                         Ok(HolonReference::Smart(rebound_reference))
                     }
-                    (TestHolonState::Saved, other) => Err(HolonError::InvalidHolonReference(
-                        format!("ExecutionHolons::lookup: expected SAVED, got: {:?}", other),
-                    )),
+                    (TestHolonState::Saved | TestHolonState::SavedLookup, other) => {
+                        Err(HolonError::InvalidHolonReference(format!(
+                            "ExecutionHolons::lookup: expected SAVED, got: {:?}",
+                            other
+                        )))
+                    }
                     (TestHolonState::Transient, _) => {
                         unreachable!("handled on first match arm")
                     }

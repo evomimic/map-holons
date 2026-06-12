@@ -1,7 +1,7 @@
 use super::setup_undescribed_book_people_publisher_steps_with_context;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 
@@ -61,6 +61,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     //  COMMIT  //  all Holons in staging_area
     test_case.add_commit_step(
         &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         None,
         Some("Committing after First Abandon".to_string()),
     )?;
@@ -145,6 +146,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
         &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         None,
         Some("Third Abandon --- abandoning example_abandon2 (H5)...".to_string()),
     )?;

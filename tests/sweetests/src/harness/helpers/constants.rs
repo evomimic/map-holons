@@ -1,5 +1,11 @@
 pub const TEST_CLIENT_PREFIX: &str = "TEST CLIENT: ";
 
+/// Marker property stamped on the key-only stub snapshot minted by the
+/// saved-holon lookup step. Stubs stand in for holons saved outside the
+/// fixture's ledger (e.g. by a schema load), so saved-content comparison
+/// matches them by key only and never recurses into their graph.
+pub const SAVED_LOOKUP_STUB_MARKER: &str = "__saved_lookup_stub__";
+
 // These constants allow consistency between the helper function and its callers
 pub const BOOK_KEY: &str =
     "Emerging World: The Evolution of Consciousness and the Future of Humanity";

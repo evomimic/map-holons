@@ -1,7 +1,7 @@
 use crate::fixture_cases::setup_undescribed_book_author_steps_with_context;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::PUBLISHED_BY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 use tracing::info;
@@ -159,7 +159,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // == //
 
     //  COMMIT  //
-    test_case.add_commit_step(&mut fixture_holons, None, None)?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
 
     // ENSURE DB COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;

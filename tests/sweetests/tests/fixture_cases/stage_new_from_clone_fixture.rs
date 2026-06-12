@@ -3,7 +3,7 @@ use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
 use holons_test::harness::helpers::BOOK_KEY;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use std::collections::BTreeMap;
 use type_names::ToPropertyName;
@@ -91,7 +91,12 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 1  //
-    test_case.add_commit_step(&mut fixture_holons, None, Some("Commit --- Round 1".to_string()))?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        None,
+        Some("Commit --- Round 1".to_string()),
+    )?;
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
     test_case.add_begin_transaction_step(
         None,
@@ -130,7 +135,12 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 2  //
-    test_case.add_commit_step(&mut fixture_holons, None, Some("Commit --- Round 2".to_string()))?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        None,
+        Some("Commit --- Round 2".to_string()),
+    )?;
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     // MATCH SAVED CONTENT  //

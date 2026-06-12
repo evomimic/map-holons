@@ -38,8 +38,9 @@
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
 use crate::{
-    harness::fixtures_support::TestReference, DanceTestStep, ExpectedSnapshot, FixtureHolons,
-    SourceSnapshot, TestHolonState, TestSessionState,
+    harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
+    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, SourceSnapshot, TestHolonState,
+    TestSessionState,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::{
@@ -239,6 +240,7 @@ impl DancesTestCase {
         expect_errors: MapInteger,
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
+        expect_status: ExpectedLoadStatus,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::LoadHolonsInternal {
@@ -249,6 +251,7 @@ impl DancesTestCase {
             expect_errors,
             expect_total_bundles,
             expect_total_loader_holons,
+            expect_status,
         });
 
         Ok(())
@@ -331,16 +334,27 @@ impl DancesTestCase {
     }
 
     // Commit advances head snapshots to Saved for existing logical holons.
+    //
+    // `expected_status` declares the expected `CommitRequestStatus` on the commit
+    // response. Note that fixture heads advance to Saved even for an expected
+    // `Incomplete` status: Pass 1 (holons) persists before Pass 2 (relationships)
+    // can fail, so the holons themselves are still saved.
     pub fn add_commit_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
+        expected_status: ExpectedCommitStatus,
         expected_error: Option<HolonErrorKind>,
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| "Commit".to_string());
         let saved_tokens = fixture_holons.commit()?;
-        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_error, description });
+        self.steps.push(DanceTestStep::Commit {
+            saved_tokens,
+            expected_status,
+            expected_error,
+            description,
+        });
 
         Ok(())
     }

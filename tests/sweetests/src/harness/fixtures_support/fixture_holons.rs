@@ -100,7 +100,10 @@ impl FixtureHolons {
     pub fn create_fixture_holon(&mut self, snapshot: ExpectedSnapshot) -> Result<(), HolonError> {
         if matches!(
             snapshot.state(),
-            TestHolonState::Saved | TestHolonState::Abandoned | TestHolonState::Deleted
+            TestHolonState::Saved
+                | TestHolonState::SavedLookup
+                | TestHolonState::Abandoned
+                | TestHolonState::Deleted
         ) {
             return Err(HolonError::InvalidParameter(
                 "Can only create a FixtureHolon from Transient or Staged".to_string(),
@@ -286,6 +289,9 @@ impl FixtureHolons {
                 TestHolonState::Saved => {
                     debug!("Holon already saved : {:#?}", holon);
                 }
+                TestHolonState::SavedLookup => {
+                    debug!("Holon is a saved lookup stub, nothing to commit : {:#?}", holon);
+                }
                 TestHolonState::Deleted => {
                     debug!("Holon marked as deleted : {:#?}", holon);
                 }
@@ -322,6 +328,9 @@ impl FixtureHolons {
                 TestHolonState::Transient => counts.transient += 1,
                 TestHolonState::Staged => counts.staged += 1,
                 TestHolonState::Saved => counts.saved += 1,
+                // Lookup stubs refer to holons saved outside the fixture's ledger
+                // (e.g. by a schema load); they contribute to no fixture counts.
+                TestHolonState::SavedLookup => {}
                 TestHolonState::Abandoned => counts.staged -= 1,
                 TestHolonState::Deleted => counts.saved -= 1,
             }

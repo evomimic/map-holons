@@ -1,6 +1,6 @@
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
@@ -36,6 +36,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
         &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         None,
         Some("Commit --- after setup_book_authors".to_string()),
     )?;
@@ -87,6 +88,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
         &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
         None,
         Some("Commit --- after staging new first version".to_string()),
     )?;
