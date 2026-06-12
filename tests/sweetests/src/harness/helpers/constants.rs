@@ -34,6 +34,9 @@ pub const CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY: &str =
     "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)";
 pub const CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY: &str =
     "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor.HolonType)";
+pub const CORE_PREDECESSOR_RELATIONSHIP_KEY: &str = "(HolonType)-[Predecessor]->(HolonType)";
+pub const CORE_INVERSE_OF_RELATIONSHIP_KEY: &str =
+    "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)";
 pub const BOOK_TO_PERSON_RELATIONSHIP_KEY: &str =
     "(Book.HolonType)-[AuthoredBy]->(Person.HolonType)";
 pub const PERSON_TO_BOOK_REL_INVERSE: &str = "Authors";
