@@ -44,6 +44,7 @@ use execution_steps::ensure_database_count_executor::execute_ensure_database_cou
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_book_person_inverse_test_schema;
 use execution_steps::load_core_schema_executor::execute_load_core_schema;
 use execution_steps::load_holons_internal_executor::execute_load_holons_internal;
+use execution_steps::lookup_saved_holon_executor::execute_lookup_saved_holon_by_key;
 use execution_steps::match_db_content_executor::execute_match_db_content;
 use execution_steps::new_holon_executor::execute_new_holon;
 use execution_steps::query_relationships_executor::execute_query_relationships;
@@ -197,6 +198,15 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expect_errors,
                     expect_total_bundles,
                     expect_total_loader_holons,
+                )
+                .await
+            }
+            DanceTestStep::LookupSavedHolonByKey { step_token, key, expected_error, .. } => {
+                execute_lookup_saved_holon_by_key(
+                    &mut test_execution_state,
+                    step_token,
+                    key,
+                    expected_error,
                 )
                 .await
             }

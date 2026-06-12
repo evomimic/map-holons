@@ -91,6 +91,12 @@ pub enum DanceTestStep {
         expect_total_loader_holons: MapInteger,
         expect_status: ExpectedLoadStatus,
     },
+    LookupSavedHolonByKey {
+        step_token: TestReference,
+        key: MapString,
+        expected_error: Option<HolonErrorKind>,
+        description: String,
+    },
     LoadCoreSchema {
         description: String,
     },
@@ -220,6 +226,17 @@ impl core::fmt::Display for DanceTestStep {
                     f,
                     "LoadHolonsInternal(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={}, status={})",
                     expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0, expect_status
+                )
+            }
+            DanceTestStep::LookupSavedHolonByKey {
+                step_token,
+                key,
+                expected_error,
+                description,
+            } => {
+                write!(
+                    f,
+                    "{description} [token: {step_token}, key: {key}, expected_error: {expected_error:?}]"
                 )
             }
             DanceTestStep::LoadCoreSchema { description } => {
