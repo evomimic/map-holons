@@ -18,6 +18,7 @@ pub async fn execute_load_core_schema(test_state: &mut TestExecutionState) {
         MapInteger(CORE_SCHEMA_METRICS.errors),
         MapInteger(CORE_SCHEMA_METRICS.total_bundles),
         MapInteger(CORE_SCHEMA_METRICS.total_loader_holons),
+        CORE_SCHEMA_METRICS.commit_status,
     )
     .await;
 }

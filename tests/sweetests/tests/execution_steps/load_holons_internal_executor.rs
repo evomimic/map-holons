@@ -1,7 +1,7 @@
 use core_types::TemporaryId;
 use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_prelude::prelude::*;
-use holons_test::TestExecutionState;
+use holons_test::{ExpectedLoadStatus, TestExecutionState};
 use tracing::info;
 
 /// Read an integer property from a transient response holon.
@@ -13,6 +13,20 @@ fn read_integer_property(
         Some(PropertyValue::IntegerValue(MapInteger(i))) => Ok(i),
         other => Err(HolonError::InvalidParameter(format!(
             "Expected integer value for {:?}, got {:?}",
+            property, other
+        ))),
+    }
+}
+
+/// Read a string property from a transient response holon.
+fn read_string_property(
+    response: &TransientReference,
+    property: CorePropertyTypeName,
+) -> Result<String, HolonError> {
+    match response.property_value(&property)? {
+        Some(PropertyValue::StringValue(MapString(s))) => Ok(s),
+        other => Err(HolonError::InvalidParameter(format!(
+            "Expected string value for {:?}, got {:?}",
             property, other
         ))),
     }
@@ -144,6 +158,7 @@ pub async fn execute_load_holons_internal(
     expect_errors: MapInteger,
     expect_total_bundles: MapInteger,
     expect_total_loader_holons: MapInteger,
+    expect_status: ExpectedLoadStatus,
 ) {
     info!("--- TEST STEP: Load Holons Internal ---");
     let context = test_state.context();
@@ -177,6 +192,9 @@ pub async fn execute_load_holons_internal(
     let actual_total_loader_holons =
         read_integer_property(&response_reference, CorePropertyTypeName::TotalLoaderHolons)
             .unwrap_or_else(|e| panic!("read TotalLoaderHolons failed: {e:?}")) as i64;
+    let actual_status =
+        read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus)
+            .unwrap_or_else(|e| panic!("read LoadCommitStatus failed: {e:?}"));
 
     // Always dump error holons if present
     if actual_error_count > 0 {
@@ -194,14 +212,15 @@ pub async fn execute_load_holons_internal(
         || actual_error_count != expect_errors.0
         || actual_total_bundles != expect_total_bundles.0
         || actual_total_loader_holons != expect_total_loader_holons.0
+        || actual_status != expect_status.to_string()
     {
         info!(
-            "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
-            expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
+            "[loader-test] EXPECTED: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}",
+            expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0, expect_status
         );
         info!(
-            "[loader-test]   ACTUAL: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
-            actual_staged, actual_committed, actual_links_created, actual_error_count, actual_total_bundles, actual_total_loader_holons
+            "[loader-test]   ACTUAL: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}",
+            actual_staged, actual_committed, actual_links_created, actual_error_count, actual_total_bundles, actual_total_loader_holons, actual_status
         );
         info!("{}", dump_full_response(test_state, &response_reference));
     }
@@ -236,5 +255,12 @@ pub async fn execute_load_holons_internal(
         actual_total_loader_holons, expect_total_loader_holons.0,
         "Expected TotalLoaderHolons={}, got {}",
         expect_total_loader_holons.0, actual_total_loader_holons
+    );
+    assert_eq!(
+        actual_status,
+        expect_status.to_string(),
+        "Expected LoadCommitStatus={}, got {}",
+        expect_status,
+        actual_status
     );
 }

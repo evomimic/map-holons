@@ -169,8 +169,14 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::BeginTransaction { expected_error, .. } => {
                 execute_begin_transaction(&mut test_execution_state, expected_error).await
             }
-            DanceTestStep::Commit { saved_tokens, expected_error, .. } => {
-                execute_commit(&mut test_execution_state, saved_tokens, expected_error).await
+            DanceTestStep::Commit { saved_tokens, expected_status, expected_error, .. } => {
+                execute_commit(
+                    &mut test_execution_state,
+                    saved_tokens,
+                    expected_status,
+                    expected_error,
+                )
+                .await
             }
             DanceTestStep::DeleteHolon { step_token, expected_error, .. } => {
                 execute_delete_holon(&mut test_execution_state, step_token, expected_error).await
@@ -186,8 +192,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 expect_errors,
                 expect_total_bundles,
                 expect_total_loader_holons,
-                // Wired into the executor with the LoadCommitStatus assertion (Phase 3).
-                expect_status: _,
+                expect_status,
             } => {
                 execute_load_holons_internal(
                     &mut test_execution_state,
@@ -198,6 +203,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expect_errors,
                     expect_total_bundles,
                     expect_total_loader_holons,
+                    expect_status,
                 )
                 .await
             }

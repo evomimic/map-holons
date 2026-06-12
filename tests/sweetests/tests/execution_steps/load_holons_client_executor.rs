@@ -3,12 +3,21 @@ use holons_prelude::prelude::*;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::info;
 
-use holons_test::TestExecutionState;
+use holons_test::{ExpectedLoadStatus, TestExecutionState};
 
 fn read_int_property(reference: &TransientReference, property: CorePropertyTypeName) -> i64 {
     match reference.property_value(&property) {
         Ok(Some(PropertyValue::IntegerValue(MapInteger(i)))) => i,
         Ok(Some(other)) => panic!("Expected integer for {:?}, got {:?}", property, other),
+        Ok(None) => panic!("Property {:?} missing on response holon", property),
+        Err(err) => panic!("Failed to read {:?} from response holon: {:?}", property, err),
+    }
+}
+
+fn read_string_property(reference: &TransientReference, property: CorePropertyTypeName) -> String {
+    match reference.property_value(&property) {
+        Ok(Some(PropertyValue::StringValue(MapString(s)))) => s,
+        Ok(Some(other)) => panic!("Expected string for {:?}, got {:?}", property, other),
         Ok(None) => panic!("Property {:?} missing on response holon", property),
         Err(err) => panic!("Failed to read {:?} from response holon: {:?}", property, err),
     }
@@ -26,6 +35,7 @@ pub async fn execute_load_holons_client(
     expect_errors: MapInteger,
     expect_total_bundles: MapInteger,
     expect_total_loader_holons: MapInteger,
+    expect_status: ExpectedLoadStatus,
 ) {
     let context = test_state.context();
 
@@ -50,6 +60,8 @@ pub async fn execute_load_holons_client(
     let total_bundles = read_int_property(&response_reference, CorePropertyTypeName::TotalBundles);
     let total_loader_holons =
         read_int_property(&response_reference, CorePropertyTypeName::TotalLoaderHolons);
+    let commit_status =
+        read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus);
 
     // If the guest reported errors, dump error holons + full response for quick diagnosis.
     if errors > 0 {
@@ -62,19 +74,21 @@ pub async fn execute_load_holons_client(
     let full_dump = dump_full_response(&response_reference);
     info!("[loader-client] response_full_dump:\n{}", full_dump);
     info!(
-        "[loader-client] metrics observed: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}; expected: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}",
+        "[loader-client] metrics observed: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}; expected: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}",
         staged,
         committed,
         links_created,
         errors,
         total_bundles,
         total_loader_holons,
+        commit_status,
         expect_staged.0,
         expect_committed.0,
         expect_links_created.0,
         expect_errors.0,
         expect_total_bundles.0,
-        expect_total_loader_holons.0
+        expect_total_loader_holons.0,
+        expect_status
     );
 
     assert_eq!(staged, expect_staged.0);
@@ -83,6 +97,13 @@ pub async fn execute_load_holons_client(
     assert_eq!(errors, expect_errors.0);
     assert_eq!(total_bundles, expect_total_bundles.0);
     assert_eq!(total_loader_holons, expect_total_loader_holons.0);
+    assert_eq!(
+        commit_status,
+        expect_status.to_string(),
+        "Expected LoadCommitStatus={}, got {}",
+        expect_status,
+        commit_status
+    );
 }
 
 /// Utility: dump all properties on the response holon plus key loader fields.
