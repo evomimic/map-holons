@@ -1,21 +1,48 @@
 use holons_prelude::prelude::*;
-use holons_test::harness::helpers::ENSURE_DB_EMPTY;
-use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, FixtureHolons, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
 
 use super::setup_undescribed_book_people_publisher_steps_with_context;
-use holons_test::harness::helpers::BOOK_KEY;
+use holons_test::harness::helpers::{
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_PERSON_INVERSE_METRICS, CORE_SCHEMA_METRICS,
+};
 
 // TODO: add/remove relationships
 
+/// Expected DB count once core + Book/Person schemas are loaded: fixture-saved
+/// holons (incl. the LocalHolonSpace baseline) plus the loader-committed schema holons.
+fn schema_backed_db_count(fixture_holons: &FixtureHolons) -> MapInteger {
+    MapInteger(
+        fixture_holons.count_saved().0
+            + CORE_SCHEMA_METRICS.committed
+            + BOOK_PERSON_INVERSE_METRICS.committed,
+    )
+}
+
 /// Fixture for creating Simple NEWVERSION Testcase
+///
+/// Schema-backed setup (issue #442): `add_stage_new_version_step` auto-stages a
+/// `Predecessor` relationship, and strict commit Pass 2 only persists
+/// relationships the source holon's effective schema surface declares. The Book
+/// is therefore described by the loaded `Book.HolonType` (whose Extends chain
+/// reaches `MetaHolonType`, where `Predecessor` is declared); the Persons and
+/// Publisher stage no relationships and stay undescribed.
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new("Simple StageNewVersion Testcase", "Tests stage_new_version dance");
     let mut version_count = MapInteger(1);
+
+    // Load the schemas that declare Book.HolonType and (via MetaHolonType) Predecessor.
+    test_case.add_load_core_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin transaction for Book/People/Publisher setup".to_string()),
+    )?;
 
     // Use helper function to set up a book holon, 2 persons, and a publisher.
     setup_undescribed_book_people_publisher_steps_with_context(
@@ -27,10 +54,29 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
 
+    // Describe the Book by the loaded Book.HolonType so its Predecessor edges resolve.
+    let book_type_stub =
+        fixture_context.mutation().new_holon(Some(MapString(BOOK_DESCRIPTOR_KEY.to_string())))?;
+    let book_type_token = test_case.add_lookup_saved_holon_by_key_step(
+        &mut fixture_holons,
+        book_type_stub,
+        MapString(BOOK_DESCRIPTOR_KEY.to_string()),
+        None,
+        None,
+    )?;
+    let book_staged_token = test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        book_staged_token,
+        CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+        vec![book_type_token],
+        None,
+        Some("Describe Book by Book.HolonType".to_string()),
+    )?;
+
     //  ENSURE DATABASE COUNT -- Initial //
     test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some(ENSURE_DB_EMPTY.to_string()),
+        schema_backed_db_count(&fixture_holons),
+        Some("Ensuring DB holds only schema holons before first commit".to_string()),
     )?;
 
     //  COMMIT  // all Holons in staging_area
@@ -42,7 +88,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  ENSURE DATABASE COUNT -- After Commit //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
+    test_case.add_ensure_database_count_step(schema_backed_db_count(&fixture_holons), None)?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
@@ -94,7 +140,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
+    test_case.add_ensure_database_count_step(schema_backed_db_count(&fixture_holons), None)?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;

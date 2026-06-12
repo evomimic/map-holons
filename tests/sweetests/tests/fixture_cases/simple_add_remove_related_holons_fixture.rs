@@ -10,6 +10,15 @@ use tracing::info;
 /// For both Transient and Staged references:
 /// adds a new relationship, removes an existing relationship, then adds another relationship again.
 ///
+/// This is also the canonical **strict commit Pass 2 rejection** case (issue
+/// #442): the staged holons are undescribed and their relationships
+/// (`AUTHORED_BY`, `PUBLISHED_BY`) are freeform, so relationship persistence
+/// cannot resolve them against any declared schema surface. The commit is
+/// therefore expected to report `CommitRequestStatus = Incomplete`: Pass 1
+/// still saves all staged holons (the DB-count assertion remains valid), but
+/// no relationship SmartLinks are persisted. In-memory add/remove ergonomics
+/// before the commit are unaffected.
+///
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
@@ -159,7 +168,13 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // == //
 
     //  COMMIT  //
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    // Undescribed/freeform relationships cannot satisfy strict Pass 2 — expect Incomplete.
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Incomplete,
+        None,
+        Some("Commit --- expecting Incomplete: freeform relationships are rejected".to_string()),
+    )?;
 
     // ENSURE DB COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
