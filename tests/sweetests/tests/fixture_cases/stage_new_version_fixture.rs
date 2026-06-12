@@ -5,7 +5,7 @@ use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
 
-use super::setup_book_author_steps_with_context;
+use super::setup_undescribed_book_people_publisher_steps_with_context;
 use holons_test::harness::helpers::BOOK_KEY;
 
 // TODO: add/remove relationships
@@ -17,9 +17,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         TestCaseInit::new("Simple StageNewVersion Testcase", "Tests stage_new_version dance");
     let mut version_count = MapInteger(1);
 
-    // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
-    // the book to both persons.
-    setup_book_author_steps_with_context(
+    // Use helper function to set up a book holon, 2 persons, and a publisher.
+    setup_undescribed_book_people_publisher_steps_with_context(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,

@@ -1,4 +1,4 @@
-use super::setup_book_author_steps_with_context;
+use super::setup_undescribed_book_people_publisher_steps_with_context;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, TestCaseInit};
@@ -26,17 +26,13 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         Some(ENSURE_DB_EMPTY.to_string()),
     )?;
 
-    // Use helper function to set up a book holon, 2 persons, a publisher, and an AUTHORED_BY relationship from
-    // the book to both persons.
-    setup_book_author_steps_with_context(
+    // Use helper function to set up a book holon, 2 persons, and a publisher.
+    setup_undescribed_book_people_publisher_steps_with_context(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
     )?;
-
-    let _relationship_name =
-        fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
 
     let person_1_staged_token =
         fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Person1' label").clone();

@@ -54,16 +54,13 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     // TODO:  Find a better way to attempt a non-OK expected response for this step without minting a token and having to subtract from fixture holons saved count
 
-    // ── PHASE B — Setup canonical holons, then clone FROM STAGED ──────────────────
-    setup_book_author_steps_with_context(
+    // ── PHASE B — Setup undescribed holons, then clone FROM STAGED ──────────────────
+    setup_undescribed_book_people_publisher_steps_with_context(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
     )?;
-
-    let _relationship_name =
-        fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
 
     let _book_key = MapString(BOOK_KEY.to_string());
     let from_staged_key = MapString("book:clone:from-staged".to_string());
