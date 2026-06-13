@@ -1,5 +1,5 @@
 use crate::core_shared_objects::Holon;
-use crate::reference_layer::HolonReference;
+use crate::reference_layer::{HolonReference, ReadableHolon};
 use base_types::MapString;
 use core_types::HolonError;
 use serde::{Deserialize, Serialize};
@@ -142,6 +142,106 @@ pub enum InvocationSource {
 }
 
 pub type DanceInvocationSource = InvocationSource;
+
+/// Canonical execution-boundary reference to a `DanceInvocation` holon.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DanceInvocationReference {
+    invocation: HolonReference,
+}
+
+impl DanceInvocationReference {
+    pub fn new(invocation: HolonReference) -> Result<Self, HolonError> {
+        let descriptor = invocation.holon_descriptor()?;
+        let found = descriptor.header().type_name()?;
+        let expected = MapString("DanceInvocation".to_string());
+
+        if found != expected {
+            return Err(HolonError::WrongDescriptorKind {
+                expected: expected.to_string(),
+                found: found.to_string(),
+                descriptor: found.to_string(),
+            });
+        }
+
+        Ok(Self { invocation })
+    }
+
+    pub fn as_holon_reference(&self) -> &HolonReference {
+        &self.invocation
+    }
+
+    pub fn into_inner(self) -> HolonReference {
+        self.invocation
+    }
+}
+
+impl From<DanceInvocationReference> for HolonReference {
+    fn from(invocation: DanceInvocationReference) -> Self {
+        invocation.into_inner()
+    }
+}
+
+impl From<&DanceInvocationReference> for HolonReference {
+    fn from(invocation: &DanceInvocationReference) -> Self {
+        invocation.as_holon_reference().clone()
+    }
+}
+
+pub fn build_dance_v2_invocation(
+    invocation: HolonReference,
+) -> Result<DanceInvocationReference, HolonError> {
+    DanceInvocationReference::new(invocation)
+}
+
+/// Canonical execution-boundary reference to a `DanceResponseType` holon.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DanceResponseReference {
+    response: HolonReference,
+}
+
+impl DanceResponseReference {
+    pub fn new(response: HolonReference) -> Result<Self, HolonError> {
+        let descriptor = response.holon_descriptor()?;
+        let found = descriptor.header().type_name()?;
+        let expected = MapString("DanceResponseType".to_string());
+
+        if found != expected {
+            return Err(HolonError::WrongDescriptorKind {
+                expected: expected.to_string(),
+                found: found.to_string(),
+                descriptor: found.to_string(),
+            });
+        }
+
+        Ok(Self { response })
+    }
+
+    pub fn as_holon_reference(&self) -> &HolonReference {
+        &self.response
+    }
+
+    pub fn into_inner(self) -> HolonReference {
+        self.response
+    }
+}
+
+impl From<DanceResponseReference> for HolonReference {
+    fn from(response: DanceResponseReference) -> Self {
+        response.into_inner()
+    }
+}
+
+impl From<&DanceResponseReference> for HolonReference {
+    fn from(response: &DanceResponseReference) -> Self {
+        response.as_holon_reference().clone()
+    }
+}
+
+pub fn build_dance_v2_response(
+    response: HolonReference,
+) -> Result<DanceResponseReference, HolonError> {
+    DanceResponseReference::new(response)
+}
 
 /// Canonical successful outcome envelope for a dance in PRO1.
 #[derive(Debug, Clone)]

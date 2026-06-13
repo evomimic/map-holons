@@ -215,6 +215,13 @@ export interface DanceRequestWire {
   body: RequestBodyWire;
 }
 
+/**
+ * Wire wrapper carrying a `HolonReferenceWire` to a canonical DanceInvocation holon.
+ */
+export interface DanceV2InvocationWire {
+  invocation: HolonReferenceWire;
+}
+
 export type ResponseStatusCode =
   | 'OK'
   | 'Accepted'
@@ -820,6 +827,12 @@ export function isDanceRequestWire(value: unknown): value is DanceRequestWire {
     isDanceTypeWire(value['dance_type']) &&
     isRequestBodyWire(value['body'])
   );
+}
+
+export function isDanceV2InvocationWire(
+  value: unknown,
+): value is DanceV2InvocationWire {
+  return isRecord(value) && isHolonReferenceWire(value['invocation']);
 }
 
 export function isResponseStatusCode(value: unknown): value is ResponseStatusCode {

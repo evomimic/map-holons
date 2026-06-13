@@ -1,5 +1,6 @@
 import {
   type DanceRequestWire,
+  type DanceV2InvocationWire,
   type HolonReferenceWire,
   type BaseValue,
   type PropertyName,
@@ -13,6 +14,7 @@ import {
   hasSingleKey,
   isBaseValue,
   isDanceRequestWire,
+  isDanceV2InvocationWire,
   isHolonId,
   isHolonReferenceWire,
   isLocalId,
@@ -72,6 +74,7 @@ export type TransactionActionWire =
   // Retained legacy dance ingress. Keep operational, but do not treat as the
   // foundation for new command-surface work.
   | { Dance: DanceRequestWire }
+  | { DanceV2: DanceV2InvocationWire }
   | 'GetAllHolons'
   | { GetStagedHolonByBaseKey: { key: string } }
   // Deliberate exception: duplicate-base-key staging lookup stays
@@ -250,6 +253,8 @@ export function isTransactionActionWire(
       isRecord(value.LoadHolons) &&
       isContentSet(value.LoadHolons['content_set'])) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
+    (hasSingleKey(value, 'DanceV2') &&
+      isDanceV2InvocationWire(value.DanceV2)) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&
       isStringFieldObject(value.GetStagedHolonByBaseKey, 'key')) ||
     (hasSingleKey(value, 'GetStagedHolonsByBaseKey') &&

@@ -11,8 +11,9 @@ use holons_core::core_shared_objects::{
     Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
 };
 use holons_core::reference_layer::{
-    HolonReference, HolonServiceApi, StagedReference, TransientReference,
+    HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
 };
+use holons_core::dances::build_dance_v2_invocation;
 
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use holons_client::LocalRecoveryReceptor;
@@ -372,6 +373,136 @@ async fn staged_count(runtime: &Runtime, tx_id: &TxId) -> i64 {
     match result {
         MapResult::Value(BaseValue::IntegerValue(MapInteger(n))) => n,
         other => panic!("expected IntegerValue, got {:?}", other),
+    }
+}
+
+async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
+    let context = runtime.session().get_transaction(tx_id).expect("tx should exist");
+
+    let mut invocation_descriptor =
+        context.mutation().new_holon(Some(MapString::from("invocation-descriptor"))).expect("invocation descriptor");
+    invocation_descriptor
+        .with_property_value("TypeName", "DanceInvocation")
+        .expect("invocation type");
+    invocation_descriptor
+        .with_property_value("IsAbstractType", false)
+        .expect("invocation abstract");
+    invocation_descriptor
+        .with_property_value("InstanceTypeKind", "Holon")
+        .expect("invocation kind");
+
+    let mut request_type =
+        context.mutation().new_holon(Some(MapString::from("request-type"))).expect("request type");
+    request_type
+        .with_property_value("TypeName", "ProjectionRequest")
+        .expect("request type name");
+    request_type
+        .with_property_value("IsAbstractType", false)
+        .expect("request abstract");
+    request_type
+        .with_property_value("InstanceTypeKind", "Holon")
+        .expect("request kind");
+
+    let mut response_type =
+        context.mutation().new_holon(Some(MapString::from("response-type"))).expect("response type");
+    response_type
+        .with_property_value("TypeName", "DanceResponseType")
+        .expect("response type name");
+    response_type
+        .with_property_value("IsAbstractType", false)
+        .expect("response abstract");
+    response_type
+        .with_property_value("InstanceTypeKind", "Holon")
+        .expect("response kind");
+
+    let mut implementation =
+        context.mutation().new_holon(Some(MapString::from("implementation"))).expect("implementation");
+    implementation
+        .with_property_value("TypeName", "DanceImplementation")
+        .expect("implementation type");
+    implementation
+        .with_property_value("IsAbstractType", false)
+        .expect("implementation abstract");
+    implementation
+        .with_property_value("InstanceTypeKind", "Holon")
+        .expect("implementation kind");
+
+    let mut dance_descriptor =
+        context.mutation().new_holon(Some(MapString::from("dance"))).expect("dance descriptor");
+    dance_descriptor
+        .with_property_value("TypeName", "Projection")
+        .expect("dance type");
+    dance_descriptor
+        .with_property_value("IsAbstractType", false)
+        .expect("dance abstract");
+    dance_descriptor
+        .with_property_value("InstanceTypeKind", "Holon")
+        .expect("dance kind");
+    dance_descriptor
+        .add_related_holons("RequestType", vec![request_type.into()])
+        .expect("request edge");
+    dance_descriptor
+        .add_related_holons("Response", vec![response_type.into()])
+        .expect("response edge");
+    dance_descriptor
+        .add_related_holons("ForDance", vec![implementation.into()])
+        .expect("implementation edge");
+
+    let mut request =
+        context.mutation().new_holon(Some(MapString::from("request"))).expect("request holon");
+    request
+        .with_property_value("TypeName", "ProjectionRequest")
+        .expect("request type");
+    request
+        .with_property_value("IsAbstractType", false)
+        .expect("request abstract");
+    request
+        .with_property_value("InstanceTypeKind", "Holon")
+        .expect("request kind");
+
+    let mut invocation =
+        context.mutation().new_holon(Some(MapString::from("invocation"))).expect("invocation holon");
+    invocation
+        .with_property_value("TypeName", "DanceInvocation")
+        .expect("invocation type");
+    invocation
+        .with_property_value("IsAbstractType", false)
+        .expect("invocation abstract");
+    invocation
+        .with_property_value("InstanceTypeKind", "Holon")
+        .expect("invocation kind");
+    invocation
+        .with_descriptor(invocation_descriptor.into())
+        .expect("invocation described_by");
+    invocation
+        .add_related_holons("InvokesDance", vec![dance_descriptor.into()])
+        .expect("invokes dance");
+    invocation
+        .add_related_holons("Request", vec![request.into()])
+        .expect("request edge");
+
+    MapCommand::Transaction(TransactionCommand {
+        context,
+        action: TransactionAction::DanceV2 {
+            invocation: build_dance_v2_invocation(invocation.into()).expect("typed invocation"),
+        },
+    })
+}
+
+#[tokio::test]
+async fn dance_v2_returns_reference_result() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let command = build_dance_v2_command(&runtime, &tx_id).await;
+
+    let result = runtime
+        .execute_command(command, ExecutionPolicy::default())
+        .await
+        .expect("execute_command should succeed");
+
+    match result {
+        MapResult::Reference(HolonReference::Transient(_)) => {}
+        other => panic!("expected transient reference result, got {:?}", other),
     }
 }
 

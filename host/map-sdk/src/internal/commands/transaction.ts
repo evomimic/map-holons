@@ -17,6 +17,7 @@ import type {
   BaseValue,
   ContentSet,
   DanceRequestWire,
+  DanceV2InvocationWire,
   DanceResponseWire,
   HolonCollectionWire,
   HolonId,
@@ -402,4 +403,15 @@ export function dance(
     expectDanceResponse,
     options,
   );
+}
+
+/**
+ * Execute a transaction-scoped canonical DanceV2 invocation.
+ */
+export function danceV2(
+  txId: TxId,
+  invocation: DanceV2InvocationWire,
+  options?: RequestOptionsOverrides,
+): Promise<HolonReferenceWire> {
+  return runTransactionCommand(txId, { DanceV2: invocation }, expectReference, options);
 }

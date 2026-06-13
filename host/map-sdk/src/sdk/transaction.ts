@@ -189,6 +189,14 @@ export class MapTransaction {
     return extractNumber(value);
   }
 
+  async danceV2(invocation: HolonReference): Promise<HolonReference> {
+    const txId = txIdFor(this);
+    const wireRef = await internalTransaction.danceV2(txId, {
+      invocation: unwrapHolonReference(invocation),
+    });
+    return createHolonReference(txId, wireRef);
+  }
+
 }
 
 // ===========================================

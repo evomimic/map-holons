@@ -1,6 +1,7 @@
 use base_types::{BaseValue, MapInteger};
 use core_types::HolonError;
 use holons_core::reference_layer::HolonReference;
+use holons_core::dances::execute_dance_v2;
 
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
@@ -40,6 +41,10 @@ pub async fn handle_transaction(
             // a `DanceResponse` instead of projecting onto the canonical
             // command result family.
             Ok(MapResult::DanceResponse(response))
+        }
+        TransactionAction::DanceV2 { invocation } => {
+            let response = execute_dance_v2(context, invocation).await?;
+            Ok(MapResult::Reference(HolonReference::from(response)))
         }
         TransactionAction::LoadHolons { content_set } => {
             let response =

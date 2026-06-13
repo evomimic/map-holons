@@ -1,4 +1,5 @@
 pub mod dance_request_wire;
+pub mod dance_v2_invocation_wire;
 pub mod dance_response_wire;
 pub mod holon_collection_wire;
 pub mod holon_reference_wire;
@@ -13,6 +14,7 @@ pub mod transient_relationship_wire;
 pub mod transient_wire;
 
 pub use dance_request_wire::{DanceRequestWire, DanceTypeWire, RequestBodyWire};
+pub use dance_v2_invocation_wire::DanceV2InvocationWire;
 pub use dance_response_wire::{DanceResponseWire, ResponseBodyWire};
 pub use holon_collection_wire::HolonCollectionWire;
 pub use holon_wire::HolonWire;
