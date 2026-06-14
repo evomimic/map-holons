@@ -110,11 +110,13 @@ impl TransactionAction {
                 CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::LoadHolons { .. } => CommandLifecyclePolicy::mutating_with_guard(),
-            TransactionAction::Dance(_) | TransactionAction::DanceV2 { .. } => CommandLifecyclePolicy {
-                mutation: MutationClassification::RuntimeDetected,
-                requires_open_tx: true,
-                requires_commit_guard: false,
-            },
+            TransactionAction::Dance(_) | TransactionAction::DanceV2 { .. } => {
+                CommandLifecyclePolicy {
+                    mutation: MutationClassification::RuntimeDetected,
+                    requires_open_tx: true,
+                    requires_commit_guard: false,
+                }
+            }
             // Lookups
             TransactionAction::GetAllHolons
             | TransactionAction::GetStagedHolonByBaseKey { .. }

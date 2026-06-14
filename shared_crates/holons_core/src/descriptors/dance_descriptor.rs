@@ -1,7 +1,7 @@
+use crate::dances::DanceImplementation;
 use crate::descriptors::{
     accessor_helpers, DanceResponseDescriptor, Descriptor, HolonDescriptor, TypeHeader,
 };
-use crate::dances::DanceImplementation;
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;

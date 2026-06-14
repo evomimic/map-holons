@@ -5,10 +5,8 @@ use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::{
-    DanceDescriptor, DanceResponseDescriptor, Descriptor,
-};
 use crate::dances::{DanceImplementation, DanceInvocation, DanceResponseReference};
+use crate::descriptors::{DanceDescriptor, DanceResponseDescriptor, Descriptor};
 use crate::reference_layer::{ReadableHolon, WritableHolon};
 
 /// Executes a descriptor-driven dance invocation and returns a typed response
@@ -63,9 +61,8 @@ fn build_response_reference(
     response_descriptor: &DanceResponseDescriptor,
     body: Option<crate::reference_layer::HolonReference>,
 ) -> Result<DanceResponseReference, HolonError> {
-    let mut response = context
-        .mutation()
-        .new_holon(Some(MapString("dance-response".to_string())))?;
+    let mut response =
+        context.mutation().new_holon(Some(MapString("dance-response".to_string())))?;
     response.with_descriptor(response_descriptor.holon().clone())?;
     if let Some(body_ref) = body {
         response_descriptor.attach_response_body(&mut response, body_ref)?;
@@ -118,7 +115,8 @@ fn validate_affording_holon_contract(
     bound_invocation: &crate::dances::BoundDanceInvocation,
 ) -> Result<(), HolonError> {
     if let Some(affording_descriptor) = bound_invocation.affording_holon_descriptor() {
-        affording_descriptor.get_dance_by_name(bound_invocation.dance_descriptor().dance_name()?)?;
+        affording_descriptor
+            .get_dance_by_name(bound_invocation.dance_descriptor().dance_name()?)?;
     }
 
     // TODO: once the schema exposes an explicit affording-holon requirement,

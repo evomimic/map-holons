@@ -3,8 +3,8 @@ use std::sync::Arc;
 use core_types::HolonError;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::{accessor_helpers, DanceDescriptor, TypeHeader};
 use crate::dances::{implementations, BoundDanceInvocation};
+use crate::descriptors::{accessor_helpers, DanceDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
 use type_names::{CoreDanceImplementationName, CoreRelationshipTypeName};
 
@@ -24,8 +24,10 @@ impl DanceImplementation {
     }
 
     pub fn for_dance(&self) -> Result<DanceDescriptor, HolonError> {
-        let descriptor =
-            accessor_helpers::require_single_related(&self.holon, CoreRelationshipTypeName::ForDance)?;
+        let descriptor = accessor_helpers::require_single_related(
+            &self.holon,
+            CoreRelationshipTypeName::ForDance,
+        )?;
         Ok(DanceDescriptor::from_holon(descriptor))
     }
 

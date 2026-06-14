@@ -1,13 +1,15 @@
-use crate::core_shared_objects::Holon;
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::{accessor_helpers, DanceDescriptor, DanceResponseDescriptor, HolonDescriptor};
+use crate::core_shared_objects::Holon;
+use crate::descriptors::{
+    accessor_helpers, DanceDescriptor, DanceResponseDescriptor, HolonDescriptor,
+};
 use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
 use base_types::{BaseValue, MapString};
 use core_types::{HolonError, TypeKind};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 use type_names::CoreDanceImplementationName;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Runtime result for dance execution within a transaction.
 ///
@@ -276,16 +278,11 @@ impl DanceInvocation {
     /// Returns the invocation source recorded on the invocation holon, if any.
     pub fn invocation_source(&self) -> Result<Option<InvocationSource>, HolonError> {
         match self.as_holon_reference().property_value("InvocationSource")? {
-            Some(BaseValue::StringValue(value)) => {
-                parse_invocation_source(&value).map(Some)
+            Some(BaseValue::StringValue(value)) => parse_invocation_source(&value).map(Some),
+            Some(BaseValue::EnumValue(value)) => parse_invocation_source(&value.0).map(Some),
+            Some(other) => {
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Enum".to_string()))
             }
-            Some(BaseValue::EnumValue(value)) => {
-                parse_invocation_source(&value.0).map(Some)
-            }
-            Some(other) => Err(HolonError::UnexpectedValueType(
-                format!("{other:?}"),
-                "Enum".to_string(),
-            )),
             None => Ok(None),
         }
     }
@@ -351,18 +348,13 @@ impl DanceInvocation {
             CoreRelationshipTypeName::RequestType,
             vec![request_type.clone().into()],
         )?;
-        dance_descriptor.add_related_holons(
-            CoreRelationshipTypeName::Response,
-            vec![response_type.into()],
-        )?;
-        dance_descriptor.add_related_holons(
-            CoreRelationshipTypeName::ForDance,
-            vec![implementation.into()],
-        )?;
+        dance_descriptor
+            .add_related_holons(CoreRelationshipTypeName::Response, vec![response_type.into()])?;
+        dance_descriptor
+            .add_related_holons(CoreRelationshipTypeName::ForDance, vec![implementation.into()])?;
 
-        let mut request = context
-            .mutation()
-            .new_holon(Some(MapString::from("delete-holon-request")))?;
+        let mut request =
+            context.mutation().new_holon(Some(MapString::from("delete-holon-request")))?;
         request.with_descriptor(request_type.into())?;
         request.add_related_holons(
             CoreRelationshipTypeName::ReferenceTarget,
@@ -376,18 +368,13 @@ impl DanceInvocation {
         let mut invocation =
             context.mutation().new_holon(Some(MapString::from("delete-holon-invocation")))?;
         invocation.with_descriptor(invocation_descriptor.into())?;
-        invocation.with_property_value(
-            "InvocationSource",
-            MapString("ClientCommand".to_string()),
-        )?;
+        invocation
+            .with_property_value("InvocationSource", MapString("ClientCommand".to_string()))?;
         invocation.add_related_holons(
             CoreRelationshipTypeName::InvokesDance,
             vec![dance_descriptor.into()],
         )?;
-        invocation.add_related_holons(
-            CoreRelationshipTypeName::Request,
-            vec![request.into()],
-        )?;
+        invocation.add_related_holons(CoreRelationshipTypeName::Request, vec![request.into()])?;
 
         Self::new(invocation.into())
     }
@@ -397,19 +384,14 @@ impl DanceInvocation {
     ///
     /// Commit has no request holon and no affording holon. The transaction
     /// context itself provides the state being committed.
-    pub fn build_commit(
-        context: &Arc<TransactionContext>,
-    ) -> Result<Self, HolonError> {
+    pub fn build_commit(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
         let invocation_descriptor = new_runtime_descriptor_holon(
             context,
             "dance-invocation-descriptor",
             "DanceInvocation",
         )?;
-        let response_type = new_runtime_descriptor_holon(
-            context,
-            "commit-response-type",
-            "DanceResponseType",
-        )?;
+        let response_type =
+            new_runtime_descriptor_holon(context, "commit-response-type", "DanceResponseType")?;
         let implementation = new_runtime_descriptor_holon(
             context,
             "commit-implementation",
@@ -419,21 +401,16 @@ impl DanceInvocation {
         let mut dance_descriptor =
             context.mutation().new_holon(Some(MapString::from("commit-dance")))?;
         initialize_runtime_descriptor_holon(&mut dance_descriptor, "Commit")?;
-        dance_descriptor.add_related_holons(
-            CoreRelationshipTypeName::Response,
-            vec![response_type.into()],
-        )?;
-        dance_descriptor.add_related_holons(
-            CoreRelationshipTypeName::ForDance,
-            vec![implementation.into()],
-        )?;
+        dance_descriptor
+            .add_related_holons(CoreRelationshipTypeName::Response, vec![response_type.into()])?;
+        dance_descriptor
+            .add_related_holons(CoreRelationshipTypeName::ForDance, vec![implementation.into()])?;
 
-        let mut invocation = context.mutation().new_holon(Some(MapString::from("commit-invocation")))?;
+        let mut invocation =
+            context.mutation().new_holon(Some(MapString::from("commit-invocation")))?;
         invocation.with_descriptor(invocation_descriptor.into())?;
-        invocation.with_property_value(
-            "InvocationSource",
-            MapString("ClientCommand".to_string()),
-        )?;
+        invocation
+            .with_property_value("InvocationSource", MapString("ClientCommand".to_string()))?;
         invocation.add_related_holons(
             CoreRelationshipTypeName::InvokesDance,
             vec![dance_descriptor.into()],

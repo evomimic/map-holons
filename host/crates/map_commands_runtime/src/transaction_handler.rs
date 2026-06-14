@@ -1,7 +1,7 @@
 use base_types::{BaseValue, MapInteger};
 use core_types::HolonError;
-use holons_core::reference_layer::HolonReference;
 use holons_core::dances::execute_dance_v2;
+use holons_core::reference_layer::HolonReference;
 
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
