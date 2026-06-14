@@ -16,8 +16,9 @@ pub async fn handle_transaction(
 
     match command.action {
         TransactionAction::Commit => {
-            let transient_ref = session.commit_transaction(&command.context.tx_id()).await?;
-            Ok(MapResult::Reference(HolonReference::Transient(transient_ref)))
+            let invocation = holons_core::dances::DanceInvocation::build_commit(context)?;
+            let response = execute_dance_v2(context, invocation).await?;
+            Ok(MapResult::Reference(response.require_response_body()?))
         }
         TransactionAction::UndoLast => {
             session.undo_last(&command.context.tx_id()).await?;
@@ -106,7 +107,14 @@ pub async fn handle_transaction(
             Ok(MapResult::Reference(HolonReference::Staged(staged)))
         }
         TransactionAction::DeleteHolon { local_id } => {
-            context.mutation().delete_holon(local_id)?;
+            let invocation = holons_core::dances::DanceInvocation::build_delete_holon(
+                context,
+                HolonReference::smart_from_id(
+                    context.context_handle(),
+                    core_types::HolonId::Local(local_id),
+                ),
+            )?;
+            execute_dance_v2(context, invocation).await?;
             Ok(MapResult::None)
         }
     }

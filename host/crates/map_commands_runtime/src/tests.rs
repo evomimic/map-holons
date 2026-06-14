@@ -13,7 +13,7 @@ use holons_core::core_shared_objects::{
 use holons_core::reference_layer::{
     HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
 };
-use holons_core::dances::build_dance_v2_invocation;
+use holons_core::dances::{build_dance_v2_invocation, DanceInvocation};
 
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
 use holons_client::LocalRecoveryReceptor;
@@ -43,10 +43,17 @@ impl HolonServiceApi for TestHolonService {
 
     fn commit_internal(
         &self,
-        _context: &Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
         _staged_references: &[StagedReference],
     ) -> Result<TransientReference, HolonError> {
-        unreachable_in_handler_tests()
+        let mut response = context
+            .mutation()
+            .new_holon(Some(MapString::from("commit-response")))?;
+        response.with_property_value("TypeName", "CommitResponseType")?;
+        response.with_property_value("IsAbstractType", false)?;
+        response.with_property_value("InstanceTypeKind", "Holon")?;
+        response.with_property_value("CommitRequestStatus", "Complete")?;
+        Ok(response)
     }
 
     fn delete_holon_internal(
@@ -54,7 +61,7 @@ impl HolonServiceApi for TestHolonService {
         _context: &Arc<TransactionContext>,
         _local_id: &LocalId,
     ) -> Result<(), HolonError> {
-        unreachable_in_handler_tests()
+        Ok(())
     }
 
     fn fetch_all_related_holons_internal(
@@ -394,7 +401,7 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     let mut request_type =
         context.mutation().new_holon(Some(MapString::from("request-type"))).expect("request type");
     request_type
-        .with_property_value("TypeName", "ProjectionRequest")
+        .with_property_value("TypeName", "SummarizeRequest")
         .expect("request type name");
     request_type
         .with_property_value("IsAbstractType", false)
@@ -418,7 +425,7 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     let mut implementation =
         context.mutation().new_holon(Some(MapString::from("implementation"))).expect("implementation");
     implementation
-        .with_property_value("TypeName", "DanceImplementation")
+        .with_property_value("TypeName", "HostSummarizeV1")
         .expect("implementation type");
     implementation
         .with_property_value("IsAbstractType", false)
@@ -430,7 +437,7 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     let mut dance_descriptor =
         context.mutation().new_holon(Some(MapString::from("dance"))).expect("dance descriptor");
     dance_descriptor
-        .with_property_value("TypeName", "Projection")
+        .with_property_value("TypeName", "Summarize")
         .expect("dance type");
     dance_descriptor
         .with_property_value("IsAbstractType", false)
@@ -439,7 +446,7 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
         .with_property_value("InstanceTypeKind", "Holon")
         .expect("dance kind");
     dance_descriptor
-        .add_related_holons("RequestType", vec![request_type.into()])
+        .add_related_holons("RequestType", vec![request_type.clone().into()])
         .expect("request edge");
     dance_descriptor
         .add_related_holons("Response", vec![response_type.into()])
@@ -451,7 +458,7 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     let mut request =
         context.mutation().new_holon(Some(MapString::from("request"))).expect("request holon");
     request
-        .with_property_value("TypeName", "ProjectionRequest")
+        .with_property_value("TypeName", "SummarizeRequest")
         .expect("request type");
     request
         .with_property_value("IsAbstractType", false)
@@ -459,7 +466,9 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     request
         .with_property_value("InstanceTypeKind", "Holon")
         .expect("request kind");
-
+    request
+        .with_descriptor(request_type.into())
+        .expect("request described_by");
     let mut invocation =
         context.mutation().new_holon(Some(MapString::from("invocation"))).expect("invocation holon");
     invocation
@@ -489,21 +498,109 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     })
 }
 
+async fn build_delete_holon_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
+    let context = runtime.session().get_transaction(tx_id).expect("tx should exist");
+    let local_id = LocalId(vec![9, 8, 7]);
+    let target = HolonReference::smart_from_id(context.context_handle(), HolonId::Local(local_id));
+    let invocation = DanceInvocation::build_delete_holon(&context, target)
+        .expect("delete holon invocation");
+
+    MapCommand::Transaction(TransactionCommand {
+        context,
+        action: TransactionAction::DanceV2 { invocation },
+    })
+}
+
+async fn build_commit_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
+    let context = runtime.session().get_transaction(tx_id).expect("tx should exist");
+    let invocation = DanceInvocation::build_commit(&context).expect("commit invocation");
+
+    MapCommand::Transaction(TransactionCommand {
+        context,
+        action: TransactionAction::DanceV2 { invocation },
+    })
+}
+
 #[tokio::test]
-async fn dance_v2_returns_reference_result() {
+async fn dance_v2_returns_not_implemented_for_host_binding_without_runtime_adapter() {
     let runtime = build_test_runtime();
     let tx_id = begin_tx(&runtime).await;
     let command = build_dance_v2_command(&runtime, &tx_id).await;
 
+    let error = runtime
+        .execute_command(command, ExecutionPolicy::default())
+        .await
+        .expect_err("execute_command should surface missing host implementation adapter");
+
+    assert!(
+        matches!(error, HolonError::NotImplemented(message) if message.contains("HostSummarizeV1"))
+    );
+}
+
+#[tokio::test]
+async fn dance_v2_delete_holon_returns_reference_result() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let command = build_delete_holon_dance_v2_command(&runtime, &tx_id).await;
+
     let result = runtime
         .execute_command(command, ExecutionPolicy::default())
         .await
-        .expect("execute_command should succeed");
+        .expect("delete holon v2 should succeed");
 
-    match result {
-        MapResult::Reference(HolonReference::Transient(_)) => {}
-        other => panic!("expected transient reference result, got {:?}", other),
-    }
+    assert!(matches!(result, MapResult::Reference(_)));
+}
+
+#[tokio::test]
+async fn dance_v2_commit_returns_reference_result() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let command = build_commit_dance_v2_command(&runtime, &tx_id).await;
+
+    let result = runtime
+        .execute_command(command, ExecutionPolicy::default())
+        .await
+        .expect("commit v2 should succeed");
+
+    assert!(matches!(result, MapResult::Reference(_)));
+}
+
+#[tokio::test]
+async fn delete_holon_command_returns_none_after_internal_dance_execution() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+
+    let result = runtime
+        .execute_command(
+            tx_cmd(
+                &runtime,
+                &tx_id,
+                TransactionAction::DeleteHolon {
+                    local_id: LocalId(vec![9, 8, 7]),
+                },
+            ),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("delete holon command should succeed through internal dance execution");
+
+    assert!(matches!(result, MapResult::None));
+}
+
+#[tokio::test]
+async fn commit_command_returns_reference_after_internal_dance_execution() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+
+    let result = runtime
+        .execute_command(
+            tx_cmd(&runtime, &tx_id, TransactionAction::Commit),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("commit command should succeed through internal dance execution");
+
+    assert!(matches!(result, MapResult::Reference(HolonReference::Transient(_))));
 }
 
 // ── Undo/redo handler tests ─────────────────────────────────────────

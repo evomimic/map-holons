@@ -374,7 +374,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
     );
     assert_eq!(
         inherited_query
-            .response()
+            .response_type()
             .expect("Query response")
             .response_body()
             .expect("Query response_body")

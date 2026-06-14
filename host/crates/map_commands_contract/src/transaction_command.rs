@@ -3,7 +3,7 @@ use std::sync::Arc;
 use base_types::MapString;
 use core_types::{ContentSet, HolonId, LocalId};
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::dances::{DanceInvocationReference, DanceRequest};
+use holons_core::dances::{DanceInvocation, DanceRequest};
 use holons_core::reference_layer::{HolonReference, SmartReference, TransientReference};
 
 use super::{CommandLifecyclePolicy, MutationClassification};
@@ -50,7 +50,7 @@ pub enum TransactionAction {
     Dance(DanceRequest),
 
     /// Executes the canonical new-world dance ingress within this transaction.
-    DanceV2 { invocation: DanceInvocationReference },
+    DanceV2 { invocation: DanceInvocation },
 
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`

@@ -1,43 +1,28 @@
 use crate::core_shared_objects::Holon;
-use crate::reference_layer::{HolonReference, ReadableHolon};
-use base_types::MapString;
-use core_types::HolonError;
+use crate::core_shared_objects::transactions::TransactionContext;
+use crate::descriptors::{accessor_helpers, DanceDescriptor, DanceResponseDescriptor, HolonDescriptor};
+use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
+use base_types::{BaseValue, MapString};
+use core_types::{HolonError, TypeKind};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
+use type_names::CoreDanceImplementationName;
 
-/// Canonical runtime result for dance execution in PRO1.
+/// Runtime result for dance execution within a transaction.
 ///
-/// This is the schema-aligned tx-bound success/error contract for the new-world
-/// dance model. It stays intentionally separate from any IPC-safe wire form
-/// because it may contain tx-bound references.
+/// This contract stays separate from transport-safe wire types because it may
+/// contain transaction-bound references that only make sense inside the current
+/// runtime session. See `dances-design-spec` for the descriptor-driven dance
+/// execution model that this result supports.
 pub type DanceExecutionResult = Result<DanceOutcome, HolonError>;
 
-/// Canonical runtime invocation envelope for dances in PRO1.
-///
-/// This type must not be serialized across IPC boundaries because it may
-/// contain tx-bound references.
-#[derive(Debug, Clone)]
-pub struct DanceInvocation {
-    pub dance: DanceIdentity,
-    pub target: DanceTarget,
-    pub request: DanceRequestState,
-    pub context: DanceContext,
-}
-
-impl DanceInvocation {
-    pub fn new(
-        dance: DanceIdentity,
-        target: DanceTarget,
-        request: DanceRequestState,
-        context: DanceContext,
-    ) -> Self {
-        Self { dance, target, request, context }
-    }
-}
-
-/// Canonical semantic identity for a dance invocation in PRO1.
+/// Semantic identity for the dance being invoked.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DanceIdentity {
+    /// The schema-level name of the dance.
     pub dance_name: MapString,
+    /// Optional direct reference to the dance descriptor holon.
     pub dance_descriptor_ref: Option<HolonReference>,
 }
 
@@ -51,10 +36,12 @@ impl DanceIdentity {
     }
 }
 
-/// Invocation-time target selection for a dance in PRO1.
+/// The holon, if any, that a dance is being performed on.
 #[derive(Debug, Clone)]
 pub enum DanceTarget {
+    /// The invocation has no subject holon.
     None,
+    /// The invocation is scoped to one subject holon.
     One(HolonReference),
 }
 
@@ -64,12 +51,17 @@ impl DanceTarget {
     }
 }
 
-/// Structured request-state contract for PRO1 dance invocation.
+/// Request payload state for a dance invocation.
 ///
-/// The canonical PR2 posture is a reference to a transient request holon.
+/// The request is modeled as a holon reference so descriptor-backed validation
+/// can inspect it structurally. Request holons are currently expected to be
+/// transient because they are invocation-scoped inputs, not persisted domain
+/// state.
 #[derive(Debug, Clone)]
 pub enum DanceRequestState {
+    /// The invocation carries no request holon.
     None,
+    /// The invocation carries one request holon.
     RequestHolon(HolonReference),
 }
 
@@ -103,11 +95,14 @@ impl DanceRequestState {
 
 pub type DanceParameters = DanceRequestState;
 
-/// Invocation-time execution metadata for a dance.
+/// Execution context attached to a dance invocation.
 #[derive(Debug, Clone)]
 pub struct DanceContext {
+    /// Records which ingress surface initiated the dance.
     pub invocation_source: InvocationSource,
+    /// Optional capability reference associated with the invocation.
     pub capability_ref: Option<HolonReference>,
+    /// Optional descriptor reference describing the affording holon type.
     pub affording_type_ref: Option<HolonReference>,
 }
 
@@ -133,23 +128,88 @@ impl DanceContext {
     }
 }
 
-/// Distinguishes the ingress posture of a dance invocation.
+/// Identifies which runtime surface initiated the invocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InvocationSource {
+    /// The invocation entered through the host command surface.
     ClientCommand,
+    /// The invocation entered through a trust channel.
     TrustChannel,
+    /// The invocation originated inside the runtime itself.
     Internal,
 }
 
 pub type DanceInvocationSource = InvocationSource;
 
-/// Canonical execution-boundary reference to a `DanceInvocation` holon.
+/// Resolved invocation context assembled for execution.
+///
+/// Binding follows the typed invocation reference, resolves the descriptor
+/// relationships needed for execution, and keeps them together so the executor
+/// and implementation layer do not need to rediscover invocation structure.
+pub struct BoundDanceInvocation {
+    invocation: DanceInvocation,
+    dance_descriptor: DanceDescriptor,
+    request: Option<HolonReference>,
+    request_type: Option<HolonDescriptor>,
+    affording_holon: Option<HolonReference>,
+    affording_holon_descriptor: Option<HolonDescriptor>,
+    invocation_source: Option<InvocationSource>,
+}
+
+impl BoundDanceInvocation {
+    /// Returns the typed invocation reference that was bound.
+    pub fn invocation(&self) -> &DanceInvocation {
+        &self.invocation
+    }
+
+    /// Returns the descriptor of the dance being invoked.
+    pub fn dance_descriptor(&self) -> &DanceDescriptor {
+        &self.dance_descriptor
+    }
+
+    /// Returns the request holon, if one was supplied.
+    pub fn request(&self) -> Option<&HolonReference> {
+        self.request.as_ref()
+    }
+
+    /// Returns the request descriptor declared by the dance, if any.
+    pub fn request_type(&self) -> Option<&HolonDescriptor> {
+        self.request_type.as_ref()
+    }
+
+    /// Returns the response descriptor declared by the dance.
+    pub fn response_type(&self) -> Result<DanceResponseDescriptor, HolonError> {
+        self.dance_descriptor.response_type()
+    }
+
+    /// Returns the holon the dance is being performed on, if any.
+    pub fn affording_holon(&self) -> Option<&HolonReference> {
+        self.affording_holon.as_ref()
+    }
+
+    /// Returns the descriptor of the affording holon, if one is present.
+    pub fn affording_holon_descriptor(&self) -> Option<&HolonDescriptor> {
+        self.affording_holon_descriptor.as_ref()
+    }
+
+    /// Returns the invocation source if it was recorded on the invocation holon.
+    pub fn invocation_source(&self) -> Option<InvocationSource> {
+        self.invocation_source
+    }
+}
+
+/// Typed reference to a `DanceInvocation` holon at the execution boundary.
+///
+/// This wrapper keeps dance-ingress signatures explicit while still using the
+/// ordinary reference layer underneath.
 #[derive(Debug, Clone, PartialEq)]
-pub struct DanceInvocationReference {
+pub struct DanceInvocation {
     invocation: HolonReference,
 }
 
-impl DanceInvocationReference {
+impl DanceInvocation {
+    /// Constructs a typed invocation reference after verifying the holon is
+    /// described as `DanceInvocation`.
     pub fn new(invocation: HolonReference) -> Result<Self, HolonError> {
         let descriptor = invocation.holon_descriptor()?;
         let found = descriptor.header().type_name()?;
@@ -166,40 +226,284 @@ impl DanceInvocationReference {
         Ok(Self { invocation })
     }
 
+    /// Returns the underlying reference.
     pub fn as_holon_reference(&self) -> &HolonReference {
         &self.invocation
     }
 
+    /// Consumes the wrapper and returns the underlying reference.
     pub fn into_inner(self) -> HolonReference {
         self.invocation
     }
+
+    /// Follows `InvokesDance` and returns the referenced dance descriptor.
+    pub fn dance_descriptor(&self) -> Result<DanceDescriptor, HolonError> {
+        let descriptor = accessor_helpers::require_single_related(
+            self.as_holon_reference(),
+            CoreRelationshipTypeName::InvokesDance,
+        )?;
+        Ok(DanceDescriptor::from_holon(descriptor))
+    }
+
+    /// Follows `Request` and returns the request holon, if present.
+    pub fn request(&self) -> Result<Option<HolonReference>, HolonError> {
+        accessor_helpers::optional_single_related(
+            self.as_holon_reference(),
+            CoreRelationshipTypeName::Request,
+        )
+    }
+
+    /// Returns the request holon or reports a missing required relationship.
+    pub fn require_request(&self) -> Result<HolonReference, HolonError> {
+        self.request()?.ok_or_else(|| HolonError::MissingRequiredRelationship {
+            relationship: "Request".to_string(),
+            descriptor: self
+                .as_holon_reference()
+                .summarize()
+                .unwrap_or_else(|_| "DanceInvocation".to_string()),
+        })
+    }
+
+    /// Follows `Target` and returns the holon the dance is being performed on,
+    /// if present.
+    pub fn affording_holon(&self) -> Result<Option<HolonReference>, HolonError> {
+        accessor_helpers::optional_single_related(
+            self.as_holon_reference(),
+            CoreRelationshipTypeName::Target,
+        )
+    }
+
+    /// Returns the invocation source recorded on the invocation holon, if any.
+    pub fn invocation_source(&self) -> Result<Option<InvocationSource>, HolonError> {
+        match self.as_holon_reference().property_value("InvocationSource")? {
+            Some(BaseValue::StringValue(value)) => {
+                parse_invocation_source(&value).map(Some)
+            }
+            Some(BaseValue::EnumValue(value)) => {
+                parse_invocation_source(&value.0).map(Some)
+            }
+            Some(other) => Err(HolonError::UnexpectedValueType(
+                format!("{other:?}"),
+                "Enum".to_string(),
+            )),
+            None => Ok(None),
+        }
+    }
+
+    /// Resolves the descriptor-backed execution context needed by the executor.
+    pub fn bind(self) -> Result<BoundDanceInvocation, HolonError> {
+        let dance_descriptor = self.dance_descriptor()?;
+        let request_type = dance_descriptor.request_type()?;
+        let affording_holon = self.affording_holon()?;
+        let affording_holon_descriptor = match affording_holon.as_ref() {
+            Some(holon) => Some(holon.holon_descriptor()?),
+            None => None,
+        };
+
+        Ok(BoundDanceInvocation {
+            request: self.request()?,
+            invocation_source: self.invocation_source()?,
+            invocation: self,
+            dance_descriptor,
+            request_type,
+            affording_holon,
+            affording_holon_descriptor,
+        })
+    }
+
+    /// Builds a canonical invocation holon for the host-side `DeleteHolon`
+    /// dance surface.
+    ///
+    /// The invocation carries no subject holon. Instead, it carries a typed
+    /// request holon that points at the holon to delete through
+    /// `ReferenceTarget`, which keeps the invocation structurally valid without
+    /// requiring the target's descriptor to advertise delete as an afforded
+    /// dance.
+    pub fn build_delete_holon(
+        context: &Arc<TransactionContext>,
+        target: HolonReference,
+    ) -> Result<Self, HolonError> {
+        let invocation_descriptor = new_runtime_descriptor_holon(
+            context,
+            "dance-invocation-descriptor",
+            "DanceInvocation",
+        )?;
+        let request_type = new_runtime_descriptor_holon(
+            context,
+            "delete-holon-request-type",
+            "DeleteHolonRequest",
+        )?;
+        let response_type = new_runtime_descriptor_holon(
+            context,
+            "delete-holon-response-type",
+            "DanceResponseType",
+        )?;
+        let implementation = new_runtime_descriptor_holon(
+            context,
+            "delete-holon-implementation",
+            CoreDanceImplementationName::DeleteHolon.as_command_name().0,
+        )?;
+
+        let mut dance_descriptor =
+            context.mutation().new_holon(Some(MapString::from("delete-holon-dance")))?;
+        initialize_runtime_descriptor_holon(&mut dance_descriptor, "DeleteHolon")?;
+        dance_descriptor.add_related_holons(
+            CoreRelationshipTypeName::RequestType,
+            vec![request_type.clone().into()],
+        )?;
+        dance_descriptor.add_related_holons(
+            CoreRelationshipTypeName::Response,
+            vec![response_type.into()],
+        )?;
+        dance_descriptor.add_related_holons(
+            CoreRelationshipTypeName::ForDance,
+            vec![implementation.into()],
+        )?;
+
+        let mut request = context
+            .mutation()
+            .new_holon(Some(MapString::from("delete-holon-request")))?;
+        request.with_descriptor(request_type.into())?;
+        request.add_related_holons(
+            CoreRelationshipTypeName::ReferenceTarget,
+            vec![HolonReference::smart_with_key(
+                context.context_handle(),
+                target.holon_id()?,
+                MapString("delete-holon-target".to_string()),
+            )],
+        )?;
+
+        let mut invocation =
+            context.mutation().new_holon(Some(MapString::from("delete-holon-invocation")))?;
+        invocation.with_descriptor(invocation_descriptor.into())?;
+        invocation.with_property_value(
+            "InvocationSource",
+            MapString("ClientCommand".to_string()),
+        )?;
+        invocation.add_related_holons(
+            CoreRelationshipTypeName::InvokesDance,
+            vec![dance_descriptor.into()],
+        )?;
+        invocation.add_related_holons(
+            CoreRelationshipTypeName::Request,
+            vec![request.into()],
+        )?;
+
+        Self::new(invocation.into())
+    }
+
+    /// Builds a canonical invocation holon for the host-side `Commit`
+    /// dance surface.
+    ///
+    /// Commit has no request holon and no affording holon. The transaction
+    /// context itself provides the state being committed.
+    pub fn build_commit(
+        context: &Arc<TransactionContext>,
+    ) -> Result<Self, HolonError> {
+        let invocation_descriptor = new_runtime_descriptor_holon(
+            context,
+            "dance-invocation-descriptor",
+            "DanceInvocation",
+        )?;
+        let response_type = new_runtime_descriptor_holon(
+            context,
+            "commit-response-type",
+            "DanceResponseType",
+        )?;
+        let implementation = new_runtime_descriptor_holon(
+            context,
+            "commit-implementation",
+            CoreDanceImplementationName::Commit.as_command_name().0,
+        )?;
+
+        let mut dance_descriptor =
+            context.mutation().new_holon(Some(MapString::from("commit-dance")))?;
+        initialize_runtime_descriptor_holon(&mut dance_descriptor, "Commit")?;
+        dance_descriptor.add_related_holons(
+            CoreRelationshipTypeName::Response,
+            vec![response_type.into()],
+        )?;
+        dance_descriptor.add_related_holons(
+            CoreRelationshipTypeName::ForDance,
+            vec![implementation.into()],
+        )?;
+
+        let mut invocation = context.mutation().new_holon(Some(MapString::from("commit-invocation")))?;
+        invocation.with_descriptor(invocation_descriptor.into())?;
+        invocation.with_property_value(
+            "InvocationSource",
+            MapString("ClientCommand".to_string()),
+        )?;
+        invocation.add_related_holons(
+            CoreRelationshipTypeName::InvokesDance,
+            vec![dance_descriptor.into()],
+        )?;
+
+        Self::new(invocation.into())
+    }
 }
 
-impl From<DanceInvocationReference> for HolonReference {
-    fn from(invocation: DanceInvocationReference) -> Self {
+fn new_runtime_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: impl Into<MapString>,
+) -> Result<HolonReference, HolonError> {
+    let mut descriptor = context.mutation().new_holon(Some(MapString::from(key)))?;
+    initialize_runtime_descriptor_holon(&mut descriptor, type_name)?;
+    Ok(descriptor.into())
+}
+
+fn initialize_runtime_descriptor_holon<T: WritableHolon>(
+    descriptor: &mut T,
+    type_name: impl Into<MapString>,
+) -> Result<(), HolonError> {
+    descriptor.with_property_value(CorePropertyTypeName::TypeName, type_name.into())?;
+    descriptor.with_property_value(CorePropertyTypeName::IsAbstractType, false)?;
+    descriptor.with_property_value(
+        CorePropertyTypeName::InstanceTypeKind,
+        MapString(TypeKind::Holon.as_schema_key()),
+    )?;
+    Ok(())
+}
+
+fn parse_invocation_source(value: &MapString) -> Result<InvocationSource, HolonError> {
+    match value.0.as_str() {
+        "ClientCommand" => Ok(InvocationSource::ClientCommand),
+        "TrustChannel" => Ok(InvocationSource::TrustChannel),
+        "Internal" => Ok(InvocationSource::Internal),
+        other => Err(HolonError::InvalidParameter(format!(
+            "Unsupported InvocationSource value: {other}"
+        ))),
+    }
+}
+
+impl From<DanceInvocation> for HolonReference {
+    fn from(invocation: DanceInvocation) -> Self {
         invocation.into_inner()
     }
 }
 
-impl From<&DanceInvocationReference> for HolonReference {
-    fn from(invocation: &DanceInvocationReference) -> Self {
+impl From<&DanceInvocation> for HolonReference {
+    fn from(invocation: &DanceInvocation) -> Self {
         invocation.as_holon_reference().clone()
     }
 }
 
 pub fn build_dance_v2_invocation(
     invocation: HolonReference,
-) -> Result<DanceInvocationReference, HolonError> {
-    DanceInvocationReference::new(invocation)
+) -> Result<DanceInvocation, HolonError> {
+    DanceInvocation::new(invocation)
 }
 
-/// Canonical execution-boundary reference to a `DanceResponseType` holon.
+/// Typed reference to a response holon described by `DanceResponseType`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DanceResponseReference {
     response: HolonReference,
 }
 
 impl DanceResponseReference {
+    /// Constructs a typed response reference after verifying the response
+    /// holon is described as `DanceResponseType`.
     pub fn new(response: HolonReference) -> Result<Self, HolonError> {
         let descriptor = response.holon_descriptor()?;
         let found = descriptor.header().type_name()?;
@@ -216,12 +520,33 @@ impl DanceResponseReference {
         Ok(Self { response })
     }
 
+    /// Returns the underlying reference.
     pub fn as_holon_reference(&self) -> &HolonReference {
         &self.response
     }
 
+    /// Consumes the wrapper and returns the underlying reference.
     pub fn into_inner(self) -> HolonReference {
         self.response
+    }
+
+    /// Returns the related response-body holon, if one is present.
+    pub fn response_body(&self) -> Result<Option<HolonReference>, HolonError> {
+        accessor_helpers::optional_single_related(
+            self.as_holon_reference(),
+            CoreRelationshipTypeName::ResponseBody,
+        )
+    }
+
+    /// Returns the related response-body holon or reports a missing body.
+    pub fn require_response_body(&self) -> Result<HolonReference, HolonError> {
+        self.response_body()?.ok_or_else(|| HolonError::MissingRequiredRelationship {
+            relationship: "ResponseBody".to_string(),
+            descriptor: self
+                .as_holon_reference()
+                .summarize()
+                .unwrap_or_else(|_| "DanceResponseType".to_string()),
+        })
     }
 }
 
@@ -243,11 +568,14 @@ pub fn build_dance_v2_response(
     DanceResponseReference::new(response)
 }
 
-/// Canonical successful outcome envelope for a dance in PRO1.
+/// Successful dance outcome with optional diagnostics and events.
 #[derive(Debug, Clone)]
 pub struct DanceOutcome {
+    /// The primary result of execution.
     pub result: DanceResult,
+    /// Non-fatal diagnostics emitted during execution.
     pub diagnostics: Vec<DanceDiagnostic>,
+    /// Execution-side events associated with the outcome.
     pub events: Vec<DanceEvent>,
 }
 
@@ -265,19 +593,25 @@ impl DanceOutcome {
     }
 }
 
-/// Canonical structured success result family for PRO1.
+/// Primary result payload returned by a successful dance.
 #[derive(Debug, Clone)]
 pub enum DanceResult {
+    /// The dance completed without a result payload.
     None,
+    /// The dance returned a fully materialized holon.
     Holon(Holon),
+    /// The dance returned a holon by reference.
     HolonReference(HolonReference),
 }
 
-/// Non-fatal execution diagnostics returned with a successful outcome.
+/// Non-fatal diagnostic emitted during dance execution.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DanceDiagnostic {
+    /// The severity of the diagnostic.
     pub severity: DanceDiagnosticSeverity,
+    /// A stable diagnostic code.
     pub code: String,
+    /// Human-readable diagnostic text.
     pub message: String,
 }
 
@@ -299,17 +633,21 @@ impl DanceDiagnostic {
     }
 }
 
-/// Severity of a non-fatal dance diagnostic.
+/// Severity level for a non-fatal diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DanceDiagnosticSeverity {
+    /// Informational note.
     Info,
+    /// Warning that execution succeeded but surfaced a concern.
     Warning,
 }
 
-/// Execution-side event returned with a successful outcome.
+/// Event emitted alongside a successful dance outcome.
 #[derive(Debug, Clone)]
 pub struct DanceEvent {
+    /// Event name for downstream consumers.
     pub event_name: String,
+    /// Optional holon payload associated with the event.
     pub payload: Option<HolonReference>,
 }
 

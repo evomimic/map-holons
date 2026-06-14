@@ -1,5 +1,5 @@
 use crate::descriptors::{accessor_helpers, Descriptor, HolonDescriptor, TypeHeader};
-use crate::reference_layer::HolonReference;
+use crate::reference_layer::{HolonReference, WritableHolon};
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 
@@ -23,6 +23,15 @@ impl DanceResponseDescriptor {
             CoreRelationshipTypeName::ResponseBody,
         )?
         .map(HolonDescriptor::from_holon))
+    }
+
+    pub fn attach_response_body<T: WritableHolon>(
+        &self,
+        response: &mut T,
+        body: HolonReference,
+    ) -> Result<(), HolonError> {
+        response.add_related_holons(CoreRelationshipTypeName::ResponseBody, vec![body])?;
+        Ok(())
     }
 }
 

@@ -21,7 +21,7 @@
     "web:dev": "npm run web:build",
     "web:prod": "npm run web:build -- -c production",
     "tauri": "tauri",
-    "tauri:serve": "tauri dev",
+    "tauri:serve": "bash ./scripts/tauri-dev.sh",
     "clean": "npm run clean:hc:deep && npm run clean:rust:deep && npm run clean:ui",
     "clean:rust": "cargo clean",
     "clean:rust:deep": "npx rimraf target .cargo && cargo clean",

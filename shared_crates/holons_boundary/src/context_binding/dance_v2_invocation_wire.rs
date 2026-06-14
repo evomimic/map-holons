@@ -1,6 +1,6 @@
 use crate::HolonReferenceWire;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::dances::DanceInvocationReference;
+use holons_core::dances::DanceInvocation;
 use holons_core::HolonError;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -12,13 +12,13 @@ pub struct DanceV2InvocationWire {
 }
 
 impl DanceV2InvocationWire {
-    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<DanceInvocationReference, HolonError> {
-        DanceInvocationReference::new(self.invocation.bind(context)?)
+    pub fn bind(self, context: &Arc<TransactionContext>) -> Result<DanceInvocation, HolonError> {
+        DanceInvocation::new(self.invocation.bind(context)?)
     }
 }
 
-impl From<&DanceInvocationReference> for DanceV2InvocationWire {
-    fn from(invocation: &DanceInvocationReference) -> Self {
+impl From<&DanceInvocation> for DanceV2InvocationWire {
+    fn from(invocation: &DanceInvocation) -> Self {
         Self { invocation: HolonReferenceWire::from(invocation.as_holon_reference()) }
     }
 }

@@ -4081,6 +4081,7 @@ dependencies = [
  "derive-new",
  "quick_cache",
  "serde",
+ "serde_json",
  "sha2 0.10.9",
  "tracing",
  "type_names",
