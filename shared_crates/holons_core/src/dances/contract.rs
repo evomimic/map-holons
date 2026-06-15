@@ -353,8 +353,10 @@ impl DanceInvocation {
         let mut dance_descriptor =
             context.mutation().new_holon(Some(MapString::from("delete-holon-dance")))?;
         initialize_runtime_descriptor_holon(&mut dance_descriptor, "DeleteHolon")?;
-        dance_descriptor
-            .add_related_holons(CoreRelationshipTypeName::RequestType, vec![request_type.clone()])?;
+        dance_descriptor.add_related_holons(
+            CoreRelationshipTypeName::RequestType,
+            vec![request_type.clone()],
+        )?;
         dance_descriptor
             .add_related_holons(CoreRelationshipTypeName::Response, vec![response_type.into()])?;
         dance_descriptor
@@ -559,10 +561,7 @@ impl DeleteHolonParameters {
                 // TODO: replace this JSON-string bridge when runtime value
                 // support catches up with the imported schema's intended
                 // `HolonId` value family.
-                Err(HolonError::UnexpectedValueType(
-                    format!("{other:?}"),
-                    "String".to_string(),
-                ))
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "String".to_string()))
             }
             None => Err(HolonError::InvalidParameter(
                 "DeleteHolonParameters requires a HolonId property".to_string(),

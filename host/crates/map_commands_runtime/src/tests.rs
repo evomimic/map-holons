@@ -464,9 +464,8 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
 async fn build_delete_holon_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     let context = runtime.session().get_transaction(tx_id).expect("tx should exist");
     let local_id = LocalId(vec![9, 8, 7]);
-    let invocation =
-        DanceInvocation::build_delete_holon(&context, HolonId::Local(local_id))
-            .expect("delete holon invocation");
+    let invocation = DanceInvocation::build_delete_holon(&context, HolonId::Local(local_id))
+        .expect("delete holon invocation");
 
     MapCommand::Transaction(TransactionCommand {
         context,
