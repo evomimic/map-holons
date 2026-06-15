@@ -7,6 +7,46 @@ use core_types::TemporaryId;
 use holons_prelude::prelude::*;
 use integrity_core_types::HolonErrorKind;
 
+/// Expected `LoadCommitStatus` written by the loader controller onto the
+/// load response holon. Display values match the on-holon property strings.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExpectedLoadStatus {
+    Complete,
+    Incomplete,
+    Skipped,
+}
+
+impl core::fmt::Display for ExpectedLoadStatus {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let value = match self {
+            ExpectedLoadStatus::Complete => "Complete",
+            ExpectedLoadStatus::Incomplete => "Incomplete",
+            ExpectedLoadStatus::Skipped => "Skipped",
+        };
+        write!(f, "{value}")
+    }
+}
+
+/// Expected `CommitRequestStatus` on the commit response holon. An
+/// `Incomplete` commit is an `Ok` response: Pass-1 holons are saved while a
+/// Pass-2 (relationship persistence) failure is recorded on the response.
+/// Display values match the on-holon property strings.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExpectedCommitStatus {
+    Complete,
+    Incomplete,
+}
+
+impl core::fmt::Display for ExpectedCommitStatus {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let value = match self {
+            ExpectedCommitStatus::Complete => "Complete",
+            ExpectedCommitStatus::Incomplete => "Incomplete",
+        };
+        write!(f, "{value}")
+    }
+}
+
 /// Internal step representation used by executors at runtime.
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
@@ -28,6 +68,7 @@ pub enum DanceTestStep {
     },
     Commit {
         saved_tokens: Vec<TestReference>, // Used to match expected
+        expected_status: ExpectedCommitStatus,
         expected_error: Option<HolonErrorKind>,
         description: String,
     },
@@ -48,6 +89,13 @@ pub enum DanceTestStep {
         expect_errors: MapInteger,
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
+        expect_status: ExpectedLoadStatus,
+    },
+    LookupSavedHolonByKey {
+        step_token: TestReference,
+        key: MapString,
+        expected_error: Option<HolonErrorKind>,
+        description: String,
     },
     LoadCoreSchema {
         description: String,
@@ -56,6 +104,9 @@ pub enum DanceTestStep {
         description: String,
     },
     VerifyBookPersonDescriptors {
+        description: String,
+    },
+    VerifyBookPersonInstanceLinks {
         description: String,
     },
     VerifyCoreSchemaDescriptorSubtypes {
@@ -146,10 +197,15 @@ impl core::fmt::Display for DanceTestStep {
                     holons_to_add.len()
                 )
             }
-            DanceTestStep::Commit { saved_tokens, expected_error, description } => {
+            DanceTestStep::Commit {
+                saved_tokens,
+                expected_status,
+                expected_error,
+                description,
+            } => {
                 write!(
                     f,
-                    "{description} [saved_tokens: {}, expected_error: {expected_error:?}]",
+                    "{description} [saved_tokens: {}, expected_status: {expected_status}, expected_error: {expected_error:?}]",
                     saved_tokens.len()
                 )
             }
@@ -167,11 +223,23 @@ impl core::fmt::Display for DanceTestStep {
                 expect_errors,
                 expect_total_bundles,
                 expect_total_loader_holons,
+                expect_status,
             } => {
                 write!(
                     f,
-                    "LoadHolonsInternal(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={})",
-                    expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0
+                    "LoadHolonsInternal(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={}, status={})",
+                    expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0, expect_status
+                )
+            }
+            DanceTestStep::LookupSavedHolonByKey {
+                step_token,
+                key,
+                expected_error,
+                description,
+            } => {
+                write!(
+                    f,
+                    "{description} [token: {step_token}, key: {key}, expected_error: {expected_error:?}]"
                 )
             }
             DanceTestStep::LoadCoreSchema { description } => {
@@ -181,6 +249,9 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyBookPersonDescriptors { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyBookPersonInstanceLinks { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { description } => {

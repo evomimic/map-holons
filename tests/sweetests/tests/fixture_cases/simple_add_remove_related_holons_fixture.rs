@@ -1,7 +1,7 @@
-use crate::fixture_cases::setup_book_author_steps_with_context;
+use crate::fixture_cases::setup_undescribed_book_author_steps_with_context;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::PUBLISHED_BY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 use tracing::info;
@@ -9,6 +9,15 @@ use tracing::info;
 
 /// For both Transient and Staged references:
 /// adds a new relationship, removes an existing relationship, then adds another relationship again.
+///
+/// This is also the canonical **strict commit Pass 2 rejection** case (issue
+/// #442): the staged holons are undescribed and their relationships
+/// (`AUTHORED_BY`, `PUBLISHED_BY`) are freeform, so relationship persistence
+/// cannot resolve them against any declared schema surface. The commit is
+/// therefore expected to report `CommitRequestStatus = Incomplete`: Pass 1
+/// still saves all staged holons (the DB-count assertion remains valid), but
+/// no relationship SmartLinks are persisted. In-memory add/remove ergonomics
+/// before the commit are unaffected.
 ///
 #[fixture]
 pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
@@ -28,7 +37,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
     // from the book to the two persons
-    setup_book_author_steps_with_context(
+    setup_undescribed_book_author_steps_with_context(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
@@ -159,7 +168,13 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // == //
 
     //  COMMIT  //
-    test_case.add_commit_step(&mut fixture_holons, None, None)?;
+    // Undescribed/freeform relationships cannot satisfy strict Pass 2 — expect Incomplete.
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Incomplete,
+        None,
+        Some("Commit --- expecting Incomplete: freeform relationships are rejected".to_string()),
+    )?;
 
     // ENSURE DB COUNT //
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;

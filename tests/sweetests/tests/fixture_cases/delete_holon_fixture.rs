@@ -1,5 +1,5 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
 use std::collections::BTreeMap;
@@ -47,7 +47,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, None, None)?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
 
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 

@@ -8,10 +8,12 @@ pub mod holon_descriptor;
 pub mod holon_space_descriptor;
 pub mod inheritance;
 pub mod inverse_relationship_descriptor;
+pub mod inverse_resolution;
 pub mod operator_category;
 pub mod operator_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
+pub mod relationship_surface;
 #[cfg(test)]
 mod schema_contract_tests;
 #[cfg(test)]
@@ -33,10 +35,12 @@ pub use inheritance::{
     ExtendsIter, RelationshipDirection,
 };
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
+pub use inverse_resolution::resolve_inverse_relationship_name;
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::RelationshipDescriptor;
+pub use relationship_surface::effective_relationship_declaration;
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
 pub use value_descriptor::ValueDescriptor;

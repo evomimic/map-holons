@@ -3,7 +3,7 @@ use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
 use holons_test::harness::helpers::BOOK_KEY;
 use holons_test::harness::helpers::ENSURE_DB_EMPTY;
-use holons_test::{DancesTestCase, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use std::collections::BTreeMap;
 use type_names::ToPropertyName;
@@ -54,16 +54,13 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     // TODO:  Find a better way to attempt a non-OK expected response for this step without minting a token and having to subtract from fixture holons saved count
 
-    // ── PHASE B — Setup canonical holons, then clone FROM STAGED ──────────────────
-    setup_book_author_steps_with_context(
+    // ── PHASE B — Setup undescribed holons, then clone FROM STAGED ──────────────────
+    setup_undescribed_book_people_publisher_steps_with_context(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
     )?;
-
-    let _relationship_name =
-        fixture_bindings.relationship_by_name(&MapString("BOOK_TO_PERSON".to_string())).unwrap();
 
     let _book_key = MapString(BOOK_KEY.to_string());
     let from_staged_key = MapString("book:clone:from-staged".to_string());
@@ -94,7 +91,12 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 1  //
-    test_case.add_commit_step(&mut fixture_holons, None, Some("Commit --- Round 1".to_string()))?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        None,
+        Some("Commit --- Round 1".to_string()),
+    )?;
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
     test_case.add_begin_transaction_step(
         None,
@@ -133,7 +135,12 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     //  COMMIT - Round 2  //
-    test_case.add_commit_step(&mut fixture_holons, None, Some("Commit --- Round 2".to_string()))?;
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        None,
+        Some("Commit --- Round 2".to_string()),
+    )?;
     test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     // MATCH SAVED CONTENT  //

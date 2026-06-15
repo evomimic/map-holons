@@ -4,6 +4,7 @@ use holons_prelude::prelude::*;
 use std::path::PathBuf;
 
 use super::{read_file_data, CoreSchemaLoadMetrics};
+use crate::ExpectedLoadStatus;
 
 const DOMAIN_SCHEMA_RELATIVE_PATH: &str =
     "import_files/MAP Schema Types-map-test-schema-book-person-inverse.json";
@@ -15,6 +16,7 @@ pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMet
     errors: 0,
     total_bundles: 1,
     total_loader_holons: 7,
+    commit_status: ExpectedLoadStatus::Complete,
 };
 
 pub fn domain_schema_path() -> PathBuf {

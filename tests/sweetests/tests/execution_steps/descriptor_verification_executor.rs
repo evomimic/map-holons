@@ -1,17 +1,19 @@
 use core_types::TypeKind;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
-    DanceDescriptor, HolonDescriptor, OperatorCategory, OperatorDescriptor, RelationshipDescriptor,
-    ValueDescriptor,
+    DanceDescriptor, DeclaredRelationshipDescriptor, HolonDescriptor, OperatorCategory,
+    OperatorDescriptor, RelationshipDescriptor, ValueDescriptor,
 };
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP_KEY,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
     CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY,
+    CORE_INVERSE_OF_RELATIONSHIP_KEY, CORE_PREDECESSOR_RELATIONSHIP_KEY,
     DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY, DELETION_SEMANTIC_CASCADE_KEY,
     DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY, OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY,
-    OPERATOR_CATEGORY_ORDERING_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, SCHEMA_TYPE_KEY,
+    OPERATOR_CATEGORY_ORDERING_KEY, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
+    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE, SCHEMA_TYPE_KEY,
     VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
@@ -433,6 +435,31 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
         "InstanceProperties"
     );
 
+    // Bootstrap coverage (issue #442): `HasInverse` edges are never authored —
+    // commit Pass 2 materializes them from the authored `InverseOf` SmartLinks
+    // during the core-schema load itself (the staged-InverseOf bootstrap
+    // fallback). `has_inverse()` reads the materialized SmartLink, so these
+    // assertions prove representative pairs were materialized post-commit.
+    assert_materialized_has_inverse(&declared, "InstancePropertyFor");
+
+    let predecessor = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        CORE_PREDECESSOR_RELATIONSHIP_KEY,
+    ))
+    .try_into_declared_relationship_descriptor()
+    .expect("Predecessor declared relationship should narrow");
+    assert_materialized_has_inverse(&predecessor, "Successor");
+
+    // InverseOf is itself a declared relationship whose inverse is HasInverse —
+    // the self-referential pair at the heart of the bootstrap circularity.
+    let inverse_of_declared = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        CORE_INVERSE_OF_RELATIONSHIP_KEY,
+    ))
+    .try_into_declared_relationship_descriptor()
+    .expect("InverseOf declared relationship should narrow");
+    assert_materialized_has_inverse(&inverse_of_declared, "HasInverse");
+
     assert_enum_variants_rewritten_to_declared_side(
         &holons,
         DELETION_SEMANTIC_KEY,
@@ -598,8 +625,38 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         "Person",
         "(Book)-[AuthoredBy]->(Person)",
     );
+    // Commit Pass 2 materialized AuthoredBy's HasInverse from the authored InverseOf.
+    assert_materialized_has_inverse(&declared, "Authors");
 
     info!("verified representative Book/Person descriptor access");
+}
+
+/// Verifies persisted bidirectional SmartLink traversal over committed
+/// Book/Person *instances* (issue #442).
+///
+/// Commit Pass 2 persists each declared forward edge and materializes the
+/// corresponding inverse edge on the target, so this asserts both directions:
+/// - forward: Book --AuthoredBy--> Person and Book --DescribedBy--> Book.HolonType
+/// - inverse: Person --Authors--> Book and Book.HolonType --Instances--> Book
+pub async fn execute_verify_book_person_instance_links(state: &mut TestExecutionState) {
+    let holons = loaded_holons(state, "verify_book_person_instance_links").await;
+
+    let book = find_holon_by_key(&holons, BOOK_KEY);
+    let person = find_holon_by_key(&holons, PERSON_1_KEY);
+    let book_type = find_holon_by_key(&holons, BOOK_DESCRIPTOR_KEY);
+    let person_type = find_holon_by_key(&holons, PERSON_DESCRIPTOR_KEY);
+
+    // Forward declared edges persisted from the staged relationships.
+    assert_contains(&related_holon_keys(&book, BOOK_TO_PERSON_RELATIONSHIP), PERSON_1_KEY);
+    assert_contains(&related_holon_keys(&book, "DescribedBy"), BOOK_DESCRIPTOR_KEY);
+    assert_contains(&related_holon_keys(&person, "DescribedBy"), PERSON_DESCRIPTOR_KEY);
+
+    // Inverse edges materialized on the targets by commit Pass 2.
+    assert_contains(&related_holon_keys(&person, PERSON_TO_BOOK_REL_INVERSE), BOOK_KEY);
+    assert_contains(&related_holon_keys(&book_type, "Instances"), BOOK_KEY);
+    assert_contains(&related_holon_keys(&person_type, "Instances"), PERSON_1_KEY);
+
+    info!("verified bidirectional Book/Person instance SmartLink traversal");
 }
 
 async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> HolonCollection {
@@ -717,6 +774,31 @@ fn assert_enum_variants_rewritten_to_declared_side(
     for expected_variant_key in expected_variant_keys {
         assert_contains(&variant_keys, expected_variant_key);
     }
+}
+
+/// Asserts that a declared relationship descriptor has a **materialized**
+/// `HasInverse` SmartLink pointing at an inverse descriptor with the expected
+/// base name. `HasInverse` is never authored; commit Pass 2 materializes it
+/// from the authored `InverseOf` edge (issue #442 bootstrap path).
+fn assert_materialized_has_inverse(
+    declared: &DeclaredRelationshipDescriptor,
+    expected_inverse_name: &str,
+) {
+    let inverse = declared
+        .has_inverse()
+        .unwrap_or_else(|error| {
+            panic!("has_inverse() failed for {expected_inverse_name} pair: {error:?}")
+        })
+        .unwrap_or_else(|| {
+            panic!("expected materialized HasInverse to {expected_inverse_name}, found none")
+        });
+    assert_eq!(
+        inverse
+            .base_relationship_name()
+            .unwrap_or_else(|error| panic!("inverse base name read failed: {error:?}"))
+            .to_string(),
+        expected_inverse_name
+    );
 }
 
 fn assert_contains(values: &[String], expected: &str) {

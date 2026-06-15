@@ -21,6 +21,7 @@ pub async fn execute_load_book_person_inverse_test_schema(test_state: &mut TestE
         MapInteger(BOOK_PERSON_INVERSE_METRICS.errors),
         MapInteger(BOOK_PERSON_INVERSE_METRICS.total_bundles),
         MapInteger(BOOK_PERSON_INVERSE_METRICS.total_loader_holons),
+        BOOK_PERSON_INVERSE_METRICS.commit_status,
     )
     .await;
 }

@@ -13,7 +13,7 @@
 //! ⚠ Important: **Do not confuse intent and result.**
 //! The expected snapshot that comes from the executor input token is intent; the resulting reference is 'DHT' reality.
 
-use crate::{ExpectedSnapshot, TestReference};
+use crate::{ExpectedSnapshot, TestReference, SAVED_LOOKUP_STUB_MARKER};
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
 use std::collections::HashSet;
@@ -78,8 +78,15 @@ impl ExecutionReference {
     /// - execution-time content cannot be read
     /// - expected vs actual content does not match
     /// in relationship_map of expected vs actual:
-    /// - for each relationship_name the length of members in the collection do not match
-    /// - in each collection there is not an exhaustive list where a target holon exists whos essential content matches the other
+    /// - an expected relationship member has no matching actual member
+    ///
+    /// Relationship comparison uses **superset semantics** (expected ⊆ actual):
+    /// every fixture-expected edge must exist in the saved graph, but extra
+    /// actual edges are tolerated. Commit Pass 2 materializes an inverse
+    /// SmartLink on the *target* of every committed declared relationship
+    /// (issue #442), so saved holons legitimately carry edges the fixture
+    /// never staged. Inverse correctness is asserted by dedicated
+    /// traversal-verification steps, not by this comparison.
     ///
     /// Intended for use by test executors to enforce fixture invariants.
     /// A mismatch indicates a test failure, not a recoverable error.
@@ -102,6 +109,13 @@ impl ExecutionReference {
         let pair_key = Self::pair_key(expected, actual);
         if !visited_pairs.insert(pair_key) {
             return Ok(());
+        }
+
+        // Key-only stubs stand in for holons saved outside the fixture's ledger
+        // (e.g. schema-loaded descriptors); their full content and graph cannot
+        // be reproduced at fixture time, so match by key and stop recursing.
+        if Self::is_saved_lookup_stub(expected)? {
+            return Self::compare_keys_only(expected, actual);
         }
 
         let expected_content = expected.essential_content().map_err(|e| {
@@ -163,18 +177,6 @@ impl ExecutionReference {
         let actual_relationships =
             Self::relationship_entries_with_members(&actual_relationship_map)?;
 
-        if expected_relationships.len() != actual_relationships.len() {
-            return Err(format!(
-                "relationship count mismatch for expected {}:{} vs actual {}:{} (expected {}, actual {})",
-                expected.reference_kind_string(),
-                expected.reference_id_string(),
-                actual.reference_kind_string(),
-                actual.reference_id_string(),
-                expected_relationships.len(),
-                actual_relationships.len()
-            ));
-        }
-
         for (relationship_name, expected_collection_arc) in expected_relationships {
             let expected_collection = expected_collection_arc.read().map_err(|e| {
                 format!("Failed to acquire read lock for expected collection: {}", e)
@@ -194,16 +196,9 @@ impl ExecutionReference {
             let actual_collection = actual_collection_arc
                 .read()
                 .map_err(|e| format!("Failed to acquire read lock for actual collection: {}", e))?;
+            // Extra actual members are tolerated (superset semantics); each
+            // actual member may satisfy at most one expected member.
             let mut unmatched_actual = actual_collection.get_members().clone();
-
-            if expected_members.len() != unmatched_actual.len() {
-                return Err(format!(
-                    "relationship {:?} member count mismatch (expected {}, actual {})",
-                    relationship_name,
-                    expected_members.len(),
-                    unmatched_actual.len()
-                ));
-            }
 
             for expected_member in expected_members {
                 let mut matched_index: Option<usize> = None;
@@ -253,16 +248,50 @@ impl ExecutionReference {
                     }
                 }
             }
-
-            if !unmatched_actual.is_empty() {
-                return Err(format!(
-                    "relationship {:?} has unmatched actual members after exhaustive comparison: {:?}",
-                    relationship_name, unmatched_actual
-                ));
-            }
         }
 
         Ok(())
+    }
+
+    /// Returns whether the expected holon carries the saved-lookup stub marker.
+    fn is_saved_lookup_stub(expected: &HolonReference) -> Result<bool, String> {
+        match expected.property_value(SAVED_LOOKUP_STUB_MARKER) {
+            Ok(value) => Ok(value.is_some()),
+            Err(e) => Err(format!(
+                "failed to read saved-lookup stub marker on expected {}:{}: {:?}",
+                expected.reference_kind_string(),
+                expected.reference_id_string(),
+                e
+            )),
+        }
+    }
+
+    /// Key-only comparison used for saved-lookup stubs.
+    fn compare_keys_only(expected: &HolonReference, actual: &HolonReference) -> Result<(), String> {
+        let expected_key = expected
+            .key()
+            .map_err(|e| format!("failed to read expected stub key: {:?}", e))?
+            .ok_or_else(|| "saved-lookup stub has no key to compare".to_string())?;
+        let actual_key = actual
+            .key()
+            .map_err(|e| format!("failed to read actual holon key: {:?}", e))?
+            .ok_or_else(|| {
+                format!(
+                    "actual holon {}:{} has no key but was matched against saved-lookup stub key {:?}",
+                    actual.reference_kind_string(),
+                    actual.reference_id_string(),
+                    expected_key
+                )
+            })?;
+
+        if expected_key == actual_key {
+            Ok(())
+        } else {
+            Err(format!(
+                "saved-lookup stub key mismatch: expected {:?}, actual {:?}",
+                expected_key, actual_key
+            ))
+        }
     }
 
     /// Returns only relationship entries whose collections currently contain

@@ -1,3 +1,4 @@
+use crate::ExpectedLoadStatus;
 use core_types::{ContentSet, FileData};
 use holons_loader_client::BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH;
 use holons_prelude::prelude::*;
@@ -28,15 +29,17 @@ pub struct CoreSchemaLoadMetrics {
     pub errors: i64,
     pub total_bundles: i64,
     pub total_loader_holons: i64,
+    pub commit_status: ExpectedLoadStatus,
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 312,
-    committed: 312,
-    links_created: 1418,
+    staged: 314,
+    committed: 314,
+    links_created: 1432,
     errors: 0,
     total_bundles: 11,
-    total_loader_holons: 312,
+    total_loader_holons: 314,
+    commit_status: ExpectedLoadStatus::Complete,
 };
 
 /// Absolute paths to all core schema import files used for loader-client testing.

@@ -12,17 +12,18 @@ use holons_core::{
         holon::state::{AccessType, StagedState},
         Holon, HolonCollection, ReadableHolonState, StagedHolon,
     },
+    descriptors::resolve_inverse_relationship_name,
     reference_layer::ReadableHolon,
     HolonReference, StagedReference, WritableHolon,
 };
 
 use base_types::{BaseValue, MapString};
-use core_types::HolonError;
+use core_types::{HolonError, HolonId};
 use holons_core::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle,
 };
 use holons_core::reference_layer::TransientReference;
-use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
+use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
 pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
 pub use type_names::{
@@ -39,6 +40,39 @@ pub enum CommitOutcome {
     Abandoned,
     /// No persistence action was required (already committed or unchanged).
     NoAction,
+}
+
+type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>;
+
+/// Captures the committed source selected for relationship persistence.
+///
+/// Phase 2 currently anchors relationship SmartLinks to the newly committed
+/// source holon. Keeping that rule in one place lets later versioning work
+/// retarget forward and inverse persistence together.
+struct RelationshipCommitSource {
+    source_local_id: LocalId,
+    source_key: Option<MapString>,
+    source_reference: HolonReference,
+}
+
+impl RelationshipCommitSource {
+    fn from_committed_staged_holon(
+        staged_reference: &StagedReference,
+        staged_holon: &StagedHolon,
+    ) -> Option<Self> {
+        match staged_holon.get_staged_state() {
+            StagedState::Committed(local_id) => Some(Self {
+                source_local_id: local_id,
+                source_key: staged_holon.key(),
+                source_reference: staged_reference.into(),
+            }),
+            _ => None,
+        }
+    }
+
+    fn source_local_id(&self) -> &LocalId {
+        &self.source_local_id
+    }
 }
 
 /// `commit`
@@ -202,7 +236,7 @@ pub fn commit(
         //
         // NOTE: This must NOT early-return from `commit()`; non-staged holons are simply skipped
         // in Pass 2 (relationship persistence is only for staged holons in Committed state).
-        let snapshot: Option<(LocalId, Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>)> = {
+        let snapshot: Option<(RelationshipCommitSource, RelationshipCollectionSnapshot)> = {
             let holon_read = rc_holon.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
                     "Failed to acquire read lock on staged holon during relationship commit snapshot: {}",
@@ -211,8 +245,12 @@ pub fn commit(
             })?;
 
             match &*holon_read {
-                Holon::Staged(staged_holon) => match staged_holon.get_staged_state() {
-                    StagedState::Committed(local_id) => {
+                Holon::Staged(staged_holon) => {
+                    // Select source anchor before cloning staged relationship work.
+                    if let Some(source) = RelationshipCommitSource::from_committed_staged_holon(
+                        staged_reference,
+                        staged_holon,
+                    ) {
                         // Clone the relationship map out (cloning Arcs is cheap).
                         let staged_relationship_map = staged_holon.get_staged_relationship_map()?;
                         let pairs = staged_relationship_map
@@ -221,11 +259,12 @@ pub fn commit(
                             .map(|(name, collection_rc)| (name.clone(), collection_rc.clone()))
                             .collect::<Vec<_>>();
 
-                        Some((local_id.clone(), pairs))
+                        Some((source, pairs))
+                    } else {
+                        // Only committed holons participate in relationship persistence.
+                        None
                     }
-                    // Only committed holons participate in relationship persistence.
-                    _ => None,
-                },
+                }
                 other => {
                     trace!(
                         "Skipping relationship commit for {:?} (not a staged holon: {:?}).",
@@ -237,7 +276,7 @@ pub fn commit(
             }
         };
 
-        let Some((source_local_id, relationship_collections)) = snapshot else {
+        let Some((relationship_source, relationship_collections)) = snapshot else {
             continue;
         };
 
@@ -251,6 +290,21 @@ pub fn commit(
         for (name, holon_collection_rc) in relationship_collections {
             debug!("COMMITTING {:#?} relationship", name.0.clone());
 
+            // Resolve descriptor metadata before locking the staged collection.
+            // `holon_descriptor()` reads `DescribedBy`, which may be the same
+            // collection currently being committed.
+            let inverse_name = match resolve_inverse_relationship_name(
+                &relationship_source.source_reference,
+                &name,
+                staged_references,
+            ) {
+                Ok(inverse_name) => inverse_name,
+                Err(error) => {
+                    first_error = Some(error);
+                    break;
+                }
+            };
+
             let holon_collection = holon_collection_rc.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
                     "Failed to acquire read lock on relationship collection for {}: {}",
@@ -259,9 +313,9 @@ pub fn commit(
             })?;
 
             if let Err(err) = commit_relationship(
-                context,
-                source_local_id.clone(),
+                &relationship_source,
                 name.clone(),
+                inverse_name,
                 &holon_collection,
             ) {
                 first_error = Some(err);
@@ -394,58 +448,26 @@ fn commit_holon(
     }
 }
 
-/// commit_relationship() saves a `Saved` holon's relationships as SmartLinks. It should only be invoked
-/// AFTER staged_holons have been successfully committed, thus only accepts a StagedHolon object.
-///
-/// If the staged_state is `Committed`, commit_relationship iterates through the holon's
-/// `relationship_map` and calls commit on each member's HolonCollection.
-/// Any other states are ignored.
-///
-/// The function only returns OK if ALL commits are successful.
-#[allow(dead_code)]
-fn commit_relationships(
-    context: &Arc<TransactionContext>,
-    holon: &StagedHolon,
-) -> Result<(), HolonError> {
-    debug!("Entered Holon::commit_relationships");
-
-    match holon.get_staged_state() {
-        StagedState::Committed(local_id) => {
-            for (name, holon_collection_rc) in holon.get_staged_relationship_map()?.map.iter() {
-                debug!("COMMITTING {:#?} relationship", name.0.clone());
-                let holon_collection = holon_collection_rc.read().map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Failed to acquire read lock on relationship collection for {}: {}",
-                        name.0 .0, e
-                    ))
-                })?;
-                commit_relationship(context, local_id.clone(), name.clone(), &holon_collection)?;
-            }
-
-            Ok(())
-        }
-        _ => {
-            // Ignore all other states, just return Ok
-            Ok(())
-        }
-    }
-}
-
-/// The method
+/// Persists one declared relationship collection and its resolved inverse.
 fn commit_relationship(
-    context: &Arc<TransactionContext>,
-    source_id: LocalId,
+    source: &RelationshipCommitSource,
     name: RelationshipName,
+    inverse_name: RelationshipName,
     collection: &HolonCollection,
 ) -> Result<(), HolonError> {
     collection.is_accessible(AccessType::Commit)?;
 
-    save_smartlinks_for_collection(context, source_id.clone(), name.clone(), collection)?;
+    save_smartlinks_for_collection(source, name.clone(), inverse_name, collection)?;
 
     Ok(())
 }
 
-/// Creates SmartLinks from `source_id` to each member in `collection`.
+struct ResolvedRelationshipTarget {
+    target_local_id: LocalId,
+    target_key: Option<MapString>,
+}
+
+/// Creates local forward and inverse SmartLinks for each member in `collection`.
 ///
 /// Current behavior is fail-fast at the collection level: if any member cannot
 /// resolve a persisted `holon_id` or key metadata, this function returns that
@@ -453,86 +475,145 @@ fn commit_relationship(
 /// In practice, an abandoned staged target can therefore prevent otherwise
 /// valid sibling links in the same relationship collection from being
 /// persisted during this commit pass.
+///
+/// This guarantees local inverse materialization only. Cross-space inverse
+/// propagation is outside this function's responsibility and belongs at the
+/// outbound-proxy boundary represented by `cache_request_router.rs`.
 fn save_smartlinks_for_collection(
-    _context: &Arc<TransactionContext>,
-    source_id: LocalId,
+    source: &RelationshipCommitSource,
     name: RelationshipName,
+    inverse_name: RelationshipName,
     collection: &HolonCollection,
 ) -> Result<(), HolonError> {
+    let source_id = source.source_local_id();
+    let key_prop = CorePropertyTypeName::Key.as_property_name();
+
     debug!(
         "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
         source_id,
         name.0 .0.clone()
     );
-
-    let key_prop = CorePropertyTypeName::Key.as_property_name();
+    trace!(
+        "Relationship source ref_kind={} ref_id={} source_key={:?}",
+        source.source_reference.reference_kind_string(),
+        source.source_reference.reference_id_string(),
+        source.source_key
+    );
 
     let members = collection.get_members();
     debug!("Relationship {:?} has {} members to commit", name.0 .0, members.len());
 
-    for (idx, holon_reference) in members.iter().enumerate() {
+    // Resolve targets first so schema and endpoint errors are reported before
+    // any SmartLink write for this relationship collection.
+    let mut resolved_targets = Vec::with_capacity(members.len());
+    for (target_index, holon_reference) in members.iter().enumerate() {
         // Avoid deep Debug formatting here because runtime-bound references can recurse heavily in wasm.
         debug!(
             "Target index={} ref_kind={} ref_id={}",
-            idx,
+            target_index,
             holon_reference.reference_kind_string(),
             holon_reference.reference_id_string()
         );
 
-        // 1) Narrow down: do we get through holon_id?
         let target_id = match holon_reference.holon_id() {
             Ok(id) => {
-                debug!("Resolved holon_id for index {}: {:?}", idx, id);
+                debug!("Resolved holon_id for index {}: {:?}", target_index, id);
                 id
             }
             Err(err) => {
                 warn!(
                     "Failed to get holon_id for relationship {:?} at index {}: {:?}",
-                    name.0 .0, idx, err
+                    name.0 .0, target_index, err
                 );
                 return Err(err);
             }
         };
+        let target_local_id = require_local_target(&name, target_index, target_id)?;
 
-        // 2) Narrow down: do we get through key()?
         let key_option = match holon_reference.key() {
             Ok(k) => {
-                debug!("Resolved key for index {}: {:?}", idx, k);
+                debug!("Resolved key for index {}: {:?}", target_index, k);
                 k
             }
             Err(err) => {
                 error!(
                     "Error getting key for relationship {:?} at index {}: {:?}",
-                    name.0 .0, idx, err
+                    name.0 .0, target_index, err
                 );
                 return Err(err);
             }
         };
 
-        let smartlink: SmartLink = if let Some(key) = key_option {
-            let mut prop_vals: PropertyMap = BTreeMap::new();
-            prop_vals.insert(key_prop.clone(), BaseValue::StringValue(key));
-            SmartLink {
-                from_address: source_id.clone(),
-                to_address: target_id,
-                relationship_name: name.clone(),
-                smart_property_values: Some(prop_vals),
-            }
-        } else {
-            SmartLink {
-                from_address: source_id.clone(),
-                to_address: target_id,
-                relationship_name: name.clone(),
-                smart_property_values: None,
-            }
+        resolved_targets
+            .push(ResolvedRelationshipTarget { target_local_id, target_key: key_option });
+    }
+
+    let inverse_smart_property_values =
+        smart_property_values_from_key(source.source_key.clone(), &key_prop);
+
+    for (target_index, resolved_target) in resolved_targets.iter().enumerate() {
+        // Persist both directions from one resolved endpoint pair so the forward
+        // and inverse SmartLinks stay anchored to the same committed source.
+        let forward_smartlink = SmartLink {
+            from_address: source_id.clone(),
+            to_address: HolonId::Local(resolved_target.target_local_id.clone()),
+            relationship_name: name.clone(),
+            smart_property_values: smart_property_values_from_key(
+                resolved_target.target_key.clone(),
+                &key_prop,
+            ),
         };
 
         debug!(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
-            idx, name.0 .0, source_id, smartlink.to_address
+            target_index, name.0 .0, source_id, forward_smartlink.to_address
         );
-        save_smartlink(smartlink)?;
+        save_smartlink(forward_smartlink)?;
+
+        let inverse_smartlink = SmartLink {
+            from_address: resolved_target.target_local_id.clone(),
+            to_address: HolonId::Local(source_id.clone()),
+            relationship_name: inverse_name.clone(),
+            smart_property_values: inverse_smart_property_values.clone(),
+        };
+
+        debug!(
+            "saving inverse smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
+            target_index, inverse_name.0 .0, resolved_target.target_local_id, source_id
+        );
+        save_smartlink(inverse_smartlink)?;
     }
 
     Ok(())
+}
+
+/// Requires relationship targets to be local before SmartLink persistence.
+///
+/// Issue 442 guarantees local inverse SmartLink materialization only. External
+/// targets require multi-space resolution and cross-space inverse propagation at
+/// the outbound-proxy seam in `cache_request_router.rs`, which is not implemented.
+fn require_local_target(
+    relationship_name: &RelationshipName,
+    target_index: usize,
+    target_id: HolonId,
+) -> Result<LocalId, HolonError> {
+    match target_id {
+        HolonId::Local(local_id) => Ok(local_id),
+        HolonId::External(external_id) => Err(HolonError::NotImplemented(format!(
+            "Multi-space relationship persistence is not implemented for relationship {:?} \
+             target index {} ({})",
+            relationship_name.0 .0, target_index, external_id
+        ))),
+    }
+}
+
+fn smart_property_values_from_key(
+    key_option: Option<MapString>,
+    key_property_name: &PropertyName,
+) -> Option<PropertyMap> {
+    key_option.map(|key| {
+        let mut property_values: PropertyMap = BTreeMap::new();
+        property_values.insert(key_property_name.clone(), BaseValue::StringValue(key));
+        property_values
+    })
 }

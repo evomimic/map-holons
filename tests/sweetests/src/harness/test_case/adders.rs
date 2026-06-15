@@ -38,8 +38,9 @@
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
 use crate::{
-    harness::fixtures_support::TestReference, DanceTestStep, ExpectedSnapshot, FixtureHolons,
-    SourceSnapshot, TestHolonState, TestSessionState,
+    harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
+    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, SourceSnapshot, TestHolonState,
+    TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::{
@@ -182,6 +183,19 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_verify_book_person_instance_links_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Verify forward and inverse Book/Person instance SmartLink traversal".to_string()
+        });
+        self.steps.push(DanceTestStep::VerifyBookPersonInstanceLinks { description });
+
+        Ok(())
+    }
+
     pub fn add_verify_core_schema_descriptor_subtypes_step(
         &mut self,
         description: Option<String>,
@@ -239,6 +253,7 @@ impl DancesTestCase {
         expect_errors: MapInteger,
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
+        expect_status: ExpectedLoadStatus,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::LoadHolonsInternal {
@@ -249,6 +264,7 @@ impl DancesTestCase {
             expect_errors,
             expect_total_bundles,
             expect_total_loader_holons,
+            expect_status,
         });
 
         Ok(())
@@ -331,16 +347,27 @@ impl DancesTestCase {
     }
 
     // Commit advances head snapshots to Saved for existing logical holons.
+    //
+    // `expected_status` declares the expected `CommitRequestStatus` on the commit
+    // response. Note that fixture heads advance to Saved even for an expected
+    // `Incomplete` status: Pass 1 (holons) persists before Pass 2 (relationships)
+    // can fail, so the holons themselves are still saved.
     pub fn add_commit_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
+        expected_status: ExpectedCommitStatus,
         expected_error: Option<HolonErrorKind>,
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| "Commit".to_string());
         let saved_tokens = fixture_holons.commit()?;
-        self.steps.push(DanceTestStep::Commit { saved_tokens, expected_error, description });
+        self.steps.push(DanceTestStep::Commit {
+            saved_tokens,
+            expected_status,
+            expected_error,
+            description,
+        });
 
         Ok(())
     }
@@ -371,6 +398,53 @@ impl DancesTestCase {
         self.steps.push(DanceTestStep::NewHolon {
             step_token: new_token.clone(),
             properties,
+            key,
+            expected_error,
+            description,
+        });
+
+        Ok(new_token)
+    }
+
+    /// Special step that resolves a holon committed *outside* the fixture's
+    /// ledger (e.g. a schema-loaded descriptor) by key at execution time, and
+    /// mints a `SavedLookup` token for it.
+    ///
+    /// The returned token is valid as a **relationship target** and as a
+    /// read-only source. Its snapshot is a key-only stub stamped with
+    /// [`SAVED_LOOKUP_STUB_MARKER`]: saved-content comparison matches it by key
+    /// only and never recurses into its graph, it contributes to no fixture
+    /// counts (`count_saved()` / `EnsureDatabaseCount` are unaffected — the
+    /// holon is already covered by schema-load totals), and `MatchSavedContent`
+    /// skips it.
+    ///
+    /// `stub_reference` should come from
+    /// `fixture_context.mutation().new_holon(Some(key))?` with the same `key`.
+    pub fn add_lookup_saved_holon_by_key_step(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        stub_reference: TransientReference,
+        key: MapString,
+        expected_error: Option<HolonErrorKind>,
+        description: Option<String>,
+    ) -> Result<TestReference, HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| format!("Lookup saved holon by key '{}'", key.0));
+        // Clone the stub so the marker lands on the frozen expected snapshot.
+        let mut snapshot = stub_reference.clone_holon()?;
+        snapshot.with_property_value(SAVED_LOOKUP_STUB_MARKER, true)?;
+        let source = SourceSnapshot::new(stub_reference, TestHolonState::SavedLookup);
+        let expected = ExpectedSnapshot::new(snapshot, TestHolonState::SavedLookup);
+        if expected_error.is_none() {
+            fixture_holons.create_saved_lookup_fixture_holon(expected.clone())?;
+        }
+        // Mint
+        let new_token = fixture_holons.mint_test_reference(source, expected);
+
+        // Add execution step
+        self.steps.push(DanceTestStep::LookupSavedHolonByKey {
+            step_token: new_token.clone(),
             key,
             expected_error,
             description,

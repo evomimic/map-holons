@@ -1,4 +1,6 @@
-use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
+use holons_test::{
+    ExecutionHandle, ExecutionReference, ExpectedCommitStatus, TestExecutionState, TestReference,
+};
 use integrity_core_types::HolonErrorKind;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use std::collections::BTreeMap;
@@ -8,11 +10,18 @@ use holons_prelude::prelude::*;
 
 /// Dispatches a `Commit` command through the Runtime and validates the result.
 ///
+/// Asserts the `CommitRequestStatus` on the commit response against
+/// `expected_status`. An `Incomplete` commit is still an `Ok` response: Pass-1
+/// holons are saved while a Pass-2 (relationship persistence) failure is
+/// recorded on the response, so saved-holon registration proceeds for both
+/// statuses.
+///
 /// On success, reads committed holons from the `SavedHolons` relationship on the
 /// commit response holon and registers them in the test execution state.
 pub async fn execute_commit(
     state: &mut TestExecutionState,
     expected_tokens: Vec<TestReference>,
+    expected_status: ExpectedCommitStatus,
     expected_error: Option<HolonErrorKind>,
 ) {
     let context = state.context();
@@ -31,7 +40,25 @@ pub async fn execute_commit(
     match result {
         Ok(MapResult::Reference(HolonReference::Transient(commit_response_ref))) => {
             assert!(expected_error.is_none(), "commit succeeded but expected {:?}", expected_error,);
-            info!("Success! Commit completed via Runtime dispatch");
+
+            let actual_status = match commit_response_ref
+                .property_value(&CorePropertyTypeName::CommitRequestStatus)
+            {
+                Ok(Some(PropertyValue::StringValue(MapString(status)))) => status,
+                Ok(other) => panic!(
+                    "commit: expected string CommitRequestStatus on commit response, got {:?}",
+                    other
+                ),
+                Err(e) => panic!("commit: failed to read CommitRequestStatus: {:?}", e),
+            };
+            assert_eq!(
+                actual_status,
+                expected_status.to_string(),
+                "Expected CommitRequestStatus={}, got {}",
+                expected_status,
+                actual_status
+            );
+            info!("Success! Commit completed via Runtime dispatch with status {}", actual_status);
 
             // 4. GET — committed holons from the SavedHolons relationship
             let committed_references = commit_response_ref

@@ -7,29 +7,29 @@ use holons_test::harness::helpers::{
     BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY,
 };
 
-/// This function updates the supplied test_case with a set of steps that establish some basic
-/// data the different test cases can then extend for different purposes.
-/// Specifically, this function adds test steps that will stage 4 Holons (but NOT commit):
-/// *Book Holon* with BOOK_KEY Title
-/// *Person Holon with PERSON_1_KEY*
-/// *Person Holon with PERSON_2_KEY*
-/// *Publisher Holon with PUBLISHER_KEY*
-/// *BOOK_TO_PERSON_RELATIONSHIP from Book Holon to person 1 and person 2
-/// The Nursery within the supplied context is used as the test data setup area
+/// Adds undescribed, freeform Book/Person/Publisher holons to `test_case`.
+///
+/// This helper stages four ordinary holons and intentionally does not attach
+/// `DescribedBy` descriptors. It also does not stage any relationships. With
+/// commit-time relationship validation, this remains useful for fixtures that
+/// exercise property or lifecycle behavior without graph state.
+///
+/// Specifically, this function adds test steps that will stage:
+/// * Book holon with `BOOK_KEY` Title
+/// * Person holon with `PERSON_1_KEY`
+/// * Person holon with `PERSON_2_KEY`
+/// * Publisher holon with `PUBLISHER_KEY`
+///
+/// The Nursery within the supplied context is used as the test data setup area.
 ///
 /// FixtureHolons contains the minted token TestReferences that are used to track a lineage of state to mirror in parallel the ExecutionHolons.
 /// This parallel reflects 'expected' (Fixture) vs 'actual' (Mock DHT).
-pub fn setup_book_author_steps_with_context<'a>(
+pub fn setup_undescribed_book_people_publisher_steps_with_context<'a>(
     fixture_context: &Arc<TransactionContext>,
     test_case: &mut DancesTestCase,
     fixture_holons: &mut FixtureHolons,
     bindings: &'a mut FixtureBindings,
 ) -> Result<&'a mut FixtureBindings, HolonError> {
-    // Set relationship
-    let relationship_label = MapString("BOOK_TO_PERSON".to_string());
-    let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
-    bindings.set_relationship_name(relationship_label, relationship_name.clone());
-
     //  STAGE:  Book Holon  //
     //
     // Create fresh holon
@@ -148,6 +148,50 @@ pub fn setup_book_author_steps_with_context<'a>(
         Some(format!("Staging {:?} holon...", publisher_label)),
     )?;
     bindings.insert_token(publisher_label, publisher_staged_token.clone());
+
+    Ok(bindings)
+}
+
+/// Adds an undescribed, freeform Book/Person/Publisher setup with `AuthoredBy`.
+///
+/// This helper layers a freeform `BOOK_TO_PERSON_RELATIONSHIP` edge on top of
+/// [`setup_undescribed_book_people_publisher_steps_with_context`]. It is valid
+/// for non-committing ergonomics tests and expected-failure tests that
+/// deliberately exercise freeform staged relationship mutation.
+///
+/// Fixtures that expect relationship commit success should not use this helper;
+/// they need a core-schema-backed described setup instead.
+pub fn setup_undescribed_book_author_steps_with_context<'a>(
+    fixture_context: &Arc<TransactionContext>,
+    test_case: &mut DancesTestCase,
+    fixture_holons: &mut FixtureHolons,
+    bindings: &'a mut FixtureBindings,
+) -> Result<&'a mut FixtureBindings, HolonError> {
+    setup_undescribed_book_people_publisher_steps_with_context(
+        fixture_context,
+        test_case,
+        fixture_holons,
+        bindings,
+    )?;
+
+    // Set relationship
+    let relationship_label = MapString("BOOK_TO_PERSON".to_string());
+    let relationship_name = BOOK_TO_PERSON_RELATIONSHIP.to_relationship_name();
+    bindings.set_relationship_name(relationship_label, relationship_name.clone());
+
+    let book_label = MapString("Book".to_string());
+    let person_1_label = MapString("Person1".to_string());
+    let person_2_label = MapString("Person2".to_string());
+    let book_staged_token =
+        bindings.get_token(&book_label).expect("undescribed book setup must bind Book").clone();
+    let person_1_staged_token = bindings
+        .get_token(&person_1_label)
+        .expect("undescribed book setup must bind Person1")
+        .clone();
+    let person_2_staged_token = bindings
+        .get_token(&person_2_label)
+        .expect("undescribed book setup must bind Person2")
+        .clone();
 
     //  RELATIONSHIP:  (Book)-AUTHORED_BY->[(Person1),(Person2)]  //
     let book_mod_token = test_case.add_add_related_holons_step(

@@ -37,13 +37,15 @@ use execution_steps::command_affordance_verification_executor::execute_verify_co
 use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::descriptor_verification_executor::{
-    execute_verify_book_person_descriptors, execute_verify_core_schema_descriptor_subtypes,
-    execute_verify_core_schema_descriptors, execute_verify_core_schema_value_semantics,
+    execute_verify_book_person_descriptors, execute_verify_book_person_instance_links,
+    execute_verify_core_schema_descriptor_subtypes, execute_verify_core_schema_descriptors,
+    execute_verify_core_schema_value_semantics,
 };
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_book_person_inverse_test_schema;
 use execution_steps::load_core_schema_executor::execute_load_core_schema;
 use execution_steps::load_holons_internal_executor::execute_load_holons_internal;
+use execution_steps::lookup_saved_holon_executor::execute_lookup_saved_holon_by_key;
 use execution_steps::match_db_content_executor::execute_match_db_content;
 use execution_steps::new_holon_executor::execute_new_holon;
 use execution_steps::query_relationships_executor::execute_query_relationships;
@@ -168,8 +170,14 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::BeginTransaction { expected_error, .. } => {
                 execute_begin_transaction(&mut test_execution_state, expected_error).await
             }
-            DanceTestStep::Commit { saved_tokens, expected_error, .. } => {
-                execute_commit(&mut test_execution_state, saved_tokens, expected_error).await
+            DanceTestStep::Commit { saved_tokens, expected_status, expected_error, .. } => {
+                execute_commit(
+                    &mut test_execution_state,
+                    saved_tokens,
+                    expected_status,
+                    expected_error,
+                )
+                .await
             }
             DanceTestStep::DeleteHolon { step_token, expected_error, .. } => {
                 execute_delete_holon(&mut test_execution_state, step_token, expected_error).await
@@ -185,6 +193,7 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                 expect_errors,
                 expect_total_bundles,
                 expect_total_loader_holons,
+                expect_status,
             } => {
                 execute_load_holons_internal(
                     &mut test_execution_state,
@@ -195,6 +204,16 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
                     expect_errors,
                     expect_total_bundles,
                     expect_total_loader_holons,
+                    expect_status,
+                )
+                .await
+            }
+            DanceTestStep::LookupSavedHolonByKey { step_token, key, expected_error, .. } => {
+                execute_lookup_saved_holon_by_key(
+                    &mut test_execution_state,
+                    step_token,
+                    key,
+                    expected_error,
                 )
                 .await
             }
@@ -206,6 +225,9 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             }
             DanceTestStep::VerifyBookPersonDescriptors { .. } => {
                 execute_verify_book_person_descriptors(&mut test_execution_state).await
+            }
+            DanceTestStep::VerifyBookPersonInstanceLinks { .. } => {
+                execute_verify_book_person_instance_links(&mut test_execution_state).await
             }
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { .. } => {
                 execute_verify_core_schema_descriptor_subtypes(&mut test_execution_state).await

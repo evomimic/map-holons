@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-10T16:37:43",
+    "generated_at": "2026-06-11T16:58:56",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -1709,6 +1709,100 @@
           "name": "TargetType",
           "target": {
             "$ref": "HolonCollection.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[Predecessor]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Predecessor",
+        "type_name_plural": "PredecessorRelationships",
+        "display_name": "Predecessor",
+        "display_name_plural": "Predecessor Relationships",
+        "description": "Links a holon version to the immediately preceding version in its lineage.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[Successor]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Successor",
+        "type_name_plural": "SuccessorRelationships",
+        "display_name": "Successor",
+        "display_name_plural": "Successor Relationships",
+        "description": "Inverse of Predecessor, from a holon version to later versions derived from it.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonType)-[Predecessor]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
           }
         }
       ]

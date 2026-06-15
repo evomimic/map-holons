@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use holons_test::harness::helpers::BOOK_KEY;
 use type_names::ToPropertyName;
 
-use super::setup_book_author_steps_with_context;
+use super::setup_undescribed_book_people_publisher_steps_with_context;
 
 // TODO: enhance test capabilities, ie trying to remove a property that doesnt exist, etc trying to add invalid property
 // Add again after removing
@@ -26,7 +26,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         "Tests the adding and removing of Holon properties for both Staged and Transient references",
     );
 
-    setup_book_author_steps_with_context(
+    setup_undescribed_book_people_publisher_steps_with_context(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,

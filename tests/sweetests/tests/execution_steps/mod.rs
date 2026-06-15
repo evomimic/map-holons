@@ -10,6 +10,7 @@ pub mod load_book_person_inverse_test_schema_executor;
 pub mod load_core_schema_executor;
 pub mod load_holons_client_executor;
 pub mod load_holons_internal_executor;
+pub mod lookup_saved_holon_executor;
 pub mod match_db_content_executor;
 pub mod new_holon_executor;
 pub mod print_database_executor;

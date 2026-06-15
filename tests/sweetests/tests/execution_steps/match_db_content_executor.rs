@@ -19,6 +19,10 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
         .expect("failed to open assertion transaction for match_db_content");
 
     for (id, resolved_reference) in state.holons().by_snapshot_id.clone() {
+        // Only `Saved` snapshots carry full expected content. `SavedLookup` stubs
+        // (holons saved outside the fixture, e.g. by schema loads) are intentionally
+        // excluded here; they are matched key-only when reached as relationship
+        // targets during graph comparison.
         if resolved_reference.expected_snapshot.state() == TestHolonState::Saved {
             let holon_reference = resolved_reference
                 .execution_handle
