@@ -3,7 +3,7 @@ use std::sync::Arc;
 use base_types::MapString;
 use core_types::{ContentSet, HolonId, LocalId};
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::dances::DanceRequest;
+use holons_core::dances::{DanceInvocation, DanceRequest};
 use holons_core::reference_layer::{HolonReference, SmartReference, TransientReference};
 
 use super::{CommandLifecyclePolicy, MutationClassification};
@@ -48,6 +48,9 @@ pub enum TransactionAction {
     /// old-world query traversal dances, but is not the foundation for
     /// new command-surface work.
     Dance(DanceRequest),
+
+    /// Executes the canonical new-world dance ingress within this transaction.
+    DanceV2 { invocation: DanceInvocation },
 
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
@@ -107,11 +110,13 @@ impl TransactionAction {
                 CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::LoadHolons { .. } => CommandLifecyclePolicy::mutating_with_guard(),
-            TransactionAction::Dance(_) => CommandLifecyclePolicy {
-                mutation: MutationClassification::RuntimeDetected,
-                requires_open_tx: true,
-                requires_commit_guard: false,
-            },
+            TransactionAction::Dance(_) | TransactionAction::DanceV2 { .. } => {
+                CommandLifecyclePolicy {
+                    mutation: MutationClassification::RuntimeDetected,
+                    requires_open_tx: true,
+                    requires_commit_guard: false,
+                }
+            }
             // Lookups
             TransactionAction::GetAllHolons
             | TransactionAction::GetStagedHolonByBaseKey { .. }
@@ -143,6 +148,7 @@ impl TransactionAction {
             TransactionAction::RedoToMarker { .. } => "redo_to_marker",
             TransactionAction::LoadHolons { .. } => "load_holons",
             TransactionAction::Dance(_) => "dance",
+            TransactionAction::DanceV2 { .. } => "dance_v2",
             TransactionAction::GetAllHolons => "get_all_holons",
             TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
             TransactionAction::GetStagedHolonsByBaseKey { .. } => "get_staged_holons_by_base_key",

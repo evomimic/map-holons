@@ -213,20 +213,20 @@ const transactionCases: TransactionCase<unknown>[] = [
     wrongResult: 'None',
   },
   {
-    name: 'deleteHolon',
-    run: () => deleteHolon(txId, localId),
-    action: { DeleteHolon: { local_id: localId } },
-    okResult: 'None',
-    expected: undefined,
-    wrongResult: { Reference: stagedReference },
-  },
-  {
     name: 'loadHolons',
     run: () => loadHolons(txId, contentSet),
     action: { LoadHolons: { content_set: contentSet } },
     okResult: { Reference: transientReference },
     expected: transientReference,
     wrongResult: 'None',
+  },
+  {
+    name: 'deleteHolon',
+    run: () => deleteHolon(txId, localId),
+    action: { DeleteHolon: { local_id: localId } },
+    okResult: 'None',
+    expected: undefined,
+    wrongResult: { Reference: transientReference },
   },
   {
     name: 'getAllHolons',

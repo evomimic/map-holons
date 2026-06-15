@@ -1,7 +1,7 @@
 use base_types::{BaseValue, MapInteger};
 use core_types::HolonError;
-use holons_core::reference_layer::HolonReference;
-
+use holons_core::dances::execute_dance_v2;
+use holons_core::HolonReference;
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
 use super::runtime_session::RuntimeSession;
@@ -15,8 +15,9 @@ pub async fn handle_transaction(
 
     match command.action {
         TransactionAction::Commit => {
-            let transient_ref = session.commit_transaction(&command.context.tx_id()).await?;
-            Ok(MapResult::Reference(HolonReference::Transient(transient_ref)))
+            let invocation = holons_core::dances::DanceInvocation::build_commit(context)?;
+            let response = execute_dance_v2(context, invocation).await?;
+            Ok(MapResult::Reference(response.require_response_body()?))
         }
         TransactionAction::UndoLast => {
             session.undo_last(&command.context.tx_id()).await?;
@@ -40,6 +41,10 @@ pub async fn handle_transaction(
             // a `DanceResponse` instead of projecting onto the canonical
             // command result family.
             Ok(MapResult::DanceResponse(response))
+        }
+        TransactionAction::DanceV2 { invocation } => {
+            let response = execute_dance_v2(context, invocation).await?;
+            Ok(MapResult::Reference(HolonReference::from(response)))
         }
         TransactionAction::LoadHolons { content_set } => {
             let response =
@@ -101,7 +106,11 @@ pub async fn handle_transaction(
             Ok(MapResult::Reference(HolonReference::Staged(staged)))
         }
         TransactionAction::DeleteHolon { local_id } => {
-            context.mutation().delete_holon(local_id)?;
+            let invocation = holons_core::dances::DanceInvocation::build_delete_holon(
+                context,
+                core_types::HolonId::Local(local_id),
+            )?;
+            execute_dance_v2(context, invocation).await?;
             Ok(MapResult::None)
         }
     }

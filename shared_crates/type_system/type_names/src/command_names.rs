@@ -117,11 +117,27 @@ pub enum CoreCommandTypeName {
     DeleteHolon,
 }
 
+/// Canonical implementation names for core DanceV2 cutover dances.
+#[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
+pub enum CoreDanceImplementationName {
+    GetHolonById,
+    DeleteHolon,
+    Commit,
+    LoadHolons,
+}
+
 impl CoreCommandTypeName {
     /// Canonical command type name in ClassCase (UpperCamel).
     pub fn as_command_name(&self) -> CommandName {
         // Use the Rust variant identifier as the core inventory source, then apply
         // the shared type-name case convention used by the neighboring modules.
+        let command_name = format!("{self:?}").to_case(Case::UpperCamel);
+        CommandName(MapString(command_name))
+    }
+}
+
+impl CoreDanceImplementationName {
+    pub fn as_command_name(&self) -> CommandName {
         let command_name = format!("{self:?}").to_case(Case::UpperCamel);
         CommandName(MapString(command_name))
     }

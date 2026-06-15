@@ -24,7 +24,9 @@ pub mod core_shared_objects {
 }
 
 pub mod dances {
-    pub use crate::context_binding::{DanceRequestWire, DanceTypeWire, RequestBodyWire};
+    pub use crate::context_binding::{
+        DanceRequestWire, DanceTypeWire, DanceV2InvocationWire, RequestBodyWire,
+    };
     pub use crate::context_binding::{DanceResponseWire, ResponseBodyWire};
     pub use crate::session_state::SessionStateWire;
 }

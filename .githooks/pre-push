@@ -1,0 +1,25 @@
+#!/bin/sh
+
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+echo "[pre-push] Running npm run fmt:check"
+
+if ! npm run fmt:check; then
+  echo
+  echo "[pre-push] Push blocked: repository formatting checks did not pass."
+  echo "[pre-push] This usually means one or more Rust files need to be reformatted in host/, happ/, or tests/sweetests/."
+  echo "[pre-push] Recovery steps:"
+  echo "[pre-push]   1. Run: npm run fmt"
+  echo "[pre-push]   2. Review: git diff --stat"
+  echo "[pre-push]   3. Stage formatting changes: git add -A"
+  echo "[pre-push]   4. Commit them: git commit --amend --no-edit"
+  echo "[pre-push]      or create a follow-up commit if you do not want to amend."
+  echo "[pre-push]   5. Push again."
+  echo "[pre-push] Use --no-verify only if you intentionally need to bypass this guard."
+  exit 1
+fi
+
+echo "[pre-push] Formatting check passed."

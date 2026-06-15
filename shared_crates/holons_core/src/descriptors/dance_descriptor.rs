@@ -1,7 +1,8 @@
+use crate::dances::DanceImplementation;
 use crate::descriptors::{
     accessor_helpers, DanceResponseDescriptor, Descriptor, HolonDescriptor, TypeHeader,
 };
-use crate::reference_layer::HolonReference;
+use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 use type_names::{DanceName, ToDanceName};
@@ -32,12 +33,22 @@ impl DanceDescriptor {
         .map(HolonDescriptor::from_holon))
     }
 
-    pub fn response(&self) -> Result<DanceResponseDescriptor, HolonError> {
+    pub fn response_type(&self) -> Result<DanceResponseDescriptor, HolonError> {
         let response = accessor_helpers::require_single_related(
             &self.holon,
             CoreRelationshipTypeName::Response,
         )?;
         Ok(DanceResponseDescriptor::from_holon(response))
+    }
+
+    pub fn implementation_candidates(&self) -> Result<Vec<DanceImplementation>, HolonError> {
+        let implementations = self.holon.related_holons(CoreRelationshipTypeName::ForDance)?;
+        let members = implementations
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+            .get_members()
+            .clone();
+        Ok(members.into_iter().map(DanceImplementation::from_holon).collect())
     }
 }
 
@@ -159,7 +170,7 @@ mod tests {
         let descriptor = DanceDescriptor::from_holon(holon.into());
 
         assert_eq!(
-            descriptor.response()?.header().type_name()?,
+            descriptor.response_type()?.header().type_name()?,
             MapString("DanceResponseType".to_string())
         );
 
@@ -173,7 +184,7 @@ mod tests {
         let descriptor = DanceDescriptor::from_holon(holon.into());
 
         assert!(matches!(
-            descriptor.response(),
+            descriptor.response_type(),
             Err(HolonError::MissingRequiredRelationship { relationship, .. })
                 if relationship == "Response"
         ));

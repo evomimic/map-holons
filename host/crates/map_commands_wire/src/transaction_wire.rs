@@ -3,7 +3,8 @@ use std::sync::Arc;
 use base_types::MapString;
 use core_types::{ContentSet, HolonError, HolonId, LocalId};
 use holons_boundary::{
-    DanceRequestWire, HolonReferenceWire, SmartReferenceWire, TransientReferenceWire,
+    DanceRequestWire, DanceV2InvocationWire, HolonReferenceWire, SmartReferenceWire,
+    TransientReferenceWire,
 };
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use serde::{Deserialize, Serialize};
@@ -49,6 +50,9 @@ pub enum TransactionActionWire {
     /// old-world query traversal dances, but is not the preferred
     /// foundation for new command-surface work.
     Dance(DanceRequestWire),
+
+    /// Executes the canonical new-world dance ingress within this transaction.
+    DanceV2 { invocation: DanceV2InvocationWire },
 
     // ── Lookup actions ───────────────────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
@@ -127,6 +131,9 @@ impl TransactionActionWire {
             }
             TransactionActionWire::Dance(request_wire) => {
                 Ok(TransactionAction::Dance(request_wire.bind(context)?))
+            }
+            TransactionActionWire::DanceV2 { invocation } => {
+                Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
             }
             // Lookup actions — no context binding needed
             TransactionActionWire::GetAllHolons => Ok(TransactionAction::GetAllHolons),
