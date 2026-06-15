@@ -4,12 +4,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, HolonId, LocalId, RelationshipName};
+use core_types::{HolonError, HolonId, LocalId};
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
-use holons_core::core_shared_objects::{
-    Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy,
-};
+use holons_core::core_shared_objects::ServiceRoutingPolicy;
 use holons_core::dances::{build_dance_v2_invocation, DanceInvocation};
 use holons_core::reference_layer::{
     HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
@@ -67,7 +65,7 @@ impl HolonServiceApi for TestHolonService {
         &self,
         _context: &Arc<TransactionContext>,
         _source_id: &HolonId,
-    ) -> Result<RelationshipMap, HolonError> {
+    ) -> Result<holons_core::core_shared_objects::RelationshipMap, HolonError> {
         unreachable_in_handler_tests()
     }
 
@@ -75,7 +73,7 @@ impl HolonServiceApi for TestHolonService {
         &self,
         _context: &Arc<TransactionContext>,
         _id: &HolonId,
-    ) -> Result<Holon, HolonError> {
+    ) -> Result<holons_core::core_shared_objects::Holon, HolonError> {
         unreachable_in_handler_tests()
     }
 
@@ -83,15 +81,15 @@ impl HolonServiceApi for TestHolonService {
         &self,
         _context: &Arc<TransactionContext>,
         _source_id: &HolonId,
-        _relationship_name: &RelationshipName,
-    ) -> Result<HolonCollection, HolonError> {
+        _relationship_name: &core_types::RelationshipName,
+    ) -> Result<holons_core::core_shared_objects::HolonCollection, HolonError> {
         unreachable_in_handler_tests()
     }
 
     fn get_all_holons_internal(
         &self,
         _context: &Arc<TransactionContext>,
-    ) -> Result<HolonCollection, HolonError> {
+    ) -> Result<holons_core::core_shared_objects::HolonCollection, HolonError> {
         unreachable_in_handler_tests()
     }
 
@@ -466,9 +464,9 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
 async fn build_delete_holon_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     let context = runtime.session().get_transaction(tx_id).expect("tx should exist");
     let local_id = LocalId(vec![9, 8, 7]);
-    let target = HolonReference::smart_from_id(context.context_handle(), HolonId::Local(local_id));
     let invocation =
-        DanceInvocation::build_delete_holon(&context, target).expect("delete holon invocation");
+        DanceInvocation::build_delete_holon(&context, HolonId::Local(local_id))
+            .expect("delete holon invocation");
 
     MapCommand::Transaction(TransactionCommand {
         context,
@@ -514,6 +512,28 @@ async fn dance_v2_delete_holon_returns_reference_result() {
         .expect("delete holon v2 should succeed");
 
     assert!(matches!(result, MapResult::Reference(_)));
+}
+
+#[tokio::test]
+async fn built_delete_holon_invocation_uses_request_and_not_target() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let command = build_delete_holon_dance_v2_command(&runtime, &tx_id).await;
+
+    let invocation = match command {
+        MapCommand::Transaction(TransactionCommand {
+            action: TransactionAction::DanceV2 { invocation },
+            ..
+        }) => invocation,
+        other => panic!("expected DanceV2 transaction command, got {:?}", other),
+    };
+
+    let bound = invocation.bind().expect("bind delete holon invocation");
+    assert!(bound.request().is_some(), "delete holon should carry request parameters");
+    assert!(
+        bound.affording_holon().is_none(),
+        "delete holon should not resolve a target holon at ingress"
+    );
 }
 
 #[tokio::test]

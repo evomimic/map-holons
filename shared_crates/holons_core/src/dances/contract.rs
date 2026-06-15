@@ -1,11 +1,11 @@
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::Holon;
 use crate::descriptors::{
-    accessor_helpers, DanceDescriptor, DanceResponseDescriptor, HolonDescriptor,
+    accessor_helpers, DanceDescriptor, DanceResponseDescriptor, Descriptor, HolonDescriptor,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, TypeKind};
+use core_types::{HolonError, HolonId, TypeKind};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_names::CoreDanceImplementationName;
@@ -311,29 +311,38 @@ impl DanceInvocation {
     /// Builds a canonical invocation holon for the host-side `DeleteHolon`
     /// dance surface.
     ///
-    /// The invocation carries no subject holon. Instead, it carries a typed
-    /// request holon that points at the holon to delete through
-    /// `ReferenceTarget`, which keeps the invocation structurally valid without
-    /// requiring the target's descriptor to advertise delete as an afforded
-    /// dance.
+    /// `DeleteHolon` is request-driven: the holon id to delete is carried in a
+    /// transient request holon rather than by resolving a target holon up
+    /// front.
     pub fn build_delete_holon(
         context: &Arc<TransactionContext>,
-        target: HolonReference,
+        holon_id: HolonId,
     ) -> Result<Self, HolonError> {
         let invocation_descriptor = new_runtime_descriptor_holon(
             context,
             "dance-invocation-descriptor",
             "DanceInvocation",
         )?;
-        let request_type = new_runtime_descriptor_holon(
+        let holon_id_property_type = new_runtime_property_descriptor_holon(
             context,
-            "delete-holon-request-type",
-            "DeleteHolonRequest",
+            "delete-holon-parameter-holon-id-property",
+            CorePropertyTypeName::HolonId,
         )?;
-        let response_type = new_runtime_descriptor_holon(
+        let mut request_type = new_runtime_descriptor_holon(
             context,
-            "delete-holon-response-type",
+            "delete-holon-parameters-type",
+            "DeleteHolonParameters",
+        )?;
+        request_type.add_related_holons(
+            CoreRelationshipTypeName::Properties,
+            vec![holon_id_property_type.clone()],
+        )?;
+        let response_type = new_runtime_response_descriptor_holon(
+            context,
+            "delete-holon-response-type-family",
             "DanceResponseType",
+            "delete-holon-response-type",
+            "DeleteHolonResponse",
         )?;
         let implementation = new_runtime_descriptor_holon(
             context,
@@ -344,25 +353,22 @@ impl DanceInvocation {
         let mut dance_descriptor =
             context.mutation().new_holon(Some(MapString::from("delete-holon-dance")))?;
         initialize_runtime_descriptor_holon(&mut dance_descriptor, "DeleteHolon")?;
-        dance_descriptor.add_related_holons(
-            CoreRelationshipTypeName::RequestType,
-            vec![request_type.clone().into()],
-        )?;
+        dance_descriptor
+            .add_related_holons(CoreRelationshipTypeName::RequestType, vec![request_type.clone()])?;
         dance_descriptor
             .add_related_holons(CoreRelationshipTypeName::Response, vec![response_type.into()])?;
         dance_descriptor
             .add_related_holons(CoreRelationshipTypeName::ForDance, vec![implementation.into()])?;
 
         let mut request =
-            context.mutation().new_holon(Some(MapString::from("delete-holon-request")))?;
-        request.with_descriptor(request_type.into())?;
-        request.add_related_holons(
-            CoreRelationshipTypeName::ReferenceTarget,
-            vec![HolonReference::smart_with_key(
-                context.context_handle(),
-                target.holon_id()?,
-                MapString("delete-holon-target".to_string()),
-            )],
+            context.mutation().new_holon(Some(MapString::from("delete-holon-parameters")))?;
+        request.with_descriptor(request_type)?;
+        request.with_property_value(
+            CorePropertyTypeName::HolonId,
+            MapString(
+                serde_json::to_string(&holon_id)
+                    .map_err(|error| HolonError::InvalidParameter(error.to_string()))?,
+            ),
         )?;
 
         let mut invocation =
@@ -390,8 +396,13 @@ impl DanceInvocation {
             "dance-invocation-descriptor",
             "DanceInvocation",
         )?;
-        let response_type =
-            new_runtime_descriptor_holon(context, "commit-response-type", "DanceResponseType")?;
+        let response_type = new_runtime_response_descriptor_holon(
+            context,
+            "commit-response-type-family",
+            "DanceResponseType",
+            "commit-response-type",
+            "CommitDanceResponse",
+        )?;
         let implementation = new_runtime_descriptor_holon(
             context,
             "commit-implementation",
@@ -428,6 +439,31 @@ fn new_runtime_descriptor_holon(
     let mut descriptor = context.mutation().new_holon(Some(MapString::from(key)))?;
     initialize_runtime_descriptor_holon(&mut descriptor, type_name)?;
     Ok(descriptor.into())
+}
+
+fn new_runtime_property_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    property_name: CorePropertyTypeName,
+) -> Result<HolonReference, HolonError> {
+    let mut descriptor = context.mutation().new_holon(Some(MapString::from(key)))?;
+    initialize_runtime_descriptor_holon(&mut descriptor, property_name.as_property_name().0)?;
+    Ok(descriptor.into())
+}
+
+fn new_runtime_response_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    family_key: &str,
+    family_type_name: impl Into<MapString>,
+    response_key: &str,
+    response_type_name: impl Into<MapString>,
+) -> Result<HolonReference, HolonError> {
+    let family = new_runtime_descriptor_holon(context, family_key, family_type_name)?;
+    let mut response_descriptor =
+        context.mutation().new_holon(Some(MapString::from(response_key)))?;
+    initialize_runtime_descriptor_holon(&mut response_descriptor, response_type_name)?;
+    response_descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![family])?;
+    Ok(response_descriptor.into())
 }
 
 fn initialize_runtime_descriptor_holon<T: WritableHolon>(
@@ -472,6 +508,69 @@ pub fn build_dance_v2_invocation(
     DanceInvocation::new(invocation)
 }
 
+/// Typed wrapper over the request holon used by the `DeleteHolon` dance.
+///
+/// `DeleteHolon` is parameterized by a holon id rather than an affording
+/// subject holon. This wrapper keeps that input shape explicit at the
+/// execution boundary and hides the raw property access needed to extract the
+/// requested id from the request holon.
+///
+/// The current bridge stores the id as JSON text in a string-valued property.
+/// That is intentionally temporary: the imported schema models `HolonId` as a
+/// distinct value family, and this wrapper is the seam that should absorb that
+/// future alignment.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeleteHolonParameters {
+    request: HolonReference,
+}
+
+impl DeleteHolonParameters {
+    /// Wraps the request holon after verifying that it is described by the
+    /// dance's declared request type.
+    pub fn new(
+        request: HolonReference,
+        expected_type: &HolonDescriptor,
+    ) -> Result<Self, HolonError> {
+        let request_descriptor = request.holon_descriptor()?;
+        let expected = expected_type.header().type_name()?;
+        let found = request_descriptor.header().type_name()?;
+
+        if found != expected {
+            return Err(HolonError::WrongDescriptorKind {
+                expected: expected.to_string(),
+                found: found.to_string(),
+                descriptor: found.to_string(),
+            });
+        }
+
+        Ok(Self { request })
+    }
+
+    pub fn as_holon_reference(&self) -> &HolonReference {
+        &self.request
+    }
+
+    /// Returns the holon id requested for deletion.
+    pub fn holon_id(&self) -> Result<HolonId, HolonError> {
+        match self.request.property_value(CorePropertyTypeName::HolonId)? {
+            Some(BaseValue::StringValue(value)) => serde_json::from_str(&value.0)
+                .map_err(|error| HolonError::InvalidParameter(format!("Invalid HolonId: {error}"))),
+            Some(other) => {
+                // TODO: replace this JSON-string bridge when runtime value
+                // support catches up with the imported schema's intended
+                // `HolonId` value family.
+                Err(HolonError::UnexpectedValueType(
+                    format!("{other:?}"),
+                    "String".to_string(),
+                ))
+            }
+            None => Err(HolonError::InvalidParameter(
+                "DeleteHolonParameters requires a HolonId property".to_string(),
+            )),
+        }
+    }
+}
+
 /// Typed reference to a response holon described by `DanceResponseType`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DanceResponseReference {
@@ -483,16 +582,8 @@ impl DanceResponseReference {
     /// holon is described as `DanceResponseType`.
     pub fn new(response: HolonReference) -> Result<Self, HolonError> {
         let descriptor = response.holon_descriptor()?;
-        let found = descriptor.header().type_name()?;
         let expected = MapString("DanceResponseType".to_string());
-
-        if found != expected {
-            return Err(HolonError::WrongDescriptorKind {
-                expected: expected.to_string(),
-                found: found.to_string(),
-                descriptor: found.to_string(),
-            });
-        }
+        accessor_helpers::validate_extends_chain_reaches(descriptor.holon(), &expected)?;
 
         Ok(Self { response })
     }
@@ -638,12 +729,13 @@ impl DanceEvent {
 mod tests {
     use super::{
         DanceContext, DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent, DanceIdentity,
-        DanceOutcome, DanceRequestState, DanceResult, InvocationSource,
+        DanceInvocation, DanceOutcome, DanceRequestState, DanceResult, DeleteHolonParameters,
+        InvocationSource,
     };
     use crate::descriptors::test_support::{build_context, new_test_holon};
     use crate::HolonReference;
     use base_types::MapString;
-    use core_types::HolonError;
+    use core_types::{HolonError, HolonId, LocalId};
     use serde_json::{json, to_value};
 
     #[test]
@@ -747,5 +839,22 @@ mod tests {
 
         assert_eq!(event.event_name, "validated");
         assert!(matches!(event.payload, Some(reference) if reference.is_transient()));
+    }
+
+    #[test]
+    fn delete_holon_builder_creates_request_parameters_holon() {
+        let context = build_context();
+        let expected_id = HolonId::Local(LocalId(vec![4, 5, 6]));
+
+        let invocation =
+            DanceInvocation::build_delete_holon(&context, expected_id.clone()).expect("invocation");
+        let bound = invocation.bind().expect("bind delete invocation");
+        let request = bound.request().cloned().expect("delete request");
+        let request_type = bound.request_type().expect("delete request type");
+        let parameters =
+            DeleteHolonParameters::new(request, request_type).expect("typed delete parameters");
+
+        assert_eq!(parameters.holon_id().expect("holon id"), expected_id);
+        assert!(bound.affording_holon().is_none());
     }
 }

@@ -1,8 +1,7 @@
 use base_types::{BaseValue, MapInteger};
 use core_types::HolonError;
 use holons_core::dances::execute_dance_v2;
-use holons_core::reference_layer::HolonReference;
-
+use holons_core::HolonReference;
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
 use super::runtime_session::RuntimeSession;
@@ -109,10 +108,7 @@ pub async fn handle_transaction(
         TransactionAction::DeleteHolon { local_id } => {
             let invocation = holons_core::dances::DanceInvocation::build_delete_holon(
                 context,
-                HolonReference::smart_from_id(
-                    context.context_handle(),
-                    core_types::HolonId::Local(local_id),
-                ),
+                core_types::HolonId::Local(local_id),
             )?;
             execute_dance_v2(context, invocation).await?;
             Ok(MapResult::None)

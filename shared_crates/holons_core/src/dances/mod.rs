@@ -11,7 +11,7 @@ pub use self::contract::{
     build_dance_v2_invocation, build_dance_v2_response, BoundDanceInvocation, DanceContext,
     DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent, DanceExecutionResult, DanceIdentity,
     DanceInvocation, DanceInvocationSource, DanceOutcome, DanceParameters, DanceRequestState,
-    DanceResponseReference, DanceResult, DanceTarget, InvocationSource,
+    DanceResponseReference, DanceResult, DanceTarget, DeleteHolonParameters, InvocationSource,
 };
 pub use self::dance_initiator::DanceInitiator;
 pub use self::dance_request::{DanceRequest, DanceType, RequestBody};
