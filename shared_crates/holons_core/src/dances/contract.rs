@@ -290,7 +290,7 @@ impl DanceInvocation {
     /// Resolves the descriptor-backed execution context needed by the executor.
     pub fn bind(self) -> Result<BoundDanceInvocation, HolonError> {
         let dance_descriptor = self.dance_descriptor()?;
-        let request_type = dance_descriptor.request_type()?;
+        let request_type = dance_descriptor.input_parameters()?;
         let affording_holon = self.affording_holon()?;
         let affording_holon_descriptor = match affording_holon.as_ref() {
             Some(holon) => Some(holon.holon_descriptor()?),
@@ -354,7 +354,7 @@ impl DanceInvocation {
             context.mutation().new_holon(Some(MapString::from("delete-holon-dance")))?;
         initialize_runtime_descriptor_holon(&mut dance_descriptor, "DeleteHolon")?;
         dance_descriptor.add_related_holons(
-            CoreRelationshipTypeName::RequestType,
+            CoreRelationshipTypeName::InputParameters,
             vec![request_type.clone()],
         )?;
         dance_descriptor
