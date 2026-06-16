@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-11T16:58:56",
+    "generated_at": "2026-06-16T09:29:09",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-concrete-value-types.csv"
@@ -819,6 +819,33 @@
           "name": "VariantOf",
           "target": {
             "$ref": "CollectionType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonIdValueType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "HolonIdValueType",
+        "type_name_plural": "HolonIdValueTypes",
+        "display_name": "HolonIdValueType",
+        "display_name_plural": "HolonIdValueTypes",
+        "description": "Concrete bytes value type representing the canonical serialized form of a HolonId.",
+        "instance_type_kind": "TypeKind.Value.Bytes"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapBytesValueType"
           }
         }
       ]

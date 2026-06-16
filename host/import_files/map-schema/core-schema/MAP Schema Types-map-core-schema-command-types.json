@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-11T16:58:56",
+    "generated_at": "2026-06-16T09:29:09",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.csv"
@@ -1092,7 +1092,7 @@
         "type_name_plural": "DeleteHolonCommands",
         "display_name": "Delete Holon Command",
         "display_name_plural": "Delete Holon Commands",
-        "description": "Deletes a holon identified by local ID from the active transaction.",
+        "description": "Deletes a holon identified by ID from the active transaction.",
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
