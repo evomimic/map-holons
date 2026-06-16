@@ -92,18 +92,18 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         dance_descriptor.dance_name().expect("DanceType dance_name"),
         DanceName(MapString("DanceType".to_string()))
     );
-    let request_type_relationship = dance_type_descriptor
-        .get_relationship_by_name(RelationshipName(MapString::from("RequestType")))
-        .expect("DanceType.RequestType lookup");
+    let input_parameters_relationship = dance_type_descriptor
+        .get_relationship_by_name(RelationshipName(MapString::from("InputParameters")))
+        .expect("DanceType.InputParameters lookup");
     assert_relationship_shape(
-        request_type_relationship.base_relationship_name(),
-        request_type_relationship.source_type(),
-        request_type_relationship.target_type(),
-        request_type_relationship.full_relationship_name(),
-        "RequestType",
+        input_parameters_relationship.base_relationship_name(),
+        input_parameters_relationship.source_type(),
+        input_parameters_relationship.target_type(),
+        input_parameters_relationship.full_relationship_name(),
+        "InputParameters",
         "DanceType",
-        "HolonType",
-        "(DanceType)-[RequestType]->(HolonType)",
+        "Projection",
+        "(DanceType)-[InputParameters]->(Projection)",
     );
     let response_relationship = dance_type_descriptor
         .get_relationship_by_name(RelationshipName(MapString::from("Response")))
@@ -119,12 +119,12 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "(DanceType)-[Response]->(DanceResponseType)",
     );
     assert_eq!(
-        dance_descriptor.input_parameters().expect("DanceType request_type").is_none(),
+        dance_descriptor.input_parameters().expect("DanceType input_parameters").is_none(),
         true
     );
     assert_contains(
         &relationship_base_names(dance_type_descriptor.instance_relationships()),
-        "RequestType",
+        "InputParameters",
     );
     assert_contains(
         &relationship_base_names(dance_type_descriptor.instance_relationships()),
@@ -370,11 +370,11 @@ async fn assert_loaded_schema_backed_dance_discovery(
     assert_eq!(
         inherited_query
             .input_parameters()
-            .expect("Query request_type")
-            .expect("Query request type target")
+            .expect("Query input_parameters")
+            .expect("Query input parameters target")
             .header()
             .type_name()
-            .expect("Query request type_name"),
+            .expect("Query input parameters type_name"),
         MapString("Projection".to_string())
     );
     assert_eq!(

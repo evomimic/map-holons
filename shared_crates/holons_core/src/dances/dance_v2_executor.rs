@@ -102,9 +102,8 @@ fn validate_request_contract(
                 });
             }
 
-            // TODO: the current schema models `RequestType` as a generic
-            // `HolonType`. A dedicated request-contract descriptor would allow
-            // richer validation than simple descriptor identity matching.
+            // TODO: use the declared Projection structure to validate required
+            // parameter properties, not just descriptor identity.
             Ok(())
         }
         (None, None) => Ok(()),

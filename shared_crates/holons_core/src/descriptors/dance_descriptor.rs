@@ -156,7 +156,7 @@ mod tests {
         assert!(matches!(
             descriptor.input_parameters(),
             Err(HolonError::MultipleRelatedHolons { relationship, count, .. })
-                if relationship == "RequestType" && count == 2
+                if relationship == "InputParameters" && count == 2
         ));
 
         Ok(())

@@ -23,7 +23,7 @@ pub fn invoke(
     })?;
     let request_type =
         bound_invocation.request_type().ok_or_else(|| HolonError::MissingRequiredRelationship {
-            relationship: "RequestType".to_string(),
+            relationship: "InputParameters".to_string(),
             descriptor: bound_invocation
                 .dance_descriptor()
                 .holon()
