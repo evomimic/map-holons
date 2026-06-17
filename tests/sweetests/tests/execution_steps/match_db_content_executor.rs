@@ -51,7 +51,7 @@ pub async fn execute_match_db_content(state: &mut TestExecutionState) {
                 expected_snapshot: resolved_reference.expected_snapshot.clone(),
                 execution_handle: ExecutionHandle::from(rebound_reference.clone()),
             };
-            rebound_exec_ref.assert_essential_content_eq();
+            rebound_exec_ref.assert_saved_content_eq();
             info!(
                 "SUCCESS! DB fetched holon matched expected for: \n {:?}",
                 rebound_reference.summarize()
