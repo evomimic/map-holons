@@ -48,6 +48,7 @@ impl ValueDescriptor {
             }
             ValueKind::Boolean => self.validate_boolean(value),
             ValueKind::Enum => EnumValueDescriptor::from_holon(self.holon.clone()).is_valid(value),
+            ValueKind::Bytes => self.validate_bytes(value),
             ValueKind::Array => Err(self.value_kind_mismatch("Array", value)),
             ValueKind::Other(found) => Err(self.wrong_value_kind(found)),
         }
@@ -136,6 +137,7 @@ impl ValueDescriptor {
             ValueKind::Enum => {
                 EnumValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
             }
+            ValueKind::Bytes => self.apply_bytes_operator(op, lhs, rhs),
             ValueKind::Array => {
                 // Array execution is explicitly deferred; arrays may expose
                 // affordances structurally before they have runtime semantics.
@@ -160,6 +162,7 @@ impl ValueDescriptor {
                 "StringValueType" => return Ok(ValueKind::String),
                 "BooleanValueType" => return Ok(ValueKind::Boolean),
                 "EnumValueType" => return Ok(ValueKind::Enum),
+                "BytesValueType" => return Ok(ValueKind::Bytes),
                 "ValueArrayValueType" => return Ok(ValueKind::Array),
                 _ => {}
             }
@@ -172,6 +175,13 @@ impl ValueDescriptor {
         match value {
             BaseValue::BooleanValue(_) => Ok(()),
             other => Err(self.value_kind_mismatch("Boolean", other)),
+        }
+    }
+
+    fn validate_bytes(&self, value: &BaseValue) -> Result<(), HolonError> {
+        match value {
+            BaseValue::BytesValue(_) => Ok(()),
+            other => Err(self.value_kind_mismatch("Bytes", other)),
         }
     }
 
@@ -196,6 +206,27 @@ impl ValueDescriptor {
         Ok(lhs == rhs)
     }
 
+    fn apply_bytes_operator(
+        &self,
+        op: &OperatorDescriptor,
+        lhs: &BaseValue,
+        rhs: &BaseValue,
+    ) -> Result<bool, HolonError> {
+        if op.operator_name()? != CoreOperatorTypeName::EqualsOperator.as_operator_name() {
+            return self.unsupported_operator(op);
+        }
+
+        let lhs = match lhs {
+            BaseValue::BytesValue(value) => value,
+            other => return Err(self.value_kind_mismatch("Bytes", other)),
+        };
+        let rhs = match rhs {
+            BaseValue::BytesValue(value) => value,
+            other => return Err(self.value_kind_mismatch("Bytes", other)),
+        };
+        Ok(lhs == rhs)
+    }
+
     fn unsupported_operator(&self, op: &OperatorDescriptor) -> Result<bool, HolonError> {
         descriptor_unsupported_operator(&self.holon, op)
     }
@@ -206,7 +237,7 @@ impl ValueDescriptor {
 
     fn wrong_value_kind(&self, found: String) -> HolonError {
         HolonError::WrongDescriptorKind {
-            expected: "IntegerValueType, StringValueType, BooleanValueType, EnumValueType, or ValueArrayValueType".to_string(),
+            expected: "IntegerValueType, StringValueType, BooleanValueType, BytesValueType, EnumValueType, or ValueArrayValueType".to_string(),
             found,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
         }
@@ -219,6 +250,7 @@ enum ValueKind {
     String,
     Boolean,
     Enum,
+    Bytes,
     Array,
     Other(String),
 }
@@ -249,7 +281,7 @@ mod tests {
         build_context, core_holon_type_name, core_value_type_name, new_descriptor_holon,
     };
     use crate::reference_layer::WritableHolon;
-    use base_types::{MapBoolean, MapEnumValue, MapInteger, MapString};
+    use base_types::{MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
     use core_types::HolonError;
     use type_names::{
         CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
@@ -372,6 +404,23 @@ mod tests {
             boolean.is_valid(&BaseValue::IntegerValue(MapInteger(1))),
             Err(HolonError::ValueKindMismatch { expected, found, .. })
                 if expected == "Boolean" && found == "Integer"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn is_valid_handles_bytes_inline() -> Result<(), HolonError> {
+        let context = build_context();
+        let bytes = ValueDescriptor::from_holon(
+            new_descriptor_holon(&context, "bytes-value", "BytesValueType", "Value")?.into(),
+        );
+
+        assert!(bytes.is_valid(&BaseValue::BytesValue(MapBytes(vec![1, 2, 3]))).is_ok());
+        assert!(matches!(
+            bytes.is_valid(&BaseValue::StringValue(MapString("010203".to_string()))),
+            Err(HolonError::ValueKindMismatch { expected, found, .. })
+                if expected == "Bytes" && found == "String"
         ));
 
         Ok(())

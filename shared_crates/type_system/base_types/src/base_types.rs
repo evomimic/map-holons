@@ -67,7 +67,7 @@ impl fmt::Display for MapEnumValue {
 // ===============================
 // 📦 MapBytes
 // ===============================
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MapBytes(pub Vec<u8>);
 
 impl fmt::Display for MapBytes {
@@ -88,6 +88,7 @@ pub enum BaseValue {
     BooleanValue(MapBoolean),
     IntegerValue(MapInteger),
     EnumValue(MapEnumValue), // for simple enum variants
+    BytesValue(MapBytes),
 }
 
 impl fmt::Display for BaseValue {
@@ -104,6 +105,7 @@ impl fmt::Display for BaseValue {
             BaseValue::BooleanValue(val) => write!(f, "BooleanValue({})", val),
             BaseValue::IntegerValue(val) => write!(f, "IntegerValue({})", val),
             BaseValue::EnumValue(val) => write!(f, "EnumValue({})", val),
+            BaseValue::BytesValue(val) => write!(f, "BytesValue({})", val),
         }
     }
 }
@@ -116,6 +118,7 @@ impl BaseValue {
             Self::BooleanValue(map_bool) => MapBytes(vec![map_bool.0 as u8]),
             Self::IntegerValue(map_int) => MapBytes(map_int.0.to_be_bytes().to_vec()),
             Self::EnumValue(map_enum) => MapBytes(map_enum.0 .0.clone().into_bytes()),
+            Self::BytesValue(map_bytes) => map_bytes.clone(),
         }
     }
 }
@@ -129,6 +132,7 @@ impl Into<String> for &BaseValue {
             BaseValue::IntegerValue(val) => val.0.to_string(),
             BaseValue::BooleanValue(val) => val.0.to_string(),
             BaseValue::EnumValue(val) => val.0 .0.clone(),
+            BaseValue::BytesValue(val) => val.to_string(),
         }
     }
 }
@@ -170,6 +174,11 @@ impl ToBaseValue for MapEnumValue {
         BaseValue::EnumValue(self)
     }
 }
+impl ToBaseValue for MapBytes {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::BytesValue(self)
+    }
+}
 
 // References to wrappers → BaseValue (clone as needed)
 impl ToBaseValue for &MapString {
@@ -190,6 +199,11 @@ impl ToBaseValue for &MapInteger {
 impl ToBaseValue for &MapEnumValue {
     fn to_base_value(self) -> BaseValue {
         BaseValue::EnumValue(self.clone())
+    }
+}
+impl ToBaseValue for &MapBytes {
+    fn to_base_value(self) -> BaseValue {
+        BaseValue::BytesValue(self.clone())
     }
 }
 

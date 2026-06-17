@@ -6,9 +6,10 @@
 export type TxId = number;
 export type MapInteger = number;
 export type MapString = string;
+export type MapBytes = number[];
 export type PropertyName = string;
 export type RelationshipName = string;
-export type LocalId = number[];
+export type LocalId = MapBytes;
 export type OutboundProxyId = LocalId;
 export type TemporaryId = string;
 
@@ -35,7 +36,8 @@ export type BaseValue =
   | { StringValue: string }
   | { BooleanValue: boolean }
   | { IntegerValue: number }
-  | { EnumValue: string };
+  | { EnumValue: string }
+  | { BytesValue: MapBytes };
 
 // BTreeMap<PropertyName, BaseValue> serialized with string keys.
 export type PropertyMap = Record<string, BaseValue>;
@@ -440,13 +442,17 @@ function isStringPair(value: unknown): value is [string, string] {
 }
 
 export function isLocalId(value: unknown): value is LocalId {
+  return isMapBytes(value);
+}
+
+export function isMapBytes(value: unknown): value is MapBytes {
   return (
     Array.isArray(value) &&
     value.every(
       (item) =>
         typeof item === 'number' &&
         Number.isInteger(item) &&
-        // LocalId is serialized as a byte array.
+        // Bytes are serialized as u8 arrays.
         item >= 0 &&
         item <= 255,
     )
@@ -478,7 +484,8 @@ export function isBaseValue(value: unknown): value is BaseValue {
       typeof candidate === 'boolean',
     ) ||
     isTaggedValue(value, 'IntegerValue', isNumber) ||
-    isTaggedValue(value, 'EnumValue', isString)
+    isTaggedValue(value, 'EnumValue', isString) ||
+    isTaggedValue(value, 'BytesValue', isMapBytes)
   );
 }
 

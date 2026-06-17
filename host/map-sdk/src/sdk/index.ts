@@ -10,6 +10,7 @@ export {
   MalformedResponseError,
   MapError,
   TransportError,
+  extractBytes,
   extractNumber,
   extractString,
 } from './types';
@@ -21,6 +22,7 @@ export type {
   HolonError,
   HolonId,
   LocalId,
+  MapBytes,
   MapErrorCode,
   PropertyName,
   ReadableHolon,

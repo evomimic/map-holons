@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use base_types::{BaseValue, MapBoolean, MapEnumValue, MapInteger, MapString};
+use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
 use core_types::{
     ContentSet, ExternalId, FileData, HolonError, HolonId, LocalId, OutboundProxyId, PropertyMap,
     PropertyName, RelationshipName, TemporaryId, ValidationError,
@@ -430,6 +430,11 @@ fn generate_fixtures() {
                 "title is required".to_string(),
             ))),
         ),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-value-bytes.json",
+        &response(117, Ok(MapResultWire::Value(BaseValue::BytesValue(MapBytes(vec![1, 2, 3]))))),
     );
 }
 

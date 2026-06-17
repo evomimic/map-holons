@@ -9,6 +9,7 @@ import type {
   HolonError,
   HolonId,
   LocalId,
+  MapBytes,
   PropertyName,
   ReadableHolon,
   RelationshipName,
@@ -33,6 +34,7 @@ describe('public SDK exports', () => {
     expect(sdk.DomainError).toBeDefined();
     expect(sdk.extractString).toBeDefined();
     expect(sdk.extractNumber).toBeDefined();
+    expect(sdk.extractBytes).toBeDefined();
   });
 
   it('does not expose internal wire or transport-layer exports', () => {
@@ -63,8 +65,10 @@ describe('public SDK exports', () => {
   it('supports the documented public type exports at compile time', () => {
     const baseValue: BaseValue = { StringValue: 'alpha' };
     const integerValue: BaseValue = { IntegerValue: 7 };
+    const bytesValue: BaseValue = { BytesValue: [8, 9, 10] };
     const holonId: HolonId = { Local: [1, 2, 3] };
     const localId: LocalId = [4, 5, 6];
+    const mapBytes: MapBytes = [7, 8, 9];
     const propertyName: PropertyName = 'title';
     const relationshipName: RelationshipName = 'related_to';
     const smartReference: SmartReference = { holonId };
@@ -96,8 +100,10 @@ describe('public SDK exports', () => {
 
     expect(baseValue).toEqual({ StringValue: 'alpha' });
     expect(integerValue).toEqual({ IntegerValue: 7 });
+    expect(bytesValue).toEqual({ BytesValue: [8, 9, 10] });
     expect(holonId).toEqual({ Local: [1, 2, 3] });
     expect(localId).toEqual([4, 5, 6]);
+    expect(mapBytes).toEqual([7, 8, 9]);
     expect(propertyName).toBe('title');
     expect(relationshipName).toBe('related_to');
     expect(smartReference).toEqual({ holonId });
