@@ -189,13 +189,12 @@ impl FixtureHolons {
         Ok(new_source)
     }
 
-    /// Returns the current head snapshot reference for the logical holon
-    /// identified by `token`.
+    /// Resolves the expected fixture snapshot to embed as a relationship target.
     ///
     /// Relationship adders use this to avoid freezing stale target snapshots
     /// into expected relationship graphs when callers pass an older token for a
     /// holon whose head has advanced.
-    pub fn current_head_reference(
+    pub fn resolve_expected_relationship_target(
         &self,
         token: &TestReference,
     ) -> Result<HolonReference, HolonError> {
