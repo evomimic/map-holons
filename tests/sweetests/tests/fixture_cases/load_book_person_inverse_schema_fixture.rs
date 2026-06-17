@@ -99,7 +99,7 @@ pub fn load_book_person_inverse_schema_fixture() -> Result<DancesTestCase, Holon
         None,
         Some("Describe Book by Book.HolonType".to_string()),
     )?;
-    test_case.add_add_related_holons_step(
+    let person_token = test_case.add_add_related_holons_step(
         &mut fixture_holons,
         person_token.clone(),
         CoreRelationshipTypeName::DescribedBy.as_relationship_name(),

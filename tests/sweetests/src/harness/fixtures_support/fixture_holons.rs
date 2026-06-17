@@ -189,6 +189,21 @@ impl FixtureHolons {
         Ok(new_source)
     }
 
+    /// Returns the current head snapshot reference for the logical holon
+    /// identified by `token`.
+    ///
+    /// Relationship adders use this to avoid freezing stale target snapshots
+    /// into expected relationship graphs when callers pass an older token for a
+    /// holon whose head has advanced.
+    pub fn current_head_reference(
+        &self,
+        token: &TestReference,
+    ) -> Result<HolonReference, HolonError> {
+        let id = token.expected_id();
+        let fixture_holon = self.get_fixture_holon_by_snapshot(&id)?;
+        Ok(fixture_holon.head_snapshot.snapshot().into())
+    }
+
     /// Removes relationships from staged head snapshots that target the supplied
     /// abandoned fixture snapshot. This keeps expected commit results aligned with
     /// persisted graph semantics after an abandon.

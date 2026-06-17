@@ -117,8 +117,10 @@ impl ExecutionReference {
     /// Commit may persist non-definitional navigational edges, such as inverse
     /// SmartLinks, that were never present in fixture snapshots. Saved content
     /// comparison therefore derives the actual holon's definitional
-    /// relationship surface from its descriptor and compares only that filtered
-    /// graph exactly.
+    /// relationship surface from its descriptor, compares that filtered graph
+    /// exactly, and matches relationship members by key/identity. Each saved
+    /// fixture holon is still compared as its own root, so member content does
+    /// not need to be recursively revalidated from every relationship edge.
     pub fn assert_saved_content_eq(&self) {
         let expected_root = HolonReference::from(self.expected_snapshot.snapshot());
         let actual_root = self
@@ -268,28 +270,19 @@ impl ExecutionReference {
             let mut unmatched_actual = actual_collection.get_members().clone();
 
             for expected_member in expected_members {
-                let mut matched_index: Option<usize> = None;
-                let mut matched_visited_state: Option<HashSet<(String, String)>> = None;
-                let mut last_error: Option<String> = None;
-
-                for (index, actual_member) in unmatched_actual.iter().enumerate() {
-                    let mut candidate_visited = visited_pairs.clone();
-                    match Self::compare_holon_graph_eq(
-                        &expected_member,
-                        actual_member,
-                        &mut candidate_visited,
-                        policy,
-                    ) {
-                        Ok(()) => {
-                            matched_index = Some(index);
-                            matched_visited_state = Some(candidate_visited);
-                            break;
-                        }
-                        Err(err) => {
-                            last_error = Some(err);
-                        }
+                let (matched_index, matched_visited_state, last_error) = match policy {
+                    RelationshipComparisonPolicy::ExpectedSubsetAllRelationships => {
+                        Self::match_by_graph(
+                            &expected_member,
+                            &unmatched_actual,
+                            visited_pairs,
+                            policy,
+                        )
                     }
-                }
+                    RelationshipComparisonPolicy::ExactDefinitionalRelationships => {
+                        Self::match_by_identity(&expected_member, &unmatched_actual)
+                    }
+                };
 
                 match matched_index {
                     Some(index) => {
@@ -369,6 +362,79 @@ impl ExecutionReference {
                 "saved-lookup stub key mismatch: expected {:?}, actual {:?}",
                 expected_key, actual_key
             ))
+        }
+    }
+
+    fn match_by_graph(
+        expected_member: &HolonReference,
+        unmatched_actual: &[HolonReference],
+        visited_pairs: &HashSet<(String, String)>,
+        policy: RelationshipComparisonPolicy,
+    ) -> (Option<usize>, Option<HashSet<(String, String)>>, Option<String>) {
+        let mut matched_index: Option<usize> = None;
+        let mut matched_visited_state: Option<HashSet<(String, String)>> = None;
+        let mut last_error: Option<String> = None;
+
+        for (index, actual_member) in unmatched_actual.iter().enumerate() {
+            let mut candidate_visited = visited_pairs.clone();
+            match Self::compare_holon_graph_eq(
+                expected_member,
+                actual_member,
+                &mut candidate_visited,
+                policy,
+            ) {
+                Ok(()) => {
+                    matched_index = Some(index);
+                    matched_visited_state = Some(candidate_visited);
+                    break;
+                }
+                Err(err) => {
+                    last_error = Some(err);
+                }
+            }
+        }
+
+        (matched_index, matched_visited_state, last_error)
+    }
+
+    fn match_by_identity(
+        expected_member: &HolonReference,
+        unmatched_actual: &[HolonReference],
+    ) -> (Option<usize>, Option<HashSet<(String, String)>>, Option<String>) {
+        let mut last_error = None;
+
+        for (index, actual_member) in unmatched_actual.iter().enumerate() {
+            match Self::compare_identity(expected_member, actual_member) {
+                Ok(()) => return (Some(index), None, None),
+                Err(err) => last_error = Some(err),
+            }
+        }
+
+        (None, None, last_error)
+    }
+
+    fn compare_identity(expected: &HolonReference, actual: &HolonReference) -> Result<(), String> {
+        let expected_key =
+            expected.key().map_err(|e| format!("failed to read expected member key: {:?}", e))?;
+        let actual_key =
+            actual.key().map_err(|e| format!("failed to read actual member key: {:?}", e))?;
+
+        match (expected_key, actual_key) {
+            (Some(expected_key), Some(actual_key)) if expected_key == actual_key => Ok(()),
+            (Some(expected_key), Some(actual_key)) => Err(format!(
+                "member key mismatch: expected {:?}, actual {:?}",
+                expected_key, actual_key
+            )),
+            (None, _) => Err(format!(
+                "expected relationship member {}:{} has no key for identity comparison",
+                expected.reference_kind_string(),
+                expected.reference_id_string()
+            )),
+            (_, None) => Err(format!(
+                "actual relationship member {}:{} has no key for identity comparison",
+                actual.reference_kind_string(),
+                actual.reference_id_string()
+            )),
         }
     }
 
