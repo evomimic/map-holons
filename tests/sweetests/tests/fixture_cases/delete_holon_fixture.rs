@@ -20,6 +20,12 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.",
     );
 
+    test_case.add_load_core_schema_step(None)?;
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin transaction after core schema load".to_string()),
+    )?;
+
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
     let book_transient_reference = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
@@ -48,8 +54,6 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
-
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     test_case.add_begin_transaction_step(
         None,

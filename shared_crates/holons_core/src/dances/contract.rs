@@ -3,12 +3,12 @@ use crate::core_shared_objects::Holon;
 use crate::descriptors::{
     accessor_helpers, DanceDescriptor, DanceResponseDescriptor, Descriptor, HolonDescriptor,
 };
-use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
+use crate::reference_layer::{HolonCollectionApi, HolonReference, ReadableHolon, WritableHolon};
 use base_types::{BaseValue, MapBytes, MapString};
 use core_types::{ExternalId, HolonError, HolonId, OutboundProxyId, TypeKind};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use type_names::CoreDanceImplementationName;
+use type_names::{CoreDanceImplementationName, CoreHolonTypeName};
 use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Runtime result for dance execution within a transaction.
@@ -323,21 +323,7 @@ impl DanceInvocation {
             "dance-invocation-descriptor",
             "DanceInvocation",
         )?;
-        let projection_type =
-            new_runtime_descriptor_holon(context, "projection-type", "Projection")?;
-        let holon_id_property_type = new_runtime_property_descriptor_holon(
-            context,
-            "delete-holon-parameter-holon-id-property",
-            CorePropertyTypeName::HolonId,
-        )?;
-        let mut request_type =
-            new_runtime_descriptor_holon(context, "holon-id-projection", "HolonId")?;
-        request_type
-            .add_related_holons(CoreRelationshipTypeName::Extends, vec![projection_type])?;
-        request_type.add_related_holons(
-            CoreRelationshipTypeName::InstanceProperties,
-            vec![holon_id_property_type.clone()],
-        )?;
+        let request_type = resolve_core_projection_descriptor(context, CoreHolonTypeName::HolonId)?;
         let response_type = new_runtime_response_descriptor_holon(
             context,
             "delete-holon-response-type-family",
@@ -441,16 +427,6 @@ fn new_runtime_descriptor_holon(
     Ok(descriptor.into())
 }
 
-fn new_runtime_property_descriptor_holon(
-    context: &Arc<TransactionContext>,
-    key: &str,
-    property_name: CorePropertyTypeName,
-) -> Result<HolonReference, HolonError> {
-    let mut descriptor = context.mutation().new_holon(Some(MapString::from(key)))?;
-    initialize_runtime_descriptor_holon(&mut descriptor, property_name.as_property_name().0)?;
-    Ok(descriptor.into())
-}
-
 fn new_runtime_response_descriptor_holon(
     context: &Arc<TransactionContext>,
     family_key: &str,
@@ -464,6 +440,19 @@ fn new_runtime_response_descriptor_holon(
     initialize_runtime_descriptor_holon(&mut response_descriptor, response_type_name)?;
     response_descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![family])?;
     Ok(response_descriptor.into())
+}
+
+fn resolve_core_projection_descriptor(
+    context: &Arc<TransactionContext>,
+    type_name: CoreHolonTypeName,
+) -> Result<HolonReference, HolonError> {
+    let key = core_projection_key(type_name);
+    let holons = context.lookup().get_all_holons()?;
+    holons.get_by_key(&key)?.ok_or_else(|| HolonError::HolonNotFound(format!("for key: {}", key.0)))
+}
+
+fn core_projection_key(type_name: CoreHolonTypeName) -> MapString {
+    MapString(format!("{}.Projection", type_name.as_holon_name().0))
 }
 
 fn initialize_runtime_descriptor_holon<T: WritableHolon>(
@@ -817,16 +806,18 @@ impl DanceEvent {
 #[cfg(test)]
 mod tests {
     use super::{
-        DanceContext, DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent, DanceIdentity,
-        DanceInvocation, DanceOutcome, DanceRequestState, DanceResult, DeleteHolonParameters,
+        holon_id_to_map_bytes, DanceContext, DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent,
+        DanceIdentity, DanceOutcome, DanceRequestState, DanceResult, DeleteHolonParameters,
         InvocationSource,
     };
-    use crate::descriptors::test_support::{build_context, new_test_holon};
-    use crate::reference_layer::ReadableHolon;
+    use crate::descriptors::test_support::{build_context, new_descriptor_holon, new_test_holon};
+    use crate::descriptors::HolonDescriptor;
+    use crate::reference_layer::{ReadableHolon, WritableHolon};
     use crate::HolonReference;
     use base_types::{BaseValue, MapString};
     use core_types::{ExternalId, HolonError, HolonId, LocalId, OutboundProxyId};
     use serde_json::{json, to_value};
+    use type_names::CorePropertyTypeName;
 
     #[test]
     fn parameter_holon_accepts_transient_reference() {
@@ -932,31 +923,35 @@ mod tests {
     }
 
     #[test]
-    fn delete_holon_builder_creates_request_parameters_holon() {
+    fn delete_holon_parameters_decode_local_holon_id_bytes() {
         let context = build_context();
         let expected_id = HolonId::Local(LocalId(vec![4, 5, 6]));
+        let descriptor = new_descriptor_holon(&context, "holon-id-projection", "HolonId", "Holon")
+            .expect("HolonId projection descriptor");
+        let descriptor_ref = HolonReference::from(&descriptor);
+        let mut request =
+            new_test_holon(&context, "delete-holon-parameters").expect("request holon");
+        request.with_descriptor(descriptor_ref.clone()).expect("request descriptor");
+        request
+            .with_property_value(
+                CorePropertyTypeName::HolonId,
+                BaseValue::BytesValue(holon_id_to_map_bytes(&expected_id)),
+            )
+            .expect("HolonId property");
+        let request = HolonReference::from(request);
+        let request_type = HolonDescriptor::from_holon(descriptor_ref);
 
-        let invocation =
-            DanceInvocation::build_delete_holon(&context, expected_id.clone()).expect("invocation");
-        let bound = invocation.bind().expect("bind delete invocation");
-        let request = bound.request().cloned().expect("delete request");
-        let request_type = bound.request_type().expect("delete request type");
         let parameters =
-            DeleteHolonParameters::new(request, request_type).expect("typed delete parameters");
+            DeleteHolonParameters::new(request, &request_type).expect("typed delete parameters");
 
-        assert_eq!(
-            request_type.header().type_name().expect("request type name"),
-            MapString("HolonId".to_string())
-        );
         assert_eq!(parameters.holon_id().expect("holon id"), expected_id);
         assert!(matches!(
             parameters
                 .as_holon_reference()
-                .property_value(type_names::CorePropertyTypeName::HolonId)
+                .property_value(CorePropertyTypeName::HolonId)
                 .expect("holon id property"),
             Some(BaseValue::BytesValue(_))
         ));
-        assert!(bound.affording_holon().is_none());
     }
 
     #[test]
@@ -966,15 +961,22 @@ mod tests {
             space_id: OutboundProxyId(LocalId(vec![1, 2, 3])),
             local_id: LocalId(vec![4, 5, 6]),
         });
+        let descriptor = new_descriptor_holon(&context, "holon-id-projection", "HolonId", "Holon")
+            .expect("HolonId projection descriptor");
+        let descriptor_ref = HolonReference::from(&descriptor);
+        let mut request =
+            new_test_holon(&context, "delete-holon-parameters").expect("request holon");
+        request.with_descriptor(descriptor_ref.clone()).expect("request descriptor");
+        request
+            .with_property_value(
+                CorePropertyTypeName::HolonId,
+                BaseValue::BytesValue(holon_id_to_map_bytes(&expected_id)),
+            )
+            .expect("HolonId property");
+        let request_type = HolonDescriptor::from_holon(descriptor_ref);
 
-        let invocation =
-            DanceInvocation::build_delete_holon(&context, expected_id.clone()).expect("invocation");
-        let bound = invocation.bind().expect("bind delete invocation");
-        let parameters = DeleteHolonParameters::new(
-            bound.request().cloned().expect("delete request"),
-            bound.request_type().expect("delete request type"),
-        )
-        .expect("typed delete parameters");
+        let parameters = DeleteHolonParameters::new(HolonReference::from(request), &request_type)
+            .expect("typed delete parameters");
 
         assert_eq!(parameters.holon_id().expect("holon id"), expected_id);
     }

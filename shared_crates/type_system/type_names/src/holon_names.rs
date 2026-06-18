@@ -72,6 +72,7 @@ pub enum CoreHolonTypeName {
     DeclaredRelationshipType,
     Holon,
     HolonError,
+    HolonId,
     HolonLoadError,
     HolonSpace,
     HolonType,
@@ -138,6 +139,7 @@ mod tests {
             MapString("HolonError".to_string()),
             CoreHolonTypeName::HolonError.as_holon_name()
         );
+        assert_eq!(MapString("HolonId".to_string()), CoreHolonTypeName::HolonId.as_holon_name());
     }
 
     #[test]

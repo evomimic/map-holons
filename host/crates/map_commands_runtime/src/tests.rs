@@ -3,14 +3,15 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use base_types::{BaseValue, MapInteger, MapString};
-use core_types::{HolonError, HolonId, LocalId};
+use base_types::{BaseValue, MapBoolean, MapInteger, MapString};
+use core_types::{HolonError, HolonId, LocalId, PropertyMap, PropertyName, TypeKind};
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
-use holons_core::core_shared_objects::ServiceRoutingPolicy;
+use holons_core::core_shared_objects::{HolonCollection, ServiceRoutingPolicy};
 use holons_core::dances::{build_dance_v2_invocation, DanceInvocation};
 use holons_core::reference_layer::{
-    HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
+    HolonCollectionApi, HolonReference, HolonServiceApi, StagedReference, TransientReference,
+    WritableHolon,
 };
 
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
@@ -88,9 +89,31 @@ impl HolonServiceApi for TestHolonService {
 
     fn get_all_holons_internal(
         &self,
-        _context: &Arc<TransactionContext>,
-    ) -> Result<holons_core::core_shared_objects::HolonCollection, HolonError> {
-        unreachable_in_handler_tests()
+        context: &Arc<TransactionContext>,
+    ) -> Result<HolonCollection, HolonError> {
+        // Updated to allow unit test calls to DanceInvocation::build_delete_holon()
+        let key = MapString("HolonId.Projection".to_string());
+        let mut properties = PropertyMap::new();
+        properties.insert(property_name("Key"), BaseValue::StringValue(key.clone()));
+        properties.insert(
+            property_name("TypeName"),
+            BaseValue::StringValue(MapString("HolonId".to_string())),
+        );
+        properties
+            .insert(property_name("IsAbstractType"), BaseValue::BooleanValue(MapBoolean(false)));
+        properties.insert(
+            property_name("InstanceTypeKind"),
+            BaseValue::StringValue(MapString(TypeKind::Holon.as_schema_key())),
+        );
+
+        let descriptor = HolonReference::smart_with_properties(
+            context.context_handle(),
+            HolonId::Local(LocalId(vec![1])),
+            properties,
+        );
+        let mut collection = HolonCollection::new_existing();
+        collection.add_reference_with_key(Some(&key), &descriptor)?;
+        Ok(collection)
     }
 
     fn load_holons_internal(
@@ -100,6 +123,10 @@ impl HolonServiceApi for TestHolonService {
     ) -> Result<TransientReference, HolonError> {
         unreachable_in_handler_tests()
     }
+}
+
+fn property_name(name: &str) -> PropertyName {
+    PropertyName(MapString(name.to_string()))
 }
 
 fn build_test_space_manager() -> Arc<HolonSpaceManager> {
