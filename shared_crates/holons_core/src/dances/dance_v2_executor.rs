@@ -88,22 +88,22 @@ fn validate_request_contract(
             relationship: "Request".to_string(),
             descriptor: bound_invocation.invocation().as_holon_reference().summarize()?,
         }),
-        (None, Some(_)) => Err(HolonError::InvalidRelationship(
-            "Request".to_string(),
-            bound_invocation.invocation().as_holon_reference().summarize()?,
-        )),
+        (None, Some(_)) => Ok(()),
         (Some(expected_type), Some(request_holon)) => {
-            let request_descriptor = request_holon.holon_descriptor()?;
-            if request_descriptor.header().type_name()? != expected_type.header().type_name()? {
-                return Err(HolonError::WrongDescriptorKind {
-                    expected: expected_type.header().type_name()?.to_string(),
-                    found: request_descriptor.header().type_name()?.to_string(),
-                    descriptor: request_descriptor.header().type_name()?.to_string(),
-                });
+            if let Some(request_descriptor_ref) = request_holon.get_descriptor()? {
+                let request_descriptor =
+                    crate::descriptors::HolonDescriptor::from_holon(request_descriptor_ref);
+                if request_descriptor.header().type_name()? != expected_type.header().type_name()? {
+                    return Err(HolonError::WrongDescriptorKind {
+                        expected: expected_type.header().type_name()?.to_string(),
+                        found: request_descriptor.header().type_name()?.to_string(),
+                        descriptor: request_descriptor.header().type_name()?.to_string(),
+                    });
+                }
             }
 
-            // TODO: use the declared Projection structure to validate required
-            // parameter properties, not just descriptor identity.
+            // TODO: validate declared Projection properties when schema-backed
+            // input contracts are ready; descriptor absence is not invalid.
             Ok(())
         }
         (None, None) => Ok(()),

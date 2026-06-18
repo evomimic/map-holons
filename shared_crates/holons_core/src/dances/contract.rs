@@ -5,7 +5,7 @@ use crate::descriptors::{
 };
 use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
 use base_types::{BaseValue, MapBytes, MapString};
-use core_types::{ExternalId, HolonError, HolonId, OutboundProxyId, TypeKind};
+use core_types::{HolonError, HolonId, TypeKind};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use type_names::CoreDanceImplementationName;
@@ -323,21 +323,6 @@ impl DanceInvocation {
             "dance-invocation-descriptor",
             "DanceInvocation",
         )?;
-        let projection_type =
-            new_runtime_descriptor_holon(context, "projection-type", "Projection")?;
-        let holon_id_property_type = new_runtime_property_descriptor_holon(
-            context,
-            "delete-holon-parameter-holon-id-property",
-            CorePropertyTypeName::HolonId,
-        )?;
-        let mut request_type =
-            new_runtime_descriptor_holon(context, "holon-id-projection", "HolonId")?;
-        request_type
-            .add_related_holons(CoreRelationshipTypeName::Extends, vec![projection_type])?;
-        request_type.add_related_holons(
-            CoreRelationshipTypeName::InstanceProperties,
-            vec![holon_id_property_type.clone()],
-        )?;
         let response_type = new_runtime_response_descriptor_holon(
             context,
             "delete-holon-response-type-family",
@@ -354,10 +339,6 @@ impl DanceInvocation {
         let mut dance_descriptor =
             context.mutation().new_holon(Some(MapString::from("delete-holon-dance")))?;
         initialize_runtime_descriptor_holon(&mut dance_descriptor, "DeleteHolon")?;
-        dance_descriptor.add_related_holons(
-            CoreRelationshipTypeName::InputParameters,
-            vec![request_type.clone()],
-        )?;
         dance_descriptor
             .add_related_holons(CoreRelationshipTypeName::Response, vec![response_type.into()])?;
         dance_descriptor
@@ -365,10 +346,9 @@ impl DanceInvocation {
 
         let mut request =
             context.mutation().new_holon(Some(MapString::from("delete-holon-parameters")))?;
-        request.with_descriptor(request_type)?;
         request.with_property_value(
             CorePropertyTypeName::HolonId,
-            BaseValue::BytesValue(holon_id_to_map_bytes(&holon_id)),
+            BaseValue::BytesValue(MapBytes(holon_id.to_canonical_bytes())),
         )?;
 
         let mut invocation =
@@ -441,16 +421,6 @@ fn new_runtime_descriptor_holon(
     Ok(descriptor.into())
 }
 
-fn new_runtime_property_descriptor_holon(
-    context: &Arc<TransactionContext>,
-    key: &str,
-    property_name: CorePropertyTypeName,
-) -> Result<HolonReference, HolonError> {
-    let mut descriptor = context.mutation().new_holon(Some(MapString::from(key)))?;
-    initialize_runtime_descriptor_holon(&mut descriptor, property_name.as_property_name().0)?;
-    Ok(descriptor.into())
-}
-
 fn new_runtime_response_descriptor_holon(
     context: &Arc<TransactionContext>,
     family_key: &str,
@@ -515,33 +485,20 @@ pub fn build_dance_v2_invocation(
 /// execution boundary and hides the raw property access needed to extract the
 /// requested id from the request holon.
 ///
-/// The request holon is described by the schema-owned `HolonId.Projection`
-/// input shape and stores the id in the `HolonId` bytes value family.
+/// The request holon is structurally shaped like `HolonId.Projection`: it
+/// carries one `HolonId` property in the `HolonId` bytes value family.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeleteHolonParameters {
     request: HolonReference,
 }
 
 impl DeleteHolonParameters {
-    /// Wraps the request holon after verifying that it is described by the
-    /// dance's declared request type.
-    pub fn new(
-        request: HolonReference,
-        expected_type: &HolonDescriptor,
-    ) -> Result<Self, HolonError> {
-        let request_descriptor = request.holon_descriptor()?;
-        let expected = expected_type.header().type_name()?;
-        let found = request_descriptor.header().type_name()?;
-
-        if found != expected {
-            return Err(HolonError::WrongDescriptorKind {
-                expected: expected.to_string(),
-                found: found.to_string(),
-                descriptor: found.to_string(),
-            });
-        }
-
-        Ok(Self { request })
+    /// Wraps the request holon after verifying that its structural parameter
+    /// shape contains a decodable `HolonId` value.
+    pub fn new(request: HolonReference) -> Result<Self, HolonError> {
+        let parameters = Self { request };
+        parameters.holon_id()?;
+        Ok(parameters)
     }
 
     pub fn as_holon_reference(&self) -> &HolonReference {
@@ -551,7 +508,7 @@ impl DeleteHolonParameters {
     /// Returns the holon id requested for deletion.
     pub fn holon_id(&self) -> Result<HolonId, HolonError> {
         match self.request.property_value(CorePropertyTypeName::HolonId)? {
-            Some(BaseValue::BytesValue(value)) => holon_id_from_map_bytes(&value),
+            Some(BaseValue::BytesValue(value)) => HolonId::from_canonical_bytes(&value.0),
             Some(other) => {
                 Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Bytes".to_string()))
             }
@@ -559,104 +516,6 @@ impl DeleteHolonParameters {
                 "DeleteHolonParameters requires a HolonId property".to_string(),
             )),
         }
-    }
-}
-
-const HOLON_ID_LOCAL_TAG: u8 = 0;
-const HOLON_ID_EXTERNAL_TAG: u8 = 1;
-
-fn holon_id_to_map_bytes(holon_id: &HolonId) -> MapBytes {
-    let mut bytes = Vec::new();
-    match holon_id {
-        HolonId::Local(local_id) => {
-            bytes.push(HOLON_ID_LOCAL_TAG);
-            append_len_prefixed(&mut bytes, &local_id.0);
-        }
-        HolonId::External(external_id) => {
-            bytes.push(HOLON_ID_EXTERNAL_TAG);
-            append_len_prefixed(&mut bytes, &(external_id.space_id.0).0);
-            append_len_prefixed(&mut bytes, &external_id.local_id.0);
-        }
-    }
-    MapBytes(bytes)
-}
-
-fn holon_id_from_map_bytes(bytes: &MapBytes) -> Result<HolonId, HolonError> {
-    let mut cursor = ByteCursor::new(&bytes.0);
-    let tag = cursor.read_tag()?;
-    let holon_id = match tag {
-        HOLON_ID_LOCAL_TAG => HolonId::Local(cursor.read_local_id()?),
-        HOLON_ID_EXTERNAL_TAG => {
-            let space_id = OutboundProxyId(cursor.read_local_id()?);
-            let local_id = cursor.read_local_id()?;
-            HolonId::External(ExternalId { space_id, local_id })
-        }
-        other => {
-            return Err(HolonError::InvalidParameter(format!("Invalid HolonId bytes tag: {other}")))
-        }
-    };
-    cursor.finish()?;
-    Ok(holon_id)
-}
-
-fn append_len_prefixed(target: &mut Vec<u8>, value: &[u8]) {
-    target.extend_from_slice(&(value.len() as u32).to_be_bytes());
-    target.extend_from_slice(value);
-}
-
-struct ByteCursor<'a> {
-    bytes: &'a [u8],
-    offset: usize,
-}
-
-impl<'a> ByteCursor<'a> {
-    fn new(bytes: &'a [u8]) -> Self {
-        Self { bytes, offset: 0 }
-    }
-
-    fn read_tag(&mut self) -> Result<u8, HolonError> {
-        let tag = *self.bytes.get(self.offset).ok_or_else(|| {
-            HolonError::InvalidParameter("HolonId bytes are missing a tag".to_string())
-        })?;
-        self.offset += 1;
-        Ok(tag)
-    }
-
-    fn read_local_id(&mut self) -> Result<core_types::LocalId, HolonError> {
-        let length = self.read_u32()? as usize;
-        let end = self.offset.checked_add(length).ok_or_else(|| {
-            HolonError::InvalidParameter("HolonId byte length overflow".to_string())
-        })?;
-        if end > self.bytes.len() {
-            return Err(HolonError::InvalidParameter(
-                "HolonId bytes ended before the declared segment length".to_string(),
-            ));
-        }
-        let value = self.bytes[self.offset..end].to_vec();
-        self.offset = end;
-        Ok(core_types::LocalId(value))
-    }
-
-    fn read_u32(&mut self) -> Result<u32, HolonError> {
-        let end = self.offset.checked_add(4).ok_or_else(|| {
-            HolonError::InvalidParameter("HolonId byte length offset overflow".to_string())
-        })?;
-        if end > self.bytes.len() {
-            return Err(HolonError::InvalidParameter(
-                "HolonId bytes ended before a segment length".to_string(),
-            ));
-        }
-        let mut length = [0_u8; 4];
-        length.copy_from_slice(&self.bytes[self.offset..end]);
-        self.offset = end;
-        Ok(u32::from_be_bytes(length))
-    }
-
-    fn finish(&self) -> Result<(), HolonError> {
-        if self.offset == self.bytes.len() {
-            return Ok(());
-        }
-        Err(HolonError::InvalidParameter("HolonId bytes contain trailing data".to_string()))
     }
 }
 
@@ -817,15 +676,13 @@ impl DanceEvent {
 #[cfg(test)]
 mod tests {
     use super::{
-        holon_id_to_map_bytes, DanceContext, DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent,
-        DanceIdentity, DanceOutcome, DanceRequestState, DanceResult, DeleteHolonParameters,
-        InvocationSource,
+        DanceContext, DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent, DanceIdentity,
+        DanceOutcome, DanceRequestState, DanceResult, DeleteHolonParameters, InvocationSource,
     };
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon, new_test_holon};
-    use crate::descriptors::HolonDescriptor;
+    use crate::descriptors::test_support::{build_context, new_test_holon};
     use crate::reference_layer::{ReadableHolon, WritableHolon};
     use crate::HolonReference;
-    use base_types::{BaseValue, MapString};
+    use base_types::{BaseValue, MapBytes, MapString};
     use core_types::{ExternalId, HolonError, HolonId, LocalId, OutboundProxyId};
     use serde_json::{json, to_value};
     use type_names::CorePropertyTypeName;
@@ -937,23 +794,17 @@ mod tests {
     fn delete_holon_parameters_decode_local_holon_id_bytes() {
         let context = build_context();
         let expected_id = HolonId::Local(LocalId(vec![4, 5, 6]));
-        let descriptor = new_descriptor_holon(&context, "holon-id-projection", "HolonId", "Holon")
-            .expect("HolonId projection descriptor");
-        let descriptor_ref = HolonReference::from(&descriptor);
         let mut request =
             new_test_holon(&context, "delete-holon-parameters").expect("request holon");
-        request.with_descriptor(descriptor_ref.clone()).expect("request descriptor");
         request
             .with_property_value(
                 CorePropertyTypeName::HolonId,
-                BaseValue::BytesValue(holon_id_to_map_bytes(&expected_id)),
+                BaseValue::BytesValue(MapBytes(expected_id.to_canonical_bytes())),
             )
             .expect("HolonId property");
         let request = HolonReference::from(request);
-        let request_type = HolonDescriptor::from_holon(descriptor_ref);
 
-        let parameters =
-            DeleteHolonParameters::new(request, &request_type).expect("typed delete parameters");
+        let parameters = DeleteHolonParameters::new(request).expect("typed delete parameters");
 
         assert_eq!(parameters.holon_id().expect("holon id"), expected_id);
         assert!(matches!(
@@ -972,21 +823,16 @@ mod tests {
             space_id: OutboundProxyId(LocalId(vec![1, 2, 3])),
             local_id: LocalId(vec![4, 5, 6]),
         });
-        let descriptor = new_descriptor_holon(&context, "holon-id-projection", "HolonId", "Holon")
-            .expect("HolonId projection descriptor");
-        let descriptor_ref = HolonReference::from(&descriptor);
         let mut request =
             new_test_holon(&context, "delete-holon-parameters").expect("request holon");
-        request.with_descriptor(descriptor_ref.clone()).expect("request descriptor");
         request
             .with_property_value(
                 CorePropertyTypeName::HolonId,
-                BaseValue::BytesValue(holon_id_to_map_bytes(&expected_id)),
+                BaseValue::BytesValue(MapBytes(expected_id.to_canonical_bytes())),
             )
             .expect("HolonId property");
-        let request_type = HolonDescriptor::from_holon(descriptor_ref);
 
-        let parameters = DeleteHolonParameters::new(HolonReference::from(request), &request_type)
+        let parameters = DeleteHolonParameters::new(HolonReference::from(request))
             .expect("typed delete parameters");
 
         assert_eq!(parameters.holon_id().expect("holon id"), expected_id);

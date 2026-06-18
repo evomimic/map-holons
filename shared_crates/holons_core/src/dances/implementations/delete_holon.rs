@@ -4,7 +4,6 @@ use core_types::{HolonError, HolonId};
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::dances::{BoundDanceInvocation, DeleteHolonParameters};
-use crate::descriptors::Descriptor;
 use crate::reference_layer::ReadableHolon;
 
 pub fn invoke(
@@ -21,16 +20,7 @@ pub fn invoke(
                 .unwrap_or_else(|_| "DanceInvocation".to_string()),
         }
     })?;
-    let request_type =
-        bound_invocation.request_type().ok_or_else(|| HolonError::MissingRequiredRelationship {
-            relationship: "InputParameters".to_string(),
-            descriptor: bound_invocation
-                .dance_descriptor()
-                .holon()
-                .summarize()
-                .unwrap_or_else(|_| "DeleteHolon".to_string()),
-        })?;
-    let parameters = DeleteHolonParameters::new(request, request_type)?;
+    let parameters = DeleteHolonParameters::new(request)?;
     let holon_id = parameters.holon_id()?;
 
     let local_id = match holon_id {
