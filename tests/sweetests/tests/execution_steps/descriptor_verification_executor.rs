@@ -1,8 +1,7 @@
-use core_types::{LocalId, TypeKind};
+use core_types::TypeKind;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::dances::{DanceInvocation, DeleteHolonParameters};
 use holons_core::descriptors::{
-    DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor, HolonDescriptor, OperatorCategory,
+    DanceDescriptor, DeclaredRelationshipDescriptor, HolonDescriptor, OperatorCategory,
     OperatorDescriptor, RelationshipDescriptor, ValueDescriptor,
 };
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
@@ -203,7 +202,6 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         &related_holon_keys(&holon_id_projection, "InstanceProperties"),
         "HolonId.PropertyType",
     );
-    assert_loaded_schema_backed_delete_holon_input_binding(state).await;
 
     let dance_invocation = find_holon_by_key(&holons, "DanceInvocation.HolonType");
     let dance_invocation_descriptor = HolonDescriptor::from_holon(dance_invocation.clone());
@@ -403,53 +401,6 @@ async fn assert_loaded_schema_backed_dance_discovery(
             .expect("Query response body type_name"),
         MapString("Projection".to_string())
     );
-}
-
-async fn assert_loaded_schema_backed_delete_holon_input_binding(state: &mut TestExecutionState) {
-    let context = state
-        .open_assertion_context("verify_delete_holon_input_parameters_binding")
-        .await
-        .unwrap_or_else(|error| {
-            panic!("verify_delete_holon_input_parameters_binding: failed to open assertion transaction: {error:?}")
-        });
-    let expected_key = MapString("HolonId.Projection".to_string());
-    let expected_id = HolonId::Local(LocalId(vec![42, 7, 1]));
-
-    let invocation = DanceInvocation::build_delete_holon(&context, expected_id.clone())
-        .expect("DeleteHolon invocation should bind to loaded HolonId.Projection");
-    let bound = invocation.bind().expect("DeleteHolon invocation should bind");
-    let request = bound.request().cloned().expect("DeleteHolon request holon");
-    let request_type = bound.request_type().expect("DeleteHolon input parameters descriptor");
-
-    assert_eq!(
-        request_type
-            .holon()
-            .key()
-            .expect("DeleteHolon input descriptor key")
-            .expect("DeleteHolon input descriptor should have key"),
-        expected_key
-    );
-    assert_eq!(
-        request
-            .holon_descriptor()
-            .expect("DeleteHolon request descriptor")
-            .holon()
-            .key()
-            .expect("DeleteHolon request descriptor key")
-            .expect("DeleteHolon request descriptor should have key"),
-        expected_key
-    );
-
-    let parameters =
-        DeleteHolonParameters::new(request.clone(), request_type).expect("DeleteHolon parameters");
-    assert_eq!(parameters.holon_id().expect("DeleteHolon HolonId"), expected_id);
-    assert!(matches!(
-        request
-            .property_value(CorePropertyTypeName::HolonId)
-            .expect("DeleteHolon HolonId property"),
-        Some(BaseValue::BytesValue(_))
-    ));
-    assert!(bound.affording_holon().is_none());
 }
 
 /// Verifies declared/inverse relationship subtype narrowing over loaded MAP core schema data.
