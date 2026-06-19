@@ -1,0 +1,14 @@
+{
+  "request_id": 117,
+  "result": {
+    "Ok": {
+      "Value": {
+        "BytesValue": [
+          1,
+          2,
+          3
+        ]
+      }
+    }
+  }
+}

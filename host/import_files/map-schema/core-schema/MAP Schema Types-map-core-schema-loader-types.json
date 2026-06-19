@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-11T16:58:56",
+    "generated_at": "2026-06-16T09:29:09",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -1032,39 +1032,6 @@
       ]
     },
     {
-      "key": "Key.PropertyType",
-      "type": "TypeDescriptor.HolonType",
-      "properties": {
-        "type_name": "Key",
-        "type_name_plural": "Keys",
-        "display_name": "key",
-        "display_name_plural": "keys",
-        "description": "Optional key to identify the holon instance within the import set.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
-        }
-      ]
-    },
-    {
       "key": "RelationshipName.PropertyType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
@@ -1074,7 +1041,8 @@
         "display_name_plural": "relationship_names",
         "description": "Name of the relationship as declared in the JSON input.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true
       },
       "relationships": [
         {
@@ -1107,7 +1075,8 @@
         "display_name_plural": "holon_keys",
         "description": "Local key for the referenced holon.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false
       },
       "relationships": [
         {
@@ -1131,39 +1100,6 @@
       ]
     },
     {
-      "key": "HolonId.PropertyType",
-      "type": "TypeDescriptor.HolonType",
-      "properties": {
-        "type_name": "HolonId",
-        "type_name_plural": "HolonIds",
-        "display_name": "holon_id",
-        "display_name_plural": "holon_ids",
-        "description": "ActionHash identifier of a referenced holon.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
-        },
-        {
-          "name": "ValueType",
-          "target": {
-            "$ref": "MapBytesValueType"
-          }
-        }
-      ]
-    },
-    {
       "key": "ProxyKey.PropertyType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
@@ -1173,7 +1109,8 @@
         "display_name_plural": "proxy_keys",
         "description": "Key of the ProxySpace through which this external reference is routed.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false
       },
       "relationships": [
         {
@@ -1206,7 +1143,8 @@
         "display_name_plural": "proxy_ids",
         "description": "ActionHash of the ProxySpace holon, used to route external references.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false
       },
       "relationships": [
         {
@@ -1239,7 +1177,8 @@
         "display_name_plural": "holons_stageds",
         "description": "Number of holons staged during the load operation.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true
       },
       "relationships": [
         {
@@ -1272,7 +1211,8 @@
         "display_name_plural": "holons_committeds",
         "description": "Number of holons successfully committed.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true
       },
       "relationships": [
         {
@@ -1305,7 +1245,8 @@
         "display_name_plural": "links_createds",
         "description": "Number of links successfully created.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true
       },
       "relationships": [
         {
@@ -1338,7 +1279,8 @@
         "display_name_plural": "filenames",
         "description": "The name of a file.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true
       },
       "relationships": [
         {
@@ -1371,7 +1313,8 @@
         "display_name_plural": "loader_holon_keys",
         "description": "Key to reference a loader holon within a load set.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false
       },
       "relationships": [
         {
@@ -1404,7 +1347,8 @@
         "display_name_plural": "start_utf8_byte_offsets",
         "description": "Byte offset that signifies the start of a segment of a source file.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false
       },
       "relationships": [
         {
@@ -1437,7 +1381,8 @@
         "display_name_plural": "load_commit_statuses",
         "description": "Represents the commit status for a holon loading operation.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true
       },
       "relationships": [
         {

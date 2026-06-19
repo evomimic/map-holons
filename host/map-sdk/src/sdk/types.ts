@@ -3,6 +3,7 @@ import type {
   HolonErrorWire,
   HolonId,
   LocalId,
+  MapBytes,
   PropertyName,
   RelationshipName,
 } from '../internal/wire-types/references';
@@ -18,6 +19,7 @@ export type {
   BaseValue,
   HolonId,
   LocalId,
+  MapBytes,
   PropertyName,
   RelationshipName,
 } from '../internal/wire-types/references';
@@ -135,6 +137,19 @@ export function extractNumber(value: BaseValue): number {
   );
 }
 
+/**
+ * Extract the bytes payload from a `BaseValue.BytesValue`.
+ */
+export function extractBytes(value: BaseValue): MapBytes {
+  if ('BytesValue' in value) {
+    return value.BytesValue;
+  }
+
+  throw new TypeError(
+    `Expected BaseValue.BytesValue, received ${baseValueVariant(value)}`,
+  );
+}
+
 function baseValueVariant(value: BaseValue): string {
   if ('StringValue' in value) {
     return 'StringValue';
@@ -146,6 +161,10 @@ function baseValueVariant(value: BaseValue): string {
 
   if ('IntegerValue' in value) {
     return 'IntegerValue';
+  }
+
+  if ('BytesValue' in value) {
+    return 'BytesValue';
   }
 
   return 'EnumValue';

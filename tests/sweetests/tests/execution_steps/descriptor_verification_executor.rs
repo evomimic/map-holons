@@ -92,18 +92,18 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         dance_descriptor.dance_name().expect("DanceType dance_name"),
         DanceName(MapString("DanceType".to_string()))
     );
-    let request_type_relationship = dance_type_descriptor
-        .get_relationship_by_name(RelationshipName(MapString::from("RequestType")))
-        .expect("DanceType.RequestType lookup");
+    let input_parameters_relationship = dance_type_descriptor
+        .get_relationship_by_name(RelationshipName(MapString::from("InputParameters")))
+        .expect("DanceType.InputParameters lookup");
     assert_relationship_shape(
-        request_type_relationship.base_relationship_name(),
-        request_type_relationship.source_type(),
-        request_type_relationship.target_type(),
-        request_type_relationship.full_relationship_name(),
-        "RequestType",
+        input_parameters_relationship.base_relationship_name(),
+        input_parameters_relationship.source_type(),
+        input_parameters_relationship.target_type(),
+        input_parameters_relationship.full_relationship_name(),
+        "InputParameters",
         "DanceType",
-        "HolonType",
-        "(DanceType)-[RequestType]->(HolonType)",
+        "Projection",
+        "(DanceType)-[InputParameters]->(Projection)",
     );
     let response_relationship = dance_type_descriptor
         .get_relationship_by_name(RelationshipName(MapString::from("Response")))
@@ -118,10 +118,13 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "DanceResponseType",
         "(DanceType)-[Response]->(DanceResponseType)",
     );
-    assert_eq!(dance_descriptor.request_type().expect("DanceType request_type").is_none(), true);
+    assert_eq!(
+        dance_descriptor.input_parameters().expect("DanceType input_parameters").is_none(),
+        true
+    );
     assert_contains(
         &relationship_base_names(dance_type_descriptor.instance_relationships()),
-        "RequestType",
+        "InputParameters",
     );
     assert_contains(
         &relationship_base_names(dance_type_descriptor.instance_relationships()),
@@ -187,6 +190,18 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         MapString("Projection".to_string())
     );
     assert_contains(&related_holon_keys(&projection, "Extends"), "HolonType");
+
+    let holon_id_projection = find_holon_by_key(&holons, "HolonId.Projection");
+    let holon_id_projection_descriptor = HolonDescriptor::from_holon(holon_id_projection.clone());
+    assert_eq!(
+        holon_id_projection_descriptor.header().type_name().expect("HolonId.Projection type_name"),
+        MapString("HolonId".to_string())
+    );
+    assert_contains(&related_holon_keys(&holon_id_projection, "Extends"), "Projection.HolonType");
+    assert_contains(
+        &related_holon_keys(&holon_id_projection, "InstanceProperties"),
+        "HolonId.PropertyType",
+    );
 
     let dance_invocation = find_holon_by_key(&holons, "DanceInvocation.HolonType");
     let dance_invocation_descriptor = HolonDescriptor::from_holon(dance_invocation.clone());
@@ -290,7 +305,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Query extends DanceType");
     query_dance
-        .add_related_holons(CoreRelationshipTypeName::RequestType, vec![projection.clone()])
+        .add_related_holons(CoreRelationshipTypeName::InputParameters, vec![projection.clone()])
         .expect("Query request type");
     query_dance
         .add_related_holons(
@@ -306,7 +321,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Inspect extends DanceType");
     inspect_dance
-        .add_related_holons(CoreRelationshipTypeName::RequestType, vec![projection.clone()])
+        .add_related_holons(CoreRelationshipTypeName::InputParameters, vec![projection.clone()])
         .expect("Inspect request type");
     inspect_dance
         .add_related_holons(
@@ -366,12 +381,12 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("Query lookup through inherited Affords");
     assert_eq!(
         inherited_query
-            .request_type()
-            .expect("Query request_type")
-            .expect("Query request type target")
+            .input_parameters()
+            .expect("Query input_parameters")
+            .expect("Query input parameters target")
             .header()
             .type_name()
-            .expect("Query request type_name"),
+            .expect("Query input parameters type_name"),
         MapString("Projection".to_string())
     );
     assert_eq!(

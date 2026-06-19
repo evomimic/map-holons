@@ -33,12 +33,12 @@ pub struct CoreSchemaLoadMetrics {
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 314,
-    committed: 314,
-    links_created: 1432,
+    staged: 316,
+    committed: 316,
+    links_created: 1439,
     errors: 0,
     total_bundles: 11,
-    total_loader_holons: 314,
+    total_loader_holons: 316,
     commit_status: ExpectedLoadStatus::Complete,
 };
 

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-11T16:58:56",
+    "generated_at": "2026-06-16T09:29:09",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-property-types.csv"
@@ -892,6 +892,74 @@
           "name": "ValueType",
           "target": {
             "$ref": "CollectionType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Key.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "Key",
+        "type_name_plural": "Keys",
+        "display_name": "key",
+        "display_name_plural": "keys",
+        "description": "Identifying key of a holon instance.",
+        "instance_type_kind": "TypeKind.Property",
+        "is_required": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "MapStringValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "HolonId.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "HolonId",
+        "type_name_plural": "HolonIds",
+        "display_name": "holon_id",
+        "display_name_plural": "holon_ids",
+        "description": "ActionHash identifier of a referenced holon.",
+        "instance_type_kind": "TypeKind.Property",
+        "is_required": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "HolonIdValueType"
           }
         }
       ]

@@ -11,6 +11,7 @@ fn base_value_kind(value: &BaseValue) -> &'static str {
         BaseValue::BooleanValue(_) => "Boolean",
         BaseValue::IntegerValue(_) => "Integer",
         BaseValue::EnumValue(_) => "Enum",
+        BaseValue::BytesValue(_) => "Bytes",
     }
 }
 
