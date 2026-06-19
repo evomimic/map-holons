@@ -23,6 +23,10 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum RelationshipComparisonPolicy {
+    // These variants intentionally bundle three comparison axes: relationship
+    // scope, cardinality semantics, and member match strategy. Keep that
+    // coupling explicit until graph comparison policy is extracted from the
+    // sweettest harness.
     ExpectedSubsetAllRelationships,
     ExactDefinitionalRelationships,
 }
@@ -290,11 +294,12 @@ impl ExecutionReference {
                             "saved-content identity comparison requires execution registry"
                                 .to_string()
                         })?;
-                        Self::match_by_saved_identity(
+                        let (matched_index, last_error) = Self::match_by_saved_identity(
                             &expected_member,
                             &unmatched_actual,
                             execution_holons,
-                        )
+                        );
+                        (matched_index, None, last_error)
                     }
                 };
 
@@ -417,17 +422,17 @@ impl ExecutionReference {
         expected_member: &HolonReference,
         unmatched_actual: &[HolonReference],
         execution_holons: &ExecutionHolons,
-    ) -> (Option<usize>, Option<HashSet<(String, String)>>, Option<String>) {
+    ) -> (Option<usize>, Option<String>) {
         let mut last_error = None;
 
         for (index, actual_member) in unmatched_actual.iter().enumerate() {
             match Self::compare_saved_identity(expected_member, actual_member, execution_holons) {
-                Ok(()) => return (Some(index), None, None),
+                Ok(()) => return (Some(index), None),
                 Err(err) => last_error = Some(err),
             }
         }
 
-        (None, None, last_error)
+        (None, last_error)
     }
 
     fn compare_saved_identity(
