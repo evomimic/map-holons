@@ -13,7 +13,9 @@
 //! ⚠ Important: **Do not confuse intent and result.**
 //! The expected snapshot that comes from the executor input token is intent; the resulting reference is 'DHT' reality.
 
-use crate::{ExpectedSnapshot, TestReference, SAVED_LOOKUP_STUB_MARKER};
+use crate::{
+    ExecutionHolons, ExpectedSnapshot, SnapshotId, TestReference, SAVED_LOOKUP_STUB_MARKER,
+};
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
 use std::collections::HashSet;
@@ -108,6 +110,7 @@ impl ExecutionReference {
             &actual_root,
             &mut visited_pairs,
             RelationshipComparisonPolicy::ExpectedSubsetAllRelationships,
+            None,
         )
         .unwrap_or_else(|message| panic!("{}", message));
     }
@@ -118,10 +121,10 @@ impl ExecutionReference {
     /// SmartLinks, that were never present in fixture snapshots. Saved content
     /// comparison therefore derives the actual holon's definitional
     /// relationship surface from its descriptor, compares that filtered graph
-    /// exactly, and matches relationship members by key/identity. Each saved
+    /// exactly, and matches relationship members by saved holon identity. Each saved
     /// fixture holon is still compared as its own root, so member content does
     /// not need to be recursively revalidated from every relationship edge.
-    pub fn assert_saved_content_eq(&self) {
+    pub fn assert_saved_content_eq(&self, execution_holons: &ExecutionHolons) {
         let expected_root = HolonReference::from(self.expected_snapshot.snapshot());
         let actual_root = self
             .execution_handle
@@ -133,6 +136,7 @@ impl ExecutionReference {
             &actual_root,
             &mut visited_pairs,
             RelationshipComparisonPolicy::ExactDefinitionalRelationships,
+            Some(execution_holons),
         )
         .unwrap_or_else(|message| panic!("{}", message));
     }
@@ -142,6 +146,7 @@ impl ExecutionReference {
         actual: &HolonReference,
         visited_pairs: &mut HashSet<(String, String)>,
         policy: RelationshipComparisonPolicy,
+        execution_holons: Option<&ExecutionHolons>,
     ) -> Result<(), String> {
         let pair_key = Self::pair_key(expected, actual);
         if !visited_pairs.insert(pair_key) {
@@ -277,10 +282,19 @@ impl ExecutionReference {
                             &unmatched_actual,
                             visited_pairs,
                             policy,
+                            execution_holons,
                         )
                     }
                     RelationshipComparisonPolicy::ExactDefinitionalRelationships => {
-                        Self::match_by_identity(&expected_member, &unmatched_actual)
+                        let execution_holons = execution_holons.ok_or_else(|| {
+                            "saved-content identity comparison requires execution registry"
+                                .to_string()
+                        })?;
+                        Self::match_by_saved_identity(
+                            &expected_member,
+                            &unmatched_actual,
+                            execution_holons,
+                        )
                     }
                 };
 
@@ -370,6 +384,7 @@ impl ExecutionReference {
         unmatched_actual: &[HolonReference],
         visited_pairs: &HashSet<(String, String)>,
         policy: RelationshipComparisonPolicy,
+        execution_holons: Option<&ExecutionHolons>,
     ) -> (Option<usize>, Option<HashSet<(String, String)>>, Option<String>) {
         let mut matched_index: Option<usize> = None;
         let mut matched_visited_state: Option<HashSet<(String, String)>> = None;
@@ -382,6 +397,7 @@ impl ExecutionReference {
                 actual_member,
                 &mut candidate_visited,
                 policy,
+                execution_holons,
             ) {
                 Ok(()) => {
                     matched_index = Some(index);
@@ -397,14 +413,15 @@ impl ExecutionReference {
         (matched_index, matched_visited_state, last_error)
     }
 
-    fn match_by_identity(
+    fn match_by_saved_identity(
         expected_member: &HolonReference,
         unmatched_actual: &[HolonReference],
+        execution_holons: &ExecutionHolons,
     ) -> (Option<usize>, Option<HashSet<(String, String)>>, Option<String>) {
         let mut last_error = None;
 
         for (index, actual_member) in unmatched_actual.iter().enumerate() {
-            match Self::compare_identity(expected_member, actual_member) {
+            match Self::compare_saved_identity(expected_member, actual_member, execution_holons) {
                 Ok(()) => return (Some(index), None, None),
                 Err(err) => last_error = Some(err),
             }
@@ -413,29 +430,75 @@ impl ExecutionReference {
         (None, None, last_error)
     }
 
-    fn compare_identity(expected: &HolonReference, actual: &HolonReference) -> Result<(), String> {
-        let expected_key =
-            expected.key().map_err(|e| format!("failed to read expected member key: {:?}", e))?;
-        let actual_key =
-            actual.key().map_err(|e| format!("failed to read actual member key: {:?}", e))?;
-
-        match (expected_key, actual_key) {
-            (Some(expected_key), Some(actual_key)) if expected_key == actual_key => Ok(()),
-            (Some(expected_key), Some(actual_key)) => Err(format!(
-                "member key mismatch: expected {:?}, actual {:?}",
-                expected_key, actual_key
-            )),
-            (None, _) => Err(format!(
-                "expected relationship member {}:{} has no key for identity comparison",
-                expected.reference_kind_string(),
-                expected.reference_id_string()
-            )),
-            (_, None) => Err(format!(
-                "actual relationship member {}:{} has no key for identity comparison",
+    fn compare_saved_identity(
+        expected: &HolonReference,
+        actual: &HolonReference,
+        execution_holons: &ExecutionHolons,
+    ) -> Result<(), String> {
+        let expected_id = Self::expected_saved_holon_id(expected, execution_holons)?;
+        let actual_id = actual.holon_id().map_err(|e| {
+            format!(
+                "failed to read actual member holon id for {}:{}: {:?}",
                 actual.reference_kind_string(),
-                actual.reference_id_string()
-            )),
+                actual.reference_id_string(),
+                e
+            )
+        })?;
+
+        if expected_id == actual_id {
+            Ok(())
+        } else {
+            Err(format!(
+                "member HolonId mismatch: expected {:?}, actual {:?}",
+                expected_id, actual_id
+            ))
         }
+    }
+
+    fn expected_saved_holon_id(
+        expected: &HolonReference,
+        execution_holons: &ExecutionHolons,
+    ) -> Result<HolonId, String> {
+        match expected {
+            HolonReference::Smart(_) => expected.holon_id().map_err(|e| {
+                format!(
+                    "failed to read expected saved member holon id for {}:{}: {:?}",
+                    expected.reference_kind_string(),
+                    expected.reference_id_string(),
+                    e
+                )
+            }),
+            HolonReference::Transient(transient) => {
+                Self::saved_holon_id_for_snapshot(&transient.temporary_id(), execution_holons)
+            }
+            HolonReference::Staged(staged) => {
+                Self::saved_holon_id_for_snapshot(&staged.temporary_id(), execution_holons)
+            }
+        }
+    }
+
+    fn saved_holon_id_for_snapshot(
+        snapshot_id: &SnapshotId,
+        execution_holons: &ExecutionHolons,
+    ) -> Result<HolonId, String> {
+        let resolved = execution_holons.by_snapshot_id.get(snapshot_id).ok_or_else(|| {
+            format!(
+                "no execution reference recorded for expected relationship member snapshot {}",
+                snapshot_id
+            )
+        })?;
+        let reference = resolved.execution_handle.get_holon_reference().map_err(|e| {
+            format!(
+                "failed to get execution reference for expected relationship member snapshot {}: {:?}",
+                snapshot_id, e
+            )
+        })?;
+        reference.holon_id().map_err(|e| {
+            format!(
+                "expected relationship member snapshot {} did not resolve to a saved holon id: {:?}",
+                snapshot_id, e
+            )
+        })
     }
 
     /// Returns only relationship entries whose collections currently contain
