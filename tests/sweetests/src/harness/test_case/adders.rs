@@ -471,7 +471,7 @@ impl DancesTestCase {
         let mut references_to_add: Vec<HolonReference> = Vec::new();
         // Set Targets
         for token in &holons_to_add {
-            references_to_add.push(token.expected_reference().into());
+            references_to_add.push(fixture_holons.resolve_expected_relationship_target(token)?);
         }
         new_snapshot.add_related_holons(&relationship_name, references_to_add)?;
         // Set Expected
@@ -547,7 +547,7 @@ impl DancesTestCase {
         let mut references_to_remove: Vec<HolonReference> = Vec::new();
         // Set Targets
         for token in &holons_to_remove {
-            references_to_remove.push(token.expected_reference().into());
+            references_to_remove.push(fixture_holons.resolve_expected_relationship_target(token)?);
         }
         new_snapshot.remove_related_holons(&relationship_name, references_to_remove)?;
         // Set Expected
