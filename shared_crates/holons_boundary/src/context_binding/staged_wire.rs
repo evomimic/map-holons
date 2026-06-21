@@ -16,6 +16,8 @@ pub struct StagedHolonWire {
     property_map: PropertyMap,
     staged_relationships: StagedRelationshipMapWire,
     original_id: Option<LocalId>,
+    #[serde(default)]
+    versioned_source_id: Option<LocalId>,
     errors: Vec<HolonError>,
 }
 
@@ -30,6 +32,7 @@ impl StagedHolonWire {
             self.property_map,
             self.staged_relationships.bind(context)?,
             self.original_id,
+            self.versioned_source_id,
             self.errors,
         ))
     }
@@ -45,6 +48,7 @@ impl StagedHolonWire {
             self.property_map,
             self.staged_relationships.rebind(context)?,
             self.original_id,
+            self.versioned_source_id,
             self.errors,
         ))
     }
@@ -60,6 +64,7 @@ impl From<&StagedHolon> for StagedHolonWire {
             property_map: value.property_map().clone(),
             staged_relationships: StagedRelationshipMapWire::from(value.staged_relationships()),
             original_id: value.original_id_ref().cloned(),
+            versioned_source_id: value.versioned_source_id_ref().cloned(),
             errors: value.errors().to_vec(),
         }
     }

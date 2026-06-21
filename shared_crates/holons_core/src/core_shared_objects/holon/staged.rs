@@ -22,12 +22,15 @@ use type_names::CorePropertyTypeName;
 pub struct StagedHolon {
     version: MapInteger,       // Used to add to hash content for creating TemporaryID
     holon_state: HolonState,   // Mutable or Immutable
-    staged_state: StagedState, // ForCreate, ForUpdate, Abandoned, or Committed
+    staged_state: StagedState, // ForCreate, update states, Abandoned, or Committed
     validation_state: ValidationState,
     property_map: PropertyMap, // Self-describing property data
     staged_relationships: StagedRelationshipMap,
-    original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
-    errors: Vec<HolonError>,      // Populated during the commit process
+    // Holochain lineage root for the node model. This is distinct from MAP version lineage.
+    original_id: Option<LocalId>,
+    // Current persisted node being staged for update; graph-only commits anchor relationships here.
+    versioned_source_id: Option<LocalId>,
+    errors: Vec<HolonError>, // Populated during the commit process
 }
 
 impl StagedHolon {
@@ -45,19 +48,14 @@ impl StagedHolon {
             property_map: PropertyMap::new(),
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
+            versioned_source_id: None,
             errors: Vec::new(),
         }
     }
 
     /// Creates a new StagedHolon in the `ForCreate` state.   
     pub fn new_from_clone_model(model: HolonCloneModel) -> Result<Self, HolonError> {
-        let staged_relationships: StagedRelationshipMap = {
-            if let Some(relationship_map) = model.relationships {
-                relationship_map.clone_for_staged()? // Skips any TransientReference members
-            } else {
-                return Err(HolonError::InvalidParameter("HolonCloneModel passed through this constructor must always contain a RelationshipMap, even if empty".to_string()));
-            }
-        };
+        let staged_relationships = Self::staged_relationships_from_model(&model)?;
         let staged_holon = Self {
             version: model.version,
             holon_state: HolonState::Mutable,
@@ -66,24 +64,31 @@ impl StagedHolon {
             property_map: model.properties,
             staged_relationships,
             original_id: model.original_id,
+            versioned_source_id: None,
             errors: Vec::new(),
         };
 
         Ok(staged_holon)
     }
 
-    /// Creates a new StagedHolon in the `ForUpdate` state, linked to a predecessor.
-    pub fn new_for_update(original_id: LocalId) -> Self {
-        Self {
-            version: MapInteger(1),
+    /// Creates a content-preserving staged update for an existing persisted Holon.
+    pub fn new_for_update_from_clone_model(
+        model: HolonCloneModel,
+        source_local_id: LocalId,
+    ) -> Result<Self, HolonError> {
+        let staged_relationships = Self::staged_relationships_from_model(&model)?;
+
+        Ok(Self {
+            version: model.version,
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForUpdate,
             validation_state: ValidationState::ValidationRequired,
-            property_map: PropertyMap::new(),
-            staged_relationships: StagedRelationshipMap::new_empty(),
-            original_id: Some(original_id),
+            property_map: model.properties,
+            staged_relationships,
+            original_id: model.original_id,
+            versioned_source_id: Some(source_local_id),
             errors: Vec::new(),
-        }
+        })
     }
 
     /// Creates a staged holon from pre-validated constituent parts.
@@ -95,6 +100,7 @@ impl StagedHolon {
         property_map: PropertyMap,
         staged_relationships: StagedRelationshipMap,
         original_id: Option<LocalId>,
+        versioned_source_id: Option<LocalId>,
         errors: Vec<HolonError>,
     ) -> Self {
         Self {
@@ -105,7 +111,18 @@ impl StagedHolon {
             property_map,
             staged_relationships,
             original_id,
+            versioned_source_id,
             errors,
+        }
+    }
+
+    fn staged_relationships_from_model(
+        model: &HolonCloneModel,
+    ) -> Result<StagedRelationshipMap, HolonError> {
+        if let Some(relationship_map) = &model.relationships {
+            relationship_map.clone_for_staged() // Skips any TransientReference members
+        } else {
+            Err(HolonError::InvalidParameter("HolonCloneModel passed through this constructor must always contain a RelationshipMap, even if empty".to_string()))
         }
     }
 
@@ -169,6 +186,16 @@ impl StagedHolon {
         self.original_id.as_ref()
     }
 
+    pub fn get_versioned_source_id(&self) -> Result<LocalId, HolonError> {
+        self.versioned_source_id.clone().ok_or(HolonError::EmptyField(
+            "StagedHolon update is missing its persisted source LocalId.".to_string(),
+        ))
+    }
+
+    pub fn versioned_source_id_ref(&self) -> Option<&LocalId> {
+        self.versioned_source_id.as_ref()
+    }
+
     pub fn errors(&self) -> &[HolonError] {
         &self.errors
     }
@@ -186,7 +213,10 @@ impl StagedHolon {
         self.is_accessible(AccessType::Abandon)?;
 
         match self.staged_state {
-            StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateChanged => {
+            StagedState::ForCreate
+            | StagedState::ForUpdate
+            | StagedState::ForUpdateGraphOnly
+            | StagedState::ForUpdateNewVersion => {
                 self.staged_state = StagedState::Abandoned;
                 self.holon_state = HolonState::Immutable; // Abandoned holons are no longer mutable
                 Ok(())
@@ -205,15 +235,51 @@ impl StagedHolon {
         Ok(())
     }
 
-    /// Marks the `StagedHolon` as `Changed`.
-    ///
-    /// This is used to transition a `ForUpdate` Holon that has been modified.
-    pub fn mark_as_changed(&mut self) -> Result<(), HolonError> {
+    /// Notes a content mutation and escalates existing-holon updates to a new version.
+    pub fn note_property_mutation(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Write)?;
 
-        if matches!(self.staged_state, StagedState::ForUpdate) {
-            self.staged_state = StagedState::ForUpdateChanged;
+        match self.staged_state {
+            StagedState::ForUpdate | StagedState::ForUpdateGraphOnly => {
+                self.staged_state = StagedState::ForUpdateNewVersion;
+            }
+            StagedState::ForCreate | StagedState::ForUpdateNewVersion => {}
+            StagedState::Abandoned | StagedState::Committed(_) => {
+                return Err(HolonError::NotAccessible(
+                    AccessType::Write.to_string(),
+                    self.staged_state.to_string(),
+                ));
+            }
         }
+        Ok(())
+    }
+
+    /// Notes a relationship mutation after descriptor-backed definitional classification.
+    pub fn note_relationship_mutation(&mut self, is_definitional: bool) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Write)?;
+
+        match (&self.staged_state, is_definitional) {
+            (StagedState::ForUpdate, false) => {
+                self.staged_state = StagedState::ForUpdateGraphOnly;
+            }
+            (StagedState::ForUpdate | StagedState::ForUpdateGraphOnly, true) => {
+                self.staged_state = StagedState::ForUpdateNewVersion;
+            }
+            (
+                StagedState::ForCreate
+                | StagedState::ForUpdateGraphOnly
+                | StagedState::ForUpdateNewVersion,
+                false,
+            )
+            | (StagedState::ForCreate | StagedState::ForUpdateNewVersion, true) => {}
+            (StagedState::Abandoned | StagedState::Committed(_), _) => {
+                return Err(HolonError::NotAccessible(
+                    AccessType::Write.to_string(),
+                    self.staged_state.to_string(),
+                ));
+            }
+        }
+
         Ok(())
     }
 
@@ -292,7 +358,11 @@ impl ReadableHolonState for StagedHolon {
                 "StagedHolons only have a HolonId if they are Saved (in a StagedState::Committed)"
                     .to_string(),
             )),
-            StagedState::ForUpdateChanged => Err(HolonError::NotImplemented(
+            StagedState::ForUpdateGraphOnly => Err(HolonError::NotImplemented(
+                "StagedHolons only have a HolonId if they are Saved (in a StagedState::Committed)"
+                    .to_string(),
+            )),
+            StagedState::ForUpdateNewVersion => Err(HolonError::NotImplemented(
                 "StagedHolons only have a HolonId if they are Saved (in a StagedState::Committed)"
                     .to_string(),
             )),
@@ -346,15 +416,16 @@ impl ReadableHolonState for StagedHolon {
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {
         match self.holon_state {
             HolonState::Mutable => match self.staged_state {
-                StagedState::ForCreate | StagedState::ForUpdate | StagedState::ForUpdateChanged => {
-                    match access_type {
-                        AccessType::Read
-                        | AccessType::Write
-                        | AccessType::Clone
-                        | AccessType::Abandon
-                        | AccessType::Commit => Ok(()),
-                    }
-                }
+                StagedState::ForCreate
+                | StagedState::ForUpdate
+                | StagedState::ForUpdateGraphOnly
+                | StagedState::ForUpdateNewVersion => match access_type {
+                    AccessType::Read
+                    | AccessType::Write
+                    | AccessType::Clone
+                    | AccessType::Abandon
+                    | AccessType::Commit => Ok(()),
+                },
                 StagedState::Abandoned | StagedState::Committed(_) => match access_type {
                     AccessType::Read => Ok(()),
                     _ => Err(HolonError::NotAccessible(
@@ -432,6 +503,7 @@ impl WriteableHolonState for StagedHolon {
     fn remove_property_value(&mut self, name: &PropertyName) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.property_map.remove(name);
+        self.note_property_mutation()?;
         Ok(self)
     }
 
@@ -471,6 +543,7 @@ impl WriteableHolonState for StagedHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.property_map.insert(property, value);
+        self.note_property_mutation()?;
 
         Ok(self)
     }
@@ -497,6 +570,7 @@ mod tests {
             property_map: BTreeMap::new(),
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
+            versioned_source_id: None,
             errors: Vec::new(),
         };
         assert_eq!(initial_holon, expected_holon);
@@ -575,9 +649,72 @@ mod tests {
             property_map: BTreeMap::new(),
             staged_relationships: StagedRelationshipMap { map: BTreeMap::new() },
             original_id: None,
+            versioned_source_id: None,
             errors: Vec::new(),
         };
 
         assert_eq!(default_holon, expected_holon);
+    }
+
+    #[test]
+    fn new_for_update_from_clone_model_preserves_content_and_source_anchor() {
+        let source_id = LocalId(vec![1, 2, 3]);
+        let original_id = LocalId(vec![4, 5, 6]);
+        let property_name = PropertyName(MapString("name".to_string()));
+        let property_value = BaseValue::StringValue(MapString("value".to_string()));
+        let mut properties = PropertyMap::new();
+        properties.insert(property_name.clone(), property_value.clone());
+        let model = HolonCloneModel::new(
+            MapInteger(7),
+            Some(original_id.clone()),
+            properties,
+            Some(RelationshipMap::new_empty()),
+        );
+
+        let staged =
+            StagedHolon::new_for_update_from_clone_model(model, source_id.clone()).unwrap();
+
+        assert_eq!(staged.staged_state(), &StagedState::ForUpdate);
+        assert_eq!(staged.version(), &MapInteger(7));
+        assert_eq!(staged.original_id_ref(), Some(&original_id));
+        assert_eq!(staged.versioned_source_id_ref(), Some(&source_id));
+        assert_eq!(staged.property_value(&property_name).unwrap(), Some(property_value));
+    }
+
+    #[test]
+    fn property_mutation_escalates_existing_updates_to_new_version() {
+        let source_id = LocalId(vec![1, 2, 3]);
+        let model = HolonCloneModel::new(
+            MapInteger(1),
+            None,
+            PropertyMap::new(),
+            Some(RelationshipMap::new_empty()),
+        );
+        let mut staged = StagedHolon::new_for_update_from_clone_model(model, source_id).unwrap();
+
+        staged.note_property_mutation().unwrap();
+
+        assert_eq!(staged.staged_state(), &StagedState::ForUpdateNewVersion);
+    }
+
+    #[test]
+    fn relationship_mutation_tracks_graph_only_and_escalates_without_downgrade() {
+        let source_id = LocalId(vec![1, 2, 3]);
+        let model = HolonCloneModel::new(
+            MapInteger(1),
+            None,
+            PropertyMap::new(),
+            Some(RelationshipMap::new_empty()),
+        );
+        let mut staged = StagedHolon::new_for_update_from_clone_model(model, source_id).unwrap();
+
+        staged.note_relationship_mutation(false).unwrap();
+        assert_eq!(staged.staged_state(), &StagedState::ForUpdateGraphOnly);
+
+        staged.note_relationship_mutation(true).unwrap();
+        assert_eq!(staged.staged_state(), &StagedState::ForUpdateNewVersion);
+
+        staged.note_relationship_mutation(false).unwrap();
+        assert_eq!(staged.staged_state(), &StagedState::ForUpdateNewVersion);
     }
 }

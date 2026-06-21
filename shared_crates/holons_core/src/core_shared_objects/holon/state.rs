@@ -79,8 +79,10 @@ pub enum StagedState {
     /// A Holon cloned from the persistent store for potential modification,
     /// but no changes have been made yet.
     ForUpdate,
-    /// A Holon cloned for modification and subsequently changed.
-    ForUpdateChanged,
+    /// An existing Holon with only non-definitional relationship mutations.
+    ForUpdateGraphOnly,
+    /// An existing Holon with content or definitional mutations requiring a new version.
+    ForUpdateNewVersion,
 }
 
 impl fmt::Display for StagedState {
@@ -90,7 +92,8 @@ impl fmt::Display for StagedState {
             StagedState::Committed(saved_id) => write!(f, "Committed: {:?}", saved_id),
             StagedState::ForCreate => write!(f, "ForCreate"),
             StagedState::ForUpdate => write!(f, "ForUpdate"),
-            StagedState::ForUpdateChanged => write!(f, "ForUpdateChanged"),
+            StagedState::ForUpdateGraphOnly => write!(f, "ForUpdateGraphOnly"),
+            StagedState::ForUpdateNewVersion => write!(f, "ForUpdateNewVersion"),
         }
     }
 }
