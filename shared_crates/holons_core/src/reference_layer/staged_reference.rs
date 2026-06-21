@@ -165,6 +165,132 @@ impl StagedReference {
     pub fn reference_id_string(&self) -> String {
         format!("TemporaryId={}", self.id)
     }
+
+    fn classify_relationship_mutation(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Option<bool>, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let staged_state = {
+            let holon = rc_holon.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged holon: {}",
+                    e
+                ))
+            })?;
+
+            match &*holon {
+                Holon::Staged(staged_holon) => staged_holon.get_staged_state(),
+                _ => {
+                    return Err(HolonError::InvalidType(
+                        "StagedReference should point to a StagedHolon".to_string(),
+                    ))
+                }
+            }
+        };
+
+        if staged_state == StagedState::ForCreate {
+            return Ok(None);
+        }
+
+        let source_ref = HolonReference::Staged(self.clone());
+        let relationship_descriptor =
+            source_ref.holon_descriptor()?.get_relationship_by_name(relationship_name.clone())?;
+
+        Ok(Some(relationship_descriptor.is_definitional()?))
+    }
+
+    fn related_holons_with_keys(
+        holons: Vec<HolonReference>,
+    ) -> Result<Vec<(HolonReference, Option<MapString>)>, HolonError> {
+        holons
+            .into_iter()
+            .map(|h| {
+                let key = h.key()?;
+                Ok((h, key))
+            })
+            .collect()
+    }
+
+    fn add_related_holons_with_classification(
+        &self,
+        relationship_name: RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+        is_definitional: Option<bool>,
+    ) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let mut holon_mut = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon: {}",
+                e
+            ))
+        })?;
+
+        match &mut *holon_mut {
+            Holon::Staged(staged_holon) => {
+                staged_holon.add_related_holons_with_keys(relationship_name, entries)?;
+                if let Some(is_definitional) = is_definitional {
+                    staged_holon.note_relationship_mutation(is_definitional)?;
+                }
+            }
+            _ => {
+                return Err(HolonError::InvalidType(
+                    "StagedReference should point to a StagedHolon".to_string(),
+                ))
+            }
+        }
+
+        Ok(())
+    }
+
+    fn remove_related_holons_with_classification(
+        &self,
+        relationship_name: &RelationshipName,
+        entries: Vec<(HolonReference, Option<MapString>)>,
+        is_definitional: Option<bool>,
+    ) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let mut holon_mut = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon: {}",
+                e
+            ))
+        })?;
+
+        match &mut *holon_mut {
+            Holon::Staged(staged_holon) => {
+                staged_holon.remove_related_holons_with_keys(relationship_name, entries)?;
+                if let Some(is_definitional) = is_definitional {
+                    staged_holon.note_relationship_mutation(is_definitional)?;
+                }
+            }
+            _ => {
+                return Err(HolonError::InvalidType(
+                    "StagedReference should point to a StagedHolon".to_string(),
+                ))
+            }
+        }
+
+        Ok(())
+    }
+
+    fn add_related_holons_without_classification(
+        &self,
+        relationship_name: RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        let holons_with_keys = Self::related_holons_with_keys(holons)?;
+        self.add_related_holons_with_classification(relationship_name, holons_with_keys, None)
+    }
+
+    fn remove_related_holons_without_classification(
+        &self,
+        relationship_name: &RelationshipName,
+        holons: Vec<HolonReference>,
+    ) -> Result<(), HolonError> {
+        let holons_with_keys = Self::related_holons_with_keys(holons)?;
+        self.remove_related_holons_with_classification(relationship_name, holons_with_keys, None)
+    }
 }
 
 impl fmt::Display for StagedReference {
@@ -363,24 +489,15 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
+        let is_definitional = self.classify_relationship_mutation(&relationship_name)?;
         // Precompute keys before taking the holon write lock to avoid re-entrant locking on self-edges.
-        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
-            .into_iter()
-            .map(|h| {
-                let key = h.key()?;
-                Ok((h, key))
-            })
-            .collect::<Result<_, HolonError>>()?;
+        let holons_with_keys = Self::related_holons_with_keys(holons)?;
 
-        let rc_holon = self.get_rc_holon()?;
-        let mut holon_mut = rc_holon.write().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire write lock on staged holon: {}",
-                e
-            ))
-        })?;
-
-        holon_mut.add_related_holons_with_keys(relationship_name, holons_with_keys)?;
+        self.add_related_holons_with_classification(
+            relationship_name,
+            holons_with_keys,
+            is_definitional,
+        )?;
 
         Ok(self)
     }
@@ -391,26 +508,18 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let holons_with_keys: Vec<(HolonReference, Option<MapString>)> = holons
-            .into_iter()
-            .map(|h| {
-                let key = h.key()?;
-                Ok((h, key))
-            })
-            .collect::<Result<_, HolonError>>()?;
+        let is_definitional = self.classify_relationship_mutation(&relationship_name)?;
+        let holons_with_keys = Self::related_holons_with_keys(holons)?;
         info!(
             "Removing {:?} related holons from relationship: {:?}",
             holons_with_keys.len(),
             relationship_name
         );
-        let rc_holon = self.get_rc_holon()?;
-        let mut holon_mut = rc_holon.write().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire write lock on staged holon: {}",
-                e
-            ))
-        })?;
-        holon_mut.remove_related_holons_with_keys(&relationship_name, holons_with_keys)?;
+        self.remove_related_holons_with_classification(
+            &relationship_name,
+            holons_with_keys,
+            is_definitional,
+        )?;
 
         Ok(self)
     }
@@ -460,14 +569,14 @@ impl WritableHolonImpl for StagedReference {
 
         if let Some(existing_descriptor) = existing_descriptor_option {
             // Remove the current descriptor edge
-            self.remove_related_holons_impl(
-                CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+            self.remove_related_holons_without_classification(
+                &CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                 vec![existing_descriptor.clone()],
             )?;
         }
 
         // Attach the new descriptor edge
-        self.add_related_holons_impl(
+        self.add_related_holons_without_classification(
             CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
             vec![descriptor_reference],
         )?;
@@ -482,13 +591,13 @@ impl WritableHolonImpl for StagedReference {
         self.is_accessible(AccessType::Write)?;
         let existing_predecessor_option = self.clone().predecessor()?;
         if let Some(predecessor) = existing_predecessor_option {
-            self.remove_related_holons_impl(
-                CoreRelationshipTypeName::Predecessor.as_relationship_name(),
+            self.remove_related_holons_without_classification(
+                &CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor.clone()],
             )?;
         }
         if let Some(predecessor_reference) = predecessor_reference_option {
-            self.add_related_holons_impl(
+            self.add_related_holons_without_classification(
                 CoreRelationshipTypeName::Predecessor.as_relationship_name(),
                 vec![predecessor_reference.clone()],
             )?;
@@ -527,3 +636,205 @@ impl PartialEq for StagedReference {
 }
 
 impl Eq for StagedReference {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        core_shared_objects::StagedHolon,
+        descriptors::test_support::{
+            build_context, new_descriptor_holon, new_holon_type_descriptor,
+            new_relationship_descriptor_holon, new_test_holon,
+        },
+        reference_layer::WritableHolon,
+    };
+    use core_types::LocalId;
+    use type_names::CorePropertyTypeName;
+
+    fn force_staged_reference_for_update(
+        context: &Arc<TransactionContext>,
+        staged_reference: &StagedReference,
+    ) -> Result<(), HolonError> {
+        let rc_holon = staged_reference.get_holon_to_commit(context)?;
+        let clone_model = {
+            let holon = rc_holon.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on staged holon: {}",
+                    e
+                ))
+            })?;
+            holon.holon_clone_model()
+        };
+        let update_holon =
+            StagedHolon::new_for_update_from_clone_model(clone_model, LocalId(vec![1, 2, 3]))?;
+
+        let mut holon = rc_holon.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on staged holon: {}",
+                e
+            ))
+        })?;
+        *holon = Holon::Staged(update_holon);
+
+        Ok(())
+    }
+
+    fn staged_relationship_descriptor(
+        context: &Arc<TransactionContext>,
+        relationship_name: &str,
+        is_definitional: Option<bool>,
+    ) -> Result<(StagedReference, StagedReference), HolonError> {
+        let source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        let target_type = new_holon_type_descriptor(context, "target-type", "TargetType")?;
+        let staged_source_type = context.mutation().stage_new_holon(source_type)?;
+        let staged_target_type = context.mutation().stage_new_holon(target_type)?;
+
+        let relationship_descriptor = if let Some(is_definitional) = is_definitional {
+            let mut relationship_descriptor = new_relationship_descriptor_holon(
+                context,
+                "relationship-descriptor",
+                relationship_name,
+                staged_source_type.clone().into(),
+                staged_target_type.clone().into(),
+            )?;
+            relationship_descriptor
+                .with_property_value(CorePropertyTypeName::IsDefinitional, is_definitional)?;
+            relationship_descriptor
+        } else {
+            new_descriptor_holon(
+                context,
+                "relationship-descriptor",
+                relationship_name,
+                "Relationship",
+            )?
+        };
+        let staged_relationship_descriptor =
+            context.mutation().stage_new_holon(relationship_descriptor)?;
+
+        let mut staged_source_type = staged_source_type;
+        staged_source_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![staged_relationship_descriptor.into()],
+        )?;
+
+        Ok((staged_source_type, staged_target_type))
+    }
+
+    fn staged_update_source(
+        context: &Arc<TransactionContext>,
+        source_descriptor: StagedReference,
+    ) -> Result<StagedReference, HolonError> {
+        let source = new_test_holon(context, "source-instance")?;
+        let mut staged_source = context.mutation().stage_new_holon(source)?;
+        staged_source.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![source_descriptor.into()],
+        )?;
+        force_staged_reference_for_update(context, &staged_source)?;
+        Ok(staged_source)
+    }
+
+    fn staged_target(
+        context: &Arc<TransactionContext>,
+        key: &str,
+    ) -> Result<StagedReference, HolonError> {
+        context.mutation().stage_new_holon(new_test_holon(context, key)?)
+    }
+
+    #[test]
+    fn for_create_relationship_mutation_skips_descriptor_classification() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let source = new_test_holon(&context, "new-source")?;
+        let mut staged_source = context.mutation().stage_new_holon(source)?;
+        let target = staged_target(&context, "new-target")?;
+
+        staged_source.add_related_holons("UndeclaredRelationship", vec![target.into()])?;
+
+        assert!(staged_source.is_in_state(&context, StagedState::ForCreate)?);
+        Ok(())
+    }
+
+    #[test]
+    fn non_definitional_relationship_mutation_sets_graph_only() -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_descriptor, _) =
+            staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
+        let mut staged_source = staged_update_source(&context, source_descriptor)?;
+        let target = staged_target(&context, "author")?;
+
+        staged_source.add_related_holons("AuthoredBy", vec![target.into()])?;
+
+        assert!(staged_source.is_in_state(&context, StagedState::ForUpdateGraphOnly)?);
+        Ok(())
+    }
+
+    #[test]
+    fn definitional_relationship_mutation_sets_new_version() -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_descriptor, _) =
+            staged_relationship_descriptor(&context, "AuthoredBy", Some(true))?;
+        let mut staged_source = staged_update_source(&context, source_descriptor)?;
+        let target = staged_target(&context, "author")?;
+
+        staged_source.add_related_holons("AuthoredBy", vec![target.into()])?;
+
+        assert!(staged_source.is_in_state(&context, StagedState::ForUpdateNewVersion)?);
+        Ok(())
+    }
+
+    #[test]
+    fn relationship_removal_uses_definitional_classification() -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_descriptor, _) =
+            staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
+        let mut staged_source = staged_update_source(&context, source_descriptor)?;
+        let target = staged_target(&context, "author")?;
+        staged_source.add_related_holons("AuthoredBy", vec![target.clone().into()])?;
+        force_staged_reference_for_update(&context, &staged_source)?;
+
+        staged_source.remove_related_holons("AuthoredBy", vec![target.into()])?;
+
+        assert!(staged_source.is_in_state(&context, StagedState::ForUpdateGraphOnly)?);
+        let collection = staged_source.related_holons("AuthoredBy")?;
+        assert!(collection.read().unwrap().get_members().is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn missing_relationship_descriptor_errors_before_mutation() -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_descriptor, _) =
+            staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
+        let mut staged_source = staged_update_source(&context, source_descriptor)?;
+        let target = staged_target(&context, "author")?;
+
+        let result = staged_source.add_related_holons("MissingRelationship", vec![target.into()]);
+
+        assert!(matches!(
+            result,
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "relationship" && name == "MissingRelationship"
+        ));
+        assert!(staged_source.is_in_state(&context, StagedState::ForUpdate)?);
+        let collection = staged_source.related_holons("MissingRelationship")?;
+        assert!(collection.read().unwrap().get_members().is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn missing_is_definitional_errors_before_mutation() -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_descriptor, _) = staged_relationship_descriptor(&context, "AuthoredBy", None)?;
+        let mut staged_source = staged_update_source(&context, source_descriptor)?;
+        let target = staged_target(&context, "author")?;
+
+        let result = staged_source.add_related_holons("AuthoredBy", vec![target.into()]);
+
+        assert!(matches!(result, Err(HolonError::EmptyField(field)) if field == "IsDefinitional"));
+        assert!(staged_source.is_in_state(&context, StagedState::ForUpdate)?);
+        let collection = staged_source.related_holons("AuthoredBy")?;
+        assert!(collection.read().unwrap().get_members().is_empty());
+        Ok(())
+    }
+}

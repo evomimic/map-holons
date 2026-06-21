@@ -12,7 +12,7 @@ use crate::{
     HolonReference, NurseryAccess, ReadableHolon, SmartReference, WritableHolon,
 };
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, TemporaryId};
+use core_types::{HolonError, HolonId, TemporaryId};
 use std::{
     any::Any,
     sync::{Arc, RwLock, Weak},
@@ -220,21 +220,29 @@ impl HolonStagingBehavior for Nursery {
         Ok(cloned_staged)
     }
 
-    /// Stage a new holon as a *version* of the current holon, keeping lineage.
+    /// Stage an existing holon for possible version-producing or graph-only mutation.
     fn stage_new_version(
         &self,
         current_version: SmartReference,
     ) -> Result<StagedReference, HolonError> {
-        // Clone current version into a transient holon
+        let source_local_id = match current_version.holon_id() {
+            HolonId::Local(local_id) => local_id,
+            HolonId::External(_) => {
+                return Err(HolonError::InvalidParameter(
+                    "stage_new_version requires a local persisted holon".to_string(),
+                ))
+            }
+        };
+
+        // Clone through the reference layer so cached persisted relationships are preserved.
         let cloned_transient = current_version.clone_holon()?;
+        let staged_holon = StagedHolon::new_for_update_from_clone_model(
+            cloned_transient.holon_clone_model()?,
+            source_local_id,
+        )?;
 
-        // Stage it as a new holon
-        let mut cloned_staged = self.stage_new_holon(cloned_transient)?;
-
-        // Set predecessor relationship back to the current version
-        cloned_staged.with_predecessor(Some(HolonReference::Smart(current_version)))?;
-
-        Ok(cloned_staged)
+        let new_id = self.stage_holon(staged_holon)?;
+        self.to_validated_staged_reference(&new_id)
     }
 }
 
@@ -302,5 +310,162 @@ impl NurseryAccessInternal for Nursery {
             ))
         })?;
         Ok(guard.get_staged_references(transaction_handle))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        core_shared_objects::{
+            holon::{SavedHolon, StagedState},
+            holon_behavior::ReadableHolonState,
+            space_manager::HolonSpaceManager,
+            RelationshipMap, ServiceRoutingPolicy,
+        },
+        reference_layer::{HolonServiceApi, ReadableHolon},
+        HolonCollection,
+    };
+    use base_types::{BaseValue, MapInteger, MapString};
+    use core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
+    use std::any::Any;
+    use type_names::CorePropertyTypeName;
+
+    #[derive(Debug)]
+    struct StageVersionTestService {
+        source_id: LocalId,
+        source_holon: SavedHolon,
+    }
+
+    impl HolonServiceApi for StageVersionTestService {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn commit_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _staged_references: &[StagedReference],
+        ) -> Result<TransientReference, HolonError> {
+            Err(HolonError::NotImplemented("commit_internal".to_string()))
+        }
+
+        fn delete_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _local_id: &LocalId,
+        ) -> Result<(), HolonError> {
+            Err(HolonError::NotImplemented("delete_holon_internal".to_string()))
+        }
+
+        fn fetch_all_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            source_id: &HolonId,
+        ) -> Result<RelationshipMap, HolonError> {
+            if source_id.local_id() == &self.source_id {
+                Ok(RelationshipMap::new_empty())
+            } else {
+                Err(HolonError::HolonNotFound(format!("{:?}", source_id)))
+            }
+        }
+
+        fn fetch_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            id: &HolonId,
+        ) -> Result<Holon, HolonError> {
+            if id.local_id() == &self.source_id {
+                Ok(Holon::Saved(self.source_holon.clone()))
+            } else {
+                Err(HolonError::HolonNotFound(format!("{:?}", id)))
+            }
+        }
+
+        fn fetch_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _source_id: &HolonId,
+            _relationship_name: &RelationshipName,
+        ) -> Result<HolonCollection, HolonError> {
+            Ok(HolonCollection::new_existing())
+        }
+
+        fn get_all_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+        ) -> Result<HolonCollection, HolonError> {
+            Err(HolonError::NotImplemented("get_all_holons_internal".to_string()))
+        }
+
+        fn load_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _load_set: TransientReference,
+        ) -> Result<TransientReference, HolonError> {
+            Err(HolonError::NotImplemented("load_holons_internal".to_string()))
+        }
+    }
+
+    fn stage_version_test_context(
+        source_id: LocalId,
+        source_holon: SavedHolon,
+    ) -> Arc<TransactionContext> {
+        let holon_service: Arc<dyn HolonServiceApi> =
+            Arc::new(StageVersionTestService { source_id, source_holon });
+        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            holon_service,
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+
+        space_manager
+            .get_transaction_manager()
+            .open_new_transaction(Arc::clone(&space_manager))
+            .expect("test transaction should open")
+    }
+
+    #[test]
+    fn stage_new_version_enters_update_lifecycle_without_predecessor_edge() -> Result<(), HolonError>
+    {
+        let source_id = LocalId(vec![1, 2, 3]);
+        let original_title = BaseValue::StringValue(MapString("Original Title".to_string()));
+        let mut properties = PropertyMap::new();
+        let title = PropertyName(MapString("Title".to_string()));
+        properties.insert(
+            CorePropertyTypeName::Key.as_property_name(),
+            BaseValue::StringValue(MapString("book-one".to_string())),
+        );
+        properties.insert(title.clone(), original_title.clone());
+        let source_holon = SavedHolon::new(source_id.clone(), properties, None, MapInteger(3));
+        let context = stage_version_test_context(source_id.clone(), source_holon);
+        let current_version = SmartReference::new_from_id(
+            context.context_handle(),
+            HolonId::Local(source_id.clone()),
+        );
+
+        let staged_reference = context.mutation().stage_new_version(current_version)?;
+
+        assert!(staged_reference.is_in_state(&context, StagedState::ForUpdate)?);
+        assert!(staged_reference.predecessor()?.is_none());
+
+        let staged_holon = staged_reference.get_holon_to_commit(&context)?;
+        let staged_holon = staged_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
+        let Holon::Staged(staged_holon) = &*staged_holon else {
+            panic!("stage_new_version should stage a StagedHolon");
+        };
+
+        assert_eq!(staged_holon.versioned_source_id_ref(), Some(&source_id));
+        assert_eq!(staged_holon.original_id_ref(), None);
+        assert_eq!(staged_holon.version(), &MapInteger(3));
+        assert_eq!(staged_holon.property_value(&title)?, Some(original_title));
+
+        Ok(())
     }
 }

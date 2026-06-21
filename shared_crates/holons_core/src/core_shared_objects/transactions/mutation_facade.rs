@@ -93,12 +93,12 @@ impl MutationFacade {
 
     /// Stages a new holon as a version of the current holon.
     ///
-    /// This function creates a new holon in the staging area by cloning the
-    /// `current_version` and marking it as its predecessor. Use this function when
-    /// creating a **new version** of an existing holon with a clear lineage
-    /// relationship.
+    /// This function clones the `current_version` into the staging area as an
+    /// existing-holon update context. Relationship and property mutations later
+    /// determine whether commit creates a new version or only persists graph changes
+    /// against the existing node.
     ///
-    /// For creating a clone without retaining a lineage relationship, use
+    /// For creating an independent clone with a new key, use
     /// [`stage_new_from_clone`].
     ///
     /// # Arguments
