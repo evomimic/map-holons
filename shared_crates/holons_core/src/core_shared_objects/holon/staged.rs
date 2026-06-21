@@ -20,6 +20,13 @@ use core_types::{
 };
 use type_names::CorePropertyTypeName;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum RelationshipCommitScope {
+    #[default]
+    Full,
+    TouchedOnly,
+}
+
 /// Represents a Holon that has been staged for persistence or updates.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StagedHolon {
@@ -35,8 +42,8 @@ pub struct StagedHolon {
     versioned_source_id: Option<LocalId>,
     // Relationship collections mutated during this staged transaction.
     touched_relationship_names: BTreeSet<RelationshipName>,
-    // Pass-2 relationship persistence filter. `None` means persist the full staged map.
-    relationship_commit_filter: Option<BTreeSet<RelationshipName>>,
+    // Pass-2 relationship persistence decision recorded by Pass 1 of the same commit dance.
+    relationship_commit_scope: RelationshipCommitScope,
     errors: Vec<HolonError>, // Populated during the commit process
 }
 
@@ -57,7 +64,7 @@ impl StagedHolon {
             original_id: None,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
-            relationship_commit_filter: None,
+            relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         }
     }
@@ -75,7 +82,7 @@ impl StagedHolon {
             original_id: model.original_id,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
-            relationship_commit_filter: None,
+            relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         };
 
@@ -99,7 +106,7 @@ impl StagedHolon {
             original_id: model.original_id,
             versioned_source_id: Some(source_local_id),
             touched_relationship_names: BTreeSet::new(),
-            relationship_commit_filter: None,
+            relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         })
     }
@@ -114,6 +121,7 @@ impl StagedHolon {
         staged_relationships: StagedRelationshipMap,
         original_id: Option<LocalId>,
         versioned_source_id: Option<LocalId>,
+        touched_relationship_names: BTreeSet<RelationshipName>,
         errors: Vec<HolonError>,
     ) -> Self {
         Self {
@@ -125,8 +133,8 @@ impl StagedHolon {
             staged_relationships,
             original_id,
             versioned_source_id,
-            touched_relationship_names: BTreeSet::new(),
-            relationship_commit_filter: None,
+            touched_relationship_names,
+            relationship_commit_scope: RelationshipCommitScope::Full,
             errors,
         }
     }
@@ -174,8 +182,9 @@ impl StagedHolon {
     ) -> Result<Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>, HolonError> {
         self.is_accessible(AccessType::Read)?;
 
-        let pairs = match &self.relationship_commit_filter {
-            Some(filter) => filter
+        let pairs = match self.relationship_commit_scope {
+            RelationshipCommitScope::TouchedOnly => self
+                .touched_relationship_names
                 .iter()
                 .filter_map(|name| {
                     self.staged_relationships
@@ -184,7 +193,7 @@ impl StagedHolon {
                         .map(|collection| (name.clone(), collection.clone()))
                 })
                 .collect(),
-            None => self
+            RelationshipCommitScope::Full => self
                 .staged_relationships
                 .map
                 .iter()
@@ -237,6 +246,10 @@ impl StagedHolon {
         self.versioned_source_id.as_ref()
     }
 
+    pub fn touched_relationship_names(&self) -> &BTreeSet<RelationshipName> {
+        &self.touched_relationship_names
+    }
+
     pub fn errors(&self) -> &[HolonError] {
         &self.errors
     }
@@ -276,9 +289,15 @@ impl StagedHolon {
         Ok(())
     }
 
-    pub fn prepare_graph_only_relationship_commit_filter(&mut self) -> Result<(), HolonError> {
+    pub fn prepare_full_relationship_commit_scope(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Commit)?;
-        self.relationship_commit_filter = Some(self.touched_relationship_names.clone());
+        self.relationship_commit_scope = RelationshipCommitScope::Full;
+        Ok(())
+    }
+
+    pub fn prepare_touched_relationship_commit_scope(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Commit)?;
+        self.relationship_commit_scope = RelationshipCommitScope::TouchedOnly;
         Ok(())
     }
 
@@ -628,7 +647,7 @@ mod tests {
             original_id: None,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
-            relationship_commit_filter: None,
+            relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         };
         assert_eq!(initial_holon, expected_holon);
@@ -709,7 +728,7 @@ mod tests {
             original_id: None,
             versioned_source_id: None,
             touched_relationship_names: BTreeSet::new(),
-            relationship_commit_filter: None,
+            relationship_commit_scope: RelationshipCommitScope::Full,
             errors: Vec::new(),
         };
 
@@ -798,6 +817,7 @@ mod tests {
             StagedRelationshipMap { map: relationships },
             None,
             Some(LocalId(vec![1, 2, 3])),
+            BTreeSet::new(),
             Vec::new(),
         );
 
@@ -811,7 +831,7 @@ mod tests {
 
         assert_eq!(unfiltered_names, vec![described_by.clone(), properties.clone()]);
 
-        staged.prepare_graph_only_relationship_commit_filter().unwrap();
+        staged.prepare_touched_relationship_commit_scope().unwrap();
         let filtered_names = staged
             .relationship_collections_for_commit()
             .unwrap()

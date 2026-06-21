@@ -13,6 +13,7 @@ export function createHolon(props: PropertyMap): Holon {
             property_map: props,
             staged_relationships: {},
             original_id: undefined,
+            touched_relationship_names: [],
             errors: []
         }
     }
@@ -154,4 +155,3 @@ private async callzome(data:DanceRequestObject):Promise<DanceResponse> {
     }
 
 }
-

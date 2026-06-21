@@ -7,7 +7,7 @@ use rstest::*;
 use super::setup_undescribed_book_people_publisher_steps_with_context;
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_PERSON_INVERSE_METRICS, BOOK_TO_PERSON_RELATIONSHIP,
-    CORE_SCHEMA_METRICS,
+    CORE_SCHEMA_METRICS, PERSON_1_KEY,
 };
 
 // TODO: add/remove relationships
@@ -175,7 +175,19 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("With Properties -- first version cloned from book.".to_string()),
     )?;
-    let person_1_token = fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Person1' label").clone();
+    // Resolve the AuthoredBy target through a saved-key lookup so it binds to the active
+    // (version-producing) transaction, mirroring the Book.HolonType / Title.PropertyType
+    // lookups above. Reusing the setup-phase staged `Person1` token here would embed a stale
+    // cross-transaction staged reference and fail strict bind on the commit (issue #515).
+    let person_stub =
+        fixture_context.mutation().new_holon(Some(MapString(PERSON_1_KEY.to_string())))?;
+    let person_1_token = test_case.add_lookup_saved_holon_by_key_step(
+        &mut fixture_holons,
+        person_stub,
+        MapString(PERSON_1_KEY.to_string()),
+        None,
+        None,
+    )?;
     test_case.add_add_related_holons_step(
         &mut fixture_holons,
         staged_clone,

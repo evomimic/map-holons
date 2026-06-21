@@ -65,10 +65,18 @@ describe('source-aligned holon wire guards', () => {
       },
       original_id: [1, 1, 1],
       versioned_source_id: [2, 2, 2],
+      touched_relationship_names: ['Properties'],
       errors: [],
     };
 
     expect(isStagedHolonWire(stagedHolon)).toBe(true);
     expect(isHolonWire({ Staged: stagedHolon })).toBe(true);
+
+    expect(
+      isStagedHolonWire({
+        ...stagedHolon,
+        touched_relationship_names: [7],
+      }),
+    ).toBe(false);
   });
 });

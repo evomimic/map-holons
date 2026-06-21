@@ -388,6 +388,7 @@ fn commit_holon(
             // === CREATE NEW NODE ============================================================
             StagedState::ForCreate => {
                 trace!("StagedState::ForCreate — creating HolonNode in DHT");
+                staged_holon.prepare_full_relationship_commit_scope()?;
                 let node = staged_holon.into_node_model();
                 let record = create_holon_node(HolonNode::from(node))
                     .map_err(holon_error_from_wasm_error)?;
@@ -400,27 +401,7 @@ fn commit_holon(
             StagedState::ForUpdateGraphOnly => {
                 trace!("StagedState::ForUpdateGraphOnly — reusing existing source anchor");
                 let source_id = staged_holon.get_versioned_source_id()?;
-                staged_holon.prepare_graph_only_relationship_commit_filter()?;
-
-                // TEMP (issue #515 diagnosis): confirm the touched-set survived the
-                // dance/session-state round-trip. If `will_persist` is empty while
-                // `staged_relationships` still lists the mutated relationship, the
-                // touched set was dropped at the wire boundary. Remove after diagnosis.
-                let staged_relationships: Vec<String> = staged_holon
-                    .get_staged_relationship_map()?
-                    .map
-                    .keys()
-                    .map(|name| name.0 .0.clone())
-                    .collect();
-                let will_persist: Vec<String> = staged_holon
-                    .relationship_collections_for_commit()?
-                    .iter()
-                    .map(|(name, _)| name.0 .0.clone())
-                    .collect();
-                info!(
-                    "issue#515 graph-only commit: staged_relationships={:?}, will_persist(touched)={:?}",
-                    staged_relationships, will_persist
-                );
+                staged_holon.prepare_touched_relationship_commit_scope()?;
 
                 staged_holon.to_committed(source_id)?;
                 Ok(CommitOutcome::Saved)
@@ -430,6 +411,7 @@ fn commit_holon(
             StagedState::ForUpdateNewVersion => {
                 trace!("StagedState::ForUpdateNewVersion — creating next HolonNode version");
                 let predecessor_id = staged_holon.get_versioned_source_id()?;
+                staged_holon.prepare_full_relationship_commit_scope()?;
                 let node = staged_holon.into_node_model();
                 let record = create_holon_node(HolonNode::from(node))
                     .map_err(holon_error_from_wasm_error)?;

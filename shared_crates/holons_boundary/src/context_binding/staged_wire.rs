@@ -1,10 +1,11 @@
 use crate::context_binding::staged_relationship_wire::StagedRelationshipMapWire;
 use base_types::MapInteger;
-use core_types::{HolonError, LocalId, PropertyMap};
+use core_types::{HolonError, LocalId, PropertyMap, RelationshipName};
 use holons_core::core_shared_objects::holon::{HolonState, StagedState, ValidationState};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::core_shared_objects::StagedHolon;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -18,6 +19,8 @@ pub struct StagedHolonWire {
     original_id: Option<LocalId>,
     #[serde(default)]
     versioned_source_id: Option<LocalId>,
+    #[serde(default)]
+    touched_relationship_names: BTreeSet<RelationshipName>,
     errors: Vec<HolonError>,
 }
 
@@ -33,6 +36,7 @@ impl StagedHolonWire {
             self.staged_relationships.bind(context)?,
             self.original_id,
             self.versioned_source_id,
+            self.touched_relationship_names,
             self.errors,
         ))
     }
@@ -49,6 +53,7 @@ impl StagedHolonWire {
             self.staged_relationships.rebind(context)?,
             self.original_id,
             self.versioned_source_id,
+            self.touched_relationship_names,
             self.errors,
         ))
     }
@@ -65,6 +70,7 @@ impl From<&StagedHolon> for StagedHolonWire {
             staged_relationships: StagedRelationshipMapWire::from(value.staged_relationships()),
             original_id: value.original_id_ref().cloned(),
             versioned_source_id: value.versioned_source_id_ref().cloned(),
+            touched_relationship_names: value.touched_relationship_names().clone(),
             errors: value.errors().to_vec(),
         }
     }

@@ -201,6 +201,7 @@ export type StagedHolon = {
     staged_relationships: Record<string, unknown>,
     original_id?: string | null,
     versioned_source_id?: string | null,
+    touched_relationship_names?: string[],
     errors: unknown[]
 }
 

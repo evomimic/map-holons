@@ -82,6 +82,7 @@ export interface StagedHolon {
   staged_relationships: StagedRelationshipMap;
   original_id?: LocalId | null;
   versioned_source_id?: LocalId | null;
+  touched_relationship_names?: RelationshipName[];
   errors: HolonError[];
 }
 
@@ -246,6 +247,7 @@ export class StagedHolonFactory {
       staged_relationships: stagedRelationships || {},
       original_id: null,
       versioned_source_id: null,
+      touched_relationship_names: [],
       errors: []
     };
   }
@@ -264,6 +266,7 @@ export class StagedHolonFactory {
       staged_relationships: stagedRelationships || {},
       original_id: originalId,
       versioned_source_id: originalId,
+      touched_relationship_names: [],
       errors: []
     };
   }
@@ -513,4 +516,3 @@ export class StagedHolonUtils {
     stagedHolon.errors.push(error);
   }
 }
-

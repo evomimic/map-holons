@@ -165,6 +165,7 @@ export interface StagedHolonWire {
   staged_relationships: StagedRelationshipMapWire;
   original_id: LocalId | null;
   versioned_source_id?: LocalId | null;
+  touched_relationship_names?: RelationshipName[];
   errors: HolonErrorWire[];
 }
 
@@ -766,6 +767,9 @@ export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
     isNullable(value['original_id'], isLocalId) &&
     (value['versioned_source_id'] === undefined ||
       isNullable(value['versioned_source_id'], isLocalId)) &&
+    (value['touched_relationship_names'] === undefined ||
+      (Array.isArray(value['touched_relationship_names']) &&
+        value['touched_relationship_names'].every(isString))) &&
     Array.isArray(value['errors']) &&
     value['errors'].every(isHolonErrorWire)
   );
