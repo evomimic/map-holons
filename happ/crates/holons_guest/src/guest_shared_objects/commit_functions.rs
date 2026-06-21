@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use crate::guest_shared_objects::{save_smartlink, SmartLink};
-use crate::persistence_layer::{create_holon_node, update_holon_node, UpdateHolonNodeInput};
+use crate::persistence_layer::create_holon_node;
 
 use holons_core::{
     core_shared_objects::{
@@ -46,9 +46,10 @@ type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCol
 
 /// Captures the committed source selected for relationship persistence.
 ///
-/// Phase 2 currently anchors relationship SmartLinks to the newly committed
-/// source holon. Keeping that rule in one place lets later versioning work
-/// retarget forward and inverse persistence together.
+/// Relationship SmartLinks are anchored to the committed source selected in Pass 1.
+///
+/// New creates and version-producing updates commit to a new node id. Graph-only
+/// updates commit to the existing persisted source id carried by the staged holon.
 struct RelationshipCommitSource {
     source_local_id: LocalId,
     source_key: Option<MapString>,
@@ -107,8 +108,13 @@ impl RelationshipCommitSource {
 /// - **ForCreate**
 ///   Persist as a new HolonNode; update the staged holon to `Committed(saved_id)`
 ///
-/// - **ForUpdateChanged**
-///   Update the existing HolonNode; update to `Committed(saved_id)`
+/// - **ForUpdateGraphOnly**
+///   Do not write a node; update to `Committed(existing_source_id)` so Pass 2
+///   anchors relationship SmartLinks to the existing persisted node.
+///
+/// - **ForUpdateNewVersion**
+///   Persist as a new HolonNode, write `Predecessor` from the new version to
+///   the prior persisted version, and update to `Committed(new_saved_id)`.
 ///
 /// - **Abandoned**
 ///   Skipped and added to the `AbandonedHolons` relationship
@@ -396,33 +402,30 @@ fn commit_holon(
                 Ok(CommitOutcome::Saved)
             }
 
-            // === UPDATE EXISTING NODE =======================================================
-            StagedState::ForUpdateChanged => {
-                trace!("StagedState::ForUpdateChanged — updating HolonNode in DHT");
+            // === GRAPH-ONLY UPDATE ==========================================================
+            StagedState::ForUpdateGraphOnly => {
+                trace!("StagedState::ForUpdateGraphOnly — reusing existing source anchor");
+                let source_id = staged_holon.get_versioned_source_id()?;
+                staged_holon.to_committed(source_id)?;
+                Ok(CommitOutcome::Saved)
+            }
 
-                if let Some(original_id) = staged_holon.original_id() {
-                    let original_hash = try_action_hash_from_local_id(&original_id)?;
-                    let previous_hash =
-                        try_action_hash_from_local_id(&staged_holon.get_local_id()?)?;
+            // === VERSION-PRODUCING UPDATE ==================================================
+            StagedState::ForUpdateNewVersion => {
+                trace!("StagedState::ForUpdateNewVersion — creating next HolonNode version");
+                let predecessor_id = staged_holon.get_versioned_source_id()?;
+                let node = staged_holon.into_node_model();
+                let record = create_holon_node(HolonNode::from(node))
+                    .map_err(holon_error_from_wasm_error)?;
+                let new_local_id = LocalId(record.action_address().clone().into_inner());
 
-                    let input = UpdateHolonNodeInput {
-                        original_holon_node_hash: original_hash,
-                        previous_holon_node_hash: previous_hash,
-                        updated_holon_node: HolonNode::from(staged_holon.clone().into_node_model()),
-                    };
-
-                    let record = update_holon_node(input).map_err(holon_error_from_wasm_error)?;
-
-                    staged_holon
-                        .to_committed(local_id_from_action_hash(record.action_address().clone()))?;
-                    Ok(CommitOutcome::Saved)
-                } else {
-                    let holon_error = HolonError::HolonNotFound(
-                        "Holon marked Changed but has no record".to_string(),
-                    );
-                    staged_holon.add_error(holon_error.clone())?;
-                    Err(holon_error)
+                if let Err(error) = save_predecessor_smartlink(&new_local_id, &predecessor_id) {
+                    staged_holon.add_error(error.clone())?;
+                    return Err(error);
                 }
+
+                staged_holon.to_committed(new_local_id)?;
+                Ok(CommitOutcome::Saved)
             }
 
             // === ABANDONED HOLON ============================================================
@@ -446,6 +449,18 @@ fn commit_holon(
             holon_write
         )))
     }
+}
+
+fn save_predecessor_smartlink(
+    new_version_id: &LocalId,
+    predecessor_id: &LocalId,
+) -> Result<(), HolonError> {
+    save_smartlink(SmartLink {
+        from_address: new_version_id.clone(),
+        to_address: HolonId::Local(predecessor_id.clone()),
+        relationship_name: CoreRelationshipTypeName::Predecessor.as_relationship_name(),
+        smart_property_values: None,
+    })
 }
 
 /// Persists one declared relationship collection and its resolved inverse.
