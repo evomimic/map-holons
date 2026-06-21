@@ -242,7 +242,14 @@ impl HolonStagingBehavior for Nursery {
         )?;
 
         let new_id = self.stage_holon(staged_holon)?;
-        self.to_validated_staged_reference(&new_id)
+        let mut staged_reference = self.to_validated_staged_reference(&new_id)?;
+
+        // A new version's lineage is established at commit time. Drop any
+        // predecessor edge cloned from the source version so old lineage cannot
+        // be replayed onto the staged successor.
+        staged_reference.with_predecessor(None)?;
+
+        Ok(staged_reference)
     }
 }
 
@@ -324,17 +331,18 @@ mod tests {
             RelationshipMap, ServiceRoutingPolicy,
         },
         reference_layer::{HolonServiceApi, ReadableHolon},
-        HolonCollection,
+        HolonCollection, HolonCollectionApi,
     };
     use base_types::{BaseValue, MapInteger, MapString};
     use core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
     use std::any::Any;
-    use type_names::CorePropertyTypeName;
+    use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToRelationshipName};
 
     #[derive(Debug)]
     struct StageVersionTestService {
         source_id: LocalId,
         source_holon: SavedHolon,
+        source_predecessor_id: Option<LocalId>,
     }
 
     impl HolonServiceApi for StageVersionTestService {
@@ -360,11 +368,27 @@ mod tests {
 
         fn fetch_all_related_holons_internal(
             &self,
-            _context: &Arc<TransactionContext>,
+            context: &Arc<TransactionContext>,
             source_id: &HolonId,
         ) -> Result<RelationshipMap, HolonError> {
             if source_id.local_id() == &self.source_id {
-                Ok(RelationshipMap::new_empty())
+                let mut relationships = RelationshipMap::new_empty();
+
+                if let Some(predecessor_id) = &self.source_predecessor_id {
+                    let predecessor_reference = HolonReference::smart_with_key(
+                        context.context_handle(),
+                        HolonId::Local(predecessor_id.clone()),
+                        MapString("prior-version".to_string()),
+                    );
+                    let mut predecessor_collection = HolonCollection::new_existing();
+                    predecessor_collection.add_references(vec![predecessor_reference])?;
+                    relationships.insert(
+                        CoreRelationshipTypeName::Predecessor.to_relationship_name(),
+                        Arc::new(RwLock::new(predecessor_collection)),
+                    );
+                }
+
+                Ok(relationships)
             } else {
                 Err(HolonError::HolonNotFound(format!("{:?}", source_id)))
             }
@@ -410,9 +434,10 @@ mod tests {
     fn stage_version_test_context(
         source_id: LocalId,
         source_holon: SavedHolon,
+        source_predecessor_id: Option<LocalId>,
     ) -> Arc<TransactionContext> {
         let holon_service: Arc<dyn HolonServiceApi> =
-            Arc::new(StageVersionTestService { source_id, source_holon });
+            Arc::new(StageVersionTestService { source_id, source_holon, source_predecessor_id });
         let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
             None,
             holon_service,
@@ -439,7 +464,11 @@ mod tests {
         );
         properties.insert(title.clone(), original_title.clone());
         let source_holon = SavedHolon::new(source_id.clone(), properties, None, MapInteger(3));
-        let context = stage_version_test_context(source_id.clone(), source_holon);
+        let context = stage_version_test_context(
+            source_id.clone(),
+            source_holon,
+            Some(LocalId(vec![9, 8, 7])),
+        );
         let current_version = SmartReference::new_from_id(
             context.context_handle(),
             HolonId::Local(source_id.clone()),

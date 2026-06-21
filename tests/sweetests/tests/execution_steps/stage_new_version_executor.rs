@@ -6,7 +6,10 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use tracing::{debug, info};
 
 /// Stages a new version of an existing holon via `TransactionAction::StageNewVersionFromId`,
-/// then verifies predecessor, base-key, and versioned-key lookups.
+/// then verifies base-key and versioned-key lookups.
+///
+/// Version lineage is established at commit time, not stage time, so this step
+/// intentionally does not assert a staged `Predecessor` relationship.
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     step_token: TestReference,
@@ -48,15 +51,7 @@ pub async fn execute_stage_new_version(
             // 4. RECORD
             state.record(&step_token, execution_reference).unwrap();
 
-            // 5. Verify predecessor relationship (self-resolving read)
-            let predecessor = response_ref.predecessor().unwrap().unwrap();
-            assert_eq!(
-                predecessor.holon_id().unwrap(),
-                original_holon_id,
-                "Predecessor relationship did not match expected"
-            );
-
-            // 6. Verify base-key staging behavior via TransactionAction lookups
+            // 5. Verify base-key staging behavior via TransactionAction lookups
             let original_holon_key = source_reference.key().unwrap().unwrap();
 
             let by_base_command = MapCommand::Transaction(TransactionCommand {
@@ -87,7 +82,7 @@ pub async fn execute_stage_new_version(
                         "get_staged_holon_by_base_key did not match expected"
                     );
 
-                    // 7. Verify versioned-key lookup
+                    // 6. Verify versioned-key lookup
                     let by_version_command = MapCommand::Transaction(TransactionCommand {
                         context: context.clone(),
                         action: TransactionAction::GetStagedHolonByVersionedKey {

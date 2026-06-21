@@ -22,6 +22,8 @@ describe('source-aligned holon wire guards', () => {
 
   it('accepts the tuple-like Committed payload declared in Rust StagedState', () => {
     // Rust declares `Committed(LocalId)`, which serde emits as `{ Committed: [...] }`.
+    expect(isStagedState('ForUpdateGraphOnly')).toBe(true);
+    expect(isStagedState('ForUpdateNewVersion')).toBe(true);
     expect(isStagedState({ Committed: [1, 2, 3] })).toBe(true);
     expect(isStagedState({ Committed: 'not-a-local-id' })).toBe(false);
   });
@@ -62,6 +64,7 @@ describe('source-aligned holon wire guards', () => {
         map: {},
       },
       original_id: [1, 1, 1],
+      versioned_source_id: [2, 2, 2],
       errors: [],
     };
 

@@ -37,6 +37,7 @@
 //!
 //! This separation allows test behavior to be described declaratively while
 //! remaining independent of runtime identifiers and execution-time handles
+use super::test_case::DancesTestCase;
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
     ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, SourceSnapshot, TestHolonState,
@@ -49,9 +50,6 @@ use holons_core::{
 use holons_prelude::prelude::*;
 use integrity_core_types::{HolonErrorKind, PropertyMap};
 use std::sync::Arc;
-use type_names::{CoreRelationshipTypeName::Predecessor, ToRelationshipName};
-
-use super::test_case::DancesTestCase;
 
 /// - The source *token* is a TestReference that is *embedded as input* for the step. Executors will look it up at runtime
 ///   (Saved ≙ Staged(Committed(LocalId)) enforced at lookup time).
@@ -192,6 +190,19 @@ impl DancesTestCase {
             "Verify forward and inverse Book/Person instance SmartLink traversal".to_string()
         });
         self.steps.push(DanceTestStep::VerifyBookPersonInstanceLinks { description });
+
+        Ok(())
+    }
+
+    pub fn add_verify_issue_515_relationship_anchoring_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Verify Issue #515 graph-only and version-producing relationship anchoring".to_string()
+        });
+        self.steps.push(DanceTestStep::VerifyIssue515RelationshipAnchoring { description });
 
         Ok(())
     }
@@ -649,11 +660,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Stage new version".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon()?;
-        new_snapshot.add_related_holons(
-            &Predecessor.to_relationship_name(),
-            vec![step_token.expected_reference().into()],
-        )?;
+        let new_snapshot = new_source.snapshot().clone_holon()?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon

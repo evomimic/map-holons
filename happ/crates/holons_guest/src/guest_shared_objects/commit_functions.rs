@@ -10,11 +10,11 @@ use crate::persistence_layer::create_holon_node;
 use holons_core::{
     core_shared_objects::{
         holon::state::{AccessType, StagedState},
-        Holon, HolonCollection, ReadableHolonState, StagedHolon,
+        Holon, HolonCollection, ReadableHolonState, StagedHolon, WriteableHolonState,
     },
     descriptors::resolve_inverse_relationship_name,
     reference_layer::ReadableHolon,
-    HolonReference, StagedReference, WritableHolon,
+    HolonReference, SmartReference, StagedReference, WritableHolon,
 };
 
 use base_types::{BaseValue, MapString};
@@ -113,7 +113,7 @@ impl RelationshipCommitSource {
 ///   anchors relationship SmartLinks to the existing persisted node.
 ///
 /// - **ForUpdateNewVersion**
-///   Persist as a new HolonNode, write `Predecessor` from the new version to
+///   Persist as a new HolonNode, stage `Predecessor` from the new version to
 ///   the prior persisted version, and update to `Committed(new_saved_id)`.
 ///
 /// - **Abandoned**
@@ -257,14 +257,8 @@ pub fn commit(
                         staged_reference,
                         staged_holon,
                     ) {
-                        // Clone the relationship map out (cloning Arcs is cheap).
-                        let staged_relationship_map = staged_holon.get_staged_relationship_map()?;
-                        let pairs = staged_relationship_map
-                            .map
-                            .iter()
-                            .map(|(name, collection_rc)| (name.clone(), collection_rc.clone()))
-                            .collect::<Vec<_>>();
-
+                        // Snapshot the commit-eligible relationship collections while cloning only Arcs.
+                        let pairs = staged_holon.relationship_collections_for_commit()?;
                         Some((source, pairs))
                     } else {
                         // Only committed holons participate in relationship persistence.
@@ -406,6 +400,28 @@ fn commit_holon(
             StagedState::ForUpdateGraphOnly => {
                 trace!("StagedState::ForUpdateGraphOnly — reusing existing source anchor");
                 let source_id = staged_holon.get_versioned_source_id()?;
+                staged_holon.prepare_graph_only_relationship_commit_filter()?;
+
+                // TEMP (issue #515 diagnosis): confirm the touched-set survived the
+                // dance/session-state round-trip. If `will_persist` is empty while
+                // `staged_relationships` still lists the mutated relationship, the
+                // touched set was dropped at the wire boundary. Remove after diagnosis.
+                let staged_relationships: Vec<String> = staged_holon
+                    .get_staged_relationship_map()?
+                    .map
+                    .keys()
+                    .map(|name| name.0 .0.clone())
+                    .collect();
+                let will_persist: Vec<String> = staged_holon
+                    .relationship_collections_for_commit()?
+                    .iter()
+                    .map(|(name, _)| name.0 .0.clone())
+                    .collect();
+                info!(
+                    "issue#515 graph-only commit: staged_relationships={:?}, will_persist(touched)={:?}",
+                    staged_relationships, will_persist
+                );
+
                 staged_holon.to_committed(source_id)?;
                 Ok(CommitOutcome::Saved)
             }
@@ -419,7 +435,9 @@ fn commit_holon(
                     .map_err(holon_error_from_wasm_error)?;
                 let new_local_id = LocalId(record.action_address().clone().into_inner());
 
-                if let Err(error) = save_predecessor_smartlink(&new_local_id, &predecessor_id) {
+                if let Err(error) =
+                    stage_predecessor_relationship(staged_holon, context, predecessor_id)
+                {
                     staged_holon.add_error(error.clone())?;
                     return Err(error);
                 }
@@ -451,16 +469,22 @@ fn commit_holon(
     }
 }
 
-fn save_predecessor_smartlink(
-    new_version_id: &LocalId,
-    predecessor_id: &LocalId,
+fn stage_predecessor_relationship(
+    staged_holon: &mut StagedHolon,
+    context: &Arc<TransactionContext>,
+    predecessor_id: LocalId,
 ) -> Result<(), HolonError> {
-    save_smartlink(SmartLink {
-        from_address: new_version_id.clone(),
-        to_address: HolonId::Local(predecessor_id.clone()),
-        relationship_name: CoreRelationshipTypeName::Predecessor.as_relationship_name(),
-        smart_property_values: None,
-    })
+    let predecessor_reference = SmartReference::new_from_id(
+        TransactionContextHandle::new(Arc::clone(context)),
+        HolonId::Local(predecessor_id),
+    );
+
+    staged_holon.add_related_holons_with_keys(
+        CoreRelationshipTypeName::Predecessor.as_relationship_name(),
+        vec![(predecessor_reference.into(), None)],
+    )?;
+
+    Ok(())
 }
 
 /// Persists one declared relationship collection and its resolved inverse.

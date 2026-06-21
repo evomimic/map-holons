@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::BTreeSet,
+    sync::{Arc, RwLock},
+};
 
 use crate::{
     core_shared_objects::{
@@ -30,6 +33,10 @@ pub struct StagedHolon {
     original_id: Option<LocalId>,
     // Current persisted node being staged for update; graph-only commits anchor relationships here.
     versioned_source_id: Option<LocalId>,
+    // Relationship collections mutated during this staged transaction.
+    touched_relationship_names: BTreeSet<RelationshipName>,
+    // Pass-2 relationship persistence filter. `None` means persist the full staged map.
+    relationship_commit_filter: Option<BTreeSet<RelationshipName>>,
     errors: Vec<HolonError>, // Populated during the commit process
 }
 
@@ -49,6 +56,8 @@ impl StagedHolon {
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
             versioned_source_id: None,
+            touched_relationship_names: BTreeSet::new(),
+            relationship_commit_filter: None,
             errors: Vec::new(),
         }
     }
@@ -65,6 +74,8 @@ impl StagedHolon {
             staged_relationships,
             original_id: model.original_id,
             versioned_source_id: None,
+            touched_relationship_names: BTreeSet::new(),
+            relationship_commit_filter: None,
             errors: Vec::new(),
         };
 
@@ -87,6 +98,8 @@ impl StagedHolon {
             staged_relationships,
             original_id: model.original_id,
             versioned_source_id: Some(source_local_id),
+            touched_relationship_names: BTreeSet::new(),
+            relationship_commit_filter: None,
             errors: Vec::new(),
         })
     }
@@ -112,6 +125,8 @@ impl StagedHolon {
             staged_relationships,
             original_id,
             versioned_source_id,
+            touched_relationship_names: BTreeSet::new(),
+            relationship_commit_filter: None,
             errors,
         }
     }
@@ -152,6 +167,32 @@ impl StagedHolon {
         self.is_accessible(AccessType::Read)?;
 
         Ok(self.staged_relationships.clone())
+    }
+
+    pub fn relationship_collections_for_commit(
+        &self,
+    ) -> Result<Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+
+        let pairs = match &self.relationship_commit_filter {
+            Some(filter) => filter
+                .iter()
+                .filter_map(|name| {
+                    self.staged_relationships
+                        .map
+                        .get(name)
+                        .map(|collection| (name.clone(), collection.clone()))
+                })
+                .collect(),
+            None => self
+                .staged_relationships
+                .map
+                .iter()
+                .map(|(name, collection)| (name.clone(), collection.clone()))
+                .collect(),
+        };
+
+        Ok(pairs)
     }
 
     pub fn get_staged_state(&self) -> StagedState {
@@ -233,6 +274,16 @@ impl StagedHolon {
     pub fn add_error(&mut self, error: HolonError) -> Result<(), HolonError> {
         self.errors.push(error);
         Ok(())
+    }
+
+    pub fn prepare_graph_only_relationship_commit_filter(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Commit)?;
+        self.relationship_commit_filter = Some(self.touched_relationship_names.clone());
+        Ok(())
+    }
+
+    fn mark_relationship_touched(&mut self, relationship_name: &RelationshipName) {
+        self.touched_relationship_names.insert(relationship_name.clone());
     }
 
     /// Notes a content mutation and escalates existing-holon updates to a new version.
@@ -473,7 +524,8 @@ impl WriteableHolonState for StagedHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
 
-        self.staged_relationships.add_related_holons(relationship_name, holons)?;
+        self.staged_relationships.add_related_holons(relationship_name.clone(), holons)?;
+        self.mark_relationship_touched(&relationship_name);
 
         Ok(self)
     }
@@ -485,7 +537,9 @@ impl WriteableHolonState for StagedHolon {
         entries: Vec<(HolonReference, Option<MapString>)>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        self.staged_relationships.add_related_holons_with_keys(relationship_name, entries)?;
+        self.staged_relationships
+            .add_related_holons_with_keys(relationship_name.clone(), entries)?;
+        self.mark_relationship_touched(&relationship_name);
         Ok(self)
     }
 
@@ -514,6 +568,7 @@ impl WriteableHolonState for StagedHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.staged_relationships.remove_related_holons(&relationship_name, holons)?;
+        self.mark_relationship_touched(&relationship_name);
 
         Ok(self)
     }
@@ -526,6 +581,7 @@ impl WriteableHolonState for StagedHolon {
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
         self.staged_relationships.remove_related_holons_with_keys(relationship_name, entries)?;
+        self.mark_relationship_touched(relationship_name);
         Ok(self)
     }
 
@@ -571,6 +627,8 @@ mod tests {
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
             versioned_source_id: None,
+            touched_relationship_names: BTreeSet::new(),
+            relationship_commit_filter: None,
             errors: Vec::new(),
         };
         assert_eq!(initial_holon, expected_holon);
@@ -650,6 +708,8 @@ mod tests {
             staged_relationships: StagedRelationshipMap { map: BTreeMap::new() },
             original_id: None,
             versioned_source_id: None,
+            touched_relationship_names: BTreeSet::new(),
+            relationship_commit_filter: None,
             errors: Vec::new(),
         };
 
@@ -716,5 +776,49 @@ mod tests {
 
         staged.note_relationship_mutation(false).unwrap();
         assert_eq!(staged.staged_state(), &StagedState::ForUpdateNewVersion);
+    }
+
+    #[test]
+    fn graph_only_commit_filter_limits_relationship_replay_to_touched_collections() {
+        let described_by = RelationshipName(MapString("DescribedBy".to_string()));
+        let properties = RelationshipName(MapString("Properties".to_string()));
+
+        let mut relationships = BTreeMap::new();
+        relationships
+            .insert(described_by.clone(), Arc::new(RwLock::new(HolonCollection::new_staged())));
+        relationships
+            .insert(properties.clone(), Arc::new(RwLock::new(HolonCollection::new_staged())));
+
+        let mut staged = StagedHolon::from_parts(
+            MapInteger(1),
+            HolonState::Mutable,
+            StagedState::ForUpdateGraphOnly,
+            ValidationState::ValidationRequired,
+            PropertyMap::new(),
+            StagedRelationshipMap { map: relationships },
+            None,
+            Some(LocalId(vec![1, 2, 3])),
+            Vec::new(),
+        );
+
+        staged.mark_relationship_touched(&properties);
+        let unfiltered_names = staged
+            .relationship_collections_for_commit()
+            .unwrap()
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>();
+
+        assert_eq!(unfiltered_names, vec![described_by.clone(), properties.clone()]);
+
+        staged.prepare_graph_only_relationship_commit_filter().unwrap();
+        let filtered_names = staged
+            .relationship_collections_for_commit()
+            .unwrap()
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>();
+
+        assert_eq!(filtered_names, vec![properties]);
     }
 }

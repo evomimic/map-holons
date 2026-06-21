@@ -720,6 +720,36 @@ mod tests {
         Ok((staged_source_type, staged_target_type))
     }
 
+    fn staged_relationship_descriptor_with_invalid_is_definitional(
+        context: &Arc<TransactionContext>,
+        relationship_name: &str,
+    ) -> Result<(StagedReference, StagedReference), HolonError> {
+        let source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        let target_type = new_holon_type_descriptor(context, "target-type", "TargetType")?;
+        let staged_source_type = context.mutation().stage_new_holon(source_type)?;
+        let staged_target_type = context.mutation().stage_new_holon(target_type)?;
+
+        let mut relationship_descriptor = new_relationship_descriptor_holon(
+            context,
+            "relationship-descriptor",
+            relationship_name,
+            staged_source_type.clone().into(),
+            staged_target_type.clone().into(),
+        )?;
+        relationship_descriptor
+            .with_property_value(CorePropertyTypeName::IsDefinitional, "not-a-boolean")?;
+        let staged_relationship_descriptor =
+            context.mutation().stage_new_holon(relationship_descriptor)?;
+
+        let mut staged_source_type = staged_source_type;
+        staged_source_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![staged_relationship_descriptor.into()],
+        )?;
+
+        Ok((staged_source_type, staged_target_type))
+    }
+
     fn staged_update_source(
         context: &Arc<TransactionContext>,
         source_descriptor: StagedReference,
@@ -832,6 +862,25 @@ mod tests {
         let result = staged_source.add_related_holons("AuthoredBy", vec![target.into()]);
 
         assert!(matches!(result, Err(HolonError::EmptyField(field)) if field == "IsDefinitional"));
+        assert!(staged_source.is_in_state(&context, StagedState::ForUpdate)?);
+        let collection = staged_source.related_holons("AuthoredBy")?;
+        assert!(collection.read().unwrap().get_members().is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_is_definitional_errors_before_mutation() -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_descriptor, _) =
+            staged_relationship_descriptor_with_invalid_is_definitional(&context, "AuthoredBy")?;
+        let mut staged_source = staged_update_source(&context, source_descriptor)?;
+        let target = staged_target(&context, "author")?;
+
+        let result = staged_source.add_related_holons("AuthoredBy", vec![target.into()]);
+
+        assert!(
+            matches!(result, Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean")
+        );
         assert!(staged_source.is_in_state(&context, StagedState::ForUpdate)?);
         let collection = staged_source.related_holons("AuthoredBy")?;
         assert!(collection.read().unwrap().get_members().is_empty());

@@ -195,11 +195,12 @@ export type TransientHolon = {
 export type StagedHolon = {
     version: number,
     holon_state: "Mutable" | "Immutable",
-    staged_state: "Abandoned" | "Committed" | "ForCreate" | "ForUpdate" | "ForUpdateChanged",
+    staged_state: "Abandoned" | "Committed" | "ForCreate" | "ForUpdate" | "ForUpdateGraphOnly" | "ForUpdateNewVersion",
     validation_state: "NoDescriptor" | "ValidationRequired" | "Validated" | "Invalid",
     property_map: PropertyMap,
     staged_relationships: Record<string, unknown>,
     original_id?: string | null,
+    versioned_source_id?: string | null,
     errors: unknown[]
 }
 

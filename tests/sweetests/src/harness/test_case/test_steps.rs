@@ -109,6 +109,9 @@ pub enum DanceTestStep {
     VerifyBookPersonInstanceLinks {
         description: String,
     },
+    VerifyIssue515RelationshipAnchoring {
+        description: String,
+    },
     VerifyCoreSchemaDescriptorSubtypes {
         description: String,
     },
@@ -252,6 +255,9 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyBookPersonInstanceLinks { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyIssue515RelationshipAnchoring { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { description } => {

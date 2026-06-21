@@ -578,14 +578,15 @@ export function mapHolonErrorToStatusCode(errorType: HolonErrorType): ResponseSt
 const mockStagedHolon: StagedHolon = {
   version: 1 as any as MapInteger,
   holon_state: "Mutable" as HolonState,
-  staged_state: "New" as StagedState,
-  validation_state: "Valid" as ValidationState,
+  staged_state: "ForCreate" as StagedState,
+  validation_state: "ValidationRequired" as ValidationState,
   property_map: {
     "title": { type: "StringValue", value: "Mock Staged Holon" } as any,
     "description": { type: "StringValue", value: "This is a mock staged holon for testing" } as any,
     "key": { type: "StringValue", value: "mock-key-001" } as any
   } as PropertyMap,
   staged_relationships: {} as StagedRelationshipMap,
+  versioned_source_id: null,
   errors: []
 };
 

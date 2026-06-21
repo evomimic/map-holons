@@ -69,3 +69,39 @@ impl From<&StagedHolon> for StagedHolonWire {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base_types::MapString;
+    use core_types::RelationshipName;
+    use holons_core::core_shared_objects::WriteableHolonState;
+
+    /// Regression guard (issue #515): relationship-mutation intent
+    /// (`touched_relationship_names`) is transaction-scoped staged state that must
+    /// survive the dance / session-state round-trip. Sweetests export staged holons
+    /// to `StagedHolonWire` between the `add` and `commit` dances; if the wire drops
+    /// the touched set, a graph-only commit rehydrates with an empty filter and
+    /// persists none of the mutated relationships.
+    ///
+    /// This asserts the wire carries the touched set. It fails until the wire type
+    /// and `From<&StagedHolon>` are taught to propagate `touched_relationship_names`.
+    #[test]
+    fn staged_holon_wire_preserves_touched_relationship_names() {
+        let mut staged = StagedHolon::new_for_create();
+        let relationship = RelationshipName(MapString("Properties".to_string()));
+        staged
+            .add_related_holons(relationship, Vec::new())
+            .expect("recording a relationship mutation should succeed");
+
+        let wire = StagedHolonWire::from(&staged);
+        let json = serde_json::to_value(&wire).expect("StagedHolonWire should serialize");
+
+        assert!(
+            json.get("touched_relationship_names").is_some(),
+            "StagedHolonWire must carry touched_relationship_names so relationship-mutation \
+             intent survives the dance/session-state round-trip; without it, graph-only \
+             commits lose their touched set and persist no relationship changes (issue #515)"
+        );
+    }
+}
