@@ -107,7 +107,7 @@ mod tests {
             json.get("touched_relationship_names").is_some(),
             "StagedHolonWire must carry touched_relationship_names so relationship-mutation \
              intent survives the dance/session-state round-trip; without it, graph-only \
-             commits lose their touched set and persist no relationship changes (issue #515)"
+             commits lose their touched set and persist no relationship changes"
         );
     }
 }

@@ -211,7 +211,7 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Definitional update must create exactly one new Book node".to_string()),
     )?;
 
-    test_case.add_verify_issue_515_relationship_anchoring_step(None)?;
+    test_case.add_verify_relationship_anchoring_step(None)?;
 
     // Begin fresh transaction so versions 2/3 stage into a clean nursery
     test_case.add_begin_transaction_step(

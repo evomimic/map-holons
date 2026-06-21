@@ -675,15 +675,15 @@ pub async fn execute_verify_book_person_instance_links(state: &mut TestExecution
     info!("verified bidirectional Book/Person instance SmartLink traversal");
 }
 
-/// Verifies the issue #515 persisted anchoring rules after the stage-new-version
+/// Verifies the persisted anchoring rules after the stage-new-version
 /// fixture has exercised both update modes:
 /// - graph-only mutation: Book --Properties--> Title.PropertyType is anchored to
 ///   the existing Book node, with no new Book node created for that commit.
 /// - version-producing mutation: Book --AuthoredBy--> Person is anchored to the
 ///   new Book version, and lineage is persisted bidirectionally through
 ///   Predecessor/Successor.
-pub async fn execute_verify_issue_515_relationship_anchoring(state: &mut TestExecutionState) {
-    let holons = loaded_holons(state, "verify_issue_515_relationship_anchoring").await;
+pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionState) {
+    let holons = loaded_holons(state, "verify_relationship_anchoring").await;
 
     let books = find_holons_by_key(&holons, BOOK_KEY);
     assert_eq!(
@@ -729,7 +729,7 @@ pub async fn execute_verify_issue_515_relationship_anchoring(state: &mut TestExe
     assert_related_ids_contain(&new_book, "Predecessor", &original_book_id);
     assert_related_ids_contain(&original_book, "Successor", &new_book_id);
 
-    info!("verified issue #515 graph-only and version-producing relationship anchoring");
+    info!("verified graph-only and version-producing relationship anchoring");
 }
 
 async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> HolonCollection {

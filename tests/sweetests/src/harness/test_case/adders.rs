@@ -194,15 +194,15 @@ impl DancesTestCase {
         Ok(())
     }
 
-    pub fn add_verify_issue_515_relationship_anchoring_step(
+    pub fn add_verify_relationship_anchoring_step(
         &mut self,
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| {
-            "Verify Issue #515 graph-only and version-producing relationship anchoring".to_string()
+            "Verify graph-only and version-producing relationship anchoring".to_string()
         });
-        self.steps.push(DanceTestStep::VerifyIssue515RelationshipAnchoring { description });
+        self.steps.push(DanceTestStep::VerifyRelationshipAnchoring { description });
 
         Ok(())
     }

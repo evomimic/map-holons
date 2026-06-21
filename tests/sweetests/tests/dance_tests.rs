@@ -39,7 +39,7 @@ use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::descriptor_verification_executor::{
     execute_verify_book_person_descriptors, execute_verify_book_person_instance_links,
     execute_verify_core_schema_descriptor_subtypes, execute_verify_core_schema_descriptors,
-    execute_verify_core_schema_value_semantics, execute_verify_issue_515_relationship_anchoring,
+    execute_verify_core_schema_value_semantics, execute_verify_relationship_anchoring,
 };
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_book_person_inverse_test_schema;
@@ -229,8 +229,8 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
             DanceTestStep::VerifyBookPersonInstanceLinks { .. } => {
                 execute_verify_book_person_instance_links(&mut test_execution_state).await
             }
-            DanceTestStep::VerifyIssue515RelationshipAnchoring { .. } => {
-                execute_verify_issue_515_relationship_anchoring(&mut test_execution_state).await
+            DanceTestStep::VerifyRelationshipAnchoring { .. } => {
+                execute_verify_relationship_anchoring(&mut test_execution_state).await
             }
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { .. } => {
                 execute_verify_core_schema_descriptor_subtypes(&mut test_execution_state).await
