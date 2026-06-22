@@ -135,7 +135,8 @@ export type StagedState =
   | 'Abandoned'
   | 'ForCreate'
   | 'ForUpdate'
-  | 'ForUpdateChanged'
+  | 'ForUpdateGraphOnly'
+  | 'ForUpdateNewVersion'
   | { Committed: LocalId };
 
 export interface TransientRelationshipMapWire {
@@ -163,6 +164,8 @@ export interface StagedHolonWire {
   property_map: PropertyMap;
   staged_relationships: StagedRelationshipMapWire;
   original_id: LocalId | null;
+  versioned_source_id?: LocalId | null;
+  touched_relationship_names?: RelationshipName[];
   errors: HolonErrorWire[];
 }
 
@@ -591,7 +594,8 @@ export function isStagedState(value: unknown): value is StagedState {
     value === 'Abandoned' ||
     value === 'ForCreate' ||
     value === 'ForUpdate' ||
-    value === 'ForUpdateChanged' ||
+    value === 'ForUpdateGraphOnly' ||
+    value === 'ForUpdateNewVersion' ||
     isTaggedValue(value, 'Committed', isLocalId)
   );
 }
@@ -761,6 +765,11 @@ export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
     isPropertyMap(value['property_map']) &&
     isStagedRelationshipMapWire(value['staged_relationships']) &&
     isNullable(value['original_id'], isLocalId) &&
+    (value['versioned_source_id'] === undefined ||
+      isNullable(value['versioned_source_id'], isLocalId)) &&
+    (value['touched_relationship_names'] === undefined ||
+      (Array.isArray(value['touched_relationship_names']) &&
+        value['touched_relationship_names'].every(isString))) &&
     Array.isArray(value['errors']) &&
     value['errors'].every(isHolonErrorWire)
   );

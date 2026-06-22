@@ -15,13 +15,6 @@ pub struct GetPathInput {
     pub link_type: LinkTypes,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateHolonNodeInput {
-    pub original_holon_node_hash: ActionHash,
-    pub previous_holon_node_hash: ActionHash,
-    pub updated_holon_node: HolonNode,
-}
-
 #[hdk_extern]
 pub fn create_holon_node(holon_node: HolonNode) -> ExternResult<Record> {
     let holon_node_hash = create_entry(&EntryTypes::HolonNode(holon_node.clone()))?;
@@ -172,21 +165,4 @@ pub fn get_original_holon_node_with_details(
         Details::Record(details) => Ok(Some(details.record)),
         _ => Err(wasm_error!(WasmErrorInner::Guest("Malformed get details response".to_string()))),
     }
-}
-
-#[hdk_extern]
-pub fn update_holon_node(input: UpdateHolonNodeInput) -> ExternResult<Record> {
-    let updated_holon_node_hash =
-        update_entry(input.previous_holon_node_hash.clone(), &input.updated_holon_node)?;
-    create_link(
-        input.original_holon_node_hash.clone(),
-        updated_holon_node_hash.clone(),
-        LinkTypes::HolonNodeUpdates,
-        (),
-    )?;
-    let record =
-        get(updated_holon_node_hash.clone(), GetOptions::default())?.ok_or(wasm_error!(
-            WasmErrorInner::Guest(String::from("Could not find the newly updated HolonNode"))
-        ))?;
-    Ok(record)
 }

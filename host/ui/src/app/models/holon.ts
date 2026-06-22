@@ -44,7 +44,8 @@ export type StagedState =
   | { Committed: LocalId }         // Successfully committed with saved ID
   | "ForCreate"                    // New holon never committed before
   | "ForUpdate"                    // Cloned for potential modification, no changes yet
-  | "ForUpdateChanged";            // Cloned for modification and subsequently changed
+  | "ForUpdateGraphOnly"           // Existing holon with only graph mutations
+  | "ForUpdateNewVersion";         // Existing holon mutation that creates a new version
 
 // ===========================================
 // Relationship Map Types for Staged Holons
@@ -80,6 +81,8 @@ export interface StagedHolon {
   property_map: PropertyMap;
   staged_relationships: StagedRelationshipMap;
   original_id?: LocalId | null;
+  versioned_source_id?: LocalId | null;
+  touched_relationship_names?: RelationshipName[];
   errors: HolonError[];
 }
 
@@ -138,8 +141,12 @@ export function isStagedStateForUpdate(state: StagedState): state is "ForUpdate"
   return state === "ForUpdate";
 }
 
-export function isStagedStateForUpdateChanged(state: StagedState): state is "ForUpdateChanged" {
-  return state === "ForUpdateChanged";
+export function isStagedStateForUpdateGraphOnly(state: StagedState): state is "ForUpdateGraphOnly" {
+  return state === "ForUpdateGraphOnly";
+}
+
+export function isStagedStateForUpdateNewVersion(state: StagedState): state is "ForUpdateNewVersion" {
+  return state === "ForUpdateNewVersion";
 }
 
 // ===========================================
@@ -239,6 +246,8 @@ export class StagedHolonFactory {
       property_map: propertyMap || {},
       staged_relationships: stagedRelationships || {},
       original_id: null,
+      versioned_source_id: null,
+      touched_relationship_names: [],
       errors: []
     };
   }
@@ -256,6 +265,8 @@ export class StagedHolonFactory {
       property_map: propertyMap || {},
       staged_relationships: stagedRelationships || {},
       original_id: originalId,
+      versioned_source_id: originalId,
+      touched_relationship_names: [],
       errors: []
     };
   }
@@ -468,7 +479,12 @@ export class StagedHolonUtils {
    */
   static abandonStagedChanges(stagedHolon: StagedHolon): void {
     const state = stagedHolon.staged_state;
-    if (isStagedStateForCreate(state) || isStagedStateForUpdate(state) || isStagedStateForUpdateChanged(state)) {
+    if (
+      isStagedStateForCreate(state) ||
+      isStagedStateForUpdate(state) ||
+      isStagedStateForUpdateGraphOnly(state) ||
+      isStagedStateForUpdateNewVersion(state)
+    ) {
       stagedHolon.staged_state = "Abandoned";
       stagedHolon.holon_state = "Immutable";
     } else {
@@ -489,7 +505,7 @@ export class StagedHolonUtils {
    */
   static markAsChanged(stagedHolon: StagedHolon): void {
     if (isStagedStateForUpdate(stagedHolon.staged_state)) {
-      stagedHolon.staged_state = "ForUpdateChanged";
+      stagedHolon.staged_state = "ForUpdateNewVersion";
     }
   }
 
@@ -500,5 +516,3 @@ export class StagedHolonUtils {
     stagedHolon.errors.push(error);
   }
 }
-
-

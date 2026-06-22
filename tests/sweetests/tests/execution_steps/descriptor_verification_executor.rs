@@ -1,4 +1,4 @@
-use core_types::TypeKind;
+use core_types::{HolonId, TypeKind};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
     DanceDescriptor, DeclaredRelationshipDescriptor, HolonDescriptor, OperatorCategory,
@@ -17,6 +17,7 @@ use holons_test::harness::helpers::{
     VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
+use integrity_core_types::LocalId;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
@@ -674,6 +675,63 @@ pub async fn execute_verify_book_person_instance_links(state: &mut TestExecution
     info!("verified bidirectional Book/Person instance SmartLink traversal");
 }
 
+/// Verifies the persisted anchoring rules after the stage-new-version
+/// fixture has exercised both update modes:
+/// - graph-only mutation: Book --Properties--> Title.PropertyType is anchored to
+///   the existing Book node, with no new Book node created for that commit.
+/// - version-producing mutation: Book --AuthoredBy--> Person is anchored to the
+///   new Book version, and lineage is persisted bidirectionally through
+///   Predecessor/Successor.
+pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionState) {
+    let holons = loaded_holons(state, "verify_relationship_anchoring").await;
+
+    let books = find_holons_by_key(&holons, BOOK_KEY);
+    assert_eq!(
+        books.len(),
+        2,
+        "expected graph-only commit plus one version-producing commit to leave exactly two persisted Book nodes"
+    );
+
+    let original_book = books
+        .iter()
+        .find(|book| string_property(book, "Title").as_deref() == Some(BOOK_KEY))
+        .unwrap_or_else(|| panic!("expected original Book version with Title={BOOK_KEY:?}"))
+        .clone();
+    let new_book = books
+        .iter()
+        .find(|book| string_property(book, "Title").as_deref() == Some("Changed"))
+        .unwrap_or_else(|| panic!("expected new Book version with changed title"))
+        .clone();
+
+    let original_book_id = local_id(&original_book);
+    let new_book_id = local_id(&new_book);
+    assert_ne!(original_book_id, new_book_id, "new version must have a distinct LocalId");
+
+    let person = find_holon_by_key(&holons, PERSON_1_KEY);
+    let person_id = local_id(&person);
+    let title_property = find_holon_by_key(&holons, "Title.PropertyType");
+    let title_property_id = local_id(&title_property);
+
+    // Non-definitional graph-only mutation: no new node was created for this
+    // commit, so the Properties edge and its inverse must be anchored to the
+    // existing Book id.
+    assert_related_ids_contain(&original_book, "Properties", &title_property_id);
+    assert_related_ids_contain(&title_property, "PropertyOf", &original_book_id);
+
+    // Definitional mutation: the AuthoredBy edge and its Authors inverse must
+    // be anchored to the new Book version, not the prior persisted source.
+    assert_related_ids_contain(&new_book, BOOK_TO_PERSON_RELATIONSHIP, &person_id);
+    assert_related_ids_contain(&person, PERSON_TO_BOOK_REL_INVERSE, &new_book_id);
+    assert_related_ids_do_not_contain(&person, PERSON_TO_BOOK_REL_INVERSE, &original_book_id);
+
+    // Version lineage is also persisted through the normal Pass 2 relationship
+    // path, so both Predecessor and Successor must exist.
+    assert_related_ids_contain(&new_book, "Predecessor", &original_book_id);
+    assert_related_ids_contain(&original_book, "Successor", &new_book_id);
+
+    info!("verified graph-only and version-producing relationship anchoring");
+}
+
 async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> HolonCollection {
     let context = state.open_assertion_context(step_name).await.unwrap_or_else(|error| {
         panic!("{step_name}: failed to open assertion transaction: {error:?}")
@@ -699,6 +757,42 @@ fn find_holon_by_key(holons: &HolonCollection, key: &str) -> HolonReference {
         .get_by_key(&MapString::from(key))
         .unwrap_or_else(|error| panic!("key lookup for {key} failed: {error:?}"))
         .unwrap_or_else(|| panic!("expected loaded holon with key {key}"))
+}
+
+fn find_holons_by_key(holons: &HolonCollection, key: &str) -> Vec<HolonReference> {
+    holons
+        .get_members()
+        .iter()
+        .filter(|holon| {
+            holon
+                .key()
+                .unwrap_or_else(|error| {
+                    panic!("key read failed while searching for {key}: {error:?}")
+                })
+                .as_ref()
+                .map(|actual| actual.0.as_str() == key)
+                .unwrap_or(false)
+        })
+        .cloned()
+        .collect()
+}
+
+fn local_id(holon: &HolonReference) -> LocalId {
+    match holon.holon_id().unwrap_or_else(|error| panic!("holon_id read failed: {error:?}")) {
+        HolonId::Local(local_id) => local_id,
+        HolonId::External(external_id) => panic!("expected local holon id, got {external_id:?}"),
+    }
+}
+
+fn string_property(holon: &HolonReference, property_name: &str) -> Option<String> {
+    match holon
+        .property_value(&PropertyName(MapString::from(property_name)))
+        .unwrap_or_else(|error| panic!("property_value({property_name}) failed: {error:?}"))
+    {
+        Some(BaseValue::StringValue(value)) => Some(value.0),
+        Some(other) => panic!("property {property_name} expected string value, got {other:?}"),
+        None => None,
+    }
 }
 
 fn new_descriptor_holon(
@@ -779,6 +873,37 @@ fn related_holon_keys(holon: &HolonReference, relationship_name: &str) -> Vec<St
         .collect()
 }
 
+fn related_holon_ids(holon: &HolonReference, relationship_name: &str) -> Vec<LocalId> {
+    let members_handle = holon
+        .related_holons(RelationshipName(MapString::from(relationship_name)))
+        .unwrap_or_else(|error| panic!("related_holons({relationship_name}) failed: {error:?}"));
+    let members = members_handle.read().unwrap_or_else(|error| {
+        panic!("related_holons({relationship_name}) lock failed: {error:?}")
+    });
+
+    members.get_members().iter().map(local_id).collect()
+}
+
+fn assert_related_ids_contain(holon: &HolonReference, relationship_name: &str, expected: &LocalId) {
+    let ids = related_holon_ids(holon, relationship_name);
+    assert!(
+        ids.iter().any(|actual| actual == expected),
+        "expected relationship {relationship_name} ids {ids:?} to contain {expected:?}"
+    );
+}
+
+fn assert_related_ids_do_not_contain(
+    holon: &HolonReference,
+    relationship_name: &str,
+    unexpected: &LocalId,
+) {
+    let ids = related_holon_ids(holon, relationship_name);
+    assert!(
+        ids.iter().all(|actual| actual != unexpected),
+        "expected relationship {relationship_name} ids {ids:?} not to contain {unexpected:?}"
+    );
+}
+
 fn assert_enum_variants_rewritten_to_declared_side(
     holons: &HolonCollection,
     enum_value_key: &str,
@@ -820,21 +945,6 @@ fn assert_contains(values: &[String], expected: &str) {
     assert!(
         values.iter().any(|actual| actual == expected),
         "expected {values:?} to contain {expected}"
-    );
-}
-
-fn assert_description_contains(
-    description: Result<Option<MapString>, HolonError>,
-    expected_fragment: &str,
-) {
-    let description = description.expect("descriptor description lookup").unwrap_or_else(|| {
-        panic!("expected descriptor description containing {expected_fragment}")
-    });
-    assert!(
-        description.0.contains(expected_fragment),
-        "expected descriptor description {:?} to contain {:?}",
-        description,
-        expected_fragment
     );
 }
 

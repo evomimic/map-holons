@@ -50,7 +50,7 @@ pub trait HolonStagingBehavior: Send + Sync {
         new_key: MapString,
     ) -> Result<StagedReference, HolonError>;
 
-    /// Stage a new version of the current holon, maintaining lineage.
+    /// Stage the current persisted holon for possible version-producing or graph-only mutation.
     fn stage_new_version(
         &self,
         current_version: SmartReference,
