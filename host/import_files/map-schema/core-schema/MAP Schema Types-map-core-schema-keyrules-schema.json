@@ -1,13 +1,14 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-16T15:43:06",
+    "generated_at": "2026-06-24T20:15:34",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
       "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json"
     ]
@@ -304,6 +305,42 @@
           "name": "Extends",
           "target": {
             "$ref": "KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "ImplementationNameRule.FormatRule",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "is_abstract_type": false,
+        "type_name": "ImplementationNameRule",
+        "type_name_plural": "ImplementationNameRules",
+        "display_name": "Implementation Name Rule",
+        "display_name_plural": "Implementation Name Rules",
+        "description": "Generates a key from the holon's implementation_name property only.",
+        "instance_type_kind": "TypeKind.Holon",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "template_string": "{0}"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "FormatRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "TemplateParameters",
+          "target": {
+            "$ref": "ImplementationName.PropertyType"
           }
         }
       ]

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-16T15:43:06",
+    "generated_at": "2026-06-24T20:15:34",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -731,8 +731,8 @@
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
-        "min_cardinality": 1,
-        "max_cardinality": 1
+        "min_cardinality": 0,
+        "max_cardinality": 32767
       },
       "relationships": [
         {
@@ -825,8 +825,8 @@
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
-        "min_cardinality": 1,
-        "max_cardinality": 1
+        "min_cardinality": 0,
+        "max_cardinality": 32767
       },
       "relationships": [
         {
