@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-24T20:15:34",
+    "generated_at": "2026-06-25T09:41:45",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.csv"
@@ -692,35 +692,6 @@
       ]
     },
     {
-      "key": "Query.CommandType",
-      "type": "TypeDescriptor.HolonType",
-      "properties": {
-        "type_name": "Query",
-        "type_name_plural": "QueryCommands",
-        "display_name": "Query Command",
-        "display_name_plural": "Query Commands",
-        "description": "Executes a query request within the active transaction.",
-        "instance_type_kind": "TypeKind.Holon",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "CommandType.HolonType"
-          }
-        }
-      ]
-    },
-    {
       "key": "GetAllHolons.CommandType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
@@ -1172,13 +1143,13 @@
       ]
     },
     {
-      "key": "(CommandType.HolonType)-[AffordedBy]->(HolonType)",
+      "key": "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
-        "type_name": "AffordedBy",
-        "type_name_plural": "AffordedByRelationships",
-        "display_name": "AffordedBy Relationship",
-        "display_name_plural": "AffordedBy Relationships",
+        "type_name": "CommandAffordedBy",
+        "type_name_plural": "CommandAffordedByRelationships",
+        "display_name": "CommandAffordedBy Relationship",
+        "display_name_plural": "CommandAffordedBy Relationships",
         "description": "Inverse of AffordsCommand, relationship from CommandType to HolonType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,

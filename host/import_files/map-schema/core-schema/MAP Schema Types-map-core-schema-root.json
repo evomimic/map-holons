@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-24T20:15:34",
+    "generated_at": "2026-06-25T09:41:45",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -10,7 +10,8 @@
       "MAP Schema Types-map-core-schema-command-types.json",
       "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json"
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-query-schema.json"
     ]
   },
   "holons": [
@@ -618,6 +619,12 @@
           }
         },
         {
+          "name": "AffordsDance",
+          "target": {
+            "$ref": "QueryDance.DanceType"
+          }
+        },
+        {
           "name": "AffordsTransactionModel",
           "target": {
             "$ref": "Transaction.HolonType"
@@ -721,9 +728,6 @@
             },
             {
               "$ref": "Dance.CommandType"
-            },
-            {
-              "$ref": "Query.CommandType"
             },
             {
               "$ref": "GetAllHolons.CommandType"

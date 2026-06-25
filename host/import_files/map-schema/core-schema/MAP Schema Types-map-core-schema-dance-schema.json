@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-24T20:15:34",
+    "generated_at": "2026-06-25T09:41:45",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -337,13 +337,13 @@
       ]
     },
     {
-      "key": "(HolonType)-[Affords]->(DanceType.HolonType)",
+      "key": "(HolonType)-[AffordsDance]->(DanceType.HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
-        "type_name": "Affords",
-        "type_name_plural": "AffordsRelationships",
-        "display_name": "Affords Relationship",
-        "display_name_plural": "Affords Relationships",
+        "type_name": "AffordsDance",
+        "type_name_plural": "AffordsDanceRelationships",
+        "display_name": "AffordsDance Relationship",
+        "display_name_plural": "AffordsDance Relationships",
         "description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
@@ -382,14 +382,14 @@
       ]
     },
     {
-      "key": "(DanceType.HolonType)-[AffordedBy]->(HolonType)",
+      "key": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
-        "type_name": "AffordedBy",
-        "type_name_plural": "AffordedByRelationships",
-        "display_name": "AffordedBy Relationship",
-        "display_name_plural": "AffordedBy Relationships",
-        "description": "Inverse of Affords, from DanceType to HolonType.",
+        "type_name": "DanceAffordedBy",
+        "type_name_plural": "DanceAffordedByRelationships",
+        "display_name": "DanceAffordedBy Relationship",
+        "display_name_plural": "DanceAffordedBy Relationships",
+        "description": "Inverse of AffordsDance, from DanceType to HolonType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
@@ -414,7 +414,7 @@
         {
           "name": "InverseOf",
           "target": {
-            "$ref": "(HolonType)-[Affords]->(DanceType.HolonType)"
+            "$ref": "(HolonType)-[AffordsDance]->(DanceType.HolonType)"
           }
         },
         {

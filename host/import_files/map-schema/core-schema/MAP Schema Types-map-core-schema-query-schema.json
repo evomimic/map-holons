@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-24T20:15:34",
+    "generated_at": "2026-06-25T09:41:45",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-query-schema.csv"
@@ -15,10 +15,10 @@
   },
   "holons": [
     {
-      "key": "Map Query Schema-v0.0.1",
+      "key": "MAP Query Schema-v0.0.1",
       "type": "Schema.HolonType",
       "properties": {
-        "schema_name": "Map Query Schema-v0.0.1",
+        "schema_name": "MAP Query Schema-v0.0.1",
         "description": "Schema containing the minimal query substrate (QueryDance, request/graph/step, bindings, and execution state) needed for the SeedHolons + Expand QueryDance vertical slice."
       },
       "relationships": [
@@ -53,7 +53,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -93,13 +93,19 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
           "name": "Extends",
           "target": {
             "$ref": "DanceResponseType.HolonType"
+          }
+        },
+        {
+          "name": "ResponseBody",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
           }
         }
       ]
@@ -122,7 +128,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -176,7 +182,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -236,7 +242,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -279,7 +285,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -314,7 +320,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -354,7 +360,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -403,7 +409,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -439,7 +445,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -480,7 +486,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -515,7 +521,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -561,7 +567,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -595,7 +601,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -629,7 +635,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -663,7 +669,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -697,7 +703,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -731,7 +737,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -764,7 +770,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -791,7 +797,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -824,7 +830,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -857,7 +863,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -890,7 +896,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -928,7 +934,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -972,7 +978,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1022,7 +1028,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1066,7 +1072,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1116,7 +1122,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1160,7 +1166,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1210,7 +1216,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1254,7 +1260,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1304,7 +1310,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1348,7 +1354,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1398,7 +1404,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1442,7 +1448,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1492,7 +1498,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1536,7 +1542,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1586,7 +1592,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1630,7 +1636,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1680,7 +1686,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1724,7 +1730,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1774,7 +1780,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1818,7 +1824,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1868,7 +1874,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1912,7 +1918,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -1962,7 +1968,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2006,7 +2012,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2056,7 +2062,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2100,7 +2106,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2150,7 +2156,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2194,7 +2200,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2244,7 +2250,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2288,7 +2294,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2338,7 +2344,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2382,7 +2388,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2432,7 +2438,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2476,7 +2482,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2526,7 +2532,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
@@ -2570,7 +2576,7 @@
         {
           "name": "ComponentOf",
           "target": {
-            "$ref": "Map Query Schema-v0.0.1"
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         },
         {
