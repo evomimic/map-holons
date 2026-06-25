@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-25T09:41:45",
+    "generated_at": "2026-06-25T11:49:04",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -269,7 +269,7 @@
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "DanceDiagnostic",
-        "type_name_plural": "DanceDiagnostic",
+        "type_name_plural": "DanceDiagnostics",
         "display_name": "Dance Diagnostic",
         "display_name_plural": "Dance Diagnostics",
         "description": "Concrete holon type for non-fatal diagnostic notes attached to successful dance responses.",
@@ -1231,7 +1231,7 @@
         "type_name_plural": "DiagnosticForRelationships",
         "display_name": "DiagnosticFor Relationship",
         "display_name_plural": "DiagnosticFor Relationships",
-        "description": "Inverse of Diagnostics, from DanceDiagnostic to DanceRequestType.",
+        "description": "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,

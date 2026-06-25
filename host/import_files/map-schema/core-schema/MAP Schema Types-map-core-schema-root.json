@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-25T09:41:45",
+    "generated_at": "2026-06-25T11:49:04",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -11,6 +11,7 @@
       "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
       "MAP Schema Types-map-core-schema-query-schema.json"
     ]
   },
@@ -372,6 +373,9 @@
             },
             {
               "$ref": "(HolonType)-[Predecessor]->(HolonType)"
+            },
+            {
+              "$ref": "(HolonType)-[AffordsDance]->(DanceType.HolonType)"
             }
           ]
         }
