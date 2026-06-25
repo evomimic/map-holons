@@ -814,7 +814,7 @@ mod tests {
     #[test]
     fn get_command_by_name_errors_when_not_found() -> Result<(), HolonError> {
         let context = build_context();
-        let command = new_descriptor_holon(&context, "query-command-affordance", "Query")?;
+        let command = new_descriptor_holon(&context, "archive-command-affordance", "Archive")?;
         let mut holon_type = new_descriptor_holon(&context, "missing-command-owner", "BookType")?;
 
         holon_type

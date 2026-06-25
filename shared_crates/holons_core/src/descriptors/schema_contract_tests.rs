@@ -314,7 +314,8 @@ fn transaction_descriptor_get_command_by_name_detects_duplicate_inherited_declar
 #[test]
 fn transaction_descriptor_get_command_by_name_reports_missing_command() -> Result<(), HolonError> {
     let context = build_context();
-    let command = command_type(&context, "query-command", CoreCommandTypeName::Query)?;
+    let command =
+        command_type(&context, "get-staged-count-command", CoreCommandTypeName::GetStagedCount)?;
     let mut transaction_type =
         new_holon_type_descriptor(&context, "transaction-missing-command", "Transaction")?;
 
