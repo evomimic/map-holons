@@ -14,7 +14,7 @@ use holons_core::{
     },
     descriptors::resolve_inverse_relationship_name,
     reference_layer::ReadableHolon,
-    HolonReference, SmartReference, StagedReference, WritableHolon,
+    HolonCollectionApi, HolonReference, SmartReference, StagedReference, WritableHolon,
 };
 
 use base_types::{BaseValue, MapString};
@@ -186,14 +186,29 @@ pub fn commit(
         for staged_reference in staged_references {
             staged_reference.is_accessible(AccessType::Commit)?;
 
+            info!(
+                "[commit:first-pass] processing {}",
+                describe_staged_reference(staged_reference, context)
+            );
+
             trace!("Committing {:?}", staged_reference.temporary_id());
 
             match commit_holon(staged_reference, context) {
                 Ok(CommitOutcome::Saved) => {
+                    info!(
+                        "[commit:first-pass] saved {}",
+                        describe_staged_reference(staged_reference, context)
+                    );
                     let holon_id = staged_reference.holon_id()?;
                     let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
                         HolonError::HolonNotFound("Committed holon has no key".into())
                     })?;
+                    info!(
+                        "[commit:first-pass] saved reference details temp_id={} holon_id={:?} key={}",
+                        staged_reference.temporary_id(),
+                        holon_id,
+                        key_string.0
+                    );
                     let saved_reference = HolonReference::smart_with_key(
                         transaction_handle.clone(),
                         holon_id,
@@ -202,10 +217,18 @@ pub fn commit(
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::Abandoned) => {
+                    info!(
+                        "[commit:first-pass] abandoned {}",
+                        describe_staged_reference(staged_reference, context)
+                    );
                     // StagedReference → HolonReference via From<&StagedReference>
                     abandoned_holons.push(staged_reference.into());
                 }
                 Ok(CommitOutcome::NoAction) => {
+                    info!(
+                        "[commit:first-pass] no-action {}",
+                        describe_staged_reference(staged_reference, context)
+                    );
                     trace!("No action required for {:?}", staged_reference.temporary_id());
                 }
                 Err(error) => {
@@ -216,14 +239,27 @@ pub fn commit(
             }
         }
 
+        info!(
+            "[commit:first-pass] attaching results saved_holons={} abandoned_holons={}",
+            saved_holons.len(),
+            abandoned_holons.len()
+        );
+
         // Attach results to the CommitResponse holon
         response_reference.add_related_holons(SavedHolons, saved_holons)?;
+        info!("[commit:first-pass] attached SavedHolons");
         response_reference.add_related_holons(AbandonedHolons, abandoned_holons)?;
+        info!("[commit:first-pass] attached AbandonedHolons");
     }
 
     // Check if Pass 1 ended with an incomplete status
+    info!("[commit:first-pass] reading CommitRequestStatus after attachment");
     if let Some(status_value) = response_reference.property_value(CommitRequestStatus)? {
         let status_string: String = (&status_value).into();
+        info!(
+            "[commit:first-pass] CommitRequestStatus after attachment = {}",
+            status_string
+        );
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
             return Ok(response_reference);
@@ -231,11 +267,16 @@ pub fn commit(
     }
 
     // === SECOND PASS: Commit relationships ===
+    info!("[commit:second-pass] starting relationship commit pass");
     //
     // Snapshot the committed LocalId + relationship collections under a short-lived read lock,
     // then drop the lock before resolving targets / computing keys / saving smartlinks.
     // This avoids re-entrant locking when a relationship includes a self-edge.
     for staged_reference in staged_references {
+        info!(
+            "[commit:second-pass] processing {}",
+            describe_staged_reference(staged_reference, context)
+        );
         let rc_holon = staged_reference.get_holon_to_commit(context)?;
 
         // 1) Snapshot what we need while holding only a read lock.
@@ -277,8 +318,18 @@ pub fn commit(
         };
 
         let Some((relationship_source, relationship_collections)) = snapshot else {
+            info!(
+                "[commit:second-pass] skipping temp_id={} because no committed relationship snapshot was produced",
+                staged_reference.temporary_id()
+            );
             continue;
         };
+
+        info!(
+            "[commit:second-pass] snapshot ready temp_id={} relationship_collections={}",
+            staged_reference.temporary_id(),
+            relationship_collections.len()
+        );
 
         // 2) Commit relationships with NO source-holon lock held.
         //
@@ -289,6 +340,11 @@ pub fn commit(
 
         for (name, holon_collection_rc) in relationship_collections {
             debug!("COMMITTING {:#?} relationship", name.0.clone());
+            info!(
+                "[commit:second-pass] temp_id={} resolving inverse for relationship={}",
+                staged_reference.temporary_id(),
+                name.0.0
+            );
 
             // Resolve descriptor metadata before locking the staged collection.
             // `holon_descriptor()` reads `DescribedBy`, which may be the same
@@ -300,10 +356,23 @@ pub fn commit(
             ) {
                 Ok(inverse_name) => inverse_name,
                 Err(error) => {
+                    info!(
+                        "[commit:second-pass] temp_id={} inverse resolution failed for relationship={} error={:?}",
+                        staged_reference.temporary_id(),
+                        name.0.0,
+                        error
+                    );
                     first_error = Some(error);
                     break;
                 }
             };
+
+            info!(
+                "[commit:second-pass] temp_id={} resolved inverse relationship={} inverse={}",
+                staged_reference.temporary_id(),
+                name.0.0,
+                inverse_name.0.0
+            );
 
             let holon_collection = holon_collection_rc.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
@@ -312,15 +381,34 @@ pub fn commit(
                 ))
             })?;
 
+            info!(
+                "[commit:second-pass] temp_id={} committing relationship={} member_count={}",
+                staged_reference.temporary_id(),
+                name.0.0,
+                holon_collection.get_count().0
+            );
+
             if let Err(err) = commit_relationship(
                 &relationship_source,
                 name.clone(),
                 inverse_name,
                 &holon_collection,
             ) {
+                info!(
+                    "[commit:second-pass] temp_id={} commit_relationship failed for relationship={} error={:?}",
+                    staged_reference.temporary_id(),
+                    name.0.0,
+                    err
+                );
                 first_error = Some(err);
                 break;
             }
+
+            info!(
+                "[commit:second-pass] temp_id={} committed relationship={}",
+                staged_reference.temporary_id(),
+                name.0.0
+            );
         }
 
         // 3) If anything failed, re-lock only to attach the error and mark the response incomplete.
@@ -343,6 +431,11 @@ pub fn commit(
                 staged_reference.temporary_id(),
                 error
             );
+        } else {
+            info!(
+                "[commit:second-pass] completed temp_id={} without relationship errors",
+                staged_reference.temporary_id()
+            );
         }
     }
 
@@ -352,6 +445,48 @@ pub fn commit(
     info!("Commit completed: all staged holons processed and commit response constructed.");
     // Done — return the CommitResponse holon reference
     Ok(response_reference)
+}
+
+fn describe_staged_reference(
+    staged_reference: &StagedReference,
+    context: &Arc<TransactionContext>,
+) -> String {
+    let rc_holon = match staged_reference.get_holon_to_commit(context) {
+        Ok(rc_holon) => rc_holon,
+        Err(error) => {
+            return format!(
+                "temp_id={} <failed to resolve staged holon: {:?}>",
+                staged_reference.temporary_id(),
+                error
+            )
+        }
+    };
+
+    let holon_read = match rc_holon.read() {
+        Ok(holon_read) => holon_read,
+        Err(error) => {
+            return format!(
+                "temp_id={} <failed to read staged holon: {}>",
+                staged_reference.temporary_id(),
+                error
+            )
+        }
+    };
+
+    match &*holon_read {
+        Holon::Staged(staged_holon) => format!(
+            "temp_id={} state={:?} key={:?} original_id={:?}",
+            staged_reference.temporary_id(),
+            staged_holon.get_staged_state(),
+            staged_holon.key(),
+            staged_holon.original_id()
+        ),
+        other => format!(
+            "temp_id={} <unexpected non-staged holon: {:?}>",
+            staged_reference.temporary_id(),
+            other
+        ),
+    }
 }
 
 /// Attempts to persist the holon referenced by the given [`StagedReference`].
@@ -383,10 +518,21 @@ fn commit_holon(
 
     if let Holon::Staged(staged_holon) = &mut *holon_write {
         let staged_state = staged_holon.get_staged_state();
+        info!(
+            "[commit_holon] temp_id={} entering state={:?} key={:?} original_id={:?}",
+            staged_reference.temporary_id(),
+            staged_state,
+            staged_holon.key(),
+            staged_holon.original_id()
+        );
 
         match staged_state {
             // === CREATE NEW NODE ============================================================
             StagedState::ForCreate => {
+                info!(
+                    "[commit_holon] temp_id={} ForCreate -> create_holon_node",
+                    staged_reference.temporary_id()
+                );
                 trace!("StagedState::ForCreate — creating HolonNode in DHT");
                 staged_holon.prepare_full_relationship_commit_scope()?;
                 let node = staged_holon.into_node_model();
@@ -394,21 +540,39 @@ fn commit_holon(
                     .map_err(holon_error_from_wasm_error)?;
 
                 staged_holon.to_committed(LocalId(record.action_address().clone().into_inner()))?;
+                info!(
+                    "[commit_holon] temp_id={} ForCreate committed local_id={:?}",
+                    staged_reference.temporary_id(),
+                    staged_holon.holon_id()
+                );
                 Ok(CommitOutcome::Saved)
             }
 
             // === GRAPH-ONLY UPDATE ==========================================================
             StagedState::ForUpdateGraphOnly => {
+                info!(
+                    "[commit_holon] temp_id={} ForUpdateGraphOnly -> reuse existing source",
+                    staged_reference.temporary_id()
+                );
                 trace!("StagedState::ForUpdateGraphOnly — reusing existing source anchor");
                 let source_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_touched_relationship_commit_scope()?;
 
                 staged_holon.to_committed(source_id)?;
+                info!(
+                    "[commit_holon] temp_id={} ForUpdateGraphOnly committed local_id={:?}",
+                    staged_reference.temporary_id(),
+                    staged_holon.holon_id()
+                );
                 Ok(CommitOutcome::Saved)
             }
 
             // === VERSION-PRODUCING UPDATE ==================================================
             StagedState::ForUpdateNewVersion => {
+                info!(
+                    "[commit_holon] temp_id={} ForUpdateNewVersion -> create_holon_node",
+                    staged_reference.temporary_id()
+                );
                 trace!("StagedState::ForUpdateNewVersion — creating next HolonNode version");
                 let predecessor_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_full_relationship_commit_scope()?;
@@ -425,6 +589,11 @@ fn commit_holon(
                 }
 
                 staged_holon.to_committed(new_local_id)?;
+                info!(
+                    "[commit_holon] temp_id={} ForUpdateNewVersion committed local_id={:?}",
+                    staged_reference.temporary_id(),
+                    staged_holon.holon_id()
+                );
                 Ok(CommitOutcome::Saved)
             }
 
