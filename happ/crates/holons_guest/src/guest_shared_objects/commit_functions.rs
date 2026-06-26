@@ -256,10 +256,7 @@ pub fn commit(
     info!("[commit:first-pass] reading CommitRequestStatus after attachment");
     if let Some(status_value) = response_reference.property_value(CommitRequestStatus)? {
         let status_string: String = (&status_value).into();
-        info!(
-            "[commit:first-pass] CommitRequestStatus after attachment = {}",
-            status_string
-        );
+        info!("[commit:first-pass] CommitRequestStatus after attachment = {}", status_string);
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
             return Ok(response_reference);
@@ -343,7 +340,7 @@ pub fn commit(
             info!(
                 "[commit:second-pass] temp_id={} resolving inverse for relationship={}",
                 staged_reference.temporary_id(),
-                name.0.0
+                name.0 .0
             );
 
             // Resolve descriptor metadata before locking the staged collection.
@@ -370,8 +367,8 @@ pub fn commit(
             info!(
                 "[commit:second-pass] temp_id={} resolved inverse relationship={} inverse={}",
                 staged_reference.temporary_id(),
-                name.0.0,
-                inverse_name.0.0
+                name.0 .0,
+                inverse_name.0 .0
             );
 
             let holon_collection = holon_collection_rc.read().map_err(|e| {
@@ -384,7 +381,7 @@ pub fn commit(
             info!(
                 "[commit:second-pass] temp_id={} committing relationship={} member_count={}",
                 staged_reference.temporary_id(),
-                name.0.0,
+                name.0 .0,
                 holon_collection.get_count().0
             );
 
@@ -407,7 +404,7 @@ pub fn commit(
             info!(
                 "[commit:second-pass] temp_id={} committed relationship={}",
                 staged_reference.temporary_id(),
-                name.0.0
+                name.0 .0
             );
         }
 
