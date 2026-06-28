@@ -1,0 +1,445 @@
+schema MAP Core Schema-v0.0.7
+abstract holon CommandType {
+  header {
+    description: "Abstract descriptor type for core MAP command affordances discoverable through descriptor-local command lookup."
+    display_name: "Command Type"
+    display_plural: "Command Types"
+    plural: "CommandTypes"
+  }
+}
+
+
+holon BeginTransaction {
+  extends CommandType.HolonType
+  header {
+    description: "Opens a new transaction for a holon space."
+    display_name: "Begin Transaction Command"
+    display_plural: "Begin Transaction Commands"
+    plural: "BeginTransactionCommands"
+  }
+}
+
+
+holon CloneHolon {
+  extends CommandType.HolonType
+  header {
+    description: "Creates a transient clone of the target holon."
+    display_name: "Clone Holon Command"
+    display_plural: "Clone Holon Commands"
+    plural: "CloneHolonCommands"
+  }
+}
+
+
+holon GetEssentialContent {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the target holon's essential content."
+    display_name: "Get Essential Content Command"
+    display_plural: "Get Essential Content Commands"
+    plural: "GetEssentialContentCommands"
+  }
+}
+
+
+holon Summarize {
+  extends CommandType.HolonType
+  header {
+    description: "Returns a concise string summary of the target holon."
+    display_name: "Summarize Command"
+    display_plural: "Summarize Commands"
+    plural: "SummarizeCommands"
+  }
+}
+
+
+holon GetHolonId {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the target holon's saved holon identifier."
+    display_name: "Get Holon Id Command"
+    display_plural: "Get Holon Id Commands"
+    plural: "GetHolonIdCommands"
+  }
+}
+
+
+holon GetPredecessor {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the target holon's predecessor reference, if present."
+    display_name: "Get Predecessor Command"
+    display_plural: "Get Predecessor Commands"
+    plural: "GetPredecessorCommands"
+  }
+}
+
+
+holon GetKey {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the target holon's primary key value, if present."
+    display_name: "Get Key Command"
+    display_plural: "Get Key Commands"
+    plural: "GetKeyCommands"
+  }
+}
+
+
+holon GetVersionedKey {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the target holon's versioned key."
+    display_name: "Get Versioned Key Command"
+    display_plural: "Get Versioned Key Commands"
+    plural: "GetVersionedKeyCommands"
+  }
+}
+
+
+holon GetPropertyValue {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the value of a named property on the target holon, if present."
+    display_name: "Get Property Value Command"
+    display_plural: "Get Property Value Commands"
+    plural: "GetPropertyValueCommands"
+  }
+}
+
+
+holon GetRelatedHolons {
+  extends CommandType.HolonType
+  header {
+    description: "Returns holons related to the target holon through a named relationship."
+    display_name: "Get Related Holons Command"
+    display_plural: "Get Related Holons Commands"
+    plural: "GetRelatedHolonsCommands"
+  }
+}
+
+
+holon WithPropertyValue {
+  extends CommandType.HolonType
+  header {
+    description: "Sets or updates a named property value on the target holon."
+    display_name: "With Property Value Command"
+    display_plural: "With Property Value Commands"
+    plural: "WithPropertyValueCommands"
+  }
+}
+
+
+holon RemovePropertyValue {
+  extends CommandType.HolonType
+  header {
+    description: "Removes a named property value from the target holon."
+    display_name: "Remove Property Value Command"
+    display_plural: "Remove Property Value Commands"
+    plural: "RemovePropertyValueCommands"
+  }
+}
+
+
+holon AddRelatedHolons {
+  extends CommandType.HolonType
+  header {
+    description: "Adds one or more related holons under a named relationship on the target holon."
+    display_name: "Add Related Holons Command"
+    display_plural: "Add Related Holons Commands"
+    plural: "AddRelatedHolonsCommands"
+  }
+}
+
+
+holon RemoveRelatedHolons {
+  extends CommandType.HolonType
+  header {
+    description: "Removes one or more related holons from a named relationship on the target holon."
+    display_name: "Remove Related Holons Command"
+    display_plural: "Remove Related Holons Commands"
+    plural: "RemoveRelatedHolonsCommands"
+  }
+}
+
+
+holon WithDescriptor {
+  extends CommandType.HolonType
+  header {
+    description: "Attaches a type descriptor holon to the target holon."
+    display_name: "With Descriptor Command"
+    display_plural: "With Descriptor Commands"
+    plural: "WithDescriptorCommands"
+  }
+}
+
+
+holon Commit {
+  extends CommandType.HolonType
+  header {
+    description: "Commits the active transaction."
+    display_name: "Commit Command"
+    display_plural: "Commit Commands"
+    plural: "CommitCommands"
+  }
+}
+
+
+holon UndoLast {
+  extends CommandType.HolonType
+  header {
+    description: "Undoes the last mutation in the active transaction."
+    display_name: "Undo Last Command"
+    display_plural: "Undo Last Commands"
+    plural: "UndoLastCommands"
+  }
+}
+
+
+holon RedoLast {
+  extends CommandType.HolonType
+  header {
+    description: "Redoes the last undone mutation in the active transaction."
+    display_name: "Redo Last Command"
+    display_plural: "Redo Last Commands"
+    plural: "RedoLastCommands"
+  }
+}
+
+
+holon UndoToMarker {
+  extends CommandType.HolonType
+  header {
+    description: "Undoes mutations in the active transaction up to a specified marker."
+    display_name: "Undo To Marker Command"
+    display_plural: "Undo To Marker Commands"
+    plural: "UndoToMarkerCommands"
+  }
+}
+
+
+holon RedoToMarker {
+  extends CommandType.HolonType
+  header {
+    description: "Redoes mutations in the active transaction up to a specified marker."
+    display_name: "Redo To Marker Command"
+    display_plural: "Redo To Marker Commands"
+    plural: "RedoToMarkerCommands"
+  }
+}
+
+
+holon LoadHolons {
+  extends CommandType.HolonType
+  header {
+    description: "Loads holons from uploaded or imported file content into the active transaction."
+    display_name: "Load Holons Command"
+    display_plural: "Load Holons Commands"
+    plural: "LoadHolonsCommands"
+  }
+}
+
+
+holon Dance {
+  extends CommandType.HolonType
+  header {
+    description: "Executes a dance request within the active transaction."
+    display_name: "Dance Command"
+    display_plural: "Dance Commands"
+    plural: "DanceCommands"
+  }
+}
+
+
+holon Query {
+  extends CommandType.HolonType
+  header {
+    description: "Executes a query request within the active transaction."
+    display_name: "Query Command"
+    display_plural: "Query Commands"
+    plural: "QueryCommands"
+  }
+}
+
+
+holon GetAllHolons {
+  extends CommandType.HolonType
+  header {
+    description: "Returns all holons visible in the active transaction."
+    display_name: "Get All Holons Command"
+    display_plural: "Get All Holons Commands"
+    plural: "GetAllHolonsCommands"
+  }
+}
+
+
+holon GetStagedHolonByBaseKey {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the staged holon matching a specified base key."
+    display_name: "Get Staged Holon By Base Key Command"
+    display_plural: "Get Staged Holon By Base Key Commands"
+    plural: "GetStagedHolonByBaseKeyCommands"
+  }
+}
+
+
+holon GetStagedHolonsByBaseKey {
+  extends CommandType.HolonType
+  header {
+    description: "Returns all staged holons matching a specified base key."
+    display_name: "Get Staged Holons By Base Key Command"
+    display_plural: "Get Staged Holons By Base Key Commands"
+    plural: "GetStagedHolonsByBaseKeyCommands"
+  }
+}
+
+
+holon GetStagedHolonByVersionedKey {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the staged holon matching a specified versioned key."
+    display_name: "Get Staged Holon By Versioned Key Command"
+    display_plural: "Get Staged Holon By Versioned Key Commands"
+    plural: "GetStagedHolonByVersionedKeyCommands"
+  }
+}
+
+
+holon GetTransientHolonByBaseKey {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the transient holon matching a specified base key."
+    display_name: "Get Transient Holon By Base Key Command"
+    display_plural: "Get Transient Holon By Base Key Commands"
+    plural: "GetTransientHolonByBaseKeyCommands"
+  }
+}
+
+
+holon GetTransientHolonByVersionedKey {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the transient holon matching a specified versioned key."
+    display_name: "Get Transient Holon By Versioned Key Command"
+    display_plural: "Get Transient Holon By Versioned Key Commands"
+    plural: "GetTransientHolonByVersionedKeyCommands"
+  }
+}
+
+
+holon GetStagedCount {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the number of staged holons in the active transaction."
+    display_name: "Get Staged Count Command"
+    display_plural: "Get Staged Count Commands"
+    plural: "GetStagedCountCommands"
+  }
+}
+
+
+holon GetTransientCount {
+  extends CommandType.HolonType
+  header {
+    description: "Returns the number of transient holons in the active transaction."
+    display_name: "Get Transient Count Command"
+    display_plural: "Get Transient Count Commands"
+    plural: "GetTransientCountCommands"
+  }
+}
+
+
+holon NewHolon {
+  extends CommandType.HolonType
+  header {
+    description: "Creates a new transient holon, optionally with a key."
+    display_name: "New Holon Command"
+    display_plural: "New Holon Commands"
+    plural: "NewHolonCommands"
+  }
+}
+
+
+holon StageNewHolon {
+  extends CommandType.HolonType
+  header {
+    description: "Stages a transient holon as a new holon in the active transaction."
+    display_name: "Stage New Holon Command"
+    display_plural: "Stage New Holon Commands"
+    plural: "StageNewHolonCommands"
+  }
+}
+
+
+holon StageNewFromClone {
+  extends CommandType.HolonType
+  header {
+    description: "Stages a new holon cloned from an existing holon reference with a new key."
+    display_name: "Stage New From Clone Command"
+    display_plural: "Stage New From Clone Commands"
+    plural: "StageNewFromCloneCommands"
+  }
+}
+
+
+holon StageNewVersion {
+  extends CommandType.HolonType
+  header {
+    description: "Stages a new version of an existing smart reference."
+    display_name: "Stage New Version Command"
+    display_plural: "Stage New Version Commands"
+    plural: "StageNewVersionCommands"
+  }
+}
+
+
+holon StageNewVersionFromId {
+  extends CommandType.HolonType
+  header {
+    description: "Stages a new version of an existing holon identified by holon ID."
+    display_name: "Stage New Version From Id Command"
+    display_plural: "Stage New Version From Id Commands"
+    plural: "StageNewVersionFromIdCommands"
+  }
+}
+
+
+holon DeleteHolon {
+  extends CommandType.HolonType
+  header {
+    description: "Deletes a holon identified by ID from the active transaction."
+    display_name: "Delete Holon Command"
+    display_plural: "Delete Holon Commands"
+    plural: "DeleteHolonCommands"
+  }
+}
+
+
+def relationship AffordsCommand {
+  source HolonType
+  target CommandType.HolonType
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup."
+    display_name: "AffordsCommand Relationship"
+    display_plural: "AffordsCommand Relationships"
+    plural: "AffordsCommandRelationships"
+  }
+}
+
+
+inverse relationship AffordedBy {
+  source CommandType.HolonType
+  target HolonType
+  inverse AffordsCommand
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Inverse of AffordsCommand, relationship from CommandType to HolonType."
+    display_name: "AffordedBy Relationship"
+    display_plural: "AffordedBy Relationships"
+    plural: "AffordedByRelationships"
+  }
+}

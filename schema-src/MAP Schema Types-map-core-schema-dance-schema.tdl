@@ -1,0 +1,869 @@
+schema MAP Dance Schema-v0.0.4 {
+  depends_on MAP Core Schema-v0.0.7
+  header {
+    description: "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema."
+  }
+}
+abstract holon DanceType {
+  header {
+    description: "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type and a response holon type."
+    display_name: "Dance Type"
+    display_plural: "Dance Types"
+    plural: "DanceTypes"
+  }
+  properties {
+    DanceDescription.PropertyType
+  }
+  relationships {
+    (DanceType.HolonType)-[InputParameters]->(Projection.HolonType)
+    (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
+  }
+}
+
+
+abstract holon DanceResponseType {
+  header {
+    description: "Abstract holon type for successful response holons returned from dances. Response bodies and diagnostics are ordinary holons."
+    display_name: "Dance Response Type"
+    display_plural: "Dance Response Types"
+    plural: "DanceResponseTypes"
+  }
+  relationships {
+    (DanceResponseType.HolonType)-[ResponseBody]->(HolonType)
+    (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)
+  }
+}
+
+
+abstract holon ResponseBodyType {
+  header {
+    description: "Deprecated old-world abstract holon type for structured response bodies returned from dances. New-world response bodies are ordinary concrete holon types."
+    display_name: "Response Body Type"
+    display_plural: "Response Body Types"
+    plural: "ResponseBodyTypes"
+  }
+}
+
+
+holon DanceInvocation {
+  header {
+    description: "Concrete holon type for invocation records that capture the dance being invoked, the target holon, the request holon, and ingress context."
+    display_name: "Dance Invocation"
+    display_plural: "Dance Invocations"
+    plural: "DanceInvocations"
+  }
+  properties {
+    Context.PropertyType
+  }
+  relationships {
+    (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)
+    (DanceInvocation.HolonType)-[Target]->(HolonType)
+    (DanceInvocation.HolonType)-[Request]->(HolonType)
+  }
+}
+
+
+holon DanceImplementation {
+  header {
+    description: "Concrete binding of a DanceType with executable details (engine, module, entrypoint, ABI, version/compat)."
+    display_name: "Dance Implementation"
+    display_plural: "Dance Implementations"
+    plural: "DanceImplementations"
+  }
+  properties {
+    Engine.PropertyType
+    ModuleRef.PropertyType
+    Entrypoint.PropertyType
+    AbiId.PropertyType
+    Version.PropertyType
+    Compat.PropertyType
+    DanceSummary.PropertyType
+  }
+  relationships {
+    (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)
+  }
+}
+
+
+holon DanceDiagnostic {
+  header {
+    description: "Concrete holon type for non-fatal diagnostic notes attached to successful dance responses."
+    display_name: "Dance Diagnostic"
+    display_plural: "Dance Diagnostics"
+    plural: "DanceDiagnostic"
+  }
+  properties {
+    DanceDiagnosticSeverity.PropertyType
+    DiagnosticCode.PropertyType
+    DiagnosticMessage.PropertyType
+  }
+}
+
+
+abstract holon Projection {
+  header {
+    description: "Abstract base type for value-shaped property-map holons used as request, parameter, response-body, or projected-result shapes."
+    display_name: "Projection"
+    display_plural: "Projections"
+    plural: "Projections"
+  }
+}
+
+
+def relationship Affords {
+  source HolonType
+  target DanceType.HolonType
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type)."
+    display_name: "Affords Relationship"
+    display_plural: "Affords Relationships"
+    plural: "AffordsRelationships"
+  }
+}
+
+
+inverse relationship AffordedBy {
+  source DanceType.HolonType
+  target HolonType
+  inverse Affords
+  cardinality 0..32767
+  header {
+    description: "Inverse of Affords, from DanceType to HolonType."
+    display_name: "AffordedBy Relationship"
+    display_plural: "AffordedBy Relationships"
+    plural: "AffordedByRelationships"
+  }
+}
+
+
+def relationship ImplementsDance {
+  source TypeDescriptor.HolonType
+  target DanceImplementation.HolonType
+  header {
+    description: "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched."
+    display_name: "ImplementsDance Relationship"
+    display_plural: "ImplementsDance Relationships"
+    plural: "ImplementsDanceRelationships"
+  }
+}
+
+
+inverse relationship ImplementedFor {
+  source DanceImplementation.HolonType
+  target TypeDescriptor.HolonType
+  inverse ImplementsDance
+  header {
+    description: "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor."
+    display_name: "ImplementedFor Relationship"
+    display_plural: "ImplementedFor Relationships"
+    plural: "ImplementedForRelationships"
+  }
+}
+
+
+def relationship ForDance {
+  source DanceImplementation.HolonType
+  target DanceType.HolonType
+  cardinality 1..1
+  header {
+    description: "Pins a DanceImplementation to exactly one DanceType interface it satisfies."
+    display_name: "ForDance Relationship"
+    display_plural: "ForDance Relationships"
+    plural: "ForDanceRelationships"
+  }
+}
+
+
+inverse relationship HasImplementation {
+  source DanceType.HolonType
+  target DanceImplementation.HolonType
+  inverse ForDance
+  cardinality 0..32767
+  header {
+    description: "Inverse of ForDance, from DanceType to DanceImplementation."
+    display_name: "HasImplementation Relationship"
+    display_plural: "HasImplementation Relationships"
+    plural: "HasImplementationRelationships"
+  }
+}
+
+
+def relationship InputParameters {
+  source DanceType.HolonType
+  target Projection.HolonType
+  cardinality 0..1
+  header {
+    description: "Links a DanceType to the Projection used as its request contract."
+    display_name: "InputParameters Relationship"
+    display_plural: "InputParameters Relationships"
+    plural: "InputParametersRelationships"
+  }
+}
+
+
+inverse relationship InputParametersFor {
+  source Projection.HolonType
+  target DanceType.HolonType
+  inverse InputParameters
+  cardinality 0..32767
+  header {
+    description: "Inverse of InputParameters, from Projection to DanceType."
+    display_name: "InputParametersFor Relationship"
+    display_plural: "InputParametersFor Relationships"
+    plural: "InputParametersForRelationships"
+  }
+}
+
+
+def relationship Response {
+  source DanceType.HolonType
+  target DanceResponseType.HolonType
+  cardinality 1..1
+  header {
+    description: "Links a DanceType to the DanceResponseType used to structure its response."
+    display_name: "Response Relationship"
+    display_plural: "Response Relationships"
+    plural: "ResponseRelationships"
+  }
+}
+
+
+inverse relationship ResponseFor {
+  source DanceResponseType.HolonType
+  target DanceType.HolonType
+  inverse Response
+  cardinality 1..32767
+  header {
+    description: "Inverse of Response, from DanceResponseType to DanceType."
+    display_name: "ResponseFor Relationship"
+    display_plural: "ResponseFor Relationships"
+    plural: "ResponseForRelationships"
+  }
+}
+
+
+def relationship ResponseBody {
+  source DanceResponseType.HolonType
+  target HolonType
+  cardinality 0..1
+  header {
+    description: "Links a DanceResponseType to the concrete holon type that will serve as the structured response body."
+    display_name: "ResponseBody Relationship"
+    display_plural: "ResponseBody Relationships"
+    plural: "ResponseBody Relationships"
+  }
+}
+
+
+inverse relationship ResponseBodyFor {
+  source HolonType
+  target DanceResponseType.HolonType
+  inverse ResponseBody
+  cardinality 0..32767
+  header {
+    description: "Inverse of ResponseBody, from HolonType to DanceResponseType."
+    display_name: "ResponseBodyFor Relationship"
+    display_plural: "ResponseBodyFor Relationships"
+    plural: "ResponseBodyForRelationships"
+  }
+}
+
+
+def relationship InvokesDance {
+  source DanceInvocation.HolonType
+  target DanceType.HolonType
+  cardinality 1..1
+  header {
+    description: "Links a DanceInvocation holon to the DanceType it invokes."
+    display_name: "InvokesDance Relationship"
+    display_plural: "InvokesDance Relationships"
+    plural: "InvokesDanceRelationships"
+  }
+}
+
+
+def relationship Target {
+  source DanceInvocation.HolonType
+  target HolonType
+  cardinality 0..1
+  header {
+    description: "Links a DanceInvocation holon to the target holon it acts on, when the dance is target-based."
+    display_name: "Target Relationship"
+    display_plural: "Target Relationships"
+    plural: "TargetRelationships"
+  }
+}
+
+
+inverse relationship TargetOf {
+  source HolonType
+  target DanceInvocation.HolonType
+  inverse Target
+  cardinality 0..32767
+  header {
+    description: "Inverse of Target, between HolonType and DanceInvocation."
+    display_name: "TargetOf Relationship"
+    display_plural: "TargetOf Relationships"
+    plural: "TargetOfRelationships"
+  }
+}
+
+
+def relationship Request {
+  source DanceInvocation.HolonType
+  target HolonType
+  cardinality 0..1
+  header {
+    description: "Links a DanceInvocation holon to the concrete request holon supplied for that invocation."
+    display_name: "Request Relationship"
+    display_plural: "Request Relationships"
+    plural: "RequestRelationships"
+  }
+}
+
+
+inverse relationship RequestFor {
+  source HolonType
+  target DanceInvocation.HolonType
+  inverse Request
+  cardinality 0..32767
+  header {
+    description: "Inverse of Request, from HolonType to DanceInvocation."
+    display_name: "RequestFor Relationship"
+    display_plural: "RequestFor Relationships"
+    plural: "RequestForRelationships"
+  }
+}
+
+
+def relationship Diagnostics {
+  source DanceResponseType.HolonType
+  target DanceDiagnostic.HolonType
+  cardinality 0..32767
+  header {
+    description: "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes."
+    display_name: "Diagnostics Relationship"
+    display_plural: "Diagnostics Relationships"
+    plural: "DiagnosticsRelationships"
+  }
+}
+
+
+inverse relationship DiagnosticFor {
+  source DanceDiagnostic.HolonType
+  target DanceResponseType.HolonType
+  inverse Diagnostics
+  cardinality 0..32767
+  header {
+    description: "Inverse of Diagnostics, from DanceDiagnostic to DanceRequestType."
+    display_name: "DiagnosticFor Relationship"
+    display_plural: "DiagnosticFor Relationships"
+    plural: "DiagnosticForRelationships"
+  }
+}
+
+
+property DanceName {
+  value MapStringValueType
+  header {
+    description: "Unique string identifier for a DanceType descriptor, used in dispatch tables."
+    display_name: "dance_name"
+    display_plural: "dance_names"
+    plural: "DanceNames"
+  }
+}
+
+
+property DanceDescription {
+  value MapStringValueType
+  header {
+    description: "Human-readable explanation of what the dance does or when it should be invoked."
+    display_name: "dance_description"
+    display_plural: "dance_descriptions"
+    plural: "DanceDescriptions"
+  }
+}
+
+
+property Context {
+  value InvocationSource
+  header {
+    description: "Ingress context for a DanceInvocation, recorded as an InvocationSource enum value."
+    display_name: "context"
+    display_plural: "contexts"
+    plural: "Contexts"
+  }
+}
+
+
+property DanceDiagnosticSeverity {
+  value DanceDiagnosticSeverity
+  header {
+    description: "Severity classification for a DanceDiagnostic holon."
+    display_name: "dance_diagnostic_severity"
+    display_plural: "dance_diagnostic_severities"
+    plural: "DanceDiagnosticSeverities"
+  }
+}
+
+
+property DiagnosticCode {
+  value MapStringValueType
+  header {
+    description: "Stable machine-readable code for a DanceDiagnostic holon."
+    display_name: "diagnostic_code"
+    display_plural: "diagnostic_codes"
+    plural: "DiagnosticCodes"
+  }
+}
+
+
+property DiagnosticMessage {
+  value MapStringValueType
+  header {
+    description: "Human-readable message for a DanceDiagnostic holon."
+    display_name: "diagnostic_message"
+    display_plural: "diagnostic_messages"
+    plural: "DiagnosticMessages"
+  }
+}
+
+
+property ResponseStatusCode {
+  value ResponseStatusCode
+  header {
+    description: "Machine-readable status code indicating the result of the dance."
+    display_name: "response_status_code"
+    display_plural: "response_status_codes"
+    plural: "ResponseStatusCodes"
+  }
+}
+
+
+property Engine {
+  value DanceEngine
+  header {
+    description: "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin)."
+    display_name: "engine"
+    display_plural: "engines"
+    plural: "Engines"
+  }
+}
+
+
+property ModuleRef {
+  value MapStringValueType
+  header {
+    description: "Content-address or locator of the executable module (e.g., hash/URL/capability address)."
+    display_name: "module_ref"
+    display_plural: "module_refs"
+    plural: "ModuleRefs"
+  }
+}
+
+
+property Entrypoint {
+  value MapStringValueType
+  header {
+    description: "Function/export name to invoke inside the module."
+    display_name: "entrypoint"
+    display_plural: "entrypoints"
+    plural: "Entrypoints"
+  }
+}
+
+
+property AbiId {
+  value MapStringValueType
+  header {
+    description: "Identifier of the stable smart contract ABI expected by the module/entrypoint."
+    display_name: "abi_id"
+    display_plural: "abi_ids"
+    plural: "AbiId"
+  }
+}
+
+
+property Version {
+  value MapStringValueType
+  header {
+    description: "Semantic version or content hash pin of the implementation."
+    display_name: "version"
+    display_plural: "versions"
+    plural: "Versions"
+  }
+}
+
+
+property Compat {
+  value MapStringValueType
+  header {
+    description: "Compatibility range or constraints (e.g., ABI or schema versions)."
+    display_name: "compat"
+    display_plural: "compats"
+    plural: "Compats"
+  }
+}
+
+
+property DanceSummary {
+  value MapStringValueType
+  header {
+    description: "Human-readable summary of a dance outcome."
+    display_name: "dance_summary"
+    display_plural: "dance_summaries"
+    plural: "DanceSummaries"
+  }
+}
+
+
+enum InvocationSource {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type that records how a DanceInvocation entered the runtime."
+    display_name: "Invocation Source"
+    display_plural: "Invocation Sources"
+    plural: "InvocationSources"
+  }
+  variants {
+    variant ClientCommand {
+      header {
+        description: "Invocation entered the runtime through a client command ingress path."
+        display_name: "Client Command"
+        display_plural: "Client Commands"
+        plural: "ClientCommands"
+      }
+    }
+    variant TrustChannel {
+      header {
+        description: "Invocation entered the runtime through a trust-channel ingress path."
+        display_name: "Trust Channel"
+        display_plural: "Trust Channels"
+        plural: "TrustChannels"
+      }
+    }
+    variant Internal {
+      header {
+        description: "Invocation originated from trusted internal runtime code."
+        display_name: "Internal"
+        display_plural: "Internals"
+        plural: "Internals"
+      }
+    }
+  }
+}
+
+
+enum DanceDiagnosticSeverity {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type for the severity of a DanceDiagnostic holon."
+    display_name: "Dance Diagnostic Severity"
+    display_plural: "Dance Diagnostic Severities"
+    plural: "DanceDiagnosticSeverities"
+  }
+  variants {
+    variant Info {
+      header {
+        description: "Informational non-fatal diagnostic note."
+        display_name: "Info"
+        display_plural: "Infos"
+        plural: "Infos"
+      }
+    }
+    variant Warning {
+      header {
+        description: "Warning-level non-fatal diagnostic note."
+        display_name: "Warning"
+        display_plural: "Warnings"
+        plural: "Warnings"
+      }
+    }
+  }
+}
+
+
+enum ResponseStatusCode {
+  extends MapEnumValueType
+  header {
+    description: "Deprecated old-world enum value type for dance status codes. New-world success and failure are expressed by the outer Result contract."
+    display_name: "Response Status Code"
+    display_plural: "Response Status Codes"
+    plural: "ResponseStatusCodes"
+  }
+  variants {
+    variant OK {
+      header {
+        description: "200 — Request succeeded."
+        display_name: "OK"
+        display_plural: "OKs"
+        plural: "OKs"
+      }
+    }
+    variant Accepted {
+      header {
+        description: "202 — Request accepted but not yet processed."
+        display_name: "Accepted"
+        display_plural: "Accepteds"
+        plural: "Accepteds"
+      }
+    }
+    variant BadRequest {
+      header {
+        description: "400 — The request was malformed or invalid."
+        display_name: "Bad Request"
+        display_plural: "Bad Requests"
+        plural: "BadRequests"
+      }
+    }
+    variant Unauthorized {
+      header {
+        description: "401 — The requester is not authenticated."
+        display_name: "Unauthorized"
+        display_plural: "Unauthorized"
+        plural: "Unauthorized"
+      }
+    }
+    variant Forbidden {
+      header {
+        description: "403 — The requester lacks permission."
+        display_name: "Forbidden"
+        display_plural: "Forbidden"
+        plural: "Forbidden"
+      }
+    }
+    variant NotFound {
+      header {
+        description: "404 — The target resource was not found."
+        display_name: "Not Found"
+        display_plural: "Not Founds"
+        plural: "NotFounds"
+      }
+    }
+    variant Conflict {
+      header {
+        description: "409 — Conflict with the current state of the resource."
+        display_name: "Conflict"
+        display_plural: "Conflicts"
+        plural: "Conflicts"
+      }
+    }
+    variant UnprocessableEntity {
+      header {
+        description: "422 — Semantic validation failed."
+        display_name: "Unprocessable Entity"
+        display_plural: "Unprocessable Entities"
+        plural: "UnprocessableEntities"
+      }
+    }
+    variant ServerError {
+      header {
+        description: "500 — Unexpected internal error."
+        display_name: "Server Error"
+        display_plural: "Server Errors"
+        plural: "ServerErrors"
+      }
+    }
+    variant NotImplemented {
+      header {
+        description: "501 — Functionality required to fulfill the request is not supported."
+        display_name: "Not Implemented"
+        display_plural: "Not Implemented"
+        plural: "NotImplemented"
+      }
+    }
+    variant ServiceUnavailable {
+      header {
+        description: "503 — The server is currently unable to handle the request (overload/maintenance)."
+        display_name: "Service Unavailable"
+        display_plural: "Service Unavailable"
+        plural: "ServiceUnavailable"
+      }
+    }
+  }
+}
+
+
+enum DanceEngine {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type for execution engines used by DanceImplementations."
+    display_name: "Dance Engine"
+    display_plural: "Dance Engines"
+    plural: "DanceEngines"
+  }
+  variants {
+    variant WasmWasi {
+      header {
+        description: "Execute a WASM module under WASI (preferred)."
+        display_name: "WasmWasi"
+        display_plural: "WasmWasi"
+        plural: "WasmWasi"
+      }
+    }
+    variant Process {
+      header {
+        description: "Spawn a separate OS process with protocol pipes."
+        display_name: "Process"
+        display_plural: "Processes"
+        plural: "Processes"
+      }
+    }
+    variant RustDylib {
+      header {
+        description: "Dynamically load a Rust dylib via FFI (platform-coupled)."
+        display_name: "RustDylib"
+        display_plural: "RustDylibs"
+        plural: "RustDylibs"
+      }
+    }
+    variant Builtin {
+      header {
+        description: "Call a registered host builtin function."
+        display_name: "Builtin"
+        display_plural: "Builtins"
+        plural: "Builtins"
+      }
+    }
+  }
+}
+
+
+holon HolonId {
+  extends Projection.HolonType
+  header {
+    description: "Concrete projection holon type containing exactly one holon_id property."
+    display_name: "HolonId Projection"
+    display_plural: "HolonId Projections"
+    plural: "HolonIdProjections"
+  }
+  properties {
+    HolonId.PropertyType
+  }
+}
+
+
+holon CommitResponse {
+  extends Projection.HolonType
+  header {
+    description: "Concrete commit response-body holon type retained under its existing key during parallel buildout. Instances are projection-shaped response holons."
+    display_name: "Commit Response"
+    display_plural: "Commit Responses"
+    plural: "CommitResponses"
+  }
+  properties {
+    CommitsAttempted.PropertyType
+    CommitRequestStatus.PropertyType
+  }
+}
+
+
+property CommitsAttempted {
+  value MapIntegerValueType
+  header {
+    description: "Number of holons the commit operation attempted to save."
+    display_name: "commits_attempted"
+    display_plural: "commits_attempted"
+    plural: "CommitsAttempteds"
+  }
+}
+
+
+enum CommitRequestStatus {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type for commit request outcomes (Complete, Incomplete)."
+    display_name: "CommitRequestStatus"
+    display_plural: "CommitRequestStatus"
+    plural: "CommitRequestStatus"
+  }
+  variants {
+    variant Complete {
+      header {
+        description: "All staged holons committed; no staged holons remain."
+        display_name: "Complete"
+        display_plural: "Completes"
+        plural: "Completes"
+      }
+    }
+    variant Incomplete {
+      header {
+        description: "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution."
+        display_name: "Incomplete"
+        display_plural: "Incompletes"
+        plural: "Incompletes"
+      }
+    }
+  }
+}
+
+
+property CommitRequestStatus {
+  value CommitRequestStatus
+  header {
+    description: "Overall status of the commit request (Complete or Incomplete)."
+    display_name: "commit_request_status"
+    display_plural: "commit_request_statuses"
+    plural: "CommitRequestStatuses"
+  }
+}
+
+
+relationship SavedHolons {
+  source CommitResponse.Projection
+  target HolonType
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a CommitResponse to each holon successfully saved by this commit."
+    display_name: "SavedHolons Relationship"
+    display_plural: "SavedHolons Relationships"
+    plural: "SavedHolonsRelationships"
+  }
+}
+
+
+inverse relationship SavedByCommit {
+  source HolonType
+  target CommitResponse.Projection
+  inverse SavedHolons
+  cardinality 0..1
+  deletion_semantic Allow
+  header {
+    description: "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it."
+    display_name: "SavedByCommit Relationship"
+    display_plural: "SavedByCommit Relationships"
+    plural: "SavedByCommitRelationships"
+  }
+}
+
+
+relationship AbandonedHolons {
+  source CommitResponse.Projection
+  target HolonType
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors."
+    display_name: "AbandonedHolons Relationship"
+    display_plural: "AbandonedHolons Relationships"
+    plural: "AbandonedHolonsRelationships"
+  }
+}
+
+
+inverse relationship AbandonedByCommit {
+  source HolonType
+  target CommitResponse.Projection
+  inverse AbandonedHolons
+  cardinality 0..1
+  deletion_semantic Allow
+  header {
+    description: "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it."
+    display_name: "AbandonedByCommit Relationship"
+    display_plural: "AbandonedByCommit Relationships"
+    plural: "AbandonedByCommitRelationships"
+  }
+}

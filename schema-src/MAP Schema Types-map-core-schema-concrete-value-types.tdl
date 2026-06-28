@@ -1,0 +1,225 @@
+schema MAP Core Schema-v0.0.7 {
+  depends_on MAP Key Rule Schema
+}
+value MapStringValueType {
+  extends StringValueType
+  header {
+    description: "Concrete value type representing strings."
+    display_name: "MapStringValueType"
+    display_plural: "MapStringValueTypes"
+    plural: "MapStringValueTypes"
+  }
+}
+
+
+value MapIntegerValueType {
+  extends IntegerValueType
+  header {
+    description: "Concrete value type representing integers."
+    display_name: "MapIntegerValueType"
+    display_plural: "MapIntegerValueTypes"
+    plural: "MapIntegerValueTypes"
+  }
+}
+
+
+value MapBooleanValueType {
+  extends BooleanValueType
+  header {
+    description: "Concrete value type representing booleans."
+    display_name: "MapBooleanValueType"
+    display_plural: "MapBooleanValueTypes"
+    plural: "MapBooleanValueTypes"
+  }
+}
+
+
+value MapBytesValueType {
+  extends BytesValueType
+  header {
+    description: "Concrete value type representing byte sequences."
+    display_name: "MapBytesValueType"
+    display_plural: "MapBytesValueTypes"
+    plural: "MapBytesValueTypes"
+  }
+}
+
+
+enum MapEnumValueType {
+  extends EnumValueType
+  header {
+    description: "Concrete value type representing enums."
+    display_name: "MapEnumValueType"
+    display_plural: "MapEnumValueTypes"
+    plural: "MapEnumValueTypes"
+  }
+}
+
+
+variant MapEnumVariantValueType {
+  header {
+    description: "Abstract type for variants of enum-based value types."
+    display_name: "MapEnumVariant Value Type"
+    display_plural: "MapEnumVariant Value Types"
+    plural: "MapEnumVariantValueTypes"
+  }
+}
+
+
+value MapValueArrayType {
+  extends ValueArrayValueType
+  header {
+    description: "Concrete value type representing arrays of values."
+    display_name: "MapValueArrayType"
+    display_plural: "MapValueArrayTypes"
+    plural: "MapValueArrayTypes"
+  }
+}
+
+
+enum DeletionSemantic {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type for deletion semantics."
+    display_name: "DeletionSemantic"
+    display_plural: "DeletionSemantics"
+    plural: "DeletionSemantics"
+  }
+  variants {
+    variant Allow {
+      header {
+        description: "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets."
+        display_name: "Allow"
+      }
+    }
+    variant Block {
+      header {
+        description: "Prevent deletion of the source holon if any target holons are related through this relationship."
+        display_name: "Block"
+      }
+    }
+    variant Cascade {
+      header {
+        description: "If the source holon is deleted, also delete any related target holons."
+        display_name: "Cascade"
+      }
+    }
+  }
+}
+
+
+enum TypeKind {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship)."
+    display_name: "TypeKind"
+    display_plural: "TypeKinds"
+    plural: "TypeKinds"
+  }
+  variants {
+    variant Property {
+      header {
+        description: "Represents a property type. Variant of the TypeKind enum."
+        display_name: "Property"
+      }
+    }
+    variant Relationship {
+      header {
+        description: "Represents a relationship type. Variant of the TypeKind enum."
+        display_name: "Relationship"
+      }
+    }
+    variant EnumVariant {
+      header {
+        description: "Represents an enum variant type. Variant of the TypeKind enum."
+        display_name: "EnumVariant"
+      }
+    }
+    variant Holon {
+      header {
+        description: "Represents a holon type.  Variant of the TypeKind enum."
+        display_name: "Holon"
+      }
+    }
+    variant Collection {
+      header {
+        description: "Represents a collection type. Variant of the TypeKind enum."
+        display_name: "Collection"
+      }
+    }
+    variant Dance {
+      header {
+        description: "Represents a dance service type. Variant of the TypeKind enum."
+        display_name: "Dance"
+      }
+    }
+    variant String {
+      header {
+        description: "Value type wrapping base type representing strings."
+        display_name: "Value.String"
+      }
+    }
+    variant Array {
+      header {
+        description: "Value type wrapping an array of base type items."
+        display_name: "Value.Array"
+      }
+    }
+    variant Integer {
+      header {
+        description: "Value type wrapping base type representing integers."
+        display_name: "Value.Integer"
+      }
+    }
+    variant Boolean {
+      header {
+        description: "Value type wrapping base type representing booleans."
+        display_name: "Value.Boolean"
+      }
+    }
+    variant Enum {
+      header {
+        description: "Value type wrapping base type representing enumerations."
+        display_name: "Value.Enum"
+      }
+    }
+    variant Bytes {
+      header {
+        description: "Value type wrapping base type representing byte sequences."
+        display_name: "Value.Bytes"
+      }
+    }
+  }
+}
+
+
+enum CollectionType {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type for selecting the runtime wrapper used to inflate a persisted collection holon."
+    display_name: "Collection Type"
+    display_plural: "Collection Types"
+    plural: "CollectionTypes"
+  }
+  variants {
+    variant HolonArray {
+      header {
+        description: "Collection wrapper variant for ordered or index-addressable array-style holon collections."
+        display_name: "Holon Array"
+        display_plural: "Holon Array"
+        plural: "HolonArrays"
+      }
+    }
+  }
+}
+
+
+value HolonIdValueType {
+  extends MapBytesValueType
+  header {
+    description: "Concrete bytes value type representing the canonical serialized form of a HolonId."
+    display_name: "HolonIdValueType"
+    display_plural: "HolonIdValueTypes"
+    plural: "HolonIdValueTypes"
+  }
+}

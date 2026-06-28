@@ -1,0 +1,93 @@
+schema MAP Core Schema-v0.0.7 {
+  depends_on MAP Key Rule Schema
+}
+abstract value MetaValueType {
+  extends MetaTypeDescriptor
+  header {
+    description: "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill."
+    display_name: "Meta Value Type"
+    display_plural: "Meta Value Types"
+    plural: "MetaValueTypes"
+  }
+}
+
+
+abstract value ValueType {
+  extends MetaValueType
+  header {
+    description: "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas."
+    display_name: "Value Type"
+    display_plural: "Value Types"
+    plural: "ValueTypes"
+  }
+}
+
+
+abstract value StringValueType {
+  header {
+    description: "Abstract type for string-based value types."
+    display_name: "StringValueType"
+    display_plural: "StringValueTypes"
+    plural: "StringValueTypes"
+  }
+}
+
+
+abstract value IntegerValueType {
+  header {
+    description: "Abstract type for integer-based value types."
+    display_name: "IntegerValueType"
+    display_plural: "IntegerValueTypes"
+    plural: "IntegerValueTypes"
+  }
+}
+
+
+abstract value BooleanValueType {
+  header {
+    description: "Abstract type for boolean-based value types."
+    display_name: "BooleanValueType"
+    display_plural: "BooleanValueTypes"
+    plural: "BooleanValueTypes"
+  }
+}
+
+
+abstract value BytesValueType {
+  header {
+    description: "Abstract type for byte sequence value types."
+    display_name: "BytesValueType"
+    display_plural: "BytesValueTypes"
+    plural: "BytesValueTypes"
+  }
+}
+
+
+abstract enum EnumValueType {
+  header {
+    description: "Abstract type for enum-based value types."
+    display_name: "EnumValueType"
+    display_plural: "EnumValueTypes"
+    plural: "EnumValueTypes"
+  }
+}
+
+
+variant EnumVariantValueType {
+  header {
+    description: "Abstract type for variants of enum-based value types."
+    display_name: "EnumVariant Value Type"
+    display_plural: "EnumVariant Value Types"
+    plural: "EnumVariantValueTypes"
+  }
+}
+
+
+abstract value ValueArrayValueType {
+  header {
+    description: "Abstract type for value array types."
+    display_name: "ValueArrayType"
+    display_plural: "ValueArrayTypes"
+    plural: "ValueArrayValueTypes"
+  }
+}

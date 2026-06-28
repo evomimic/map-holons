@@ -1,0 +1,136 @@
+schema MAP Key Rule Schema {
+  depends_on MAP Core Schema-v0.0.7
+  header {
+    description: "Groups all type descriptors related to holon key derivation strategies in MAP."
+  }
+}
+abstract holon KeyRuleType {
+  extends MetaHolonType
+  header {
+    description: "Abstract holon type describing how keys are derived for other holons. Subtypes such as Format.KeyRuleType and Relationship.KeyRuleType define specific key derivation strategies. This type should not be instantiated directly, but it SHOULD be ExtendedBy the various specific KeyRuleTypes."
+    display_name: "Abstract Key Rule Type"
+    display_plural: "Abstract Key Rule Types"
+    plural: "KeyRuleTypes"
+  }
+}
+
+
+abstract holon FormatRule {
+  extends KeyRuleType
+  header {
+    description: "Key rule defined by a template_string plus an ordered list of PropertyTypes used as template parameters."
+    display_name: "Format Key Rule Type"
+    display_plural: "Format Key Rule Types"
+    plural: "FormatRules"
+  }
+  properties {
+    TemplateString.PropertyType
+  }
+  relationships {
+    (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)
+  }
+}
+
+
+holon EnumVariantRule {
+  extends KeyRuleType
+  header {
+    description: "For enum-variant descriptors, derive keys as {EnumName}.{VariantName} (e.g., DeletionSemantic.Allow, TypeKind.Holon)."
+    display_name: "Enum Variant Rule"
+    display_plural: "Enum Variant Rules"
+    plural: "EnumVariantRules"
+  }
+}
+
+
+holon TypeNameRule {
+  extends KeyRuleType
+  header {
+    description: "Generates a key from the holon's type_name property only."
+    display_name: "Type Name Rule"
+    display_plural: "Type Name Rules"
+    plural: "TypeNameRules"
+  }
+}
+
+
+holon TypeKindRule {
+  extends KeyRuleType
+  header {
+    description: "Generates a key from the holon's type_name and type_kind properties."
+    display_name: "TypeKind Rules"
+    display_plural: "TypeKind Rules"
+    plural: "TypeKindRules"
+  }
+}
+
+
+holon RelationshipRule {
+  extends KeyRuleType
+  header {
+    description: "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type."
+    display_name: "Relationship Key Rule Type"
+    display_plural: "Relationship Key Rule Types"
+    plural: "RelationshipRules"
+  }
+}
+
+
+holon ExtendedTypeRule {
+  extends KeyRuleType
+  header {
+    description: "A hardcoded rule that derives a descriptor key from the descriptor’s local type_name plus the type_name of its immediate extended descriptor.\nFormat: {type_name}.{extends.type_name}"
+    display_name: "Extended Type Key Rule Type"
+    display_plural: "Extended Type Key Rule Types"
+    plural: "ExtendedTypeRules"
+  }
+}
+
+
+holon NoneRule {
+  extends KeyRuleType
+  header {
+    description: "Indicates a keyless holon. Must be embedded and never referenced."
+    display_name: "None Key Rule Type"
+    display_plural: "None Key Rule Types"
+    plural: "NoneRules"
+  }
+}
+
+
+holon SchemaNameRule {
+  extends KeyRuleType
+  header {
+    description: "Generates a key from the holon's schema_name property only."
+    display_name: "Schema Name Rule"
+    display_plural: "Schema Name Rules"
+    plural: "SchemaNameRules"
+  }
+}
+
+
+def relationship UsesKeyRule {
+  source TypeDescriptor.HolonType
+  target KeyRuleType
+  cardinality 0..1
+  header {
+    description: "Declares the KeyRuleType used to derive keys for instances of a type."
+    display_name: "UsesKeyRule"
+    display_plural: "UsesKeyRule Relationships"
+    plural: "UsesKeyRule Relationships"
+  }
+}
+
+
+inverse relationship KeyRuleFor {
+  source KeyRuleType
+  target TypeDescriptor.HolonType
+  inverse UsesKeyRule
+  cardinality 0..32767
+  header {
+    description: "Inverse of UsesKeyRule, from KeyRuleType to TypeDescriptor."
+    display_name: "KeyRuleFor"
+    display_plural: "KeyRuleFor Relationships"
+    plural: "KeyRuleFor Relationships"
+  }
+}

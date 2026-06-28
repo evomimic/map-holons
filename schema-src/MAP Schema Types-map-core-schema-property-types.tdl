@@ -1,0 +1,307 @@
+schema MAP Core Schema-v0.0.7
+property AllowsDuplicates {
+  value MapBooleanValueType
+  header {
+    description: "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set."
+    display_name: "allows_duplicates"
+    display_plural: "allows_duplicates"
+    plural: "AllowsDuplicates"
+  }
+}
+
+
+property AllowsAdditionalProperties {
+  value MapBooleanValueType
+  header {
+    description: "If true, instances may include properties not explicitly listed by the descriptor."
+    display_name: "allows_additional_properties"
+    display_plural: "allows_additional_properties"
+    plural: "AllowsAdditionalProperties"
+  }
+}
+
+
+property AllowsAdditionalRelationships {
+  value MapBooleanValueType
+  header {
+    description: "If true, instances may include relationships not explicitly listed by the descriptor."
+    display_name: "allows_additional_relationships"
+    display_plural: "allows_additional_relationships"
+    plural: "AllowsAdditionalRelationships"
+  }
+}
+
+
+property DeletionSemantic {
+  value DeletionSemantic
+  header {
+    description: "Specifies behavior for how to handle requests to delete the source holon from this relationship."
+    display_name: "deletion_semantic"
+    display_plural: "deletion_semantics"
+    plural: "DeletionSemantics"
+  }
+}
+
+
+property Description {
+  value MapStringValueType
+  header {
+    description: "A human-readable explanation of the purpose or role of this type."
+    display_name: "description"
+    display_plural: "descriptions"
+    plural: "Descriptions"
+  }
+}
+
+
+property DisplayName {
+  value MapStringValueType
+  header {
+    description: "The human-readable label used for this property"
+    display_name: "displayName"
+    display_plural: "displayNames"
+    plural: "DisplayNames"
+  }
+}
+
+
+property DisplayNamePlural {
+  value MapStringValueType
+  header {
+    description: "The plural form of the label for use in lists or summaries."
+    display_name: "displayNamePlural"
+    display_plural: "displayNamePlurals"
+    plural: "DisplayNamePlurals"
+  }
+}
+
+
+property IsAbstractType {
+  value MapBooleanValueType
+  header {
+    description: "Indicates whether the type is abstract (cannot be instantiated)."
+    display_name: "isAbstractType"
+    display_plural: "isAbstractTypes"
+    plural: "IsAbstractTypes"
+  }
+}
+
+
+property IsDefinitional {
+  value MapBooleanValueType
+  header {
+    description: "Indicates whether the relationship contributes to the identity of the target holon."
+    display_name: "isDefinitional"
+    display_plural: "isDefinitional"
+    plural: "IsDefinitional"
+  }
+}
+
+
+property IsOrdered {
+  value MapBooleanValueType
+  header {
+    description: "True if the order of related holons is significant."
+    display_name: "isOrdered"
+    display_plural: "isOrdered"
+    plural: "IsOrdered"
+  }
+}
+
+
+property IsRequired {
+  value MapBooleanValueType
+  header {
+    description: "True if a value for this property type is required for the holon having this property."
+    display_name: "IsRequired"
+    display_plural: "IsRequired"
+    plural: "IsRequired"
+  }
+}
+
+
+property MapBoolean {
+  value MapBooleanValueType
+  header {
+    description: "Boolean scalar value (true/false)."
+    display_name: "mapBoolean"
+    display_plural: "mapBooleans"
+    plural: "MapBooleans"
+  }
+}
+
+
+property MapBytes {
+  value MapBytesValueType
+  header {
+    description: "Binary data (blob of bytes)."
+    display_name: "mapBytes"
+    display_plural: "mapBytes"
+    plural: "MapBytes"
+  }
+}
+
+
+property MapInteger {
+  value MapIntegerValueType
+  header {
+    description: "Integer scalar value."
+    display_name: "mapInteger"
+    display_plural: "mapIntegers"
+    plural: "MapIntegers"
+  }
+}
+
+
+property MapString {
+  value MapStringValueType
+  header {
+    description: "Textual scalar value."
+    display_name: "mapString"
+    display_plural: "mapStrings"
+    plural: "MapStrings"
+  }
+}
+
+
+property MaxCardinality {
+  value MapIntegerValueType
+  header {
+    description: "Maximum number of target holons allowed for the relationship."
+    display_name: "max_cardinality"
+    display_plural: "max_cardinalities"
+    plural: "MaxCardinalities"
+  }
+}
+
+
+property MinCardinality {
+  value MapIntegerValueType
+  header {
+    description: "Minimum number of target holons allowed for the relationship."
+    display_name: "min_cardinality"
+    display_plural: "min_cardinalities"
+    plural: "MinCardinalities"
+  }
+}
+
+
+property TypeKind {
+  value TypeKind
+  header {
+    description: "Specifies the kind of type this descriptor represents."
+    display_name: "type_kind"
+    display_plural: "type_kinds"
+    plural: "TypeKinds"
+  }
+}
+
+
+property TypeName {
+  value MapStringValueType
+  header {
+    description: "The unique identifier for a type, typically in ClassCase."
+    display_name: "typeName"
+    display_plural: "typeNames"
+    plural: "TypeNames"
+  }
+}
+
+
+property SchemaName {
+  value MapStringValueType
+  header {
+    description: "The name of a type schema.  Defines a collection of type descriptor holons."
+    display_name: "schemaName"
+    display_plural: "schemaNames"
+    plural: "SchemaNames"
+  }
+}
+
+
+property TypeNamePlural {
+  value MapStringValueType
+  header {
+    description: "The plural form of the type's identifier used for display or grouping."
+    display_name: "typeNamePlural"
+    display_plural: "typeNamePlurals"
+    plural: "TypeNamePlurals"
+  }
+}
+
+
+property ErrorType {
+  value MapStringValueType
+  header {
+    description: "Indicates the type of error."
+    display_name: "error_type"
+    display_plural: "error_types"
+    plural: "ErrorTypes"
+  }
+}
+
+
+property ErrorMessage {
+  value MapStringValueType
+  header {
+    description: "A descriptive message explaining an error."
+    display_name: "error_message"
+    display_plural: "error_messages"
+    plural: "ErrorMessages"
+  }
+}
+
+
+property ErrorCount {
+  value MapIntegerValueType
+  header {
+    description: "Number of errors encountered."
+    display_name: "error_count"
+    display_plural: "error_counts"
+    plural: "ErrorCounts"
+  }
+}
+
+
+property TemplateString {
+  value MapStringValueType
+  header {
+    description: "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings."
+    display_name: "template_string"
+    display_plural: "template_strings"
+    plural: "TemplateStrings"
+  }
+}
+
+
+property CollectionType {
+  value CollectionType
+  header {
+    description: "Selects the runtime wrapper used to inflate a persisted collection holon."
+    display_name: "collection_type"
+    display_plural: "collection_types"
+    plural: "CollectionTypes"
+  }
+}
+
+
+property Key {
+  value MapStringValueType
+  header {
+    description: "Identifying key of a holon instance."
+    display_name: "key"
+    display_plural: "keys"
+    plural: "Keys"
+  }
+}
+
+
+property HolonId {
+  value HolonIdValueType
+  header {
+    description: "ActionHash identifier of a referenced holon."
+    display_name: "holon_id"
+    display_plural: "holon_ids"
+    plural: "HolonIds"
+  }
+}

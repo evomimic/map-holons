@@ -1,0 +1,111 @@
+schema MAP Core Schema-v0.0.7 {
+  depends_on MAP Key Rule Schema
+}
+abstract holon OperatorType {
+  header {
+    description: "Abstract descriptor for operator affordances. OperatorTypes are core-defined operations applicable to ValueTypes, used for validation, query construction, and filter expressions."
+    display_name: "Operator Type"
+    display_plural: "Operator Types"
+    plural: "OperatorTypes"
+  }
+  properties {
+    Arity.PropertyType
+    OperatorCategory.PropertyType
+  }
+}
+
+
+relationship AffordsOperator {
+  source ValueType
+  target OperatorType.HolonType
+  cardinality 0..32767
+  header {
+    description: "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction."
+    display_name: "AffordsOperator Relationship"
+    display_plural: "AffordsOperator Relationships"
+    plural: "AffordsOperatorRelationships"
+  }
+}
+
+
+inverse relationship AffordedBy {
+  source OperatorType.HolonType
+  target ValueType
+  inverse AffordsOperator
+  cardinality 1..32767
+  header {
+    description: "Inverse of AffordsOperator, relationship from OperatorType to ValueType."
+    display_name: "AffordedBy Relationship"
+    display_plural: "AffordedBy Relationships"
+    plural: "AffordedByRelationships"
+  }
+}
+
+
+enum OperatorCategory {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type categorizing operators (e.g., Comparison, StringMatch)."
+    display_name: "OperatorCategory"
+    display_plural: "OperatorCategories"
+    plural: "OperatorCategories"
+  }
+  variants {
+    variant Equality {
+      header {
+        description: "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types."
+        display_name: "Equality"
+      }
+    }
+    variant Ordering {
+      header {
+        description: "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string)."
+        display_name: "Ordering"
+      }
+    }
+  }
+}
+
+
+property Arity {
+  value MapIntegerValueType
+  header {
+    description: "Number of operands the operator accepts (1 = unary, 2 = binary)."
+    display_name: "arity"
+    display_plural: "arities"
+    plural: "Arities"
+  }
+}
+
+
+property OperatorCategory {
+  value OperatorCategory
+  header {
+    description: "Categorical grouping of an operator (e.g., Comparison, StringMatch)."
+    display_name: "operator_category"
+    display_plural: "operator_categories"
+    plural: "OperatorCategories"
+  }
+}
+
+
+holon EqualsOperator {
+  extends OperatorType.HolonType
+  header {
+    description: "Returns true iff lhs and rhs are equal under the value type's equality semantics."
+    display_name: "Equals"
+    display_plural: "Equals Operators"
+    plural: "EqualsOperators"
+  }
+}
+
+
+holon LessThanOperator {
+  extends OperatorType.HolonType
+  header {
+    description: "Returns true iff lhs < rhs."
+    display_name: "Less Than"
+    display_plural: "Less Than Operators"
+    plural: "LessThanOperator"
+  }
+}
