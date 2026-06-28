@@ -1,4 +1,16 @@
 use anyhow::{Context, Result};
+pub mod diagnostics;
+pub mod semantic;
+pub mod symbols;
+
+use crate::{
+    diagnostics::Diagnostic,
+    semantic::{
+        push_reference, DescriptorHeader, Origin, ReferenceRole, RelationshipFlavor, Schema,
+        SemanticModel, SemanticReference, SourceKind, TypeDescriptor,
+    },
+    symbols::SymbolTable,
+};
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
@@ -47,7 +59,7 @@ struct ParsedFile {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DescriptorKind {
+enum JsonDescriptorKind {
     Schema,
     Value,
     Enum,
@@ -77,6 +89,19 @@ pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBu
     }
 
     Ok(written)
+}
+
+/// Builds the derived semantic symbol table for JSON import inputs and returns a text dump.
+///
+/// This is a visibility/debugging aid only; the symbol table remains derived in-memory state and
+/// should not be treated as a persisted source-of-truth artifact.
+pub fn dump_symbols(inputs: &[PathBuf]) -> Result<String> {
+    let files = collect_input_files(inputs)?;
+    let parsed = parse_files(&files)?;
+    let mut model = semantic_model_from_files(&parsed);
+    let (symbols, diagnostics) = SymbolTable::from_model(&mut model);
+
+    Ok(render_symbol_dump(&model, &symbols, &diagnostics))
 }
 
 #[derive(Debug, Clone)]
@@ -169,31 +194,206 @@ fn component_of_schema_name(holon: &HolonRecord) -> Option<String> {
 }
 
 fn render_file(file: &ParsedFile, schema_by_name: &HashMap<String, String>) -> Result<String> {
-    let mut out = String::new();
-    let dependencies = schema_dependencies(file, schema_by_name);
+    let mut model = semantic_model_from_file(file, schema_by_name);
+    let _ = SymbolTable::from_model(&mut model);
+
+    render_semantic_file(&model)
+}
+
+fn semantic_model_from_files(files: &[ParsedFile]) -> SemanticModel {
+    let schema_by_name = schema_names_by_relative_path(files);
+    let mut combined = SemanticModel::new();
+    for file in files {
+        let model = semantic_model_from_file(file, &schema_by_name);
+        for schema in model.schemas {
+            merge_schema(&mut combined, schema);
+        }
+        combined.descriptors.extend(model.descriptors);
+    }
+    combined
+}
+
+fn merge_schema(model: &mut SemanticModel, schema: Schema) {
+    let Some(existing) = model.schemas.iter_mut().find(|candidate| candidate.key == schema.key)
+    else {
+        model.schemas.push(schema);
+        return;
+    };
+
+    for dependency in schema.dependencies {
+        if !existing
+            .dependencies
+            .iter()
+            .any(|known| known.role == dependency.role && known.target == dependency.target)
+        {
+            existing.dependencies.push(dependency);
+        }
+    }
+
+    if existing.header.is_none() {
+        existing.header = schema.header;
+    }
+    existing.allows_additional_properties |= schema.allows_additional_properties;
+    existing.allows_additional_relationships |= schema.allows_additional_relationships;
+}
+
+fn semantic_model_from_file(
+    file: &ParsedFile,
+    schema_by_name: &HashMap<String, String>,
+) -> SemanticModel {
+    let origin = Origin {
+        source_kind: SourceKind::JsonImport,
+        file_path: Some(file.relative_path.clone()),
+        line: None,
+        column: None,
+    };
+    let mut model = SemanticModel::new();
+    let dependencies = schema_dependencies(file, schema_by_name)
+        .into_iter()
+        .map(|dependency| SemanticReference::unresolved(ReferenceRole::DependsOn, dependency))
+        .collect::<Vec<_>>();
     let schema_holon =
         file.import.holons.iter().find(|holon| holon.descriptor_type == "Schema.HolonType");
 
-    render_schema_decl(&mut out, &file.schema_name, schema_holon, &dependencies)?;
-
-    let enum_variant_groups = group_enum_variants(&file.import.holons);
-    let mut first_descriptor = true;
+    model.push_schema(Schema {
+        name: file.schema_name.clone(),
+        key: schema_holon
+            .map(|holon| holon.key.clone())
+            .unwrap_or_else(|| file.schema_name.clone()),
+        origin: origin.clone(),
+        dependencies,
+        header: schema_holon.and_then(|holon| semantic_header(&holon.properties)),
+        allows_additional_properties: schema_holon
+            .map(|holon| bool_property(&holon.properties, "allows_additional_properties"))
+            .unwrap_or(false),
+        allows_additional_relationships: schema_holon
+            .map(|holon| bool_property(&holon.properties, "allows_additional_relationships"))
+            .unwrap_or(false),
+    });
 
     for holon in &file.import.holons {
         if holon.descriptor_type == "Schema.HolonType" {
             continue;
         }
+        model.push_descriptor(semantic_descriptor_from_holon(
+            holon,
+            &file.schema_name,
+            origin.clone(),
+        ));
+    }
 
-        if is_grouped_variant(holon, &enum_variant_groups) {
+    model
+}
+
+fn semantic_descriptor_from_holon(
+    holon: &HolonRecord,
+    schema_name: &str,
+    origin: Origin,
+) -> TypeDescriptor {
+    let kind = semantic_kind(holon);
+    let mut descriptor =
+        TypeDescriptor::new(holon.key.clone(), descriptor_name(holon), kind, schema_name, origin);
+    descriptor.header = semantic_header(&holon.properties);
+    descriptor.is_abstract = bool_property(&holon.properties, "is_abstract_type");
+    descriptor.is_definitional = bool_property(&holon.properties, "is_definitional");
+    descriptor.min_cardinality = integer_property(&holon.properties, "min_cardinality");
+    descriptor.max_cardinality = integer_property(&holon.properties, "max_cardinality");
+    descriptor.deletion_semantic = string_property(&holon.properties, "deletion_semantic");
+    descriptor.is_ordered = bool_property(&holon.properties, "is_ordered");
+    descriptor.allows_duplicates = bool_property(&holon.properties, "allows_duplicates");
+    descriptor.allows_additional_properties =
+        bool_property(&holon.properties, "allows_additional_properties");
+    descriptor.allows_additional_relationships =
+        bool_property(&holon.properties, "allows_additional_relationships");
+    if matches!(classify(holon), JsonDescriptorKind::Relationship { inverse: true }) {
+        descriptor.relationship_flavor = Some(RelationshipFlavor::Inverse);
+    } else if kind == semantic::DescriptorKind::RelationshipType {
+        descriptor.relationship_flavor = Some(RelationshipFlavor::Declared);
+    }
+
+    for relationship in &holon.relationships {
+        let Some(role) = reference_role_for_relationship(&relationship.name) else {
+            continue;
+        };
+        for target in target_strings(&relationship.target) {
+            push_reference(&mut descriptor, SemanticReference::unresolved(role, target));
+        }
+    }
+    descriptor
+}
+
+fn semantic_kind(holon: &HolonRecord) -> semantic::DescriptorKind {
+    match classify(holon) {
+        JsonDescriptorKind::Schema => semantic::DescriptorKind::Schema,
+        JsonDescriptorKind::Value => semantic::DescriptorKind::ValueType,
+        JsonDescriptorKind::Enum => semantic::DescriptorKind::Enum,
+        JsonDescriptorKind::Property => semantic::DescriptorKind::PropertyType,
+        JsonDescriptorKind::Relationship { .. } => semantic::DescriptorKind::RelationshipType,
+        JsonDescriptorKind::Variant => semantic::DescriptorKind::EnumVariant,
+        JsonDescriptorKind::Holon => {
+            if descriptor_name(holon) == "TypeDescriptor" {
+                semantic::DescriptorKind::TypeDescriptor
+            } else {
+                semantic::DescriptorKind::HolonType
+            }
+        }
+    }
+}
+
+fn semantic_header(properties: &BTreeMap<String, Value>) -> Option<DescriptorHeader> {
+    let header = DescriptorHeader {
+        description: string_property(properties, "description"),
+        display_name: string_property(properties, "display_name"),
+        display_name_plural: string_property(properties, "display_name_plural"),
+        type_name_plural: string_property(properties, "type_name_plural"),
+    };
+    if header.description.is_some()
+        || header.display_name.is_some()
+        || header.display_name_plural.is_some()
+        || header.type_name_plural.is_some()
+    {
+        Some(header)
+    } else {
+        None
+    }
+}
+
+fn reference_role_for_relationship(name: &str) -> Option<ReferenceRole> {
+    match name {
+        "ComponentOf" => Some(ReferenceRole::ComponentOf),
+        "Extends" => Some(ReferenceRole::Extends),
+        "UsesKeyRule" => Some(ReferenceRole::KeyRule),
+        "SourceType" => Some(ReferenceRole::SourceType),
+        "TargetType" => Some(ReferenceRole::TargetType),
+        "InverseOf" => Some(ReferenceRole::InverseOf),
+        "HasInverse" => Some(ReferenceRole::HasInverse),
+        "ValueType" => Some(ReferenceRole::ValueType),
+        "VariantOf" => Some(ReferenceRole::VariantOf),
+        "InstanceProperties" => Some(ReferenceRole::InstanceProperty),
+        "InstanceRelationships" => Some(ReferenceRole::InstanceRelationship),
+        _ => None,
+    }
+}
+
+fn render_semantic_file(model: &SemanticModel) -> Result<String> {
+    let mut out = String::new();
+    let schema = model.schemas.first().context("semantic model has no schema")?;
+    render_semantic_schema_decl(&mut out, schema);
+
+    let enum_variant_groups = semantic_enum_variant_groups(model);
+    let mut first_descriptor = true;
+    for descriptor in &model.descriptors {
+        if enum_variant_groups
+            .values()
+            .any(|variants| variants.iter().any(|variant| variant.key == descriptor.key))
+        {
             continue;
         }
-
         if !first_descriptor {
-            out.push_str("\n");
+            out.push('\n');
         }
         first_descriptor = false;
-
-        render_descriptor(&mut out, holon, &enum_variant_groups)?;
+        render_semantic_descriptor(&mut out, descriptor, &enum_variant_groups)?;
         if !out.ends_with("\n\n") {
             out.push('\n');
         }
@@ -203,8 +403,346 @@ fn render_file(file: &ParsedFile, schema_by_name: &HashMap<String, String>) -> R
         out.pop();
     }
     out.push('\n');
-
     Ok(out)
+}
+
+fn render_semantic_schema_decl(out: &mut String, schema: &Schema) {
+    let has_body = !schema.dependencies.is_empty()
+        || schema.header.is_some()
+        || schema.allows_additional_properties
+        || schema.allows_additional_relationships;
+    if !has_body {
+        out.push_str(&format!("schema {}\n", schema.name));
+        return;
+    }
+
+    out.push_str(&format!("schema {} {{\n", schema.name));
+    for dependency in &schema.dependencies {
+        out.push_str(&format!("{}depends_on {}\n", INDENT, dependency.target));
+    }
+    if let Some(header) = &schema.header {
+        render_semantic_header(out, 1, header);
+    }
+    if schema.allows_additional_properties {
+        out.push_str(&format!("{}allows_additional_properties\n", INDENT));
+    }
+    if schema.allows_additional_relationships {
+        out.push_str(&format!("{}allows_additional_relationships\n", INDENT));
+    }
+    out.push_str("}\n");
+}
+
+fn semantic_enum_variant_groups<'a>(
+    model: &'a SemanticModel,
+) -> HashMap<String, Vec<&'a TypeDescriptor>> {
+    let mut groups: HashMap<String, Vec<&TypeDescriptor>> = HashMap::new();
+    for descriptor in &model.descriptors {
+        if descriptor.kind == semantic::DescriptorKind::EnumVariant {
+            if let Some(variant_of) = &descriptor.variant_of {
+                groups.entry(variant_of.target.clone()).or_default().push(descriptor);
+            }
+        }
+    }
+    groups
+}
+
+fn render_semantic_descriptor(
+    out: &mut String,
+    descriptor: &TypeDescriptor,
+    enum_variant_groups: &HashMap<String, Vec<&TypeDescriptor>>,
+) -> Result<()> {
+    match descriptor.kind {
+        semantic::DescriptorKind::ValueType => render_semantic_value(out, descriptor),
+        semantic::DescriptorKind::Enum => {
+            render_semantic_enum(out, descriptor, enum_variant_groups)
+        }
+        semantic::DescriptorKind::PropertyType => render_semantic_property(out, descriptor),
+        semantic::DescriptorKind::RelationshipType => render_semantic_relationship(out, descriptor),
+        semantic::DescriptorKind::EnumVariant => render_semantic_variant(out, descriptor),
+        semantic::DescriptorKind::HolonType | semantic::DescriptorKind::TypeDescriptor => {
+            render_semantic_holon(out, descriptor)
+        }
+        semantic::DescriptorKind::Schema => Ok(()),
+    }
+}
+
+fn render_semantic_value(out: &mut String, descriptor: &TypeDescriptor) -> Result<()> {
+    let head = descriptor_head("value", descriptor);
+    let mut clauses = Vec::new();
+    if let Some(parent) = &descriptor.extends {
+        if parent.target != "ValueType" {
+            clauses.push(format!("extends {}", parent.target));
+        }
+    }
+    append_semantic_body(out, &head, &clauses, descriptor.header.as_ref())
+}
+
+fn render_semantic_enum(
+    out: &mut String,
+    descriptor: &TypeDescriptor,
+    enum_variant_groups: &HashMap<String, Vec<&TypeDescriptor>>,
+) -> Result<()> {
+    let head = descriptor_head("enum", descriptor);
+    let mut clauses = Vec::new();
+    if let Some(parent) = &descriptor.extends {
+        if parent.target != "ValueType" {
+            clauses.push(format!("extends {}", parent.target));
+        }
+    }
+    let mut body_lines = Vec::new();
+    if let Some(header) = &descriptor.header {
+        body_lines.extend(semantic_header_lines(header));
+    }
+    if let Some(variants) = enum_variant_groups.get(&descriptor.name) {
+        body_lines.push("variants {".to_string());
+        for variant in variants {
+            let rendered = semantic_variant_declaration(variant);
+            body_lines.extend(rendered.lines().map(|line| format!("{}{}", INDENT, line)));
+        }
+        body_lines.push("}".to_string());
+    }
+    append_semantic_body_with_lines(out, &head, &clauses, &body_lines)
+}
+
+fn render_semantic_property(out: &mut String, descriptor: &TypeDescriptor) -> Result<()> {
+    let head = descriptor_head("property", descriptor);
+    let mut clauses = Vec::new();
+    if let Some(value_type) = &descriptor.value_type {
+        clauses.push(format!("value {}", value_type.target));
+    }
+    if let Some(parent) = &descriptor.extends {
+        if parent.target != "PropertyType" {
+            clauses.push(format!("extends {}", parent.target));
+        }
+    }
+    append_semantic_body(out, &head, &clauses, descriptor.header.as_ref())
+}
+
+fn render_semantic_relationship(out: &mut String, descriptor: &TypeDescriptor) -> Result<()> {
+    let keyword = match descriptor.relationship_flavor {
+        Some(RelationshipFlavor::Inverse) => "inverse relationship",
+        _ if descriptor.is_definitional => "def relationship",
+        _ => "relationship",
+    };
+    let head = descriptor_head(keyword, descriptor);
+    let mut clauses = Vec::new();
+    if let Some(source) = &descriptor.source_type {
+        clauses.push(format!("source {}", source.target));
+    }
+    if let Some(target) = &descriptor.target_type {
+        clauses.push(format!("target {}", target.target));
+    }
+    if let Some(inverse_of) = &descriptor.inverse_of {
+        clauses.push(format!("inverse {}", relationship_label(&inverse_of.target)));
+    }
+    if let Some(key_rule) = &descriptor.key_rule {
+        clauses.push(format!("keyrule {}", key_rule.target));
+    }
+    if let (Some(min), Some(max)) = (descriptor.min_cardinality, descriptor.max_cardinality) {
+        clauses.push(format!("cardinality {}..{}", min, max));
+    }
+    if descriptor.is_ordered {
+        clauses.push("ordered".to_string());
+    }
+    if descriptor.allows_duplicates {
+        clauses.push("duplicates".to_string());
+    }
+    if let Some(deletion_semantic) = &descriptor.deletion_semantic {
+        clauses.push(format!("deletion_semantic {}", deletion_semantic));
+    }
+    append_semantic_body(out, &head, &clauses, descriptor.header.as_ref())
+}
+
+fn render_semantic_variant(out: &mut String, descriptor: &TypeDescriptor) -> Result<()> {
+    out.push_str(&semantic_variant_declaration(descriptor));
+    Ok(())
+}
+
+fn render_semantic_holon(out: &mut String, descriptor: &TypeDescriptor) -> Result<()> {
+    let head = descriptor_head("holon", descriptor);
+    let mut clauses = Vec::new();
+    if let Some(parent) = &descriptor.extends {
+        if parent.target != "HolonType" {
+            clauses.push(format!("extends {}", parent.target));
+        }
+    }
+    if descriptor.allows_additional_properties {
+        clauses.push("allows_additional_properties".to_string());
+    }
+    if descriptor.allows_additional_relationships {
+        clauses.push("allows_additional_relationships".to_string());
+    }
+    let mut body_lines = Vec::new();
+    if let Some(header) = &descriptor.header {
+        body_lines.extend(semantic_header_lines(header));
+    }
+    if !descriptor.instance_properties.is_empty() {
+        body_lines.push("properties {".to_string());
+        for property in &descriptor.instance_properties {
+            body_lines.push(format!("{}{}", INDENT, property.target));
+        }
+        body_lines.push("}".to_string());
+    }
+    if !descriptor.instance_relationships.is_empty() {
+        body_lines.push("relationships {".to_string());
+        for relationship in &descriptor.instance_relationships {
+            body_lines.push(format!("{}{}", INDENT, relationship_ref(&relationship.target)));
+        }
+        body_lines.push("}".to_string());
+    }
+    append_semantic_body_with_lines(out, &head, &clauses, &body_lines)
+}
+
+fn descriptor_head(keyword: &str, descriptor: &TypeDescriptor) -> String {
+    let mut head = String::new();
+    if descriptor.is_abstract {
+        head.push_str("abstract ");
+    }
+    head.push_str(keyword);
+    head.push(' ');
+    head.push_str(&descriptor.name);
+    head
+}
+
+fn append_semantic_body(
+    out: &mut String,
+    head: &str,
+    clauses: &[String],
+    header: Option<&DescriptorHeader>,
+) -> Result<()> {
+    let body_lines = header.map(semantic_header_lines).unwrap_or_default();
+    append_semantic_body_with_lines(out, head, clauses, &body_lines)
+}
+
+fn append_semantic_body_with_lines(
+    out: &mut String,
+    head: &str,
+    clauses: &[String],
+    body_lines: &[String],
+) -> Result<()> {
+    if clauses.is_empty() && body_lines.is_empty() {
+        out.push_str(head);
+        out.push('\n');
+        return Ok(());
+    }
+    out.push_str(head);
+    out.push_str(" {\n");
+    for clause in clauses {
+        out.push_str(&format!("{}{}\n", INDENT, clause));
+    }
+    for line in body_lines {
+        out.push_str(&format!("{}{}\n", INDENT, line));
+    }
+    out.push_str("}\n");
+    Ok(())
+}
+
+fn semantic_variant_declaration(descriptor: &TypeDescriptor) -> String {
+    let name =
+        descriptor.name.rsplit_once('.').map(|(_, suffix)| suffix).unwrap_or(&descriptor.name);
+    let Some(header) = &descriptor.header else {
+        return format!("variant {}\n", name);
+    };
+    let mut out = String::new();
+    out.push_str(&format!("variant {} {{\n", name));
+    for line in semantic_header_lines(header) {
+        out.push_str(&format!("{}{}\n", INDENT, line));
+    }
+    out.push_str("}\n");
+    out
+}
+
+fn render_semantic_header(out: &mut String, indent_level: usize, header: &DescriptorHeader) {
+    for line in semantic_header_lines(header) {
+        out.push_str(&format!("{}{}\n", INDENT.repeat(indent_level), line));
+    }
+}
+
+fn semantic_header_lines(header: &DescriptorHeader) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push("header {".to_string());
+    if let Some(description) = &header.description {
+        lines.push(format!("{}description: {}", INDENT, json_literal(description)));
+    }
+    if let Some(display_name) = &header.display_name {
+        lines.push(format!("{}display_name: {}", INDENT, json_literal(display_name)));
+    }
+    if let Some(display_plural) = &header.display_name_plural {
+        lines.push(format!("{}display_plural: {}", INDENT, json_literal(display_plural)));
+    }
+    if let Some(plural) = &header.type_name_plural {
+        lines.push(format!("{}plural: {}", INDENT, json_literal(plural)));
+    }
+    lines.push("}".to_string());
+    lines
+}
+
+fn render_symbol_dump(
+    model: &SemanticModel,
+    symbols: &SymbolTable,
+    diagnostics: &[Diagnostic],
+) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("symbols: {}\n", symbols.symbols().len()));
+    out.push_str(&format!("schemas: {}\n", model.schemas.len()));
+    out.push_str(&format!("descriptors: {}\n", model.descriptors.len()));
+    out.push_str(&format!("diagnostics: {}\n\n", diagnostics.len()));
+
+    out.push_str("symbol table\n");
+    for symbol in symbols.symbols() {
+        out.push_str(&format!(
+            "  #{:04} {:?} key={} name={}",
+            symbol.id.0, symbol.kind, symbol.key, symbol.name
+        ));
+        if let Some(schema) = &symbol.owning_schema {
+            out.push_str(&format!(" schema={schema}"));
+        }
+        out.push_str(&format!(" origin={}\n", format_origin(&symbol.origin)));
+    }
+
+    let unresolved = symbols.collect_unresolved_references(model);
+    if !unresolved.is_empty() {
+        out.push_str("\nunresolved references\n");
+        for reference in unresolved {
+            out.push_str(&format!("  {:?} -> {}\n", reference.role, reference.target));
+        }
+    }
+
+    if !diagnostics.is_empty() {
+        out.push_str("\ndiagnostics\n");
+        for diagnostic in diagnostics {
+            out.push_str(&format!(
+                "  {:?} {:?} origin={}\n",
+                diagnostic.severity,
+                diagnostic.kind,
+                diagnostic
+                    .origin
+                    .as_ref()
+                    .map(format_origin)
+                    .unwrap_or_else(|| "<unknown>".to_string())
+            ));
+        }
+    }
+
+    out
+}
+
+fn format_origin(origin: &Origin) -> String {
+    let source = match origin.source_kind {
+        SourceKind::JsonImport => "json",
+        SourceKind::TdlSource => "tdl",
+        SourceKind::Generated => "generated",
+    };
+    let path = origin
+        .file_path
+        .as_ref()
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "<none>".to_string());
+    match (origin.line, origin.column) {
+        (Some(line), Some(column)) => format!("{source}:{path}:{line}:{column}"),
+        (Some(line), None) => format!("{source}:{path}:{line}"),
+        _ => format!("{source}:{path}"),
+    }
 }
 
 fn schema_dependencies(file: &ParsedFile, schema_by_name: &HashMap<String, String>) -> Vec<String> {
@@ -221,406 +759,30 @@ fn schema_dependencies(file: &ParsedFile, schema_by_name: &HashMap<String, Strin
     deps
 }
 
-fn render_schema_decl(
-    out: &mut String,
-    schema_name: &str,
-    schema_holon: Option<&HolonRecord>,
-    dependencies: &[String],
-) -> Result<()> {
-    let has_body = schema_holon
-        .map(|holon| has_schema_body(holon) || !dependencies.is_empty())
-        .unwrap_or(!dependencies.is_empty());
-
-    if !has_body {
-        out.push_str(&format!("schema {}\n", schema_name));
-        return Ok(());
-    }
-
-    out.push_str(&format!("schema {} {{\n", schema_name));
-    for dep in dependencies {
-        out.push_str(&format!("{}depends_on {}\n", INDENT, dep));
-    }
-    if let Some(holon) = schema_holon {
-        if let Some(header) = render_header_block(&holon.properties) {
-            render_block(out, 1, &header);
-        }
-        if bool_property(&holon.properties, "allows_additional_properties") {
-            out.push_str(&format!("{}allows_additional_properties\n", INDENT));
-        }
-        if bool_property(&holon.properties, "allows_additional_relationships") {
-            out.push_str(&format!("{}allows_additional_relationships\n", INDENT));
-        }
-    }
-    out.push_str("}\n");
-    Ok(())
-}
-
-fn has_schema_body(holon: &HolonRecord) -> bool {
-    render_header_block(&holon.properties).is_some()
-        || bool_property(&holon.properties, "allows_additional_properties")
-        || bool_property(&holon.properties, "allows_additional_relationships")
-}
-
-fn group_enum_variants<'a>(holons: &'a [HolonRecord]) -> HashMap<String, Vec<&'a HolonRecord>> {
-    let mut groups: HashMap<String, Vec<&HolonRecord>> = HashMap::new();
-    for holon in holons {
-        if matches!(classify(holon), DescriptorKind::Variant) {
-            if let Some(enum_name) = variant_of(holon) {
-                groups.entry(enum_name).or_default().push(holon);
-            }
-        }
-    }
-    groups
-}
-
-fn is_grouped_variant(holon: &HolonRecord, groups: &HashMap<String, Vec<&HolonRecord>>) -> bool {
-    variant_of(holon)
-        .map(|enum_name| groups.get(&enum_name).is_some())
-        .unwrap_or(false)
-        && has_variant_of(holon)
-}
-
-fn render_descriptor(
-    out: &mut String,
-    holon: &HolonRecord,
-    enum_variant_groups: &HashMap<String, Vec<&HolonRecord>>,
-) -> Result<()> {
-    match classify(holon) {
-        DescriptorKind::Value => render_value(out, holon),
-        DescriptorKind::Enum => render_enum(out, holon, enum_variant_groups),
-        DescriptorKind::Property => render_property(out, holon),
-        DescriptorKind::Relationship { inverse } => render_relationship(out, holon, inverse),
-        DescriptorKind::Variant => render_variant(out, holon),
-        DescriptorKind::Holon => render_holon(out, holon),
-        DescriptorKind::Schema => Ok(()),
-    }
-}
-
-fn render_value(out: &mut String, holon: &HolonRecord) -> Result<()> {
-    let abstract_flag = bool_property(&holon.properties, "is_abstract_type");
-    let mut line = String::new();
-    if abstract_flag {
-        line.push_str("abstract ");
-    }
-    line.push_str(&format!("value {}", descriptor_name(holon)));
-    let mut clauses = Vec::new();
-    if let Some(parent) = extends_target(holon) {
-        if parent != "ValueType" {
-            clauses.push(format!("extends {}", parent));
-        }
-    }
-    append_descriptor_body(out, &line, &clauses, render_header_block(&holon.properties).as_deref())?;
-    Ok(())
-}
-
-fn render_enum(
-    out: &mut String,
-    holon: &HolonRecord,
-    enum_variant_groups: &HashMap<String, Vec<&HolonRecord>>,
-) -> Result<()> {
-    let abstract_flag = bool_property(&holon.properties, "is_abstract_type");
-    let mut line = String::new();
-    if abstract_flag {
-        line.push_str("abstract ");
-    }
-    line.push_str(&format!("enum {}", descriptor_name(holon)));
-    let mut clauses = Vec::new();
-    if let Some(parent) = extends_target(holon) {
-        if parent != "ValueType" {
-            clauses.push(format!("extends {}", parent));
-        }
-    }
-    let mut body_lines = Vec::new();
-    if let Some(header) = render_header_block(&holon.properties) {
-        body_lines.extend(header);
-    }
-    if let Some(variants) = enum_variant_groups.get(&descriptor_name(holon)) {
-        body_lines.push("variants {".to_string());
-        for variant in variants {
-            let rendered = render_variant_declaration(variant)?;
-            body_lines.extend(rendered.lines().map(|line| format!("{}{}", INDENT, line)));
-        }
-        body_lines.push("}".to_string());
-    }
-    append_descriptor_body_with_prebuilt(out, &line, &clauses, &body_lines)?;
-    Ok(())
-}
-
-fn render_property(out: &mut String, holon: &HolonRecord) -> Result<()> {
-    let abstract_flag = bool_property(&holon.properties, "is_abstract_type");
-    let mut line = String::new();
-    if abstract_flag {
-        line.push_str("abstract ");
-    }
-    line.push_str(&format!("property {}", descriptor_name(holon)));
-    let mut clauses = Vec::new();
-    if let Some(value_type) = relationship_targets(holon, "ValueType").into_iter().next() {
-        clauses.push(format!("value {}", value_type));
-    }
-    if let Some(parent) = extends_target(holon) {
-        if parent != "PropertyType" {
-            clauses.push(format!("extends {}", parent));
-        }
-    }
-    append_descriptor_body(out, &line, &clauses, render_header_block(&holon.properties).as_deref())?;
-    Ok(())
-}
-
-fn render_relationship(out: &mut String, holon: &HolonRecord, inverse: bool) -> Result<()> {
-    let abstract_flag = bool_property(&holon.properties, "is_abstract_type");
-    let mut line = String::new();
-    if abstract_flag {
-        line.push_str("abstract ");
-    }
-    if inverse {
-        line.push_str("inverse relationship ");
-    } else if bool_property(&holon.properties, "is_definitional") {
-        line.push_str("def relationship ");
-    } else {
-        line.push_str("relationship ");
-    }
-    line.push_str(&descriptor_name(holon));
-
-    let mut clauses = Vec::new();
-    if let Some(source) = relationship_targets(holon, "SourceType").into_iter().next() {
-        clauses.push(format!("source {}", source));
-    }
-    if let Some(target) = relationship_targets(holon, "TargetType").into_iter().next() {
-        clauses.push(format!("target {}", target));
-    }
-    if let Some(inverse_of) = relationship_targets(holon, "InverseOf").into_iter().next() {
-        clauses.push(format!("inverse {}", relationship_label(&inverse_of)));
-    }
-    if let Some(keyrule) = relationship_targets(holon, "UsesKeyRule").into_iter().next() {
-        clauses.push(format!("keyrule {}", keyrule));
-    }
-    if let (Some(min), Some(max)) = (
-        integer_property(&holon.properties, "min_cardinality"),
-        integer_property(&holon.properties, "max_cardinality"),
-    ) {
-        clauses.push(format!("cardinality {}..{}", min, max));
-    }
-    if bool_property(&holon.properties, "is_ordered") {
-        clauses.push("ordered".to_string());
-    }
-    if bool_property(&holon.properties, "allows_duplicates") {
-        clauses.push("duplicates".to_string());
-    }
-    if let Some(deletion) = string_property(&holon.properties, "deletion_semantic") {
-        clauses.push(format!("deletion_semantic {}", deletion));
-    }
-    append_descriptor_body(out, &line, &clauses, render_header_block(&holon.properties).as_deref())?;
-    Ok(())
-}
-
-fn render_variant(out: &mut String, holon: &HolonRecord) -> Result<()> {
-    let rendered = render_variant_declaration(holon)?;
-    out.push_str(&rendered);
-    Ok(())
-}
-
-fn render_holon(out: &mut String, holon: &HolonRecord) -> Result<()> {
-    let abstract_flag = bool_property(&holon.properties, "is_abstract_type");
-    let mut line = String::new();
-    if abstract_flag {
-        line.push_str("abstract ");
-    }
-    line.push_str(&format!("holon {}", descriptor_name(holon)));
-    let mut clauses = Vec::new();
-    if let Some(parent) = extends_target(holon) {
-        if parent != "HolonType" {
-            clauses.push(format!("extends {}", parent));
-        }
-    }
-    if bool_property(&holon.properties, "allows_additional_properties") {
-        clauses.push("allows_additional_properties".to_string());
-    }
-    if bool_property(&holon.properties, "allows_additional_relationships") {
-        clauses.push("allows_additional_relationships".to_string());
-    }
-    let mut body_lines = Vec::new();
-    if let Some(header) = render_header_block(&holon.properties) {
-        body_lines.extend(header);
-    }
-    let properties = relationship_targets(holon, "InstanceProperties");
-    if !properties.is_empty() {
-        body_lines.push("properties {".to_string());
-        for property in properties {
-            body_lines.push(format!("{}{}", INDENT, property));
-        }
-        body_lines.push("}".to_string());
-    }
-    let relationships = relationship_targets(holon, "InstanceRelationships");
-    if !relationships.is_empty() {
-        body_lines.push("relationships {".to_string());
-        for relationship in relationships {
-            body_lines.push(format!("{}{}", INDENT, relationship_ref(&relationship)));
-        }
-        body_lines.push("}".to_string());
-    }
-    append_descriptor_body_with_prebuilt(out, &line, &clauses, &body_lines)?;
-    Ok(())
-}
-
-fn render_variant_declaration(holon: &HolonRecord) -> Result<String> {
-    let mut lines = Vec::new();
-    let name = variant_name(holon);
-    lines.push(format!("variant {}", name));
-    if let Some(header) = render_header_block(&holon.properties) {
-        lines.extend(header);
-    }
-    let rendered = if lines.len() == 1 {
-        format!("variant {}\n", name)
-    } else {
-        let mut out = String::new();
-        out.push_str(&format!("variant {} {{\n", name));
-        for line in lines.iter().skip(1) {
-            out.push_str(&format!("{}{}\n", INDENT, line));
-        }
-        out.push_str("}\n");
-        out
-    };
-    Ok(rendered)
-}
-
-fn append_descriptor_body(
-    out: &mut String,
-    head: &str,
-    clauses: &[String],
-    header: Option<&[String]>,
-) -> Result<()> {
-    if clauses.is_empty() && header.is_none() {
-        out.push_str(head);
-        out.push('\n');
-        return Ok(());
-    }
-
-    out.push_str(head);
-    out.push_str(" {\n");
-    for clause in clauses {
-        out.push_str(&format!("{}{}\n", INDENT, clause));
-    }
-    if let Some(header) = header {
-        for line in header {
-            out.push_str(&format!("{}{}\n", INDENT, line));
-        }
-    }
-    out.push_str("}\n");
-    Ok(())
-}
-
-fn append_descriptor_body_with_prebuilt(
-    out: &mut String,
-    head: &str,
-    clauses: &[String],
-    body_lines: &[String],
-) -> Result<()> {
-    if clauses.is_empty() && body_lines.is_empty() {
-        out.push_str(head);
-        out.push('\n');
-        return Ok(());
-    }
-
-    out.push_str(head);
-    out.push_str(" {\n");
-    for clause in clauses {
-        out.push_str(&format!("{}{}\n", INDENT, clause));
-    }
-    for line in body_lines {
-        out.push_str(&format!("{}{}\n", INDENT, line));
-    }
-    out.push_str("}\n");
-    Ok(())
-}
-
-fn render_block(out: &mut String, indent_level: usize, block_lines: &[String]) {
-    for line in block_lines {
-        out.push_str(&format!("{}{}\n", INDENT.repeat(indent_level), line));
-    }
-}
-
-fn render_header_block(properties: &BTreeMap<String, Value>) -> Option<Vec<String>> {
-    let mut lines = Vec::new();
-    if let Some(description) = string_property(properties, "description") {
-        lines.push("header {".to_string());
-        lines.push(format!("{}description: {}", INDENT, json_literal(&description)));
-        push_optional_header_field(
-            &mut lines,
-            "display_name",
-            string_property(properties, "display_name"),
-        );
-        push_optional_header_field(
-            &mut lines,
-            "display_plural",
-            string_property(properties, "display_name_plural"),
-        );
-        push_optional_header_field(&mut lines, "plural", string_property(properties, "type_name_plural"));
-        lines.push("}".to_string());
-    } else if let Some(display_name) = string_property(properties, "display_name") {
-        lines.push("header {".to_string());
-        lines.push(format!("{}display_name: {}", INDENT, json_literal(&display_name)));
-        push_optional_header_field(
-            &mut lines,
-            "display_plural",
-            string_property(properties, "display_name_plural"),
-        );
-        push_optional_header_field(&mut lines, "plural", string_property(properties, "type_name_plural"));
-        lines.push("}".to_string());
-    } else {
-        return None;
-    }
-    Some(lines)
-}
-
-fn push_optional_header_field(lines: &mut Vec<String>, field: &str, value: Option<String>) {
-    if let Some(value) = value {
-        lines.push(format!("{}{}: {}", INDENT, field, json_literal(&value)));
-    }
-}
-
-fn classify(holon: &HolonRecord) -> DescriptorKind {
+fn classify(holon: &HolonRecord) -> JsonDescriptorKind {
     if holon.descriptor_type == "Schema.HolonType" {
-        return DescriptorKind::Schema;
+        return JsonDescriptorKind::Schema;
     }
 
     if has_relationship(holon, "SourceType") && has_relationship(holon, "TargetType") {
-        return DescriptorKind::Relationship { inverse: has_relationship(holon, "InverseOf") };
+        return JsonDescriptorKind::Relationship { inverse: has_relationship(holon, "InverseOf") };
     }
 
     if has_relationship(holon, "ValueType") || descriptor_name(holon).ends_with("PropertyType") {
-        return DescriptorKind::Property;
+        return JsonDescriptorKind::Property;
     }
 
-    match holon
-        .properties
-        .get("instance_type_kind")
-        .and_then(Value::as_str)
-        .unwrap_or("")
-    {
-        "TypeKind.Value.Enum" => DescriptorKind::Enum,
-        "TypeKind.EnumVariant" => DescriptorKind::Variant,
-        kind if kind.starts_with("TypeKind.Value.") => DescriptorKind::Value,
-        _ if descriptor_name(holon).ends_with("ValueType") => DescriptorKind::Value,
-        _ => DescriptorKind::Holon,
+    match holon.properties.get("instance_type_kind").and_then(Value::as_str).unwrap_or("") {
+        "TypeKind.Value.Enum" => JsonDescriptorKind::Enum,
+        "TypeKind.EnumVariant" => JsonDescriptorKind::Variant,
+        kind if kind.starts_with("TypeKind.Value.") => JsonDescriptorKind::Value,
+        _ if descriptor_name(holon).ends_with("ValueType") => JsonDescriptorKind::Value,
+        _ => JsonDescriptorKind::Holon,
     }
 }
 
 fn descriptor_name(holon: &HolonRecord) -> String {
     string_property(&holon.properties, "type_name").unwrap_or_else(|| holon.key.clone())
-}
-
-fn variant_name(holon: &HolonRecord) -> String {
-    if let Some(name) = string_property(&holon.properties, "type_name") {
-        if let Some((_, suffix)) = name.rsplit_once('.') {
-            return suffix.to_string();
-        }
-        return name;
-    }
-    holon
-        .key
-        .rsplit_once('.')
-        .map(|(_, suffix)| suffix.to_string())
-        .unwrap_or_else(|| holon.key.clone())
 }
 
 fn has_relationship(holon: &HolonRecord, name: &str) -> bool {
@@ -664,18 +826,6 @@ fn relationship_ref(reference: &str) -> String {
     } else {
         reference.to_string()
     }
-}
-
-fn variant_of(holon: &HolonRecord) -> Option<String> {
-    relationship_targets(holon, "VariantOf").into_iter().next()
-}
-
-fn has_variant_of(holon: &HolonRecord) -> bool {
-    has_relationship(holon, "VariantOf")
-}
-
-fn extends_target(holon: &HolonRecord) -> Option<String> {
-    relationship_targets(holon, "Extends").into_iter().next()
 }
 
 fn bool_property(properties: &BTreeMap<String, Value>, key: &str) -> bool {
