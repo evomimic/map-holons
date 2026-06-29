@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-29T12:11:39",
+    "generated_at": "2026-06-29T16:09:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -1807,6 +1807,20 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "InvocationSource.ClientCommand"
+            },
+            {
+              "$ref": "InvocationSource.Internal"
+            },
+            {
+              "$ref": "InvocationSource.TrustChannel"
+            }
+          ]
         }
       ]
     },
@@ -1833,12 +1847,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "InvocationSource"
           }
         }
       ]
@@ -1867,12 +1875,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "InvocationSource"
-          }
         }
       ]
     },
@@ -1899,12 +1901,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "InvocationSource"
           }
         }
       ]
@@ -1933,6 +1929,17 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "DanceDiagnosticSeverity.Info"
+            },
+            {
+              "$ref": "DanceDiagnosticSeverity.Warning"
+            }
+          ]
         }
       ]
     },
@@ -1959,12 +1966,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DanceDiagnosticSeverity"
           }
         }
       ]
@@ -1993,12 +1994,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DanceDiagnosticSeverity"
-          }
         }
       ]
     },
@@ -2026,6 +2021,44 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "ResponseStatusCode.Accepted"
+            },
+            {
+              "$ref": "ResponseStatusCode.BadRequest"
+            },
+            {
+              "$ref": "ResponseStatusCode.Conflict"
+            },
+            {
+              "$ref": "ResponseStatusCode.Forbidden"
+            },
+            {
+              "$ref": "ResponseStatusCode.NotFound"
+            },
+            {
+              "$ref": "ResponseStatusCode.NotImplemented"
+            },
+            {
+              "$ref": "ResponseStatusCode.OK"
+            },
+            {
+              "$ref": "ResponseStatusCode.ServerError"
+            },
+            {
+              "$ref": "ResponseStatusCode.ServiceUnavailable"
+            },
+            {
+              "$ref": "ResponseStatusCode.Unauthorized"
+            },
+            {
+              "$ref": "ResponseStatusCode.UnprocessableEntity"
+            }
+          ]
         }
       ]
     },
@@ -2052,12 +2085,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
           }
         }
       ]
@@ -2086,12 +2113,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
-          }
         }
       ]
     },
@@ -2118,12 +2139,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
           }
         }
       ]
@@ -2152,12 +2167,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
-          }
         }
       ]
     },
@@ -2184,12 +2193,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
           }
         }
       ]
@@ -2218,12 +2221,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
-          }
         }
       ]
     },
@@ -2250,12 +2247,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
           }
         }
       ]
@@ -2284,12 +2275,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
-          }
         }
       ]
     },
@@ -2316,12 +2301,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
           }
         }
       ]
@@ -2350,12 +2329,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
-          }
         }
       ]
     },
@@ -2382,12 +2355,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "ResponseStatusCode"
           }
         }
       ]
@@ -2416,6 +2383,23 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "DanceEngine.Builtin"
+            },
+            {
+              "$ref": "DanceEngine.Process"
+            },
+            {
+              "$ref": "DanceEngine.RustDylib"
+            },
+            {
+              "$ref": "DanceEngine.WasmWasi"
+            }
+          ]
         }
       ]
     },
@@ -2442,12 +2426,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DanceEngine"
           }
         }
       ]
@@ -2476,12 +2454,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DanceEngine"
-          }
         }
       ]
     },
@@ -2509,12 +2481,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DanceEngine"
-          }
         }
       ]
     },
@@ -2541,12 +2507,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DanceEngine"
           }
         }
       ]
@@ -2683,6 +2643,17 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "CommitRequestStatus.Complete"
+            },
+            {
+              "$ref": "CommitRequestStatus.Incomplete"
+            }
+          ]
         }
       ]
     },
@@ -2710,12 +2681,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "CommitRequestStatus"
-          }
         }
       ]
     },
@@ -2742,12 +2707,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "CommitRequestStatus"
           }
         }
       ]

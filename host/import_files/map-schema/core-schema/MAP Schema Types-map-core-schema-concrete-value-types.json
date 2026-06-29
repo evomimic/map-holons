@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-29T12:11:39",
+    "generated_at": "2026-06-29T16:09:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-concrete-value-types.csv"
@@ -268,6 +268,20 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "DeletionSemantic.Allow"
+            },
+            {
+              "$ref": "DeletionSemantic.Block"
+            },
+            {
+              "$ref": "DeletionSemantic.Cascade"
+            }
+          ]
         }
       ]
     },
@@ -292,12 +306,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DeletionSemantic"
           }
         }
       ]
@@ -324,12 +332,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DeletionSemantic"
-          }
         }
       ]
     },
@@ -354,12 +356,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "DeletionSemantic"
           }
         }
       ]
@@ -388,6 +384,47 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "TypeKind.Collection"
+            },
+            {
+              "$ref": "TypeKind.Dance"
+            },
+            {
+              "$ref": "TypeKind.EnumVariant"
+            },
+            {
+              "$ref": "TypeKind.Holon"
+            },
+            {
+              "$ref": "TypeKind.Property"
+            },
+            {
+              "$ref": "TypeKind.Relationship"
+            },
+            {
+              "$ref": "TypeKind.Value.Array"
+            },
+            {
+              "$ref": "TypeKind.Value.Boolean"
+            },
+            {
+              "$ref": "TypeKind.Value.Bytes"
+            },
+            {
+              "$ref": "TypeKind.Value.Enum"
+            },
+            {
+              "$ref": "TypeKind.Value.Integer"
+            },
+            {
+              "$ref": "TypeKind.Value.String"
+            }
+          ]
         }
       ]
     },
@@ -412,12 +449,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
           }
         }
       ]
@@ -444,12 +475,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
-          }
         }
       ]
     },
@@ -474,12 +499,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
           }
         }
       ]
@@ -506,12 +525,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
-          }
         }
       ]
     },
@@ -536,12 +549,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
           }
         }
       ]
@@ -568,12 +575,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
-          }
         }
       ]
     },
@@ -598,12 +599,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
           }
         }
       ]
@@ -630,12 +625,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
-          }
         }
       ]
     },
@@ -660,12 +649,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
           }
         }
       ]
@@ -692,12 +675,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
-          }
         }
       ]
     },
@@ -723,12 +700,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
-          }
         }
       ]
     },
@@ -753,12 +724,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "TypeKind"
           }
         }
       ]
@@ -787,6 +752,12 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": {
+            "$ref": "CollectionType.HolonArray"
+          }
         }
       ]
     },
@@ -813,12 +784,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "CollectionType"
           }
         }
       ]

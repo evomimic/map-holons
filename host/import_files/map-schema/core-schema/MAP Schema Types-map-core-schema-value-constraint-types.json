@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-29T12:11:39",
+    "generated_at": "2026-06-29T16:21:14",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-value-constraint-types.csv"
@@ -640,6 +640,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(StringValueConstraint.ValueConstraintType)-[Constrains]->(StringValueType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "StringValueType"
@@ -681,6 +687,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(IntegerValueConstraint.ValueConstraintType)-[Constrains]->(IntegerValueType)"
           }
         },
         {
@@ -728,6 +740,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(BytesValueConstraint.ValueConstraintType)-[Constrains]->(BytesValueType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "BytesValueType"
@@ -769,6 +787,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(ValueArrayConstraint.ValueConstraintType)-[Constrains]->(ValueArrayValueType)"
           }
         },
         {

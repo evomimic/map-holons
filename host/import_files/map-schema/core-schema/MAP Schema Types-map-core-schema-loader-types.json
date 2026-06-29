@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-29T12:11:39",
+    "generated_at": "2026-06-29T16:09:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -935,6 +935,20 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "LoadCommitStatus.Complete"
+            },
+            {
+              "$ref": "LoadCommitStatus.Incomplete"
+            },
+            {
+              "$ref": "LoadCommitStatus.Skipped"
+            }
+          ]
         }
       ]
     },
@@ -959,12 +973,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "LoadCommitStatus"
           }
         }
       ]
@@ -991,12 +999,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "LoadCommitStatus"
-          }
         }
       ]
     },
@@ -1021,12 +1023,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "LoadCommitStatus"
           }
         }
       ]
