@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-29T16:09:11",
+    "generated_at": "2026-06-29T16:41:40",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -872,7 +872,7 @@
         "description": "Inverse of InverseOf, from DeclaredRelationshipType to InverseRelationshipType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "is_definitional": false,
+        "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
@@ -922,7 +922,7 @@
         "description": "Links an inverse relationship type to the declared relationship it reverses.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "is_definitional": true,
+        "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
