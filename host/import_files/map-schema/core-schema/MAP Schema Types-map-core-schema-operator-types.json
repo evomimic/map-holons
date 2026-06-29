@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-25T11:49:04",
+    "generated_at": "2026-06-29T12:11:39",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-types.csv"
@@ -91,6 +91,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(OperatorType.HolonType)-[AffordedBy]->(ValueType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "ValueType"
@@ -132,12 +138,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ValueType)-[AffordsOperator]->(OperatorType.HolonType)"
           }
         },
         {

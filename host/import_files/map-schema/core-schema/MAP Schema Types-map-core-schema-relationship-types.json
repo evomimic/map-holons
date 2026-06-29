@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-25T11:49:04",
+    "generated_at": "2026-06-29T12:11:39",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.csv"
@@ -41,6 +41,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)"
           }
         },
         {
@@ -89,12 +95,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "Schema.HolonType"
@@ -137,6 +137,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor.HolonType)"
           }
         },
         {
@@ -184,12 +190,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "PropertyType"
@@ -231,6 +231,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor.HolonType)"
           }
         },
         {
@@ -278,12 +284,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "DeclaredRelationshipType"
@@ -325,6 +325,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(TypeDescriptor.HolonType)-[Instances]->(HolonType)"
           }
         },
         {
@@ -372,12 +378,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "TypeDescriptor.HolonType"
@@ -419,6 +419,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonSpace.HolonType)-[Owns]->(HolonType)"
           }
         },
         {
@@ -466,12 +472,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonType)-[OwnedBy]->(HolonSpace.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonSpace.HolonType"
@@ -513,6 +513,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(PropertyType)-[PropertyOf]->(HolonType)"
           }
         },
         {
@@ -560,12 +566,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonType)-[Properties]->(PropertyType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "PropertyType"
@@ -607,6 +607,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(ValueType)-[ValueTypeFor]->(PropertyType)"
           }
         },
         {
@@ -654,12 +660,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(PropertyType)-[ValueType]->(ValueType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "ValueType"
@@ -701,6 +701,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(TypeDescriptor.HolonType)-[SourceOf]->(MetaRelationshipType)"
           }
         },
         {
@@ -748,12 +754,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "TypeDescriptor.HolonType"
@@ -795,6 +795,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(TypeDescriptor.HolonType)-[TargetOf]->(MetaRelationshipType)"
           }
         },
         {
@@ -842,12 +848,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "TypeDescriptor.HolonType"
@@ -857,50 +857,6 @@
           "name": "TargetType",
           "target": {
             "$ref": "MetaRelationshipType"
-          }
-        }
-      ]
-    },
-    {
-      "key": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)",
-      "type": "TypeDescriptor.HolonType",
-      "properties": {
-        "type_name": "InverseOf",
-        "type_name_plural": "InverseOfRelationships",
-        "display_name": "InverseOf",
-        "display_name_plural": "InverseOf Relationships",
-        "description": "Links an inverse relationship type to the declared relationship it reverses.",
-        "instance_type_kind": "TypeKind.Relationship",
-        "is_abstract_type": false,
-        "is_definitional": true,
-        "is_ordered": false,
-        "allows_duplicates": false,
-        "min_cardinality": 1,
-        "max_cardinality": 1
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "DeclaredRelationshipType"
-          }
-        },
-        {
-          "name": "SourceType",
-          "target": {
-            "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "TargetType",
-          "target": {
-            "$ref": "DeclaredRelationshipType"
           }
         }
       ]
@@ -932,11 +888,11 @@
         {
           "name": "Extends",
           "target": {
-            "$ref": "InverseRelationshipType"
+            "$ref": "DeclaredRelationshipType"
           }
         },
         {
-          "name": "InverseOf",
+          "name": "HasInverse",
           "target": {
             "$ref": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
           }
@@ -951,6 +907,50 @@
           "name": "TargetType",
           "target": {
             "$ref": "InverseRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InverseOf",
+        "type_name_plural": "InverseOfRelationships",
+        "display_name": "InverseOf",
+        "display_name_plural": "InverseOf Relationships",
+        "description": "Links an inverse relationship type to the declared relationship it reverses.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
           }
         }
       ]
@@ -983,6 +983,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(EnumVariantValueType)-[VariantOf]->(EnumValueType)"
           }
         },
         {
@@ -1030,12 +1036,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(EnumValueType)-[Variants]->(EnumVariantValueType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "EnumVariantValueType"
@@ -1077,6 +1077,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(Schema.HolonType)-[Dependents]->(Schema.HolonType)"
           }
         },
         {
@@ -1124,12 +1130,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "Schema.HolonType"
@@ -1171,6 +1171,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(ValueType)-[ElementValueTypeFor]->(ValueArrayValueType)"
           }
         },
         {
@@ -1218,12 +1224,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ValueArrayValueType)-[ElementValueType]->(ValueType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "ValueType"
@@ -1265,6 +1265,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(TypeDescriptor.HolonType)-[ExtendedBy]->(TypeDescriptor.HolonType)"
           }
         },
         {
@@ -1312,12 +1318,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "TypeDescriptor.HolonType"
@@ -1362,6 +1362,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "FormatRule.KeyRuleType"
@@ -1403,12 +1409,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
           }
         },
         {
@@ -1457,6 +1457,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(Transaction.HolonType)-[TransactionModelAffordedBy]->(HolonSpace.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonSpace.HolonType"
@@ -1499,12 +1505,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)"
           }
         },
         {
@@ -1553,6 +1553,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[MemberOfCollection]->(HolonCollection.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonCollection.HolonType"
@@ -1595,12 +1601,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonCollection.HolonType)-[CollectionMembers]->(HolonType)"
           }
         },
         {
@@ -1649,6 +1649,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[ElementTypeFor]->(HolonCollection.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonCollection.HolonType"
@@ -1691,12 +1697,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonCollection.HolonType)-[ElementType]->(HolonType)"
           }
         },
         {
@@ -1744,6 +1744,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[Successor]->(HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonType"
@@ -1785,12 +1791,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonType)-[Predecessor]->(HolonType)"
           }
         },
         {

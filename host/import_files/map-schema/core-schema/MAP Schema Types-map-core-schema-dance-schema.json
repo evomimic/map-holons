@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-25T11:49:04",
+    "generated_at": "2026-06-29T12:11:39",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -368,6 +368,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonType"
@@ -409,12 +415,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonType)-[AffordsDance]->(DanceType.HolonType)"
           }
         },
         {
@@ -460,6 +460,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "TypeDescriptor.HolonType"
@@ -499,12 +505,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(TypeDescriptor.HolonType)-[ImplementsDance]->(DanceImplementation.HolonType)"
           }
         },
         {
@@ -552,6 +552,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceImplementation.HolonType"
@@ -593,12 +599,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)"
           }
         },
         {
@@ -646,6 +646,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[DanceInputFor]->(DanceType.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceType.HolonType"
@@ -687,12 +693,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceType.HolonType)-[DanceInput]->(HolonType)"
           }
         },
         {
@@ -740,6 +740,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(DanceResponseType.HolonType)-[ResponseFor]->(DanceType.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceType.HolonType"
@@ -781,12 +787,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)"
           }
         },
         {
@@ -834,6 +834,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[ResponseBodyFor]->(DanceResponseType.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceResponseType.HolonType"
@@ -875,12 +881,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType)"
           }
         },
         {
@@ -928,6 +928,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceInvocation.HolonType"
@@ -969,12 +975,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)"
           }
         },
         {
@@ -1022,6 +1022,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[AffordsDanceInvocation]->(DanceInvocation.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceInvocation.HolonType"
@@ -1063,12 +1069,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceInvocation.HolonType)-[AffordingHolon]->(HolonType)"
           }
         },
         {
@@ -1116,6 +1116,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[RequestFor]->(DanceInvocation.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceInvocation.HolonType"
@@ -1157,12 +1163,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceInvocation.HolonType)-[Request]->(HolonType)"
           }
         },
         {
@@ -1210,6 +1210,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "DanceResponseType.HolonType"
@@ -1251,12 +1257,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
           }
         },
         {
@@ -2817,6 +2817,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[SavedByCommit]->(CommitResponse.Projection)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "CommitResponse.Projection"
@@ -2859,12 +2865,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(CommitResponse.Projection)-[SavedHolons]->(HolonType)"
           }
         },
         {
@@ -2913,6 +2913,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[AbandonedByCommit]->(CommitResponse.Projection)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "CommitResponse.Projection"
@@ -2955,12 +2961,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType)"
           }
         },
         {

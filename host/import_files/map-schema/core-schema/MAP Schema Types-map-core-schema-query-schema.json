@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-25T11:49:04",
+    "generated_at": "2026-06-29T12:11:39",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-query-schema.csv"
@@ -944,6 +944,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryGraph.HolonType)-[GraphForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryDanceRequest.HolonType"
@@ -985,12 +991,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType)"
           }
         },
         {
@@ -1038,6 +1038,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(ExecutionBinding.HolonType)-[InitialBindingForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryDanceRequest.HolonType"
@@ -1079,12 +1085,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)"
           }
         },
         {
@@ -1132,6 +1132,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryStep.HolonType)-[StepInQueryGraph]->(QueryGraph.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryGraph.HolonType"
@@ -1173,12 +1179,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType)"
           }
         },
         {
@@ -1226,6 +1226,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryBinding.HolonType)-[InputBindingForQueryGraph]->(QueryGraph.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryGraph.HolonType"
@@ -1267,12 +1273,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType)"
           }
         },
         {
@@ -1320,6 +1320,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryBinding.HolonType)-[ResultBindingForQueryGraph]->(QueryGraph.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryGraph.HolonType"
@@ -1361,12 +1367,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)"
           }
         },
         {
@@ -1414,6 +1414,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryStepKind.HolonType)-[StepKindFor]->(QueryStep.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStep.HolonType"
@@ -1455,12 +1461,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType)"
           }
         },
         {
@@ -1508,6 +1508,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryBinding.HolonType)-[InitialBindingUsedByStep]->(QueryStep.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStep.HolonType"
@@ -1549,12 +1555,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType)"
           }
         },
         {
@@ -1602,6 +1602,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryBinding.HolonType)-[OutputBindingForStep]->(QueryStep.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStep.HolonType"
@@ -1643,12 +1649,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType)"
           }
         },
         {
@@ -1696,6 +1696,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(Projection.HolonType)-[ParametersForStep]->(QueryStep.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStep.HolonType"
@@ -1737,12 +1743,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)"
           }
         },
         {
@@ -1790,6 +1790,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryStep.HolonType)-[StepDependedOnBy]->(QueryStep.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStep.HolonType"
@@ -1831,12 +1837,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType)"
           }
         },
         {
@@ -1884,6 +1884,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[InputTypeForStepKind]->(QueryStepKind.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStepKind.HolonType"
@@ -1925,12 +1931,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType)"
           }
         },
         {
@@ -1978,6 +1978,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[ResultTypeForStepKind]->(QueryStepKind.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStepKind.HolonType"
@@ -2019,12 +2025,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType)"
           }
         },
         {
@@ -2072,6 +2072,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(Projection.HolonType)-[ParameterTypeForStepKind]->(QueryStepKind.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "QueryStepKind.HolonType"
@@ -2113,12 +2119,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)"
           }
         },
         {
@@ -2166,6 +2166,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryDanceRequest.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "ExecutionInstance.HolonType"
@@ -2207,12 +2213,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType)"
           }
         },
         {
@@ -2260,6 +2260,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(ExecutionBinding.HolonType)-[BindingForExecutionInstance]->(ExecutionInstance.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "ExecutionInstance.HolonType"
@@ -2301,12 +2307,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType)"
           }
         },
         {
@@ -2354,6 +2354,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(QueryBinding.HolonType)-[ExecutionVariableBinding]->(ExecutionBinding.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "ExecutionBinding.HolonType"
@@ -2395,12 +2401,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType)"
           }
         },
         {
@@ -2448,6 +2448,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[CollectionBoundIn]->(ExecutionBinding.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "ExecutionBinding.HolonType"
@@ -2489,12 +2495,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)"
           }
         },
         {
@@ -2542,6 +2542,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "ExecutionInstance.HolonType"
@@ -2583,12 +2589,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)"
           }
         },
         {
