@@ -2,7 +2,6 @@ use crate::config::providers::holochain::{CellDetail, HolochainConfig};
 use crate::config::StorageProvider;
 use crate::runtime::RuntimeInitiatorState;
 use crate::setup::common_setup::{register_receptor, serialize_props};
-use crate::setup::providers::holochain::plugins::hc_dev_mode_enabled;
 use crate::setup::window_setup::ProviderWindowSetup;
 use async_trait::async_trait;
 use client_shared_types::base_receptor::ReceptorType;
@@ -30,7 +29,7 @@ impl HolochainSetup {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };
         let app_id = &hc_cfg.app_id;
-        let dev_mode = hc_dev_mode_enabled();
+        let dev_mode = crate::env::hc_dev_mode_enabled();
 
         let happ = load_happ_bundle(hc_cfg).map_err(|e| {
             tracing::error!("[HOLOCHAIN SETUP] Failed to load happ bundle: {}", e);

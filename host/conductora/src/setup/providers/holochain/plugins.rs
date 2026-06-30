@@ -12,7 +12,7 @@ pub fn holochain_plugin(
         network_config_from_storage_config(hc_cfg),
     );
     //.signal_url_configured(hc_cfg.signal_url.is_some());
-    if hc_dev_mode_enabled() {
+    if crate::env::hc_dev_mode_enabled() {
         let dir = dev_conductor_dir(provider_key, &hc_cfg.app_id)?;
         plugin_config = plugin_config.dev_mode(true).dev_data_root(dir);
     }
@@ -96,11 +96,4 @@ pub fn dev_conductor_dir(
         .map_err(|e| anyhow::anyhow!("Failed to create dev conductor root {:?}: {}", root, e))?;
 
     Ok(root.join(key))
-}
-
-pub fn hc_dev_mode_enabled() -> bool {
-    match std::env::var("HC_DEV_MODE") {
-        Ok(v) => matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"),
-        Err(_) => false,
-    }
 }

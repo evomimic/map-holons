@@ -24,9 +24,7 @@ impl LocalSetup {
         //let t_setup = std::time::Instant::now();
         let is_recovery = local_cfg.features.iter().any(|f| f == "recovery");
         if is_recovery {
-            //let receptor_cfg: BaseReceptor =
             Self::build_recovery_receptor(&handle, name, local_cfg).await?;
-            // register_receptor(&handle, receptor_cfg).await?;
         } else {
             return Err(anyhow::anyhow!(
                 "Local storage '{}' enabled without 'recovery' feature: Registering a non-recovery receptor is currently not allowed as we have not defined other local receptors.",name));
@@ -75,7 +73,12 @@ impl LocalSetup {
 /// - Returns `Ok(Some(store))` if a snapshot store was successfully created.
 /// - Returns `Err` if the app data directory cannot be resolved or the store cannot be created.
 ///
-/// The database is placed at: `{app_data_dir}/storage/{name}/snapshots.db`
+/// The database is placed at:
+/// - production: `{app_data_dir}/storage/{name}/snapshots.db`
+/// - HC dev mode: `/tmp/conductora_dev/local_recovery/{name}/snapshots.db`
+///
+/// The dev path mirrors the Holochain conductor dev-data convention, so `clean:hc:deep`
+/// wipes both automatically.
 ///
 /// Blocking I/O (dir creation + SQLite open) is offloaded via `spawn_blocking`.
 pub async fn create_snapshot_store<C: ProviderConfig>(
@@ -84,12 +87,15 @@ pub async fn create_snapshot_store<C: ProviderConfig>(
     name: &str,
 ) -> Result<Arc<TransactionRecoveryStore>, anyhow::Error> {
     // Path resolution is non-blocking — do it on the async thread
-    let app_data_dir = handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| anyhow::anyhow!("Failed to resolve app data dir: {}", e))?;
-
-    let snapshot_dir = app_data_dir.join("storage").join(name);
+    let snapshot_dir = if crate::env::hc_dev_mode_enabled() {
+        std::path::PathBuf::from("/tmp/conductora_dev/local_recovery").join(name)
+    } else {
+        let app_data_dir = handle
+            .path()
+            .app_data_dir()
+            .map_err(|e| anyhow::anyhow!("Failed to resolve app data dir: {}", e))?;
+        app_data_dir.join("storage").join(name)
+    };
     let db_path = snapshot_dir.join("snapshots.db");
     tracing::info!("[SNAPSHOT] Creating snapshot store at: {:?}", db_path);
 

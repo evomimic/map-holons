@@ -9,11 +9,11 @@
     "host/map-sdk"
   ],
   "scripts": {
-    "start": "npm run build:happ && RUST_LOG=${RUST_LOG:-host:warn} WASM_LOG=${WASM_LOG:-warn} HC_DEV_MODE=${HC_DEV_MODE:-1} npm run start -w map-host",
-    "start:info": "npm run build:happ && RUST_LOG=host=info npm run start:host",
-    "start:debug": "npm run build:happ && RUST_LOG=host=debug npm run start:host",
-    "start:host": "npm run start -w map-host",
-    "start:nobuild": "RUST_LOG=host:debug WASM_LOG=info HC_DEV_MODE=1 npm run start -w map-host",
+    "start": "npm run build:happ && RUST_LOG=host:warn WASM_LOG=warn npm run start:host",
+    "start:info": "npm run build:happ && RUST_LOG=host:info WASM_LOG=info npm run start:host",
+    "start:debug": "npm run build:happ && RUST_LOG=host:debug WASM_LOG=info npm run start:host",
+    "start:host": "HC_DEV_MODE=1 npm run start -w map-host",
+    "start:production": "npm run build:happ && RUST_LOG=host:info WASM_LOG=warn npm run start -w map-host",
 
     "build": "npm run build:happ && npm run build:host",
     "build:host": "npm run build -w map-host",
@@ -42,7 +42,8 @@
     "clean": "npm run clean:rust:deep && npm run clean:hc:deep -w map-host && npm run clean:ui",
     "clean:rust": "npm run clean:rust -w map-host && npm run clean:rust -w map-happ",
     "clean:rust:deep": "npm run clean:rust:deep -w map-host && npm run clean:rust:deep -w map-happ",
-    "clean:ui": "npm run clean:ui -w map-host"
+    "clean:ui": "npm run clean:ui -w map-host",
+    "clean:recovery": "bash scripts/clean-recovery.sh"
   },
   "devDependencies": {
     "autoprefixer": "^10.4",
