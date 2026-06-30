@@ -1,7 +1,6 @@
-use crate::descriptors::{accessor_helpers, effective_relationship_declaration, Descriptor};
+use crate::descriptors::effective_relationship_declaration;
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, RelationshipName};
-use type_names::CoreRelationshipTypeName;
 
 /// Resolves the inverse relationship name for a declared relationship on `source_ref`.
 ///
@@ -15,14 +14,8 @@ pub fn resolve_inverse_relationship_name(
     let declared_descriptor = effective_relationship_declaration(source_ref, forward_name)?
         .try_into_declared_relationship_descriptor()?;
 
-    if let Some(inverse_descriptor) = declared_descriptor.has_inverse()? {
-        return Ok(RelationshipName(inverse_descriptor.header().type_name()?));
-    }
-
-    Err(HolonError::MissingRequiredRelationship {
-        relationship: CoreRelationshipTypeName::HasInverse.as_relationship_name().to_string(),
-        descriptor: accessor_helpers::descriptor_label(declared_descriptor.holon()),
-    })
+    let inverse_descriptor = declared_descriptor.required_inverse()?;
+    Ok(RelationshipName(inverse_descriptor.header().type_name()?))
 }
 
 #[cfg(test)]
@@ -36,7 +29,7 @@ mod tests {
     use crate::reference_layer::{StagedReference, TransientReference, WritableHolon};
     use base_types::MapString;
     use std::sync::Arc;
-    use type_names::CoreHolonTypeName;
+    use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
     struct RelationshipSchemaFixture {
         context: Arc<TransactionContext>,

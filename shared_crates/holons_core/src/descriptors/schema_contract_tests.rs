@@ -83,10 +83,6 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
         CoreRelationshipTypeName::Extends,
         vec![HolonReference::from(&inverse_type)],
     )?;
-    books_authored.add_related_holons(
-        CoreRelationshipTypeName::InverseOf,
-        vec![HolonReference::from(&authored_by)],
-    )?;
     authored_by.add_related_holons(
         CoreRelationshipTypeName::HasInverse,
         vec![HolonReference::from(&books_authored)],
@@ -111,8 +107,7 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
     let declared_relationship = book_descriptor
         .get_relationship_by_name(RelationshipName(MapString("AuthoredBy".to_string())))?
         .try_into_declared_relationship_descriptor()?;
-    let inverse_relationship = declared_relationship.has_inverse()?.expect("inverse should exist");
-    let inverse_of = inverse_relationship.inverse_of()?;
+    let inverse_relationship = declared_relationship.required_inverse()?;
 
     assert_eq!(book_descriptor.instance_properties()?.len(), 1);
     assert_eq!(book_descriptor.properties()?.len(), 1);
@@ -129,7 +124,6 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
         inverse_relationship.full_relationship_name()?,
         MapString("(AuthorType)-[BooksAuthored]->(BookType)".to_string())
     );
-    assert_eq!(inverse_of.header().type_name()?, MapString("AuthoredBy".to_string()));
     assert_eq!(
         RelationshipDescriptor::from_holon(HolonReference::from(&books_authored))
             .try_into_inverse_relationship_descriptor()?
@@ -137,6 +131,148 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
             .type_name()?,
         MapString("BooksAuthored".to_string())
     );
+
+    Ok(())
+}
+
+#[test]
+fn declared_relationship_requires_exactly_one_has_inverse_target() -> Result<(), HolonError> {
+    let context = build_context();
+    let declared_type = new_descriptor_holon(
+        &context,
+        "declared-relationship-type-required-inverse",
+        &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+        "Relationship",
+    )?;
+    let inverse_type = new_descriptor_holon(
+        &context,
+        "inverse-relationship-type-required-inverse",
+        &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
+        "Relationship",
+    )?;
+    let book = new_holon_type_descriptor(&context, "book-type-required-inverse", "BookType")?;
+    let author = new_holon_type_descriptor(&context, "author-type-required-inverse", "AuthorType")?;
+
+    let mut authored_by = new_relationship_descriptor_holon(
+        &context,
+        "authored-by-missing-inverse",
+        "AuthoredBy",
+        HolonReference::from(&book),
+        HolonReference::from(&author),
+    )?;
+    authored_by.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![HolonReference::from(&declared_type)],
+    )?;
+    let descriptor = RelationshipDescriptor::from_holon(HolonReference::from(&authored_by))
+        .try_into_declared_relationship_descriptor()?;
+
+    assert!(matches!(
+        descriptor.required_inverse(),
+        Err(HolonError::MissingRequiredRelationship { relationship, .. })
+            if relationship == "HasInverse"
+    ));
+
+    let mut inverse_a = new_relationship_descriptor_holon(
+        &context,
+        "books-authored-a",
+        "BooksAuthoredA",
+        HolonReference::from(&author),
+        HolonReference::from(&book),
+    )?;
+    inverse_a.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![HolonReference::from(&inverse_type)],
+    )?;
+    let mut inverse_b = new_relationship_descriptor_holon(
+        &context,
+        "books-authored-b",
+        "BooksAuthoredB",
+        HolonReference::from(&author),
+        HolonReference::from(&book),
+    )?;
+    inverse_b.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![HolonReference::from(&inverse_type)],
+    )?;
+    let mut authored_by_multiple = new_relationship_descriptor_holon(
+        &context,
+        "authored-by-multiple-inverses",
+        "AuthoredBy",
+        HolonReference::from(&book),
+        HolonReference::from(&author),
+    )?;
+    authored_by_multiple.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![HolonReference::from(&declared_type)],
+    )?;
+    authored_by_multiple.add_related_holons(
+        CoreRelationshipTypeName::HasInverse,
+        vec![HolonReference::from(&inverse_a), HolonReference::from(&inverse_b)],
+    )?;
+    let descriptor =
+        RelationshipDescriptor::from_holon(HolonReference::from(&authored_by_multiple))
+            .try_into_declared_relationship_descriptor()?;
+
+    assert!(matches!(
+        descriptor.required_inverse(),
+        Err(HolonError::MultipleRelatedHolons { relationship, count, .. })
+            if relationship == "HasInverse" && count == 2
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn declared_relationship_has_inverse_target_must_be_inverse_relationship_type(
+) -> Result<(), HolonError> {
+    let context = build_context();
+    let declared_type = new_descriptor_holon(
+        &context,
+        "declared-relationship-type-inverse-kind",
+        &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+        "Relationship",
+    )?;
+    let book = new_holon_type_descriptor(&context, "book-type-inverse-kind", "BookType")?;
+    let author = new_holon_type_descriptor(&context, "author-type-inverse-kind", "AuthorType")?;
+
+    let mut wrong_kind_target = new_relationship_descriptor_holon(
+        &context,
+        "wrong-kind-has-inverse-target",
+        "WrongKindTarget",
+        HolonReference::from(&author),
+        HolonReference::from(&book),
+    )?;
+    wrong_kind_target.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![HolonReference::from(&declared_type)],
+    )?;
+
+    let mut authored_by = new_relationship_descriptor_holon(
+        &context,
+        "authored-by-wrong-inverse-kind",
+        "AuthoredBy",
+        HolonReference::from(&book),
+        HolonReference::from(&author),
+    )?;
+    authored_by.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![HolonReference::from(&declared_type)],
+    )?;
+    authored_by.add_related_holons(
+        CoreRelationshipTypeName::HasInverse,
+        vec![HolonReference::from(&wrong_kind_target)],
+    )?;
+
+    let descriptor = RelationshipDescriptor::from_holon(HolonReference::from(&authored_by))
+        .try_into_declared_relationship_descriptor()?;
+
+    assert!(matches!(
+        descriptor.required_inverse(),
+        Err(HolonError::WrongDescriptorKind { expected, found, .. })
+            if expected == core_holon_type_name(CoreHolonTypeName::InverseRelationshipType)
+                && found == "WrongKindTarget"
+    ));
 
     Ok(())
 }

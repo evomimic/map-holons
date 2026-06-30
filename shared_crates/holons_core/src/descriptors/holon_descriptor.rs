@@ -209,10 +209,7 @@ impl HolonDescriptor {
             .get_relationship_by_name(declared_name)?
             .try_into_declared_relationship_descriptor()?;
 
-        declared.has_inverse()?.ok_or_else(|| HolonError::MissingRequiredRelationship {
-            relationship: "HasInverse".to_string(),
-            descriptor: accessor_helpers::descriptor_label(declared.holon()),
-        })
+        declared.required_inverse()
     }
 
     fn flatten_property_descriptors(

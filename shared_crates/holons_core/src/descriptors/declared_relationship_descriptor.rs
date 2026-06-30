@@ -93,6 +93,18 @@ impl DeclaredRelationshipDescriptor {
         .map(InverseRelationshipDescriptor::try_from_holon)
         .transpose()
     }
+
+    /// Returns the required inverse descriptor reached through `HasInverse`.
+    ///
+    /// This enforces the relationship-pair contract for declared relationship
+    /// descriptors: exactly one `HasInverse` target must exist, and that target
+    /// must extend `InverseRelationshipType`.
+    pub fn required_inverse(&self) -> Result<InverseRelationshipDescriptor, HolonError> {
+        self.has_inverse()?.ok_or_else(|| HolonError::MissingRequiredRelationship {
+            relationship: CoreRelationshipTypeName::HasInverse.as_relationship_name().to_string(),
+            descriptor: accessor_helpers::descriptor_label(&self.holon),
+        })
+    }
 }
 
 impl Descriptor for DeclaredRelationshipDescriptor {
