@@ -1,17 +1,16 @@
 // shared_crates/holons_loader/src/loader_ref_resolver.rs
 //
 // Pass-2 (Resolver): Transform queued LoaderRelationshipReference holons into
-// concrete writes on staged holons. Implements the multi‑pass, graph‑driven
-// inverse handling policy:
+// concrete writes on staged holons. Implements the multi-pass, graph-driven
+// declared relationship authoring policy:
 //   Pass-2a: write DescribedBy first
 //   Pass-2b: write Extends next so descriptor ancestry is available
-//   Pass-2c: write InverseOf next so inverse RTDs can map to declared RTDs
-//   Pass-2d: resolve remaining relationships via fixed-point iteration
+//   Pass-2c: resolve remaining relationships via fixed-point iteration
 //
 // Design goals:
-// - Self‑contained, self‑describing code with explicit invariants
-// - No global/in‑memory inverse name index; resolution is graph‑proven
-// - Non‑fatal errors are accumulated; the controller decides commit policy
+// - Self-contained, self-describing code with explicit invariants
+// - No global/in-memory relationship name index; resolution is graph-proven
+// - Non-fatal errors are accumulated; the controller decides commit policy
 // - Deduplicate within the resolver run: (source, declared_name, target)
 // - Never invent inline holons here (no new instance staging):
 //   only write to already staged holons or stage new versions of saved ones
@@ -19,14 +18,13 @@
 // Safety guardrails:
 // - DescribedBy must target exactly one descriptor
 // - Bootstrap relationships are selected by name before the type graph is queryable
-// - If a declared name for an inverse cannot be proven via type graph → error
+// - Instance relationships must be authored in declared orientation
 
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::Arc;
 use tracing::debug;
 
-use core_types::type_kinds::TypeKind;
 use holons_prelude::prelude::*;
 
 use crate::errors::ErrorWithContext;
@@ -56,14 +54,6 @@ struct DeclaredRelationshipWrite {
     staged_source: StagedReference,
     targets: Vec<HolonReference>,
     edge_keys: Vec<RelationshipEdgeKey>,
-}
-
-/// Single inverse-orientation write prepared after all per-target classification succeeds.
-struct InverseRelationshipWrite {
-    staged_source: StagedReference,
-    declared_name: RelationshipName,
-    target: HolonReference,
-    edge_key: RelationshipEdgeKey,
 }
 
 /// Per-run resolver state. Holds data we want to compute once and reuse.
@@ -117,10 +107,9 @@ impl LoaderRefResolver {
     /// Resolve all queued LoaderRelationshipReference holons into concrete writes on staged holons.
     ///
     /// Multi-pass orchestration (deterministic):
-    ///   1) Pass-2a: DescribedBy → with_descriptor()
-    ///   2) Pass-2b: Extends → add_related_holons()
-    ///   3) Pass-2c: InverseOf → add_related_holons()
-    ///   4) Pass-2d: process remaining relationship references
+    ///   1) Pass-2a: DescribedBy -> with_descriptor()
+    ///   2) Pass-2b: Extends -> add_related_holons()
+    ///   3) Pass-2c: process remaining declared relationship references
     pub fn resolve_relationships(
         context: &Arc<TransactionContext>,
         queued_relationship_references: Vec<TransientReference>,
@@ -147,23 +136,10 @@ impl LoaderRefResolver {
             &mut outcome,
         );
 
-        // ── Pass-2c: write InverseOf edges so inverse RTDs can point to declared RTDs
-        Self::pass_2c_write_inverse_of_by_name(
-            context,
-            &mut resolver_state,
-            &queued_relationship_references,
-            &mut seen_relationship_edge_keys,
-            &mut outcome,
-        );
-
-        // ── Unified worklist for pass-2d: everything not handled by bootstrap passes.
+        // ── Unified worklist for pass-2c: everything not handled by bootstrap passes.
         let deferred_queue: Vec<TransientReference> = queued_relationship_references
             .into_iter()
-            .filter(|lrr| {
-                !Self::is_described_by_by_name(lrr)
-                    && !Self::is_extends_by_name(lrr)
-                    && !Self::is_inverse_of_by_name(lrr)
-            })
+            .filter(|lrr| !Self::is_described_by_by_name(lrr) && !Self::is_extends_by_name(lrr))
             .collect();
 
         let (created, errors, remaining) = Self::process_remaining_references(
@@ -226,12 +202,6 @@ impl LoaderRefResolver {
     fn is_extends_by_name(relationship_reference: &TransientReference) -> bool {
         let extends = CoreRelationshipTypeName::Extends.as_relationship_name();
         Self::has_relationship_name(relationship_reference, &extends)
-    }
-
-    /// Returns true if the LRR's relationship name is InverseOf.
-    fn is_inverse_of_by_name(relationship_reference: &TransientReference) -> bool {
-        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        Self::has_relationship_name(relationship_reference, &inverse_of)
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -319,7 +289,7 @@ impl LoaderRefResolver {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Pass-2b/2c: type-graph bootstrap relationships
+    // Pass-2b: type-graph bootstrap relationships
     // ─────────────────────────────────────────────────────────────────────
 
     /// Writes Extends edges by name so descriptor ancestry is available to later passes.
@@ -340,27 +310,6 @@ impl LoaderRefResolver {
             &extends,
             Self::is_extends_by_name,
             "Pass 2B",
-        );
-    }
-
-    /// Writes InverseOf edges by name so inverse RTDs can point to declared RTDs.
-    fn pass_2c_write_inverse_of_by_name(
-        context: &Arc<TransactionContext>,
-        resolver_state: &mut ResolverState,
-        queue: &[TransientReference],
-        seen: &mut HashSet<RelationshipEdgeKey>,
-        outcome: &mut ResolverOutcome,
-    ) {
-        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        Self::write_bootstrap_relationships_by_name(
-            context,
-            resolver_state,
-            queue,
-            seen,
-            outcome,
-            &inverse_of,
-            Self::is_inverse_of_by_name,
-            "Pass 2C",
         );
     }
 
@@ -444,10 +393,8 @@ impl LoaderRefResolver {
         target_count: usize,
     ) -> Result<(), HolonError> {
         let extends = CoreRelationshipTypeName::Extends.as_relationship_name();
-        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
 
-        if (*relationship_name == extends || *relationship_name == inverse_of) && target_count != 1
-        {
+        if *relationship_name == extends && target_count != 1 {
             return Err(HolonError::InvalidRelationship(
                 relationship_name.to_string(),
                 format!(
@@ -461,7 +408,7 @@ impl LoaderRefResolver {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Pass-2d: Process remaining relationship references
+    // Pass-2c: Process remaining relationship references
     // ─────────────────────────────────────────────────────────────────────
 
     /// After bootstrap passes, process all remaining references together.
@@ -485,15 +432,14 @@ impl LoaderRefResolver {
 
             // Filter in place using retain() and true/false return values.
             remaining_queue.retain(|relationship_reference| {
-                // Skip anything already handled by bootstrap passes (defensive; unified_queue already filtered)
+                // Skip anything already handled by bootstrap passes (defensive; queue already filtered).
                 if Self::is_described_by_by_name(relationship_reference)
                     || Self::is_extends_by_name(relationship_reference)
-                    || Self::is_inverse_of_by_name(relationship_reference)
                 {
                     return false;
                 }
 
-                // Pass-2d runs after DescribedBy and Extends are available for type-graph classification.
+                // Pass-2c runs after DescribedBy and Extends are available for type-graph classification.
                 let resolution_result = Self::try_resolve_by_type_graph(
                     context,
                     resolver_state,
@@ -529,59 +475,6 @@ impl LoaderRefResolver {
         }
 
         (total_links_created, errors, remaining_queue)
-    }
-
-    /// Follow InverseOf from an inverse RTD to its declared RTD and return the declared name.
-    fn declared_name_from_inverse_type_descriptor(
-        inverse_name: &RelationshipName,
-        relationship_type_descriptor: &HolonReference,
-    ) -> Result<RelationshipName, HolonError> {
-        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
-        let declared_handle = relationship_type_descriptor.related_holons(&inverse_of)?;
-        debug!("[resolver] found declared TypeDescriptor");
-
-        let related_members: Vec<HolonReference> = {
-            let guard = declared_handle.read().map_err(|_| {
-                HolonError::FailedToBorrow("InverseOf collection read lock poisoned".into())
-            })?;
-            guard.get_members().clone()
-        };
-        if related_members.is_empty() {
-            return Err(HolonError::InvalidRelationship(
-                "InverseOf".into(),
-                format!("No InverseOf target from relationship '{}'", inverse_name.0),
-            ));
-        }
-
-        debug!("[resolver] declared type descriptor type-gated filtering");
-        let mut valid_targets = Vec::new();
-        for candidate in related_members {
-            if Self::is_relationship_type_kind(&candidate) {
-                valid_targets.push(candidate);
-            }
-        }
-
-        match valid_targets.len() {
-            1 => {
-                // We return the **declared relationship name** (TypeName is correct here).
-                let type_name_prop: PropertyName =
-                    CorePropertyTypeName::TypeName.as_property_name();
-                let declared_type_name =
-                    Self::read_string_property(&valid_targets[0], &type_name_prop)?;
-                Ok(declared_type_name.to_relationship_name())
-            }
-            0 => Err(HolonError::InvalidType(format!(
-                "InverseOf targets for relationship '{}' did not include a RelationshipTypeDescriptor",
-                inverse_name.0
-            ))),
-            n => Err(HolonError::DuplicateError(
-                "inverse mapping".into(),
-                format!(
-                    "Multiple RelationshipTypeDescriptor targets ({}) via InverseOf for relationship '{}'",
-                    n, inverse_name.0
-                ),
-            )),
-        }
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -945,20 +838,6 @@ impl LoaderRefResolver {
         Ok(None)
     }
 
-    /// Returns true if the holon's `InstanceTypeKind == "TypeKind.Relationship"`.
-    fn is_relationship_type_kind(holon_reference: &HolonReference) -> bool {
-        debug!("[resolver] entering is_relationship_type_kind");
-
-        let property_name: PropertyName = CorePropertyTypeName::InstanceTypeKind.as_property_name();
-        let expected = TypeKind::Relationship.as_schema_key();
-
-        match holon_reference.property_value(&property_name) {
-            Ok(Some(PropertyValue::StringValue(MapString(actual)))) => actual == expected,
-
-            _ => false,
-        }
-    }
-
     // ─────────────────────────────────────────────────────────────────────
     // Writing + dedupe + worklist
     // ─────────────────────────────────────────────────────────────────────
@@ -1121,13 +1000,9 @@ impl LoaderRefResolver {
         let relationship_name = Self::extract_relationship_metadata(relationship_reference)?;
         let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
         let extends = CoreRelationshipTypeName::Extends.as_relationship_name();
-        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
 
         // Bootstrap relationships are handled before type-graph resolution.
-        if relationship_name == described_by
-            || relationship_name == extends
-            || relationship_name == inverse_of
-        {
+        if relationship_name == described_by || relationship_name == extends {
             return Ok(0);
         }
 
@@ -1140,7 +1015,6 @@ impl LoaderRefResolver {
             Self::resolve_endpoints(context, resolver_state, relationship_reference)?;
 
         let mut declared_target_candidates: Vec<HolonReference> = Vec::new();
-        let mut inverse_write_candidates: Vec<(RelationshipName, HolonReference)> = Vec::new();
 
         // Classification phase: prove every target before mutating relationships.
         for target_endpoint in target_endpoints {
@@ -1165,19 +1039,15 @@ impl LoaderRefResolver {
                     declared_target_candidates.push(target_endpoint);
                 }
                 RelationshipDirection::Inverse => {
-                    // Inverse orientation: use the matched RTD instead of walking the type graph again.
-                    let declared_name = Self::declared_name_from_inverse_type_descriptor(
-                        &relationship_name,
-                        &relationship_type_descriptor,
-                    )
-                    .map_err(|e| {
-                        HolonError::InvalidType(format!(
-                            "inverse LRR ({}): {}",
-                            Self::brief_lrr_summary(relationship_reference),
-                            e
-                        ))
-                    })?;
-                    inverse_write_candidates.push((declared_name, target_endpoint));
+                    let matched_descriptor =
+                        Self::best_identifier_for_dedupe(&relationship_type_descriptor);
+                    return Err(HolonError::InvalidRelationship(
+                        relationship_name.to_string(),
+                        format!(
+                            "Loader imports must author instance relationships in declared orientation; '{}' resolved to inverse relationship type {}. Author the corresponding declared relationship from the opposite endpoint instead.",
+                            relationship_name, matched_descriptor
+                        ),
+                    ));
                 }
             }
         }
@@ -1188,13 +1058,6 @@ impl LoaderRefResolver {
             &relationship_name,
             &source_endpoint,
             declared_target_candidates,
-            seen_relationship_edge_keys,
-            &mut planned_edge_keys,
-        )?;
-        let inverse_writes = Self::plan_inverse_relationship_writes(
-            context,
-            &source_endpoint,
-            inverse_write_candidates,
             seen_relationship_edge_keys,
             &mut planned_edge_keys,
         )?;
@@ -1210,29 +1073,6 @@ impl LoaderRefResolver {
             for edge_key in declared_write.edge_keys {
                 seen_relationship_edge_keys.insert(edge_key);
             }
-        }
-
-        for inverse_write in inverse_writes {
-            debug!(
-                "Attempting to write inverse→declared relationship: declared_name={}",
-                inverse_write.declared_name.0
-            );
-            created_link_count += Self::write_relationship(
-                inverse_write.staged_source.clone(),
-                &inverse_write.declared_name,
-                vec![inverse_write.target.clone()],
-            )?;
-
-            seen_relationship_edge_keys.insert(inverse_write.edge_key);
-
-            debug!(
-                "Created relationship (inverse→declared): source={}, rel={}, target={}",
-                Self::best_identifier_for_dedupe(&HolonReference::Staged(
-                    inverse_write.staged_source
-                )),
-                inverse_write.declared_name,
-                Self::best_identifier_for_dedupe(&inverse_write.target),
-            );
         }
 
         Ok(created_link_count)
@@ -1274,39 +1114,6 @@ impl LoaderRefResolver {
         }
 
         Ok(Some(DeclaredRelationshipWrite { staged_source, targets, edge_keys }))
-    }
-
-    /// Plan flipped inverse writes and dedupe them without mutating the global seen set.
-    fn plan_inverse_relationship_writes(
-        context: &Arc<TransactionContext>,
-        source_endpoint: &HolonReference,
-        inverse_write_candidates: Vec<(RelationshipName, HolonReference)>,
-        seen_relationship_edge_keys: &HashSet<RelationshipEdgeKey>,
-        planned_edge_keys: &mut HashSet<RelationshipEdgeKey>,
-    ) -> Result<Vec<InverseRelationshipWrite>, HolonError> {
-        let mut planned_writes = Vec::new();
-
-        for (declared_name, write_source_endpoint) in inverse_write_candidates {
-            let staged_source = Self::resolve_staged_write_source(context, &write_source_endpoint)?;
-            let declared_source_reference = HolonReference::Staged(staged_source.clone());
-            let target = source_endpoint.clone();
-            let edge_key = Self::make_edge_key(&declared_source_reference, &declared_name, &target);
-            if seen_relationship_edge_keys.contains(&edge_key)
-                || !planned_edge_keys.insert(edge_key.clone())
-            {
-                debug!("Duplicate relationship skipped (inverse→declared)");
-                continue;
-            }
-
-            planned_writes.push(InverseRelationshipWrite {
-                staged_source,
-                declared_name,
-                target,
-                edge_key,
-            });
-        }
-
-        Ok(planned_writes)
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -1370,6 +1177,7 @@ impl LoaderRefResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core_types::type_kinds::TypeKind;
     use core_types::LocalId;
     use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
     use holons_core::core_shared_objects::{Holon, ServiceRoutingPolicy};
@@ -1971,13 +1779,63 @@ mod tests {
     }
 
     #[test]
-    fn validate_bootstrap_relationship_targets_rejects_missing_inverse_of_target() {
-        let inverse_of = CoreRelationshipTypeName::InverseOf.as_relationship_name();
+    fn try_resolve_by_type_graph_rejects_inverse_oriented_authoring() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut resolver_state = ResolverState::new();
+        let mut seen_relationship_edge_keys = HashSet::new();
+        let inverse_meta =
+            relationship_direction_meta(&context, CoreHolonTypeName::InverseRelationshipType)?;
+        let person_descriptor = stage(
+            &context,
+            new_descriptor(&context, "PersonType", "PersonType", TypeKind::Holon)?,
+        )?;
+        let book_descriptor =
+            stage(&context, new_descriptor(&context, "BookType", "BookType", TypeKind::Holon)?)?;
+
+        relationship_type_descriptor(
+            &context,
+            "AuthoredBy",
+            "PersonType",
+            "BookType",
+            inverse_meta,
+        )?;
+        let person_endpoint = typed_instance(&context, "person-instance", person_descriptor)?;
+        let _book_endpoint = typed_instance(&context, "book-instance", book_descriptor)?;
+        let relationship_reference = loader_relationship_reference(
+            &context,
+            "AuthoredBy",
+            "person-instance",
+            &["book-instance"],
+        )?;
+
+        let result = LoaderRefResolver::try_resolve_by_type_graph(
+            &context,
+            &mut resolver_state,
+            &relationship_reference,
+            &mut seen_relationship_edge_keys,
+        );
 
         assert!(matches!(
-            LoaderRefResolver::validate_bootstrap_relationship_targets(&inverse_of, 0),
-            Err(HolonError::InvalidRelationship(name, _)) if name == "InverseOf"
+            result,
+            Err(HolonError::InvalidRelationship(name, message))
+                if name == "AuthoredBy"
+                    && message.contains("declared orientation")
+                    && message.contains("opposite endpoint")
         ));
+        assert!(seen_relationship_edge_keys.is_empty());
+
+        let relationship_name = RelationshipName(MapString("AuthoredBy".to_string()));
+        let related_handle = person_endpoint.related_holons(&relationship_name)?;
+        let related_members = related_handle
+            .read()
+            .map_err(|_| {
+                HolonError::FailedToBorrow("AuthoredBy collection read lock poisoned".into())
+            })?
+            .get_members()
+            .clone();
+        assert!(related_members.is_empty());
+
+        Ok(())
     }
 
     #[test]

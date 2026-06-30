@@ -296,7 +296,6 @@ pub fn commit(
             let inverse_name = match resolve_inverse_relationship_name(
                 &relationship_source.source_reference,
                 &name,
-                staged_references,
             ) {
                 Ok(inverse_name) => inverse_name,
                 Err(error) => {
