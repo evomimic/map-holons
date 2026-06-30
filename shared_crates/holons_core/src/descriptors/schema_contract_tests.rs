@@ -478,9 +478,11 @@ fn dance_descriptor_afforded_dances_return_flattened_dance_set() -> Result<(), H
     let mut parent = new_holon_type_descriptor(&context, "dance-parent", "ParentType")?;
     let mut dance_type = new_holon_type_descriptor(&context, "dance-owner", "DanceType")?;
 
-    parent.add_related_holons(CoreRelationshipTypeName::Affords, vec![inherited_dance.into()])?;
+    parent
+        .add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![inherited_dance.into()])?;
     dance_type.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
-    dance_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![local_dance.into()])?;
+    dance_type
+        .add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![local_dance.into()])?;
 
     let dance_descriptor = HolonDescriptor::from_holon(dance_type.into());
 
@@ -501,7 +503,7 @@ fn dance_descriptor_get_dance_by_name_resolves_type_name() -> Result<(), HolonEr
     let dance = new_descriptor_holon(&context, "commit-dance", "Commit", "Holon")?;
     let mut dance_type = new_holon_type_descriptor(&context, "dance-with-commit", "DanceType")?;
 
-    dance_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![dance.into()])?;
+    dance_type.add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![dance.into()])?;
 
     let dance_descriptor = HolonDescriptor::from_holon(dance_type.into());
 
@@ -522,9 +524,9 @@ fn dance_descriptor_get_dance_by_name_errors_when_duplicate_inherited_declaratio
     let mut root = new_holon_type_descriptor(&context, "duplicate-dance-root", "ParentType")?;
     let mut leaf = new_holon_type_descriptor(&context, "duplicate-dance-leaf", "DanceType")?;
 
-    root.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_root.into()])?;
+    root.add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![duplicate_root.into()])?;
     leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
-    leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_leaf.into()])?;
+    leaf.add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![duplicate_leaf.into()])?;
 
     let dance_descriptor = HolonDescriptor::from_holon(leaf.into());
 

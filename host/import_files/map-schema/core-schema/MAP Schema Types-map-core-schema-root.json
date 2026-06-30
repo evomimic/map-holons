@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-29T16:09:11",
+    "generated_at": "2026-06-29T19:04:16",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -511,6 +511,12 @@
           "target": {
             "$ref": "MetaRelationshipType"
           }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)"
+          }
         }
       ]
     },
@@ -539,12 +545,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MetaRelationshipType"
-          }
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
           }
         }
       ]

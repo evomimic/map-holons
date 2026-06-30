@@ -266,12 +266,12 @@ impl DanceInvocation {
         })
     }
 
-    /// Follows `Target` and returns the holon the dance is being performed on,
+    /// Follows `AffordingHolon` and returns the holon the dance is being performed on,
     /// if present.
     pub fn affording_holon(&self) -> Result<Option<HolonReference>, HolonError> {
         accessor_helpers::optional_single_related(
             self.as_holon_reference(),
-            CoreRelationshipTypeName::Target,
+            CoreRelationshipTypeName::AffordingHolon,
         )
     }
 

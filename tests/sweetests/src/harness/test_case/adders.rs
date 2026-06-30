@@ -169,6 +169,21 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_load_inverse_oriented_book_person_instances_expect_failure_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Reject inverse-oriented Book/Person instance relationship import".to_string()
+        });
+        self.steps.push(DanceTestStep::LoadInverseOrientedBookPersonInstancesExpectFailure {
+            description,
+        });
+
+        Ok(())
+    }
+
     pub fn add_verify_book_person_descriptors_step(
         &mut self,
         description: Option<String>,
