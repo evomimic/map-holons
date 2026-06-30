@@ -290,7 +290,7 @@ impl DanceInvocation {
     /// Resolves the descriptor-backed execution context needed by the executor.
     pub fn bind(self) -> Result<BoundDanceInvocation, HolonError> {
         let dance_descriptor = self.dance_descriptor()?;
-        let request_type = dance_descriptor.input_parameters()?;
+        let request_type = dance_descriptor.input_type()?;
         let affording_holon = self.affording_holon()?;
         let affording_holon_descriptor = match affording_holon.as_ref() {
             Some(holon) => Some(holon.holon_descriptor()?),

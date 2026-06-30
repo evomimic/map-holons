@@ -119,10 +119,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "DanceResponseType",
         "(DanceType)-[Response]->(DanceResponseType)",
     );
-    assert_eq!(
-        dance_descriptor.input_parameters().expect("DanceType input_parameters").is_none(),
-        true
-    );
+    assert_eq!(dance_descriptor.input_type().expect("DanceType input_parameters").is_none(), true);
     assert_contains(
         &relationship_base_names(dance_type_descriptor.instance_relationships()),
         "DanceInput",
@@ -382,7 +379,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("Query lookup through inherited Affords");
     assert_eq!(
         inherited_query
-            .input_parameters()
+            .input_type()
             .expect("Query input_parameters")
             .expect("Query input parameters target")
             .header()
