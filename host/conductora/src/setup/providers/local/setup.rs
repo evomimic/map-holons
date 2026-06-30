@@ -21,7 +21,7 @@ impl LocalSetup {
         let StorageProvider::Local(local_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Local"));
         };
-        //let t_setup = std::time::Instant::now();
+        //let t_setup = std::time::Instant::now(); //remove feature in 570
         let is_recovery = local_cfg.features.iter().any(|f| f == "recovery");
         if is_recovery {
             Self::build_recovery_receptor(&handle, name, local_cfg).await?;
