@@ -38,7 +38,7 @@ impl LocalSetup {
         name: &str,
         local_config: &LocalConfig,
     ) -> anyhow::Result<()> {
-        tracing::info!("[LOCAL SETUP] Recovery feature enabled for Local storage.");
+        tracing::info!("[LOCAL SETUP] Session feature enabled for Local storage.");
         let snapshot_store = create_snapshot_store(handle, local_config, name).await?;
         // continue with receptor config creation as normal
         let props = serialize_props(local_config);
@@ -88,7 +88,7 @@ pub async fn create_snapshot_store<C: ProviderConfig>(
 ) -> Result<Arc<TransactionRecoveryStore>, anyhow::Error> {
     // Path resolution is non-blocking — do it on the async thread
     let snapshot_dir = if crate::env::hc_dev_mode_enabled() {
-        std::path::PathBuf::from("/tmp/conductora_dev/local_recovery").join(name)
+        std::path::PathBuf::from("/tmp/conductora_dev").join(name)
     } else {
         let app_data_dir = handle
             .path()
