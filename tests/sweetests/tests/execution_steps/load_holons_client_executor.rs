@@ -98,7 +98,8 @@ pub async fn execute_load_holons_client(
         mismatches.push(format!("HolonsStaged expected {}, got {}", expect_staged.0, staged));
     }
     if committed != expect_committed.0 {
-        mismatches.push(format!("HolonsCommitted expected {}, got {}", expect_committed.0, committed));
+        mismatches
+            .push(format!("HolonsCommitted expected {}, got {}", expect_committed.0, committed));
     }
     if links_created != expect_links_created.0 {
         mismatches.push(format!(
@@ -136,10 +137,7 @@ pub async fn execute_load_holons_client(
         } else {
             report.push_str(&format!("{} errors", expect_errors.0));
         }
-        report.push_str(&format!(
-            " but loader returned {} errors.\n",
-            errors
-        ));
+        report.push_str(&format!(" but loader returned {} errors.\n", errors));
         report.push_str("Mismatches:\n");
         for mismatch in &mismatches {
             report.push_str("  - ");
