@@ -1,0 +1,562 @@
+schema MAP Core Schema-v0.0.7 {
+  depends_on MAP Dance Schema-v0.0.4
+}
+holon LoaderHolon {
+  allows_additional_properties
+  allows_additional_relationships
+  header {
+    description: "Representation of a parsed holon from JSON input, including properties and unresolved references."
+    display_name: "Loader Holon"
+    display_plural: "Loader Holons"
+    plural: "LoaderHolons"
+  }
+  properties {
+    Key.PropertyType
+    LoaderHolonKey.PropertyType
+  }
+  relationships {
+    (LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)
+  }
+}
+
+
+holon LoaderRelationshipReference {
+  header {
+    description: "Represents an unresolved relationship reference from a LoaderHolon, including source/target references."
+    display_name: "Loader Relationship Reference"
+    display_plural: "Loader Relationship References"
+    plural: "LoaderRelationshipReferences"
+  }
+  properties {
+    RelationshipName.PropertyType
+  }
+  relationships {
+    (LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)
+    (LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)
+  }
+}
+
+
+holon LoaderHolonReference {
+  header {
+    description: "Represents an unresolved reference to a holon, either local (by key or ID) or external (via proxy + key/ID)."
+    display_name: "Loader Holon Reference"
+    display_plural: "Loader Holon References"
+    plural: "LoaderHolonReferences"
+  }
+  properties {
+    HolonKey.PropertyType
+    HolonId.PropertyType
+    ProxyKey.PropertyType
+    ProxyId.PropertyType
+  }
+}
+
+
+holon HolonLoaderBundle {
+  header {
+    description: "Container holon for a collection of LoaderHolons supplied by the loader client."
+    display_name: "HolonLoaderBundle"
+    display_plural: "HolonLoaderBundles"
+    plural: "HolonLoaderBundles"
+  }
+  properties {
+    Filename.PropertyType
+  }
+  relationships {
+    (HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)
+  }
+}
+
+
+holon HolonLoadResponse {
+  extends DanceResponseType.HolonType
+  header {
+    description: "Message-only holon summarizing the outcome of a holon load operation (not persisted by the loader commit)."
+    display_name: "HolonLoadResponse"
+    display_plural: "HolonLoadResponses"
+    plural: "HolonLoadResponses"
+  }
+  properties {
+    HolonsStaged.PropertyType
+    HolonsCommitted.PropertyType
+    ErrorCount.PropertyType
+    DanceSummary.PropertyType
+    LinksCreated.PropertyType
+    LoadCommitStatus.PropertyType
+  }
+  relationships {
+    (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)
+  }
+}
+
+
+holon HolonLoadError {
+  extends HolonError.HolonType
+  header {
+    description: "Represents a single error in the Holon Loader process."
+    display_name: "Holon Load Error"
+    display_plural: "Holon Load Errors"
+    plural: "HolonLoadErrors"
+  }
+  properties {
+    Filename.PropertyType
+    StartUtf8ByteOffset.PropertyType
+    LoaderHolonKey.PropertyType
+    ErrorType.PropertyType
+    ErrorMessage.PropertyType
+  }
+}
+
+
+holon HolonLoadSet {
+  header {
+    description: "Container holon for a set of HolonLoaderBundles supplied by the loader client."
+    display_name: "HolonLoadSet"
+    display_plural: "HolonLoadSets"
+    plural: "HolonLoadSets"
+  }
+  relationships {
+    (HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)
+  }
+}
+
+
+relationship HasRelationshipReference {
+  source LoaderHolon.HolonType
+  target LoaderRelationshipReference.HolonType
+  cardinality 0..32767
+  ordered
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a LoaderHolon to each unresolved relationship reference it contains."
+    display_name: "HasRelationshipReference"
+    display_plural: "HasRelationshipReference Relationships"
+    plural: "HasRelationshipReferences"
+  }
+}
+
+
+inverse relationship RelationshipReferenceOf {
+  source LoaderRelationshipReference.HolonType
+  target LoaderHolon.HolonType
+  inverse HasRelationshipReference
+  cardinality 0..1
+  deletion_semantic Allow
+  header {
+    description: "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon."
+    display_name: "RelationshipReferenceOf"
+    display_plural: "RelationshipReferenceOf Relationships"
+    plural: "RelationshipReferenceOfs"
+  }
+}
+
+
+def relationship ReferenceSource {
+  source LoaderRelationshipReference.HolonType
+  target LoaderHolonReference.HolonType
+  cardinality 1..1
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a LoaderRelationshipReference to the holon that acts as the relationship source."
+    display_name: "ReferenceSource"
+    display_plural: "ReferenceSource Relationships"
+    plural: "ReferenceSources"
+  }
+}
+
+
+inverse relationship ReferenceSourceOf {
+  source LoaderHolonReference.HolonType
+  target LoaderRelationshipReference.HolonType
+  inverse ReferenceSource
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source."
+    display_name: "ReferenceSourceOf"
+    display_plural: "ReferenceSourceOf Relationships"
+    plural: "ReferenceSourceOfs"
+  }
+}
+
+
+def relationship ReferenceTarget {
+  source LoaderRelationshipReference.HolonType
+  target LoaderHolonReference.HolonType
+  cardinality 1..32767
+  ordered
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a LoaderRelationshipReference to the holons that act as relationship targets."
+    display_name: "ReferenceTarget"
+    display_plural: "ReferenceTarget Relationships"
+    plural: "ReferenceTargets"
+  }
+}
+
+
+inverse relationship ReferenceTargetOf {
+  source LoaderHolonReference.HolonType
+  target LoaderRelationshipReference.HolonType
+  inverse ReferenceTarget
+  cardinality 0..32767
+  deletion_semantic Cascade
+  header {
+    description: "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target."
+    display_name: "ReferenceTargetOf"
+    display_plural: "ReferenceTargetOf Relationships"
+    plural: "ReferenceTargetOfs"
+  }
+}
+
+
+relationship BundleMembers {
+  source HolonLoaderBundle.HolonType
+  target LoaderHolon.HolonType
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains."
+    display_name: "BundleMembers"
+    display_plural: "BundleMembers Relationships"
+    plural: "BundleMembers"
+  }
+}
+
+
+inverse relationship BundleMemberOf {
+  source LoaderHolon.HolonType
+  target HolonLoaderBundle.HolonType
+  inverse BundleMembers
+  cardinality 0..1
+  deletion_semantic Allow
+  header {
+    description: "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle."
+    display_name: "BundleMemberOf"
+    display_plural: "BundleMemberOf Relationships"
+    plural: "BundleMemberOfs"
+  }
+}
+
+
+relationship HasLoadError {
+  source HolonLoadResponse.DanceResponseType
+  target HolonLoadError.HolonError
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a HolonLoadResponse to one or more HolonError holons."
+    display_name: "HasLoadError"
+    display_plural: "HasLoadError Relationships"
+    plural: "HasLoadErrors"
+  }
+}
+
+
+inverse relationship LoadErrorOf {
+  source HolonLoadError.HolonError
+  target HolonLoadResponse.DanceResponseType
+  inverse HasLoadError
+  cardinality 0..1
+  deletion_semantic Allow
+  header {
+    description: "Inverse of HasLoadError. Points from HolonError back to the response that reported it."
+    display_name: "LoadErrorOf"
+    display_plural: "LoadErrorOf Relationships"
+    plural: "LoadErrorOfs"
+  }
+}
+
+
+relationship Contains {
+  source HolonLoadSet.HolonType
+  target HolonLoaderBundle.HolonType
+  cardinality 0..32767
+  deletion_semantic Allow
+  header {
+    description: "Declared relationship from a HolonLoadSet to each HolonLoaderBundle it contains."
+    display_name: "Contains"
+    display_plural: "Contains Relationships"
+    plural: "Contains"
+  }
+}
+
+
+inverse relationship ContainedIn {
+  source HolonLoaderBundle.HolonType
+  target HolonLoadSet.HolonType
+  inverse Contains
+  cardinality 0..1
+  deletion_semantic Allow
+  header {
+    description: "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle."
+    display_name: "ContainedIn"
+    display_plural: "ContainedIn Relationships"
+    plural: "ContainedIns"
+  }
+}
+
+
+enum LoadCommitStatus {
+  extends MapEnumValueType
+  header {
+    description: "An enum representing the commit outcome of a holon load."
+    display_name: "LoadCommitStatus"
+    display_plural: "LoadCommitStatuses"
+    plural: "LoadCommitStatuses"
+  }
+  variants {
+    variant Complete {
+      properties {
+        type_name: "Complete"
+        display_name: "Complete"
+        description: "An enum variant indicating a complete commit."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "LoadCommitStatus"
+      }
+    }
+    variant Incomplete {
+      properties {
+        type_name: "Incomplete"
+        display_name: "Incomplete"
+        description: "An enum variant indicating an incomplete commit."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "LoadCommitStatus"
+      }
+    }
+    variant Skipped {
+      properties {
+        type_name: "Skipped"
+        display_name: "Skipped"
+        description: "An enum variant indicating that commit was skipped."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "LoadCommitStatus"
+      }
+    }
+  }
+}
+
+
+property RelationshipName {
+  properties {
+    type_name: "RelationshipName"
+    type_name_plural: "RelationshipNames"
+    display_name: "relationship_name"
+    display_name_plural: "relationship_names"
+    description: "Name of the relationship as declared in the JSON input."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
+  }
+}
+
+
+property HolonKey {
+  properties {
+    type_name: "HolonKey"
+    type_name_plural: "HolonKeys"
+    display_name: "holon_key"
+    display_name_plural: "holon_keys"
+    description: "Local key for the referenced holon."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
+  }
+}
+
+
+property ProxyKey {
+  properties {
+    type_name: "ProxyKey"
+    type_name_plural: "ProxyKeys"
+    display_name: "proxy_key"
+    display_name_plural: "proxy_keys"
+    description: "Key of the ProxySpace through which this external reference is routed."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
+  }
+}
+
+
+property ProxyId {
+  properties {
+    type_name: "ProxyId"
+    type_name_plural: "ProxyId"
+    display_name: "proxy_id"
+    display_name_plural: "proxy_ids"
+    description: "ActionHash of the ProxySpace holon, used to route external references."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBytesValueType"
+  }
+}
+
+
+property HolonsStaged {
+  properties {
+    type_name: "HolonsStaged"
+    type_name_plural: "HolonsStageds"
+    display_name: "holons_staged"
+    display_name_plural: "holons_stageds"
+    description: "Number of holons staged during the load operation."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
+  }
+}
+
+
+property HolonsCommitted {
+  properties {
+    type_name: "HolonsCommitted"
+    type_name_plural: "HolonsCommitteds"
+    display_name: "holons_committed"
+    display_name_plural: "holons_committeds"
+    description: "Number of holons successfully committed."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
+  }
+}
+
+
+property LinksCreated {
+  properties {
+    type_name: "LinksCreated"
+    type_name_plural: "LinksCreateds"
+    display_name: "links_created"
+    display_name_plural: "links_createds"
+    description: "Number of links successfully created."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
+  }
+}
+
+
+property Filename {
+  properties {
+    type_name: "Filename"
+    type_name_plural: "Filenames"
+    display_name: "filename"
+    display_name_plural: "filenames"
+    description: "The name of a file."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
+  }
+}
+
+
+property LoaderHolonKey {
+  properties {
+    type_name: "LoaderHolonKey"
+    type_name_plural: "LoaderHolonKeys"
+    display_name: "loader_holon_key"
+    display_name_plural: "loader_holon_keys"
+    description: "Key to reference a loader holon within a load set."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
+  }
+}
+
+
+property StartUtf8ByteOffset {
+  properties {
+    type_name: "StartUtf8ByteOffset"
+    type_name_plural: "StartUtf8ByteOffsets"
+    display_name: "start_utf8_byte_offset"
+    display_name_plural: "start_utf8_byte_offsets"
+    description: "Byte offset that signifies the start of a segment of a source file."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
+  }
+}
+
+
+property LoadCommitStatus {
+  properties {
+    type_name: "LoadCommitStatus"
+    type_name_plural: "LoadCommitStatuses"
+    display_name: "load_commit_status"
+    display_name_plural: "load_commit_statuses"
+    description: "Represents the commit status for a holon loading operation."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "LoadCommitStatus"
+  }
+}

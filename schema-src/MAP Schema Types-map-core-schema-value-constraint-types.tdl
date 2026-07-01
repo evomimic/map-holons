@@ -1,0 +1,323 @@
+schema MAP Core Schema-v0.0.7 {
+  depends_on MAP Key Rule Schema
+}
+abstract holon ValueConstraintType {
+  keyrule ExtendedTypeRule.KeyRuleType
+  header {
+    description: "Abstract holon type for constraints that refine the accepted values of a ValueType."
+    display_name: "Value Constraint Type"
+    display_plural: "Value Constraint Types"
+    plural: "ValueConstraintTypes"
+  }
+}
+
+
+abstract holon StringValueConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
+  extends ValueConstraintType.HolonType
+  header {
+    description: "Abstract constraint-family anchor for string value constraints."
+    display_name: "String Value Constraint"
+    display_plural: "String Value Constraints"
+    plural: "StringValueConstraints"
+  }
+}
+
+
+abstract holon IntegerValueConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
+  extends ValueConstraintType.HolonType
+  header {
+    description: "Abstract constraint-family anchor for integer value constraints."
+    display_name: "Integer Value Constraint"
+    display_plural: "Integer Value Constraints"
+    plural: "IntegerValueConstraints"
+  }
+}
+
+
+abstract holon BytesValueConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
+  extends ValueConstraintType.HolonType
+  header {
+    description: "Abstract constraint-family anchor for byte sequence value constraints."
+    display_name: "Bytes Value Constraint"
+    display_plural: "Bytes Value Constraints"
+    plural: "BytesValueConstraints"
+  }
+}
+
+
+abstract holon ValueArrayConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
+  extends ValueConstraintType.HolonType
+  header {
+    description: "Abstract constraint-family anchor for value array constraints."
+    display_name: "Value Array Constraint"
+    display_plural: "Value Array Constraints"
+    plural: "ValueArrayConstraints"
+  }
+}
+
+
+holon MinimumLength {
+  extends StringValueConstraint.ValueConstraintType
+  header {
+    description: "Requires string values to have at least the configured number of characters."
+    display_name: "Minimum String Length"
+    display_plural: "Minimum String Lengths"
+    plural: "MinimumLengths"
+  }
+  properties {
+    ConstraintLength.PropertyType
+  }
+}
+
+
+holon MaximumLength {
+  extends StringValueConstraint.ValueConstraintType
+  header {
+    description: "Requires string values to have at most the configured number of characters."
+    display_name: "Maximum String Length"
+    display_plural: "Maximum String Lengths"
+    plural: "MaximumLengths"
+  }
+  properties {
+    ConstraintLength.PropertyType
+  }
+}
+
+
+holon MinimumValue {
+  extends IntegerValueConstraint.ValueConstraintType
+  header {
+    description: "Requires integer values to be greater than, or optionally equal to, the configured minimum."
+    display_name: "Minimum Integer Value"
+    display_plural: "Minimum Integer Values"
+    plural: "MinimumValues"
+  }
+  properties {
+    ConstraintIntegerValue.PropertyType
+    ConstraintIsInclusive.PropertyType
+  }
+}
+
+
+holon MaximumValue {
+  extends IntegerValueConstraint.ValueConstraintType
+  header {
+    description: "Requires integer values to be less than, or optionally equal to, the configured maximum."
+    display_name: "Maximum Integer Value"
+    display_plural: "Maximum Integer Values"
+    plural: "MaximumValues"
+  }
+  properties {
+    ConstraintIntegerValue.PropertyType
+    ConstraintIsInclusive.PropertyType
+  }
+}
+
+
+holon MinimumItems {
+  extends ValueArrayConstraint.ValueConstraintType
+  header {
+    description: "Requires value arrays to contain at least the configured number of elements."
+    display_name: "Minimum Items"
+    display_plural: "Minimum Items Constraints"
+    plural: "MinimumItemsConstraints"
+  }
+  properties {
+    ConstraintItemCount.PropertyType
+  }
+}
+
+
+holon MaximumItems {
+  extends ValueArrayConstraint.ValueConstraintType
+  header {
+    description: "Requires value arrays to contain no more than the configured number of elements."
+    display_name: "Maximum Items"
+    display_plural: "Maximum Items Constraints"
+    plural: "MaximumItemsConstraints"
+  }
+  properties {
+    ConstraintItemCount.PropertyType
+  }
+}
+
+
+holon UniqueItems {
+  extends ValueArrayConstraint.ValueConstraintType
+  header {
+    description: "Requires value arrays to contain no duplicate elements."
+    display_name: "Unique Items"
+    display_plural: "Unique Items Constraints"
+    plural: "UniqueItemsConstraints"
+  }
+  properties {
+    ConstraintEnabled.PropertyType
+  }
+}
+
+
+property ConstraintLength {
+  value MapIntegerValueType
+  header {
+    description: "Limit of allowed character count for a string value."
+    display_name: "Constraint Length"
+    display_plural: "Constraint Lengths"
+    plural: "ConstraintLengths"
+  }
+}
+
+
+property ConstraintIntegerValue {
+  value MapIntegerValueType
+  header {
+    description: "Limit of an integer value."
+    display_name: "Constraint Integer Value"
+    display_plural: "Constraint Integer Values"
+    plural: "ConstraintIntegerValues"
+  }
+}
+
+
+property ConstraintItemCount {
+  value MapIntegerValueType
+  header {
+    description: "Limit on the number of items in an array."
+    display_name: "Constraint Item Count"
+    display_plural: "Constraint Item Counts"
+    plural: "ConstraintItemCounts"
+  }
+}
+
+
+property ConstraintIsInclusive {
+  value MapBooleanValueType
+  header {
+    description: "If the limit value included in the allowed range."
+    display_name: "Constraint Is Inclusive"
+    display_plural: "IsInclusive Constraints"
+    plural: "ConstraintIsInclusives"
+  }
+}
+
+
+property ConstraintEnabled {
+  value MapBooleanValueType
+  header {
+    description: "Boolean parameter indicating whether a boolean-style constraint rule is active."
+    display_name: "Constraint Enabled"
+    display_plural: "Constraint Enabled Values"
+    plural: "ConstraintEnabledValues"
+  }
+}
+
+
+def relationship Constraints {
+  source StringValueType
+  target StringValueConstraint.ValueConstraintType
+  cardinality 0..32767
+  header {
+    description: "Attaches string-specific value constraints to a string value type."
+    display_name: "Constraints Relationship"
+    display_plural: "Constraints Relationships"
+    plural: "Constraints"
+  }
+}
+
+
+def relationship Constraints {
+  source IntegerValueType
+  target IntegerValueConstraint.ValueConstraintType
+  cardinality 0..32767
+  header {
+    description: "Attaches integer-specific value constraints to an integer value type."
+    display_name: "Constraints Relationship"
+    display_plural: "Constraints Relationships"
+    plural: "Constraints"
+  }
+}
+
+
+def relationship Constraints {
+  source BytesValueType
+  target BytesValueConstraint.ValueConstraintType
+  cardinality 0..32767
+  header {
+    description: "Attaches bytes-specific value constraints to a bytes value type."
+    display_name: "Constraints Relationship"
+    display_plural: "Constraints Relationships"
+    plural: "Constraints"
+  }
+}
+
+
+def relationship Constraints {
+  source ValueArrayValueType
+  target ValueArrayConstraint.ValueConstraintType
+  cardinality 0..32767
+  header {
+    description: "Attaches value-array-specific constraints to a value array type."
+    display_name: "Constraints Relationship"
+    display_plural: "Constraints Relationships"
+    plural: "Constraints"
+  }
+}
+
+
+inverse relationship Constrains {
+  source StringValueConstraint.ValueConstraintType
+  target StringValueType
+  inverse Constraints
+  cardinality 0..32767
+  header {
+    description: "Inverse of Constraints, from a string value constraint to the string value type it constrains."
+    display_name: "Constrains Relationship"
+    display_plural: "Constrains Relationships"
+    plural: "Constrains"
+  }
+}
+
+
+inverse relationship Constrains {
+  source IntegerValueConstraint.ValueConstraintType
+  target IntegerValueType
+  inverse Constraints
+  cardinality 0..32767
+  header {
+    description: "Inverse of Constraints, from an integer value constraint to the integer value type it constrains."
+    display_name: "Constrains Relationship"
+    display_plural: "Constrains Relationships"
+    plural: "Constrains"
+  }
+}
+
+
+inverse relationship Constrains {
+  source BytesValueConstraint.ValueConstraintType
+  target BytesValueType
+  inverse Constraints
+  cardinality 0..32767
+  header {
+    description: "Inverse of Constraints, from a bytes value constraint to the bytes value type it constrains."
+    display_name: "Constrains Relationship"
+    display_plural: "Constrains Relationships"
+    plural: "Constrains"
+  }
+}
+
+
+inverse relationship Constrains {
+  source ValueArrayConstraint.ValueConstraintType
+  target ValueArrayValueType
+  inverse Constraints
+  cardinality 0..32767
+  header {
+    description: "Inverse of Constraints, from a value array constraint to the value array type it constrains."
+    display_name: "Constrains Relationship"
+    display_plural: "Constrains Relationships"
+    plural: "Constrains"
+  }
+}

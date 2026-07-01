@@ -35,6 +35,10 @@
     "sweetest:nocapture": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test:nocapture",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
     "sweet:test:nocapture": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
+    "map-schema:decompile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile host/import_files/map-schema/core-schema --out schema-src",
+    "map-schema:symbols": "cargo run --manifest-path tools/map-schema/Cargo.toml -- symbols host/import_files/map-schema/core-schema",
+    "map-schema:compile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- compile schema-src --out generated/json-imports",
+    "map-schema:check": "cargo run --manifest-path tools/map-schema/Cargo.toml -- check schema-src",
 
     "regen:sdk-fixtures": "npm run regen:sdk-fixtures -w map-host",
     "hooks:install": "bash ./scripts/install-git-hooks.sh",

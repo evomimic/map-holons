@@ -1,0 +1,375 @@
+{
+  "meta": {
+    "generator": "MAP Schema Compiler",
+    "generated_at": "2026-07-01T21:46:56.213858Z",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Schema Types-map-core-schema-operator-types.tdl"
+    ],
+    "load_with": [
+      "MAP Schema Types-map-core-schema-abstract-value-types.json",
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-root.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "OperatorType.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "OperatorType",
+        "type_name_plural": "OperatorTypes",
+        "display_name": "Operator Type",
+        "display_name_plural": "Operator Types",
+        "description": "Abstract descriptor for operator affordances. OperatorTypes are core-defined operations applicable to ValueTypes, used for validation, query construction, and filter expressions.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "TypeNameRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Arity.PropertyType"
+            },
+            {
+              "$ref": "OperatorCategory.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValueType)-[AffordsOperator]->(OperatorType.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "AffordsOperator",
+        "type_name_plural": "AffordsOperatorRelationships",
+        "display_name": "AffordsOperator Relationship",
+        "display_name_plural": "AffordsOperator Relationships",
+        "description": "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "ValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "OperatorType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(OperatorType.HolonType)-[AffordedBy]->(ValueType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "AffordedBy",
+        "type_name_plural": "AffordedByRelationships",
+        "display_name": "AffordedBy Relationship",
+        "display_name_plural": "AffordedBy Relationships",
+        "description": "Inverse of AffordsOperator, relationship from OperatorType to ValueType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(ValueType)-[AffordsOperator]->(OperatorType.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "OperatorType.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "ValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "OperatorCategory",
+        "type_name_plural": "OperatorCategories",
+        "display_name": "OperatorCategory",
+        "display_name_plural": "OperatorCategories",
+        "description": "Enum value type categorizing operators (e.g., Comparison, StringMatch).",
+        "instance_type_kind": "TypeKind.Value.Enum",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory.Equality",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Equality",
+        "display_name": "Equality",
+        "description": "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types.",
+        "instance_type_kind": "TypeKind.EnumVariant",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "OperatorCategory"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory.Ordering",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Ordering",
+        "display_name": "Ordering",
+        "description": "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string).",
+        "instance_type_kind": "TypeKind.EnumVariant",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "MapEnumVariantValueType"
+          }
+        },
+        {
+          "name": "VariantOf",
+          "target": {
+            "$ref": "OperatorCategory"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Arity.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Arity",
+        "type_name_plural": "Arities",
+        "display_name": "arity",
+        "display_name_plural": "arities",
+        "description": "Number of operands the operator accepts (1 = unary, 2 = binary).",
+        "instance_type_kind": "TypeKind.Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "MapIntegerValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "OperatorCategory.PropertyType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "OperatorCategory",
+        "type_name_plural": "OperatorCategories",
+        "display_name": "operator_category",
+        "display_name_plural": "operator_categories",
+        "description": "Categorical grouping of an operator (e.g., Comparison, StringMatch).",
+        "instance_type_kind": "TypeKind.Property",
+        "is_abstract_type": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "ValueType",
+          "target": {
+            "$ref": "OperatorCategory"
+          }
+        }
+      ]
+    },
+    {
+      "key": "EqualsOperator",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "EqualsOperator",
+        "type_name_plural": "EqualsOperators",
+        "display_name": "Equals",
+        "display_name_plural": "Equals Operators",
+        "description": "Returns true iff lhs and rhs are equal under the value type's equality semantics.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "arity": 2,
+        "operator_category": "OperatorCategory.Equality"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "OperatorType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LessThanOperator",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "LessThanOperator",
+        "type_name_plural": "LessThanOperator",
+        "display_name": "Less Than",
+        "display_name_plural": "Less Than Operators",
+        "description": "Returns true iff lhs < rhs.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false,
+        "arity": 2,
+        "operator_category": "OperatorCategory.Ordering"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "OperatorType.HolonType"
+          }
+        }
+      ]
+    }
+  ]
+}

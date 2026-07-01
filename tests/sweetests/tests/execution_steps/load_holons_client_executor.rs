@@ -63,16 +63,17 @@ pub async fn execute_load_holons_client(
     let commit_status =
         read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus);
 
-    // If the guest reported errors, dump error holons + full response for quick diagnosis.
-    if errors > 0 {
-        let error_dump = dump_error_holons_from_response(&response_reference);
+    let full_dump = dump_full_response(&response_reference);
+    let error_dump = if errors > 0 {
+        dump_error_holons_from_response(&response_reference)
+    } else {
+        String::new()
+    };
 
-        // Use both tracing and stderr so we see this even if tracing filter is tight.
+    info!("[loader-client] response_full_dump:\n{}", full_dump);
+    if !error_dump.is_empty() {
         info!("[loader-client] response_error_dump:\n{}", error_dump);
     }
-
-    let full_dump = dump_full_response(&response_reference);
-    info!("[loader-client] response_full_dump:\n{}", full_dump);
     info!(
         "[loader-client] metrics observed: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}; expected: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}",
         staged,
@@ -91,19 +92,66 @@ pub async fn execute_load_holons_client(
         expect_status
     );
 
-    assert_eq!(staged, expect_staged.0);
-    assert_eq!(committed, expect_committed.0);
-    assert_eq!(links_created, expect_links_created.0);
-    assert_eq!(errors, expect_errors.0);
-    assert_eq!(total_bundles, expect_total_bundles.0);
-    assert_eq!(total_loader_holons, expect_total_loader_holons.0);
-    assert_eq!(
-        commit_status,
-        expect_status.to_string(),
-        "Expected LoadCommitStatus={}, got {}",
-        expect_status,
-        commit_status
-    );
+    let expected_status_string = expect_status.to_string();
+    let mut mismatches = Vec::new();
+    if staged != expect_staged.0 {
+        mismatches.push(format!("HolonsStaged expected {}, got {}", expect_staged.0, staged));
+    }
+    if committed != expect_committed.0 {
+        mismatches
+            .push(format!("HolonsCommitted expected {}, got {}", expect_committed.0, committed));
+    }
+    if links_created != expect_links_created.0 {
+        mismatches.push(format!(
+            "LinksCreated expected {}, got {}",
+            expect_links_created.0, links_created
+        ));
+    }
+    if errors != expect_errors.0 {
+        mismatches.push(format!("ErrorCount expected {}, got {}", expect_errors.0, errors));
+    }
+    if total_bundles != expect_total_bundles.0 {
+        mismatches.push(format!(
+            "TotalBundles expected {}, got {}",
+            expect_total_bundles.0, total_bundles
+        ));
+    }
+    if total_loader_holons != expect_total_loader_holons.0 {
+        mismatches.push(format!(
+            "TotalLoaderHolons expected {}, got {}",
+            expect_total_loader_holons.0, total_loader_holons
+        ));
+    }
+    if commit_status != expected_status_string {
+        mismatches.push(format!(
+            "LoadCommitStatus expected {}, got {}",
+            expected_status_string, commit_status
+        ));
+    }
+
+    if !mismatches.is_empty() {
+        let mut report = String::new();
+        report.push_str("LoadHolons expected ");
+        if expect_errors.0 == 0 {
+            report.push_str("success");
+        } else {
+            report.push_str(&format!("{} errors", expect_errors.0));
+        }
+        report.push_str(&format!(" but loader returned {} errors.\n", errors));
+        report.push_str("Mismatches:\n");
+        for mismatch in &mismatches {
+            report.push_str("  - ");
+            report.push_str(mismatch);
+            report.push('\n');
+        }
+        report.push_str("\n");
+        report.push_str(&full_dump);
+        if !error_dump.is_empty() {
+            report.push('\n');
+            report.push_str(&error_dump);
+        }
+        panic!("{report}");
+    }
 }
 
 pub async fn execute_load_holons_client_expect_failure(

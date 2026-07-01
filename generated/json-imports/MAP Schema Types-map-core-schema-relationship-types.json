@@ -1,0 +1,1811 @@
+{
+  "meta": {
+    "generator": "MAP Schema Compiler",
+    "generated_at": "2026-07-01T21:46:56.214192Z",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Schema Types-map-core-schema-relationship-types.tdl"
+    ],
+    "load_with": [
+      "MAP Schema Types-map-core-schema-abstract-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-root.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ComponentOf",
+        "type_name_plural": "ComponentOfRelationships",
+        "display_name": "ComponentOf",
+        "display_name_plural": "ComponentOf Relationships",
+        "description": "Links a type descriptor to the schema that contains it.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "Schema.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Components",
+        "type_name_plural": "ComponentsRelationships",
+        "display_name": "Components",
+        "display_name_plural": "Components Relationships",
+        "description": "Inverse of ComponentOf, from SchemaType to TypeDescriptor.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "Schema.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InstanceProperties",
+        "type_name_plural": "InstancePropertiesRelationships",
+        "display_name": "InstanceProperties",
+        "display_name_plural": "InstanceProperties Relationships",
+        "description": "Connects a type descriptor to its expected property types.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InstancePropertyFor",
+        "type_name_plural": "InstancePropertyForRelationships",
+        "display_name": "InstancePropertyFor",
+        "display_name_plural": "InstancePropertyFor Relationships",
+        "description": "Inverse of InstanceProperties, from PropertyType to TypeDescriptor.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InstanceRelationships",
+        "type_name_plural": "InstanceRelationships",
+        "display_name": "Instance Relationships",
+        "display_name_plural": "Instance Relationships",
+        "description": "Connects a type descriptor to its expected relationship types.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "MetaHolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InstanceRelationshipFor",
+        "type_name_plural": "InstanceRelationshipForRelationships",
+        "display_name": "InstanceRelationshipFor",
+        "display_name_plural": "InstanceRelationshipFor Relationships",
+        "description": "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DescribedBy",
+        "type_name_plural": "DescribedByRelationships",
+        "display_name": "DescribedBy",
+        "display_name_plural": "DescribedBy Relationships",
+        "description": "Links a holon to the type descriptor that describes it.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor.HolonType)-[Instances]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Instances",
+        "type_name_plural": "InstancesRelationships",
+        "display_name": "Instances",
+        "display_name_plural": "Instances Relationships",
+        "description": "Inverse of DescribedBy, from TypeDescriptor to an instance of that type.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[OwnedBy]->(HolonSpace.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "OwnedBy",
+        "type_name_plural": "OwnedByRelationships",
+        "display_name": "OwnedBy",
+        "display_name_plural": "OwnedBy Relationships",
+        "description": "Indicates which holon space owns the given holon.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonSpace.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[Owns]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Owns",
+        "type_name_plural": "OwnsRelationships",
+        "display_name": "Owns",
+        "display_name_plural": "Owns Relationships",
+        "description": "Inverse of OwnedBy, from HolonSpace to Holon.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonType)-[OwnedBy]->(HolonSpace.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonSpace.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[Properties]->(PropertyType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Properties",
+        "type_name_plural": "PropertiesRelationships",
+        "display_name": "Properties",
+        "display_name_plural": "Properties Relationships",
+        "description": "Links a holon to its properties.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[PropertyOf]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "PropertyOf",
+        "type_name_plural": "PropertyOfRelationships",
+        "display_name": "PropertyOf",
+        "display_name_plural": "PropertyOf Relationships",
+        "description": "Inverse of Properties, from PropertyType to HolonType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonType)-[Properties]->(PropertyType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[ValueType]->(ValueType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ValueType",
+        "type_name_plural": "ValueTypeRelationships",
+        "display_name": "ValueType",
+        "display_name_plural": "ValueType Relationships",
+        "description": "Specifies the value type constraint for a property.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "ValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueType)-[ValueTypeFor]->(PropertyType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ValueTypeFor",
+        "type_name_plural": "ValueTypeForRelationships",
+        "display_name": "ValueTypeFor",
+        "display_name_plural": "ValueTypeFor Relationships",
+        "description": "Inverse of ValueType, from ValueType to PropertyType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(PropertyType)-[ValueType]->(ValueType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "ValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "SourceType",
+        "type_name_plural": "SourceTypeRelationships",
+        "display_name": "SourceType",
+        "display_name_plural": "SourceType Relationships",
+        "description": "Defines the source holon type for a relationship type.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "MetaRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor.HolonType)-[SourceOf]->(MetaRelationshipType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "SourceOf",
+        "type_name_plural": "SourceOfRelationships",
+        "display_name": "SourceOf",
+        "display_name_plural": "SourceOf Relationships",
+        "description": "Inverse of SourceType, from holon to relationship type.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "MetaRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "TargetType",
+        "type_name_plural": "TargetTypeRelationships",
+        "display_name": "TargetType",
+        "display_name_plural": "TargetType Relationships",
+        "description": "Defines the target holon type for a meta relationship type.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "MetaRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor.HolonType)-[TargetOf]->(MetaRelationshipType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "TargetOf",
+        "type_name_plural": "TargetOfRelationships",
+        "display_name": "TargetOf",
+        "display_name_plural": "TargetOf Relationships",
+        "description": "Inverse of TargetType, from HolonType to MetaRelationshipType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "MetaRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "InverseOf",
+        "type_name_plural": "InverseOfRelationships",
+        "display_name": "InverseOf",
+        "display_name_plural": "InverseOf Relationships",
+        "description": "Links an inverse relationship type to the declared relationship it reverses.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "HasInverse",
+        "type_name_plural": "HasInverseRelationships",
+        "display_name": "HasInverse",
+        "display_name_plural": "HasInverse Relationships",
+        "description": "Inverse of InverseOf, from DeclaredRelationshipType to InverseRelationshipType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(EnumValueType)-[Variants]->(EnumVariantValueType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Variants",
+        "type_name_plural": "VariantsRelationships",
+        "display_name": "Variants",
+        "display_name_plural": "Variants Relationships",
+        "description": "Declares the allowed symbolic variants of an enum value type.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "EnumValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "EnumVariantValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(EnumVariantValueType)-[VariantOf]->(EnumValueType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "VariantOf",
+        "type_name_plural": "VariantOfRelationships",
+        "display_name": "VariantOf",
+        "display_name_plural": "VariantOf Relationships",
+        "description": "Inverse of Variants, from EnumVariantType to EnumValueType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(EnumValueType)-[Variants]->(EnumVariantValueType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "EnumVariantValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "EnumValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DependsOn",
+        "type_name_plural": "DependsOnRelationships",
+        "display_name": "DependsOn",
+        "display_name_plural": "DependsOn Relationships",
+        "description": "Indicates that one schema holon depends on another.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "Schema.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "Schema.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(Schema.HolonType)-[Dependents]->(Schema.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Dependents",
+        "type_name_plural": "DependentsRelationships",
+        "display_name": "Dependents",
+        "display_name_plural": "Dependents Relationships",
+        "description": "Inverse of DependsOn, indicating which schemas depend on this one.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "Schema.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "Schema.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueArrayValueType)-[ElementValueType]->(ValueType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ElementValueType",
+        "type_name_plural": "ElementValueTypeRelationships",
+        "display_name": "ElementValueType",
+        "display_name_plural": "ElementValueType Relationships",
+        "description": "Specifies the element value type of a value array.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "ValueArrayValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "ValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(ValueType)-[ElementValueTypeFor]->(ValueArrayValueType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ElementValueTypeFor",
+        "type_name_plural": "ElementValueTypeForRelationships",
+        "display_name": "ElementValueTypeFor",
+        "display_name_plural": "ElementValueTypeFor Relationships",
+        "description": "Inverse of ElementValueType, from ValueType to ValueArrayType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(ValueArrayValueType)-[ElementValueType]->(ValueType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "ValueType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "ValueArrayValueType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Extends",
+        "type_name_plural": "ExtendsRelationships",
+        "display_name": "Extends",
+        "display_name_plural": "Extends Relationships",
+        "description": "Inheritance link, this TypeDescriptor extends another TypeDescriptor (single parent).",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor.HolonType)-[ExtendedBy]->(TypeDescriptor.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ExtendedBy",
+        "type_name_plural": "ExtendedByRelationships",
+        "display_name": "ExtendedBy",
+        "display_name_plural": "ExtendedBy Relationships",
+        "description": "Inverse of Extends, the parent TypeDescriptor is extended by zero or more children.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "TypeDescriptor.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "TemplateParameters",
+        "type_name_plural": "TemplateParametersRelationships",
+        "display_name": "TemplateParameters Relationship",
+        "display_name_plural": "TemplateParameters Relationships",
+        "description": "Ordered list of PropertyTypes used as positional parameters for template_string ($0, $1, ...).",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": true,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "FormatRule.KeyRuleType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "TemplateParameterFor",
+        "type_name_plural": "TemplateParameterForRelationships",
+        "display_name": "TemplateParameterFor Relationship",
+        "display_name_plural": "TemplateParameterFor Relationships",
+        "description": "Inverse of TemplateParameters, indicates that this PropertyType is used as a positional parameter in one or more Format.KeyRuleType instances.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "PropertyType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "FormatRule.KeyRuleType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "AffordsTransactionModel",
+        "type_name_plural": "AffordsTransactionModelRelationships",
+        "display_name": "AffordsTransactionModel Relationship",
+        "display_name_plural": "AffordsTransactionModel Relationships",
+        "description": "Declares that a HolonSpaceType affords exactly one TransactionType, anchoring the transaction command-scope API surface discoverable from the space descriptor.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonSpace.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "Transaction.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(Transaction.HolonType)-[TransactionModelAffordedBy]->(HolonSpace.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "TransactionModelAffordedBy",
+        "type_name_plural": "TransactionModelAffordedByRelationships",
+        "display_name": "TransactionModelAffordedBy Relationship",
+        "display_name_plural": "TransactionModelAffordedBy Relationships",
+        "description": "Inverse of AffordsTransactionModel, from TransactionType back to the HolonSpaceType that affords it.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "Transaction.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonSpace.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[CollectionMembers]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "CollectionMembers",
+        "type_name_plural": "CollectionMembersRelationships",
+        "display_name": "CollectionMembers",
+        "display_name_plural": "CollectionMembers Relationships",
+        "description": "Declared relationship from a persisted collection holon to the holons contained by the collection.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": true,
+        "allows_duplicates": true,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[MemberOfCollection]->(HolonCollection.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "MemberOfCollection",
+        "type_name_plural": "MemberOfCollectionRelationships",
+        "display_name": "MemberOfCollection",
+        "display_name_plural": "MemberOfCollection Relationships",
+        "description": "Inverse of CollectionMembers. Links a holon to a persisted collection holon that contains it.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[CollectionMembers]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[ElementType]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ElementType",
+        "type_name_plural": "ElementTypes",
+        "display_name": "Element Type",
+        "display_name_plural": "Element Types",
+        "description": "Declares the holon type carried by a persisted collection holon.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 1,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[ElementTypeFor]->(HolonCollection.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "ElementTypeFor",
+        "type_name_plural": "ElementTypeForRelationships",
+        "display_name": "ElementTypeFor",
+        "display_name_plural": "ElementTypeFor Relationships",
+        "description": "Inverse of ElementType. Links a holon type to persisted collection types that declare it as their element type.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "deletion_semantic": "Allow",
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonCollection.HolonType)-[ElementType]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonCollection.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[Predecessor]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Predecessor",
+        "type_name_plural": "PredecessorRelationships",
+        "display_name": "Predecessor",
+        "display_name_plural": "Predecessor Relationships",
+        "description": "Links a holon version to the immediately preceding version in its lineage.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[Successor]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Successor",
+        "type_name_plural": "SuccessorRelationships",
+        "display_name": "Successor",
+        "display_name_plural": "Successor Relationships",
+        "description": "Inverse of Predecessor, from a holon version to later versions derived from it.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonType)-[Predecessor]->(HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    }
+  ]
+}
