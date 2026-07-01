@@ -46,19 +46,23 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
         Arc::new(RuntimeSession::new(Arc::clone(&space_manager), recovery_receptor.clone()));
 
     if recovery_receptor.is_some() {
-        match session.restore_open_sessions() {
-            Ok(restored) => {
-                tracing::info!(
-                    "[RUNTIME] Runtime session initialized. Restored {} recovery session(s).",
-                    restored
-                );
-            }
-            Err(err) => {
-                tracing::error!(
-                    "[RUNTIME] Failed to restore recovery sessions during startup: {}",
-                    err
-                );
-                return false;
+        if crate::env::dev_mode_enabled() {
+            tracing::info!("[RUNTIME] Startup session recovery suppressed: MAP_START_MODE=dev.");
+        } else {
+            match session.restore_open_sessions() {
+                Ok(restored) => {
+                    tracing::info!(
+                        "[RUNTIME] Runtime session initialized. Restored {} recovery session(s).",
+                        restored
+                    );
+                }
+                Err(err) => {
+                    tracing::error!(
+                        "[RUNTIME] Failed to restore recovery sessions during startup: {}",
+                        err
+                    );
+                    return false;
+                }
             }
         }
     }
