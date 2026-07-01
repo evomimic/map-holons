@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-16T15:43:06",
+    "generated_at": "2026-06-29T16:09:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.csv"
@@ -367,6 +367,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderHolon.HolonType"
@@ -409,12 +415,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)"
           }
         },
         {
@@ -463,6 +463,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderRelationshipReference.HolonType"
@@ -505,12 +511,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)"
           }
         },
         {
@@ -559,6 +559,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "LoaderRelationshipReference.HolonType"
@@ -601,12 +607,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)"
           }
         },
         {
@@ -655,6 +655,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoaderBundle.HolonType"
@@ -697,12 +703,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)"
           }
         },
         {
@@ -751,6 +751,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoadResponse.DanceResponseType"
@@ -793,12 +799,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)"
           }
         },
         {
@@ -847,6 +847,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoadSet.HolonType"
@@ -892,12 +898,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "HolonLoaderBundle.HolonType"
@@ -935,6 +935,20 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "LoadCommitStatus.Complete"
+            },
+            {
+              "$ref": "LoadCommitStatus.Incomplete"
+            },
+            {
+              "$ref": "LoadCommitStatus.Skipped"
+            }
+          ]
         }
       ]
     },
@@ -959,12 +973,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "LoadCommitStatus"
           }
         }
       ]
@@ -991,12 +999,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "LoadCommitStatus"
-          }
         }
       ]
     },
@@ -1021,12 +1023,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "LoadCommitStatus"
           }
         }
       ]

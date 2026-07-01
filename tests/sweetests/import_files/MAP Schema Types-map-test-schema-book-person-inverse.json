@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-16T15:43:06",
+    "generated_at": "2026-06-29T16:09:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-test-schema-book-person-inverse.csv"
@@ -135,6 +135,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(Person.HolonType)-[Authors]->(Book.HolonType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "Book.HolonType"
@@ -176,12 +182,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(Book.HolonType)-[AuthoredBy]->(Person.HolonType)"
           }
         },
         {

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-16T15:43:06",
+    "generated_at": "2026-06-29T16:09:11",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-abstract-value-types.csv"

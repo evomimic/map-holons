@@ -82,9 +82,9 @@ impl DeclaredRelationshipDescriptor {
 
     /// Returns the inverse descriptor when a `HasInverse` edge is populated.
     ///
-    /// The schema declares `HasInverse` as required singular, but current core
-    /// schema data does not consistently populate it, so absence is represented
-    /// as `Ok(None)`. Multiple targets still fail loudly.
+    /// `HasInverse` is authored as a required singular relationship on declared
+    /// relationship descriptors. Absence is represented as `Ok(None)` so callers
+    /// can choose the appropriate contract error; multiple targets fail loudly.
     pub fn has_inverse(&self) -> Result<Option<InverseRelationshipDescriptor>, HolonError> {
         accessor_helpers::optional_single_related(
             &self.holon,
@@ -92,6 +92,18 @@ impl DeclaredRelationshipDescriptor {
         )?
         .map(InverseRelationshipDescriptor::try_from_holon)
         .transpose()
+    }
+
+    /// Returns the required inverse descriptor reached through `HasInverse`.
+    ///
+    /// This enforces the relationship-pair contract for declared relationship
+    /// descriptors: exactly one `HasInverse` target must exist, and that target
+    /// must extend `InverseRelationshipType`.
+    pub fn required_inverse(&self) -> Result<InverseRelationshipDescriptor, HolonError> {
+        self.has_inverse()?.ok_or_else(|| HolonError::MissingRequiredRelationship {
+            relationship: CoreRelationshipTypeName::HasInverse.as_relationship_name().to_string(),
+            descriptor: accessor_helpers::descriptor_label(&self.holon),
+        })
     }
 }
 

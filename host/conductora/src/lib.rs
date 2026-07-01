@@ -1,5 +1,6 @@
 // Module declarations
 mod config;
+pub mod env;
 mod map_commands;
 mod runtime;
 mod setup;

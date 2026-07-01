@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const CORE_SCHEMA_RELATIVE_PATHS: [&str; 11] = [
+const CORE_SCHEMA_RELATIVE_PATHS: [&str; 12] = [
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-command-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
@@ -16,6 +16,7 @@ const CORE_SCHEMA_RELATIVE_PATHS: [&str; 11] = [
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-loader-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
+    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-query-schema.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-root.json",
     "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-value-constraint-types.json"
@@ -33,12 +34,12 @@ pub struct CoreSchemaLoadMetrics {
 }
 
 pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 316,
-    committed: 316,
-    links_created: 1439,
+    staged: 380,
+    committed: 380,
+    links_created: 1778,
     errors: 0,
-    total_bundles: 11,
-    total_loader_holons: 316,
+    total_bundles: 12,
+    total_loader_holons: 380,
     commit_status: ExpectedLoadStatus::Complete,
 };
 

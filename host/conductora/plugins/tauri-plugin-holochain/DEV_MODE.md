@@ -17,16 +17,14 @@ Core goals:
 Dev mode is controlled by one launch-time environment variable:
 
 ```sh
-HC_DEV_MODE=1
+MAP_START_MODE=dev
 ```
 
-Truthy values are: `1`, `true`, `yes`, `on` (case-insensitive).
-
-When `HC_DEV_MODE` is unset (or falsey), runtime uses normal mode.
+When `MAP_START_MODE` is unset or set to `prod`, runtime uses normal mode.
 
 ## Runtime Behavior
 
-| Area | Normal Mode | Dev Mode (`HC_DEV_MODE=1`) |
+| Area | Normal Mode | Dev Mode (`MAP_START_MODE=dev`) |
 |---|---|---|
 | Keystore | `LairServerInProc` (in-process lair) | `DangerTestKeystore` (in-memory, ephemeral) |
 | Device seed | Created in lair under tag `"DEVICE_SEED"` | Not used; setup generates an explicit agent key via `generate_agent_pub_key()` |

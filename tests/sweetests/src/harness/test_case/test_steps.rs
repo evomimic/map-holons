@@ -103,6 +103,9 @@ pub enum DanceTestStep {
     LoadBookPersonInverseTestSchema {
         description: String,
     },
+    LoadInverseOrientedBookPersonInstancesExpectFailure {
+        description: String,
+    },
     VerifyBookPersonDescriptors {
         description: String,
     },
@@ -249,6 +252,9 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::LoadBookPersonInverseTestSchema { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::LoadInverseOrientedBookPersonInstancesExpectFailure { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyBookPersonDescriptors { description } => {

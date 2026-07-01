@@ -154,6 +154,56 @@ pub async fn execute_load_holons_client(
     }
 }
 
+pub async fn execute_load_holons_client_expect_failure(
+    test_state: &mut TestExecutionState,
+    content_set: ContentSet,
+    expected_status: ExpectedLoadStatus,
+    expected_error_substrings: &[&str],
+) {
+    let context = test_state.context();
+
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::LoadHolons { content_set },
+    });
+    let result = test_state
+        .dispatch_command(command, "load_holons_client_expect_failure")
+        .await
+        .unwrap_or_else(|e| panic!("load_holons_client_expect_failure failed: {e:?}"));
+
+    let response_reference = match result {
+        MapResult::Reference(HolonReference::Transient(t)) => t,
+        other => panic!("LoadHolons: expected Reference(Transient), got {other:?}"),
+    };
+
+    let committed = read_int_property(&response_reference, CorePropertyTypeName::HolonsCommitted);
+    let errors = read_int_property(&response_reference, CorePropertyTypeName::ErrorCount);
+    let commit_status =
+        read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus);
+    let error_dump = dump_error_holons_from_response(&response_reference);
+    let full_dump = dump_full_response(&response_reference);
+
+    info!("[loader-client] expected_failure_error_dump:\n{}", error_dump);
+    info!("[loader-client] expected_failure_full_dump:\n{}", full_dump);
+
+    assert_eq!(
+        commit_status,
+        expected_status.to_string(),
+        "Expected LoadCommitStatus={}, got {}",
+        expected_status,
+        commit_status
+    );
+    assert_eq!(committed, 0, "failed loader import must not commit staged holons");
+    assert!(errors > 0, "expected at least one loader error, got {errors}");
+
+    for expected in expected_error_substrings {
+        assert!(
+            error_dump.contains(expected),
+            "expected loader error dump to contain {expected:?}; dump:\n{error_dump}"
+        );
+    }
+}
+
 /// Utility: dump all properties on the response holon plus key loader fields.
 fn dump_full_response(response: &TransientReference) -> String {
     let mut out = String::new();
