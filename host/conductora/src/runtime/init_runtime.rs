@@ -46,9 +46,9 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
         Arc::new(RuntimeSession::new(Arc::clone(&space_manager), recovery_receptor.clone()));
 
     if recovery_receptor.is_some() {
-        if crate::env::hc_dev_mode_enabled() {
+        if crate::env::dev_mode_enabled() {
             tracing::info!(
-                "[RUNTIME] Startup session recovery suppressed: HC_DEV_MODE is enabled."
+                "[RUNTIME] Startup session recovery suppressed: MAP_START_MODE=dev."
             );
         } else {
             match session.restore_open_sessions() {

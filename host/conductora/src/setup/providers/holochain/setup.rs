@@ -29,7 +29,7 @@ impl HolochainSetup {
             return Err(anyhow::anyhow!("Invalid storage provider config for Holochain"));
         };
         let app_id = &hc_cfg.app_id;
-        let dev_mode = crate::env::hc_dev_mode_enabled();
+        let dev_mode = crate::env::dev_mode_enabled();
 
         let happ = load_happ_bundle(hc_cfg).map_err(|e| {
             tracing::error!("[HOLOCHAIN SETUP] Failed to load happ bundle: {}", e);

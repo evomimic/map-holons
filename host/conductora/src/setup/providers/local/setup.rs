@@ -87,7 +87,7 @@ pub async fn create_snapshot_store<C: ProviderConfig>(
     name: &str,
 ) -> Result<Arc<TransactionRecoveryStore>, anyhow::Error> {
     // Path resolution is non-blocking — do it on the async thread
-    let snapshot_dir = if crate::env::hc_dev_mode_enabled() {
+    let snapshot_dir = if crate::env::dev_mode_enabled() {
         std::path::PathBuf::from("/tmp/conductora_dev").join(name)
     } else {
         let app_data_dir = handle
