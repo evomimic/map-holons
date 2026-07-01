@@ -1,93 +1,169 @@
 schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
 }
-abstract value MetaValueType {
-  extends MetaTypeDescriptor
-  header {
-    description: "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill."
+abstract holon MetaValueType {
+  properties {
+    is_abstract_type: true
+    type_name: "MetaValueType"
+    type_name_plural: "MetaValueTypes"
     display_name: "Meta Value Type"
-    display_plural: "Meta Value Types"
-    plural: "MetaValueTypes"
+    display_name_plural: "Meta Value Types"
+    description: "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill."
+    instance_type_kind: "TypeKind.Holon"
+    allows_additional_properties: false
+    allows_additional_relationships: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "MetaTypeDescriptor"
+    UsesKeyRule -> "TypeNameRule.KeyRuleType"
   }
 }
 
 
-abstract value ValueType {
-  extends MetaValueType
-  header {
-    description: "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas."
+abstract holon ValueType {
+  properties {
+    is_abstract_type: true
+    type_name: "ValueType"
+    type_name_plural: "ValueTypes"
     display_name: "Value Type"
-    display_plural: "Value Types"
-    plural: "ValueTypes"
+    display_name_plural: "Value Types"
+    description: "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas."
+    instance_type_kind: "TypeKind.Holon"
+    allows_additional_properties: false
+    allows_additional_relationships: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "MetaValueType"
+    InstanceRelationships -> "(ValueType)-[AffordsOperator]->(OperatorType.HolonType)"
   }
 }
 
 
 abstract value StringValueType {
-  header {
-    description: "Abstract type for string-based value types."
+  properties {
+    is_abstract_type: true
+    type_name: "StringValueType"
+    type_name_plural: "StringValueTypes"
     display_name: "StringValueType"
-    display_plural: "StringValueTypes"
-    plural: "StringValueTypes"
+    display_name_plural: "StringValueTypes"
+    description: "Abstract type for string-based value types."
+    instance_type_kind: "TypeKind.Value.String"
+  }
+  relationships {
+    AffordsOperator -> ["EqualsOperator", "LessThanOperator"]
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "ValueType"
+    InstanceRelationships -> "(StringValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)"
   }
 }
 
 
 abstract value IntegerValueType {
-  header {
-    description: "Abstract type for integer-based value types."
+  properties {
+    is_abstract_type: true
+    type_name: "IntegerValueType"
+    type_name_plural: "IntegerValueTypes"
     display_name: "IntegerValueType"
-    display_plural: "IntegerValueTypes"
-    plural: "IntegerValueTypes"
+    display_name_plural: "IntegerValueTypes"
+    description: "Abstract type for integer-based value types."
+    instance_type_kind: "TypeKind.Value.Integer"
+  }
+  relationships {
+    AffordsOperator -> ["EqualsOperator", "LessThanOperator"]
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "ValueType"
+    InstanceRelationships -> "(IntegerValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)"
   }
 }
 
 
 abstract value BooleanValueType {
-  header {
-    description: "Abstract type for boolean-based value types."
+  properties {
+    is_abstract_type: true
+    type_name: "BooleanValueType"
+    type_name_plural: "BooleanValueTypes"
     display_name: "BooleanValueType"
-    display_plural: "BooleanValueTypes"
-    plural: "BooleanValueTypes"
+    display_name_plural: "BooleanValueTypes"
+    description: "Abstract type for boolean-based value types."
+    instance_type_kind: "TypeKind.Value.Boolean"
+  }
+  relationships {
+    AffordsOperator -> "EqualsOperator"
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "ValueType"
   }
 }
 
 
 abstract value BytesValueType {
-  header {
-    description: "Abstract type for byte sequence value types."
+  properties {
+    is_abstract_type: true
+    type_name: "BytesValueType"
+    type_name_plural: "BytesValueTypes"
     display_name: "BytesValueType"
-    display_plural: "BytesValueTypes"
-    plural: "BytesValueTypes"
+    display_name_plural: "BytesValueTypes"
+    description: "Abstract type for byte sequence value types."
+    instance_type_kind: "TypeKind.Value.Bytes"
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "ValueType"
+    InstanceRelationships -> "(BytesValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)"
   }
 }
 
 
 abstract enum EnumValueType {
-  header {
-    description: "Abstract type for enum-based value types."
+  properties {
+    is_abstract_type: true
+    type_name: "EnumValueType"
+    type_name_plural: "EnumValueTypes"
     display_name: "EnumValueType"
-    display_plural: "EnumValueTypes"
-    plural: "EnumValueTypes"
+    display_name_plural: "EnumValueTypes"
+    description: "Abstract type for enum-based value types."
+    instance_type_kind: "TypeKind.Value.Enum"
+  }
+  relationships {
+    AffordsOperator -> "EqualsOperator"
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "ValueType"
+    InstanceRelationships -> "(EnumValueType)-[Variants]->(EnumVariantValueType)"
   }
 }
 
 
-variant EnumVariantValueType {
-  header {
-    description: "Abstract type for variants of enum-based value types."
+abstract variant EnumVariantValueType {
+  properties {
+    is_abstract_type: true
+    type_name: "EnumVariantValueType"
+    type_name_plural: "EnumVariantValueTypes"
     display_name: "EnumVariant Value Type"
-    display_plural: "EnumVariant Value Types"
-    plural: "EnumVariantValueTypes"
+    display_name_plural: "EnumVariant Value Types"
+    description: "Abstract type for variants of enum-based value types."
+    instance_type_kind: "TypeKind.EnumVariant"
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "ValueType"
   }
 }
 
 
 abstract value ValueArrayValueType {
-  header {
-    description: "Abstract type for value array types."
+  properties {
+    is_abstract_type: true
+    type_name: "ValueArrayValueType"
+    type_name_plural: "ValueArrayValueTypes"
     display_name: "ValueArrayType"
-    display_plural: "ValueArrayTypes"
-    plural: "ValueArrayValueTypes"
+    display_name_plural: "ValueArrayTypes"
+    description: "Abstract type for value array types."
+    instance_type_kind: "TypeKind.Value.Array"
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "ValueType"
+    InstanceRelationships -> "(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)"
   }
 }

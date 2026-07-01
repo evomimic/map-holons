@@ -308,21 +308,45 @@ enum LoadCommitStatus {
   }
   variants {
     variant Complete {
-      header {
-        description: "An enum variant indicating a complete commit."
+      properties {
+        type_name: "Complete"
         display_name: "Complete"
+        description: "An enum variant indicating a complete commit."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "LoadCommitStatus"
       }
     }
     variant Incomplete {
-      header {
-        description: "An enum variant indicating an incomplete commit."
+      properties {
+        type_name: "Incomplete"
         display_name: "Incomplete"
+        description: "An enum variant indicating an incomplete commit."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "LoadCommitStatus"
       }
     }
     variant Skipped {
-      header {
-        description: "An enum variant indicating that commit was skipped."
+      properties {
+        type_name: "Skipped"
         display_name: "Skipped"
+        description: "An enum variant indicating that commit was skipped."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "LoadCommitStatus"
       }
     }
   }
@@ -330,121 +354,209 @@ enum LoadCommitStatus {
 
 
 property RelationshipName {
-  value MapStringValueType
-  header {
-    description: "Name of the relationship as declared in the JSON input."
+  properties {
+    type_name: "RelationshipName"
+    type_name_plural: "RelationshipNames"
     display_name: "relationship_name"
-    display_plural: "relationship_names"
-    plural: "RelationshipNames"
+    display_name_plural: "relationship_names"
+    description: "Name of the relationship as declared in the JSON input."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property HolonKey {
-  value MapStringValueType
-  header {
-    description: "Local key for the referenced holon."
+  properties {
+    type_name: "HolonKey"
+    type_name_plural: "HolonKeys"
     display_name: "holon_key"
-    display_plural: "holon_keys"
-    plural: "HolonKeys"
+    display_name_plural: "holon_keys"
+    description: "Local key for the referenced holon."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property ProxyKey {
-  value MapStringValueType
-  header {
-    description: "Key of the ProxySpace through which this external reference is routed."
+  properties {
+    type_name: "ProxyKey"
+    type_name_plural: "ProxyKeys"
     display_name: "proxy_key"
-    display_plural: "proxy_keys"
-    plural: "ProxyKeys"
+    display_name_plural: "proxy_keys"
+    description: "Key of the ProxySpace through which this external reference is routed."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property ProxyId {
-  value MapBytesValueType
-  header {
-    description: "ActionHash of the ProxySpace holon, used to route external references."
+  properties {
+    type_name: "ProxyId"
+    type_name_plural: "ProxyId"
     display_name: "proxy_id"
-    display_plural: "proxy_ids"
-    plural: "ProxyId"
+    display_name_plural: "proxy_ids"
+    description: "ActionHash of the ProxySpace holon, used to route external references."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBytesValueType"
   }
 }
 
 
 property HolonsStaged {
-  value MapIntegerValueType
-  header {
-    description: "Number of holons staged during the load operation."
+  properties {
+    type_name: "HolonsStaged"
+    type_name_plural: "HolonsStageds"
     display_name: "holons_staged"
-    display_plural: "holons_stageds"
-    plural: "HolonsStageds"
+    display_name_plural: "holons_stageds"
+    description: "Number of holons staged during the load operation."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property HolonsCommitted {
-  value MapIntegerValueType
-  header {
-    description: "Number of holons successfully committed."
+  properties {
+    type_name: "HolonsCommitted"
+    type_name_plural: "HolonsCommitteds"
     display_name: "holons_committed"
-    display_plural: "holons_committeds"
-    plural: "HolonsCommitteds"
+    display_name_plural: "holons_committeds"
+    description: "Number of holons successfully committed."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property LinksCreated {
-  value MapIntegerValueType
-  header {
-    description: "Number of links successfully created."
+  properties {
+    type_name: "LinksCreated"
+    type_name_plural: "LinksCreateds"
     display_name: "links_created"
-    display_plural: "links_createds"
-    plural: "LinksCreateds"
+    display_name_plural: "links_createds"
+    description: "Number of links successfully created."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property Filename {
-  value MapStringValueType
-  header {
-    description: "The name of a file."
+  properties {
+    type_name: "Filename"
+    type_name_plural: "Filenames"
     display_name: "filename"
-    display_plural: "filenames"
-    plural: "Filenames"
+    display_name_plural: "filenames"
+    description: "The name of a file."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property LoaderHolonKey {
-  value MapStringValueType
-  header {
-    description: "Key to reference a loader holon within a load set."
+  properties {
+    type_name: "LoaderHolonKey"
+    type_name_plural: "LoaderHolonKeys"
     display_name: "loader_holon_key"
-    display_plural: "loader_holon_keys"
-    plural: "LoaderHolonKeys"
+    display_name_plural: "loader_holon_keys"
+    description: "Key to reference a loader holon within a load set."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property StartUtf8ByteOffset {
-  value MapIntegerValueType
-  header {
-    description: "Byte offset that signifies the start of a segment of a source file."
+  properties {
+    type_name: "StartUtf8ByteOffset"
+    type_name_plural: "StartUtf8ByteOffsets"
     display_name: "start_utf8_byte_offset"
-    display_plural: "start_utf8_byte_offsets"
-    plural: "StartUtf8ByteOffsets"
+    display_name_plural: "start_utf8_byte_offsets"
+    description: "Byte offset that signifies the start of a segment of a source file."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property LoadCommitStatus {
-  value LoadCommitStatus
-  header {
-    description: "Represents the commit status for a holon loading operation."
+  properties {
+    type_name: "LoadCommitStatus"
+    type_name_plural: "LoadCommitStatuses"
     display_name: "load_commit_status"
-    display_plural: "load_commit_statuses"
-    plural: "LoadCommitStatuses"
+    display_name_plural: "load_commit_statuses"
+    description: "Represents the commit status for a holon loading operation."
+    instance_type_kind: "TypeKind.Property"
+    is_abstract_type: false
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "LoadCommitStatus"
   }
 }

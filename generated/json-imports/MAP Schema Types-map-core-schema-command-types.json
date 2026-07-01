@@ -1,0 +1,1214 @@
+{
+  "meta": {
+    "generator": "MAP Schema Compiler",
+    "generated_at": "2026-07-01T12:24:57.600008Z",
+    "export_mode": "by-file",
+    "source_files": [
+      "MAP Schema Types-map-core-schema-command-types.tdl"
+    ],
+    "load_with": [
+      "MAP Schema Types-map-core-schema-abstract-value-types.json",
+      "MAP Schema Types-map-core-schema-root.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "CommandType.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "CommandType",
+        "type_name_plural": "CommandTypes",
+        "display_name": "Command Type",
+        "display_name_plural": "Command Types",
+        "description": "Abstract descriptor type for core MAP command affordances discoverable through descriptor-local command lookup.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "BeginTransaction.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "BeginTransaction",
+        "type_name_plural": "BeginTransactionCommands",
+        "display_name": "Begin Transaction Command",
+        "display_name_plural": "Begin Transaction Commands",
+        "description": "Opens a new transaction for a holon space.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "CloneHolon.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "CloneHolon",
+        "type_name_plural": "CloneHolonCommands",
+        "display_name": "Clone Holon Command",
+        "display_name_plural": "Clone Holon Commands",
+        "description": "Creates a transient clone of the target holon.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetEssentialContent.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetEssentialContent",
+        "type_name_plural": "GetEssentialContentCommands",
+        "display_name": "Get Essential Content Command",
+        "display_name_plural": "Get Essential Content Commands",
+        "description": "Returns the target holon's essential content.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Summarize.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Summarize",
+        "type_name_plural": "SummarizeCommands",
+        "display_name": "Summarize Command",
+        "display_name_plural": "Summarize Commands",
+        "description": "Returns a concise string summary of the target holon.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetHolonId.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetHolonId",
+        "type_name_plural": "GetHolonIdCommands",
+        "display_name": "Get Holon Id Command",
+        "display_name_plural": "Get Holon Id Commands",
+        "description": "Returns the target holon's saved holon identifier.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetPredecessor.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetPredecessor",
+        "type_name_plural": "GetPredecessorCommands",
+        "display_name": "Get Predecessor Command",
+        "display_name_plural": "Get Predecessor Commands",
+        "description": "Returns the target holon's predecessor reference, if present.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetKey.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetKey",
+        "type_name_plural": "GetKeyCommands",
+        "display_name": "Get Key Command",
+        "display_name_plural": "Get Key Commands",
+        "description": "Returns the target holon's primary key value, if present.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetVersionedKey.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetVersionedKey",
+        "type_name_plural": "GetVersionedKeyCommands",
+        "display_name": "Get Versioned Key Command",
+        "display_name_plural": "Get Versioned Key Commands",
+        "description": "Returns the target holon's versioned key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetPropertyValue.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetPropertyValue",
+        "type_name_plural": "GetPropertyValueCommands",
+        "display_name": "Get Property Value Command",
+        "display_name_plural": "Get Property Value Commands",
+        "description": "Returns the value of a named property on the target holon, if present.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetRelatedHolons.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetRelatedHolons",
+        "type_name_plural": "GetRelatedHolonsCommands",
+        "display_name": "Get Related Holons Command",
+        "display_name_plural": "Get Related Holons Commands",
+        "description": "Returns holons related to the target holon through a named relationship.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "WithPropertyValue.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "WithPropertyValue",
+        "type_name_plural": "WithPropertyValueCommands",
+        "display_name": "With Property Value Command",
+        "display_name_plural": "With Property Value Commands",
+        "description": "Sets or updates a named property value on the target holon.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "RemovePropertyValue.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "RemovePropertyValue",
+        "type_name_plural": "RemovePropertyValueCommands",
+        "display_name": "Remove Property Value Command",
+        "display_name_plural": "Remove Property Value Commands",
+        "description": "Removes a named property value from the target holon.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "AddRelatedHolons.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "AddRelatedHolons",
+        "type_name_plural": "AddRelatedHolonsCommands",
+        "display_name": "Add Related Holons Command",
+        "display_name_plural": "Add Related Holons Commands",
+        "description": "Adds one or more related holons under a named relationship on the target holon.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "RemoveRelatedHolons.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "RemoveRelatedHolons",
+        "type_name_plural": "RemoveRelatedHolonsCommands",
+        "display_name": "Remove Related Holons Command",
+        "display_name_plural": "Remove Related Holons Commands",
+        "description": "Removes one or more related holons from a named relationship on the target holon.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "WithDescriptor.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "WithDescriptor",
+        "type_name_plural": "WithDescriptorCommands",
+        "display_name": "With Descriptor Command",
+        "display_name_plural": "With Descriptor Commands",
+        "description": "Attaches a type descriptor holon to the target holon.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Commit.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Commit",
+        "type_name_plural": "CommitCommands",
+        "display_name": "Commit Command",
+        "display_name_plural": "Commit Commands",
+        "description": "Commits the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "UndoLast.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "UndoLast",
+        "type_name_plural": "UndoLastCommands",
+        "display_name": "Undo Last Command",
+        "display_name_plural": "Undo Last Commands",
+        "description": "Undoes the last mutation in the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "RedoLast.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "RedoLast",
+        "type_name_plural": "RedoLastCommands",
+        "display_name": "Redo Last Command",
+        "display_name_plural": "Redo Last Commands",
+        "description": "Redoes the last undone mutation in the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "UndoToMarker.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "UndoToMarker",
+        "type_name_plural": "UndoToMarkerCommands",
+        "display_name": "Undo To Marker Command",
+        "display_name_plural": "Undo To Marker Commands",
+        "description": "Undoes mutations in the active transaction up to a specified marker.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "RedoToMarker.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "RedoToMarker",
+        "type_name_plural": "RedoToMarkerCommands",
+        "display_name": "Redo To Marker Command",
+        "display_name_plural": "Redo To Marker Commands",
+        "description": "Redoes mutations in the active transaction up to a specified marker.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "LoadHolons.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "LoadHolons",
+        "type_name_plural": "LoadHolonsCommands",
+        "display_name": "Load Holons Command",
+        "display_name_plural": "Load Holons Commands",
+        "description": "Loads holons from uploaded or imported file content into the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Dance.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Dance",
+        "type_name_plural": "DanceCommands",
+        "display_name": "Dance Command",
+        "display_name_plural": "Dance Commands",
+        "description": "Executes a dance request within the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "Query.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Query",
+        "type_name_plural": "QueryCommands",
+        "display_name": "Query Command",
+        "display_name_plural": "Query Commands",
+        "description": "Executes a query request within the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetAllHolons.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetAllHolons",
+        "type_name_plural": "GetAllHolonsCommands",
+        "display_name": "Get All Holons Command",
+        "display_name_plural": "Get All Holons Commands",
+        "description": "Returns all holons visible in the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetStagedHolonByBaseKey.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetStagedHolonByBaseKey",
+        "type_name_plural": "GetStagedHolonByBaseKeyCommands",
+        "display_name": "Get Staged Holon By Base Key Command",
+        "display_name_plural": "Get Staged Holon By Base Key Commands",
+        "description": "Returns the staged holon matching a specified base key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetStagedHolonsByBaseKey.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetStagedHolonsByBaseKey",
+        "type_name_plural": "GetStagedHolonsByBaseKeyCommands",
+        "display_name": "Get Staged Holons By Base Key Command",
+        "display_name_plural": "Get Staged Holons By Base Key Commands",
+        "description": "Returns all staged holons matching a specified base key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetStagedHolonByVersionedKey.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetStagedHolonByVersionedKey",
+        "type_name_plural": "GetStagedHolonByVersionedKeyCommands",
+        "display_name": "Get Staged Holon By Versioned Key Command",
+        "display_name_plural": "Get Staged Holon By Versioned Key Commands",
+        "description": "Returns the staged holon matching a specified versioned key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetTransientHolonByBaseKey.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetTransientHolonByBaseKey",
+        "type_name_plural": "GetTransientHolonByBaseKeyCommands",
+        "display_name": "Get Transient Holon By Base Key Command",
+        "display_name_plural": "Get Transient Holon By Base Key Commands",
+        "description": "Returns the transient holon matching a specified base key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetTransientHolonByVersionedKey.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetTransientHolonByVersionedKey",
+        "type_name_plural": "GetTransientHolonByVersionedKeyCommands",
+        "display_name": "Get Transient Holon By Versioned Key Command",
+        "display_name_plural": "Get Transient Holon By Versioned Key Commands",
+        "description": "Returns the transient holon matching a specified versioned key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetStagedCount.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetStagedCount",
+        "type_name_plural": "GetStagedCountCommands",
+        "display_name": "Get Staged Count Command",
+        "display_name_plural": "Get Staged Count Commands",
+        "description": "Returns the number of staged holons in the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "GetTransientCount.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "GetTransientCount",
+        "type_name_plural": "GetTransientCountCommands",
+        "display_name": "Get Transient Count Command",
+        "display_name_plural": "Get Transient Count Commands",
+        "description": "Returns the number of transient holons in the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "NewHolon.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "NewHolon",
+        "type_name_plural": "NewHolonCommands",
+        "display_name": "New Holon Command",
+        "display_name_plural": "New Holon Commands",
+        "description": "Creates a new transient holon, optionally with a key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "StageNewHolon.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "StageNewHolon",
+        "type_name_plural": "StageNewHolonCommands",
+        "display_name": "Stage New Holon Command",
+        "display_name_plural": "Stage New Holon Commands",
+        "description": "Stages a transient holon as a new holon in the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "StageNewFromClone.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "StageNewFromClone",
+        "type_name_plural": "StageNewFromCloneCommands",
+        "display_name": "Stage New From Clone Command",
+        "display_name_plural": "Stage New From Clone Commands",
+        "description": "Stages a new holon cloned from an existing holon reference with a new key.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "StageNewVersion.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "StageNewVersion",
+        "type_name_plural": "StageNewVersionCommands",
+        "display_name": "Stage New Version Command",
+        "display_name_plural": "Stage New Version Commands",
+        "description": "Stages a new version of an existing smart reference.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "StageNewVersionFromId.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "StageNewVersionFromId",
+        "type_name_plural": "StageNewVersionFromIdCommands",
+        "display_name": "Stage New Version From Id Command",
+        "display_name_plural": "Stage New Version From Id Commands",
+        "description": "Stages a new version of an existing holon identified by holon ID.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "DeleteHolon.CommandType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "DeleteHolon",
+        "type_name_plural": "DeleteHolonCommands",
+        "display_name": "Delete Holon Command",
+        "display_name_plural": "Delete Holon Commands",
+        "description": "Deletes a holon identified by ID from the active transaction.",
+        "instance_type_kind": "TypeKind.Holon",
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[AffordsCommand]->(CommandType.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "AffordsCommand",
+        "type_name_plural": "AffordsCommandRelationships",
+        "display_name": "AffordsCommand Relationship",
+        "display_name_plural": "AffordsCommand Relationships",
+        "description": "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767,
+        "deletion_semantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(CommandType.HolonType)-[AffordedBy]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "AffordedBy",
+        "type_name_plural": "AffordedByRelationships",
+        "display_name": "AffordedBy Relationship",
+        "display_name_plural": "AffordedBy Relationships",
+        "description": "Inverse of AffordsCommand, relationship from CommandType to HolonType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767,
+        "deletion_semantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "InverseOf",
+          "target": {
+            "$ref": "(HolonType)-[AffordsCommand]->(CommandType.HolonType)"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "CommandType.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    }
+  ]
+}

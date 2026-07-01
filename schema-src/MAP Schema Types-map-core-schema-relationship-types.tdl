@@ -71,15 +71,27 @@ def relationship InstanceRelationships {
 
 
 inverse relationship InstanceRelationshipFor {
-  source DeclaredRelationshipType
-  target TypeDescriptor.HolonType
-  inverse InstanceRelationships
   cardinality 0..32767
-  header {
-    description: "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor."
+  properties {
+    type_name: "InstanceRelationshipFor"
+    type_name_plural: "InstanceRelationshipForRelationships"
     display_name: "InstanceRelationshipFor"
-    display_plural: "InstanceRelationshipFor Relationships"
-    plural: "InstanceRelationshipForRelationships"
+    display_name_plural: "InstanceRelationshipFor Relationships"
+    description: "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor."
+    instance_type_kind: "TypeKind.Relationship"
+    is_abstract_type: false
+    is_definitional: false
+    is_ordered: false
+    allows_duplicates: false
+    min_cardinality: 0
+    max_cardinality: 32767
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "InverseRelationshipType"
+    InverseOf -> "(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
+    SourceType -> "DeclaredRelationshipType"
+    TargetType -> "TypeDescriptor.HolonType"
   }
 }
 

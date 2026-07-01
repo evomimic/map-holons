@@ -2,6 +2,7 @@ schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
 }
 abstract holon OperatorType {
+  keyrule TypeNameRule.KeyRuleType
   header {
     description: "Abstract descriptor for operator affordances. OperatorTypes are core-defined operations applicable to ValueTypes, used for validation, query construction, and filter expressions."
     display_name: "Operator Type"
@@ -52,15 +53,31 @@ enum OperatorCategory {
   }
   variants {
     variant Equality {
-      header {
-        description: "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types."
+      properties {
+        type_name: "Equality"
         display_name: "Equality"
+        description: "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "OperatorCategory"
       }
     }
     variant Ordering {
-      header {
-        description: "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string)."
+      properties {
+        type_name: "Ordering"
         display_name: "Ordering"
+        description: "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string)."
+        instance_type_kind: "TypeKind.EnumVariant"
+        is_abstract_type: false
+      }
+      relationships {
+        ComponentOf -> "MAP Core Schema-v0.0.7"
+        Extends -> "MapEnumVariantValueType"
+        VariantOf -> "OperatorCategory"
       }
     }
   }
@@ -90,22 +107,42 @@ property OperatorCategory {
 
 
 holon EqualsOperator {
-  extends OperatorType.HolonType
-  header {
-    description: "Returns true iff lhs and rhs are equal under the value type's equality semantics."
+  properties {
+    type_name: "EqualsOperator"
+    type_name_plural: "EqualsOperators"
     display_name: "Equals"
-    display_plural: "Equals Operators"
-    plural: "EqualsOperators"
+    display_name_plural: "Equals Operators"
+    description: "Returns true iff lhs and rhs are equal under the value type's equality semantics."
+    instance_type_kind: "TypeKind.Holon"
+    is_abstract_type: false
+    allows_additional_properties: false
+    allows_additional_relationships: false
+    arity: 2
+    operator_category: "OperatorCategory.Equality"
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "OperatorType.HolonType"
   }
 }
 
 
 holon LessThanOperator {
-  extends OperatorType.HolonType
-  header {
-    description: "Returns true iff lhs < rhs."
+  properties {
+    type_name: "LessThanOperator"
+    type_name_plural: "LessThanOperator"
     display_name: "Less Than"
-    display_plural: "Less Than Operators"
-    plural: "LessThanOperator"
+    display_name_plural: "Less Than Operators"
+    description: "Returns true iff lhs < rhs."
+    instance_type_kind: "TypeKind.Holon"
+    is_abstract_type: false
+    allows_additional_properties: false
+    allows_additional_relationships: false
+    arity: 2
+    operator_category: "OperatorCategory.Ordering"
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "OperatorType.HolonType"
   }
 }

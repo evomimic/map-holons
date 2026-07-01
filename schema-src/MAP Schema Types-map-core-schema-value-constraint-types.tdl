@@ -2,6 +2,7 @@ schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
 }
 abstract holon ValueConstraintType {
+  keyrule ExtendedTypeRule.KeyRuleType
   header {
     description: "Abstract holon type for constraints that refine the accepted values of a ValueType."
     display_name: "Value Constraint Type"
@@ -12,6 +13,7 @@ abstract holon ValueConstraintType {
 
 
 abstract holon StringValueConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for string value constraints."
@@ -23,6 +25,7 @@ abstract holon StringValueConstraint {
 
 
 abstract holon IntegerValueConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for integer value constraints."
@@ -34,6 +37,7 @@ abstract holon IntegerValueConstraint {
 
 
 abstract holon BytesValueConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for byte sequence value constraints."
@@ -45,6 +49,7 @@ abstract holon BytesValueConstraint {
 
 
 abstract holon ValueArrayConstraint {
+  keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for value array constraints."

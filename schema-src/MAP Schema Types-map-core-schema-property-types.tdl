@@ -1,307 +1,531 @@
 schema MAP Core Schema-v0.0.7
 property AllowsDuplicates {
-  value MapBooleanValueType
-  header {
-    description: "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set."
+  properties {
+    is_abstract_type: false
+    type_name: "AllowsDuplicates"
+    type_name_plural: "AllowsDuplicates"
     display_name: "allows_duplicates"
-    display_plural: "allows_duplicates"
-    plural: "AllowsDuplicates"
+    display_name_plural: "allows_duplicates"
+    description: "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property AllowsAdditionalProperties {
-  value MapBooleanValueType
-  header {
-    description: "If true, instances may include properties not explicitly listed by the descriptor."
+  properties {
+    is_abstract_type: false
+    type_name: "AllowsAdditionalProperties"
+    type_name_plural: "AllowsAdditionalProperties"
     display_name: "allows_additional_properties"
-    display_plural: "allows_additional_properties"
-    plural: "AllowsAdditionalProperties"
+    display_name_plural: "allows_additional_properties"
+    description: "If true, instances may include properties not explicitly listed by the descriptor."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property AllowsAdditionalRelationships {
-  value MapBooleanValueType
-  header {
-    description: "If true, instances may include relationships not explicitly listed by the descriptor."
+  properties {
+    is_abstract_type: false
+    type_name: "AllowsAdditionalRelationships"
+    type_name_plural: "AllowsAdditionalRelationships"
     display_name: "allows_additional_relationships"
-    display_plural: "allows_additional_relationships"
-    plural: "AllowsAdditionalRelationships"
+    display_name_plural: "allows_additional_relationships"
+    description: "If true, instances may include relationships not explicitly listed by the descriptor."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property DeletionSemantic {
-  value DeletionSemantic
-  header {
-    description: "Specifies behavior for how to handle requests to delete the source holon from this relationship."
+  properties {
+    is_abstract_type: false
+    type_name: "DeletionSemantic"
+    type_name_plural: "DeletionSemantics"
     display_name: "deletion_semantic"
-    display_plural: "deletion_semantics"
-    plural: "DeletionSemantics"
+    display_name_plural: "deletion_semantics"
+    description: "Specifies behavior for how to handle requests to delete the source holon from this relationship."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "DeletionSemantic"
   }
 }
 
 
 property Description {
-  value MapStringValueType
-  header {
-    description: "A human-readable explanation of the purpose or role of this type."
+  properties {
+    is_abstract_type: false
+    type_name: "Description"
+    type_name_plural: "Descriptions"
     display_name: "description"
-    display_plural: "descriptions"
-    plural: "Descriptions"
+    display_name_plural: "descriptions"
+    description: "A human-readable explanation of the purpose or role of this type."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property DisplayName {
-  value MapStringValueType
-  header {
-    description: "The human-readable label used for this property"
+  properties {
+    is_abstract_type: false
+    type_name: "DisplayName"
+    type_name_plural: "DisplayNames"
     display_name: "displayName"
-    display_plural: "displayNames"
-    plural: "DisplayNames"
+    display_name_plural: "displayNames"
+    description: "The human-readable label used for this property"
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property DisplayNamePlural {
-  value MapStringValueType
-  header {
-    description: "The plural form of the label for use in lists or summaries."
+  properties {
+    is_abstract_type: false
+    type_name: "DisplayNamePlural"
+    type_name_plural: "DisplayNamePlurals"
     display_name: "displayNamePlural"
-    display_plural: "displayNamePlurals"
-    plural: "DisplayNamePlurals"
+    display_name_plural: "displayNamePlurals"
+    description: "The plural form of the label for use in lists or summaries."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property IsAbstractType {
-  value MapBooleanValueType
-  header {
-    description: "Indicates whether the type is abstract (cannot be instantiated)."
+  properties {
+    is_abstract_type: false
+    type_name: "IsAbstractType"
+    type_name_plural: "IsAbstractTypes"
     display_name: "isAbstractType"
-    display_plural: "isAbstractTypes"
-    plural: "IsAbstractTypes"
+    display_name_plural: "isAbstractTypes"
+    description: "Indicates whether the type is abstract (cannot be instantiated)."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property IsDefinitional {
-  value MapBooleanValueType
-  header {
-    description: "Indicates whether the relationship contributes to the identity of the target holon."
+  properties {
+    is_abstract_type: false
+    type_name: "IsDefinitional"
+    type_name_plural: "IsDefinitional"
     display_name: "isDefinitional"
-    display_plural: "isDefinitional"
-    plural: "IsDefinitional"
+    display_name_plural: "isDefinitional"
+    description: "Indicates whether the relationship contributes to the identity of the target holon."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property IsOrdered {
-  value MapBooleanValueType
-  header {
-    description: "True if the order of related holons is significant."
+  properties {
+    is_abstract_type: false
+    type_name: "IsOrdered"
+    type_name_plural: "IsOrdered"
     display_name: "isOrdered"
-    display_plural: "isOrdered"
-    plural: "IsOrdered"
+    display_name_plural: "isOrdered"
+    description: "True if the order of related holons is significant."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property IsRequired {
-  value MapBooleanValueType
-  header {
-    description: "True if a value for this property type is required for the holon having this property."
+  properties {
+    is_abstract_type: false
+    type_name: "IsRequired"
+    type_name_plural: "IsRequired"
     display_name: "IsRequired"
-    display_plural: "IsRequired"
-    plural: "IsRequired"
+    display_name_plural: "IsRequired"
+    description: "True if a value for this property type is required for the holon having this property."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property MapBoolean {
-  value MapBooleanValueType
-  header {
-    description: "Boolean scalar value (true/false)."
+  properties {
+    is_abstract_type: false
+    type_name: "MapBoolean"
+    type_name_plural: "MapBooleans"
     display_name: "mapBoolean"
-    display_plural: "mapBooleans"
-    plural: "MapBooleans"
+    display_name_plural: "mapBooleans"
+    description: "Boolean scalar value (true/false)."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBooleanValueType"
   }
 }
 
 
 property MapBytes {
-  value MapBytesValueType
-  header {
-    description: "Binary data (blob of bytes)."
+  properties {
+    is_abstract_type: false
+    type_name: "MapBytes"
+    type_name_plural: "MapBytes"
     display_name: "mapBytes"
-    display_plural: "mapBytes"
-    plural: "MapBytes"
+    display_name_plural: "mapBytes"
+    description: "Binary data (blob of bytes)."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapBytesValueType"
   }
 }
 
 
 property MapInteger {
-  value MapIntegerValueType
-  header {
-    description: "Integer scalar value."
+  properties {
+    is_abstract_type: false
+    type_name: "MapInteger"
+    type_name_plural: "MapIntegers"
     display_name: "mapInteger"
-    display_plural: "mapIntegers"
-    plural: "MapIntegers"
+    display_name_plural: "mapIntegers"
+    description: "Integer scalar value."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property MapString {
-  value MapStringValueType
-  header {
-    description: "Textual scalar value."
+  properties {
+    is_abstract_type: false
+    type_name: "MapString"
+    type_name_plural: "MapStrings"
     display_name: "mapString"
-    display_plural: "mapStrings"
-    plural: "MapStrings"
+    display_name_plural: "mapStrings"
+    description: "Textual scalar value."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property MaxCardinality {
-  value MapIntegerValueType
-  header {
-    description: "Maximum number of target holons allowed for the relationship."
+  properties {
+    is_abstract_type: false
+    type_name: "MaxCardinality"
+    type_name_plural: "MaxCardinalities"
     display_name: "max_cardinality"
-    display_plural: "max_cardinalities"
-    plural: "MaxCardinalities"
+    display_name_plural: "max_cardinalities"
+    description: "Maximum number of target holons allowed for the relationship."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property MinCardinality {
-  value MapIntegerValueType
-  header {
-    description: "Minimum number of target holons allowed for the relationship."
+  properties {
+    is_abstract_type: false
+    type_name: "MinCardinality"
+    type_name_plural: "MinCardinalities"
     display_name: "min_cardinality"
-    display_plural: "min_cardinalities"
-    plural: "MinCardinalities"
+    display_name_plural: "min_cardinalities"
+    description: "Minimum number of target holons allowed for the relationship."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property TypeKind {
-  value TypeKind
-  header {
-    description: "Specifies the kind of type this descriptor represents."
+  properties {
+    is_abstract_type: false
+    type_name: "TypeKind"
+    type_name_plural: "TypeKinds"
     display_name: "type_kind"
-    display_plural: "type_kinds"
-    plural: "TypeKinds"
+    display_name_plural: "type_kinds"
+    description: "Specifies the kind of type this descriptor represents."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "TypeKind"
   }
 }
 
 
 property TypeName {
-  value MapStringValueType
-  header {
-    description: "The unique identifier for a type, typically in ClassCase."
+  properties {
+    is_abstract_type: false
+    type_name: "TypeName"
+    type_name_plural: "TypeNames"
     display_name: "typeName"
-    display_plural: "typeNames"
-    plural: "TypeNames"
+    display_name_plural: "typeNames"
+    description: "The unique identifier for a type, typically in ClassCase."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property SchemaName {
-  value MapStringValueType
-  header {
-    description: "The name of a type schema.  Defines a collection of type descriptor holons."
+  properties {
+    is_abstract_type: false
+    type_name: "SchemaName"
+    type_name_plural: "SchemaNames"
     display_name: "schemaName"
-    display_plural: "schemaNames"
-    plural: "SchemaNames"
+    display_name_plural: "schemaNames"
+    description: "The name of a type schema.  Defines a collection of type descriptor holons."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property TypeNamePlural {
-  value MapStringValueType
-  header {
-    description: "The plural form of the type's identifier used for display or grouping."
+  properties {
+    is_abstract_type: false
+    type_name: "TypeNamePlural"
+    type_name_plural: "TypeNamePlurals"
     display_name: "typeNamePlural"
-    display_plural: "typeNamePlurals"
-    plural: "TypeNamePlurals"
+    display_name_plural: "typeNamePlurals"
+    description: "The plural form of the type's identifier used for display or grouping."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property ErrorType {
-  value MapStringValueType
-  header {
-    description: "Indicates the type of error."
+  properties {
+    is_abstract_type: false
+    type_name: "ErrorType"
+    type_name_plural: "ErrorTypes"
     display_name: "error_type"
-    display_plural: "error_types"
-    plural: "ErrorTypes"
+    display_name_plural: "error_types"
+    description: "Indicates the type of error."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property ErrorMessage {
-  value MapStringValueType
-  header {
-    description: "A descriptive message explaining an error."
+  properties {
+    is_abstract_type: false
+    type_name: "ErrorMessage"
+    type_name_plural: "ErrorMessages"
     display_name: "error_message"
-    display_plural: "error_messages"
-    plural: "ErrorMessages"
+    display_name_plural: "error_messages"
+    description: "A descriptive message explaining an error."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property ErrorCount {
-  value MapIntegerValueType
-  header {
-    description: "Number of errors encountered."
+  properties {
+    is_abstract_type: false
+    type_name: "ErrorCount"
+    type_name_plural: "ErrorCounts"
     display_name: "error_count"
-    display_plural: "error_counts"
-    plural: "ErrorCounts"
+    display_name_plural: "error_counts"
+    description: "Number of errors encountered."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapIntegerValueType"
   }
 }
 
 
 property TemplateString {
-  value MapStringValueType
-  header {
-    description: "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings."
+  properties {
+    is_abstract_type: false
+    type_name: "TemplateString"
+    type_name_plural: "TemplateStrings"
     display_name: "template_string"
-    display_plural: "template_strings"
-    plural: "TemplateStrings"
+    display_name_plural: "template_strings"
+    description: "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property CollectionType {
-  value CollectionType
-  header {
-    description: "Selects the runtime wrapper used to inflate a persisted collection holon."
+  properties {
+    is_abstract_type: false
+    type_name: "CollectionType"
+    type_name_plural: "CollectionTypes"
     display_name: "collection_type"
-    display_plural: "collection_types"
-    plural: "CollectionTypes"
+    display_name_plural: "collection_types"
+    description: "Selects the runtime wrapper used to inflate a persisted collection holon."
+    instance_type_kind: "TypeKind.Property"
+    is_required: true
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "CollectionType"
   }
 }
 
 
 property Key {
-  value MapStringValueType
-  header {
-    description: "Identifying key of a holon instance."
+  properties {
+    is_abstract_type: false
+    type_name: "Key"
+    type_name_plural: "Keys"
     display_name: "key"
-    display_plural: "keys"
-    plural: "Keys"
+    display_name_plural: "keys"
+    description: "Identifying key of a holon instance."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "MapStringValueType"
   }
 }
 
 
 property HolonId {
-  value HolonIdValueType
-  header {
-    description: "ActionHash identifier of a referenced holon."
+  properties {
+    is_abstract_type: false
+    type_name: "HolonId"
+    type_name_plural: "HolonIds"
     display_name: "holon_id"
-    display_plural: "holon_ids"
-    plural: "HolonIds"
+    display_name_plural: "holon_ids"
+    description: "ActionHash identifier of a referenced holon."
+    instance_type_kind: "TypeKind.Property"
+    is_required: false
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "PropertyType"
+    ValueType -> "HolonIdValueType"
   }
 }

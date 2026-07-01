@@ -417,29 +417,55 @@ holon DeleteHolon {
 
 
 def relationship AffordsCommand {
-  source HolonType
-  target CommandType.HolonType
   cardinality 0..32767
   deletion_semantic Allow
-  header {
-    description: "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup."
+  properties {
+    type_name: "AffordsCommand"
+    type_name_plural: "AffordsCommandRelationships"
     display_name: "AffordsCommand Relationship"
-    display_plural: "AffordsCommand Relationships"
-    plural: "AffordsCommandRelationships"
+    display_name_plural: "AffordsCommand Relationships"
+    description: "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup."
+    instance_type_kind: "TypeKind.Relationship"
+    is_abstract_type: false
+    is_definitional: true
+    is_ordered: false
+    allows_duplicates: false
+    min_cardinality: 0
+    max_cardinality: 32767
+    deletion_semantic: "Allow"
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "DeclaredRelationshipType"
+    SourceType -> "HolonType"
+    TargetType -> "CommandType.HolonType"
   }
 }
 
 
 inverse relationship AffordedBy {
-  source CommandType.HolonType
-  target HolonType
-  inverse AffordsCommand
   cardinality 0..32767
   deletion_semantic Allow
-  header {
-    description: "Inverse of AffordsCommand, relationship from CommandType to HolonType."
+  properties {
+    type_name: "AffordedBy"
+    type_name_plural: "AffordedByRelationships"
     display_name: "AffordedBy Relationship"
-    display_plural: "AffordedBy Relationships"
-    plural: "AffordedByRelationships"
+    display_name_plural: "AffordedBy Relationships"
+    description: "Inverse of AffordsCommand, relationship from CommandType to HolonType."
+    instance_type_kind: "TypeKind.Relationship"
+    is_abstract_type: false
+    is_definitional: false
+    is_ordered: false
+    allows_duplicates: false
+    min_cardinality: 0
+    max_cardinality: 32767
+    deletion_semantic: "Allow"
+  }
+  relationships {
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "InverseRelationshipType"
+    InverseOf -> "(HolonType)-[AffordsCommand]->(CommandType.HolonType)"
+    SourceType -> "CommandType.HolonType"
+    TargetType -> "HolonType"
   }
 }
