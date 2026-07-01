@@ -66,7 +66,7 @@ impl HolonDescriptor {
 
     /// Returns effective dance descriptors across this descriptor's inheritance chain.
     pub fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
-        flatten_related_members(&self.holon, CoreRelationshipTypeName::Affords)
+        flatten_related_members(&self.holon, CoreRelationshipTypeName::AffordsDance)
             .map(|members| members.into_iter().map(DanceDescriptor::from_holon).collect())
     }
 
@@ -209,10 +209,7 @@ impl HolonDescriptor {
             .get_relationship_by_name(declared_name)?
             .try_into_declared_relationship_descriptor()?;
 
-        declared.has_inverse()?.ok_or_else(|| HolonError::MissingRequiredRelationship {
-            relationship: "HasInverse".to_string(),
-            descriptor: accessor_helpers::descriptor_label(declared.holon()),
-        })
+        declared.required_inverse()
     }
 
     fn flatten_property_descriptors(
@@ -619,10 +616,12 @@ mod tests {
         let mut parent = new_descriptor_holon(&context, "dance-parent", "ParentType")?;
         let mut leaf = new_descriptor_holon(&context, "dance-leaf", "LeafType")?;
 
-        parent
-            .add_related_holons(CoreRelationshipTypeName::Affords, vec![inherited_dance.into()])?;
+        parent.add_related_holons(
+            CoreRelationshipTypeName::AffordsDance,
+            vec![inherited_dance.into()],
+        )?;
         leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
-        leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![local_dance.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![local_dance.into()])?;
 
         let descriptor = HolonDescriptor::from_holon(leaf.into());
 
@@ -647,11 +646,14 @@ mod tests {
         let mut middle = new_descriptor_holon(&context, "dance-middle", "MiddleType")?;
         let mut leaf = new_descriptor_holon(&context, "dance-chain-leaf", "LeafType")?;
 
-        root.add_related_holons(CoreRelationshipTypeName::Affords, vec![root_dance.into()])?;
+        root.add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![root_dance.into()])?;
         middle.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
-        middle.add_related_holons(CoreRelationshipTypeName::Affords, vec![middle_dance.into()])?;
+        middle.add_related_holons(
+            CoreRelationshipTypeName::AffordsDance,
+            vec![middle_dance.into()],
+        )?;
         leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![middle.into()])?;
-        leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![leaf_dance.into()])?;
+        leaf.add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![leaf_dance.into()])?;
 
         let descriptor = HolonDescriptor::from_holon(leaf.into());
 
@@ -673,7 +675,8 @@ mod tests {
         let dance = new_descriptor_holon(&context, "dance-affordance", "Query")?;
         let mut holon_type = new_descriptor_holon(&context, "dance-owner", "Transaction")?;
 
-        holon_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![dance.into()])?;
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![dance.into()])?;
 
         let descriptor = HolonDescriptor::from_holon(holon_type.into());
 
@@ -691,7 +694,8 @@ mod tests {
         let dance = new_descriptor_holon(&context, "query-dance-affordance", "Query")?;
         let mut holon_type = new_descriptor_holon(&context, "missing-dance-owner", "BookType")?;
 
-        holon_type.add_related_holons(CoreRelationshipTypeName::Affords, vec![dance.into()])?;
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![dance.into()])?;
 
         let descriptor = HolonDescriptor::from_holon(holon_type.into());
 
@@ -712,9 +716,15 @@ mod tests {
         let mut root = new_descriptor_holon(&context, "duplicate-dance-root", "RootType")?;
         let mut leaf = new_descriptor_holon(&context, "duplicate-dance-leaf", "LeafType")?;
 
-        root.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_root.into()])?;
+        root.add_related_holons(
+            CoreRelationshipTypeName::AffordsDance,
+            vec![duplicate_root.into()],
+        )?;
         leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
-        leaf.add_related_holons(CoreRelationshipTypeName::Affords, vec![duplicate_leaf.into()])?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::AffordsDance,
+            vec![duplicate_leaf.into()],
+        )?;
 
         let descriptor = HolonDescriptor::from_holon(leaf.into());
 
@@ -814,7 +824,7 @@ mod tests {
     #[test]
     fn get_command_by_name_errors_when_not_found() -> Result<(), HolonError> {
         let context = build_context();
-        let command = new_descriptor_holon(&context, "query-command-affordance", "Query")?;
+        let command = new_descriptor_holon(&context, "archive-command-affordance", "Archive")?;
         let mut holon_type = new_descriptor_holon(&context, "missing-command-owner", "BookType")?;
 
         holon_type

@@ -8,13 +8,13 @@ use holons_core::reference_layer::{HolonReference, TransientReference, WritableH
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
-    CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY,
-    CORE_INVERSE_OF_RELATIONSHIP_KEY, CORE_PREDECESSOR_RELATIONSHIP_KEY,
-    DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY, DELETION_SEMANTIC_CASCADE_KEY,
-    DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY, OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY,
-    OPERATOR_CATEGORY_ORDERING_KEY, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
-    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE, SCHEMA_TYPE_KEY,
-    VARIANTS_RELATIONSHIP,
+    CORE_HAS_INVERSE_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY,
+    CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY, CORE_INVERSE_OF_RELATIONSHIP_KEY,
+    CORE_PREDECESSOR_RELATIONSHIP_KEY, DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY,
+    DELETION_SEMANTIC_CASCADE_KEY, DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY,
+    OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY, OPERATOR_CATEGORY_ORDERING_KEY,
+    PERSON_1_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
+    PERSON_TO_BOOK_REL_INVERSE, SCHEMA_TYPE_KEY, VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
 use integrity_core_types::LocalId;
@@ -94,17 +94,17 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         DanceName(MapString("DanceType".to_string()))
     );
     let input_parameters_relationship = dance_type_descriptor
-        .get_relationship_by_name(RelationshipName(MapString::from("InputParameters")))
-        .expect("DanceType.InputParameters lookup");
+        .get_relationship_by_name(RelationshipName(MapString::from("DanceInput")))
+        .expect("DanceType.DanceInput lookup");
     assert_relationship_shape(
         input_parameters_relationship.base_relationship_name(),
         input_parameters_relationship.source_type(),
         input_parameters_relationship.target_type(),
         input_parameters_relationship.full_relationship_name(),
-        "InputParameters",
+        "DanceInput",
         "DanceType",
-        "Projection",
-        "(DanceType)-[InputParameters]->(Projection)",
+        "HolonType",
+        "(DanceType)-[DanceInput]->(HolonType)",
     );
     let response_relationship = dance_type_descriptor
         .get_relationship_by_name(RelationshipName(MapString::from("Response")))
@@ -119,13 +119,10 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "DanceResponseType",
         "(DanceType)-[Response]->(DanceResponseType)",
     );
-    assert_eq!(
-        dance_descriptor.input_parameters().expect("DanceType input_parameters").is_none(),
-        true
-    );
+    assert_eq!(dance_descriptor.input_type().expect("DanceType input_parameters").is_none(), true);
     assert_contains(
         &relationship_base_names(dance_type_descriptor.instance_relationships()),
-        "InputParameters",
+        "DanceInput",
     );
     assert_contains(
         &relationship_base_names(dance_type_descriptor.instance_relationships()),
@@ -133,34 +130,34 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
     let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(HolonType)-[Affords]->(DanceType.HolonType)",
+        "(HolonType)-[AffordsDance]->(DanceType.HolonType)",
     ))
     .try_into_declared_relationship_descriptor()
-    .expect("Affords should be a declared relationship descriptor");
+    .expect("AffordsDance should be a declared relationship descriptor");
     assert_relationship_shape(
         affordance_relationship.base_relationship_name(),
         affordance_relationship.source_type(),
         affordance_relationship.target_type(),
         affordance_relationship.full_relationship_name(),
-        "Affords",
+        "AffordsDance",
         "HolonType",
         "DanceType",
-        "(HolonType)-[Affords]->(DanceType)",
+        "(HolonType)-[AffordsDance]->(DanceType)",
     );
     let afforded_by_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(DanceType.HolonType)-[AffordedBy]->(HolonType)",
+        "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType)",
     ))
     .try_into_inverse_relationship_descriptor()
-    .expect("AffordedBy should be an inverse relationship descriptor");
+    .expect("DanceAffordedBy should be an inverse relationship descriptor");
     assert_eq!(
         afforded_by_relationship
             .inverse_of()
-            .expect("AffordedBy inverse_of")
+            .expect("DanceAffordedBy inverse_of")
             .base_relationship_name()
-            .expect("AffordedBy inverse_of base name")
+            .expect("DanceAffordedBy inverse_of base name")
             .to_string(),
-        "Affords"
+        "AffordsDance"
     );
     assert_loaded_schema_backed_dance_discovery(state, &holons).await;
 
@@ -212,7 +209,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     let invocation_relationship_names =
         relationship_base_names(dance_invocation_descriptor.instance_relationships());
     assert_contains(&invocation_relationship_names, "InvokesDance");
-    assert_contains(&invocation_relationship_names, "Target");
+    assert_contains(&invocation_relationship_names, "AffordingHolon");
     assert_contains(&invocation_relationship_names, "Request");
     let context_property = dance_invocation_descriptor
         .get_property_by_name(PropertyName(MapString::from("Context")))
@@ -306,7 +303,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Query extends DanceType");
     query_dance
-        .add_related_holons(CoreRelationshipTypeName::InputParameters, vec![projection.clone()])
+        .add_related_holons(CoreRelationshipTypeName::DanceInput, vec![projection.clone()])
         .expect("Query request type");
     query_dance
         .add_related_holons(
@@ -322,7 +319,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Inspect extends DanceType");
     inspect_dance
-        .add_related_holons(CoreRelationshipTypeName::InputParameters, vec![projection.clone()])
+        .add_related_holons(CoreRelationshipTypeName::DanceInput, vec![projection.clone()])
         .expect("Inspect request type");
     inspect_dance
         .add_related_holons(
@@ -339,7 +336,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("DanceParentOwner extends HolonType");
     parent_owner
         .add_related_holons(
-            CoreRelationshipTypeName::Affords,
+            CoreRelationshipTypeName::AffordsDance,
             vec![HolonReference::from(&query_dance)],
         )
         .expect("DanceParentOwner affords Query");
@@ -355,7 +352,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("DanceChildOwner extends DanceParentOwner");
     child_owner
         .add_related_holons(
-            CoreRelationshipTypeName::Affords,
+            CoreRelationshipTypeName::AffordsDance,
             vec![HolonReference::from(&inspect_dance)],
         )
         .expect("DanceChildOwner affords Inspect");
@@ -382,7 +379,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("Query lookup through inherited Affords");
     assert_eq!(
         inherited_query
-            .input_parameters()
+            .input_type()
             .expect("Query input_parameters")
             .expect("Query input parameters target")
             .header()
@@ -451,11 +448,8 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
         "InstanceProperties"
     );
 
-    // Bootstrap coverage (issue #442): `HasInverse` edges are never authored —
-    // commit Pass 2 materializes them from the authored `InverseOf` SmartLinks
-    // during the core-schema load itself (the staged-InverseOf bootstrap
-    // fallback). `has_inverse()` reads the materialized SmartLink, so these
-    // assertions prove representative pairs were materialized post-commit.
+    // Bootstrap coverage: HasInverse is authored from the declared side, and
+    // commit materializes the reciprocal InverseOf SmartLink.
     assert_materialized_has_inverse(&declared, "InstancePropertyFor");
 
     let predecessor = RelationshipDescriptor::from_holon(find_holon_by_key(
@@ -466,15 +460,30 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
     .expect("Predecessor declared relationship should narrow");
     assert_materialized_has_inverse(&predecessor, "Successor");
 
-    // InverseOf is itself a declared relationship whose inverse is HasInverse —
-    // the self-referential pair at the heart of the bootstrap circularity.
-    let inverse_of_declared = RelationshipDescriptor::from_holon(find_holon_by_key(
+    // HasInverse is the declared relationship whose inverse is InverseOf.
+    let has_inverse_declared = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        CORE_HAS_INVERSE_RELATIONSHIP_KEY,
+    ))
+    .try_into_declared_relationship_descriptor()
+    .expect("HasInverse declared relationship should narrow");
+    assert_materialized_has_inverse(&has_inverse_declared, "InverseOf");
+
+    let inverse_of_inverse = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
         CORE_INVERSE_OF_RELATIONSHIP_KEY,
     ))
-    .try_into_declared_relationship_descriptor()
-    .expect("InverseOf declared relationship should narrow");
-    assert_materialized_has_inverse(&inverse_of_declared, "HasInverse");
+    .try_into_inverse_relationship_descriptor()
+    .expect("InverseOf inverse relationship should narrow");
+    assert_eq!(
+        inverse_of_inverse
+            .inverse_of()
+            .expect("InverseOf inverse_of")
+            .base_relationship_name()
+            .expect("InverseOf inverse_of base name")
+            .to_string(),
+        "HasInverse"
+    );
 
     assert_enum_variants_rewritten_to_declared_side(
         &holons,
@@ -641,7 +650,7 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         "Person",
         "(Book)-[AuthoredBy]->(Person)",
     );
-    // Commit Pass 2 materialized AuthoredBy's HasInverse from the authored InverseOf.
+    // Commit Pass 2 materialized AuthoredBy's reciprocal Authors link from HasInverse.
     assert_materialized_has_inverse(&declared, "Authors");
 
     info!("verified representative Book/Person descriptor access");
@@ -918,8 +927,7 @@ fn assert_enum_variants_rewritten_to_declared_side(
 
 /// Asserts that a declared relationship descriptor has a **materialized**
 /// `HasInverse` SmartLink pointing at an inverse descriptor with the expected
-/// base name. `HasInverse` is never authored; commit Pass 2 materializes it
-/// from the authored `InverseOf` edge (issue #442 bootstrap path).
+/// base name.
 fn assert_materialized_has_inverse(
     declared: &DeclaredRelationshipDescriptor,
     expected_inverse_name: &str,

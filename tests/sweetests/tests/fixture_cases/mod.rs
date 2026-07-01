@@ -5,6 +5,7 @@ pub mod ergonomic_add_remove_related_holons_fixture;
 pub mod load_book_person_inverse_schema_fixture;
 pub mod load_core_schema_fixture;
 pub mod load_holons_internal_fixture;
+pub mod load_inverse_oriented_book_person_instances_fixture;
 pub mod setup_book_and_authors_fixture;
 pub mod simple_add_remove_properties_fixture;
 pub mod simple_add_remove_related_holons_fixture;

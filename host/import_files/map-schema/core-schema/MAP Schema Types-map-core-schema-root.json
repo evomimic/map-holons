@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-16T15:43:06",
+    "generated_at": "2026-06-29T19:04:16",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.csv"
@@ -10,7 +10,9 @@
       "MAP Schema Types-map-core-schema-command-types.json",
       "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json"
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
+      "MAP Schema Types-map-core-schema-query-schema.json"
     ]
   },
   "holons": [
@@ -371,6 +373,9 @@
             },
             {
               "$ref": "(HolonType)-[Predecessor]->(HolonType)"
+            },
+            {
+              "$ref": "(HolonType)-[AffordsDance]->(DanceType.HolonType)"
             }
           ]
         }
@@ -506,6 +511,12 @@
           "target": {
             "$ref": "MetaRelationshipType"
           }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)"
+          }
         }
       ]
     },
@@ -534,12 +545,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MetaRelationshipType"
-          }
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
           }
         }
       ]
@@ -615,6 +620,12 @@
           "name": "AffordsCommand",
           "target": {
             "$ref": "BeginTransaction.CommandType"
+          }
+        },
+        {
+          "name": "AffordsDance",
+          "target": {
+            "$ref": "QueryDance.DanceType"
           }
         },
         {
@@ -721,9 +732,6 @@
             },
             {
               "$ref": "Dance.CommandType"
-            },
-            {
-              "$ref": "Query.CommandType"
             },
             {
               "$ref": "GetAllHolons.CommandType"

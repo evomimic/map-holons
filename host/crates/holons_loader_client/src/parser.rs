@@ -12,12 +12,13 @@ use crate::builder::{
     collect_relationship_specs_for_loader_holon, create_loader_bundle_for_file,
     create_loader_holon_from_raw, normalize_ref_key, RawLoaderHolon, RawLoaderMeta,
 };
-use core_types::{ContentSet, FileData};
+use core_types::{ContentSet, FileData, ValidationError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_prelude::prelude::*;
 use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
 use serde::Deserialize;
 use serde_json::value::RawValue;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -357,12 +358,113 @@ pub fn validate_and_deserialize_loader_file<'a>(
     }
 
     // 2. JSON is valid; now deserialize *borrowed* RawValue slices.
-    serde_json::from_str::<RawLoaderFileWithSlices<'a>>(raw_json).map_err(|err| {
-        HolonError::InvalidParameter(format!(
-            "Failed to decode loader import JSON after schema validation (file '{}'): {}",
-            filename, err
-        ))
-    })
+    let raw_file =
+        serde_json::from_str::<RawLoaderFileWithSlices<'a>>(raw_json).map_err(|err| {
+            HolonError::InvalidParameter(format!(
+                "Failed to decode loader import JSON after schema validation (file '{}'): {}",
+                filename, err
+            ))
+        })?;
+
+    validate_relationship_pair_metadata_authoring(&raw_file, filename)?;
+
+    Ok(raw_file)
+}
+
+#[derive(Debug)]
+struct RelationshipDescriptorImportMetadata {
+    extends_declared_relationship_type: bool,
+    extends_inverse_relationship_type: bool,
+}
+
+fn validate_relationship_pair_metadata_authoring(
+    raw_file: &RawLoaderFileWithSlices<'_>,
+    filename: &str,
+) -> Result<(), HolonError> {
+    let mut decoded_holons = Vec::with_capacity(raw_file.holons.len());
+    let mut relationship_descriptors = HashMap::new();
+
+    for raw_value in &raw_file.holons {
+        let raw_holon = serde_json::from_str::<RawLoaderHolon>(raw_value.get()).map_err(|err| {
+            HolonError::InvalidParameter(format!(
+                "Failed to decode loader holon JSON during relationship-pair validation (file '{}'): {}",
+                filename, err
+            ))
+        })?;
+
+        let extends_declared_relationship_type = relationship_targets(&raw_holon, "Extends")
+            .any(|target| target == "DeclaredRelationshipType");
+        let extends_inverse_relationship_type = relationship_targets(&raw_holon, "Extends")
+            .any(|target| target == "InverseRelationshipType");
+
+        if extends_declared_relationship_type || extends_inverse_relationship_type {
+            relationship_descriptors.insert(
+                raw_holon.key.clone(),
+                RelationshipDescriptorImportMetadata {
+                    extends_declared_relationship_type,
+                    extends_inverse_relationship_type,
+                },
+            );
+        }
+
+        decoded_holons.push(raw_holon);
+    }
+
+    for raw_holon in &decoded_holons {
+        if let Some(inverse_of) =
+            raw_holon.relationships.iter().find(|relationship| relationship.name == "InverseOf")
+        {
+            return Err(import_relationship_validation_error(format!(
+                "Loader import file '{}' authors InverseOf on '{}'. Relationship-pair metadata must be authored from the declared relationship side with HasInverse; offending target(s): {:?}",
+                filename, raw_holon.key, inverse_of.targets
+            )));
+        }
+
+        let Some(metadata) = relationship_descriptors.get(&raw_holon.key) else {
+            continue;
+        };
+        if !metadata.extends_declared_relationship_type {
+            continue;
+        }
+
+        let has_inverse_targets =
+            relationship_targets(raw_holon, "HasInverse").cloned().collect::<Vec<_>>();
+        if has_inverse_targets.len() != 1 {
+            return Err(import_relationship_validation_error(format!(
+                "Declared relationship descriptor '{}' in '{}' must author exactly one HasInverse target; found {}",
+                raw_holon.key,
+                filename,
+                has_inverse_targets.len()
+            )));
+        }
+
+        let target_key = &has_inverse_targets[0];
+        if let Some(target_metadata) = relationship_descriptors.get(target_key) {
+            if !target_metadata.extends_inverse_relationship_type {
+                return Err(import_relationship_validation_error(format!(
+                    "Declared relationship descriptor '{}' in '{}' has HasInverse target '{}', but that target does not extend InverseRelationshipType",
+                    raw_holon.key, filename, target_key
+                )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn relationship_targets<'a>(
+    raw_holon: &'a RawLoaderHolon,
+    relationship_name: &'static str,
+) -> impl Iterator<Item = &'a String> {
+    raw_holon
+        .relationships
+        .iter()
+        .filter(move |relationship| relationship.name == relationship_name)
+        .flat_map(|relationship| relationship.targets.iter())
+}
+
+fn import_relationship_validation_error(message: String) -> HolonError {
+    HolonError::ValidationError(ValidationError::RelationshipError(message))
 }
 
 /// Convenience helper for computing a 0-based UTF-8 byte offset into a file
@@ -383,4 +485,185 @@ pub fn compute_holon_start_offset(file_buffer: &str, holon_slice: &str) -> i64 {
         slice_ptr.checked_sub(base_ptr).expect("holon_slice must be a slice into file_buffer");
 
     offset as i64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{fs, path::PathBuf};
+
+    const BOOTSTRAP_SCHEMA: &str =
+        include_str!("../../../import_files/map-schema/bootstrap-import.schema.json");
+
+    fn relationship_pair_import(
+        declared_relationships: &str,
+        inverse_relationships: &str,
+    ) -> String {
+        format!(
+            r#"{{
+              "holons": [
+                {{
+                  "key": "(BookType)-[Authors]->(PersonType)",
+                  "type": "TypeDescriptor.HolonType",
+                  "properties": {{
+                    "instance_type_kind": "TypeKind.Relationship"
+                  }},
+                  "relationships": [
+                    {{ "name": "Extends", "target": {{ "$ref": "DeclaredRelationshipType" }} }}
+                    {declared_relationships}
+                  ]
+                }},
+                {{
+                  "key": "(PersonType)-[AuthoredBy]->(BookType)",
+                  "type": "TypeDescriptor.HolonType",
+                  "properties": {{
+                    "instance_type_kind": "TypeKind.Relationship"
+                  }},
+                  "relationships": [
+                    {{ "name": "Extends", "target": {{ "$ref": "InverseRelationshipType" }} }}
+                    {inverse_relationships}
+                  ]
+                }}
+              ]
+            }}"#
+        )
+    }
+
+    fn assert_relationship_validation_error(
+        result: Result<RawLoaderFileWithSlices<'_>, HolonError>,
+    ) -> String {
+        match result {
+            Err(HolonError::ValidationError(ValidationError::RelationshipError(message))) => {
+                message
+            }
+            other => panic!("expected relationship validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn loader_import_validation_accepts_declared_has_inverse_without_inverse_of() {
+        let raw_json = relationship_pair_import(
+            r#",
+                    {
+                      "name": "HasInverse",
+                      "target": {
+                        "$ref": "(PersonType)-[AuthoredBy]->(BookType)"
+                      }
+                    }"#,
+            "",
+        );
+
+        let parsed = validate_and_deserialize_loader_file(&raw_json, BOOTSTRAP_SCHEMA, "pair.json")
+            .expect("declared HasInverse authoring should validate");
+
+        assert_eq!(parsed.holons.len(), 2);
+    }
+
+    #[test]
+    fn canonical_core_schema_imports_satisfy_relationship_pair_authoring_validation() {
+        let core_schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("import_files")
+            .join("map-schema")
+            .join("core-schema");
+
+        let mut schema_paths = fs::read_dir(&core_schema_dir)
+            .unwrap_or_else(|error| {
+                panic!("failed to read core schema dir {}: {error}", core_schema_dir.display())
+            })
+            .map(|entry| {
+                entry
+                    .unwrap_or_else(|error| panic!("failed to read core schema dir entry: {error}"))
+                    .path()
+            })
+            .filter(|path| {
+                path.extension().and_then(|extension| extension.to_str()) == Some("json")
+            })
+            .collect::<Vec<_>>();
+        schema_paths.sort();
+
+        for schema_path in schema_paths {
+            let raw_json = fs::read_to_string(&schema_path).unwrap_or_else(|error| {
+                panic!("failed to read core schema export {}: {error}", schema_path.display())
+            });
+            validate_and_deserialize_loader_file(
+                &raw_json,
+                BOOTSTRAP_SCHEMA,
+                &schema_path.display().to_string(),
+            )
+            .unwrap_or_else(|error| {
+                panic!(
+                    "core schema export {} failed relationship-pair validation: {error}",
+                    schema_path.display()
+                )
+            });
+        }
+    }
+
+    #[test]
+    fn loader_import_validation_rejects_declared_relationship_without_has_inverse() {
+        let raw_json = relationship_pair_import("", "");
+
+        let message = assert_relationship_validation_error(validate_and_deserialize_loader_file(
+            &raw_json,
+            BOOTSTRAP_SCHEMA,
+            "missing-has-inverse.json",
+        ));
+
+        assert!(message.contains("must author exactly one HasInverse target"));
+        assert!(message.contains("found 0"));
+    }
+
+    #[test]
+    fn loader_import_validation_rejects_has_inverse_target_with_wrong_kind() {
+        let raw_json = relationship_pair_import(
+            r#",
+                    {
+                      "name": "HasInverse",
+                      "target": {
+                        "$ref": "(PersonType)-[AuthoredBy]->(BookType)"
+                      }
+                    }"#,
+            "",
+        )
+        .replace("InverseRelationshipType", "DeclaredRelationshipType");
+
+        let message = assert_relationship_validation_error(validate_and_deserialize_loader_file(
+            &raw_json,
+            BOOTSTRAP_SCHEMA,
+            "wrong-kind-has-inverse.json",
+        ));
+
+        assert!(message.contains("does not extend InverseRelationshipType"));
+    }
+
+    #[test]
+    fn loader_import_validation_rejects_authored_inverse_of_relationship() {
+        let raw_json = relationship_pair_import(
+            r#",
+                    {
+                      "name": "HasInverse",
+                      "target": {
+                        "$ref": "(PersonType)-[AuthoredBy]->(BookType)"
+                      }
+                    }"#,
+            r#",
+                    {
+                      "name": "InverseOf",
+                      "target": {
+                        "$ref": "(BookType)-[Authors]->(PersonType)"
+                      }
+                    }"#,
+        );
+
+        let message = assert_relationship_validation_error(validate_and_deserialize_loader_file(
+            &raw_json,
+            BOOTSTRAP_SCHEMA,
+            "authored-inverse-of.json",
+        ));
+
+        assert!(message.contains("authors InverseOf"));
+        assert!(message.contains("HasInverse"));
+    }
 }

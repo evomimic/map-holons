@@ -425,7 +425,7 @@ async fn build_dance_v2_command(runtime: &Runtime, tx_id: &TxId) -> MapCommand {
     dance_descriptor.with_property_value("IsAbstractType", false).expect("dance abstract");
     dance_descriptor.with_property_value("InstanceTypeKind", "Holon").expect("dance kind");
     dance_descriptor
-        .add_related_holons("InputParameters", vec![request_type.clone().into()])
+        .add_related_holons("DanceInput", vec![request_type.clone().into()])
         .expect("input parameters edge");
     dance_descriptor
         .add_related_holons("Response", vec![response_type.into()])

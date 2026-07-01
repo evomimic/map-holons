@@ -3,7 +3,7 @@
 //! This executor is not a command-routing or command-execution test. It loads the
 //! current holon collection through an assertion transaction, selects known schema
 //! descriptors by key, verifies the stable concrete `CommandType` inventory,
-//! checks the `AffordsCommand` / `AffordedBy` descriptor graph, verifies the
+//! checks the `AffordsCommand` / `CommandAffordedBy` descriptor graph, verifies the
 //! `HolonSpace` -> `Transaction` transaction-model anchor, and exercises
 //! typed command-name lookup through `CoreCommandTypeName` and `CommandName`.
 //!
@@ -47,7 +47,6 @@ const STABLE_COMMAND_TYPES: &[(&str, CoreCommandTypeName)] = &[
     ("RedoToMarker.CommandType", CoreCommandTypeName::RedoToMarker),
     ("LoadHolons.CommandType", CoreCommandTypeName::LoadHolons),
     ("Dance.CommandType", CoreCommandTypeName::Dance),
-    ("Query.CommandType", CoreCommandTypeName::Query),
     ("GetAllHolons.CommandType", CoreCommandTypeName::GetAllHolons),
     ("GetStagedHolonByBaseKey.CommandType", CoreCommandTypeName::GetStagedHolonByBaseKey),
     ("GetStagedHolonsByBaseKey.CommandType", CoreCommandTypeName::GetStagedHolonsByBaseKey),
@@ -96,7 +95,6 @@ const TRANSACTION_AFFORDED_COMMANDS: &[CoreCommandTypeName] = &[
     CoreCommandTypeName::RedoToMarker,
     CoreCommandTypeName::LoadHolons,
     CoreCommandTypeName::Dance,
-    CoreCommandTypeName::Query,
     CoreCommandTypeName::GetAllHolons,
     CoreCommandTypeName::GetStagedHolonByBaseKey,
     CoreCommandTypeName::GetStagedHolonsByBaseKey,
@@ -170,19 +168,19 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
         MapString("CommandType".to_string())
     );
 
-    // `AffordedBy` must be the inverse view of the same command affordance relationship.
+    // `CommandAffordedBy` must be the inverse view of the same command affordance relationship.
     let inverse_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(CommandType.HolonType)-[AffordedBy]->(HolonType)",
+        "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType)",
     ))
     .try_into_inverse_relationship_descriptor()
-    .expect("AffordedBy should be an inverse relationship descriptor");
+    .expect("CommandAffordedBy should be an inverse relationship descriptor");
     assert_eq!(
         inverse_relationship
             .inverse_of()
-            .expect("AffordedBy inverse_of")
+            .expect("CommandAffordedBy inverse_of")
             .base_relationship_name()
-            .expect("AffordedBy inverse_of base name")
+            .expect("CommandAffordedBy inverse_of base name")
             .to_string(),
         "AffordsCommand"
     );

@@ -97,8 +97,8 @@ mod tests {
         let context = build_context();
         let holon = HolonReference::from(&new_descriptor_holon(
             &context,
-            "query-command",
-            "Query",
+            "example-command",
+            "ExampleCommand",
             "Holon",
         )?);
 

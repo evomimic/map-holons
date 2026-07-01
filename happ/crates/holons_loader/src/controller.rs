@@ -3,7 +3,7 @@
 // Orchestrates the two-pass holon loading flow:
 //
 //   Pass 1: Map & stage node holons (properties only); queue relationship references.
-//   Pass 2: Resolve queued edges to concrete declared links (declared, inverse, DescribedBy).
+//   Pass 2: Resolve queued edges to concrete declared links (declared, DescribedBy).
 //   Commit: Persist staged holons in one bulk commit.
 //   Respond: Return a *transient* HolonLoadResponse (with related *transient* HolonLoadError holons).
 //
