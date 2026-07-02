@@ -75,6 +75,14 @@ impl HolonDescriptor {
         self.flatten_property_descriptors(CoreRelationshipTypeName::Properties)
     }
 
+    /// Validates that instances of this descriptor allow the named property.
+    pub fn allows_property(
+        &self,
+        name: impl ToPropertyName,
+    ) -> Result<PropertyDescriptor, HolonError> {
+        self.get_property_by_name(name)
+    }
+
     /// Finds an effective instance property by property type identity.
     pub fn get_property_by_name(
         &self,
@@ -107,6 +115,14 @@ impl HolonDescriptor {
         })
     }
 
+    /// Validates that this descriptor affords the named command.
+    pub fn affords_command(
+        &self,
+        name: impl ToCommandName,
+    ) -> Result<CommandDescriptor, HolonError> {
+        self.get_command_by_name(name)
+    }
+
     /// Finds an effective command affordance by command descriptor type name.
     pub fn get_command_by_name(
         &self,
@@ -137,6 +153,11 @@ impl HolonDescriptor {
             name: requested,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
         })
+    }
+
+    /// Validates that this descriptor affords the named dance.
+    pub fn affords_dance(&self, name: impl ToDanceName) -> Result<DanceDescriptor, HolonError> {
+        self.get_dance_by_name(name)
     }
 
     /// Finds an effective dance affordance by dance descriptor type name.
@@ -684,6 +705,47 @@ mod tests {
             descriptor.get_dance_by_name("query")?.dance_name()?,
             DanceName(MapString("Query".to_string()))
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn validation_entrypoints_delegate_to_existing_holon_lookups() -> Result<(), HolonError> {
+        let context = build_context();
+        let property = new_descriptor_holon(&context, "display-name-property", "DisplayName")?;
+        let command = new_descriptor_holon(&context, "commit-command-affordance", "Commit")?;
+        let dance = new_descriptor_holon(&context, "query-dance-affordance", "Query")?;
+        let mut holon_type =
+            new_descriptor_holon(&context, "validation-entrypoint-owner", "BookType")?;
+
+        holon_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![property.into()],
+        )?;
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::AffordsCommand, vec![command.into()])?;
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::AffordsDance, vec![dance.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert_eq!(
+            descriptor.allows_property("display_name")?.header().type_name()?,
+            MapString("DisplayName".to_string())
+        );
+        assert_eq!(
+            descriptor.affords_command(CoreCommandTypeName::Commit)?.command_name()?,
+            CommandName(MapString("Commit".to_string()))
+        );
+        assert_eq!(
+            descriptor.affords_dance("query")?.dance_name()?,
+            DanceName(MapString("Query".to_string()))
+        );
+        assert!(matches!(
+            descriptor.allows_property("missing_property"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "property" && name == "MissingProperty"
+        ));
 
         Ok(())
     }
