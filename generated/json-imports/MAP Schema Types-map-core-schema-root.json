@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-01T21:46:56.214588Z",
+    "generated_at": "2026-07-02T00:36:23.958325Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.tdl"
@@ -9,6 +9,7 @@
     "load_with": [
       "MAP Schema Types-map-core-schema-abstract-value-types.json",
       "MAP Schema Types-map-core-schema-command-types.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json",
       "MAP Schema Types-map-core-schema-property-types.json",
       "MAP Schema Types-map-core-schema-relationship-types.json"
@@ -21,7 +22,21 @@
       "properties": {
         "description": "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.",
         "schema_name": "MAP Core Schema-v0.0.7"
-      }
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": {
+            "$ref": "MAP Key Rule Schema"
+          }
+        },
+        {
+          "name": "DependsOn",
+          "target": {
+            "$ref": "MAP Dance Schema-v0.0.4"
+          }
+        }
+      ]
     },
     {
       "key": "TypeDescriptor.HolonType",
@@ -372,6 +387,9 @@
             },
             {
               "$ref": "(HolonType)-[Predecessor]->(HolonType)"
+            },
+            {
+              "$ref": "(HolonType)-[AffordsDance]->(DanceType.HolonType)"
             }
           ]
         }
@@ -507,6 +525,12 @@
           "target": {
             "$ref": "MetaRelationshipType"
           }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)"
+          }
         }
       ]
     },
@@ -535,12 +559,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MetaRelationshipType"
-          }
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": {
-            "$ref": "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)"
           }
         }
       ]
@@ -616,6 +634,12 @@
           "name": "AffordsCommand",
           "target": {
             "$ref": "BeginTransaction.CommandType"
+          }
+        },
+        {
+          "name": "AffordsDance",
+          "target": {
+            "$ref": "QueryDance.DanceType"
           }
         },
         {
@@ -722,9 +746,6 @@
             },
             {
               "$ref": "Dance.CommandType"
-            },
-            {
-              "$ref": "Query.CommandType"
             },
             {
               "$ref": "GetAllHolons.CommandType"

@@ -125,6 +125,7 @@ holon HolonLoadSet {
 relationship HasRelationshipReference {
   source LoaderHolon.HolonType
   target LoaderRelationshipReference.HolonType
+  inverse RelationshipReferenceOf
   cardinality 0..32767
   ordered
   deletion_semantic Allow
@@ -140,7 +141,6 @@ relationship HasRelationshipReference {
 inverse relationship RelationshipReferenceOf {
   source LoaderRelationshipReference.HolonType
   target LoaderHolon.HolonType
-  inverse HasRelationshipReference
   cardinality 0..1
   deletion_semantic Allow
   header {
@@ -155,6 +155,7 @@ inverse relationship RelationshipReferenceOf {
 def relationship ReferenceSource {
   source LoaderRelationshipReference.HolonType
   target LoaderHolonReference.HolonType
+  inverse ReferenceSourceOf
   cardinality 1..1
   deletion_semantic Allow
   header {
@@ -169,7 +170,6 @@ def relationship ReferenceSource {
 inverse relationship ReferenceSourceOf {
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  inverse ReferenceSource
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -184,6 +184,7 @@ inverse relationship ReferenceSourceOf {
 def relationship ReferenceTarget {
   source LoaderRelationshipReference.HolonType
   target LoaderHolonReference.HolonType
+  inverse ReferenceTargetOf
   cardinality 1..32767
   ordered
   deletion_semantic Allow
@@ -199,7 +200,6 @@ def relationship ReferenceTarget {
 inverse relationship ReferenceTargetOf {
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  inverse ReferenceTarget
   cardinality 0..32767
   deletion_semantic Cascade
   header {
@@ -214,6 +214,7 @@ inverse relationship ReferenceTargetOf {
 relationship BundleMembers {
   source HolonLoaderBundle.HolonType
   target LoaderHolon.HolonType
+  inverse BundleMemberOf
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -228,7 +229,6 @@ relationship BundleMembers {
 inverse relationship BundleMemberOf {
   source LoaderHolon.HolonType
   target HolonLoaderBundle.HolonType
-  inverse BundleMembers
   cardinality 0..1
   deletion_semantic Allow
   header {
@@ -243,6 +243,7 @@ inverse relationship BundleMemberOf {
 relationship HasLoadError {
   source HolonLoadResponse.DanceResponseType
   target HolonLoadError.HolonError
+  inverse LoadErrorOf
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -257,7 +258,6 @@ relationship HasLoadError {
 inverse relationship LoadErrorOf {
   source HolonLoadError.HolonError
   target HolonLoadResponse.DanceResponseType
-  inverse HasLoadError
   cardinality 0..1
   deletion_semantic Allow
   header {
@@ -272,6 +272,7 @@ inverse relationship LoadErrorOf {
 relationship Contains {
   source HolonLoadSet.HolonType
   target HolonLoaderBundle.HolonType
+  inverse ContainedIn
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -286,7 +287,6 @@ relationship Contains {
 inverse relationship ContainedIn {
   source HolonLoaderBundle.HolonType
   target HolonLoadSet.HolonType
-  inverse Contains
   cardinality 0..1
   deletion_semantic Allow
   header {
@@ -308,45 +308,21 @@ enum LoadCommitStatus {
   }
   variants {
     variant Complete {
-      properties {
-        type_name: "Complete"
-        display_name: "Complete"
+      header {
         description: "An enum variant indicating a complete commit."
-        instance_type_kind: "TypeKind.EnumVariant"
-        is_abstract_type: false
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "LoadCommitStatus"
+        display_name: "Complete"
       }
     }
     variant Incomplete {
-      properties {
-        type_name: "Incomplete"
-        display_name: "Incomplete"
+      header {
         description: "An enum variant indicating an incomplete commit."
-        instance_type_kind: "TypeKind.EnumVariant"
-        is_abstract_type: false
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "LoadCommitStatus"
+        display_name: "Incomplete"
       }
     }
     variant Skipped {
-      properties {
-        type_name: "Skipped"
-        display_name: "Skipped"
+      header {
         description: "An enum variant indicating that commit was skipped."
-        instance_type_kind: "TypeKind.EnumVariant"
-        is_abstract_type: false
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "LoadCommitStatus"
+        display_name: "Skipped"
       }
     }
   }
@@ -354,209 +330,121 @@ enum LoadCommitStatus {
 
 
 property RelationshipName {
-  properties {
-    type_name: "RelationshipName"
-    type_name_plural: "RelationshipNames"
-    display_name: "relationship_name"
-    display_name_plural: "relationship_names"
+  value MapStringValueType
+  header {
     description: "Name of the relationship as declared in the JSON input."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: true
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapStringValueType"
+    display_name: "relationship_name"
+    display_plural: "relationship_names"
+    plural: "RelationshipNames"
   }
 }
 
 
 property HolonKey {
-  properties {
-    type_name: "HolonKey"
-    type_name_plural: "HolonKeys"
-    display_name: "holon_key"
-    display_name_plural: "holon_keys"
+  value MapStringValueType
+  header {
     description: "Local key for the referenced holon."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: false
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapStringValueType"
+    display_name: "holon_key"
+    display_plural: "holon_keys"
+    plural: "HolonKeys"
   }
 }
 
 
 property ProxyKey {
-  properties {
-    type_name: "ProxyKey"
-    type_name_plural: "ProxyKeys"
-    display_name: "proxy_key"
-    display_name_plural: "proxy_keys"
+  value MapStringValueType
+  header {
     description: "Key of the ProxySpace through which this external reference is routed."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: false
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapStringValueType"
+    display_name: "proxy_key"
+    display_plural: "proxy_keys"
+    plural: "ProxyKeys"
   }
 }
 
 
 property ProxyId {
-  properties {
-    type_name: "ProxyId"
-    type_name_plural: "ProxyId"
-    display_name: "proxy_id"
-    display_name_plural: "proxy_ids"
+  value MapBytesValueType
+  header {
     description: "ActionHash of the ProxySpace holon, used to route external references."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: false
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapBytesValueType"
+    display_name: "proxy_id"
+    display_plural: "proxy_ids"
+    plural: "ProxyId"
   }
 }
 
 
 property HolonsStaged {
-  properties {
-    type_name: "HolonsStaged"
-    type_name_plural: "HolonsStageds"
-    display_name: "holons_staged"
-    display_name_plural: "holons_stageds"
+  value MapIntegerValueType
+  header {
     description: "Number of holons staged during the load operation."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: true
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapIntegerValueType"
+    display_name: "holons_staged"
+    display_plural: "holons_stageds"
+    plural: "HolonsStageds"
   }
 }
 
 
 property HolonsCommitted {
-  properties {
-    type_name: "HolonsCommitted"
-    type_name_plural: "HolonsCommitteds"
-    display_name: "holons_committed"
-    display_name_plural: "holons_committeds"
+  value MapIntegerValueType
+  header {
     description: "Number of holons successfully committed."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: true
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapIntegerValueType"
+    display_name: "holons_committed"
+    display_plural: "holons_committeds"
+    plural: "HolonsCommitteds"
   }
 }
 
 
 property LinksCreated {
-  properties {
-    type_name: "LinksCreated"
-    type_name_plural: "LinksCreateds"
-    display_name: "links_created"
-    display_name_plural: "links_createds"
+  value MapIntegerValueType
+  header {
     description: "Number of links successfully created."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: true
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapIntegerValueType"
+    display_name: "links_created"
+    display_plural: "links_createds"
+    plural: "LinksCreateds"
   }
 }
 
 
 property Filename {
-  properties {
-    type_name: "Filename"
-    type_name_plural: "Filenames"
-    display_name: "filename"
-    display_name_plural: "filenames"
+  value MapStringValueType
+  header {
     description: "The name of a file."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: true
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapStringValueType"
+    display_name: "filename"
+    display_plural: "filenames"
+    plural: "Filenames"
   }
 }
 
 
 property LoaderHolonKey {
-  properties {
-    type_name: "LoaderHolonKey"
-    type_name_plural: "LoaderHolonKeys"
-    display_name: "loader_holon_key"
-    display_name_plural: "loader_holon_keys"
+  value MapStringValueType
+  header {
     description: "Key to reference a loader holon within a load set."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: false
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapStringValueType"
+    display_name: "loader_holon_key"
+    display_plural: "loader_holon_keys"
+    plural: "LoaderHolonKeys"
   }
 }
 
 
 property StartUtf8ByteOffset {
-  properties {
-    type_name: "StartUtf8ByteOffset"
-    type_name_plural: "StartUtf8ByteOffsets"
-    display_name: "start_utf8_byte_offset"
-    display_name_plural: "start_utf8_byte_offsets"
+  value MapIntegerValueType
+  header {
     description: "Byte offset that signifies the start of a segment of a source file."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: false
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "MapIntegerValueType"
+    display_name: "start_utf8_byte_offset"
+    display_plural: "start_utf8_byte_offsets"
+    plural: "StartUtf8ByteOffsets"
   }
 }
 
 
 property LoadCommitStatus {
-  properties {
-    type_name: "LoadCommitStatus"
-    type_name_plural: "LoadCommitStatuses"
-    display_name: "load_commit_status"
-    display_name_plural: "load_commit_statuses"
+  value LoadCommitStatus
+  header {
     description: "Represents the commit status for a holon loading operation."
-    instance_type_kind: "TypeKind.Property"
-    is_abstract_type: false
-    is_required: true
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "PropertyType"
-    ValueType -> "LoadCommitStatus"
+    display_name: "load_commit_status"
+    display_plural: "load_commit_statuses"
+    plural: "LoadCommitStatuses"
   }
 }

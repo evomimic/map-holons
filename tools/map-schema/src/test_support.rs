@@ -30,8 +30,16 @@ pub fn assert_dir_tree_eq(expected_root: &Path, actual_root: &Path) {
 }
 
 pub fn assert_json_dir_trees_eq_ignoring_meta(expected_root: &Path, actual_root: &Path) {
-    let expected = collect_json_files(expected_root);
-    let actual = collect_json_files(actual_root);
+    assert_json_dir_trees_eq_ignoring_meta_and_paths(expected_root, actual_root, &[]);
+}
+
+pub fn assert_json_dir_trees_eq_ignoring_meta_and_paths(
+    expected_root: &Path,
+    actual_root: &Path,
+    ignored_relative_paths: &[&str],
+) {
+    let expected = filtered_json_files(expected_root, ignored_relative_paths);
+    let actual = filtered_json_files(actual_root, ignored_relative_paths);
 
     let expected_paths: Vec<_> = expected.keys().cloned().collect();
     let actual_paths: Vec<_> = actual.keys().cloned().collect();
@@ -48,6 +56,18 @@ pub fn assert_json_dir_trees_eq_ignoring_meta(expected_root: &Path, actual_root:
         strip_meta_section(&mut actual_value);
         assert_ordered_json_eq(&expected_value, &actual_value, path.to_string_lossy().as_ref());
     }
+}
+
+fn filtered_json_files(root: &Path, ignored_relative_paths: &[&str]) -> BTreeMap<PathBuf, Value> {
+    let ignored = ignored_relative_paths
+        .iter()
+        .map(PathBuf::from)
+        .collect::<std::collections::BTreeSet<_>>();
+
+    collect_json_files(root)
+        .into_iter()
+        .filter(|(path, _)| !ignored.contains(path))
+        .collect()
 }
 
 fn collect_files(root: &Path) -> BTreeMap<PathBuf, Vec<u8>> {

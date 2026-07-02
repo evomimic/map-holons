@@ -1,4 +1,5 @@
 use crate::{
+    literal_bridge::literal_object_to_json_map,
     loader_ir::{LoaderDocument, LoaderHolon, LoaderMeta, LoaderReference, LoaderRelationship},
     schema_ir::{DescriptorKind, Schema, SemanticModel, SemanticReference, TypeDescriptor},
 };
@@ -67,16 +68,16 @@ pub fn schema_matches_semantic_loader_shape(schema: &Schema) -> bool {
         return true;
     }
 
-    let semantic = lower_schema_holon_semantic(schema);
-    json_map_matches_in_order(&schema.literal_properties, &semantic.properties)
-        && loader_relationships_match_in_order(
-            &schema
-                .literal_relationships
-                .iter()
-                .map(|relationship| loader_relationship(&relationship.name, relationship.targets.clone()))
-                .collect::<Vec<_>>(),
-            &semantic.relationships,
-        )
+    let properties_ok = schema
+        .literal_properties
+        .iter()
+        .all(|(key, _)| schema_literal_property_is_renderable(key));
+    let relationships_ok = schema
+        .literal_relationships
+        .iter()
+        .all(|relationship| schema_literal_relationship_is_renderable(&relationship.name));
+
+    properties_ok && relationships_ok
 }
 
 pub fn descriptor_matches_semantic_loader_shape(
@@ -87,25 +88,19 @@ pub fn descriptor_matches_semantic_loader_shape(
         return true;
     }
 
-    let semantic = lower_descriptor_holon_semantic(descriptor, emitted_key_lookup);
-    json_map_matches_in_order(&descriptor.literal_properties, &semantic.properties)
-        && loader_relationships_match_in_order(
-            &descriptor
-                .literal_relationships
-                .iter()
-                .map(|relationship| {
-                    loader_relationship(
-                        &relationship.name,
-                        relationship
-                            .targets
-                            .iter()
-                            .map(|target| normalize_emitted_reference_target(target, emitted_key_lookup))
-                            .collect(),
-                    )
-                })
-                .collect::<Vec<_>>(),
-            &semantic.relationships,
+    let properties_ok = descriptor
+        .literal_properties
+        .iter()
+        .all(|(key, _)| descriptor_literal_property_is_renderable(key));
+    let relationships_ok = descriptor.literal_relationships.iter().all(|relationship| {
+        descriptor_literal_relationship_is_renderable(
+            &relationship.name,
+            relationship.targets.as_slice(),
+            emitted_key_lookup,
         )
+    });
+
+    properties_ok && relationships_ok
 }
 
 fn lower_schema_holon(schema: &Schema) -> LoaderHolon {
@@ -118,7 +113,7 @@ fn lower_schema_holon(schema: &Schema) -> LoaderHolon {
                 properties.insert("schema_name".to_string(), json!(schema.name));
                 properties
             } else {
-                schema.literal_properties.clone()
+                literal_object_to_json_map(&schema.literal_properties)
             },
             relationships: schema
                 .literal_relationships
@@ -203,7 +198,7 @@ fn lower_descriptor_properties(
     descriptor: &TypeDescriptor,
 ) -> serde_json::Map<String, Value> {
     if !descriptor.literal_properties.is_empty() {
-        return descriptor.literal_properties.clone();
+        return literal_object_to_json_map(&descriptor.literal_properties);
     }
 
     lower_descriptor_properties_semantic(descriptor)
@@ -384,6 +379,12 @@ fn lower_descriptor_relationships_semantic(
             vec![normalize_inverse_reference_target(descriptor, inverse_of, emitted_key_lookup)],
         ));
     }
+    if let Some(has_inverse) = &descriptor.has_inverse {
+        relationships.push(loader_relationship(
+            "HasInverse",
+            vec![normalize_emitted_reference_target(&has_inverse.target, emitted_key_lookup)],
+        ));
+    }
     if let Some(value_type) = &descriptor.value_type {
         relationships.push(loader_relationship(
             "ValueType",
@@ -409,10 +410,12 @@ fn lower_descriptor_relationships_semantic(
         ));
     }
     if let Some(parent) = &descriptor.variant_of {
-        relationships.push(loader_relationship(
-            "VariantOf",
-            vec![normalize_emitted_reference_target(&parent.target, emitted_key_lookup)],
-        ));
+        if descriptor.kind != DescriptorKind::EnumVariant {
+            relationships.push(loader_relationship(
+                "VariantOf",
+                vec![normalize_emitted_reference_target(&parent.target, emitted_key_lookup)],
+            ));
+        }
     }
 
     if !descriptor.instance_properties.is_empty() {
@@ -440,11 +443,10 @@ fn lower_descriptor_relationships_semantic(
 
     if descriptor.kind == DescriptorKind::Enum {
         let variants = descriptor
-            .instance_relationships
+            .variants
             .iter()
-            .filter(|relationship| relationship.target.starts_with(&descriptor.name))
-            .map(|relationship| {
-                normalize_emitted_reference_target(&relationship.target, emitted_key_lookup)
+            .map(|variant| {
+                normalize_emitted_reference_target(&variant.target, emitted_key_lookup)
             })
             .collect::<Vec<_>>();
         if !variants.is_empty() {
@@ -453,35 +455,6 @@ fn lower_descriptor_relationships_semantic(
     }
 
     relationships
-}
-
-fn json_map_matches_in_order(expected: &Map<String, Value>, actual: &Map<String, Value>) -> bool {
-    expected.len() == actual.len()
-        && expected.keys().eq(actual.keys())
-        && expected
-            .iter()
-            .zip(actual.iter())
-            .all(|((expected_key, expected_value), (actual_key, actual_value))| {
-                expected_key == actual_key && expected_value == actual_value
-            })
-}
-
-fn loader_relationships_match_in_order(
-    expected: &[LoaderRelationship],
-    actual: &[LoaderRelationship],
-) -> bool {
-    expected.len() == actual.len()
-        && expected.iter().zip(actual.iter()).all(|(expected_relationship, actual_relationship)| {
-            expected_relationship.name == actual_relationship.name
-                && expected_relationship.targets.len() == actual_relationship.targets.len()
-                && expected_relationship
-                    .targets
-                    .iter()
-                    .zip(actual_relationship.targets.iter())
-                    .all(|(expected_target, actual_target)| {
-                        expected_target.target == actual_target.target
-                    })
-        })
 }
 
 fn normalize_emitted_reference_target(
@@ -524,6 +497,76 @@ fn normalize_inverse_reference_target(
             .get(inverse_target)
             .cloned()
             .unwrap_or_else(|| normalize_emitted_reference_target(inverse_target, emitted_key_lookup)),
+    }
+}
+
+fn schema_literal_property_is_renderable(key: &str) -> bool {
+    matches!(
+        key,
+        "schema_name"
+            | "description"
+            | "display_name"
+            | "display_name_plural"
+            | "type_name_plural"
+            | "allows_additional_properties"
+            | "allows_additional_relationships"
+    )
+}
+
+fn schema_literal_relationship_is_renderable(name: &str) -> bool {
+    name == "DependsOn"
+}
+
+fn descriptor_literal_property_is_renderable(key: &str) -> bool {
+    matches!(
+        key,
+        "type_name"
+            | "type_name_plural"
+            | "display_name"
+            | "display_name_plural"
+            | "description"
+            | "instance_type_kind"
+            | "is_abstract_type"
+            | "allows_additional_properties"
+            | "allows_additional_relationships"
+            | "is_definitional"
+            | "is_ordered"
+            | "allows_duplicates"
+            | "is_required"
+            | "arity"
+            | "template_string"
+            | "min_cardinality"
+            | "max_cardinality"
+            | "deletion_semantic"
+    )
+}
+
+fn descriptor_literal_relationship_is_renderable(
+    name: &str,
+    targets: &[String],
+    emitted_key_lookup: &EmittedKeyLookup,
+) -> bool {
+    if targets.iter().any(|target| target.is_empty()) {
+        return false;
+    }
+
+    match name {
+        "ComponentOf"
+        | "Extends"
+        | "UsesKeyRule"
+        | "SourceType"
+        | "TargetType"
+        | "InverseOf"
+        | "HasInverse"
+        | "ValueType"
+        | "VariantOf"
+        | "InstanceProperties"
+        | "InstanceRelationships"
+        | "Variants" => targets.iter().all(|target| {
+            let normalized = normalize_emitted_reference_target(target, emitted_key_lookup);
+            !normalized.is_empty()
+        }),
+        _ => false,
     }
 }
 

@@ -1,8 +1,8 @@
 schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
-  properties {
+  depends_on MAP Dance Schema-v0.0.4
+  header {
     description: "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself."
-    schema_name: "MAP Core Schema-v0.0.7"
   }
 }
 holon TypeDescriptor {
@@ -118,6 +118,7 @@ abstract holon MetaHolonType {
     (TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)
     (MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)
     (HolonType)-[Predecessor]->(HolonType)
+    (HolonType)-[AffordsDance]->(DanceType.HolonType)
   }
 }
 
@@ -170,6 +171,9 @@ abstract holon MetaDeclaredRelationshipType {
     display_plural: "Meta Declared Relationship Types"
     plural: "MetaDeclaredRelationshipTypes"
   }
+  relationships {
+    (DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)
+  }
 }
 
 
@@ -180,9 +184,6 @@ abstract holon MetaInverseRelationshipType {
     display_name: "Meta Inverse Relationship Type"
     display_plural: "Meta Inverse Relationship Types"
     plural: "MetaInverseRelationshipTypes"
-  }
-  relationships {
-    (InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)
   }
 }
 
@@ -219,6 +220,7 @@ holon HolonSpace {
   }
   relationships {
     AffordsCommand -> "BeginTransaction.CommandType"
+    AffordsDance -> "QueryDance.DanceType"
     AffordsTransactionModel -> "Transaction.HolonType"
     ComponentOf -> "MAP Core Schema-v0.0.7"
     Extends -> "HolonType"
@@ -254,7 +256,7 @@ holon Transaction {
     allows_additional_relationships: false
   }
   relationships {
-    AffordsCommand -> ["Commit.CommandType", "UndoLast.CommandType", "RedoLast.CommandType", "UndoToMarker.CommandType", "RedoToMarker.CommandType", "LoadHolons.CommandType", "Dance.CommandType", "Query.CommandType", "GetAllHolons.CommandType", "GetStagedHolonByBaseKey.CommandType", "GetStagedHolonsByBaseKey.CommandType", "GetStagedHolonByVersionedKey.CommandType", "GetTransientHolonByBaseKey.CommandType", "GetTransientHolonByVersionedKey.CommandType", "GetStagedCount.CommandType", "GetTransientCount.CommandType", "NewHolon.CommandType", "StageNewHolon.CommandType", "StageNewFromClone.CommandType", "StageNewVersion.CommandType", "StageNewVersionFromId.CommandType", "DeleteHolon.CommandType"]
+    AffordsCommand -> ["Commit.CommandType", "UndoLast.CommandType", "RedoLast.CommandType", "UndoToMarker.CommandType", "RedoToMarker.CommandType", "LoadHolons.CommandType", "Dance.CommandType", "GetAllHolons.CommandType", "GetStagedHolonByBaseKey.CommandType", "GetStagedHolonsByBaseKey.CommandType", "GetStagedHolonByVersionedKey.CommandType", "GetTransientHolonByBaseKey.CommandType", "GetTransientHolonByVersionedKey.CommandType", "GetStagedCount.CommandType", "GetTransientCount.CommandType", "NewHolon.CommandType", "StageNewHolon.CommandType", "StageNewFromClone.CommandType", "StageNewVersion.CommandType", "StageNewVersionFromId.CommandType", "DeleteHolon.CommandType"]
     ComponentOf -> "MAP Core Schema-v0.0.7"
     Extends -> "HolonType"
   }

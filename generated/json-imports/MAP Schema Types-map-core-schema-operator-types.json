@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-01T21:46:56.213858Z",
+    "generated_at": "2026-07-02T00:36:23.957477Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-types.tdl"
@@ -91,6 +91,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(OperatorType.HolonType)-[AffordedBy]->(ValueType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "ValueType"
@@ -135,12 +141,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ValueType)-[AffordsOperator]->(OperatorType.HolonType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "OperatorType.HolonType"
@@ -178,6 +178,17 @@
           "target": {
             "$ref": "MapEnumValueType"
           }
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "OperatorCategory.Equality"
+            },
+            {
+              "$ref": "OperatorCategory.Ordering"
+            }
+          ]
         }
       ]
     },
@@ -186,6 +197,7 @@
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Equality",
+        "type_name_plural": "Equalitys",
         "display_name": "Equality",
         "description": "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types.",
         "instance_type_kind": "TypeKind.EnumVariant",
@@ -203,12 +215,6 @@
           "target": {
             "$ref": "MapEnumVariantValueType"
           }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "OperatorCategory"
-          }
         }
       ]
     },
@@ -217,6 +223,7 @@
       "type": "TypeDescriptor.HolonType",
       "properties": {
         "type_name": "Ordering",
+        "type_name_plural": "Orderings",
         "display_name": "Ordering",
         "description": "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string).",
         "instance_type_kind": "TypeKind.EnumVariant",
@@ -233,12 +240,6 @@
           "name": "Extends",
           "target": {
             "$ref": "MapEnumVariantValueType"
-          }
-        },
-        {
-          "name": "VariantOf",
-          "target": {
-            "$ref": "OperatorCategory"
           }
         }
       ]

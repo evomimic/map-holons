@@ -1,10 +1,15 @@
-schema MAP Core Schema-v0.0.7
+schema MAP Core Schema-v0.0.7 {
+  depends_on MAP Dance Schema-v0.0.4
+}
 abstract holon CommandType {
   header {
     description: "Abstract descriptor type for core MAP command affordances discoverable through descriptor-local command lookup."
     display_name: "Command Type"
     display_plural: "Command Types"
     plural: "CommandTypes"
+  }
+  relationships {
+    (CommandType.HolonType)-[CommandPayloadType]->(HolonType)
   }
 }
 
@@ -241,23 +246,21 @@ holon LoadHolons {
 
 
 holon Dance {
-  extends CommandType.HolonType
-  header {
-    description: "Executes a dance request within the active transaction."
+  properties {
+    type_name: "Dance"
+    type_name_plural: "DanceCommands"
     display_name: "Dance Command"
-    display_plural: "Dance Commands"
-    plural: "DanceCommands"
+    display_name_plural: "Dance Commands"
+    description: "Executes a dance request within the active transaction."
+    instance_type_kind: "TypeKind.Holon"
+    is_abstract_type: false
+    allows_additional_properties: false
+    allows_additional_relationships: false
   }
-}
-
-
-holon Query {
-  extends CommandType.HolonType
-  header {
-    description: "Executes a query request within the active transaction."
-    display_name: "Query Command"
-    display_plural: "Query Commands"
-    plural: "QueryCommands"
+  relationships {
+    CommandPayloadType -> "DanceInvocation.HolonType"
+    ComponentOf -> "MAP Core Schema-v0.0.7"
+    Extends -> "CommandType.HolonType"
   }
 }
 
@@ -417,55 +420,56 @@ holon DeleteHolon {
 
 
 def relationship AffordsCommand {
+  source HolonType
+  target CommandType.HolonType
+  inverse CommandAffordedBy
   cardinality 0..32767
   deletion_semantic Allow
-  properties {
-    type_name: "AffordsCommand"
-    type_name_plural: "AffordsCommandRelationships"
-    display_name: "AffordsCommand Relationship"
-    display_name_plural: "AffordsCommand Relationships"
+  header {
     description: "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup."
-    instance_type_kind: "TypeKind.Relationship"
-    is_abstract_type: false
-    is_definitional: true
-    is_ordered: false
-    allows_duplicates: false
-    min_cardinality: 0
-    max_cardinality: 32767
-    deletion_semantic: "Allow"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "DeclaredRelationshipType"
-    SourceType -> "HolonType"
-    TargetType -> "CommandType.HolonType"
+    display_name: "AffordsCommand Relationship"
+    display_plural: "AffordsCommand Relationships"
+    plural: "AffordsCommandRelationships"
   }
 }
 
 
-inverse relationship AffordedBy {
+inverse relationship CommandAffordedBy {
+  source CommandType.HolonType
+  target HolonType
   cardinality 0..32767
   deletion_semantic Allow
-  properties {
-    type_name: "AffordedBy"
-    type_name_plural: "AffordedByRelationships"
-    display_name: "AffordedBy Relationship"
-    display_name_plural: "AffordedBy Relationships"
+  header {
     description: "Inverse of AffordsCommand, relationship from CommandType to HolonType."
-    instance_type_kind: "TypeKind.Relationship"
-    is_abstract_type: false
-    is_definitional: false
-    is_ordered: false
-    allows_duplicates: false
-    min_cardinality: 0
-    max_cardinality: 32767
-    deletion_semantic: "Allow"
+    display_name: "CommandAffordedBy Relationship"
+    display_plural: "CommandAffordedBy Relationships"
+    plural: "CommandAffordedByRelationships"
   }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "InverseRelationshipType"
-    InverseOf -> "(HolonType)-[AffordsCommand]->(CommandType.HolonType)"
-    SourceType -> "CommandType.HolonType"
-    TargetType -> "HolonType"
+}
+
+
+def relationship CommandPayloadType {
+  source CommandType.HolonType
+  target HolonType
+  inverse CommandPayloadTypeFor
+  cardinality 0..1
+  header {
+    description: "Links a CommandType to the holon type carried as its command payload."
+    display_name: "CommandPayloadType Relationship"
+    display_plural: "CommandPayloadType Relationships"
+    plural: "CommandPayloadTypeRelationships"
+  }
+}
+
+
+inverse relationship CommandPayloadTypeFor {
+  source HolonType
+  target CommandType.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of CommandPayloadType, from HolonType to CommandType."
+    display_name: "CommandPayloadTypeFor Relationship"
+    display_plural: "CommandPayloadTypeFor Relationships"
+    plural: "CommandPayloadTypeForRelationships"
   }
 }

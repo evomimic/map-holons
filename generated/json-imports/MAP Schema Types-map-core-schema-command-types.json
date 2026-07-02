@@ -1,13 +1,14 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-01T21:46:56.212406Z",
+    "generated_at": "2026-07-02T00:36:23.955837Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.tdl"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-abstract-value-types.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
       "MAP Schema Types-map-core-schema-root.json"
     ]
   },
@@ -37,6 +38,12 @@
           "name": "Extends",
           "target": {
             "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": {
+            "$ref": "(CommandType.HolonType)-[CommandPayloadType]->(HolonType)"
           }
         }
       ]
@@ -666,34 +673,11 @@
       },
       "relationships": [
         {
-          "name": "ComponentOf",
+          "name": "CommandPayloadType",
           "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
+            "$ref": "DanceInvocation.HolonType"
           }
         },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "CommandType.HolonType"
-          }
-        }
-      ]
-    },
-    {
-      "key": "Query.CommandType",
-      "type": "TypeDescriptor.HolonType",
-      "properties": {
-        "type_name": "Query",
-        "type_name_plural": "QueryCommands",
-        "display_name": "Query Command",
-        "display_name_plural": "Query Commands",
-        "description": "Executes a query request within the active transaction.",
-        "instance_type_kind": "TypeKind.Holon",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
-      },
-      "relationships": [
         {
           "name": "ComponentOf",
           "target": {
@@ -1125,12 +1109,12 @@
         "description": "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767,
-        "deletion_semantic": "Allow"
+        "max_cardinality": 32767
       },
       "relationships": [
         {
@@ -1143,6 +1127,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType)"
           }
         },
         {
@@ -1160,22 +1150,22 @@
       ]
     },
     {
-      "key": "(CommandType.HolonType)-[AffordedBy]->(HolonType)",
+      "key": "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType)",
       "type": "TypeDescriptor.HolonType",
       "properties": {
-        "type_name": "AffordedBy",
-        "type_name_plural": "AffordedByRelationships",
-        "display_name": "AffordedBy Relationship",
-        "display_name_plural": "AffordedBy Relationships",
+        "type_name": "CommandAffordedBy",
+        "type_name_plural": "CommandAffordedByRelationships",
+        "display_name": "CommandAffordedBy Relationship",
+        "display_name_plural": "CommandAffordedBy Relationships",
         "description": "Inverse of AffordsCommand, relationship from CommandType to HolonType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767,
-        "deletion_semantic": "Allow"
+        "max_cardinality": 32767
       },
       "relationships": [
         {
@@ -1191,9 +1181,53 @@
           }
         },
         {
-          "name": "InverseOf",
+          "name": "SourceType",
           "target": {
-            "$ref": "(HolonType)-[AffordsCommand]->(CommandType.HolonType)"
+            "$ref": "CommandType.HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(CommandType.HolonType)-[CommandPayloadType]->(HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "CommandPayloadType",
+        "type_name_plural": "CommandPayloadTypeRelationships",
+        "display_name": "CommandPayloadType Relationship",
+        "display_name_plural": "CommandPayloadType Relationships",
+        "description": "Links a CommandType to the holon type carried as its command payload.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": true,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(HolonType)-[CommandPayloadTypeFor]->(CommandType.HolonType)"
           }
         },
         {
@@ -1206,6 +1240,50 @@
           "name": "TargetType",
           "target": {
             "$ref": "HolonType"
+          }
+        }
+      ]
+    },
+    {
+      "key": "(HolonType)-[CommandPayloadTypeFor]->(CommandType.HolonType)",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "CommandPayloadTypeFor",
+        "type_name_plural": "CommandPayloadTypeForRelationships",
+        "display_name": "CommandPayloadTypeFor Relationship",
+        "display_name_plural": "CommandPayloadTypeFor Relationships",
+        "description": "Inverse of CommandPayloadType, from HolonType to CommandType.",
+        "instance_type_kind": "TypeKind.Relationship",
+        "is_abstract_type": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 32767
+      },
+      "relationships": [
+        {
+          "name": "ComponentOf",
+          "target": {
+            "$ref": "MAP Core Schema-v0.0.7"
+          }
+        },
+        {
+          "name": "Extends",
+          "target": {
+            "$ref": "InverseRelationshipType"
+          }
+        },
+        {
+          "name": "SourceType",
+          "target": {
+            "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "TargetType",
+          "target": {
+            "$ref": "CommandType.HolonType"
           }
         }
       ]

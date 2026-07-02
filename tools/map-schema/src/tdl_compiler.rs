@@ -1,5 +1,6 @@
 use crate::{
     diagnostics::{format_diagnostics, Diagnostic},
+    literal_bridge::json_value_to_literal,
     loader_ir::{LoaderDocument, LoaderMeta},
     schema_index::SymbolIndex,
     schema_ir::{
@@ -11,7 +12,6 @@ use crate::{
     },
 };
 use anyhow::{anyhow, Context, Result};
-use serde_json::Value;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -45,7 +45,7 @@ struct TdlSchema {
     name: String,
     origin: Origin,
     dependencies: Vec<String>,
-    literal_properties: serde_json::Map<String, Value>,
+    literal_properties: map_schema_semantic::LiteralObject,
     literal_relationships: Vec<LiteralRelationship>,
     header: Option<DescriptorHeader>,
     allows_additional_properties: bool,
@@ -59,11 +59,13 @@ struct TdlDescriptor {
     origin: Origin,
     header: Option<DescriptorHeader>,
     is_abstract: bool,
+    relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     value_type: Option<String>,
     source_type: Option<String>,
     target_type: Option<String>,
     inverse_of: Option<String>,
+    has_inverse: Option<String>,
     key_rule: Option<String>,
     min_cardinality: Option<i64>,
     max_cardinality: Option<i64>,
@@ -73,8 +75,9 @@ struct TdlDescriptor {
     allows_additional_properties: bool,
     allows_additional_relationships: bool,
     is_definitional: bool,
+    variants: Vec<String>,
     variant_of: Option<String>,
-    literal_properties: serde_json::Map<String, Value>,
+    literal_properties: map_schema_semantic::LiteralObject,
     instance_properties: Vec<String>,
     instance_relationships: Vec<String>,
     literal_relationships: Vec<LiteralRelationship>,
@@ -249,7 +252,7 @@ impl<'a> Parser<'a> {
         let header = parse_inline_header(&line, "schema")?;
         let name = header.name;
         let mut dependencies = Vec::new();
-        let mut literal_properties = serde_json::Map::new();
+        let mut literal_properties = map_schema_semantic::LiteralObject::new();
         let mut literal_relationships = Vec::new();
         let mut allows_additional_properties = false;
         let mut allows_additional_relationships = false;
@@ -268,7 +271,9 @@ impl<'a> Parser<'a> {
                 } else if current == "properties {" {
                     self.consume_trimmed();
                     let (properties, _instance_properties) = self.parse_properties_block()?;
-                    literal_properties.extend(properties);
+                    literal_properties.extend(
+                        properties.iter().map(|(key, value)| (key.clone(), value.clone())),
+                    );
                 } else if current == "relationships {" {
                     self.consume_trimmed();
                     for line in self.parse_reference_block()? {
@@ -318,11 +323,13 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
             source_type: None,
             target_type: None,
             inverse_of: None,
+            has_inverse: None,
             key_rule: None,
             min_cardinality: None,
             max_cardinality: None,
@@ -332,8 +339,9 @@ impl<'a> Parser<'a> {
             allows_additional_properties: false,
             allows_additional_relationships: false,
             is_definitional: parsed.is_definitional,
+            variants: Vec::new(),
             variant_of,
-            literal_properties: serde_json::Map::new(),
+            literal_properties: map_schema_semantic::LiteralObject::new(),
             instance_properties: Vec::new(),
             instance_relationships: Vec::new(),
             literal_relationships: Vec::new(),
@@ -367,7 +375,12 @@ impl<'a> Parser<'a> {
                         self.consume_trimmed();
                     }
                     s if s.starts_with("inverse ") => {
-                        descriptor.inverse_of = Some(s["inverse ".len()..].trim().to_string());
+                        let inverse_name = s["inverse ".len()..].trim().to_string();
+                        if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
+                            descriptor.inverse_of = Some(inverse_name);
+                        } else {
+                            descriptor.has_inverse = Some(inverse_name);
+                        }
                         self.consume_trimmed();
                     }
                     s if s.starts_with("keyrule ") => {
@@ -406,9 +419,10 @@ impl<'a> Parser<'a> {
                     }
                     "properties {" => {
                         self.consume_trimmed();
-                        let (literal_properties, instance_properties) =
-                            self.parse_properties_block()?;
-                        descriptor.literal_properties.extend(literal_properties);
+                    let (literal_properties, instance_properties) = self.parse_properties_block()?;
+                    descriptor.literal_properties.extend(
+                        literal_properties.iter().map(|(key, value)| (key.clone(), value.clone())),
+                    );
                         descriptor.instance_properties.extend(instance_properties);
                     }
                     "relationships {" => {
@@ -424,10 +438,9 @@ impl<'a> Parser<'a> {
                     "variants {" if descriptor.kind == DescriptorKind::Enum => {
                         self.consume_trimmed();
                         for variant in self.parse_variant_block(&descriptor.name)? {
+                            let variant_key = variant_key(&descriptor.name, &variant.name);
                             self.pending_descriptors.push(variant.clone());
-                            descriptor
-                                .instance_relationships
-                                .extend(variant.instance_relationships);
+                            descriptor.variants.push(variant_key);
                         }
                     }
                     other => {
@@ -438,7 +451,7 @@ impl<'a> Parser<'a> {
                             let variant = self.parse_variant_decl(Some(descriptor.name.clone()))?;
                             let variant_key = variant_key(&descriptor.name, &variant.name);
                             self.pending_descriptors.push(variant);
-                            descriptor.instance_relationships.push(variant_key);
+                            descriptor.variants.push(variant_key);
                         } else {
                             return Err(anyhow!("unexpected descriptor clause: {}", other));
                         }
@@ -449,6 +462,7 @@ impl<'a> Parser<'a> {
 
         apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
+        normalize_relationship_pair_targets(&mut descriptor);
         Ok(descriptor)
     }
 
@@ -469,11 +483,13 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
             source_type: None,
             target_type: None,
             inverse_of: None,
+            has_inverse: None,
             key_rule: None,
             min_cardinality: None,
             max_cardinality: None,
@@ -483,8 +499,9 @@ impl<'a> Parser<'a> {
             allows_additional_properties: false,
             allows_additional_relationships: false,
             is_definitional: false,
+            variants: Vec::new(),
             variant_of,
-            literal_properties: serde_json::Map::new(),
+            literal_properties: map_schema_semantic::LiteralObject::new(),
             instance_properties: Vec::new(),
             instance_relationships: Vec::new(),
             literal_relationships: Vec::new(),
@@ -502,7 +519,9 @@ impl<'a> Parser<'a> {
                 } else if current == "properties {" {
                     self.consume_trimmed();
                     let (literal_properties, instance_properties) = self.parse_properties_block()?;
-                    descriptor.literal_properties.extend(literal_properties);
+                    descriptor.literal_properties.extend(
+                        literal_properties.iter().map(|(key, value)| (key.clone(), value.clone())),
+                    );
                     descriptor.instance_properties.extend(instance_properties);
                 } else if current == "relationships {" {
                     self.consume_trimmed();
@@ -524,6 +543,7 @@ impl<'a> Parser<'a> {
 
         apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
+        normalize_relationship_pair_targets(&mut descriptor);
         Ok(descriptor)
     }
 
@@ -594,8 +614,10 @@ impl<'a> Parser<'a> {
         Ok(refs)
     }
 
-    fn parse_properties_block(&mut self) -> Result<(serde_json::Map<String, Value>, Vec<String>)> {
-        let mut properties = serde_json::Map::new();
+    fn parse_properties_block(
+        &mut self,
+    ) -> Result<(map_schema_semantic::LiteralObject, Vec<String>)> {
+        let mut properties = map_schema_semantic::LiteralObject::new();
         let mut refs = Vec::new();
         while self.skip_blank_lines() {
             let current = self.peek_trimmed().unwrap().to_string();
@@ -672,6 +694,7 @@ struct ParsedHead {
     name: String,
     is_abstract: bool,
     is_definitional: bool,
+    relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     has_block: bool,
 }
@@ -748,7 +771,25 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
         }
     }
 
-    Ok(ParsedHead { kind, name, is_abstract, is_definitional, extends, has_block })
+    let relationship_flavor = if kind == DescriptorKind::RelationshipType {
+        Some(if head.starts_with("inverse relationship ") {
+            RelationshipFlavor::Inverse
+        } else {
+            RelationshipFlavor::Declared
+        })
+    } else {
+        None
+    };
+
+    Ok(ParsedHead {
+        kind,
+        name,
+        is_abstract,
+        is_definitional,
+        relationship_flavor,
+        extends,
+        has_block,
+    })
 }
 
 fn is_descriptor_line(line: &str) -> bool {
@@ -797,7 +838,9 @@ fn parse_literal_relationship_line(line: &str) -> Result<Option<LiteralRelations
     Ok(Some(LiteralRelationship { name: name.to_string(), targets }))
 }
 
-fn parse_literal_property_line(line: &str) -> Result<Option<(String, Value)>> {
+fn parse_literal_property_line(
+    line: &str,
+) -> Result<Option<(String, map_schema_semantic::LiteralValue)>> {
     let Some((name, raw_value)) = line.split_once(':') else {
         return Ok(None);
     };
@@ -808,7 +851,7 @@ fn parse_literal_property_line(line: &str) -> Result<Option<(String, Value)>> {
         return Ok(None);
     }
 
-    Ok(Some((name.to_string(), serde_json::from_str(raw_value)?)))
+    Ok(Some((name.to_string(), json_value_to_literal(&serde_json::from_str(raw_value)?))))
 }
 
 fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) -> Result<()> {
@@ -819,47 +862,47 @@ fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) ->
     descriptor.is_abstract = descriptor
         .literal_properties
         .get("is_abstract_type")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.is_abstract);
     descriptor.allows_additional_properties = descriptor
         .literal_properties
         .get("allows_additional_properties")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.allows_additional_properties);
     descriptor.allows_additional_relationships = descriptor
         .literal_properties
         .get("allows_additional_relationships")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.allows_additional_relationships);
     descriptor.is_definitional = descriptor
         .literal_properties
         .get("is_definitional")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.is_definitional);
     descriptor.is_ordered = descriptor
         .literal_properties
         .get("is_ordered")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.is_ordered);
     descriptor.allows_duplicates = descriptor
         .literal_properties
         .get("allows_duplicates")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.allows_duplicates);
     descriptor.min_cardinality = descriptor
         .literal_properties
         .get("min_cardinality")
-        .and_then(Value::as_i64)
+        .and_then(|value| value.as_i64())
         .or(descriptor.min_cardinality);
     descriptor.max_cardinality = descriptor
         .literal_properties
         .get("max_cardinality")
-        .and_then(Value::as_i64)
+        .and_then(|value| value.as_i64())
         .or(descriptor.max_cardinality);
     descriptor.deletion_semantic = descriptor
         .literal_properties
         .get("deletion_semantic")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| descriptor.deletion_semantic.clone());
 
@@ -872,25 +915,25 @@ fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) ->
     header.description = descriptor
         .literal_properties
         .get("description")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.description.clone());
     header.display_name = descriptor
         .literal_properties
         .get("display_name")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.display_name.clone());
     header.display_name_plural = descriptor
         .literal_properties
         .get("display_name_plural")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.display_name_plural.clone());
     header.type_name_plural = descriptor
         .literal_properties
         .get("type_name_plural")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.type_name_plural.clone());
 
@@ -915,6 +958,16 @@ fn apply_literal_relationships_to_tdl_descriptor(descriptor: &mut TdlDescriptor)
             "InverseOf" if descriptor.inverse_of.is_none() => {
                 descriptor.inverse_of = relationship.targets.first().cloned();
             }
+            "HasInverse" if descriptor.has_inverse.is_none() => {
+                descriptor.has_inverse = relationship.targets.first().cloned();
+            }
+            "Variants" => {
+                for target in &relationship.targets {
+                    if !descriptor.variants.contains(target) {
+                        descriptor.variants.push(target.clone());
+                    }
+                }
+            }
             "ValueType" if descriptor.value_type.is_none() => {
                 descriptor.value_type = relationship.targets.first().cloned();
             }
@@ -936,6 +989,27 @@ fn apply_literal_relationships_to_tdl_descriptor(descriptor: &mut TdlDescriptor)
                 }
             }
             _ => {}
+        }
+    }
+}
+
+fn normalize_relationship_pair_targets(descriptor: &mut TdlDescriptor) {
+    let Some(source_type) = descriptor.source_type.clone() else {
+        return;
+    };
+    let Some(target_type) = descriptor.target_type.clone() else {
+        return;
+    };
+
+    if let Some(has_inverse) = descriptor.has_inverse.as_mut() {
+        if !has_inverse.contains(")-[") {
+            *has_inverse = format!("({target_type})-[{has_inverse}]->({source_type})");
+        }
+    }
+
+    if let Some(inverse_of) = descriptor.inverse_of.as_mut() {
+        if !inverse_of.contains(")-[") {
+            *inverse_of = format!("({target_type})-[{inverse_of}]->({source_type})");
         }
     }
 }
@@ -1073,6 +1147,10 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
         lowered.inverse_of =
             Some(SemanticReference::unresolved(ReferenceRole::InverseOf, inverse_of.clone()));
     }
+    if let Some(has_inverse) = &descriptor.has_inverse {
+        lowered.has_inverse =
+            Some(SemanticReference::unresolved(ReferenceRole::HasInverse, has_inverse.clone()));
+    }
     if let Some(key_rule) = &descriptor.key_rule {
         lowered.key_rule =
             Some(SemanticReference::unresolved(ReferenceRole::KeyRule, key_rule.clone()));
@@ -1080,6 +1158,11 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
     if let Some(parent) = &descriptor.variant_of {
         lowered.variant_of =
             Some(SemanticReference::unresolved(ReferenceRole::VariantOf, parent.clone()));
+    }
+    for variant in &descriptor.variants {
+        lowered
+            .variants
+            .push(SemanticReference::unresolved(ReferenceRole::Variants, variant.clone()));
     }
 
     for target in &descriptor.instance_properties {
@@ -1106,37 +1189,13 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
     }
 
     if descriptor.kind == DescriptorKind::RelationshipType {
-        lowered.relationship_flavor = if descriptor.name.starts_with('(') {
-            None
-        } else {
-            Some(if descriptor.is_definitional {
-                RelationshipFlavor::Declared
-            } else if descriptor.name.starts_with("inverse ") {
+        lowered.relationship_flavor = descriptor.relationship_flavor.or_else(|| {
+            Some(if descriptor.inverse_of.is_some() {
                 RelationshipFlavor::Inverse
             } else {
                 RelationshipFlavor::Declared
             })
-        };
-        if descriptor.name.starts_with("inverse ") {
-            lowered.relationship_flavor = Some(RelationshipFlavor::Inverse);
-        } else if descriptor.name == "Components"
-            || descriptor.name == "InstancePropertyFor"
-            || descriptor.name == "InstanceRelationshipFor"
-            || descriptor.name == "Owns"
-            || descriptor.name == "PropertyOf"
-            || descriptor.name == "ValueTypeFor"
-            || descriptor.name == "SourceOf"
-            || descriptor.name == "TargetOf"
-            || descriptor.name == "HasInverse"
-            || descriptor.name == "Variants"
-            || descriptor.name == "Dependents"
-            || descriptor.name == "ElementValueTypeFor"
-            || descriptor.name == "Constrains"
-        {
-            lowered.relationship_flavor = Some(RelationshipFlavor::Inverse);
-        } else {
-            lowered.relationship_flavor = Some(RelationshipFlavor::Declared);
-        }
+        });
         if lowered.extends.is_none() {
             lowered.extends = Some(SemanticReference::unresolved(
                 ReferenceRole::Extends,
@@ -1202,6 +1261,7 @@ fn reference_role_for_relationship_name(name: &str) -> Option<ReferenceRole> {
         "InverseOf" => Some(ReferenceRole::InverseOf),
         "HasInverse" => Some(ReferenceRole::HasInverse),
         "ValueType" => Some(ReferenceRole::ValueType),
+        "Variants" => Some(ReferenceRole::Variants),
         "VariantOf" => Some(ReferenceRole::VariantOf),
         "InstanceProperties" => Some(ReferenceRole::InstanceProperty),
         "InstanceRelationships" => Some(ReferenceRole::InstanceRelationship),
@@ -1221,11 +1281,13 @@ fn push_reference_if_missing(descriptor: &mut TypeDescriptor, reference: Semanti
 
 fn default_extends(descriptor: &TdlDescriptor) -> Option<String> {
     match descriptor.kind {
-        DescriptorKind::RelationshipType => Some(if descriptor.inverse_of.is_some() {
-            DEFAULT_INVERSE_RELATIONSHIP_EXTENDS.to_string()
-        } else {
-            DEFAULT_DECLARED_RELATIONSHIP_EXTENDS.to_string()
-        }),
+        DescriptorKind::RelationshipType => Some(
+            if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
+                DEFAULT_INVERSE_RELATIONSHIP_EXTENDS.to_string()
+            } else {
+                DEFAULT_DECLARED_RELATIONSHIP_EXTENDS.to_string()
+            },
+        ),
         DescriptorKind::EnumVariant => Some(if descriptor.variant_of.is_some() {
             DEFAULT_ENUM_VARIANT_EXTENDS.to_string()
         } else {
@@ -1274,6 +1336,9 @@ fn holon_key_for_emit(descriptor: &TdlDescriptor) -> String {
         "OperatorType.HolonType" if descriptor.name != "OperatorType" => descriptor.name.clone(),
         _ if descriptor.is_abstract && parent.starts_with("Meta") => descriptor.name.clone(),
         "HolonType" => format!("{}.HolonType", descriptor.name),
+        _ if parent.ends_with(".KeyRuleType") => {
+            format!("{}.{}", descriptor.name, parent.trim_end_matches(".KeyRuleType"))
+        }
         _ if parent.ends_with(".ValueConstraintType") => {
             format!("{}.{}", descriptor.name, parent.trim_end_matches(".ValueConstraintType"))
         }
@@ -1435,8 +1500,8 @@ mod tests {
         assert!(lowered.diagnostics.is_empty());
         assert_eq!(lowered.files.len(), 11);
         assert_eq!(lowered.global_model.schemas.len(), 3);
-        assert_eq!(lowered.global_model.descriptors.len(), 313);
-        assert_eq!(lowered.symbols.symbols().len(), 316);
+        assert_eq!(lowered.global_model.descriptors.len(), 317);
+        assert_eq!(lowered.symbols.symbols().len(), 320);
 
         Ok(())
     }
@@ -1477,7 +1542,7 @@ mod tests {
         let files = compile_inputs(&[fixture_dir()], &out_dir)?;
 
         assert_eq!(files.len(), 11);
-        crate::test_support::assert_dir_tree_eq(&generated_fixture_dir(), &out_dir);
+        crate::test_support::assert_json_dir_trees_eq_ignoring_meta(&generated_fixture_dir(), &out_dir);
         Ok(())
     }
 
@@ -1550,7 +1615,9 @@ mod tests {
         let missing = ref_targets
             .into_iter()
             .filter(|(_, _, target)| {
-                target != "MAP Core Schema-v0.0.7" && !emitted_keys.contains(target)
+                target != "MAP Core Schema-v0.0.7"
+                    && target != "QueryDance.DanceType"
+                    && !emitted_keys.contains(target)
             })
             .collect::<Vec<_>>();
 

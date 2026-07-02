@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-01T21:46:56.214776Z",
+    "generated_at": "2026-07-02T00:36:23.958539Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-value-constraint-types.tdl"
@@ -640,6 +640,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(StringValueConstraint.ValueConstraintType)-[Constrains]->(StringValueType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "StringValueType"
@@ -681,6 +687,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(IntegerValueConstraint.ValueConstraintType)-[Constrains]->(IntegerValueType)"
           }
         },
         {
@@ -728,6 +740,12 @@
           }
         },
         {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(BytesValueConstraint.ValueConstraintType)-[Constrains]->(BytesValueType)"
+          }
+        },
+        {
           "name": "SourceType",
           "target": {
             "$ref": "BytesValueType"
@@ -769,6 +787,12 @@
           "name": "Extends",
           "target": {
             "$ref": "DeclaredRelationshipType"
+          }
+        },
+        {
+          "name": "HasInverse",
+          "target": {
+            "$ref": "(ValueArrayConstraint.ValueConstraintType)-[Constrains]->(ValueArrayValueType)"
           }
         },
         {
@@ -816,12 +840,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(StringValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "StringValueConstraint.ValueConstraintType"
@@ -863,12 +881,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(IntegerValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)"
           }
         },
         {
@@ -916,12 +928,6 @@
           }
         },
         {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(BytesValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)"
-          }
-        },
-        {
           "name": "SourceType",
           "target": {
             "$ref": "BytesValueConstraint.ValueConstraintType"
@@ -963,12 +969,6 @@
           "name": "Extends",
           "target": {
             "$ref": "InverseRelationshipType"
-          }
-        },
-        {
-          "name": "InverseOf",
-          "target": {
-            "$ref": "(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)"
           }
         },
         {

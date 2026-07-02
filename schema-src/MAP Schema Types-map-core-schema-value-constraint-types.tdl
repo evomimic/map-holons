@@ -218,6 +218,7 @@ property ConstraintEnabled {
 def relationship Constraints {
   source StringValueType
   target StringValueConstraint.ValueConstraintType
+  inverse Constrains
   cardinality 0..32767
   header {
     description: "Attaches string-specific value constraints to a string value type."
@@ -231,6 +232,7 @@ def relationship Constraints {
 def relationship Constraints {
   source IntegerValueType
   target IntegerValueConstraint.ValueConstraintType
+  inverse Constrains
   cardinality 0..32767
   header {
     description: "Attaches integer-specific value constraints to an integer value type."
@@ -244,6 +246,7 @@ def relationship Constraints {
 def relationship Constraints {
   source BytesValueType
   target BytesValueConstraint.ValueConstraintType
+  inverse Constrains
   cardinality 0..32767
   header {
     description: "Attaches bytes-specific value constraints to a bytes value type."
@@ -257,6 +260,7 @@ def relationship Constraints {
 def relationship Constraints {
   source ValueArrayValueType
   target ValueArrayConstraint.ValueConstraintType
+  inverse Constrains
   cardinality 0..32767
   header {
     description: "Attaches value-array-specific constraints to a value array type."
@@ -270,7 +274,6 @@ def relationship Constraints {
 inverse relationship Constrains {
   source StringValueConstraint.ValueConstraintType
   target StringValueType
-  inverse Constraints
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from a string value constraint to the string value type it constrains."
@@ -284,7 +287,6 @@ inverse relationship Constrains {
 inverse relationship Constrains {
   source IntegerValueConstraint.ValueConstraintType
   target IntegerValueType
-  inverse Constraints
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from an integer value constraint to the integer value type it constrains."
@@ -298,7 +300,6 @@ inverse relationship Constrains {
 inverse relationship Constrains {
   source BytesValueConstraint.ValueConstraintType
   target BytesValueType
-  inverse Constraints
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from a bytes value constraint to the bytes value type it constrains."
@@ -312,7 +313,6 @@ inverse relationship Constrains {
 inverse relationship Constrains {
   source ValueArrayConstraint.ValueConstraintType
   target ValueArrayValueType
-  inverse Constraints
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from a value array constraint to the value array type it constrains."

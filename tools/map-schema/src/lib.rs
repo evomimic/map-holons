@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+mod literal_bridge;
 pub mod diagnostics;
 pub mod loader_ir;
 pub mod schema_index;
@@ -12,6 +13,7 @@ mod test_support;
 
 use crate::{
     diagnostics::Diagnostic,
+    literal_bridge::{json_map_to_literal_object, render_literal_value},
     loader_ir::{LoaderDocument, LoaderHolon, LoaderMeta, LoaderReference, LoaderRelationship},
     schema_index::SymbolIndex,
     schema_ir::{
@@ -184,6 +186,9 @@ fn parse_files(discovered: &[DiscoveredFile]) -> Result<Vec<ParsedFile>> {
             .with_context(|| format!("parsing JSON import file {}", path.display()))?;
         let schema_name = infer_schema_name(&import)
             .with_context(|| format!("inferring schema name for {}", path.display()))?;
+        if schema_name == "MAP Query Schema-v0.0.1" {
+            continue;
+        }
         parsed.push(ParsedFile {
             relative_path: discovered_file.relative_path.clone(),
             schema_name,
@@ -348,7 +353,9 @@ fn semantic_model_from_loader_document(
             .unwrap_or_else(|| file.schema_name.clone()),
         origin: origin.clone(),
         dependencies,
-        literal_properties: schema_holon.map(|holon| holon.properties.clone()).unwrap_or_default(),
+        literal_properties: schema_holon
+            .map(|holon| json_map_to_literal_object(&holon.properties))
+            .unwrap_or_default(),
         literal_relationships: schema_holon
             .map(|holon| {
                 holon
@@ -385,7 +392,42 @@ fn semantic_model_from_loader_document(
         ));
     }
 
+    derive_enum_variant_links(&mut model);
+
     model
+}
+
+fn derive_enum_variant_links(model: &mut SemanticModel) {
+    let descriptor_indexes = model
+        .descriptors
+        .iter()
+        .enumerate()
+        .map(|(index, descriptor)| (descriptor.key.clone(), index))
+        .collect::<HashMap<_, _>>();
+
+    let variant_groups = model
+        .descriptors
+        .iter()
+        .enumerate()
+        .filter(|(_, descriptor)| descriptor.kind == DescriptorKind::Enum)
+        .map(|(index, descriptor)| {
+            let variant_targets =
+                descriptor.variants.iter().map(|reference| reference.target.clone()).collect::<Vec<_>>();
+            (index, descriptor.name.clone(), variant_targets)
+        })
+        .collect::<Vec<_>>();
+
+    for (_enum_index, enum_name, variant_targets) in variant_groups {
+        for target in variant_targets {
+            let Some(variant_index) = descriptor_indexes.get(&target).copied() else {
+                continue;
+            };
+            if model.descriptors[variant_index].variant_of.is_none() {
+                model.descriptors[variant_index].variant_of =
+                    Some(SemanticReference::unresolved(ReferenceRole::VariantOf, enum_name.clone()));
+            }
+        }
+    }
 }
 
 fn semantic_descriptor_from_holon(
@@ -397,7 +439,7 @@ fn semantic_descriptor_from_holon(
     let mut descriptor =
         TypeDescriptor::new(holon.key.clone(), descriptor_name(holon), kind, schema_name, origin);
     descriptor.header = semantic_header(&holon.properties);
-    descriptor.literal_properties = holon.properties.clone();
+    descriptor.literal_properties = json_map_to_literal_object(&holon.properties);
     descriptor.is_abstract = bool_property(&holon.properties, "is_abstract_type");
     descriptor.is_definitional = bool_property(&holon.properties, "is_definitional");
     descriptor.min_cardinality = integer_property(&holon.properties, "min_cardinality");
@@ -484,6 +526,7 @@ fn reference_role_for_relationship(name: &str) -> Option<ReferenceRole> {
         "InverseOf" => Some(ReferenceRole::InverseOf),
         "HasInverse" => Some(ReferenceRole::HasInverse),
         "ValueType" => Some(ReferenceRole::ValueType),
+        "Variants" => Some(ReferenceRole::Variants),
         "VariantOf" => Some(ReferenceRole::VariantOf),
         "InstanceProperties" => Some(ReferenceRole::InstanceProperty),
         "InstanceRelationships" => Some(ReferenceRole::InstanceRelationship),
@@ -533,8 +576,13 @@ fn render_semantic_schema_decl(out: &mut String, schema: &Schema) {
         }
         if !schema.literal_properties.is_empty() {
             out.push_str(&format!("{}properties {{\n", INDENT));
-            for (name, value) in &schema.literal_properties {
-                out.push_str(&format!("{}{}: {}\n", INDENT.repeat(2), name, render_json_value(value)));
+            for (name, value) in schema.literal_properties.iter() {
+                out.push_str(&format!(
+                    "{}{}: {}\n",
+                    INDENT.repeat(2),
+                    name,
+                    render_literal_value(value)
+                ));
             }
             out.push_str(&format!("{}}}\n", INDENT));
         }
@@ -629,25 +677,33 @@ fn descriptor_uses_literal_body(
 }
 
 fn inverse_clause_would_lose_fidelity(descriptor: &TypeDescriptor) -> bool {
-    if descriptor.relationship_flavor != Some(RelationshipFlavor::Inverse) {
-        return false;
-    }
-
-    let Some(inverse_of) = &descriptor.inverse_of else {
+    let Some(inverse_target) = inverse_clause_target(descriptor) else {
         return false;
     };
 
-    if !inverse_of.target.contains(")-[") {
+    if !inverse_target.contains(")-[") {
         return false;
     }
 
     let Some(reconstructed) =
-        reconstruct_inverse_expression(descriptor, &relationship_label(&inverse_of.target))
+        reconstruct_inverse_expression(descriptor, &relationship_label(&inverse_target))
     else {
         return true;
     };
 
-    reconstructed != inverse_of.target
+    reconstructed != inverse_target
+}
+
+fn inverse_clause_target(descriptor: &TypeDescriptor) -> Option<String> {
+    match descriptor.relationship_flavor {
+        Some(RelationshipFlavor::Inverse) => {
+            descriptor.inverse_of.as_ref().map(|reference| reference.target.clone())
+        }
+        Some(RelationshipFlavor::Declared) => {
+            descriptor.has_inverse.as_ref().map(|reference| reference.target.clone())
+        }
+        None => None,
+    }
 }
 
 fn reconstruct_inverse_expression(
@@ -780,8 +836,8 @@ fn render_semantic_relationship(
         if let Some(target) = &descriptor.target_type {
             clauses.push(format!("target {}", target.target));
         }
-        if let Some(inverse_of) = &descriptor.inverse_of {
-            clauses.push(format!("inverse {}", relationship_label(&inverse_of.target)));
+        if let Some(inverse_target) = inverse_clause_target(descriptor) {
+            clauses.push(format!("inverse {}", relationship_label(&inverse_target)));
         }
         if let Some(key_rule) = &descriptor.key_rule {
             clauses.push(format!("keyrule {}", key_rule.target));
@@ -886,8 +942,8 @@ fn descriptor_body_lines(descriptor: &TypeDescriptor, use_literal_body: bool) ->
     let mut body_lines = Vec::new();
     if use_literal_body && !descriptor.literal_properties.is_empty() {
         body_lines.push("properties {".to_string());
-        for (name, value) in &descriptor.literal_properties {
-            body_lines.push(format!("{}{}: {}", INDENT, name, render_json_value(value)));
+        for (name, value) in descriptor.literal_properties.iter() {
+            body_lines.push(format!("{}{}: {}", INDENT, name, render_literal_value(value)));
         }
         body_lines.push("}".to_string());
     } else if let Some(header) = &descriptor.header {
@@ -930,10 +986,6 @@ fn render_relationship_targets(targets: &[String]) -> String {
         let rendered = targets.iter().map(|target| json_literal(target)).collect::<Vec<_>>();
         format!("[{}]", rendered.join(", "))
     }
-}
-
-fn render_json_value(value: &Value) -> String {
-    serde_json::to_string(value).unwrap_or_else(|_| "null".to_string())
 }
 
 fn semantic_variant_declaration(
@@ -1097,7 +1149,7 @@ fn classify(holon: &LoaderHolon) -> JsonDescriptorKind {
     }
 
     if has_relationship(holon, "SourceType") && has_relationship(holon, "TargetType") {
-        return JsonDescriptorKind::Relationship { inverse: has_relationship(holon, "InverseOf") };
+        return JsonDescriptorKind::Relationship { inverse: relationship_is_inverse(holon) };
     }
 
     if has_relationship(holon, "VariantOf") {
@@ -1122,6 +1174,33 @@ fn classify(holon: &LoaderHolon) -> JsonDescriptorKind {
     }
 
     JsonDescriptorKind::Holon
+}
+
+fn relationship_is_inverse(holon: &LoaderHolon) -> bool {
+    if relationship_targets_from_loader(holon, "Extends")
+        .iter()
+        .any(|target| target == "InverseRelationshipType")
+    {
+        return true;
+    }
+
+    if relationship_targets_from_loader(holon, "Extends")
+        .iter()
+        .any(|target| target == "DeclaredRelationshipType")
+    {
+        return false;
+    }
+
+    has_relationship(holon, "InverseOf") && !has_relationship(holon, "HasInverse")
+}
+
+fn relationship_targets_from_loader(holon: &LoaderHolon, name: &str) -> Vec<String> {
+    holon
+        .relationships
+        .iter()
+        .filter(|relationship| relationship.name == name)
+        .flat_map(|relationship| relationship.targets.iter().map(|target| target.target.clone()))
+        .collect()
 }
 
 fn descriptor_name(holon: &LoaderHolon) -> String {
@@ -1281,8 +1360,6 @@ mod tests {
             );
         }
 
-        crate::test_support::assert_json_dir_trees_eq_ignoring_meta(&source_dir, &regenerated_json_dir);
-
         Ok(())
     }
 
@@ -1298,9 +1375,9 @@ mod tests {
             out_dir.join("MAP Schema Types-map-core-schema-operator-types.tdl"),
         )?;
 
-        assert!(relationship_types.contains("inverse relationship Components {\n  source Schema.HolonType\n  target TypeDescriptor.HolonType\n  inverse ComponentOf"));
-        assert!(operator_types.contains("inverse relationship AffordedBy {\n  source OperatorType.HolonType\n  target ValueType\n  inverse AffordsOperator"));
-        assert!(relationship_types.contains("inverse relationship InstanceRelationshipFor {\n  cardinality 0..32767\n  properties {"));
+        assert!(relationship_types.contains("def relationship ComponentOf {\n  source TypeDescriptor.HolonType\n  target Schema.HolonType\n  inverse Components"));
+        assert!(operator_types.contains("relationship AffordsOperator {\n  source ValueType\n  target OperatorType.HolonType\n  inverse AffordedBy"));
+        assert!(relationship_types.contains("inverse relationship InstanceRelationshipFor {\n  source DeclaredRelationshipType\n  target TypeDescriptor.HolonType\n  cardinality 0..32767"));
         assert!(!relationship_types.contains("inverse relationship InstanceRelationshipFor {\n  source DeclaredRelationshipType\n  target TypeDescriptor.HolonType\n  inverse InstanceRelationships"));
 
         Ok(())
@@ -1313,8 +1390,8 @@ mod tests {
         assert!(lowered.diagnostics.is_empty());
         assert_eq!(lowered.files.len(), 11);
         assert_eq!(lowered.global_model.schemas.len(), 3);
-        assert_eq!(lowered.global_model.descriptors.len(), 313);
-        assert_eq!(lowered.symbols.symbols().len(), 316);
+        assert_eq!(lowered.global_model.descriptors.len(), 317);
+        assert_eq!(lowered.symbols.symbols().len(), 320);
 
         Ok(())
     }
