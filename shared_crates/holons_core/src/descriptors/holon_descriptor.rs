@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, inheritance::flatten_related_members, CommandDescriptor, DanceDescriptor,
-    DeclaredRelationshipDescriptor, Descriptor, InverseRelationshipDescriptor, PropertyDescriptor,
+    accessor_helpers, inheritance::flatten_related_members, relationship_normalization,
+    walk_extends_chain, CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor,
+    Descriptor, InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor,
     QualifiedRelationship, RelationshipDescriptor, TraversalDirection, TypeHeader,
 };
 use crate::reference_layer::HolonReference;
@@ -239,7 +240,7 @@ impl HolonDescriptor {
         name: impl ToRelationshipName,
         direction: TraversalDirection,
     ) -> Result<QualifiedRelationship, HolonError> {
-        crate::descriptors::relationship_normalization::allows_relationship(
+        relationship_normalization::allows_relationship(
             self,
             name.to_relationship_name(),
             direction,
@@ -252,11 +253,28 @@ impl HolonDescriptor {
         name: impl ToRelationshipName,
         direction: TraversalDirection,
     ) -> Result<DeclaredRelationshipDescriptor, HolonError> {
-        crate::descriptors::relationship_normalization::normalize_relationship(
+        relationship_normalization::normalize_relationship(
             self,
             name.to_relationship_name(),
             direction,
         )
+    }
+
+    /// Resolves the effective key rule for instances of this descriptor.
+    pub fn effective_key_rule(&self) -> Result<KeyRuleDescriptor, HolonError> {
+        for ancestor in walk_extends_chain(&self.holon) {
+            let ancestor = ancestor?;
+            if let Some(rule) = accessor_helpers::optional_single_related(
+                &ancestor,
+                CoreRelationshipTypeName::UsesKeyRule,
+            )? {
+                return Ok(KeyRuleDescriptor::from_holon(rule));
+            }
+        }
+
+        Err(HolonError::NoEffectiveKeyRule {
+            descriptor: accessor_helpers::descriptor_label(&self.holon),
+        })
     }
 
     fn flatten_property_descriptors(
@@ -772,6 +790,101 @@ mod tests {
             Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                 if kind == "property" && name == "MissingProperty"
         ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_key_rule_returns_direct_rule() -> Result<(), HolonError> {
+        let context = build_context();
+        let rule = new_descriptor_holon(&context, "type-name-rule", "TypeNameRule")?;
+        let mut holon_type = new_descriptor_holon(&context, "key-rule-owner", "BookType")?;
+        holon_type.add_related_holons(CoreRelationshipTypeName::UsesKeyRule, vec![rule.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert_eq!(
+            descriptor.effective_key_rule()?.header().type_name()?,
+            MapString("TypeNameRule".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_key_rule_inherits_nearest_rule() -> Result<(), HolonError> {
+        let context = build_context();
+        let root_rule = new_descriptor_holon(&context, "root-rule", "SchemaNameRule")?;
+        let parent_rule = new_descriptor_holon(&context, "parent-rule", "TypeNameRule")?;
+        let mut root = new_descriptor_holon(&context, "key-rule-root", "RootType")?;
+        let mut parent = new_descriptor_holon(&context, "key-rule-parent", "ParentType")?;
+        let mut child = new_descriptor_holon(&context, "key-rule-child", "ChildType")?;
+
+        root.add_related_holons(CoreRelationshipTypeName::UsesKeyRule, vec![root_rule.into()])?;
+        parent.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        parent
+            .add_related_holons(CoreRelationshipTypeName::UsesKeyRule, vec![parent_rule.into()])?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(child.into());
+
+        assert_eq!(
+            descriptor.effective_key_rule()?.header().type_name()?,
+            MapString("TypeNameRule".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_key_rule_resolves_none_rule_as_keyless() -> Result<(), HolonError> {
+        let context = build_context();
+        let none_rule = new_descriptor_holon(&context, "none-rule", "NoneRule")?;
+        let mut holon_type = new_descriptor_holon(&context, "keyless-owner", "KeylessType")?;
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::UsesKeyRule, vec![none_rule.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+        let rule = descriptor.effective_key_rule()?;
+
+        assert_eq!(rule.header().type_name()?, MapString("NoneRule".to_string()));
+        assert!(rule.is_keyless()?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_key_rule_errors_when_missing() -> Result<(), HolonError> {
+        let context = build_context();
+        let holon_type = new_descriptor_holon(&context, "missing-key-rule", "MissingKeyRuleType")?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+
+        assert!(matches!(
+            descriptor.effective_key_rule(),
+            Err(HolonError::NoEffectiveKeyRule { .. })
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_key_rule_supports_user_defined_rule_descriptor() -> Result<(), HolonError> {
+        let context = build_context();
+        let key_rule_type = new_descriptor_holon(&context, "key-rule-type", "KeyRuleType")?;
+        let mut custom_rule = new_descriptor_holon(&context, "custom-key-rule", "CustomKeyRule")?;
+        let mut holon_type = new_descriptor_holon(&context, "custom-key-rule-owner", "BookType")?;
+
+        custom_rule
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![key_rule_type.into()])?;
+        holon_type
+            .add_related_holons(CoreRelationshipTypeName::UsesKeyRule, vec![custom_rule.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(holon_type.into());
+        let rule = descriptor.effective_key_rule()?;
+
+        assert_eq!(rule.header().type_name()?, MapString("CustomKeyRule".to_string()));
+        assert!(!rule.is_keyless()?);
 
         Ok(())
     }

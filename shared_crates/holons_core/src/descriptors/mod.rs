@@ -9,6 +9,7 @@ pub mod holon_space_descriptor;
 pub mod inheritance;
 pub mod inverse_relationship_descriptor;
 pub mod inverse_resolution;
+pub mod key_rule_descriptor;
 pub mod operator_category;
 pub mod operator_descriptor;
 pub mod property_descriptor;
@@ -38,6 +39,7 @@ pub use inheritance::{
 };
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use inverse_resolution::resolve_inverse_relationship_name;
+pub use key_rule_descriptor::KeyRuleDescriptor;
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
