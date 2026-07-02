@@ -51,6 +51,25 @@ pub fn ancestors(start: &HolonReference) -> Result<Vec<HolonReference>, HolonErr
     walk_extends_chain(start).collect()
 }
 
+/// Returns true when `candidate` is `anchor` or inherits from it through `Extends`.
+///
+/// Compatibility is based on reference identity, not descriptor names.
+#[allow(dead_code)]
+pub(crate) fn equals_or_extends(
+    candidate: &HolonReference,
+    anchor: &HolonReference,
+) -> Result<bool, HolonError> {
+    let anchor_id = anchor.reference_id_string();
+
+    for ancestor in walk_extends_chain(candidate) {
+        if ancestor?.reference_id_string() == anchor_id {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
 /// Computes the effective descriptor lineage for a holon(per MAP Type System) v1.2.
 ///
 /// Ordinary instances use the `Extends` lineage of their `DescribedBy` descriptor.
@@ -284,6 +303,30 @@ mod tests {
                 HolonReference::from(&root),
             ]
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn equals_or_extends_matches_self_and_ancestors_by_reference_identity() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let root = new_test_holon(&context, "root")?;
+        let unrelated = new_test_holon(&context, "root")?;
+        let mut child = new_test_holon(&context, "child")?;
+
+        child.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&root)],
+        )?;
+
+        let child_ref = HolonReference::from(&child);
+        let root_ref = HolonReference::from(&root);
+        let unrelated_ref = HolonReference::from(&unrelated);
+
+        assert!(equals_or_extends(&child_ref, &child_ref)?);
+        assert!(equals_or_extends(&child_ref, &root_ref)?);
+        assert!(!equals_or_extends(&child_ref, &unrelated_ref)?);
 
         Ok(())
     }

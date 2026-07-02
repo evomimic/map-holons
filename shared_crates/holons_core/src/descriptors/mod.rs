@@ -14,6 +14,7 @@ pub mod operator_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
 pub mod relationship_surface;
+pub mod relationship_traversal;
 #[cfg(test)]
 mod schema_contract_tests;
 #[cfg(test)]
@@ -41,6 +42,7 @@ pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::RelationshipDescriptor;
 pub use relationship_surface::effective_relationship_declaration;
+pub use relationship_traversal::{QualifiedRelationship, TraversalDirection};
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
 pub use value_descriptor::ValueDescriptor;
