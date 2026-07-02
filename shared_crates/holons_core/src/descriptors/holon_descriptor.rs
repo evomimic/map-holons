@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use crate::descriptors::{
     accessor_helpers, inheritance::flatten_related_members, CommandDescriptor, DanceDescriptor,
-    Descriptor, InverseRelationshipDescriptor, PropertyDescriptor, RelationshipDescriptor,
-    TypeHeader,
+    DeclaredRelationshipDescriptor, Descriptor, InverseRelationshipDescriptor, PropertyDescriptor,
+    QualifiedRelationship, RelationshipDescriptor, TraversalDirection, TypeHeader,
 };
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, PropertyName};
@@ -231,6 +231,32 @@ impl HolonDescriptor {
             .try_into_declared_relationship_descriptor()?;
 
         declared.required_inverse()
+    }
+
+    /// Validates a relationship traversal request from this descriptor endpoint.
+    pub fn allows_relationship(
+        &self,
+        name: impl ToRelationshipName,
+        direction: TraversalDirection,
+    ) -> Result<QualifiedRelationship, HolonError> {
+        crate::descriptors::relationship_normalization::allows_relationship(
+            self,
+            name.to_relationship_name(),
+            direction,
+        )
+    }
+
+    /// Normalizes a legal traversal request to its canonical declared relationship.
+    pub fn normalize_relationship(
+        &self,
+        name: impl ToRelationshipName,
+        direction: TraversalDirection,
+    ) -> Result<DeclaredRelationshipDescriptor, HolonError> {
+        crate::descriptors::relationship_normalization::normalize_relationship(
+            self,
+            name.to_relationship_name(),
+            direction,
+        )
     }
 
     fn flatten_property_descriptors(

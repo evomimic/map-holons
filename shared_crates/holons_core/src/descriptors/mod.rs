@@ -13,6 +13,7 @@ pub mod operator_category;
 pub mod operator_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
+pub mod relationship_normalization;
 pub mod relationship_surface;
 pub mod relationship_traversal;
 #[cfg(test)]
