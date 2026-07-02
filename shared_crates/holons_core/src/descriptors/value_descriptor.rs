@@ -96,6 +96,14 @@ impl ValueDescriptor {
         })
     }
 
+    /// Validates that this descriptor affords the named operator.
+    pub fn affords_operator<N: ToOperatorName>(
+        &self,
+        operator_name: N,
+    ) -> Result<OperatorDescriptor, HolonError> {
+        self.get_operator_by_name(operator_name)
+    }
+
     /// Returns whether this descriptor affords an operator with the supplied name.
     pub fn supports_operator_by_name<N: ToOperatorName>(
         &self,
@@ -500,6 +508,71 @@ mod tests {
             descriptor.get_operator_by_name("less_than_operator"),
             Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                 if kind == "operator" && name == "LessThanOperator"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn affords_operator_delegates_to_operator_lookup() -> Result<(), HolonError> {
+        let context = build_context();
+        let equals = new_descriptor_holon(&context, "afforded-equals", "EqualsOperator", "Holon")?;
+        let mut value = new_descriptor_holon(
+            &context,
+            "operator-validation-value",
+            "IntegerValueType",
+            "Value",
+        )?;
+        value.add_related_holons(CoreRelationshipTypeName::AffordsOperator, vec![equals.into()])?;
+
+        let descriptor = ValueDescriptor::from_holon(value.into());
+
+        assert_eq!(
+            descriptor.affords_operator("equals_operator")?.operator_name()?.0,
+            MapString("EqualsOperator".to_string())
+        );
+        assert!(matches!(
+            descriptor.affords_operator("less_than_operator"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "operator" && name == "LessThanOperator"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn affords_operator_preserves_duplicate_inherited_declaration_errors() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let duplicate_parent =
+            new_descriptor_holon(&context, "affords-parent-equals", "EqualsOperator", "Holon")?;
+        let duplicate_child =
+            new_descriptor_holon(&context, "affords-child-equals", "EqualsOperator", "Holon")?;
+        let mut parent =
+            new_descriptor_holon(&context, "affords-integer-parent", "IntegerValueType", "Value")?;
+        let mut child = new_descriptor_holon(
+            &context,
+            "affords-integer-child",
+            "CustomIntegerValueType",
+            "Value",
+        )?;
+
+        parent.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![duplicate_parent.into()],
+        )?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+        child.add_related_holons(
+            CoreRelationshipTypeName::AffordsOperator,
+            vec![duplicate_child.into()],
+        )?;
+
+        let descriptor = ValueDescriptor::from_holon(child.into());
+
+        assert!(matches!(
+            descriptor.affords_operator("equals_operator"),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "operator" && name == "EqualsOperator"
         ));
 
         Ok(())

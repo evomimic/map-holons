@@ -93,6 +93,10 @@ pub enum HolonError {
         "Duplicate inherited {kind} declaration named {name} found for descriptor {descriptor}"
     )]
     DuplicateInheritedDeclaration { kind: String, name: String, descriptor: String },
+    #[error(
+        "Ambiguous relationship traversal {relationship} {direction} for descriptor {descriptor}"
+    )]
+    AmbiguousRelationshipTraversal { relationship: String, direction: String, descriptor: String },
     #[error("Missing required {relationship} relationship for descriptor {descriptor}")]
     MissingRequiredRelationship { relationship: String, descriptor: String },
     #[error(
@@ -107,6 +111,12 @@ pub enum HolonError {
         "Enum variant {variant} is not declared for value type {value_type} on descriptor {descriptor}"
     )]
     EnumVariantNotInSchema { variant: String, value_type: String, descriptor: String },
+    #[error(
+        "Illegal relationship traversal {relationship} {direction} for descriptor {descriptor}"
+    )]
+    IllegalRelationshipTraversal { relationship: String, direction: String, descriptor: String },
+    #[error("No effective key rule found for descriptor {descriptor}")]
+    NoEffectiveKeyRule { descriptor: String },
     #[error("{0} access not allowed while holon is in {1} state")]
     NotAccessible(String, String),
     #[error("{0} Not Implemented")]
@@ -141,6 +151,10 @@ pub enum HolonError {
         "Operator {operator} is not supported for value type {value_type} on descriptor {descriptor}"
     )]
     UnsupportedOperator { operator: String, value_type: String, descriptor: String },
+    #[error(
+        "Unsupported staged relationship traversal {relationship} for descriptor {descriptor}"
+    )]
+    UnsupportedStagedTraversal { relationship: String, descriptor: String },
     #[error("Invalid UTF8: Couldn't convert {0} into {1}")]
     Utf8Conversion(String, String),
     #[error("Value kind mismatch for descriptor {descriptor}: expected {expected}, found {found}")]
@@ -205,11 +219,14 @@ pub enum HolonErrorKind {
     CyclicExtends,
     WrongDescriptorKind,
     DuplicateInheritedDeclaration,
+    AmbiguousRelationshipTraversal,
     MissingRequiredRelationship,
     MultipleRelatedHolons,
     DescriptorDeclarationNotFound,
     DescriptorSchemaInvalid,
     EnumVariantNotInSchema,
+    IllegalRelationshipTraversal,
+    NoEffectiveKeyRule,
     NotAccessible,
     NotImplemented,
     RecordConversion,
@@ -224,6 +241,7 @@ pub enum HolonErrorKind {
     UnexpectedValueType,
     UnknownOperatorCategory,
     UnsupportedOperator,
+    UnsupportedStagedTraversal,
     Utf8Conversion,
     ValueKindMismatch,
     ValidationError,
@@ -265,11 +283,16 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::CyclicExtends { .. } => Self::CyclicExtends,
             HolonError::WrongDescriptorKind { .. } => Self::WrongDescriptorKind,
             HolonError::DuplicateInheritedDeclaration { .. } => Self::DuplicateInheritedDeclaration,
+            HolonError::AmbiguousRelationshipTraversal { .. } => {
+                Self::AmbiguousRelationshipTraversal
+            }
             HolonError::MissingRequiredRelationship { .. } => Self::MissingRequiredRelationship,
             HolonError::MultipleRelatedHolons { .. } => Self::MultipleRelatedHolons,
             HolonError::DescriptorDeclarationNotFound { .. } => Self::DescriptorDeclarationNotFound,
             HolonError::DescriptorSchemaInvalid { .. } => Self::DescriptorSchemaInvalid,
             HolonError::EnumVariantNotInSchema { .. } => Self::EnumVariantNotInSchema,
+            HolonError::IllegalRelationshipTraversal { .. } => Self::IllegalRelationshipTraversal,
+            HolonError::NoEffectiveKeyRule { .. } => Self::NoEffectiveKeyRule,
             HolonError::NotAccessible(_, _) => Self::NotAccessible,
             HolonError::NotImplemented(_) => Self::NotImplemented,
             HolonError::RecordConversion(_) => Self::RecordConversion,
@@ -284,6 +307,7 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::UnexpectedValueType(_, _) => Self::UnexpectedValueType,
             HolonError::UnknownOperatorCategory { .. } => Self::UnknownOperatorCategory,
             HolonError::UnsupportedOperator { .. } => Self::UnsupportedOperator,
+            HolonError::UnsupportedStagedTraversal { .. } => Self::UnsupportedStagedTraversal,
             HolonError::Utf8Conversion(_, _) => Self::Utf8Conversion,
             HolonError::ValueKindMismatch { .. } => Self::ValueKindMismatch,
             HolonError::ValidationError(_) => Self::ValidationError,
