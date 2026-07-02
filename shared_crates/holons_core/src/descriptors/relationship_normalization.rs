@@ -43,6 +43,7 @@ fn resolve_unique(
 ) -> Result<TraversalMatch, HolonError> {
     let mut matches = Vec::new();
     let mut name_matched_wrong_form = false;
+    let mut missing_inverse_for_inverse_traversal = None;
 
     collect_source_owned_matches(
         endpoint,
@@ -50,11 +51,15 @@ fn resolve_unique(
         direction,
         &mut matches,
         &mut name_matched_wrong_form,
+        &mut missing_inverse_for_inverse_traversal,
     )?;
 
     let target_status = collect_target_owned_matches(endpoint, &relationship_name, direction)?;
     matches.extend(target_status.matches);
     name_matched_wrong_form |= target_status.name_matched_wrong_form;
+    if missing_inverse_for_inverse_traversal.is_none() {
+        missing_inverse_for_inverse_traversal = target_status.missing_inverse_for_inverse_traversal;
+    }
 
     let mut distinct_declared = Vec::<TraversalMatch>::new();
     for candidate in matches {
@@ -67,30 +72,47 @@ fn resolve_unique(
         distinct_declared.push(candidate);
     }
 
-    match distinct_declared.len() {
-        1 => Ok(distinct_declared.remove(0)),
-        count if count > 1 => Err(HolonError::AmbiguousRelationshipTraversal {
-            relationship: relationship_name.to_string(),
-            direction: traversal_direction_label(direction),
-            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
-        }),
-        _ if name_matched_wrong_form => Err(HolonError::IllegalRelationshipTraversal {
-            relationship: relationship_name.to_string(),
-            direction: traversal_direction_label(direction),
-            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
-        }),
-        _ if target_status.requires_materialized_target_index => {
-            Err(HolonError::UnsupportedStagedTraversal {
-                relationship: relationship_name.to_string(),
-                descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
-            })
-        }
-        _ => Err(HolonError::DescriptorDeclarationNotFound {
-            kind: "relationship".to_string(),
-            name: relationship_name.to_string(),
-            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
-        }),
+    if distinct_declared.len() == 1 {
+        return Ok(distinct_declared.remove(0));
     }
+
+    if distinct_declared.len() > 1 {
+        return Err(HolonError::AmbiguousRelationshipTraversal {
+            relationship: relationship_name.to_string(),
+            direction: traversal_direction_label(direction),
+            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
+        });
+    }
+
+    if name_matched_wrong_form {
+        return Err(HolonError::IllegalRelationshipTraversal {
+            relationship: relationship_name.to_string(),
+            direction: traversal_direction_label(direction),
+            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
+        });
+    }
+
+    if let Some(declared_ref) = missing_inverse_for_inverse_traversal {
+        return match DeclaredRelationshipDescriptor::try_from_holon(declared_ref)?
+            .required_inverse()
+        {
+            Ok(_) => unreachable!("missing inverse marker should not resolve"),
+            Err(error) => Err(error),
+        };
+    }
+
+    if target_status.requires_materialized_target_index {
+        return Err(HolonError::UnsupportedStagedTraversal {
+            relationship: relationship_name.to_string(),
+            descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
+        });
+    }
+
+    Err(HolonError::DescriptorDeclarationNotFound {
+        kind: "relationship".to_string(),
+        name: relationship_name.to_string(),
+        descriptor: accessor_helpers::descriptor_label(endpoint.holon()),
+    })
 }
 
 fn collect_source_owned_matches(
@@ -99,6 +121,7 @@ fn collect_source_owned_matches(
     direction: TraversalDirection,
     matches: &mut Vec<TraversalMatch>,
     name_matched_wrong_form: &mut bool,
+    missing_inverse_for_inverse_traversal: &mut Option<crate::reference_layer::HolonReference>,
 ) -> Result<(), HolonError> {
     for descriptor in endpoint.instance_relationships()? {
         let declared = descriptor.try_into_declared_relationship_descriptor()?;
@@ -129,6 +152,11 @@ fn collect_source_owned_matches(
             TraversalDirection::Outbound if inverse_name.as_ref() == Some(relationship_name) => {
                 *name_matched_wrong_form = true;
             }
+            TraversalDirection::Inbound if inverse.is_none() => {
+                if missing_inverse_for_inverse_traversal.is_none() {
+                    *missing_inverse_for_inverse_traversal = Some(declared.holon().clone());
+                }
+            }
             _ => {}
         }
     }
@@ -139,6 +167,7 @@ fn collect_source_owned_matches(
 struct TargetTraversalStatus {
     matches: Vec<TraversalMatch>,
     name_matched_wrong_form: bool,
+    missing_inverse_for_inverse_traversal: Option<crate::reference_layer::HolonReference>,
     requires_materialized_target_index: bool,
 }
 
@@ -151,6 +180,7 @@ fn collect_target_owned_matches(
         flatten_related_members(endpoint.holon(), CoreRelationshipTypeName::TargetOf)?;
     let mut matches = Vec::new();
     let mut name_matched_wrong_form = false;
+    let mut missing_inverse_for_inverse_traversal = None;
 
     for member in &target_of_members {
         let declared = DeclaredRelationshipDescriptor::try_from_holon(member.clone())?;
@@ -188,6 +218,11 @@ fn collect_target_owned_matches(
             TraversalDirection::Inbound if inverse_name.as_ref() == Some(relationship_name) => {
                 name_matched_wrong_form = true;
             }
+            TraversalDirection::Outbound if inverse.is_none() => {
+                if missing_inverse_for_inverse_traversal.is_none() {
+                    missing_inverse_for_inverse_traversal = Some(declared.holon().clone());
+                }
+            }
             _ => {}
         }
     }
@@ -195,6 +230,7 @@ fn collect_target_owned_matches(
     Ok(TargetTraversalStatus {
         matches,
         name_matched_wrong_form,
+        missing_inverse_for_inverse_traversal,
         // A staged/transient endpoint cannot rely on the materialized `TargetOf`
         // inverse index, so an empty index there means "target-owned traversal is
         // not answerable yet" rather than "no such relationship". This deliberately
@@ -377,6 +413,45 @@ mod tests {
         assert_eq!(qualified.descriptor_direction, RelationshipDirection::Inverse);
         assert_eq!(qualified.traversal_direction, TraversalDirection::Inbound);
         assert_eq!(qualified.descriptor.base_relationship_name()?, relationship_name("Authors"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn inverse_traversal_missing_has_inverse_fails_clearly() -> Result<(), HolonError> {
+        let context = build_context();
+        let declared_type = new_descriptor_holon(
+            &context,
+            "missing-inverse-declared-type",
+            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+            "Relationship",
+        )?;
+        let mut source_type =
+            new_holon_type_descriptor(&context, "missing-inverse-source", "BookType")?;
+        let target_type =
+            new_holon_type_descriptor(&context, "missing-inverse-target", "PersonType")?;
+        let mut declared = new_relationship_descriptor_holon(
+            &context,
+            "missing-inverse-authored-by",
+            "AuthoredBy",
+            HolonReference::from(&source_type),
+            HolonReference::from(&target_type),
+        )?;
+
+        declared
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
+        source_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![declared.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(source_type.into());
+
+        assert!(matches!(
+            descriptor.normalize_relationship("authors", TraversalDirection::Inbound),
+            Err(HolonError::MissingRequiredRelationship { relationship, .. })
+                if relationship == "HasInverse"
+        ));
 
         Ok(())
     }

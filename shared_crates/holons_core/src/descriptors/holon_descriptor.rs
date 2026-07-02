@@ -795,6 +795,89 @@ mod tests {
     }
 
     #[test]
+    fn validation_entrypoints_preserve_not_found_and_duplicate_errors() -> Result<(), HolonError> {
+        let context = build_context();
+        let empty_descriptor = HolonDescriptor::from_holon(
+            new_descriptor_holon(&context, "validation-empty", "EmptyType")?.into(),
+        );
+        let duplicate_property_root =
+            new_descriptor_holon(&context, "duplicate-validation-root-property", "DisplayName")?;
+        let duplicate_property_leaf =
+            new_descriptor_holon(&context, "duplicate-validation-leaf-property", "DisplayName")?;
+        let duplicate_command_root =
+            new_descriptor_holon(&context, "duplicate-validation-root-command", "Commit")?;
+        let duplicate_command_leaf =
+            new_descriptor_holon(&context, "duplicate-validation-leaf-command", "Commit")?;
+        let duplicate_dance_root =
+            new_descriptor_holon(&context, "duplicate-validation-root-dance", "Query")?;
+        let duplicate_dance_leaf =
+            new_descriptor_holon(&context, "duplicate-validation-leaf-dance", "Query")?;
+        let mut root = new_descriptor_holon(&context, "duplicate-validation-root", "RootType")?;
+        let mut leaf = new_descriptor_holon(&context, "duplicate-validation-leaf", "LeafType")?;
+
+        root.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![duplicate_property_root.into()],
+        )?;
+        root.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![duplicate_command_root.into()],
+        )?;
+        root.add_related_holons(
+            CoreRelationshipTypeName::AffordsDance,
+            vec![duplicate_dance_root.into()],
+        )?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![duplicate_property_leaf.into()],
+        )?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::AffordsCommand,
+            vec![duplicate_command_leaf.into()],
+        )?;
+        leaf.add_related_holons(
+            CoreRelationshipTypeName::AffordsDance,
+            vec![duplicate_dance_leaf.into()],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(leaf.into());
+
+        assert!(matches!(
+            empty_descriptor.allows_property("missing_property"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "property" && name == "MissingProperty"
+        ));
+        assert!(matches!(
+            empty_descriptor.affords_command("missing_command"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "command" && name == "MissingCommand"
+        ));
+        assert!(matches!(
+            empty_descriptor.affords_dance("missing_dance"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "dance" && name == "MissingDance"
+        ));
+        assert!(matches!(
+            descriptor.allows_property("display_name"),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "property" && name == "DisplayName"
+        ));
+        assert!(matches!(
+            descriptor.affords_command(CoreCommandTypeName::Commit),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "command" && name == "Commit"
+        ));
+        assert!(matches!(
+            descriptor.affords_dance("query"),
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "dance" && name == "Query"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
     fn effective_key_rule_returns_direct_rule() -> Result<(), HolonError> {
         let context = build_context();
         let rule = new_descriptor_holon(&context, "type-name-rule", "TypeNameRule")?;
