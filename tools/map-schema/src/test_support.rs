@@ -59,15 +59,10 @@ pub fn assert_json_dir_trees_eq_ignoring_meta_and_paths(
 }
 
 fn filtered_json_files(root: &Path, ignored_relative_paths: &[&str]) -> BTreeMap<PathBuf, Value> {
-    let ignored = ignored_relative_paths
-        .iter()
-        .map(PathBuf::from)
-        .collect::<std::collections::BTreeSet<_>>();
+    let ignored =
+        ignored_relative_paths.iter().map(PathBuf::from).collect::<std::collections::BTreeSet<_>>();
 
-    collect_json_files(root)
-        .into_iter()
-        .filter(|(path, _)| !ignored.contains(path))
-        .collect()
+    collect_json_files(root).into_iter().filter(|(path, _)| !ignored.contains(path)).collect()
 }
 
 fn collect_files(root: &Path) -> BTreeMap<PathBuf, Vec<u8>> {
@@ -136,9 +131,11 @@ fn find_ordered_json_mismatch(expected: &Value, actual: &Value, path: &str) -> O
 
             for key in expected_keys {
                 let next_path = format!("{path}.{key}");
-                if let Some(mismatch) =
-                    find_ordered_json_mismatch(&expected_object[&key], &actual_object[&key], &next_path)
-                {
+                if let Some(mismatch) = find_ordered_json_mismatch(
+                    &expected_object[&key],
+                    &actual_object[&key],
+                    &next_path,
+                ) {
                     return Some(mismatch);
                 }
             }
@@ -155,9 +152,11 @@ fn find_ordered_json_mismatch(expected: &Value, actual: &Value, path: &str) -> O
             for (index, (expected_item, actual_item)) in
                 expected_array.iter().zip(actual_array.iter()).enumerate()
             {
-                if let Some(mismatch) =
-                    find_ordered_json_mismatch(expected_item, actual_item, &format!("{path}[{index}]"))
-                {
+                if let Some(mismatch) = find_ordered_json_mismatch(
+                    expected_item,
+                    actual_item,
+                    &format!("{path}[{index}]"),
+                ) {
                     return Some(mismatch);
                 }
             }

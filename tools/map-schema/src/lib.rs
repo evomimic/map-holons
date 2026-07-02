@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
-mod literal_bridge;
+use anyhow::{anyhow, Context, Result};
 pub mod diagnostics;
+mod literal_bridge;
 pub mod loader_ir;
 pub mod schema_index;
 pub mod schema_ir;
@@ -120,6 +120,19 @@ pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBu
     Ok(written)
 }
 
+/// Decompiles one JSON import document provided as a raw string.
+pub fn decompile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
+    let source_name = source_name.into();
+    let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
+    let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
+    let file = lowered
+        .files
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("no JSON import document was lowered"))?;
+    render_lowered_file(&file)
+}
+
 /// Builds the derived semantic symbol table for JSON import inputs and returns a text dump.
 ///
 /// This is a visibility/debugging aid only; the symbol table remains derived in-memory state and
@@ -127,11 +140,15 @@ pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBu
 pub fn dump_symbols(inputs: &[PathBuf]) -> Result<String> {
     let lowered = lower_inputs_to_schema_ir(inputs)?;
 
-    Ok(render_symbol_dump(
-        &lowered.global_model,
-        &lowered.symbols,
-        &lowered.diagnostics,
-    ))
+    Ok(render_symbol_dump(&lowered.global_model, &lowered.symbols, &lowered.diagnostics))
+}
+
+/// Builds the derived semantic symbol table for one raw JSON import document.
+pub fn dump_symbols_from_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
+    let source_name = source_name.into();
+    let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
+    let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
+    Ok(render_symbol_dump(&lowered.global_model, &lowered.symbols, &lowered.diagnostics))
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +168,7 @@ fn collect_input_files(inputs: &[PathBuf]) -> Result<Vec<DiscoveredFile>> {
             files.push(DiscoveredFile { source_path: input.clone(), relative_path });
         }
     }
+    ensure_unique_relative_paths(&files)?;
     files.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(files)
 }
@@ -182,18 +200,22 @@ fn parse_files(discovered: &[DiscoveredFile]) -> Result<Vec<ParsedFile>> {
         let path = &discovered_file.source_path;
         let raw = fs::read_to_string(path)
             .with_context(|| format!("reading JSON import file {}", path.display()))?;
-        let import: ImportFile = serde_json::from_str(&raw)
-            .with_context(|| format!("parsing JSON import file {}", path.display()))?;
-        let schema_name = infer_schema_name(&import)
-            .with_context(|| format!("inferring schema name for {}", path.display()))?;
-        parsed.push(ParsedFile {
-            relative_path: discovered_file.relative_path.clone(),
-            schema_name,
-            import,
-        });
+        parsed.push(parse_import_file_contents(&raw, path, discovered_file.relative_path.clone())?);
     }
 
     Ok(parsed)
+}
+
+fn parse_import_file_contents(
+    raw: &str,
+    source_path: &Path,
+    relative_path: PathBuf,
+) -> Result<ParsedFile> {
+    let import: ImportFile = serde_json::from_str(raw)
+        .with_context(|| format!("parsing JSON import file {}", source_path.display()))?;
+    let schema_name = infer_schema_name(&import)
+        .with_context(|| format!("inferring schema name for {}", source_path.display()))?;
+    Ok(ParsedFile { relative_path, schema_name, import })
 }
 
 fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredJsonProject> {
@@ -231,41 +253,57 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedFile>) -> Result<LoweredJso
 #[derive(Debug, Clone)]
 struct CorpusIndex {
     schema_names_by_relative_path: HashMap<String, String>,
-    schema_names_by_basename: HashMap<String, Vec<String>>,
 }
 
 impl CorpusIndex {
     fn from_parsed(parsed: &[ParsedFile]) -> Self {
         let mut schema_names_by_relative_path = HashMap::new();
-        let mut schema_names_by_basename: HashMap<String, Vec<String>> = HashMap::new();
         for file in parsed {
-            let relative_path = file.relative_path.to_string_lossy().to_string();
+            let relative_path = normalize_relative_path(&file.relative_path);
             schema_names_by_relative_path.insert(relative_path, file.schema_name.clone());
-
-            if let Some(file_name) = file.relative_path.file_name().and_then(|name| name.to_str()) {
-                schema_names_by_basename
-                    .entry(file_name.to_string())
-                    .or_default()
-                    .push(file.schema_name.clone());
-            }
         }
 
-        Self { schema_names_by_relative_path, schema_names_by_basename }
+        Self { schema_names_by_relative_path }
     }
 
-    fn resolve_dependency(&self, referenced: &str) -> Option<String> {
-        if let Some(schema_name) = self.schema_names_by_relative_path.get(referenced) {
+    fn resolve_dependency(&self, current_file: &Path, referenced: &str) -> Option<String> {
+        let referenced = normalize_dependency_reference(referenced);
+        if let Some(schema_name) = self.schema_names_by_relative_path.get(&referenced) {
             return Some(schema_name.clone());
         }
 
-        let basename = Path::new(referenced).file_name()?.to_str()?;
-        let schema_names = self.schema_names_by_basename.get(basename)?;
-        if schema_names.len() == 1 {
-            return schema_names.first().cloned();
-        }
-
-        None
+        let sibling_relative = current_file
+            .parent()
+            .map(|parent| parent.join(&referenced))
+            .unwrap_or_else(|| PathBuf::from(&referenced));
+        self.schema_names_by_relative_path.get(&normalize_relative_path(&sibling_relative)).cloned()
     }
+}
+
+fn ensure_unique_relative_paths(files: &[DiscoveredFile]) -> Result<()> {
+    let mut seen = HashMap::<String, PathBuf>::new();
+    for file in files {
+        let key = normalize_relative_path(&file.relative_path);
+        if let Some(existing) = seen.insert(key.clone(), file.source_path.clone()) {
+            return Err(anyhow!(
+                "duplicate relative input path `{key}` from {} and {}; use a single input root or rename one path",
+                existing.display(),
+                file.source_path.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn normalize_relative_path(path: &Path) -> String {
+    path.components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn normalize_dependency_reference(reference: &str) -> String {
+    normalize_relative_path(Path::new(reference))
 }
 
 fn infer_schema_name(import: &ImportFile) -> Option<String> {
@@ -438,8 +476,11 @@ fn derive_enum_variant_links(model: &mut SemanticModel) {
         .enumerate()
         .filter(|(_, descriptor)| descriptor.kind == DescriptorKind::Enum)
         .map(|(index, descriptor)| {
-            let variant_targets =
-                descriptor.variants.iter().map(|reference| reference.target.clone()).collect::<Vec<_>>();
+            let variant_targets = descriptor
+                .variants
+                .iter()
+                .map(|reference| reference.target.clone())
+                .collect::<Vec<_>>();
             (index, descriptor.name.clone(), variant_targets)
         })
         .collect::<Vec<_>>();
@@ -450,8 +491,10 @@ fn derive_enum_variant_links(model: &mut SemanticModel) {
                 continue;
             };
             if model.descriptors[variant_index].variant_of.is_none() {
-                model.descriptors[variant_index].variant_of =
-                    Some(SemanticReference::unresolved(ReferenceRole::VariantOf, enum_name.clone()));
+                model.descriptors[variant_index].variant_of = Some(SemanticReference::unresolved(
+                    ReferenceRole::VariantOf,
+                    enum_name.clone(),
+                ));
             }
         }
     }
@@ -580,7 +623,12 @@ fn render_semantic_file(model: &SemanticModel) -> Result<String> {
             out.push('\n');
         }
         first_descriptor = false;
-        render_semantic_descriptor(&mut out, descriptor, &enum_variant_groups, &emitted_key_lookup)?;
+        render_semantic_descriptor(
+            &mut out,
+            descriptor,
+            &enum_variant_groups,
+            &emitted_key_lookup,
+        )?;
         if !out.ends_with("\n\n") {
             out.push('\n');
         }
@@ -679,7 +727,9 @@ fn render_semantic_descriptor(
         DescriptorKind::Enum => {
             render_semantic_enum(out, descriptor, enum_variant_groups, emitted_key_lookup)
         }
-        DescriptorKind::PropertyType => render_semantic_property(out, descriptor, emitted_key_lookup),
+        DescriptorKind::PropertyType => {
+            render_semantic_property(out, descriptor, emitted_key_lookup)
+        }
         DescriptorKind::RelationshipType => {
             render_semantic_relationship(out, descriptor, emitted_key_lookup)
         }
@@ -739,10 +789,7 @@ fn reconstruct_inverse_expression(
 ) -> Option<String> {
     let source_type = descriptor.source_type.as_ref()?;
     let target_type = descriptor.target_type.as_ref()?;
-    Some(format!(
-        "({})-[{}]->({})",
-        target_type.target, inverse_name, source_type.target
-    ))
+    Some(format!("({})-[{}]->({})", target_type.target, inverse_name, source_type.target))
 }
 
 fn render_semantic_value(
@@ -1160,7 +1207,8 @@ fn schema_dependencies(file: &ParsedFile, corpus_index: &CorpusIndex) -> Vec<Str
     let mut deps = Vec::new();
     let mut seen = HashSet::new();
     for referenced in &file.import.meta.load_with {
-        let Some(schema_name) = corpus_index.resolve_dependency(referenced) else {
+        let Some(schema_name) = corpus_index.resolve_dependency(&file.relative_path, referenced)
+        else {
             continue;
         };
         if schema_name != file.schema_name && seen.insert(schema_name.clone()) {
@@ -1299,6 +1347,7 @@ mod tests {
     use crate::tdl_compiler::compile_inputs;
     use std::{
         env,
+        io::Write,
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -1351,6 +1400,15 @@ mod tests {
         Ok(())
     }
 
+    fn write_json_file(path: &Path, contents: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(path)?;
+        file.write_all(contents.as_bytes())?;
+        Ok(())
+    }
+
     fn discovered_json_file_count(root: &Path) -> Result<usize> {
         Ok(collect_input_files(&[root.to_path_buf()])?.len())
     }
@@ -1379,7 +1437,8 @@ mod tests {
             "decompile should emit one TDL file per discovered JSON input"
         );
 
-        let regenerated_files = compile_inputs(&[decompiled_tdl_dir.clone()], &regenerated_json_dir)?;
+        let regenerated_files =
+            compile_inputs(&[decompiled_tdl_dir.clone()], &regenerated_json_dir)?;
         assert_eq!(
             regenerated_files.len(),
             decompiled_files.len(),
@@ -1399,7 +1458,10 @@ mod tests {
             regenerated_lowered.files.len(),
             "round-tripped corpus should preserve file count"
         );
-        assert_eq!(source_lowered.global_model.schemas.len(), regenerated_lowered.global_model.schemas.len());
+        assert_eq!(
+            source_lowered.global_model.schemas.len(),
+            regenerated_lowered.global_model.schemas.len()
+        );
         assert_eq!(
             source_lowered.global_model.descriptors.len(),
             regenerated_lowered.global_model.descriptors.len()
@@ -1473,8 +1535,10 @@ mod tests {
             return format!("unexpected descriptor in round-tripped model: {:?}", extra);
         }
 
-        let expected_schemas: std::collections::BTreeSet<_> = expected.schemas.iter().cloned().collect();
-        let actual_schemas: std::collections::BTreeSet<_> = actual.schemas.iter().cloned().collect();
+        let expected_schemas: std::collections::BTreeSet<_> =
+            expected.schemas.iter().cloned().collect();
+        let actual_schemas: std::collections::BTreeSet<_> =
+            actual.schemas.iter().cloned().collect();
         if let Some(missing) = expected_schemas.difference(&actual_schemas).next() {
             return format!("missing schema in round-tripped model: {:?}", missing);
         }
@@ -1521,22 +1585,15 @@ mod tests {
 
         let decompiled_dir = temp_out_dir();
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_dir)?;
-        assert_eq!(
-            decompiled_files.len(),
-            discovered_json_file_count(&copied_input_dir)?
-        );
-        assert!(decompiled_files
-            .iter()
-            .any(|path| {
-                path.to_string_lossy()
-                    .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-root.tdl")
-            }));
-        assert!(decompiled_files
-            .iter()
-            .any(|path| {
-                path.to_string_lossy()
-                    .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-dance-schema.tdl")
-            }));
+        assert_eq!(decompiled_files.len(), discovered_json_file_count(&copied_input_dir)?);
+        assert!(decompiled_files.iter().any(|path| {
+            path.to_string_lossy()
+                .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-root.tdl")
+        }));
+        assert!(decompiled_files.iter().any(|path| {
+            path.to_string_lossy()
+                .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-dance-schema.tdl")
+        }));
 
         let regenerated_dir = temp_roundtrip_json_dir();
         let regenerated_files = compile_inputs(&[decompiled_dir.clone()], &regenerated_dir)?;
@@ -1551,4 +1608,67 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn json_dependency_resolution_is_file_root_relative_and_not_global_basename_based() {
+        let parsed = vec![
+            ParsedFile {
+                relative_path: PathBuf::from("domain-a/root.json"),
+                schema_name: "Domain Root".to_string(),
+                import: ImportFile { meta: ImportMeta::default(), holons: Vec::new() },
+            },
+            ParsedFile {
+                relative_path: PathBuf::from("domain-a/dependency.json"),
+                schema_name: "Domain A".to_string(),
+                import: ImportFile { meta: ImportMeta::default(), holons: Vec::new() },
+            },
+            ParsedFile {
+                relative_path: PathBuf::from("domain-b/dependency.json"),
+                schema_name: "Domain B".to_string(),
+                import: ImportFile { meta: ImportMeta::default(), holons: Vec::new() },
+            },
+        ];
+
+        let index = CorpusIndex::from_parsed(&parsed);
+
+        assert_eq!(
+            index.resolve_dependency(Path::new("domain-a/root.json"), "domain-a/dependency.json"),
+            Some("Domain A".to_string())
+        );
+        assert_eq!(
+            index.resolve_dependency(Path::new("domain-a/root.json"), "dependency.json"),
+            Some("Domain A".to_string())
+        );
+        assert_eq!(
+            index.resolve_dependency(Path::new("domain-a/root.json"), "domain-b/dependency.json"),
+            Some("Domain B".to_string())
+        );
+        assert_eq!(index.resolve_dependency(Path::new("root.json"), "dependency.json"), None);
+    }
+
+    #[test]
+    fn decompile_rejects_duplicate_relative_paths_across_input_roots() -> Result<()> {
+        let root_a = temp_domain_json_dir().join("root-a");
+        let root_b = temp_domain_json_dir().join("root-b");
+        let out_dir = temp_out_dir();
+        let json = r#"{
+  "meta": {},
+  "holons": [
+    {
+      "key": "Example Schema-v0.0.1",
+      "type": "Schema.HolonType",
+      "properties": {
+        "schema_name": "Example Schema-v0.0.1"
+      }
+    }
+  ]
+}"#;
+
+        write_json_file(&root_a.join("same.json"), json)?;
+        write_json_file(&root_b.join("same.json"), json)?;
+
+        let error = decompile_inputs(&[root_a, root_b], &out_dir).expect_err("duplicate paths");
+        assert!(error.to_string().contains("duplicate relative input path `same.json`"));
+
+        Ok(())
+    }
 }

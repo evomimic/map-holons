@@ -36,11 +36,11 @@
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
     "sweet:test:nocapture": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
     "map-schema:decompile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile",
-    "map-schema:decompile:coreschema": "npm run map-schema:decompile -- host/import_files/map-schema/core-schema --out schema-src",
+    "map-schema:decompile:coreschema": "npm run map-schema:decompile -- host/import_files/map-schema/core-schema --out-dir schema-src",
     "map-schema:symbols": "cargo run --manifest-path tools/map-schema/Cargo.toml -- symbols",
     "map-schema:symbols:coreschema": "npm run map-schema:symbols -- host/import_files/map-schema/core-schema",
     "map-schema:compile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- compile",
-    "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out generated/json-imports",
+    "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out-dir generated/json-imports",
     "map-schema:check": "cargo run --manifest-path tools/map-schema/Cargo.toml -- check",
     "map-schema:check:coreschema": "npm run map-schema:check -- schema-src",
 

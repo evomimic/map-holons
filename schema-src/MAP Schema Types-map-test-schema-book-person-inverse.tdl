@@ -1,0 +1,81 @@
+schema BookAuthorInverseSchema {
+  header {
+    description: "Minimal test schema with an inverse relationship and extending the core schema."
+  }
+}
+holon Book {
+  header {
+    description: "A book."
+    display_name: "Book"
+    display_plural: "Books"
+    plural: "Books"
+  }
+  properties {
+    Title.PropertyType
+  }
+  relationships {
+    (Book.HolonType)-[AuthoredBy]->(Person.HolonType)
+  }
+}
+
+
+holon Person {
+  header {
+    description: "A person."
+    display_name: "Person"
+    display_plural: "People"
+    plural: "Persons"
+  }
+  properties {
+    Name.PropertyType
+  }
+}
+
+
+def relationship AuthoredBy {
+  source Book.HolonType
+  target Person.HolonType
+  inverse Authors
+  cardinality 0..32767
+  header {
+    description: "Defines the author of a book."
+    display_name: "AuthoredBy"
+    display_plural: "AuthoredBy Relationships"
+    plural: "AuthoredByRelationships"
+  }
+}
+
+
+inverse relationship Authors {
+  source Person.HolonType
+  target Book.HolonType
+  cardinality 0..32767
+  header {
+    description: "Specifies a book that a Person has authored.  Inverse of AuthoredBy."
+    display_name: "Authors"
+    display_plural: "Authors Relationships"
+    plural: "AuthorsRelationships"
+  }
+}
+
+
+property Name {
+  value MapStringValueType
+  header {
+    description: "Proper name."
+    display_name: "Name"
+    display_plural: "Names"
+    plural: "Names"
+  }
+}
+
+
+property Title {
+  value MapStringValueType
+  header {
+    description: "A title."
+    display_name: "Title"
+    display_plural: "Title"
+    plural: "Titles"
+  }
+}

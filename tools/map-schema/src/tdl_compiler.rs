@@ -107,8 +107,32 @@ pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>
     Ok(written)
 }
 
+/// Compiles one TDL document provided as a raw string into loader JSON.
+pub fn compile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
+    let source_name = source_name.into();
+    let parsed = parse_tdl_file(raw, &source_name)?;
+    let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
+    let compilation = build_compilation(lowered)?;
+    if !compilation.diagnostics.is_empty() {
+        return Err(anyhow!(format_diagnostics(&compilation.diagnostics)));
+    }
+    let file = compilation
+        .files
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("no TDL document was compiled"))?;
+    emit_loader_document_json(&file.document)
+}
+
 pub fn check_inputs(inputs: &[PathBuf]) -> Result<Vec<Diagnostic>> {
     Ok(lower_inputs_to_schema_ir(inputs)?.diagnostics)
+}
+
+/// Validates one TDL document provided as a raw string.
+pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<Vec<Diagnostic>> {
+    let source_name = source_name.into();
+    let parsed = parse_tdl_file(raw, &source_name)?;
+    Ok(lower_parsed_files_to_schema_ir(vec![parsed])?.diagnostics)
 }
 
 struct Compilation {
@@ -160,6 +184,7 @@ fn collect_tdl_files(inputs: &[PathBuf]) -> Result<Vec<DiscoveredFile>> {
             files.push(DiscoveredFile { source_path: input.clone(), relative_path });
         }
     }
+    ensure_unique_relative_paths(&files)?;
     files.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(files)
 }
@@ -186,6 +211,28 @@ fn collect_tdl_files_recursive(
         }
     }
     Ok(())
+}
+
+fn ensure_unique_relative_paths(files: &[DiscoveredFile]) -> Result<()> {
+    let mut seen = std::collections::HashMap::<String, PathBuf>::new();
+    for file in files {
+        let key = normalize_relative_path(&file.relative_path);
+        if let Some(existing) = seen.insert(key.clone(), file.source_path.clone()) {
+            return Err(anyhow!(
+                "duplicate relative input path `{key}` from {} and {}; use a single input root or rename one path",
+                existing.display(),
+                file.source_path.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn normalize_relative_path(path: &Path) -> String {
+    path.components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn parse_tdl_file(raw: &str, relative_path: &Path) -> Result<ParsedTdlFile> {
@@ -271,9 +318,8 @@ impl<'a> Parser<'a> {
                 } else if current == "properties {" {
                     self.consume_trimmed();
                     let (properties, _instance_properties) = self.parse_properties_block()?;
-                    literal_properties.extend(
-                        properties.iter().map(|(key, value)| (key.clone(), value.clone())),
-                    );
+                    literal_properties
+                        .extend(properties.iter().map(|(key, value)| (key.clone(), value.clone())));
                 } else if current == "relationships {" {
                     self.consume_trimmed();
                     for line in self.parse_reference_block()? {
@@ -419,10 +465,13 @@ impl<'a> Parser<'a> {
                     }
                     "properties {" => {
                         self.consume_trimmed();
-                    let (literal_properties, instance_properties) = self.parse_properties_block()?;
-                    descriptor.literal_properties.extend(
-                        literal_properties.iter().map(|(key, value)| (key.clone(), value.clone())),
-                    );
+                        let (literal_properties, instance_properties) =
+                            self.parse_properties_block()?;
+                        descriptor.literal_properties.extend(
+                            literal_properties
+                                .iter()
+                                .map(|(key, value)| (key.clone(), value.clone())),
+                        );
                         descriptor.instance_properties.extend(instance_properties);
                     }
                     "relationships {" => {
@@ -518,7 +567,8 @@ impl<'a> Parser<'a> {
                     descriptor.header = Some(self.parse_header_block()?);
                 } else if current == "properties {" {
                     self.consume_trimmed();
-                    let (literal_properties, instance_properties) = self.parse_properties_block()?;
+                    let (literal_properties, instance_properties) =
+                        self.parse_properties_block()?;
                     descriptor.literal_properties.extend(
                         literal_properties.iter().map(|(key, value)| (key.clone(), value.clone())),
                     );
@@ -1057,9 +1107,12 @@ fn build_compilation(lowered: LoweredTdlProject) -> Result<Compilation> {
                 generator: Some(GENERATOR_NAME.to_string()),
                 generated_at: Some(current_timestamp_rfc3339()?),
                 export_mode: Some("by-file".to_string()),
-                source_files: vec![
-                    file.parsed.relative_path.with_extension("tdl").to_string_lossy().to_string(),
-                ],
+                source_files: vec![file
+                    .parsed
+                    .relative_path
+                    .with_extension("tdl")
+                    .to_string_lossy()
+                    .to_string()],
                 load_with,
             },
             &emitted_key_lookup,
@@ -1281,13 +1334,13 @@ fn push_reference_if_missing(descriptor: &mut TypeDescriptor, reference: Semanti
 
 fn default_extends(descriptor: &TdlDescriptor) -> Option<String> {
     match descriptor.kind {
-        DescriptorKind::RelationshipType => Some(
-            if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
+        DescriptorKind::RelationshipType => {
+            Some(if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
                 DEFAULT_INVERSE_RELATIONSHIP_EXTENDS.to_string()
             } else {
                 DEFAULT_DECLARED_RELATIONSHIP_EXTENDS.to_string()
-            },
-        ),
+            })
+        }
         DescriptorKind::EnumVariant => Some(if descriptor.variant_of.is_some() {
             DEFAULT_ENUM_VARIANT_EXTENDS.to_string()
         } else {
@@ -1454,6 +1507,7 @@ mod tests {
     use serde_json::Value;
     use std::{
         env, fs,
+        io::Write,
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -1485,6 +1539,15 @@ mod tests {
         let path = dir.join(file_name);
         fs::write(&path, contents)?;
         Ok(dir)
+    }
+
+    fn write_tdl_file(path: &Path, contents: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(path)?;
+        file.write_all(contents.as_bytes())?;
+        Ok(())
     }
 
     fn discovered_tdl_file_count(root: &Path) -> Result<usize> {
@@ -1538,10 +1601,7 @@ mod tests {
             .holons
             .iter()
             .any(|holon| holon.key == "LoaderHolon.HolonType"));
-        assert_eq!(
-            loader_types.document.meta.generator.as_deref(),
-            Some(GENERATOR_NAME)
-        );
+        assert_eq!(loader_types.document.meta.generator.as_deref(), Some(GENERATOR_NAME));
 
         Ok(())
     }
@@ -1553,7 +1613,10 @@ mod tests {
         let files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
         assert_eq!(files.len(), discovered_tdl_file_count(&fixture_root)?);
-        crate::test_support::assert_json_dir_trees_eq_ignoring_meta(&generated_fixture_dir(), &out_dir);
+        crate::test_support::assert_json_dir_trees_eq_ignoring_meta(
+            &generated_fixture_dir(),
+            &out_dir,
+        );
         Ok(())
     }
 
@@ -1638,7 +1701,8 @@ mod tests {
     }
 
     #[test]
-    fn ordinary_keyword_injections_remain_keyword_driven_even_for_bootstrap_like_names() -> Result<()> {
+    fn ordinary_keyword_injections_remain_keyword_driven_even_for_bootstrap_like_names(
+    ) -> Result<()> {
         let input_dir = write_temp_tdl(
             "bootstrap-looking-property.tdl",
             r#"schema Example Schema-v0.0.1
@@ -1679,13 +1743,33 @@ abstract property MetaPropertyType
         )?;
 
         let root = fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-root.tdl"))?;
-        let abstract_values =
-            fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-abstract-value-types.tdl"))?;
+        let abstract_values = fs::read_to_string(
+            out_dir.join("MAP Schema Types-map-core-schema-abstract-value-types.tdl"),
+        )?;
 
         assert!(root.contains("abstract holon MetaPropertyType {"));
         assert!(!root.contains("abstract property MetaPropertyType {"));
         assert!(abstract_values.contains("abstract holon MetaValueType {"));
         assert!(!abstract_values.contains("abstract value MetaValueType {"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn compile_rejects_duplicate_relative_paths_across_input_roots() -> Result<()> {
+        let root_a = temp_tdl_dir().join("root-a");
+        let root_b = temp_tdl_dir().join("root-b");
+        let out_dir = temp_out_dir();
+        let tdl = r#"schema Example Schema-v0.0.1
+
+abstract value ExampleValueType
+"#;
+
+        write_tdl_file(&root_a.join("same.tdl"), tdl)?;
+        write_tdl_file(&root_b.join("same.tdl"), tdl)?;
+
+        let error = compile_inputs(&[root_a, root_b], &out_dir).expect_err("duplicate paths");
+        assert!(error.to_string().contains("duplicate relative input path `same.tdl`"));
 
         Ok(())
     }

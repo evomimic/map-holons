@@ -68,10 +68,8 @@ pub fn schema_matches_semantic_loader_shape(schema: &Schema) -> bool {
         return true;
     }
 
-    let properties_ok = schema
-        .literal_properties
-        .iter()
-        .all(|(key, _)| schema_literal_property_is_renderable(key));
+    let properties_ok =
+        schema.literal_properties.iter().all(|(key, _)| schema_literal_property_is_renderable(key));
     let relationships_ok = schema
         .literal_relationships
         .iter()
@@ -194,9 +192,7 @@ fn lower_descriptor_holon_semantic(
     }
 }
 
-fn lower_descriptor_properties(
-    descriptor: &TypeDescriptor,
-) -> serde_json::Map<String, Value> {
+fn lower_descriptor_properties(descriptor: &TypeDescriptor) -> serde_json::Map<String, Value> {
     if !descriptor.literal_properties.is_empty() {
         return literal_object_to_json_map(&descriptor.literal_properties);
     }
@@ -347,7 +343,9 @@ fn lower_descriptor_relationships(
                     relationship
                         .targets
                         .iter()
-                        .map(|target| normalize_emitted_reference_target(target, emitted_key_lookup))
+                        .map(|target| {
+                            normalize_emitted_reference_target(target, emitted_key_lookup)
+                        })
                         .collect(),
                 )
             })
@@ -362,10 +360,7 @@ fn lower_descriptor_relationships_semantic(
     emitted_key_lookup: &EmittedKeyLookup,
 ) -> Vec<LoaderRelationship> {
     let mut relationships = Vec::new();
-    relationships.push(loader_relationship(
-        "ComponentOf",
-        vec![descriptor.owning_schema.clone()],
-    ));
+    relationships.push(loader_relationship("ComponentOf", vec![descriptor.owning_schema.clone()]));
 
     if let Some(extends) = &descriptor.extends {
         relationships.push(loader_relationship(
@@ -424,7 +419,9 @@ fn lower_descriptor_relationships_semantic(
             descriptor
                 .instance_properties
                 .iter()
-                .map(|property| normalize_emitted_reference_target(&property.target, emitted_key_lookup))
+                .map(|property| {
+                    normalize_emitted_reference_target(&property.target, emitted_key_lookup)
+                })
                 .collect(),
         ));
     }
@@ -445,9 +442,7 @@ fn lower_descriptor_relationships_semantic(
         let variants = descriptor
             .variants
             .iter()
-            .map(|variant| {
-                normalize_emitted_reference_target(&variant.target, emitted_key_lookup)
-            })
+            .map(|variant| normalize_emitted_reference_target(&variant.target, emitted_key_lookup))
             .collect::<Vec<_>>();
         if !variants.is_empty() {
             relationships.push(loader_relationship("Variants", variants));
@@ -486,17 +481,16 @@ fn normalize_inverse_reference_target(
         descriptor.source_type.as_ref(),
         descriptor.target_type.as_ref(),
     ) {
-        (Some(crate::schema_ir::RelationshipFlavor::Inverse), Some(source_type), Some(target_type)) => {
-            format!(
-                "({})-[{}]->({})",
-                target_type.target, inverse_target, source_type.target
-            )
+        (
+            Some(crate::schema_ir::RelationshipFlavor::Inverse),
+            Some(source_type),
+            Some(target_type),
+        ) => {
+            format!("({})-[{}]->({})", target_type.target, inverse_target, source_type.target)
         }
-        _ => emitted_key_lookup
-            .unique_keys_by_name
-            .get(inverse_target)
-            .cloned()
-            .unwrap_or_else(|| normalize_emitted_reference_target(inverse_target, emitted_key_lookup)),
+        _ => emitted_key_lookup.unique_keys_by_name.get(inverse_target).cloned().unwrap_or_else(
+            || normalize_emitted_reference_target(inverse_target, emitted_key_lookup),
+        ),
     }
 }
 
@@ -650,10 +644,7 @@ fn loader_relationship_json(relationship: &LoaderRelationship) -> Value {
     let mut object = Map::new();
     object.insert("name".to_string(), json!(relationship.name));
     if relationship.targets.len() == 1 {
-        object.insert(
-            "target".to_string(),
-            json!({ "$ref": relationship.targets[0].target }),
-        );
+        object.insert("target".to_string(), json!({ "$ref": relationship.targets[0].target }));
     } else {
         object.insert(
             "target".to_string(),

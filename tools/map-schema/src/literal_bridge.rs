@@ -29,7 +29,9 @@ pub fn json_value_to_literal(value: &Value) -> LiteralValue {
             }
         }
         Value::String(value) => LiteralValue::String(value.clone()),
-        Value::Array(values) => LiteralValue::Array(values.iter().map(json_value_to_literal).collect()),
+        Value::Array(values) => {
+            LiteralValue::Array(values.iter().map(json_value_to_literal).collect())
+        }
         Value::Object(map) => LiteralValue::Object(json_map_to_literal_object(map)),
     }
 }
@@ -43,13 +45,17 @@ pub fn literal_value_to_json(value: &LiteralValue) -> Value {
             if let Ok(int) = value.parse::<i64>() {
                 Value::Number(Number::from(int))
             } else if let Ok(float) = value.parse::<f64>() {
-                Number::from_f64(float).map(Value::Number).unwrap_or_else(|| Value::String(value.clone()))
+                Number::from_f64(float)
+                    .map(Value::Number)
+                    .unwrap_or_else(|| Value::String(value.clone()))
             } else {
                 Value::String(value.clone())
             }
         }
         LiteralValue::String(value) => Value::String(value.clone()),
-        LiteralValue::Array(values) => Value::Array(values.iter().map(literal_value_to_json).collect()),
+        LiteralValue::Array(values) => {
+            Value::Array(values.iter().map(literal_value_to_json).collect())
+        }
         LiteralValue::Object(object) => Value::Object(literal_object_to_json_map(object)),
     }
 }
@@ -60,7 +66,9 @@ pub fn render_literal_value(value: &LiteralValue) -> String {
         LiteralValue::Boolean(value) => value.to_string(),
         LiteralValue::Integer(value) => value.to_string(),
         LiteralValue::Number(value) => value.clone(),
-        LiteralValue::String(value) => serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_string()),
+        LiteralValue::String(value) => {
+            serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_string())
+        }
         LiteralValue::Array(values) => {
             let rendered = values.iter().map(render_literal_value).collect::<Vec<_>>();
             format!("[{}]", rendered.join(", "))
