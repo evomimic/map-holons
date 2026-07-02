@@ -1,229 +1,159 @@
 schema MAP Key Rule Schema {
   depends_on MAP Core Schema-v0.0.7
+  depends_on MAP Dance Schema-v0.0.4
   header {
     description: "Groups all type descriptors related to holon key derivation strategies in MAP."
   }
 }
 abstract holon KeyRuleType {
-  properties {
-    is_abstract_type: true
-    type_name: "KeyRuleType"
-    type_name_plural: "KeyRuleTypes"
-    display_name: "Abstract Key Rule Type"
-    display_name_plural: "Abstract Key Rule Types"
+  keyrule ExtendedTypeRule.KeyRuleType
+  extends MetaHolonType
+  header {
     description: "Abstract holon type describing how keys are derived for other holons. Subtypes such as Format.KeyRuleType and Relationship.KeyRuleType define specific key derivation strategies. This type should not be instantiated directly, but it SHOULD be ExtendedBy the various specific KeyRuleTypes."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "MetaHolonType"
-    UsesKeyRule -> "ExtendedTypeRule.KeyRuleType"
+    display_name: "Abstract Key Rule Type"
+    display_plural: "Abstract Key Rule Types"
+    plural: "KeyRuleTypes"
   }
 }
 
 
 abstract holon FormatRule {
-  properties {
-    is_abstract_type: true
-    type_name: "FormatRule"
-    type_name_plural: "FormatRules"
-    display_name: "Format Key Rule Type"
-    display_name_plural: "Format Key Rule Types"
+  extends KeyRuleType
+  header {
     description: "Key rule defined by a template_string plus an ordered list of PropertyTypes used as template parameters."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_name: "Format Key Rule Type"
+    display_plural: "Format Key Rule Types"
+    plural: "FormatRules"
+  }
+  properties {
+    TemplateString.PropertyType
   }
   relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
-    InstanceProperties -> "TemplateString.PropertyType"
-    InstanceRelationships -> "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)"
+    (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)
   }
 }
 
 
 holon EnumVariantRule {
-  properties {
-    is_abstract_type: false
-    type_name: "EnumVariantRule"
-    type_name_plural: "EnumVariantRules"
-    display_name: "Enum Variant Rule"
-    display_name_plural: "Enum Variant Rules"
+  extends KeyRuleType
+  header {
     description: "For enum-variant descriptors, derive keys as {EnumName}.{VariantName} (e.g., DeletionSemantic.Allow, TypeKind.Holon)."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
+    display_name: "Enum Variant Rule"
+    display_plural: "Enum Variant Rules"
+    plural: "EnumVariantRules"
   }
 }
 
 
 holon TypeNameRule {
-  properties {
-    is_abstract_type: false
-    type_name: "TypeNameRule"
-    type_name_plural: "TypeNameRules"
-    display_name: "Type Name Rule"
-    display_name_plural: "Type Name Rules"
+  extends KeyRuleType
+  header {
     description: "Generates a key from the holon's type_name property only."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
+    display_name: "Type Name Rule"
+    display_plural: "Type Name Rules"
+    plural: "TypeNameRules"
   }
 }
 
 
 holon TypeKindRule {
-  properties {
-    is_abstract_type: false
-    type_name: "TypeKindRule"
-    type_name_plural: "TypeKindRules"
-    display_name: "TypeKind Rules"
-    display_name_plural: "TypeKind Rules"
+  extends KeyRuleType
+  header {
     description: "Generates a key from the holon's type_name and type_kind properties."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
+    display_name: "TypeKind Rules"
+    display_plural: "TypeKind Rules"
+    plural: "TypeKindRules"
   }
 }
 
 
 holon RelationshipRule {
-  properties {
-    is_abstract_type: false
-    type_name: "RelationshipRule"
-    type_name_plural: "RelationshipRules"
-    display_name: "Relationship Key Rule Type"
-    display_name_plural: "Relationship Key Rule Types"
+  extends KeyRuleType
+  header {
     description: "Hardcoded rule: ($0)-[$1]->($2) using source_type, type_name, and target_type."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
+    display_name: "Relationship Key Rule Type"
+    display_plural: "Relationship Key Rule Types"
+    plural: "RelationshipRules"
   }
 }
 
 
 holon ExtendedTypeRule {
-  properties {
-    is_abstract_type: false
-    type_name: "ExtendedTypeRule"
-    type_name_plural: "ExtendedTypeRules"
-    display_name: "Extended Type Key Rule Type"
-    display_name_plural: "Extended Type Key Rule Types"
+  extends KeyRuleType
+  header {
     description: "A hardcoded rule that derives a descriptor key from the descriptor’s local type_name plus the type_name of its immediate extended descriptor.\nFormat: {type_name}.{extends.type_name}"
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
+    display_name: "Extended Type Key Rule Type"
+    display_plural: "Extended Type Key Rule Types"
+    plural: "ExtendedTypeRules"
   }
 }
 
 
 holon NoneRule {
-  properties {
-    is_abstract_type: false
-    type_name: "NoneRule"
-    type_name_plural: "NoneRules"
-    display_name: "None Key Rule Type"
-    display_name_plural: "None Key Rule Types"
+  extends KeyRuleType
+  header {
     description: "Indicates a keyless holon. Must be embedded and never referenced."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
+    display_name: "None Key Rule Type"
+    display_plural: "None Key Rule Types"
+    plural: "NoneRules"
   }
 }
 
 
 holon SchemaNameRule {
+  extends KeyRuleType
+  header {
+    description: "Generates a key from the holon's schema_name property only."
+    display_name: "Schema Name Rule"
+    display_plural: "Schema Name Rules"
+    plural: "SchemaNameRules"
+  }
+}
+
+
+holon ImplementationNameRule {
   properties {
     is_abstract_type: false
-    type_name: "SchemaNameRule"
-    type_name_plural: "SchemaNameRules"
-    display_name: "Schema Name Rule"
-    display_name_plural: "Schema Name Rules"
-    description: "Generates a key from the holon's schema_name property only."
+    type_name: "ImplementationNameRule"
+    type_name_plural: "ImplementationNameRules"
+    display_name: "Implementation Name Rule"
+    display_name_plural: "Implementation Name Rules"
+    description: "Generates a key from the holon's implementation_name property only."
     instance_type_kind: "TypeKind.Holon"
     allows_additional_properties: false
     allows_additional_relationships: false
+    template_string: "{0}"
   }
   relationships {
     ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "KeyRuleType"
+    Extends -> "FormatRule.KeyRuleType"
+    TemplateParameters -> "ImplementationName.PropertyType"
   }
 }
 
 
 def relationship UsesKeyRule {
+  source TypeDescriptor.HolonType
+  target KeyRuleType
+  inverse KeyRuleFor
   cardinality 0..1
-  properties {
-    is_abstract_type: false
-    type_name: "UsesKeyRule"
-    type_name_plural: "UsesKeyRule Relationships"
-    display_name: "UsesKeyRule"
-    display_name_plural: "UsesKeyRule Relationships"
+  header {
     description: "Declares the KeyRuleType used to derive keys for instances of a type."
-    instance_type_kind: "TypeKind.Relationship"
-    is_definitional: true
-    is_ordered: false
-    allows_duplicates: false
-    min_cardinality: 0
-    max_cardinality: 1
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "DeclaredRelationshipType"
-    SourceType -> "TypeDescriptor.HolonType"
-    TargetType -> "KeyRuleType"
+    display_name: "UsesKeyRule"
+    display_plural: "UsesKeyRule Relationships"
+    plural: "UsesKeyRule Relationships"
   }
 }
 
 
 inverse relationship KeyRuleFor {
+  source KeyRuleType
+  target TypeDescriptor.HolonType
   cardinality 0..32767
-  properties {
-    is_abstract_type: false
-    type_name: "KeyRuleFor"
-    type_name_plural: "KeyRuleFor Relationships"
-    display_name: "KeyRuleFor"
-    display_name_plural: "KeyRuleFor Relationships"
+  header {
     description: "Inverse of UsesKeyRule, from KeyRuleType to TypeDescriptor."
-    instance_type_kind: "TypeKind.Relationship"
-    is_definitional: false
-    is_ordered: false
-    allows_duplicates: false
-    min_cardinality: 0
-    max_cardinality: 32767
-  }
-  relationships {
-    ComponentOf -> "MAP Key Rule Schema"
-    Extends -> "InverseRelationshipType"
-    InverseOf -> "(TypeDescriptor.HolonType)-[UsesKeyRule]->(KeyRuleType)"
-    SourceType -> "KeyRuleType"
-    TargetType -> "TypeDescriptor.HolonType"
+    display_name: "KeyRuleFor"
+    display_plural: "KeyRuleFor Relationships"
+    plural: "KeyRuleFor Relationships"
   }
 }

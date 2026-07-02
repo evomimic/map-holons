@@ -1,6 +1,4 @@
-//! Backward-compatible re-export of the canonical schema IR module.
-//!
-//! V2-A1 extracts semantic ownership into [`crate::schema_ir`] while keeping
-//! existing imports working until the remaining toolchain code is moved over.
+//! Backward-compatible re-export of the shared Canonical Holon IR module.
 
-pub use crate::schema_ir::*;
+pub use map_schema_semantic::schema_ir::*;
+pub use map_schema_semantic::{LiteralObject, LiteralValue};

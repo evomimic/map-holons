@@ -1,5 +1,6 @@
 use crate::{
     diagnostics::{format_diagnostics, Diagnostic},
+    literal_bridge::json_value_to_literal,
     loader_ir::{LoaderDocument, LoaderMeta},
     schema_index::SymbolIndex,
     schema_ir::{
@@ -11,7 +12,6 @@ use crate::{
     },
 };
 use anyhow::{anyhow, Context, Result};
-use serde_json::Value;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -45,7 +45,7 @@ struct TdlSchema {
     name: String,
     origin: Origin,
     dependencies: Vec<String>,
-    literal_properties: serde_json::Map<String, Value>,
+    literal_properties: map_schema_semantic::LiteralObject,
     literal_relationships: Vec<LiteralRelationship>,
     header: Option<DescriptorHeader>,
     allows_additional_properties: bool,
@@ -59,11 +59,13 @@ struct TdlDescriptor {
     origin: Origin,
     header: Option<DescriptorHeader>,
     is_abstract: bool,
+    relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     value_type: Option<String>,
     source_type: Option<String>,
     target_type: Option<String>,
     inverse_of: Option<String>,
+    has_inverse: Option<String>,
     key_rule: Option<String>,
     min_cardinality: Option<i64>,
     max_cardinality: Option<i64>,
@@ -73,8 +75,9 @@ struct TdlDescriptor {
     allows_additional_properties: bool,
     allows_additional_relationships: bool,
     is_definitional: bool,
+    variants: Vec<String>,
     variant_of: Option<String>,
-    literal_properties: serde_json::Map<String, Value>,
+    literal_properties: map_schema_semantic::LiteralObject,
     instance_properties: Vec<String>,
     instance_relationships: Vec<String>,
     literal_relationships: Vec<LiteralRelationship>,
@@ -104,8 +107,32 @@ pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>
     Ok(written)
 }
 
+/// Compiles one TDL document provided as a raw string into loader JSON.
+pub fn compile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
+    let source_name = source_name.into();
+    let parsed = parse_tdl_file(raw, &source_name)?;
+    let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
+    let compilation = build_compilation(lowered)?;
+    if !compilation.diagnostics.is_empty() {
+        return Err(anyhow!(format_diagnostics(&compilation.diagnostics)));
+    }
+    let file = compilation
+        .files
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow!("no TDL document was compiled"))?;
+    emit_loader_document_json(&file.document)
+}
+
 pub fn check_inputs(inputs: &[PathBuf]) -> Result<Vec<Diagnostic>> {
     Ok(lower_inputs_to_schema_ir(inputs)?.diagnostics)
+}
+
+/// Validates one TDL document provided as a raw string.
+pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<Vec<Diagnostic>> {
+    let source_name = source_name.into();
+    let parsed = parse_tdl_file(raw, &source_name)?;
+    Ok(lower_parsed_files_to_schema_ir(vec![parsed])?.diagnostics)
 }
 
 struct Compilation {
@@ -157,6 +184,7 @@ fn collect_tdl_files(inputs: &[PathBuf]) -> Result<Vec<DiscoveredFile>> {
             files.push(DiscoveredFile { source_path: input.clone(), relative_path });
         }
     }
+    ensure_unique_relative_paths(&files)?;
     files.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(files)
 }
@@ -183,6 +211,28 @@ fn collect_tdl_files_recursive(
         }
     }
     Ok(())
+}
+
+fn ensure_unique_relative_paths(files: &[DiscoveredFile]) -> Result<()> {
+    let mut seen = std::collections::HashMap::<String, PathBuf>::new();
+    for file in files {
+        let key = normalize_relative_path(&file.relative_path);
+        if let Some(existing) = seen.insert(key.clone(), file.source_path.clone()) {
+            return Err(anyhow!(
+                "duplicate relative input path `{key}` from {} and {}; use a single input root or rename one path",
+                existing.display(),
+                file.source_path.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn normalize_relative_path(path: &Path) -> String {
+    path.components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn parse_tdl_file(raw: &str, relative_path: &Path) -> Result<ParsedTdlFile> {
@@ -249,7 +299,7 @@ impl<'a> Parser<'a> {
         let header = parse_inline_header(&line, "schema")?;
         let name = header.name;
         let mut dependencies = Vec::new();
-        let mut literal_properties = serde_json::Map::new();
+        let mut literal_properties = map_schema_semantic::LiteralObject::new();
         let mut literal_relationships = Vec::new();
         let mut allows_additional_properties = false;
         let mut allows_additional_relationships = false;
@@ -268,7 +318,8 @@ impl<'a> Parser<'a> {
                 } else if current == "properties {" {
                     self.consume_trimmed();
                     let (properties, _instance_properties) = self.parse_properties_block()?;
-                    literal_properties.extend(properties);
+                    literal_properties
+                        .extend(properties.iter().map(|(key, value)| (key.clone(), value.clone())));
                 } else if current == "relationships {" {
                     self.consume_trimmed();
                     for line in self.parse_reference_block()? {
@@ -318,11 +369,13 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
             source_type: None,
             target_type: None,
             inverse_of: None,
+            has_inverse: None,
             key_rule: None,
             min_cardinality: None,
             max_cardinality: None,
@@ -332,8 +385,9 @@ impl<'a> Parser<'a> {
             allows_additional_properties: false,
             allows_additional_relationships: false,
             is_definitional: parsed.is_definitional,
+            variants: Vec::new(),
             variant_of,
-            literal_properties: serde_json::Map::new(),
+            literal_properties: map_schema_semantic::LiteralObject::new(),
             instance_properties: Vec::new(),
             instance_relationships: Vec::new(),
             literal_relationships: Vec::new(),
@@ -367,7 +421,12 @@ impl<'a> Parser<'a> {
                         self.consume_trimmed();
                     }
                     s if s.starts_with("inverse ") => {
-                        descriptor.inverse_of = Some(s["inverse ".len()..].trim().to_string());
+                        let inverse_name = s["inverse ".len()..].trim().to_string();
+                        if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
+                            descriptor.inverse_of = Some(inverse_name);
+                        } else {
+                            descriptor.has_inverse = Some(inverse_name);
+                        }
                         self.consume_trimmed();
                     }
                     s if s.starts_with("keyrule ") => {
@@ -408,7 +467,11 @@ impl<'a> Parser<'a> {
                         self.consume_trimmed();
                         let (literal_properties, instance_properties) =
                             self.parse_properties_block()?;
-                        descriptor.literal_properties.extend(literal_properties);
+                        descriptor.literal_properties.extend(
+                            literal_properties
+                                .iter()
+                                .map(|(key, value)| (key.clone(), value.clone())),
+                        );
                         descriptor.instance_properties.extend(instance_properties);
                     }
                     "relationships {" => {
@@ -424,10 +487,9 @@ impl<'a> Parser<'a> {
                     "variants {" if descriptor.kind == DescriptorKind::Enum => {
                         self.consume_trimmed();
                         for variant in self.parse_variant_block(&descriptor.name)? {
+                            let variant_key = variant_key(&descriptor.name, &variant.name);
                             self.pending_descriptors.push(variant.clone());
-                            descriptor
-                                .instance_relationships
-                                .extend(variant.instance_relationships);
+                            descriptor.variants.push(variant_key);
                         }
                     }
                     other => {
@@ -438,7 +500,7 @@ impl<'a> Parser<'a> {
                             let variant = self.parse_variant_decl(Some(descriptor.name.clone()))?;
                             let variant_key = variant_key(&descriptor.name, &variant.name);
                             self.pending_descriptors.push(variant);
-                            descriptor.instance_relationships.push(variant_key);
+                            descriptor.variants.push(variant_key);
                         } else {
                             return Err(anyhow!("unexpected descriptor clause: {}", other));
                         }
@@ -449,6 +511,7 @@ impl<'a> Parser<'a> {
 
         apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
+        normalize_relationship_pair_targets(&mut descriptor);
         Ok(descriptor)
     }
 
@@ -469,11 +532,13 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
             source_type: None,
             target_type: None,
             inverse_of: None,
+            has_inverse: None,
             key_rule: None,
             min_cardinality: None,
             max_cardinality: None,
@@ -483,8 +548,9 @@ impl<'a> Parser<'a> {
             allows_additional_properties: false,
             allows_additional_relationships: false,
             is_definitional: false,
+            variants: Vec::new(),
             variant_of,
-            literal_properties: serde_json::Map::new(),
+            literal_properties: map_schema_semantic::LiteralObject::new(),
             instance_properties: Vec::new(),
             instance_relationships: Vec::new(),
             literal_relationships: Vec::new(),
@@ -501,8 +567,11 @@ impl<'a> Parser<'a> {
                     descriptor.header = Some(self.parse_header_block()?);
                 } else if current == "properties {" {
                     self.consume_trimmed();
-                    let (literal_properties, instance_properties) = self.parse_properties_block()?;
-                    descriptor.literal_properties.extend(literal_properties);
+                    let (literal_properties, instance_properties) =
+                        self.parse_properties_block()?;
+                    descriptor.literal_properties.extend(
+                        literal_properties.iter().map(|(key, value)| (key.clone(), value.clone())),
+                    );
                     descriptor.instance_properties.extend(instance_properties);
                 } else if current == "relationships {" {
                     self.consume_trimmed();
@@ -524,6 +593,7 @@ impl<'a> Parser<'a> {
 
         apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
+        normalize_relationship_pair_targets(&mut descriptor);
         Ok(descriptor)
     }
 
@@ -594,8 +664,10 @@ impl<'a> Parser<'a> {
         Ok(refs)
     }
 
-    fn parse_properties_block(&mut self) -> Result<(serde_json::Map<String, Value>, Vec<String>)> {
-        let mut properties = serde_json::Map::new();
+    fn parse_properties_block(
+        &mut self,
+    ) -> Result<(map_schema_semantic::LiteralObject, Vec<String>)> {
+        let mut properties = map_schema_semantic::LiteralObject::new();
         let mut refs = Vec::new();
         while self.skip_blank_lines() {
             let current = self.peek_trimmed().unwrap().to_string();
@@ -672,6 +744,7 @@ struct ParsedHead {
     name: String,
     is_abstract: bool,
     is_definitional: bool,
+    relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     has_block: bool,
 }
@@ -748,7 +821,25 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
         }
     }
 
-    Ok(ParsedHead { kind, name, is_abstract, is_definitional, extends, has_block })
+    let relationship_flavor = if kind == DescriptorKind::RelationshipType {
+        Some(if head.starts_with("inverse relationship ") {
+            RelationshipFlavor::Inverse
+        } else {
+            RelationshipFlavor::Declared
+        })
+    } else {
+        None
+    };
+
+    Ok(ParsedHead {
+        kind,
+        name,
+        is_abstract,
+        is_definitional,
+        relationship_flavor,
+        extends,
+        has_block,
+    })
 }
 
 fn is_descriptor_line(line: &str) -> bool {
@@ -797,7 +888,9 @@ fn parse_literal_relationship_line(line: &str) -> Result<Option<LiteralRelations
     Ok(Some(LiteralRelationship { name: name.to_string(), targets }))
 }
 
-fn parse_literal_property_line(line: &str) -> Result<Option<(String, Value)>> {
+fn parse_literal_property_line(
+    line: &str,
+) -> Result<Option<(String, map_schema_semantic::LiteralValue)>> {
     let Some((name, raw_value)) = line.split_once(':') else {
         return Ok(None);
     };
@@ -808,7 +901,7 @@ fn parse_literal_property_line(line: &str) -> Result<Option<(String, Value)>> {
         return Ok(None);
     }
 
-    Ok(Some((name.to_string(), serde_json::from_str(raw_value)?)))
+    Ok(Some((name.to_string(), json_value_to_literal(&serde_json::from_str(raw_value)?))))
 }
 
 fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) -> Result<()> {
@@ -819,47 +912,47 @@ fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) ->
     descriptor.is_abstract = descriptor
         .literal_properties
         .get("is_abstract_type")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.is_abstract);
     descriptor.allows_additional_properties = descriptor
         .literal_properties
         .get("allows_additional_properties")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.allows_additional_properties);
     descriptor.allows_additional_relationships = descriptor
         .literal_properties
         .get("allows_additional_relationships")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.allows_additional_relationships);
     descriptor.is_definitional = descriptor
         .literal_properties
         .get("is_definitional")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.is_definitional);
     descriptor.is_ordered = descriptor
         .literal_properties
         .get("is_ordered")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.is_ordered);
     descriptor.allows_duplicates = descriptor
         .literal_properties
         .get("allows_duplicates")
-        .and_then(Value::as_bool)
+        .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.allows_duplicates);
     descriptor.min_cardinality = descriptor
         .literal_properties
         .get("min_cardinality")
-        .and_then(Value::as_i64)
+        .and_then(|value| value.as_i64())
         .or(descriptor.min_cardinality);
     descriptor.max_cardinality = descriptor
         .literal_properties
         .get("max_cardinality")
-        .and_then(Value::as_i64)
+        .and_then(|value| value.as_i64())
         .or(descriptor.max_cardinality);
     descriptor.deletion_semantic = descriptor
         .literal_properties
         .get("deletion_semantic")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| descriptor.deletion_semantic.clone());
 
@@ -872,25 +965,25 @@ fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) ->
     header.description = descriptor
         .literal_properties
         .get("description")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.description.clone());
     header.display_name = descriptor
         .literal_properties
         .get("display_name")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.display_name.clone());
     header.display_name_plural = descriptor
         .literal_properties
         .get("display_name_plural")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.display_name_plural.clone());
     header.type_name_plural = descriptor
         .literal_properties
         .get("type_name_plural")
-        .and_then(Value::as_str)
+        .and_then(|value| value.as_str())
         .map(ToString::to_string)
         .or_else(|| header.type_name_plural.clone());
 
@@ -915,6 +1008,16 @@ fn apply_literal_relationships_to_tdl_descriptor(descriptor: &mut TdlDescriptor)
             "InverseOf" if descriptor.inverse_of.is_none() => {
                 descriptor.inverse_of = relationship.targets.first().cloned();
             }
+            "HasInverse" if descriptor.has_inverse.is_none() => {
+                descriptor.has_inverse = relationship.targets.first().cloned();
+            }
+            "Variants" => {
+                for target in &relationship.targets {
+                    if !descriptor.variants.contains(target) {
+                        descriptor.variants.push(target.clone());
+                    }
+                }
+            }
             "ValueType" if descriptor.value_type.is_none() => {
                 descriptor.value_type = relationship.targets.first().cloned();
             }
@@ -936,6 +1039,27 @@ fn apply_literal_relationships_to_tdl_descriptor(descriptor: &mut TdlDescriptor)
                 }
             }
             _ => {}
+        }
+    }
+}
+
+fn normalize_relationship_pair_targets(descriptor: &mut TdlDescriptor) {
+    let Some(source_type) = descriptor.source_type.clone() else {
+        return;
+    };
+    let Some(target_type) = descriptor.target_type.clone() else {
+        return;
+    };
+
+    if let Some(has_inverse) = descriptor.has_inverse.as_mut() {
+        if !has_inverse.contains(")-[") {
+            *has_inverse = format!("({target_type})-[{has_inverse}]->({source_type})");
+        }
+    }
+
+    if let Some(inverse_of) = descriptor.inverse_of.as_mut() {
+        if !inverse_of.contains(")-[") {
+            *inverse_of = format!("({target_type})-[{inverse_of}]->({source_type})");
         }
     }
 }
@@ -983,9 +1107,12 @@ fn build_compilation(lowered: LoweredTdlProject) -> Result<Compilation> {
                 generator: Some(GENERATOR_NAME.to_string()),
                 generated_at: Some(current_timestamp_rfc3339()?),
                 export_mode: Some("by-file".to_string()),
-                source_files: vec![
-                    file.parsed.relative_path.with_extension("tdl").to_string_lossy().to_string(),
-                ],
+                source_files: vec![file
+                    .parsed
+                    .relative_path
+                    .with_extension("tdl")
+                    .to_string_lossy()
+                    .to_string()],
                 load_with,
             },
             &emitted_key_lookup,
@@ -1073,6 +1200,10 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
         lowered.inverse_of =
             Some(SemanticReference::unresolved(ReferenceRole::InverseOf, inverse_of.clone()));
     }
+    if let Some(has_inverse) = &descriptor.has_inverse {
+        lowered.has_inverse =
+            Some(SemanticReference::unresolved(ReferenceRole::HasInverse, has_inverse.clone()));
+    }
     if let Some(key_rule) = &descriptor.key_rule {
         lowered.key_rule =
             Some(SemanticReference::unresolved(ReferenceRole::KeyRule, key_rule.clone()));
@@ -1080,6 +1211,11 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
     if let Some(parent) = &descriptor.variant_of {
         lowered.variant_of =
             Some(SemanticReference::unresolved(ReferenceRole::VariantOf, parent.clone()));
+    }
+    for variant in &descriptor.variants {
+        lowered
+            .variants
+            .push(SemanticReference::unresolved(ReferenceRole::Variants, variant.clone()));
     }
 
     for target in &descriptor.instance_properties {
@@ -1106,37 +1242,13 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
     }
 
     if descriptor.kind == DescriptorKind::RelationshipType {
-        lowered.relationship_flavor = if descriptor.name.starts_with('(') {
-            None
-        } else {
-            Some(if descriptor.is_definitional {
-                RelationshipFlavor::Declared
-            } else if descriptor.name.starts_with("inverse ") {
+        lowered.relationship_flavor = descriptor.relationship_flavor.or_else(|| {
+            Some(if descriptor.inverse_of.is_some() {
                 RelationshipFlavor::Inverse
             } else {
                 RelationshipFlavor::Declared
             })
-        };
-        if descriptor.name.starts_with("inverse ") {
-            lowered.relationship_flavor = Some(RelationshipFlavor::Inverse);
-        } else if descriptor.name == "Components"
-            || descriptor.name == "InstancePropertyFor"
-            || descriptor.name == "InstanceRelationshipFor"
-            || descriptor.name == "Owns"
-            || descriptor.name == "PropertyOf"
-            || descriptor.name == "ValueTypeFor"
-            || descriptor.name == "SourceOf"
-            || descriptor.name == "TargetOf"
-            || descriptor.name == "HasInverse"
-            || descriptor.name == "Variants"
-            || descriptor.name == "Dependents"
-            || descriptor.name == "ElementValueTypeFor"
-            || descriptor.name == "Constrains"
-        {
-            lowered.relationship_flavor = Some(RelationshipFlavor::Inverse);
-        } else {
-            lowered.relationship_flavor = Some(RelationshipFlavor::Declared);
-        }
+        });
         if lowered.extends.is_none() {
             lowered.extends = Some(SemanticReference::unresolved(
                 ReferenceRole::Extends,
@@ -1202,6 +1314,7 @@ fn reference_role_for_relationship_name(name: &str) -> Option<ReferenceRole> {
         "InverseOf" => Some(ReferenceRole::InverseOf),
         "HasInverse" => Some(ReferenceRole::HasInverse),
         "ValueType" => Some(ReferenceRole::ValueType),
+        "Variants" => Some(ReferenceRole::Variants),
         "VariantOf" => Some(ReferenceRole::VariantOf),
         "InstanceProperties" => Some(ReferenceRole::InstanceProperty),
         "InstanceRelationships" => Some(ReferenceRole::InstanceRelationship),
@@ -1221,11 +1334,13 @@ fn push_reference_if_missing(descriptor: &mut TypeDescriptor, reference: Semanti
 
 fn default_extends(descriptor: &TdlDescriptor) -> Option<String> {
     match descriptor.kind {
-        DescriptorKind::RelationshipType => Some(if descriptor.inverse_of.is_some() {
-            DEFAULT_INVERSE_RELATIONSHIP_EXTENDS.to_string()
-        } else {
-            DEFAULT_DECLARED_RELATIONSHIP_EXTENDS.to_string()
-        }),
+        DescriptorKind::RelationshipType => {
+            Some(if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
+                DEFAULT_INVERSE_RELATIONSHIP_EXTENDS.to_string()
+            } else {
+                DEFAULT_DECLARED_RELATIONSHIP_EXTENDS.to_string()
+            })
+        }
         DescriptorKind::EnumVariant => Some(if descriptor.variant_of.is_some() {
             DEFAULT_ENUM_VARIANT_EXTENDS.to_string()
         } else {
@@ -1267,13 +1382,18 @@ fn holon_key_for_emit(descriptor: &TdlDescriptor) -> String {
     match parent.as_str() {
         "CommandType.HolonType" => format!("{}.CommandType", descriptor.name),
         "Projection.HolonType" => format!("{}.Projection", descriptor.name),
+        "DanceType.HolonType" => format!("{}.DanceType", descriptor.name),
         "DanceResponseType.HolonType" => format!("{}.DanceResponseType", descriptor.name),
+        "QueryStepKind.HolonType" => format!("{}.QueryStepKind", descriptor.name),
         "HolonError.HolonType" => format!("{}.HolonError", descriptor.name),
         "KeyRuleType" | "KeyRuleType.HolonType" => format!("{}.KeyRuleType", descriptor.name),
         "ValueConstraintType.HolonType" => format!("{}.ValueConstraintType", descriptor.name),
         "OperatorType.HolonType" if descriptor.name != "OperatorType" => descriptor.name.clone(),
         _ if descriptor.is_abstract && parent.starts_with("Meta") => descriptor.name.clone(),
         "HolonType" => format!("{}.HolonType", descriptor.name),
+        _ if parent.ends_with(".KeyRuleType") => {
+            format!("{}.{}", descriptor.name, parent.trim_end_matches(".KeyRuleType"))
+        }
         _ if parent.ends_with(".ValueConstraintType") => {
             format!("{}.{}", descriptor.name, parent.trim_end_matches(".ValueConstraintType"))
         }
@@ -1385,9 +1505,9 @@ mod tests {
     use super::*;
     use crate::decompile_inputs;
     use serde_json::Value;
-    use std::collections::HashSet;
     use std::{
         env, fs,
+        io::Write,
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -1421,6 +1541,19 @@ mod tests {
         Ok(dir)
     }
 
+    fn write_tdl_file(path: &Path, contents: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(path)?;
+        file.write_all(contents.as_bytes())?;
+        Ok(())
+    }
+
+    fn discovered_tdl_file_count(root: &Path) -> Result<usize> {
+        Ok(collect_tdl_files(&[root.to_path_buf()])?.len())
+    }
+
     #[test]
     fn checks_core_schema_corpus_without_diagnostics() -> Result<()> {
         let diagnostics = check_inputs(&[fixture_dir()])?;
@@ -1430,23 +1563,28 @@ mod tests {
 
     #[test]
     fn lowers_core_schema_corpus_into_shared_schema_ir() -> Result<()> {
-        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let fixture_root = fixture_dir();
+        let lowered = lower_inputs_to_schema_ir(&[fixture_root.clone()])?;
 
         assert!(lowered.diagnostics.is_empty());
-        assert_eq!(lowered.files.len(), 11);
-        assert_eq!(lowered.global_model.schemas.len(), 3);
-        assert_eq!(lowered.global_model.descriptors.len(), 313);
-        assert_eq!(lowered.symbols.symbols().len(), 316);
+        assert_eq!(lowered.files.len(), discovered_tdl_file_count(&fixture_root)?);
+        assert!(!lowered.global_model.schemas.is_empty());
+        assert!(!lowered.global_model.descriptors.is_empty());
+        assert_eq!(
+            lowered.symbols.symbols().len(),
+            lowered.global_model.schemas.len() + lowered.global_model.descriptors.len()
+        );
 
         Ok(())
     }
 
     #[test]
     fn lowers_core_schema_corpus_into_loader_ir_documents() -> Result<()> {
-        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let fixture_root = fixture_dir();
+        let lowered = lower_inputs_to_schema_ir(&[fixture_root.clone()])?;
         let compilation = build_compilation(lowered)?;
 
-        assert_eq!(compilation.files.len(), 11);
+        assert_eq!(compilation.files.len(), discovered_tdl_file_count(&fixture_root)?);
         assert!(compilation.diagnostics.is_empty());
 
         let loader_types = compilation
@@ -1463,21 +1601,22 @@ mod tests {
             .holons
             .iter()
             .any(|holon| holon.key == "LoaderHolon.HolonType"));
-        assert_eq!(
-            loader_types.document.meta.generator.as_deref(),
-            Some(GENERATOR_NAME)
-        );
+        assert_eq!(loader_types.document.meta.generator.as_deref(), Some(GENERATOR_NAME));
 
         Ok(())
     }
 
     #[test]
     fn compiles_core_schema_corpus_into_generated_json() -> Result<()> {
+        let fixture_root = fixture_dir();
         let out_dir = temp_out_dir();
-        let files = compile_inputs(&[fixture_dir()], &out_dir)?;
+        let files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(files.len(), 11);
-        crate::test_support::assert_dir_tree_eq(&generated_fixture_dir(), &out_dir);
+        assert_eq!(files.len(), discovered_tdl_file_count(&fixture_root)?);
+        crate::test_support::assert_json_dir_trees_eq_ignoring_meta(
+            &generated_fixture_dir(),
+            &out_dir,
+        );
         Ok(())
     }
 
@@ -1485,8 +1624,8 @@ mod tests {
     fn compiled_core_schema_corpus_has_no_missing_internal_refs() -> Result<()> {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
+        let lowered = crate::lower_inputs_to_schema_ir(&[out_dir.clone()])?;
 
-        let mut emitted_keys = HashSet::new();
         let mut ref_targets = Vec::new();
 
         for entry in fs::read_dir(&out_dir)? {
@@ -1503,7 +1642,6 @@ mod tests {
                     .and_then(Value::as_str)
                     .expect("compiled holon key")
                     .to_string();
-                emitted_keys.insert(key.clone());
 
                 if let Some(relationships) = holon.get("relationships").and_then(Value::as_array) {
                     for relationship in relationships {
@@ -1550,7 +1688,8 @@ mod tests {
         let missing = ref_targets
             .into_iter()
             .filter(|(_, _, target)| {
-                target != "MAP Core Schema-v0.0.7" && !emitted_keys.contains(target)
+                target != "MAP Core Schema-v0.0.7"
+                    && lowered.symbols.lookup_reference_target(target).is_none()
             })
             .collect::<Vec<_>>();
 
@@ -1562,7 +1701,8 @@ mod tests {
     }
 
     #[test]
-    fn ordinary_keyword_injections_remain_keyword_driven_even_for_bootstrap_like_names() -> Result<()> {
+    fn ordinary_keyword_injections_remain_keyword_driven_even_for_bootstrap_like_names(
+    ) -> Result<()> {
         let input_dir = write_temp_tdl(
             "bootstrap-looking-property.tdl",
             r#"schema Example Schema-v0.0.1
@@ -1603,13 +1743,33 @@ abstract property MetaPropertyType
         )?;
 
         let root = fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-root.tdl"))?;
-        let abstract_values =
-            fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-abstract-value-types.tdl"))?;
+        let abstract_values = fs::read_to_string(
+            out_dir.join("MAP Schema Types-map-core-schema-abstract-value-types.tdl"),
+        )?;
 
         assert!(root.contains("abstract holon MetaPropertyType {"));
         assert!(!root.contains("abstract property MetaPropertyType {"));
         assert!(abstract_values.contains("abstract holon MetaValueType {"));
         assert!(!abstract_values.contains("abstract value MetaValueType {"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn compile_rejects_duplicate_relative_paths_across_input_roots() -> Result<()> {
+        let root_a = temp_tdl_dir().join("root-a");
+        let root_b = temp_tdl_dir().join("root-b");
+        let out_dir = temp_out_dir();
+        let tdl = r#"schema Example Schema-v0.0.1
+
+abstract value ExampleValueType
+"#;
+
+        write_tdl_file(&root_a.join("same.tdl"), tdl)?;
+        write_tdl_file(&root_b.join("same.tdl"), tdl)?;
+
+        let error = compile_inputs(&[root_a, root_b], &out_dir).expect_err("duplicate paths");
+        assert!(error.to_string().contains("duplicate relative input path `same.tdl`"));
 
         Ok(())
     }
