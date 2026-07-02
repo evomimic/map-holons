@@ -93,12 +93,10 @@ fn resolve_unique(
     }
 
     if let Some(declared_ref) = missing_inverse_for_inverse_traversal {
-        return match DeclaredRelationshipDescriptor::try_from_holon(declared_ref)?
-            .required_inverse()
-        {
-            Ok(_) => unreachable!("missing inverse marker should not resolve"),
-            Err(error) => Err(error),
-        };
+        // Surface the definitional-inverse defect instead of a generic not-found.
+        // The marker is only set when `has_inverse()` was `None`, so this always
+        // errors; the `Ok` case cannot occur and simply falls through below.
+        DeclaredRelationshipDescriptor::try_from_holon(declared_ref)?.required_inverse()?;
     }
 
     if target_status.requires_materialized_target_index {
@@ -121,7 +119,7 @@ fn collect_source_owned_matches(
     direction: TraversalDirection,
     matches: &mut Vec<TraversalMatch>,
     name_matched_wrong_form: &mut bool,
-    missing_inverse_for_inverse_traversal: &mut Option<crate::reference_layer::HolonReference>,
+    missing_inverse_for_inverse_traversal: &mut Option<HolonReference>,
 ) -> Result<(), HolonError> {
     for descriptor in endpoint.instance_relationships()? {
         let declared = descriptor.try_into_declared_relationship_descriptor()?;
@@ -167,7 +165,7 @@ fn collect_source_owned_matches(
 struct TargetTraversalStatus {
     matches: Vec<TraversalMatch>,
     name_matched_wrong_form: bool,
-    missing_inverse_for_inverse_traversal: Option<crate::reference_layer::HolonReference>,
+    missing_inverse_for_inverse_traversal: Option<HolonReference>,
     requires_materialized_target_index: bool,
 }
 

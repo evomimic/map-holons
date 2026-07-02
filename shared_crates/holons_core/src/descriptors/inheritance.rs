@@ -54,7 +54,6 @@ pub fn ancestors(start: &HolonReference) -> Result<Vec<HolonReference>, HolonErr
 /// Returns true when `candidate` is `anchor` or inherits from it through `Extends`.
 ///
 /// Compatibility is based on reference identity, not descriptor names.
-#[allow(dead_code)]
 pub(crate) fn equals_or_extends(
     candidate: &HolonReference,
     anchor: &HolonReference,
