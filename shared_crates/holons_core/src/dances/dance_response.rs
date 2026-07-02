@@ -231,7 +231,6 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::StringLengthOutOfRange { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnknownOperatorCategory { .. } => ResponseStatusCode::UnprocessableEntity,
-            HolonError::UnsupportedKeyRule { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnsupportedOperator { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnsupportedStagedTraversal { .. } => {
                 ResponseStatusCode::UnprocessableEntity

@@ -151,6 +151,10 @@ fn collect_source_owned_matches(
                 *name_matched_wrong_form = true;
             }
             TraversalDirection::Inbound if inverse.is_none() => {
+                // Without `HasInverse` there is no inverse name to compare
+                // against; inverse-direction requests on this malformed
+                // declaration surface the schema defect rather than a generic
+                // not-found.
                 if missing_inverse_for_inverse_traversal.is_none() {
                     *missing_inverse_for_inverse_traversal = Some(declared.holon().clone());
                 }
@@ -217,6 +221,10 @@ fn collect_target_owned_matches(
                 name_matched_wrong_form = true;
             }
             TraversalDirection::Outbound if inverse.is_none() => {
+                // Without `HasInverse` there is no inverse name to compare
+                // against; inverse-direction requests on this malformed
+                // declaration surface the schema defect rather than a generic
+                // not-found.
                 if missing_inverse_for_inverse_traversal.is_none() {
                     missing_inverse_for_inverse_traversal = Some(declared.holon().clone());
                 }
@@ -231,10 +239,11 @@ fn collect_target_owned_matches(
         missing_inverse_for_inverse_traversal,
         // A staged/transient endpoint cannot rely on the materialized `TargetOf`
         // inverse index, so an empty index there means "target-owned traversal is
-        // not answerable yet" rather than "no such relationship". This deliberately
-        // absorbs genuine not-found cases for unsaved endpoints (e.g. a typo on an
-        // outbound source request that also finds nothing target-owned): they
-        // surface as `UnsupportedStagedTraversal` instead of
+        // not answerable yet" rather than "no such relationship". Source-owned
+        // `InstanceRelationships` matches have already returned before this guard.
+        // This deliberately absorbs genuine not-found cases for unsaved endpoints
+        // (e.g. a typo on an outbound source request that also finds nothing
+        // target-owned): they surface as `UnsupportedStagedTraversal` instead of
         // `DescriptorDeclarationNotFound`. A saved endpoint has a trustworthy index,
         // so an empty result there is a true not-found.
         requires_materialized_target_index: target_of_members.is_empty()

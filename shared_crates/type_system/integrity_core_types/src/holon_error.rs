@@ -147,8 +147,6 @@ pub enum HolonError {
     UnexpectedValueType(String, String),
     #[error("Unknown operator category: {value}")]
     UnknownOperatorCategory { value: String },
-    #[error("Unsupported key rule {rule} for descriptor {descriptor}")]
-    UnsupportedKeyRule { rule: String, descriptor: String },
     #[error(
         "Operator {operator} is not supported for value type {value_type} on descriptor {descriptor}"
     )]
@@ -242,7 +240,6 @@ pub enum HolonErrorKind {
     UnableToAddHolons,
     UnexpectedValueType,
     UnknownOperatorCategory,
-    UnsupportedKeyRule,
     UnsupportedOperator,
     UnsupportedStagedTraversal,
     Utf8Conversion,
@@ -309,7 +306,6 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::UnableToAddHolons(_) => Self::UnableToAddHolons,
             HolonError::UnexpectedValueType(_, _) => Self::UnexpectedValueType,
             HolonError::UnknownOperatorCategory { .. } => Self::UnknownOperatorCategory,
-            HolonError::UnsupportedKeyRule { .. } => Self::UnsupportedKeyRule,
             HolonError::UnsupportedOperator { .. } => Self::UnsupportedOperator,
             HolonError::UnsupportedStagedTraversal { .. } => Self::UnsupportedStagedTraversal,
             HolonError::Utf8Conversion(_, _) => Self::Utf8Conversion,

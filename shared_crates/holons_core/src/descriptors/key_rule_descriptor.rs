@@ -25,12 +25,21 @@ impl KeyRuleDescriptor {
 
     /// Returns true when this descriptor resolves to the canonical `NoneRule`.
     pub fn is_keyless(&self) -> Result<bool, HolonError> {
-        let none_rule = MapString("NoneRule".to_string());
+        self.extends_type_name("NoneRule")
+    }
+
+    /// Returns true when this descriptor is the abstract `KeyRuleType` or extends it.
+    pub fn is_key_rule(&self) -> Result<bool, HolonError> {
+        self.extends_type_name("KeyRuleType")
+    }
+
+    fn extends_type_name(&self, expected: &str) -> Result<bool, HolonError> {
+        let expected_type_name = MapString(expected.to_string());
 
         match accessor_helpers::search_extends_chain(
             &self.holon,
-            std::slice::from_ref(&none_rule),
-            |type_name| (type_name == &none_rule).then_some(()),
+            std::slice::from_ref(&expected_type_name),
+            |type_name| (type_name == &expected_type_name).then_some(()),
         ) {
             Ok(()) => Ok(true),
             Err(HolonError::WrongDescriptorKind { .. }) => Ok(false),
@@ -104,6 +113,29 @@ mod tests {
         let descriptor = KeyRuleDescriptor::from_holon(type_name_rule.into());
 
         assert!(!descriptor.is_keyless()?);
+        Ok(())
+    }
+
+    #[test]
+    fn is_key_rule_classifies_concrete_and_invalid_rules() -> Result<(), HolonError> {
+        let context = build_context();
+        let key_rule_type =
+            new_descriptor_holon(&context, "classification-key-rule-type", "KeyRuleType", "Holon")?;
+        let mut type_name_rule = new_descriptor_holon(
+            &context,
+            "classification-type-name-rule",
+            "TypeNameRule",
+            "Holon",
+        )?;
+        let invalid_rule =
+            new_descriptor_holon(&context, "classification-invalid-rule", "NotAKeyRule", "Holon")?;
+
+        type_name_rule
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![key_rule_type.into()])?;
+
+        assert!(KeyRuleDescriptor::from_holon(type_name_rule.into()).is_key_rule()?);
+        assert!(!KeyRuleDescriptor::from_holon(invalid_rule.into()).is_key_rule()?);
+
         Ok(())
     }
 }
