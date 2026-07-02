@@ -25,6 +25,17 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Free disk space before test job
+        run: |
+          echo "Disk usage before cleanup:"
+          df -h
+          rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/ghc || true
+          sudo docker system prune -af || true
+          echo "Disk usage after cleanup:"
+          df -h
+
       - name: Install dependencies
         run: |
           nix develop --command bash -c "npm ci"
@@ -34,6 +45,9 @@ jobs:
           nix develop --command bash -c "npm run regen:sdk-fixtures && git diff --exit-code host/map-sdk/tests/fixtures/"
 
       - name: Test
+        env:
+          RUSTFLAGS: -C debuginfo=0
+          CARGO_INCREMENTAL: "0"
         run: |
           nix develop --command bash -c "npm test"
 
