@@ -1,6 +1,7 @@
 schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
   depends_on MAP Dance Schema-v0.0.4
+  depends_on MAP Query Schema-v0.0.1
   header {
     description: "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself."
   }

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-02T00:36:23.958325Z",
+    "generated_at": "2026-07-02T12:32:48.617133Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.tdl"
@@ -12,6 +12,7 @@
       "MAP Schema Types-map-core-schema-dance-schema.json",
       "MAP Schema Types-map-core-schema-keyrules-schema.json",
       "MAP Schema Types-map-core-schema-property-types.json",
+      "MAP Schema Types-map-core-schema-query-schema.json",
       "MAP Schema Types-map-core-schema-relationship-types.json"
     ]
   },
@@ -34,6 +35,12 @@
           "name": "DependsOn",
           "target": {
             "$ref": "MAP Dance Schema-v0.0.4"
+          }
+        },
+        {
+          "name": "DependsOn",
+          "target": {
+            "$ref": "MAP Query Schema-v0.0.1"
           }
         }
       ]

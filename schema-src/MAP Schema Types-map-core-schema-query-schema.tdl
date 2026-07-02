@@ -1,0 +1,818 @@
+schema MAP Query Schema-v0.0.1 {
+  depends_on MAP Core Schema-v0.0.7
+  depends_on MAP Dance Schema-v0.0.4
+  header {
+    description: "Schema containing the minimal query substrate (QueryDance, request/graph/step, bindings, and execution state) needed for the SeedHolons + Expand QueryDance vertical slice."
+  }
+}
+holon QueryDanceRequest {
+  header {
+    description: "Fixed-shape request holon supplied to a QueryDance. Names the symbolic plan to execute and the caller-supplied initial runtime bindings."
+    display_name: "Query Dance Request"
+    display_plural: "Query Dance Requests"
+    plural: "QueryDanceRequests"
+  }
+  relationships {
+    (QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType)
+    (QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)
+  }
+}
+
+
+holon QueryDanceResponse {
+  properties {
+    type_name: "QueryDanceResponse"
+    type_name_plural: "QueryDanceResponses"
+    display_name: "Query Dance Response"
+    display_name_plural: "Query Dance Responses"
+    instance_type_kind: "TypeKind.Holon"
+    description: "Concrete dance response type for query execution. Its response body is a HolonCollection; diagnostics and status live at the dance-response layer."
+    is_abstract_type: false
+    allows_additional_properties: false
+    allows_additional_relationships: false
+  }
+  relationships {
+    ComponentOf -> "MAP Query Schema-v0.0.1"
+    Extends -> "DanceResponseType.HolonType"
+    ResponseBody -> "HolonCollection.HolonType"
+  }
+}
+
+
+holon QueryGraph {
+  header {
+    description: "Symbolic query plan: a reusable, saveable artifact describing what a query means. Owns its steps, its declared input bindings, and its single declared result binding. Carries no runtime execution state."
+    display_name: "Query Graph"
+    display_plural: "Query Graphs"
+    plural: "QueryGraphs"
+  }
+  properties {
+    QueryName.PropertyType
+    QueryDescription.PropertyType
+  }
+  relationships {
+    (QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType)
+    (QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType)
+    (QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)
+  }
+}
+
+
+holon QueryStep {
+  header {
+    description: "An operation node in a QueryGraph. Names its operation kind, optional parameters, predecessor steps, an optional request-supplied initial binding (root steps only), and an optional symbolic output binding."
+    display_name: "Query Step"
+    display_plural: "Query Steps"
+    plural: "QuerySteps"
+  }
+  properties {
+    StepOrdinal.PropertyType
+    StepLabel.PropertyType
+  }
+  relationships {
+    (QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType)
+    (QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType)
+    (QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType)
+    (QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType)
+    (QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)
+  }
+}
+
+
+abstract holon QueryStepKind {
+  header {
+    description: "Abstract holon type describing a family of query-step operations. Its small semantic contract is an optional input collection type, a result collection type, and an optional parameter projection type."
+    display_name: "Query Step Kind"
+    display_plural: "Query Step Kinds"
+    plural: "QueryStepKinds"
+  }
+  relationships {
+    (QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType)
+    (QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType)
+    (QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)
+  }
+}
+
+
+holon QueryBinding {
+  header {
+    description: "Symbolic-only binding: the variable name used by a query plan. It does not carry a runtime collection; that association is made by ExecutionBinding."
+    display_name: "Query Binding"
+    display_plural: "Query Bindings"
+    plural: "QueryBindings"
+  }
+  properties {
+    BindingName.PropertyType
+  }
+}
+
+
+holon ExecutionBinding {
+  header {
+    description: "Runtime binding associating a symbolic QueryBinding with a concrete HolonCollection. Supplied as an initial binding on a request and tracked on an ExecutionInstance during a run."
+    display_name: "Execution Binding"
+    display_plural: "Execution Bindings"
+    plural: "ExecutionBindings"
+  }
+  relationships {
+    (ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType)
+    (ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)
+  }
+}
+
+
+holon ExecutionInstance {
+  header {
+    description: "One ephemeral runtime execution of one QueryDanceRequest. Owns the request it executes, the live runtime bindings, execution status, and the final result collection."
+    display_name: "Execution Instance"
+    display_plural: "Execution Instances"
+    plural: "ExecutionInstances"
+  }
+  properties {
+    ExecutionStatus.PropertyType
+  }
+  relationships {
+    (ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType)
+    (ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType)
+    (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)
+  }
+}
+
+
+holon ExpandParameters {
+  extends Projection.HolonType
+  header {
+    description: "Parameter projection for an Expand step. Carries the name of the MAP relationship channel to traverse."
+    display_name: "Expand Parameters"
+    display_plural: "Expand Parameters"
+    plural: "ExpandParameters"
+  }
+  properties {
+    RelationshipName.PropertyType
+  }
+}
+
+
+holon QueryDance {
+  properties {
+    type_name: "QueryDance"
+    type_name_plural: "QueryDances"
+    display_name: "Query Dance"
+    display_name_plural: "Query Dances"
+    instance_type_kind: "TypeKind.Holon"
+    description: "Concrete dance type for graph query execution. Its dance input is a QueryDanceRequest and its response is a QueryDanceResponse. Ordinarily afforded by HolonSpace."
+    is_abstract_type: false
+    allows_additional_properties: false
+    allows_additional_relationships: false
+    dance_description: "Executes a symbolic QueryGraph against an affording holon, producing a HolonCollection result."
+  }
+  relationships {
+    ComponentOf -> "MAP Query Schema-v0.0.1"
+    DanceInput -> "QueryDanceRequest.HolonType"
+    Extends -> "DanceType.HolonType"
+    Response -> "QueryDanceResponse.DanceResponseType"
+  }
+}
+
+
+holon SeedHolonsQueryStepType {
+  properties {
+    type_name: "SeedHolonsQueryStepType"
+    type_name_plural: "SeedHolonsQueryStepTypes"
+    display_name: "Seed Holons Query Step Type"
+    display_name_plural: "Seed Holons Query Step Types"
+    instance_type_kind: "TypeKind.Holon"
+    description: "Concrete query step kind that seeds an execution with a starting HolonCollection. Takes no input collection; produces a HolonCollection."
+    is_abstract_type: false
+    allows_additional_properties: false
+    allows_additional_relationships: false
+  }
+  relationships {
+    ComponentOf -> "MAP Query Schema-v0.0.1"
+    Extends -> "QueryStepKind.HolonType"
+    StepResultType -> "HolonCollection.HolonType"
+  }
+}
+
+
+holon ExpandQueryStepType {
+  properties {
+    type_name: "ExpandQueryStepType"
+    type_name_plural: "ExpandQueryStepTypes"
+    display_name: "Expand Query Step Type"
+    display_name_plural: "Expand Query Step Types"
+    instance_type_kind: "TypeKind.Holon"
+    description: "Concrete query step kind that follows a named MAP relationship channel. Consumes a HolonCollection, takes ExpandParameters, and produces a HolonCollection."
+    is_abstract_type: false
+    allows_additional_properties: false
+    allows_additional_relationships: false
+  }
+  relationships {
+    ComponentOf -> "MAP Query Schema-v0.0.1"
+    Extends -> "QueryStepKind.HolonType"
+    StepInputType -> "HolonCollection.HolonType"
+    StepResultType -> "HolonCollection.HolonType"
+    StepParameterType -> "ExpandParameters.Projection"
+  }
+}
+
+
+property QueryName {
+  value MapStringValueType
+  header {
+    description: "Human-facing name of a QueryGraph."
+    display_name: "Query Name"
+    display_plural: "Query Names"
+    plural: "QueryNames"
+  }
+}
+
+
+property QueryDescription {
+  value MapStringValueType
+  header {
+    description: "Human-readable description of what a QueryGraph means."
+    display_name: "Query Description"
+    display_plural: "Query Descriptions"
+    plural: "QueryDescriptions"
+  }
+}
+
+
+property BindingName {
+  value MapStringValueType
+  header {
+    description: "Symbolic variable name carried by a QueryBinding."
+    display_name: "Binding Name"
+    display_plural: "Binding Names"
+    plural: "BindingNames"
+  }
+}
+
+
+property StepOrdinal {
+  value MapIntegerValueType
+  header {
+    description: "Ordinal position of a QueryStep within its QueryGraph."
+    display_name: "Step Ordinal"
+    display_plural: "Step Ordinals"
+    plural: "StepOrdinals"
+  }
+}
+
+
+property StepLabel {
+  value MapStringValueType
+  header {
+    description: "Optional human-readable label for a QueryStep."
+    display_name: "Step Label"
+    display_plural: "Step Labels"
+    plural: "StepLabels"
+  }
+}
+
+
+property ExecutionStatus {
+  value ExecutionStatus
+  header {
+    description: "Status of an ExecutionInstance, recorded as an ExecutionStatus enum value."
+    display_name: "Execution Status"
+    display_plural: "Execution Statuses"
+    plural: "ExecutionStatuses"
+  }
+}
+
+
+enum ExecutionStatus {
+  extends MapEnumValueType
+  header {
+    description: "Enum value type for the lifecycle status of an ExecutionInstance."
+    display_name: "Execution Status"
+    display_plural: "Execution Statuses"
+    plural: "ExecutionStatuses"
+  }
+  variants {
+    variant Pending {
+      header {
+        description: "Execution has been created but not yet started."
+        display_name: "Pending"
+        display_plural: "Pendings"
+        plural: "Pendings"
+      }
+    }
+    variant Running {
+      header {
+        description: "Execution is in progress."
+        display_name: "Running"
+        display_plural: "Runnings"
+        plural: "Runnings"
+      }
+    }
+    variant Complete {
+      header {
+        description: "Execution finished successfully."
+        display_name: "Complete"
+        display_plural: "Completes"
+        plural: "Completes"
+      }
+    }
+    variant Failed {
+      header {
+        description: "Execution terminated with a failure."
+        display_name: "Failed"
+        display_plural: "Faileds"
+        plural: "Faileds"
+      }
+    }
+  }
+}
+
+
+def relationship QueryGraph {
+  source QueryDanceRequest.HolonType
+  target QueryGraph.HolonType
+  inverse GraphForQueryDanceRequest
+  cardinality 1..1
+  header {
+    description: "Links a QueryDanceRequest to the symbolic QueryGraph it executes."
+    display_name: "QueryGraph Relationship"
+    display_plural: "QueryGraph Relationships"
+    plural: "QueryGraphRelationships"
+  }
+}
+
+
+inverse relationship GraphForQueryDanceRequest {
+  source QueryGraph.HolonType
+  target QueryDanceRequest.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of QueryGraph, from QueryGraph to QueryDanceRequest."
+    display_name: "GraphForQueryDanceRequest Relationship"
+    display_plural: "GraphForQueryDanceRequest Relationships"
+    plural: "GraphForQueryDanceRequestRelationships"
+  }
+}
+
+
+def relationship InitialBindings {
+  source QueryDanceRequest.HolonType
+  target ExecutionBinding.HolonType
+  inverse InitialBindingForQueryDanceRequest
+  cardinality 0..32767
+  ordered
+  header {
+    description: "Links a QueryDanceRequest to the caller-supplied initial ExecutionBindings that seed the run."
+    display_name: "InitialBindings Relationship"
+    display_plural: "InitialBindings Relationships"
+    plural: "InitialBindingsRelationships"
+  }
+}
+
+
+inverse relationship InitialBindingForQueryDanceRequest {
+  source ExecutionBinding.HolonType
+  target QueryDanceRequest.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of InitialBindings, from ExecutionBinding to QueryDanceRequest."
+    display_name: "InitialBindingForQueryDanceRequest Relationship"
+    display_plural: "InitialBindingForQueryDanceRequest Relationships"
+    plural: "InitialBindingForQueryDanceRequestRelationships"
+  }
+}
+
+
+def relationship QuerySteps {
+  source QueryGraph.HolonType
+  target QueryStep.HolonType
+  inverse StepInQueryGraph
+  cardinality 1..32767
+  ordered
+  header {
+    description: "Links a QueryGraph to the QuerySteps that make up its plan body."
+    display_name: "QuerySteps Relationship"
+    display_plural: "QuerySteps Relationships"
+    plural: "QueryStepsRelationships"
+  }
+}
+
+
+inverse relationship StepInQueryGraph {
+  source QueryStep.HolonType
+  target QueryGraph.HolonType
+  cardinality 1..1
+  header {
+    description: "Inverse of QuerySteps, from QueryStep to QueryGraph."
+    display_name: "StepInQueryGraph Relationship"
+    display_plural: "StepInQueryGraph Relationships"
+    plural: "StepInQueryGraphRelationships"
+  }
+}
+
+
+def relationship DeclaredInputBindings {
+  source QueryGraph.HolonType
+  target QueryBinding.HolonType
+  inverse InputBindingForQueryGraph
+  cardinality 0..32767
+  ordered
+  header {
+    description: "Links a QueryGraph to the symbolic QueryBindings it declares as its external input contract."
+    display_name: "DeclaredInputBindings Relationship"
+    display_plural: "DeclaredInputBindings Relationships"
+    plural: "DeclaredInputBindingsRelationships"
+  }
+}
+
+
+inverse relationship InputBindingForQueryGraph {
+  source QueryBinding.HolonType
+  target QueryGraph.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of DeclaredInputBindings, from QueryBinding to QueryGraph."
+    display_name: "InputBindingForQueryGraph Relationship"
+    display_plural: "InputBindingForQueryGraph Relationships"
+    plural: "InputBindingForQueryGraphRelationships"
+  }
+}
+
+
+def relationship DeclaredResultBinding {
+  source QueryGraph.HolonType
+  target QueryBinding.HolonType
+  inverse ResultBindingForQueryGraph
+  cardinality 1..1
+  header {
+    description: "Links a QueryGraph to the single QueryBinding designated as its exported result."
+    display_name: "DeclaredResultBinding Relationship"
+    display_plural: "DeclaredResultBinding Relationships"
+    plural: "DeclaredResultBindingRelationships"
+  }
+}
+
+
+inverse relationship ResultBindingForQueryGraph {
+  source QueryBinding.HolonType
+  target QueryGraph.HolonType
+  cardinality 0..1
+  header {
+    description: "Inverse of DeclaredResultBinding, from QueryBinding to QueryGraph."
+    display_name: "ResultBindingForQueryGraph Relationship"
+    display_plural: "ResultBindingForQueryGraph Relationships"
+    plural: "ResultBindingForQueryGraphRelationships"
+  }
+}
+
+
+def relationship StepKind {
+  source QueryStep.HolonType
+  target QueryStepKind.HolonType
+  inverse StepKindFor
+  cardinality 1..1
+  header {
+    description: "Links a QueryStep to the QueryStepKind describing its operation."
+    display_name: "StepKind Relationship"
+    display_plural: "StepKind Relationships"
+    plural: "StepKindRelationships"
+  }
+}
+
+
+inverse relationship StepKindFor {
+  source QueryStepKind.HolonType
+  target QueryStep.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of StepKind, from QueryStepKind to QueryStep."
+    display_name: "StepKindFor Relationship"
+    display_plural: "StepKindFor Relationships"
+    plural: "StepKindForRelationships"
+  }
+}
+
+
+def relationship UsesInitialBinding {
+  source QueryStep.HolonType
+  target QueryBinding.HolonType
+  inverse InitialBindingUsedByStep
+  cardinality 0..1
+  header {
+    description: "Lets a root QueryStep name the request-supplied initial QueryBinding it consumes."
+    display_name: "UsesInitialBinding Relationship"
+    display_plural: "UsesInitialBinding Relationships"
+    plural: "UsesInitialBindingRelationships"
+  }
+}
+
+
+inverse relationship InitialBindingUsedByStep {
+  source QueryBinding.HolonType
+  target QueryStep.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of UsesInitialBinding, from QueryBinding to QueryStep."
+    display_name: "InitialBindingUsedByStep Relationship"
+    display_plural: "InitialBindingUsedByStep Relationships"
+    plural: "InitialBindingUsedByStepRelationships"
+  }
+}
+
+
+def relationship StepOutputBinding {
+  source QueryStep.HolonType
+  target QueryBinding.HolonType
+  inverse OutputBindingForStep
+  cardinality 0..1
+  header {
+    description: "Optionally attaches a symbolic QueryBinding name to a QueryStep's output."
+    display_name: "StepOutputBinding Relationship"
+    display_plural: "StepOutputBinding Relationships"
+    plural: "StepOutputBindingRelationships"
+  }
+}
+
+
+inverse relationship OutputBindingForStep {
+  source QueryBinding.HolonType
+  target QueryStep.HolonType
+  cardinality 0..1
+  header {
+    description: "Inverse of StepOutputBinding, from QueryBinding to QueryStep."
+    display_name: "OutputBindingForStep Relationship"
+    display_plural: "OutputBindingForStep Relationships"
+    plural: "OutputBindingForStepRelationships"
+  }
+}
+
+
+def relationship StepParameters {
+  source QueryStep.HolonType
+  target Projection.HolonType
+  inverse ParametersForStep
+  cardinality 0..1
+  header {
+    description: "Links a QueryStep to the Projection holding its operation parameters."
+    display_name: "StepParameters Relationship"
+    display_plural: "StepParameters Relationships"
+    plural: "StepParametersRelationships"
+  }
+}
+
+
+inverse relationship ParametersForStep {
+  source Projection.HolonType
+  target QueryStep.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of StepParameters, from Projection to QueryStep."
+    display_name: "ParametersForStep Relationship"
+    display_plural: "ParametersForStep Relationships"
+    plural: "ParametersForStepRelationships"
+  }
+}
+
+
+def relationship StepDependsOn {
+  source QueryStep.HolonType
+  target QueryStep.HolonType
+  inverse StepDependedOnBy
+  cardinality 0..32767
+  ordered
+  header {
+    description: "Links a QueryStep to the predecessor QuerySteps whose output it consumes. This is the normal structural flow mechanism between steps."
+    display_name: "StepDependsOn Relationship"
+    display_plural: "StepDependsOn Relationships"
+    plural: "StepDependsOnRelationships"
+  }
+}
+
+
+inverse relationship StepDependedOnBy {
+  source QueryStep.HolonType
+  target QueryStep.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of StepDependsOn, from a QueryStep to the successor QuerySteps that depend on it."
+    display_name: "StepDependedOnBy Relationship"
+    display_plural: "StepDependedOnBy Relationships"
+    plural: "StepDependedOnByRelationships"
+  }
+}
+
+
+def relationship StepInputType {
+  source QueryStepKind.HolonType
+  target HolonCollection.HolonType
+  inverse InputTypeForStepKind
+  cardinality 0..1
+  header {
+    description: "Links a QueryStepKind to the HolonCollection type it consumes as input."
+    display_name: "StepInputType Relationship"
+    display_plural: "StepInputType Relationships"
+    plural: "StepInputTypeRelationships"
+  }
+}
+
+
+inverse relationship InputTypeForStepKind {
+  source HolonCollection.HolonType
+  target QueryStepKind.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of StepInputType, from HolonCollection to QueryStepKind."
+    display_name: "InputTypeForStepKind Relationship"
+    display_plural: "InputTypeForStepKind Relationships"
+    plural: "InputTypeForStepKindRelationships"
+  }
+}
+
+
+def relationship StepResultType {
+  source QueryStepKind.HolonType
+  target HolonCollection.HolonType
+  inverse ResultTypeForStepKind
+  cardinality 1..1
+  header {
+    description: "Links a QueryStepKind to the HolonCollection type it produces as its result."
+    display_name: "StepResultType Relationship"
+    display_plural: "StepResultType Relationships"
+    plural: "StepResultTypeRelationships"
+  }
+}
+
+
+inverse relationship ResultTypeForStepKind {
+  source HolonCollection.HolonType
+  target QueryStepKind.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of StepResultType, from HolonCollection to QueryStepKind."
+    display_name: "ResultTypeForStepKind Relationship"
+    display_plural: "ResultTypeForStepKind Relationships"
+    plural: "ResultTypeForStepKindRelationships"
+  }
+}
+
+
+def relationship StepParameterType {
+  source QueryStepKind.HolonType
+  target Projection.HolonType
+  inverse ParameterTypeForStepKind
+  cardinality 0..1
+  header {
+    description: "Links a QueryStepKind to the Projection type it expects as its parameters."
+    display_name: "StepParameterType Relationship"
+    display_plural: "StepParameterType Relationships"
+    plural: "StepParameterTypeRelationships"
+  }
+}
+
+
+inverse relationship ParameterTypeForStepKind {
+  source Projection.HolonType
+  target QueryStepKind.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of StepParameterType, from Projection to QueryStepKind."
+    display_name: "ParameterTypeForStepKind Relationship"
+    display_plural: "ParameterTypeForStepKind Relationships"
+    plural: "ParameterTypeForStepKindRelationships"
+  }
+}
+
+
+def relationship ExecutesRequest {
+  source ExecutionInstance.HolonType
+  target QueryDanceRequest.HolonType
+  inverse ExecutedBy
+  cardinality 1..1
+  header {
+    description: "Links an ExecutionInstance to the QueryDanceRequest it is executing."
+    display_name: "ExecutesRequest Relationship"
+    display_plural: "ExecutesRequest Relationships"
+    plural: "ExecutesRequestRelationships"
+  }
+}
+
+
+inverse relationship ExecutedBy {
+  source QueryDanceRequest.HolonType
+  target ExecutionInstance.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of ExecutesRequest, from QueryDanceRequest to ExecutionInstance."
+    display_name: "ExecutedBy Relationship"
+    display_plural: "ExecutedBy Relationships"
+    plural: "ExecutedByRelationships"
+  }
+}
+
+
+def relationship ExecutionBindings {
+  source ExecutionInstance.HolonType
+  target ExecutionBinding.HolonType
+  inverse BindingForExecutionInstance
+  cardinality 0..32767
+  header {
+    description: "Links an ExecutionInstance to its live runtime ExecutionBindings."
+    display_name: "ExecutionBindings Relationship"
+    display_plural: "ExecutionBindings Relationships"
+    plural: "ExecutionBindingsRelationships"
+  }
+}
+
+
+inverse relationship BindingForExecutionInstance {
+  source ExecutionBinding.HolonType
+  target ExecutionInstance.HolonType
+  cardinality 0..1
+  header {
+    description: "Inverse of ExecutionBindings, from ExecutionBinding to ExecutionInstance."
+    display_name: "BindingForExecutionInstance Relationship"
+    display_plural: "BindingForExecutionInstance Relationships"
+    plural: "BindingForExecutionInstanceRelationships"
+  }
+}
+
+
+def relationship BindsQueryVariable {
+  source ExecutionBinding.HolonType
+  target QueryBinding.HolonType
+  inverse ExecutionVariableBinding
+  cardinality 1..1
+  header {
+    description: "Links an ExecutionBinding to the symbolic QueryBinding (variable) it binds."
+    display_name: "BindsQueryVariable Relationship"
+    display_plural: "BindsQueryVariable Relationships"
+    plural: "BindsQueryVariableRelationships"
+  }
+}
+
+
+inverse relationship ExecutionVariableBinding {
+  source QueryBinding.HolonType
+  target ExecutionBinding.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of BindsQueryVariable, from QueryBinding to ExecutionBinding."
+    display_name: "ExecutionVariableBinding Relationship"
+    display_plural: "ExecutionVariableBinding Relationships"
+    plural: "ExecutionVariableBindingRelationships"
+  }
+}
+
+
+def relationship BoundCollection {
+  source ExecutionBinding.HolonType
+  target HolonCollection.HolonType
+  inverse CollectionBoundIn
+  cardinality 1..1
+  header {
+    description: "Links an ExecutionBinding to the runtime HolonCollection it binds its variable to."
+    display_name: "BoundCollection Relationship"
+    display_plural: "BoundCollection Relationships"
+    plural: "BoundCollectionRelationships"
+  }
+}
+
+
+inverse relationship CollectionBoundIn {
+  source HolonCollection.HolonType
+  target ExecutionBinding.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of BoundCollection, from HolonCollection to ExecutionBinding."
+    display_name: "CollectionBoundIn Relationship"
+    display_plural: "CollectionBoundIn Relationships"
+    plural: "CollectionBoundInRelationships"
+  }
+}
+
+
+relationship ExecutionResult {
+  source ExecutionInstance.HolonType
+  target HolonCollection.HolonType
+  inverse ResultOfExecution
+  cardinality 0..1
+  header {
+    description: "Links an ExecutionInstance to the final HolonCollection result of the run."
+    display_name: "ExecutionResult Relationship"
+    display_plural: "ExecutionResult Relationships"
+    plural: "ExecutionResultRelationships"
+  }
+}
+
+
+inverse relationship ResultOfExecution {
+  source HolonCollection.HolonType
+  target ExecutionInstance.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of ExecutionResult, from HolonCollection to ExecutionInstance."
+    display_name: "ResultOfExecution Relationship"
+    display_plural: "ResultOfExecution Relationships"
+    plural: "ResultOfExecutionRelationships"
+  }
+}

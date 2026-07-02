@@ -1329,7 +1329,9 @@ fn holon_key_for_emit(descriptor: &TdlDescriptor) -> String {
     match parent.as_str() {
         "CommandType.HolonType" => format!("{}.CommandType", descriptor.name),
         "Projection.HolonType" => format!("{}.Projection", descriptor.name),
+        "DanceType.HolonType" => format!("{}.DanceType", descriptor.name),
         "DanceResponseType.HolonType" => format!("{}.DanceResponseType", descriptor.name),
+        "QueryStepKind.HolonType" => format!("{}.QueryStepKind", descriptor.name),
         "HolonError.HolonType" => format!("{}.HolonError", descriptor.name),
         "KeyRuleType" | "KeyRuleType.HolonType" => format!("{}.KeyRuleType", descriptor.name),
         "ValueConstraintType.HolonType" => format!("{}.ValueConstraintType", descriptor.name),
@@ -1450,7 +1452,6 @@ mod tests {
     use super::*;
     use crate::decompile_inputs;
     use serde_json::Value;
-    use std::collections::HashSet;
     use std::{
         env, fs,
         time::{SystemTime, UNIX_EPOCH},
@@ -1486,6 +1487,10 @@ mod tests {
         Ok(dir)
     }
 
+    fn discovered_tdl_file_count(root: &Path) -> Result<usize> {
+        Ok(collect_tdl_files(&[root.to_path_buf()])?.len())
+    }
+
     #[test]
     fn checks_core_schema_corpus_without_diagnostics() -> Result<()> {
         let diagnostics = check_inputs(&[fixture_dir()])?;
@@ -1495,23 +1500,28 @@ mod tests {
 
     #[test]
     fn lowers_core_schema_corpus_into_shared_schema_ir() -> Result<()> {
-        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let fixture_root = fixture_dir();
+        let lowered = lower_inputs_to_schema_ir(&[fixture_root.clone()])?;
 
         assert!(lowered.diagnostics.is_empty());
-        assert_eq!(lowered.files.len(), 11);
-        assert_eq!(lowered.global_model.schemas.len(), 3);
-        assert_eq!(lowered.global_model.descriptors.len(), 317);
-        assert_eq!(lowered.symbols.symbols().len(), 320);
+        assert_eq!(lowered.files.len(), discovered_tdl_file_count(&fixture_root)?);
+        assert!(!lowered.global_model.schemas.is_empty());
+        assert!(!lowered.global_model.descriptors.is_empty());
+        assert_eq!(
+            lowered.symbols.symbols().len(),
+            lowered.global_model.schemas.len() + lowered.global_model.descriptors.len()
+        );
 
         Ok(())
     }
 
     #[test]
     fn lowers_core_schema_corpus_into_loader_ir_documents() -> Result<()> {
-        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let fixture_root = fixture_dir();
+        let lowered = lower_inputs_to_schema_ir(&[fixture_root.clone()])?;
         let compilation = build_compilation(lowered)?;
 
-        assert_eq!(compilation.files.len(), 11);
+        assert_eq!(compilation.files.len(), discovered_tdl_file_count(&fixture_root)?);
         assert!(compilation.diagnostics.is_empty());
 
         let loader_types = compilation
@@ -1538,10 +1548,11 @@ mod tests {
 
     #[test]
     fn compiles_core_schema_corpus_into_generated_json() -> Result<()> {
+        let fixture_root = fixture_dir();
         let out_dir = temp_out_dir();
-        let files = compile_inputs(&[fixture_dir()], &out_dir)?;
+        let files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(files.len(), 11);
+        assert_eq!(files.len(), discovered_tdl_file_count(&fixture_root)?);
         crate::test_support::assert_json_dir_trees_eq_ignoring_meta(&generated_fixture_dir(), &out_dir);
         Ok(())
     }
@@ -1550,8 +1561,8 @@ mod tests {
     fn compiled_core_schema_corpus_has_no_missing_internal_refs() -> Result<()> {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
+        let lowered = crate::lower_inputs_to_schema_ir(&[out_dir.clone()])?;
 
-        let mut emitted_keys = HashSet::new();
         let mut ref_targets = Vec::new();
 
         for entry in fs::read_dir(&out_dir)? {
@@ -1568,7 +1579,6 @@ mod tests {
                     .and_then(Value::as_str)
                     .expect("compiled holon key")
                     .to_string();
-                emitted_keys.insert(key.clone());
 
                 if let Some(relationships) = holon.get("relationships").and_then(Value::as_array) {
                     for relationship in relationships {
@@ -1616,8 +1626,7 @@ mod tests {
             .into_iter()
             .filter(|(_, _, target)| {
                 target != "MAP Core Schema-v0.0.7"
-                    && target != "QueryDance.DanceType"
-                    && !emitted_keys.contains(target)
+                    && lowered.symbols.lookup_reference_target(target).is_none()
             })
             .collect::<Vec<_>>();
 

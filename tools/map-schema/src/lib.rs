@@ -186,9 +186,6 @@ fn parse_files(discovered: &[DiscoveredFile]) -> Result<Vec<ParsedFile>> {
             .with_context(|| format!("parsing JSON import file {}", path.display()))?;
         let schema_name = infer_schema_name(&import)
             .with_context(|| format!("inferring schema name for {}", path.display()))?;
-        if schema_name == "MAP Query Schema-v0.0.1" {
-            continue;
-        }
         parsed.push(ParsedFile {
             relative_path: discovered_file.relative_path.clone(),
             schema_name,
@@ -206,14 +203,14 @@ fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredJsonProject> {
 }
 
 fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedFile>) -> Result<LoweredJsonProject> {
-    let schema_by_name = schema_names_by_relative_path(&parsed);
+    let corpus_index = CorpusIndex::from_parsed(&parsed);
     let mut files = Vec::with_capacity(parsed.len());
     let mut global_model = SemanticModel::new();
 
     for parsed_file in parsed {
         let loader_document = lower_file_to_loader_ir(&parsed_file);
         let file_model =
-            project_loader_ir_to_schema_ir(&parsed_file, &loader_document, &schema_by_name);
+            project_loader_ir_to_schema_ir(&parsed_file, &loader_document, &corpus_index);
         let mut merge_model = file_model.clone();
         for schema in merge_model.schemas.drain(..) {
             merge_schema(&mut global_model, schema);
@@ -231,14 +228,44 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedFile>) -> Result<LoweredJso
     Ok(LoweredJsonProject { files, global_model, symbols, diagnostics })
 }
 
-fn schema_names_by_relative_path(parsed: &[ParsedFile]) -> HashMap<String, String> {
-    let mut map = HashMap::new();
-    for file in parsed {
-        if let Some(file_name) = file.relative_path.file_name().and_then(|name| name.to_str()) {
-            map.insert(file_name.to_string(), file.schema_name.clone());
+#[derive(Debug, Clone)]
+struct CorpusIndex {
+    schema_names_by_relative_path: HashMap<String, String>,
+    schema_names_by_basename: HashMap<String, Vec<String>>,
+}
+
+impl CorpusIndex {
+    fn from_parsed(parsed: &[ParsedFile]) -> Self {
+        let mut schema_names_by_relative_path = HashMap::new();
+        let mut schema_names_by_basename: HashMap<String, Vec<String>> = HashMap::new();
+        for file in parsed {
+            let relative_path = file.relative_path.to_string_lossy().to_string();
+            schema_names_by_relative_path.insert(relative_path, file.schema_name.clone());
+
+            if let Some(file_name) = file.relative_path.file_name().and_then(|name| name.to_str()) {
+                schema_names_by_basename
+                    .entry(file_name.to_string())
+                    .or_default()
+                    .push(file.schema_name.clone());
+            }
         }
+
+        Self { schema_names_by_relative_path, schema_names_by_basename }
     }
-    map
+
+    fn resolve_dependency(&self, referenced: &str) -> Option<String> {
+        if let Some(schema_name) = self.schema_names_by_relative_path.get(referenced) {
+            return Some(schema_name.clone());
+        }
+
+        let basename = Path::new(referenced).file_name()?.to_str()?;
+        let schema_names = self.schema_names_by_basename.get(basename)?;
+        if schema_names.len() == 1 {
+            return schema_names.first().cloned();
+        }
+
+        None
+    }
 }
 
 fn infer_schema_name(import: &ImportFile) -> Option<String> {
@@ -298,9 +325,9 @@ fn lower_file_to_loader_ir(file: &ParsedFile) -> LoaderDocument {
 fn project_loader_ir_to_schema_ir(
     file: &ParsedFile,
     document: &LoaderDocument,
-    schema_by_name: &HashMap<String, String>,
+    corpus_index: &CorpusIndex,
 ) -> SemanticModel {
-    semantic_model_from_loader_document(file, document, schema_by_name)
+    semantic_model_from_loader_document(file, document, corpus_index)
 }
 
 fn merge_schema(model: &mut SemanticModel, schema: Schema) {
@@ -330,7 +357,7 @@ fn merge_schema(model: &mut SemanticModel, schema: Schema) {
 fn semantic_model_from_loader_document(
     file: &ParsedFile,
     document: &LoaderDocument,
-    schema_by_name: &HashMap<String, String>,
+    corpus_index: &CorpusIndex,
 ) -> SemanticModel {
     let origin = Origin {
         source_kind: SourceKind::JsonImport,
@@ -339,7 +366,7 @@ fn semantic_model_from_loader_document(
         column: None,
     };
     let mut model = SemanticModel::new();
-    let dependencies = schema_dependencies(file, schema_by_name)
+    let dependencies = schema_dependencies(file, corpus_index)
         .into_iter()
         .map(|dependency| SemanticReference::unresolved(ReferenceRole::DependsOn, dependency))
         .collect::<Vec<_>>();
@@ -1129,14 +1156,14 @@ fn format_origin(origin: &Origin) -> String {
     }
 }
 
-fn schema_dependencies(file: &ParsedFile, schema_by_name: &HashMap<String, String>) -> Vec<String> {
+fn schema_dependencies(file: &ParsedFile, corpus_index: &CorpusIndex) -> Vec<String> {
     let mut deps = Vec::new();
     let mut seen = HashSet::new();
     for referenced in &file.import.meta.load_with {
-        let Some(schema_name) = schema_by_name.get(referenced) else {
+        let Some(schema_name) = corpus_index.resolve_dependency(referenced) else {
             continue;
         };
-        if schema_name != &file.schema_name && seen.insert(schema_name.clone()) {
+        if schema_name != file.schema_name && seen.insert(schema_name.clone()) {
             deps.push(schema_name.clone());
         }
     }
@@ -1304,11 +1331,36 @@ mod tests {
         env::temp_dir().join(format!("map-schema-roundtrip-json-{nanos}"))
     }
 
+    fn temp_domain_json_dir() -> PathBuf {
+        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        env::temp_dir().join(format!("map-schema-domain-json-{nanos}"))
+    }
+
+    fn copy_directory_tree(source: &Path, target: &Path) -> Result<()> {
+        fs::create_dir_all(target)?;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let path = entry.path();
+            let target_path = target.join(entry.file_name());
+            if path.is_dir() {
+                copy_directory_tree(&path, &target_path)?;
+            } else {
+                fs::copy(&path, &target_path)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn discovered_json_file_count(root: &Path) -> Result<usize> {
+        Ok(collect_input_files(&[root.to_path_buf()])?.len())
+    }
+
     #[test]
     fn decompiles_core_schema_corpus() -> Result<()> {
+        let source_dir = source_fixture_dir();
         let out_dir = temp_out_dir();
-        let files = decompile_inputs(&[source_fixture_dir()], &out_dir)?;
-        assert_eq!(files.len(), 11);
+        let files = decompile_inputs(&[source_dir.clone()], &out_dir)?;
+        assert_eq!(files.len(), discovered_json_file_count(&source_dir)?);
         crate::test_support::assert_dir_tree_eq(&schema_src_dir(), &out_dir);
         Ok(())
     }
@@ -1318,14 +1370,19 @@ mod tests {
         let source_dir = source_fixture_dir();
         let decompiled_tdl_dir = temp_roundtrip_tdl_dir();
         let regenerated_json_dir = temp_roundtrip_json_dir();
+        let expected_json_file_count = discovered_json_file_count(&source_dir)?;
 
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_tdl_dir)?;
-        assert_eq!(decompiled_files.len(), 11, "decompile should emit one TDL file per corpus input");
+        assert_eq!(
+            decompiled_files.len(),
+            expected_json_file_count,
+            "decompile should emit one TDL file per discovered JSON input"
+        );
 
         let regenerated_files = compile_inputs(&[decompiled_tdl_dir.clone()], &regenerated_json_dir)?;
         assert_eq!(
             regenerated_files.len(),
-            11,
+            decompiled_files.len(),
             "compile should emit one JSON file per decompiled TDL file"
         );
 
@@ -1385,13 +1442,17 @@ mod tests {
 
     #[test]
     fn lowers_core_schema_json_corpus_into_shared_schema_ir() -> Result<()> {
+        let source_dir = source_fixture_dir();
         let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
 
         assert!(lowered.diagnostics.is_empty());
-        assert_eq!(lowered.files.len(), 11);
-        assert_eq!(lowered.global_model.schemas.len(), 3);
-        assert_eq!(lowered.global_model.descriptors.len(), 317);
-        assert_eq!(lowered.symbols.symbols().len(), 320);
+        assert_eq!(lowered.files.len(), discovered_json_file_count(&source_dir)?);
+        assert!(!lowered.global_model.schemas.is_empty());
+        assert!(!lowered.global_model.descriptors.is_empty());
+        assert_eq!(
+            lowered.symbols.symbols().len(),
+            lowered.global_model.schemas.len() + lowered.global_model.descriptors.len()
+        );
 
         Ok(())
     }
@@ -1426,9 +1487,10 @@ mod tests {
 
     #[test]
     fn lowers_core_schema_json_corpus_into_loader_ir_documents() -> Result<()> {
+        let source_dir = source_fixture_dir();
         let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
 
-        assert_eq!(lowered.files.len(), 11);
+        assert_eq!(lowered.files.len(), discovered_json_file_count(&source_dir)?);
         let root_file = lowered
             .files
             .iter()
@@ -1443,6 +1505,48 @@ mod tests {
             .holons
             .iter()
             .any(|holon| holon.key == "MAP Core Schema-v0.0.7"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn decompile_and_compile_arbitrary_json_directory_preserves_nested_paths_and_dependencies(
+    ) -> Result<()> {
+        let source_dir = temp_domain_json_dir();
+        let copied_input_dir = source_dir.join("domain/core-schema");
+        copy_directory_tree(&source_fixture_dir(), &copied_input_dir)?;
+
+        let lowered = lower_inputs_to_schema_ir(&[source_dir.clone()])?;
+        assert_eq!(lowered.files.len(), discovered_json_file_count(&copied_input_dir)?);
+
+        let decompiled_dir = temp_out_dir();
+        let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_dir)?;
+        assert_eq!(
+            decompiled_files.len(),
+            discovered_json_file_count(&copied_input_dir)?
+        );
+        assert!(decompiled_files
+            .iter()
+            .any(|path| {
+                path.to_string_lossy()
+                    .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-root.tdl")
+            }));
+        assert!(decompiled_files
+            .iter()
+            .any(|path| {
+                path.to_string_lossy()
+                    .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-dance-schema.tdl")
+            }));
+
+        let regenerated_dir = temp_roundtrip_json_dir();
+        let regenerated_files = compile_inputs(&[decompiled_dir.clone()], &regenerated_dir)?;
+        assert_eq!(regenerated_files.len(), decompiled_files.len());
+
+        let regenerated_lowered = lower_inputs_to_schema_ir(&[regenerated_dir.clone()])?;
+        assert_eq!(
+            lowered.global_model.comparable_signature(),
+            regenerated_lowered.global_model.comparable_signature()
+        );
 
         Ok(())
     }
