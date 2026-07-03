@@ -251,6 +251,14 @@ impl ReadableHolonImpl for SmartReference {
         Ok(())
     }
 
+    fn is_committed_source_impl(&self) -> Result<bool, HolonError> {
+        Ok(true)
+    }
+
+    fn holon_reference_impl(&self) -> HolonReference {
+        self.into()
+    }
+
     /// Extracts the Holon's primary key from `smart_property_values` or, if not found there,
     /// from its referenced holon. Returns `Ok(Some(MapString))` if found, or `Ok(None)` if absent.
     fn key_impl(&self) -> Result<Option<MapString>, HolonError> {

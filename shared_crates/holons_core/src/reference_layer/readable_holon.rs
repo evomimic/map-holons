@@ -1,7 +1,8 @@
 use std::sync::{Arc, RwLock};
 
 use super::{HolonReference, TransientReference};
-use crate::descriptors::HolonDescriptor;
+use crate::descriptors::{HolonDescriptor, QualifiedRelationship};
+use crate::reference_layer::available_relationships;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::{
     core_shared_objects::{
@@ -146,6 +147,13 @@ pub trait ReadableHolon: ReadableHolonImpl {
     ///
     /// # See also
     /// - [`ToRelationshipName`] for supported input conversions.
+    // TODO(#536 follow-up): validate the requested name against the source
+    // type's effective relationship surface before resolving. Intended errors:
+    // `InvalidRelationshipName` when the name is not a valid outbound
+    // relationship for the source holon's type (takes precedence), and
+    // `RelationshipUnavailableInState` when the name resolves to an inverse
+    // relationship but the source is transient or staged-uncommitted (inverse
+    // SmartLinks are only materialized at commit). Out of scope for PR #573.
     #[inline]
     fn related_holons<T: ToRelationshipName>(
         &self,
@@ -153,6 +161,22 @@ pub trait ReadableHolon: ReadableHolonImpl {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         let rel = name.to_relationship_name();
         ReadableHolonImpl::related_holons_impl(self, &rel)
+    }
+
+    /// Enumerates relationships available on this source in its current state.
+    ///
+    /// Availability filters the effective outbound relationship set by source
+    /// commit state:
+    ///
+    /// | Source reference state          | Declared | Inverse |
+    /// | ------------------------------- | -------- | ------- |
+    /// | `SmartReference`                | yes      | yes     |
+    /// | committed `StagedReference`     | yes      | yes     |
+    /// | uncommitted `StagedReference`   | yes      | no      |
+    /// | `TransientReference`            | yes      | no      |
+    #[inline]
+    fn available_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
+        available_relationships::available_relationships(self)
     }
 
     fn holon_descriptor(&self) -> Result<HolonDescriptor, HolonError> {

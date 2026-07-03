@@ -116,6 +116,7 @@ pub enum CoreRelationshipTypeName {
     SourceOf,
     SourceType,
     Successor,
+    TargetOf,
     TargetType,
     TransactionModelAffordedBy,
     UsesKeyRule,

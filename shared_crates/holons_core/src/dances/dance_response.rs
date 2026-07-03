@@ -206,6 +206,9 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
 
             // 422-ish (semantic validation / parse errors)
+            HolonError::AmbiguousRelationshipTraversal { .. } => {
+                ResponseStatusCode::UnprocessableEntity
+            }
             HolonError::DescriptorSchemaInvalid { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::IntegerOutOfRange { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::LoaderParsingError(_) => ResponseStatusCode::UnprocessableEntity,
@@ -222,11 +225,15 @@ impl From<HolonError> for ResponseStatusCode {
                 ResponseStatusCode::UnprocessableEntity
             }
             HolonError::MultipleRelatedHolons { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::NoEffectiveKeyRule { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceBindingFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::StringLengthOutOfRange { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnknownOperatorCategory { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::UnsupportedOperator { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::UnsupportedStagedTraversal { .. } => {
+                ResponseStatusCode::UnprocessableEntity
+            }
             HolonError::ValueKindMismatch { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ValidationError(_) => ResponseStatusCode::UnprocessableEntity,
 
