@@ -217,6 +217,14 @@ impl ReadableHolonImpl for TransientReference {
         Ok(())
     }
 
+    fn is_committed_source_impl(&self) -> Result<bool, HolonError> {
+        Ok(false)
+    }
+
+    fn holon_reference_impl(&self) -> HolonReference {
+        self.into()
+    }
+
     fn key_impl(&self) -> Result<Option<MapString>, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;

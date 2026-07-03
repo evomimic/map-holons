@@ -273,8 +273,8 @@ impl HolonDescriptor {
     /// `SourceType` is this type.
     ///
     /// This is a type-level, state-agnostic enumeration; use
-    /// [`crate::descriptors::available_relationships`] to filter by the state
-    /// of a concrete source holon reference.
+    /// [`crate::reference_layer::ReadableHolon::available_relationships`] to
+    /// filter by the state of a concrete source holon reference.
     pub fn effective_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
         effective_relationships::effective_relationships(self)
     }

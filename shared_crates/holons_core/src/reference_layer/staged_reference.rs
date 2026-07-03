@@ -506,6 +506,14 @@ impl ReadableHolonImpl for StagedReference {
 
         Ok(())
     }
+
+    fn is_committed_source_impl(&self) -> Result<bool, HolonError> {
+        self.is_committed()
+    }
+
+    fn holon_reference_impl(&self) -> HolonReference {
+        self.into()
+    }
 }
 
 impl WritableHolonImpl for StagedReference {

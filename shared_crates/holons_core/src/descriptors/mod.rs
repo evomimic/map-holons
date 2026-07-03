@@ -15,7 +15,6 @@ pub mod operator_category;
 pub mod operator_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
-pub mod relationship_surface;
 #[cfg(test)]
 mod schema_contract_tests;
 #[cfg(test)]
@@ -30,7 +29,7 @@ pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;
 pub use declared_relationship_descriptor::DeclaredRelationshipDescriptor;
 pub use descriptor::Descriptor;
-pub use effective_relationships::{available_relationships, QualifiedRelationship};
+pub use effective_relationships::{effective_relationship_declaration, QualifiedRelationship};
 pub use holon_descriptor::HolonDescriptor;
 pub use holon_space_descriptor::HolonSpaceDescriptor;
 pub use inheritance::{
@@ -44,7 +43,6 @@ pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::RelationshipDescriptor;
-pub use relationship_surface::effective_relationship_declaration;
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
 pub use value_descriptor::ValueDescriptor;

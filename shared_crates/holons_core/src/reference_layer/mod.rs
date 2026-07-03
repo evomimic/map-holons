@@ -1,3 +1,4 @@
+pub(crate) mod available_relationships;
 pub mod holon_collection_api;
 pub mod holon_reference;
 pub mod holon_service_api;

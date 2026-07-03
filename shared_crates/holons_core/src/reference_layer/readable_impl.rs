@@ -39,4 +39,8 @@ pub trait ReadableHolonImpl {
     fn into_model_impl(&self) -> Result<HolonNodeModel, HolonError>;
 
     fn is_accessible_impl(&self, access_type: AccessType) -> Result<(), HolonError>;
+
+    fn is_committed_source_impl(&self) -> Result<bool, HolonError>;
+
+    fn holon_reference_impl(&self) -> HolonReference;
 }

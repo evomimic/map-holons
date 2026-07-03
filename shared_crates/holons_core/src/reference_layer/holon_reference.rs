@@ -411,6 +411,20 @@ impl ReadableHolonImpl for HolonReference {
             }
         }
     }
+
+    fn is_committed_source_impl(&self) -> Result<bool, HolonError> {
+        match self {
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.is_committed_source_impl()
+            }
+            HolonReference::Staged(staged_reference) => staged_reference.is_committed_source_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.is_committed_source_impl(),
+        }
+    }
+
+    fn holon_reference_impl(&self) -> HolonReference {
+        self.clone()
+    }
 }
 
 impl WritableHolonImpl for HolonReference {
