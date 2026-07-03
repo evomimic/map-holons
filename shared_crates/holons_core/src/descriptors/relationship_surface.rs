@@ -28,7 +28,7 @@ pub fn effective_relationship_declaration(
 
         for declaration_ref in collection.get_members() {
             // Repeated references to the same declaration are inherited only once;
-            // distinct declarations with the same base name remain schema errors.
+            // distinct declarations with the same base name (type_name) remain schema errors.
             if !seen_declaration_refs.insert(declaration_ref.reference_id_string()) {
                 continue;
             }

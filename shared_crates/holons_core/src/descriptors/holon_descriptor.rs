@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, inheritance::flatten_related_members, relationship_navigation,
-    walk_extends_chain, CommandDescriptor, DanceDescriptor, Descriptor,
-    InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor, QualifiedRelationship,
-    RelationshipDescriptor, TypeHeader,
+    accessor_helpers, effective_relationships, inheritance::flatten_related_members,
+    walk_extends_chain, CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor,
+    Descriptor, InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor,
+    QualifiedRelationship, RelationshipDescriptor, TypeHeader,
 };
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, PropertyName};
@@ -234,29 +234,49 @@ impl HolonDescriptor {
         declared.required_inverse()
     }
 
-    /// Validates that the named relationship is navigable outbound from
+    /// Validates that the named relationship is effective outbound from
     /// instances of this descriptor.
     ///
     /// Navigation is always outbound from the source: the name may resolve to a
     /// declared relationship licensed on this type, or to an inverse
     /// relationship whose `SourceType` is this type. See
-    /// [`relationship_navigation`] for the full navigation semantics.
+    /// [`effective_relationships`] for the full relationship semantics.
     pub fn allows_relationship(
         &self,
         name: impl ToRelationshipName,
     ) -> Result<QualifiedRelationship, HolonError> {
-        relationship_navigation::allows_relationship(self, name.to_relationship_name())
+        effective_relationships::allows_relationship(self, name.to_relationship_name())
     }
 
-    /// Enumerates the relationships navigable outbound from instances of this
+    /// Enumerates effective declared relationships for instances of this descriptor.
+    ///
+    /// This is staged-safe because it uses the forward `InstanceRelationships`
+    /// declaration surface on this descriptor's `Extends` lineage.
+    pub fn effective_declared_relationships(
+        &self,
+    ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
+        effective_relationships::effective_declared_relationships(self)
+    }
+
+    /// Enumerates effective inverse relationships for instances of this descriptor.
+    ///
+    /// This requires the materialized `TargetOf` index and therefore may return
+    /// `UnsupportedStagedTraversal` for unsaved descriptor endpoints.
+    pub fn effective_inverse_relationships(
+        &self,
+    ) -> Result<Vec<InverseRelationshipDescriptor>, HolonError> {
+        effective_relationships::effective_inverse_relationships(self)
+    }
+
+    /// Enumerates effective outbound relationships for instances of this
     /// descriptor: declared relationships plus inverse relationships whose
     /// `SourceType` is this type.
     ///
     /// This is a type-level, state-agnostic enumeration; use
     /// [`crate::descriptors::available_relationships`] to filter by the state
     /// of a concrete source holon reference.
-    pub fn navigable_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
-        relationship_navigation::navigable_relationships(self)
+    pub fn effective_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
+        effective_relationships::effective_relationships(self)
     }
 
     /// Resolves the effective key rule for instances of this descriptor.
