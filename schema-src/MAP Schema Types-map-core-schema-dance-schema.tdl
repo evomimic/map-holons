@@ -1,12 +1,13 @@
 schema MAP Dance Schema-v0.0.4 {
   depends_on MAP Core Schema-v0.0.7
+  depends_on MAP Key Rule Schema
   header {
     description: "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema."
   }
 }
 abstract holon DanceType {
   header {
-    description: "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type and a response holon type."
+    description: "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type (DanceInput) and a response holon type. Dance input may be any fixed-shape holon type, not only a Projection."
     display_name: "Dance Type"
     display_plural: "Dance Types"
     plural: "DanceTypes"
@@ -15,7 +16,7 @@ abstract holon DanceType {
     DanceDescription.PropertyType
   }
   relationships {
-    (DanceType.HolonType)-[InputParameters]->(Projection.HolonType)
+    (DanceType.HolonType)-[DanceInput]->(HolonType)
     (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
   }
 }
@@ -47,7 +48,7 @@ abstract holon ResponseBodyType {
 
 holon DanceInvocation {
   header {
-    description: "Concrete holon type for invocation records that capture the dance being invoked, the target holon, the request holon, and ingress context."
+    description: "Concrete holon type for invocation records capturing the dance invoked, the holon affording the dance, the request holon, and ingress context. The related holon is the subject affording the dance, not merely a target object."
     display_name: "Dance Invocation"
     display_plural: "Dance Invocations"
     plural: "DanceInvocations"
@@ -57,13 +58,14 @@ holon DanceInvocation {
   }
   relationships {
     (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)
-    (DanceInvocation.HolonType)-[Target]->(HolonType)
+    (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType)
     (DanceInvocation.HolonType)-[Request]->(HolonType)
   }
 }
 
 
 holon DanceImplementation {
+  keyrule ImplementationNameRule.FormatRule
   header {
     description: "Concrete binding of a DanceType with executable details (engine, module, entrypoint, ABI, version/compat)."
     display_name: "Dance Implementation"
@@ -78,6 +80,7 @@ holon DanceImplementation {
     Version.PropertyType
     Compat.PropertyType
     DanceSummary.PropertyType
+    ImplementationName.PropertyType
   }
   relationships {
     (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)
@@ -90,7 +93,7 @@ holon DanceDiagnostic {
     description: "Concrete holon type for non-fatal diagnostic notes attached to successful dance responses."
     display_name: "Dance Diagnostic"
     display_plural: "Dance Diagnostics"
-    plural: "DanceDiagnostic"
+    plural: "DanceDiagnostics"
   }
   properties {
     DanceDiagnosticSeverity.PropertyType
@@ -110,30 +113,30 @@ abstract holon Projection {
 }
 
 
-def relationship Affords {
+def relationship AffordsDance {
   source HolonType
   target DanceType.HolonType
+  inverse DanceAffordedBy
   cardinality 0..32767
   deletion_semantic Allow
   header {
     description: "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type)."
-    display_name: "Affords Relationship"
-    display_plural: "Affords Relationships"
-    plural: "AffordsRelationships"
+    display_name: "AffordsDance Relationship"
+    display_plural: "AffordsDance Relationships"
+    plural: "AffordsDanceRelationships"
   }
 }
 
 
-inverse relationship AffordedBy {
+inverse relationship DanceAffordedBy {
   source DanceType.HolonType
   target HolonType
-  inverse Affords
   cardinality 0..32767
   header {
-    description: "Inverse of Affords, from DanceType to HolonType."
-    display_name: "AffordedBy Relationship"
-    display_plural: "AffordedBy Relationships"
-    plural: "AffordedByRelationships"
+    description: "Inverse of AffordsDance, from DanceType to HolonType."
+    display_name: "DanceAffordedBy Relationship"
+    display_plural: "DanceAffordedBy Relationships"
+    plural: "DanceAffordedByRelationships"
   }
 }
 
@@ -141,6 +144,7 @@ inverse relationship AffordedBy {
 def relationship ImplementsDance {
   source TypeDescriptor.HolonType
   target DanceImplementation.HolonType
+  inverse ImplementedFor
   header {
     description: "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched."
     display_name: "ImplementsDance Relationship"
@@ -153,7 +157,6 @@ def relationship ImplementsDance {
 inverse relationship ImplementedFor {
   source DanceImplementation.HolonType
   target TypeDescriptor.HolonType
-  inverse ImplementsDance
   header {
     description: "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor."
     display_name: "ImplementedFor Relationship"
@@ -166,6 +169,7 @@ inverse relationship ImplementedFor {
 def relationship ForDance {
   source DanceImplementation.HolonType
   target DanceType.HolonType
+  inverse HasImplementation
   cardinality 1..1
   header {
     description: "Pins a DanceImplementation to exactly one DanceType interface it satisfies."
@@ -179,7 +183,6 @@ def relationship ForDance {
 inverse relationship HasImplementation {
   source DanceType.HolonType
   target DanceImplementation.HolonType
-  inverse ForDance
   cardinality 0..32767
   header {
     description: "Inverse of ForDance, from DanceType to DanceImplementation."
@@ -190,29 +193,29 @@ inverse relationship HasImplementation {
 }
 
 
-def relationship InputParameters {
+def relationship DanceInput {
   source DanceType.HolonType
-  target Projection.HolonType
+  target HolonType
+  inverse DanceInputFor
   cardinality 0..1
   header {
-    description: "Links a DanceType to the Projection used as its request contract."
-    display_name: "InputParameters Relationship"
-    display_plural: "InputParameters Relationships"
-    plural: "InputParametersRelationships"
+    description: "Links a DanceType to the holon type used as its request contract."
+    display_name: "DanceInput Relationship"
+    display_plural: "DanceInput Relationships"
+    plural: "DanceInputRelationships"
   }
 }
 
 
-inverse relationship InputParametersFor {
-  source Projection.HolonType
+inverse relationship DanceInputFor {
+  source HolonType
   target DanceType.HolonType
-  inverse InputParameters
   cardinality 0..32767
   header {
-    description: "Inverse of InputParameters, from Projection to DanceType."
-    display_name: "InputParametersFor Relationship"
-    display_plural: "InputParametersFor Relationships"
-    plural: "InputParametersForRelationships"
+    description: "Inverse of DanceInput, from HolonType to DanceType."
+    display_name: "DanceInputFor Relationship"
+    display_plural: "DanceInputFor Relationships"
+    plural: "DanceInputForRelationships"
   }
 }
 
@@ -220,6 +223,7 @@ inverse relationship InputParametersFor {
 def relationship Response {
   source DanceType.HolonType
   target DanceResponseType.HolonType
+  inverse ResponseFor
   cardinality 1..1
   header {
     description: "Links a DanceType to the DanceResponseType used to structure its response."
@@ -233,7 +237,6 @@ def relationship Response {
 inverse relationship ResponseFor {
   source DanceResponseType.HolonType
   target DanceType.HolonType
-  inverse Response
   cardinality 1..32767
   header {
     description: "Inverse of Response, from DanceResponseType to DanceType."
@@ -247,6 +250,7 @@ inverse relationship ResponseFor {
 def relationship ResponseBody {
   source DanceResponseType.HolonType
   target HolonType
+  inverse ResponseBodyFor
   cardinality 0..1
   header {
     description: "Links a DanceResponseType to the concrete holon type that will serve as the structured response body."
@@ -260,7 +264,6 @@ def relationship ResponseBody {
 inverse relationship ResponseBodyFor {
   source HolonType
   target DanceResponseType.HolonType
-  inverse ResponseBody
   cardinality 0..32767
   header {
     description: "Inverse of ResponseBody, from HolonType to DanceResponseType."
@@ -274,6 +277,7 @@ inverse relationship ResponseBodyFor {
 def relationship InvokesDance {
   source DanceInvocation.HolonType
   target DanceType.HolonType
+  inverse InvokedBy
   cardinality 1..1
   header {
     description: "Links a DanceInvocation holon to the DanceType it invokes."
@@ -284,29 +288,42 @@ def relationship InvokesDance {
 }
 
 
-def relationship Target {
-  source DanceInvocation.HolonType
-  target HolonType
-  cardinality 0..1
+inverse relationship InvokedBy {
+  source DanceType.HolonType
+  target DanceInvocation.HolonType
+  cardinality 0..32767
   header {
-    description: "Links a DanceInvocation holon to the target holon it acts on, when the dance is target-based."
-    display_name: "Target Relationship"
-    display_plural: "Target Relationships"
-    plural: "TargetRelationships"
+    description: "Inverse of InvokesDance, from DanceType to DanceInvocation."
+    display_name: "InvokedBy Relationship"
+    display_plural: "InvokedBy Relationships"
+    plural: "InvokedByRelationships"
   }
 }
 
 
-inverse relationship TargetOf {
+def relationship AffordingHolon {
+  source DanceInvocation.HolonType
+  target HolonType
+  inverse AffordsDanceInvocation
+  cardinality 0..1
+  header {
+    description: "Links a DanceInvocation to the holon affording the invoked dance. The referenced instance must afford the dance named by InvokesDance."
+    display_name: "AffordingHolon Relationship"
+    display_plural: "AffordingHolon Relationships"
+    plural: "AffordingHolonRelationships"
+  }
+}
+
+
+inverse relationship AffordsDanceInvocation {
   source HolonType
   target DanceInvocation.HolonType
-  inverse Target
   cardinality 0..32767
   header {
-    description: "Inverse of Target, between HolonType and DanceInvocation."
-    display_name: "TargetOf Relationship"
-    display_plural: "TargetOf Relationships"
-    plural: "TargetOfRelationships"
+    description: "Inverse of AffordingHolon, from HolonType to DanceInvocation."
+    display_name: "AffordsDanceInvocation Relationship"
+    display_plural: "AffordsDanceInvocation Relationships"
+    plural: "AffordsDanceInvocationRelationships"
   }
 }
 
@@ -314,6 +331,7 @@ inverse relationship TargetOf {
 def relationship Request {
   source DanceInvocation.HolonType
   target HolonType
+  inverse RequestFor
   cardinality 0..1
   header {
     description: "Links a DanceInvocation holon to the concrete request holon supplied for that invocation."
@@ -327,7 +345,6 @@ def relationship Request {
 inverse relationship RequestFor {
   source HolonType
   target DanceInvocation.HolonType
-  inverse Request
   cardinality 0..32767
   header {
     description: "Inverse of Request, from HolonType to DanceInvocation."
@@ -341,6 +358,7 @@ inverse relationship RequestFor {
 def relationship Diagnostics {
   source DanceResponseType.HolonType
   target DanceDiagnostic.HolonType
+  inverse DiagnosticFor
   cardinality 0..32767
   header {
     description: "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes."
@@ -354,10 +372,9 @@ def relationship Diagnostics {
 inverse relationship DiagnosticFor {
   source DanceDiagnostic.HolonType
   target DanceResponseType.HolonType
-  inverse Diagnostics
   cardinality 0..32767
   header {
-    description: "Inverse of Diagnostics, from DanceDiagnostic to DanceRequestType."
+    description: "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType."
     display_name: "DiagnosticFor Relationship"
     display_plural: "DiagnosticFor Relationships"
     plural: "DiagnosticForRelationships"
@@ -515,6 +532,17 @@ property DanceSummary {
     display_name: "dance_summary"
     display_plural: "dance_summaries"
     plural: "DanceSummaries"
+  }
+}
+
+
+property ImplementationName {
+  value MapStringValueType
+  header {
+    description: "Unique name of a DanceImplementation instance."
+    display_name: "implementation_name"
+    display_plural: "implementation_names"
+    plural: "ImplementationNames"
   }
 }
 
@@ -814,6 +842,7 @@ property CommitRequestStatus {
 relationship SavedHolons {
   source CommitResponse.Projection
   target HolonType
+  inverse SavedByCommit
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -828,7 +857,6 @@ relationship SavedHolons {
 inverse relationship SavedByCommit {
   source HolonType
   target CommitResponse.Projection
-  inverse SavedHolons
   cardinality 0..1
   deletion_semantic Allow
   header {
@@ -843,6 +871,7 @@ inverse relationship SavedByCommit {
 relationship AbandonedHolons {
   source CommitResponse.Projection
   target HolonType
+  inverse AbandonedByCommit
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -857,7 +886,6 @@ relationship AbandonedHolons {
 inverse relationship AbandonedByCommit {
   source HolonType
   target CommitResponse.Projection
-  inverse AbandonedHolons
   cardinality 0..1
   deletion_semantic Allow
   header {

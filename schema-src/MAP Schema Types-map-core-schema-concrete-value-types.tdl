@@ -2,186 +2,114 @@ schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
 }
 value MapStringValueType {
-  properties {
-    is_abstract_type: false
-    type_name: "MapStringValueType"
-    type_name_plural: "MapStringValueTypes"
-    display_name: "MapStringValueType"
-    display_name_plural: "MapStringValueTypes"
+  keyrule TypeNameRule.KeyRuleType
+  extends StringValueType
+  header {
     description: "Concrete value type representing strings."
-    instance_type_kind: "TypeKind.Value.String"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "StringValueType"
-    UsesKeyRule -> "TypeNameRule.KeyRuleType"
+    display_name: "MapStringValueType"
+    display_plural: "MapStringValueTypes"
+    plural: "MapStringValueTypes"
   }
 }
 
 
 value MapIntegerValueType {
-  properties {
-    is_abstract_type: false
-    type_name: "MapIntegerValueType"
-    type_name_plural: "MapIntegerValueTypes"
-    display_name: "MapIntegerValueType"
-    display_name_plural: "MapIntegerValueTypes"
+  keyrule TypeNameRule.KeyRuleType
+  extends IntegerValueType
+  header {
     description: "Concrete value type representing integers."
-    instance_type_kind: "TypeKind.Value.Integer"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "IntegerValueType"
-    UsesKeyRule -> "TypeNameRule.KeyRuleType"
+    display_name: "MapIntegerValueType"
+    display_plural: "MapIntegerValueTypes"
+    plural: "MapIntegerValueTypes"
   }
 }
 
 
 value MapBooleanValueType {
-  properties {
-    is_abstract_type: false
-    type_name: "MapBooleanValueType"
-    type_name_plural: "MapBooleanValueTypes"
-    display_name: "MapBooleanValueType"
-    display_name_plural: "MapBooleanValueTypes"
+  keyrule TypeNameRule.KeyRuleType
+  extends BooleanValueType
+  header {
     description: "Concrete value type representing booleans."
-    instance_type_kind: "TypeKind.Value.Boolean"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "BooleanValueType"
-    UsesKeyRule -> "TypeNameRule.KeyRuleType"
+    display_name: "MapBooleanValueType"
+    display_plural: "MapBooleanValueTypes"
+    plural: "MapBooleanValueTypes"
   }
 }
 
 
 value MapBytesValueType {
-  properties {
-    is_abstract_type: false
-    type_name: "MapBytesValueType"
-    type_name_plural: "MapBytesValueTypes"
-    display_name: "MapBytesValueType"
-    display_name_plural: "MapBytesValueTypes"
+  keyrule TypeNameRule.KeyRuleType
+  extends BytesValueType
+  header {
     description: "Concrete value type representing byte sequences."
-    instance_type_kind: "TypeKind.Value.Bytes"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "BytesValueType"
-    UsesKeyRule -> "TypeNameRule.KeyRuleType"
+    display_name: "MapBytesValueType"
+    display_plural: "MapBytesValueTypes"
+    plural: "MapBytesValueTypes"
   }
 }
 
 
 enum MapEnumValueType {
-  properties {
-    is_abstract_type: false
-    type_name: "MapEnumValueType"
-    type_name_plural: "MapEnumValueTypes"
-    display_name: "MapEnumValueType"
-    display_name_plural: "MapEnumValueTypes"
+  keyrule TypeNameRule.KeyRuleType
+  extends EnumValueType
+  header {
     description: "Concrete value type representing enums."
-    instance_type_kind: "TypeKind.Value.Enum"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "EnumValueType"
-    UsesKeyRule -> "TypeNameRule.KeyRuleType"
+    display_name: "MapEnumValueType"
+    display_plural: "MapEnumValueTypes"
+    plural: "MapEnumValueTypes"
   }
 }
 
 
 variant MapEnumVariantValueType {
-  properties {
-    is_abstract_type: false
-    type_name: "MapEnumVariantValueType"
-    type_name_plural: "MapEnumVariantValueTypes"
-    display_name: "MapEnumVariant Value Type"
-    display_name_plural: "MapEnumVariant Value Types"
+  keyrule EnumVariantRule.KeyRuleType
+  extends EnumVariantValueType
+  header {
     description: "Abstract type for variants of enum-based value types."
-    instance_type_kind: "TypeKind.EnumVariant"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "EnumVariantValueType"
-    UsesKeyRule -> "EnumVariantRule.KeyRuleType"
+    display_name: "MapEnumVariant Value Type"
+    display_plural: "MapEnumVariant Value Types"
+    plural: "MapEnumVariantValueTypes"
   }
 }
 
 
 value MapValueArrayType {
-  properties {
-    is_abstract_type: false
-    type_name: "MapValueArrayType"
-    type_name_plural: "MapValueArrayTypes"
-    display_name: "MapValueArrayType"
-    display_name_plural: "MapValueArrayTypes"
+  keyrule TypeNameRule.KeyRuleType
+  extends ValueArrayValueType
+  header {
     description: "Concrete value type representing arrays of values."
-    instance_type_kind: "TypeKind.Value.Array"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "ValueArrayValueType"
-    UsesKeyRule -> "TypeNameRule.KeyRuleType"
+    display_name: "MapValueArrayType"
+    display_plural: "MapValueArrayTypes"
+    plural: "MapValueArrayTypes"
   }
 }
 
 
 enum DeletionSemantic {
-  properties {
-    is_abstract_type: false
-    type_name: "DeletionSemantic"
-    type_name_plural: "DeletionSemantics"
-    display_name: "DeletionSemantic"
-    display_name_plural: "DeletionSemantics"
+  extends MapEnumValueType
+  header {
     description: "Enum value type for deletion semantics."
-    instance_type_kind: "TypeKind.Value.Enum"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "MapEnumValueType"
+    display_name: "DeletionSemantic"
+    display_plural: "DeletionSemantics"
+    plural: "DeletionSemantics"
   }
   variants {
     variant Allow {
-      properties {
-        is_abstract_type: false
-        type_name: "Allow"
-        display_name: "Allow"
+      header {
         description: "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "DeletionSemantic"
+        display_name: "Allow"
       }
     }
     variant Block {
-      properties {
-        is_abstract_type: false
-        type_name: "Block"
-        display_name: "Block"
+      header {
         description: "Prevent deletion of the source holon if any target holons are related through this relationship."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "DeletionSemantic"
+        display_name: "Block"
       }
     }
     variant Cascade {
-      properties {
-        is_abstract_type: false
-        type_name: "Cascade"
-        display_name: "Cascade"
+      header {
         description: "If the source holon is deleted, also delete any related target holons."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "DeletionSemantic"
+        display_name: "Cascade"
       }
     }
   }
@@ -189,186 +117,84 @@ enum DeletionSemantic {
 
 
 enum TypeKind {
-  properties {
-    is_abstract_type: false
-    type_name: "TypeKind"
-    type_name_plural: "TypeKinds"
-    display_name: "TypeKind"
-    display_name_plural: "TypeKinds"
+  extends MapEnumValueType
+  header {
     description: "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship)."
-    instance_type_kind: "TypeKind.Value.Enum"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "MapEnumValueType"
+    display_name: "TypeKind"
+    display_plural: "TypeKinds"
+    plural: "TypeKinds"
   }
   variants {
     variant Property {
-      properties {
-        is_abstract_type: false
-        type_name: "Property"
-        display_name: "Property"
+      header {
         description: "Represents a property type. Variant of the TypeKind enum."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Property"
       }
     }
     variant Relationship {
-      properties {
-        is_abstract_type: false
-        type_name: "Relationship"
-        display_name: "Relationship"
+      header {
         description: "Represents a relationship type. Variant of the TypeKind enum."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Relationship"
       }
     }
     variant EnumVariant {
-      properties {
-        is_abstract_type: false
-        type_name: "EnumVariant"
-        display_name: "EnumVariant"
+      header {
         description: "Represents an enum variant type. Variant of the TypeKind enum."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "EnumVariant"
       }
     }
     variant Holon {
-      properties {
-        is_abstract_type: false
-        type_name: "Holon"
-        display_name: "Holon"
+      header {
         description: "Represents a holon type.  Variant of the TypeKind enum."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Holon"
       }
     }
     variant Collection {
-      properties {
-        is_abstract_type: false
-        type_name: "Collection"
-        display_name: "Collection"
+      header {
         description: "Represents a collection type. Variant of the TypeKind enum."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Collection"
       }
     }
     variant Dance {
-      properties {
-        is_abstract_type: false
-        type_name: "Dance"
-        display_name: "Dance"
+      header {
         description: "Represents a dance service type. Variant of the TypeKind enum."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Dance"
       }
     }
     variant Value.String {
-      properties {
-        is_abstract_type: false
-        type_name: "Value.String"
-        display_name: "Value.String"
+      header {
         description: "Value type wrapping base type representing strings."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Value.String"
       }
     }
     variant Value.Array {
-      properties {
-        is_abstract_type: false
-        type_name: "Value.Array"
-        display_name: "Value.Array"
+      header {
         description: "Value type wrapping an array of base type items."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Value.Array"
       }
     }
     variant Value.Integer {
-      properties {
-        is_abstract_type: false
-        type_name: "Value.Integer"
-        display_name: "Value.Integer"
+      header {
         description: "Value type wrapping base type representing integers."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Value.Integer"
       }
     }
     variant Value.Boolean {
-      properties {
-        is_abstract_type: false
-        type_name: "Value.Boolean"
-        display_name: "Value.Boolean"
+      header {
         description: "Value type wrapping base type representing booleans."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Value.Boolean"
       }
     }
     variant Value.Enum {
-      properties {
-        is_abstract_type: false
-        type_name: "Value.Enum"
-        display_name: "Value.Enum"
+      header {
         description: "Value type wrapping base type representing enumerations."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Value.Enum"
       }
     }
     variant Value.Bytes {
-      properties {
-        is_abstract_type: false
-        type_name: "Value.Bytes"
-        display_name: "Value.Bytes"
+      header {
         description: "Value type wrapping base type representing byte sequences."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "TypeKind"
+        display_name: "Value.Bytes"
       }
     }
   }
@@ -376,34 +202,20 @@ enum TypeKind {
 
 
 enum CollectionType {
-  properties {
-    is_abstract_type: false
-    type_name: "CollectionType"
-    type_name_plural: "CollectionTypes"
-    display_name: "Collection Type"
-    display_name_plural: "Collection Types"
+  extends MapEnumValueType
+  header {
     description: "Enum value type for selecting the runtime wrapper used to inflate a persisted collection holon."
-    instance_type_kind: "TypeKind.Value.Enum"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "MapEnumValueType"
+    display_name: "Collection Type"
+    display_plural: "Collection Types"
+    plural: "CollectionTypes"
   }
   variants {
     variant HolonArray {
-      properties {
-        is_abstract_type: false
-        type_name: "HolonArray"
-        type_name_plural: "HolonArrays"
-        display_name: "Holon Array"
-        display_name_plural: "Holon Array"
+      header {
         description: "Collection wrapper variant for ordered or index-addressable array-style holon collections."
-        instance_type_kind: "TypeKind.EnumVariant"
-      }
-      relationships {
-        ComponentOf -> "MAP Core Schema-v0.0.7"
-        Extends -> "MapEnumVariantValueType"
-        VariantOf -> "CollectionType"
+        display_name: "Holon Array"
+        display_plural: "Holon Array"
+        plural: "HolonArrays"
       }
     }
   }
@@ -411,17 +223,11 @@ enum CollectionType {
 
 
 value HolonIdValueType {
-  properties {
-    is_abstract_type: false
-    type_name: "HolonIdValueType"
-    type_name_plural: "HolonIdValueTypes"
-    display_name: "HolonIdValueType"
-    display_name_plural: "HolonIdValueTypes"
+  extends MapBytesValueType
+  header {
     description: "Concrete bytes value type representing the canonical serialized form of a HolonId."
-    instance_type_kind: "TypeKind.Value.Bytes"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "MapBytesValueType"
+    display_name: "HolonIdValueType"
+    display_plural: "HolonIdValueTypes"
+    plural: "HolonIdValueTypes"
   }
 }

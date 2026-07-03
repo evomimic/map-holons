@@ -1,0 +1,7 @@
+[package]
+name = "map_schema_semantic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+

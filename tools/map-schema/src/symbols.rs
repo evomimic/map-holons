@@ -1,6 +1,3 @@
-//! Backward-compatible re-export of the canonical schema index module.
-//!
-//! V2-A2 makes the derived lookup layer explicit as [`crate::schema_index`]
-//! while keeping existing `symbols` imports working during the migration.
+//! Backward-compatible re-export of the shared semantic index module.
 
-pub use crate::schema_index::*;
+pub use map_schema_semantic::schema_index::*;

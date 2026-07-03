@@ -4,6 +4,7 @@ schema MAP Core Schema-v0.0.7 {
 def relationship ComponentOf {
   source TypeDescriptor.HolonType
   target Schema.HolonType
+  inverse Components
   cardinality 0..32767
   header {
     description: "Links a type descriptor to the schema that contains it."
@@ -17,7 +18,6 @@ def relationship ComponentOf {
 inverse relationship Components {
   source Schema.HolonType
   target TypeDescriptor.HolonType
-  inverse ComponentOf
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -32,6 +32,7 @@ inverse relationship Components {
 def relationship InstanceProperties {
   source TypeDescriptor.HolonType
   target PropertyType
+  inverse InstancePropertyFor
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -46,7 +47,6 @@ def relationship InstanceProperties {
 inverse relationship InstancePropertyFor {
   source PropertyType
   target TypeDescriptor.HolonType
-  inverse InstanceProperties
   cardinality 0..32767
   header {
     description: "Inverse of InstanceProperties, from PropertyType to TypeDescriptor."
@@ -58,29 +58,16 @@ inverse relationship InstancePropertyFor {
 
 
 def relationship InstanceRelationships {
-  source MetaHolonType
-  target DeclaredRelationshipType
-  cardinality 0..32767
-  header {
-    description: "Connects a type descriptor to its expected relationship types."
-    display_name: "Instance Relationships"
-    display_plural: "Instance Relationships"
-    plural: "InstanceRelationships"
-  }
-}
-
-
-inverse relationship InstanceRelationshipFor {
   cardinality 0..32767
   properties {
-    type_name: "InstanceRelationshipFor"
-    type_name_plural: "InstanceRelationshipForRelationships"
-    display_name: "InstanceRelationshipFor"
-    display_name_plural: "InstanceRelationshipFor Relationships"
-    description: "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor."
+    type_name: "InstanceRelationships"
+    type_name_plural: "InstanceRelationships"
+    display_name: "Instance Relationships"
+    display_name_plural: "Instance Relationships"
+    description: "Connects a type descriptor to its expected relationship types."
     instance_type_kind: "TypeKind.Relationship"
     is_abstract_type: false
-    is_definitional: false
+    is_definitional: true
     is_ordered: false
     allows_duplicates: false
     min_cardinality: 0
@@ -88,10 +75,23 @@ inverse relationship InstanceRelationshipFor {
   }
   relationships {
     ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "InverseRelationshipType"
-    InverseOf -> "(MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)"
-    SourceType -> "DeclaredRelationshipType"
-    TargetType -> "TypeDescriptor.HolonType"
+    Extends -> "DeclaredRelationshipType"
+    HasInverse -> "(DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor.HolonType)"
+    SourceType -> "MetaHolonType"
+    TargetType -> "DeclaredRelationshipType"
+  }
+}
+
+
+inverse relationship InstanceRelationshipFor {
+  source DeclaredRelationshipType
+  target TypeDescriptor.HolonType
+  cardinality 0..32767
+  header {
+    description: "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor."
+    display_name: "InstanceRelationshipFor"
+    display_plural: "InstanceRelationshipFor Relationships"
+    plural: "InstanceRelationshipForRelationships"
   }
 }
 
@@ -99,6 +99,7 @@ inverse relationship InstanceRelationshipFor {
 def relationship DescribedBy {
   source HolonType
   target TypeDescriptor.HolonType
+  inverse Instances
   cardinality 0..1
   header {
     description: "Links a holon to the type descriptor that describes it."
@@ -112,7 +113,6 @@ def relationship DescribedBy {
 inverse relationship Instances {
   source TypeDescriptor.HolonType
   target HolonType
-  inverse DescribedBy
   cardinality 0..32767
   header {
     description: "Inverse of DescribedBy, from TypeDescriptor to an instance of that type."
@@ -126,6 +126,7 @@ inverse relationship Instances {
 relationship OwnedBy {
   source HolonType
   target HolonSpace.HolonType
+  inverse Owns
   cardinality 0..32767
   header {
     description: "Indicates which holon space owns the given holon."
@@ -139,7 +140,6 @@ relationship OwnedBy {
 inverse relationship Owns {
   source HolonSpace.HolonType
   target HolonType
-  inverse OwnedBy
   cardinality 0..32767
   header {
     description: "Inverse of OwnedBy, from HolonSpace to Holon."
@@ -153,6 +153,7 @@ inverse relationship Owns {
 relationship Properties {
   source HolonType
   target PropertyType
+  inverse PropertyOf
   cardinality 0..32767
   header {
     description: "Links a holon to its properties."
@@ -166,7 +167,6 @@ relationship Properties {
 inverse relationship PropertyOf {
   source PropertyType
   target HolonType
-  inverse Properties
   cardinality 0..32767
   header {
     description: "Inverse of Properties, from PropertyType to HolonType."
@@ -180,6 +180,7 @@ inverse relationship PropertyOf {
 def relationship ValueType {
   source PropertyType
   target ValueType
+  inverse ValueTypeFor
   cardinality 0..32767
   header {
     description: "Specifies the value type constraint for a property."
@@ -193,7 +194,6 @@ def relationship ValueType {
 inverse relationship ValueTypeFor {
   source ValueType
   target PropertyType
-  inverse ValueType
   cardinality 0..32767
   header {
     description: "Inverse of ValueType, from ValueType to PropertyType."
@@ -207,6 +207,7 @@ inverse relationship ValueTypeFor {
 def relationship SourceType {
   source MetaRelationshipType
   target TypeDescriptor.HolonType
+  inverse SourceOf
   cardinality 1..1
   header {
     description: "Defines the source holon type for a relationship type."
@@ -220,8 +221,7 @@ def relationship SourceType {
 inverse relationship SourceOf {
   source TypeDescriptor.HolonType
   target MetaRelationshipType
-  inverse SourceType
-  cardinality 1..1
+  cardinality 0..32767
   header {
     description: "Inverse of SourceType, from holon to relationship type."
     display_name: "SourceOf"
@@ -234,6 +234,7 @@ inverse relationship SourceOf {
 def relationship TargetType {
   source MetaRelationshipType
   target TypeDescriptor.HolonType
+  inverse TargetOf
   cardinality 1..1
   header {
     description: "Defines the target holon type for a meta relationship type."
@@ -247,8 +248,7 @@ def relationship TargetType {
 inverse relationship TargetOf {
   source TypeDescriptor.HolonType
   target MetaRelationshipType
-  inverse TargetType
-  cardinality 1..1
+  cardinality 0..32767
   header {
     description: "Inverse of TargetType, from HolonType to MetaRelationshipType."
     display_name: "TargetOf"
@@ -258,20 +258,7 @@ inverse relationship TargetOf {
 }
 
 
-def relationship InverseOf {
-  source InverseRelationshipType
-  target DeclaredRelationshipType
-  cardinality 1..1
-  header {
-    description: "Links an inverse relationship type to the declared relationship it reverses."
-    display_name: "InverseOf"
-    display_plural: "InverseOf Relationships"
-    plural: "InverseOfRelationships"
-  }
-}
-
-
-inverse relationship HasInverse {
+def relationship HasInverse {
   source DeclaredRelationshipType
   target InverseRelationshipType
   inverse InverseOf
@@ -285,9 +272,23 @@ inverse relationship HasInverse {
 }
 
 
+inverse relationship InverseOf {
+  source InverseRelationshipType
+  target DeclaredRelationshipType
+  cardinality 1..1
+  header {
+    description: "Links an inverse relationship type to the declared relationship it reverses."
+    display_name: "InverseOf"
+    display_plural: "InverseOf Relationships"
+    plural: "InverseOfRelationships"
+  }
+}
+
+
 def relationship Variants {
   source EnumValueType
   target EnumVariantValueType
+  inverse VariantOf
   cardinality 0..32767
   header {
     description: "Declares the allowed symbolic variants of an enum value type."
@@ -301,7 +302,6 @@ def relationship Variants {
 inverse relationship VariantOf {
   source EnumVariantValueType
   target EnumValueType
-  inverse Variants
   cardinality 0..32767
   header {
     description: "Inverse of Variants, from EnumVariantType to EnumValueType."
@@ -315,6 +315,7 @@ inverse relationship VariantOf {
 def relationship DependsOn {
   source Schema.HolonType
   target Schema.HolonType
+  inverse Dependents
   cardinality 0..32767
   header {
     description: "Indicates that one schema holon depends on another."
@@ -328,7 +329,6 @@ def relationship DependsOn {
 inverse relationship Dependents {
   source Schema.HolonType
   target Schema.HolonType
-  inverse DependsOn
   cardinality 0..32767
   header {
     description: "Inverse of DependsOn, indicating which schemas depend on this one."
@@ -342,6 +342,7 @@ inverse relationship Dependents {
 def relationship ElementValueType {
   source ValueArrayValueType
   target ValueType
+  inverse ElementValueTypeFor
   cardinality 1..1
   header {
     description: "Specifies the element value type of a value array."
@@ -355,7 +356,6 @@ def relationship ElementValueType {
 inverse relationship ElementValueTypeFor {
   source ValueType
   target ValueArrayValueType
-  inverse ElementValueType
   cardinality 0..32767
   header {
     description: "Inverse of ElementValueType, from ValueType to ValueArrayType."
@@ -369,6 +369,7 @@ inverse relationship ElementValueTypeFor {
 def relationship Extends {
   source TypeDescriptor.HolonType
   target TypeDescriptor.HolonType
+  inverse ExtendedBy
   cardinality 1..1
   header {
     description: "Inheritance link, this TypeDescriptor extends another TypeDescriptor (single parent)."
@@ -382,7 +383,6 @@ def relationship Extends {
 inverse relationship ExtendedBy {
   source TypeDescriptor.HolonType
   target TypeDescriptor.HolonType
-  inverse Extends
   cardinality 0..32767
   header {
     description: "Inverse of Extends, the parent TypeDescriptor is extended by zero or more children."
@@ -396,6 +396,7 @@ inverse relationship ExtendedBy {
 def relationship TemplateParameters {
   source FormatRule.KeyRuleType
   target PropertyType
+  inverse TemplateParameterFor
   cardinality 1..32767
   ordered
   header {
@@ -410,7 +411,6 @@ def relationship TemplateParameters {
 inverse relationship TemplateParameterFor {
   source PropertyType
   target FormatRule.KeyRuleType
-  inverse TemplateParameters
   cardinality 0..32767
   header {
     description: "Inverse of TemplateParameters, indicates that this PropertyType is used as a positional parameter in one or more Format.KeyRuleType instances."
@@ -424,6 +424,7 @@ inverse relationship TemplateParameterFor {
 def relationship AffordsTransactionModel {
   source HolonSpace.HolonType
   target Transaction.HolonType
+  inverse TransactionModelAffordedBy
   cardinality 1..1
   deletion_semantic Allow
   header {
@@ -438,7 +439,6 @@ def relationship AffordsTransactionModel {
 inverse relationship TransactionModelAffordedBy {
   source Transaction.HolonType
   target HolonSpace.HolonType
-  inverse AffordsTransactionModel
   cardinality 1..1
   deletion_semantic Allow
   header {
@@ -453,6 +453,7 @@ inverse relationship TransactionModelAffordedBy {
 relationship CollectionMembers {
   source HolonCollection.HolonType
   target HolonType
+  inverse MemberOfCollection
   cardinality 0..32767
   ordered
   duplicates
@@ -469,7 +470,6 @@ relationship CollectionMembers {
 inverse relationship MemberOfCollection {
   source HolonType
   target HolonCollection.HolonType
-  inverse CollectionMembers
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -484,6 +484,7 @@ inverse relationship MemberOfCollection {
 def relationship ElementType {
   source HolonCollection.HolonType
   target HolonType
+  inverse ElementTypeFor
   cardinality 1..1
   deletion_semantic Allow
   header {
@@ -498,7 +499,6 @@ def relationship ElementType {
 inverse relationship ElementTypeFor {
   source HolonType
   target HolonCollection.HolonType
-  inverse ElementType
   cardinality 0..32767
   deletion_semantic Allow
   header {
@@ -513,6 +513,7 @@ inverse relationship ElementTypeFor {
 relationship Predecessor {
   source HolonType
   target HolonType
+  inverse Successor
   cardinality 0..1
   header {
     description: "Links a holon version to the immediately preceding version in its lineage."
@@ -526,7 +527,6 @@ relationship Predecessor {
 inverse relationship Successor {
   source HolonType
   target HolonType
-  inverse Predecessor
   cardinality 0..32767
   header {
     description: "Inverse of Predecessor, from a holon version to later versions derived from it."

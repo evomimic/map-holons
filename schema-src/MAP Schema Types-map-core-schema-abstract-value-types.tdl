@@ -2,41 +2,27 @@ schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
 }
 abstract holon MetaValueType {
-  properties {
-    is_abstract_type: true
-    type_name: "MetaValueType"
-    type_name_plural: "MetaValueTypes"
-    display_name: "Meta Value Type"
-    display_name_plural: "Meta Value Types"
+  keyrule TypeNameRule.KeyRuleType
+  extends MetaTypeDescriptor
+  header {
     description: "Defines the meta-level obligations for all ValueTypes. It specifies the structural and semantic expectations that concrete ValueTypes must fulfill."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "MetaTypeDescriptor"
-    UsesKeyRule -> "TypeNameRule.KeyRuleType"
+    display_name: "Meta Value Type"
+    display_plural: "Meta Value Types"
+    plural: "MetaValueTypes"
   }
 }
 
 
 abstract holon ValueType {
-  properties {
-    is_abstract_type: true
-    type_name: "ValueType"
-    type_name_plural: "ValueTypes"
-    display_name: "Value Type"
-    display_name_plural: "Value Types"
+  extends MetaValueType
+  header {
     description: "Abstract descriptor for scalar or array values (string, integer, boolean, enum, etc.). ValueTypes anchor how properties are represented across MAP schemas."
-    instance_type_kind: "TypeKind.Holon"
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_name: "Value Type"
+    display_plural: "Value Types"
+    plural: "ValueTypes"
   }
   relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "MetaValueType"
-    InstanceRelationships -> "(ValueType)-[AffordsOperator]->(OperatorType.HolonType)"
+    (ValueType)-[AffordsOperator]->(OperatorType.HolonType)
   }
 }
 
@@ -98,19 +84,14 @@ abstract value BooleanValueType {
 
 
 abstract value BytesValueType {
-  properties {
-    is_abstract_type: true
-    type_name: "BytesValueType"
-    type_name_plural: "BytesValueTypes"
-    display_name: "BytesValueType"
-    display_name_plural: "BytesValueTypes"
+  header {
     description: "Abstract type for byte sequence value types."
-    instance_type_kind: "TypeKind.Value.Bytes"
+    display_name: "BytesValueType"
+    display_plural: "BytesValueTypes"
+    plural: "BytesValueTypes"
   }
   relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "ValueType"
-    InstanceRelationships -> "(BytesValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)"
+    (BytesValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)
   }
 }
 
@@ -135,35 +116,24 @@ abstract enum EnumValueType {
 
 
 abstract variant EnumVariantValueType {
-  properties {
-    is_abstract_type: true
-    type_name: "EnumVariantValueType"
-    type_name_plural: "EnumVariantValueTypes"
-    display_name: "EnumVariant Value Type"
-    display_name_plural: "EnumVariant Value Types"
+  extends ValueType
+  header {
     description: "Abstract type for variants of enum-based value types."
-    instance_type_kind: "TypeKind.EnumVariant"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "ValueType"
+    display_name: "EnumVariant Value Type"
+    display_plural: "EnumVariant Value Types"
+    plural: "EnumVariantValueTypes"
   }
 }
 
 
 abstract value ValueArrayValueType {
-  properties {
-    is_abstract_type: true
-    type_name: "ValueArrayValueType"
-    type_name_plural: "ValueArrayValueTypes"
-    display_name: "ValueArrayType"
-    display_name_plural: "ValueArrayTypes"
+  header {
     description: "Abstract type for value array types."
-    instance_type_kind: "TypeKind.Value.Array"
+    display_name: "ValueArrayType"
+    display_plural: "ValueArrayTypes"
+    plural: "ValueArrayValueTypes"
   }
   relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "ValueType"
-    InstanceRelationships -> "(ValueArrayValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)"
+    (ValueArrayValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)
   }
 }
