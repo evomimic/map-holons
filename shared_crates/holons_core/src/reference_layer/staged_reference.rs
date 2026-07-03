@@ -145,6 +145,32 @@ impl StagedReference {
         }
     }
 
+    /// Returns whether this staged holon has been committed.
+    ///
+    /// Unlike [`Self::is_in_state`], this matches any `StagedState::Committed`
+    /// without requiring the exact committed `LocalId`.
+    pub fn is_committed(&self) -> Result<bool, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+
+        let holon = rc_holon
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on nursery: {}",
+                    e
+                ))
+            })?
+            .clone();
+        match holon {
+            Holon::Staged(holon) => {
+                Ok(matches!(holon.get_staged_state(), StagedState::Committed(_)))
+            }
+            _ => Err(HolonError::InvalidType(
+                "StagedReference should point to a StagedHolon".to_string(),
+            )),
+        }
+    }
+
     // ****** Accessors ******
 
     /// Returns the temporary id for this staged holon.
@@ -769,6 +795,33 @@ mod tests {
         key: &str,
     ) -> Result<StagedReference, HolonError> {
         context.mutation().stage_new_holon(new_test_holon(context, key)?)
+    }
+
+    #[test]
+    fn is_committed_matches_any_committed_local_id() -> Result<(), HolonError> {
+        let context = build_context();
+        let staged = context.mutation().stage_new_holon(new_test_holon(&context, "commit-me")?)?;
+
+        assert!(!staged.is_committed()?);
+
+        let rc_holon = staged.get_holon_to_commit(&context)?;
+        {
+            let mut holon = rc_holon.write().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire write lock on staged holon: {}",
+                    e
+                ))
+            })?;
+            match &mut *holon {
+                Holon::Staged(staged_holon) => staged_holon.to_committed(LocalId(vec![4, 5, 6]))?,
+                _ => unreachable!("stage_new_holon produces a StagedHolon"),
+            }
+        }
+
+        assert!(staged.is_committed()?);
+        assert!(staged.is_in_state(&context, StagedState::Committed(LocalId(vec![4, 5, 6])))?);
+
+        Ok(())
     }
 
     #[test]

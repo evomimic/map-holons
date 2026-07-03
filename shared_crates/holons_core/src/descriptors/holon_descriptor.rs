@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, inheritance::flatten_related_members, relationship_normalization,
-    walk_extends_chain, CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor,
-    Descriptor, InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor,
-    QualifiedRelationship, RelationshipDescriptor, TraversalDirection, TypeHeader,
+    accessor_helpers, inheritance::flatten_related_members, relationship_navigation,
+    walk_extends_chain, CommandDescriptor, DanceDescriptor, Descriptor,
+    InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor, QualifiedRelationship,
+    RelationshipDescriptor, TypeHeader,
 };
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, PropertyName};
@@ -234,30 +234,29 @@ impl HolonDescriptor {
         declared.required_inverse()
     }
 
-    /// Validates a relationship traversal request from this descriptor endpoint.
+    /// Validates that the named relationship is navigable outbound from
+    /// instances of this descriptor.
+    ///
+    /// Navigation is always outbound from the source: the name may resolve to a
+    /// declared relationship licensed on this type, or to an inverse
+    /// relationship whose `SourceType` is this type. See
+    /// [`relationship_navigation`] for the full navigation semantics.
     pub fn allows_relationship(
         &self,
         name: impl ToRelationshipName,
-        direction: TraversalDirection,
     ) -> Result<QualifiedRelationship, HolonError> {
-        relationship_normalization::allows_relationship(
-            self,
-            name.to_relationship_name(),
-            direction,
-        )
+        relationship_navigation::allows_relationship(self, name.to_relationship_name())
     }
 
-    /// Normalizes a legal traversal request to its canonical declared relationship.
-    pub fn normalize_relationship(
-        &self,
-        name: impl ToRelationshipName,
-        direction: TraversalDirection,
-    ) -> Result<DeclaredRelationshipDescriptor, HolonError> {
-        relationship_normalization::normalize_relationship(
-            self,
-            name.to_relationship_name(),
-            direction,
-        )
+    /// Enumerates the relationships navigable outbound from instances of this
+    /// descriptor: declared relationships plus inverse relationships whose
+    /// `SourceType` is this type.
+    ///
+    /// This is a type-level, state-agnostic enumeration; use
+    /// [`crate::descriptors::available_relationships`] to filter by the state
+    /// of a concrete source holon reference.
+    pub fn navigable_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
+        relationship_navigation::navigable_relationships(self)
     }
 
     /// Resolves the effective key rule for instances of this descriptor.

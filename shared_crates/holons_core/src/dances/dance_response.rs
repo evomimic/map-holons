@@ -203,7 +203,6 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::InvalidParameter(_) => ResponseStatusCode::BadRequest,
             HolonError::InvalidRelationship(_, _) => ResponseStatusCode::BadRequest,
             HolonError::InvalidWireFormat { .. } => ResponseStatusCode::BadRequest,
-            HolonError::IllegalRelationshipTraversal { .. } => ResponseStatusCode::BadRequest,
             HolonError::MissingStagedCollection(_) => ResponseStatusCode::BadRequest,
 
             // 422-ish (semantic validation / parse errors)

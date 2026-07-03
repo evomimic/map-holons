@@ -146,6 +146,13 @@ pub trait ReadableHolon: ReadableHolonImpl {
     ///
     /// # See also
     /// - [`ToRelationshipName`] for supported input conversions.
+    // TODO(#536 follow-up): validate the requested name against the source
+    // type's navigable relationship surface before resolving. Intended errors:
+    // `InvalidRelationshipName` when the name is not a valid outbound
+    // relationship for the source holon's type (takes precedence), and
+    // `RelationshipUnavailableInState` when the name resolves to an inverse
+    // relationship but the source is transient or staged-uncommitted (inverse
+    // SmartLinks are only materialized at commit). Out of scope for PR #573.
     #[inline]
     fn related_holons<T: ToRelationshipName>(
         &self,

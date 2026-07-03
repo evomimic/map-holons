@@ -93,10 +93,8 @@ pub enum HolonError {
         "Duplicate inherited {kind} declaration named {name} found for descriptor {descriptor}"
     )]
     DuplicateInheritedDeclaration { kind: String, name: String, descriptor: String },
-    #[error(
-        "Ambiguous relationship traversal {relationship} {direction} for descriptor {descriptor}"
-    )]
-    AmbiguousRelationshipTraversal { relationship: String, direction: String, descriptor: String },
+    #[error("Ambiguous relationship traversal {relationship} for descriptor {descriptor}")]
+    AmbiguousRelationshipTraversal { relationship: String, descriptor: String },
     #[error("Missing required {relationship} relationship for descriptor {descriptor}")]
     MissingRequiredRelationship { relationship: String, descriptor: String },
     #[error(
@@ -111,10 +109,6 @@ pub enum HolonError {
         "Enum variant {variant} is not declared for value type {value_type} on descriptor {descriptor}"
     )]
     EnumVariantNotInSchema { variant: String, value_type: String, descriptor: String },
-    #[error(
-        "Illegal relationship traversal {relationship} {direction} for descriptor {descriptor}"
-    )]
-    IllegalRelationshipTraversal { relationship: String, direction: String, descriptor: String },
     #[error("No effective key rule found for descriptor {descriptor}")]
     NoEffectiveKeyRule { descriptor: String },
     #[error("{0} access not allowed while holon is in {1} state")]
@@ -225,7 +219,6 @@ pub enum HolonErrorKind {
     DescriptorDeclarationNotFound,
     DescriptorSchemaInvalid,
     EnumVariantNotInSchema,
-    IllegalRelationshipTraversal,
     NoEffectiveKeyRule,
     NotAccessible,
     NotImplemented,
@@ -291,7 +284,6 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::DescriptorDeclarationNotFound { .. } => Self::DescriptorDeclarationNotFound,
             HolonError::DescriptorSchemaInvalid { .. } => Self::DescriptorSchemaInvalid,
             HolonError::EnumVariantNotInSchema { .. } => Self::EnumVariantNotInSchema,
-            HolonError::IllegalRelationshipTraversal { .. } => Self::IllegalRelationshipTraversal,
             HolonError::NoEffectiveKeyRule { .. } => Self::NoEffectiveKeyRule,
             HolonError::NotAccessible(_, _) => Self::NotAccessible,
             HolonError::NotImplemented(_) => Self::NotImplemented,
