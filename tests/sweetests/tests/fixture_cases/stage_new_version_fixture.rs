@@ -31,6 +31,10 @@ fn schema_backed_db_count(fixture_holons: &FixtureHolons) -> MapInteger {
 /// assertions. Commit-time relationship persistence must anchor graph-only
 /// changes to the existing Book node and version-producing changes to the new
 /// Book version.
+///
+/// A second graph-only cycle replays the already-persisted `Properties` edge
+/// (issue #516): commit-time SmartLink duplicate suppression must absorb the
+/// equivalent re-write, leaving exactly one forward and one inverse link.
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
@@ -141,6 +145,66 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(
         post_setup_db_count.clone(),
         Some("Graph-only update must not create a new Book node".to_string()),
+    )?;
+
+    // Replay the already-persisted graph-only edge to prove commit-time SmartLink
+    // idempotency (issue #516). `stage_new_version` clones all persisted
+    // relationships into the staged map, so appending a second Properties target
+    // marks the relationship touched; the graph-only commit then re-persists the
+    // whole collection, including a SmartLink equivalent to the already-persisted
+    // Book --Properties--> Title.PropertyType edge. Duplicate suppression must
+    // leave exactly one link per direction for that edge, asserted by the
+    // relationship-anchoring verification step below.
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin new transaction before replaying the persisted Properties edge".to_string()),
+    )?;
+
+    let replay_update = test_case.add_stage_new_version_step(
+        &mut fixture_holons,
+        graph_only_update.clone(),
+        None,
+        staged_versions_with_same_base_key.clone(),
+        None,
+        Some("Stage Book as replay graph-only update context".to_string()),
+    )?;
+
+    // Fresh saved-key lookup so the target binds to this transaction (issue #515).
+    let name_property_stub =
+        fixture_context.mutation().new_holon(Some(MapString("Name.PropertyType".to_string())))?;
+    let name_property_token = test_case.add_lookup_saved_holon_by_key_step(
+        &mut fixture_holons,
+        name_property_stub,
+        MapString("Name.PropertyType".to_string()),
+        None,
+        None,
+    )?;
+
+    test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        replay_update,
+        RelationshipName(MapString("Properties".to_string())),
+        vec![name_property_token],
+        None,
+        Some(
+            "Append Book --Properties--> Name.PropertyType beside the cloned Title member"
+                .to_string(),
+        ),
+    )?;
+
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        None,
+        Some(
+            "Commit replayed graph-only edge --- expecting SmartLink duplicate suppression"
+                .to_string(),
+        ),
+    )?;
+
+    test_case.add_ensure_database_count_step(
+        post_setup_db_count.clone(),
+        Some("Replayed graph-only update must not create a new Book node".to_string()),
     )?;
 
     // Begin a fresh transaction before the definitional relationship mutation.

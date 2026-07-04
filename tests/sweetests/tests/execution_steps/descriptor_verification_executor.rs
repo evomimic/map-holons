@@ -688,6 +688,8 @@ pub async fn execute_verify_book_person_instance_links(state: &mut TestExecution
 /// fixture has exercised both update modes:
 /// - graph-only mutation: Book --Properties--> Title.PropertyType is anchored to
 ///   the existing Book node, with no new Book node created for that commit.
+///   The fixture replays this edge in a second graph-only commit, so exactly one
+///   forward and one inverse link must remain (issue #516 duplicate suppression).
 /// - version-producing mutation: Book --AuthoredBy--> Person is anchored to the
 ///   new Book version, and lineage is persisted bidirectionally through
 ///   Predecessor/Successor.
@@ -723,9 +725,20 @@ pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionStat
 
     // Non-definitional graph-only mutation: no new node was created for this
     // commit, so the Properties edge and its inverse must be anchored to the
-    // existing Book id.
-    assert_related_ids_contain(&original_book, "Properties", &title_property_id);
-    assert_related_ids_contain(&title_property, "PropertyOf", &original_book_id);
+    // existing Book id. The fixture's second graph-only commit re-persisted the
+    // full cloned Properties collection (issue #516), so exactly one link must
+    // exist in each direction: commit-time duplicate suppression absorbed the
+    // equivalent re-write.
+    assert_related_ids_contain_exactly_once(&original_book, "Properties", &title_property_id);
+    assert_related_ids_contain_exactly_once(&title_property, "PropertyOf", &original_book_id);
+
+    // The replay commit also appended Name.PropertyType; its links prove that
+    // commit persisted the touched collection, so the single Title link above
+    // reflects duplicate suppression rather than a skipped write.
+    let name_property = find_holon_by_key(&holons, "Name.PropertyType");
+    let name_property_id = local_id(&name_property);
+    assert_related_ids_contain_exactly_once(&original_book, "Properties", &name_property_id);
+    assert_related_ids_contain_exactly_once(&name_property, "PropertyOf", &original_book_id);
 
     // Definitional mutation: the AuthoredBy edge and its Authors inverse must
     // be anchored to the new Book version, not the prior persisted source.
@@ -910,6 +923,22 @@ fn assert_related_ids_do_not_contain(
     assert!(
         ids.iter().all(|actual| actual != unexpected),
         "expected relationship {relationship_name} ids {ids:?} not to contain {unexpected:?}"
+    );
+}
+
+/// Asserts the target id appears exactly once in the persisted relationship —
+/// duplicate SmartLinks would surface here as repeated members, because the
+/// guest fetch path adds one collection member per persisted link.
+fn assert_related_ids_contain_exactly_once(
+    holon: &HolonReference,
+    relationship_name: &str,
+    expected: &LocalId,
+) {
+    let ids = related_holon_ids(holon, relationship_name);
+    let occurrences = ids.iter().filter(|actual| *actual == expected).count();
+    assert_eq!(
+        occurrences, 1,
+        "expected relationship {relationship_name} ids {ids:?} to contain {expected:?} exactly once"
     );
 }
 

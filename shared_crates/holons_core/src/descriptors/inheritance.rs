@@ -90,7 +90,9 @@ pub fn effective_descriptor_lineage(
     ancestors(&described_by_descriptor)
 }
 
-fn described_by_descriptor(holon: &HolonReference) -> Result<Option<HolonReference>, HolonError> {
+pub(crate) fn described_by_descriptor(
+    holon: &HolonReference,
+) -> Result<Option<HolonReference>, HolonError> {
     let collection_arc = holon.related_holons(CoreRelationshipTypeName::DescribedBy)?;
     let collection = collection_arc.read().map_err(lock_error)?;
     let members = collection.get_members();

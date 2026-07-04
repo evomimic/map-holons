@@ -108,7 +108,7 @@ impl LoaderRefResolver {
     ///
     /// Multi-pass orchestration (deterministic):
     ///   1) Pass-2a: DescribedBy -> with_descriptor()
-    ///   2) Pass-2b: Extends -> add_related_holons()
+    ///   2) Pass-2b: Extends -> add_related_holons_ungoverned()
     ///   3) Pass-2c: process remaining declared relationship references
     pub fn resolve_relationships(
         context: &Arc<TransactionContext>,
@@ -903,7 +903,7 @@ impl LoaderRefResolver {
 
     /// Performs the actual write:
     /// - DescribedBy: exactly one target → `with_descriptor`
-    /// - Others: batch → `add_related_holons`
+    /// - Others: batch → `add_related_holons_ungoverned`
     fn write_relationship(
         mut staged_source: StagedReference,
         declared_relationship_name: &RelationshipName,
@@ -936,7 +936,8 @@ impl LoaderRefResolver {
         }
 
         let number_of_targets = write_targets.len() as i64;
-        staged_source.add_related_holons(declared_relationship_name.clone(), write_targets)?;
+        staged_source
+            .add_related_holons_ungoverned(declared_relationship_name.clone(), write_targets)?;
 
         Ok(number_of_targets)
     }
