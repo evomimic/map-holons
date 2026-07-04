@@ -172,6 +172,12 @@ fn get_smartlink_from_link(
     Ok(smartlink)
 }
 
+/// Persists a SmartLink, suppressing the write when an equivalent link already exists.
+///
+/// Equivalence is source `LocalId` + target action hash + byte-identical encoded tag,
+/// which covers relationship name, reference-type marker (including external space id),
+/// and smart property values. `PropertyMap` is a `BTreeMap`, so equivalent inputs encode
+/// to byte-identical tags, making repeated commit passes idempotent at this choke point.
 pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
     // TODO: populate from property_map Null-separated property values (serialized into a String) for each of the properties listed in the access path
 
@@ -180,15 +186,44 @@ pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
         input.to_address.clone(),
         input.smart_property_values,
     )?;
-    create_link(
-        try_action_hash_from_local_id(&input.from_address)?,
-        try_action_hash_from_local_id(&input.to_address.local_id())?,
-        LinkTypes::SmartLink,
-        link_tag,
-    )
-    .map_err(|e| holon_error_from_wasm_error(e))?;
+    let source_hash = try_action_hash_from_local_id(&input.from_address)?;
+    let target_hash = try_action_hash_from_local_id(&input.to_address.local_id())?;
+
+    if equivalent_smartlink_exists(&source_hash, &target_hash, &link_tag)? {
+        debug!(
+            "SmartLink already persisted for relationship {:?} from {:?}; skipping duplicate write",
+            input.relationship_name.0 .0, input.from_address
+        );
+        return Ok(());
+    }
+
+    create_link(source_hash, target_hash, LinkTypes::SmartLink, link_tag)
+        .map_err(|e| holon_error_from_wasm_error(e))?;
 
     Ok(())
+}
+
+/// Returns true when a live SmartLink from `source_hash` to `target_hash` carrying exactly
+/// `link_tag` already exists.
+///
+/// The full encoded tag serves as the narrowest possible `tag_prefix` filter; exact tag
+/// bytes are then compared because a different tag may extend this one as a prefix (for
+/// example, the same relationship and target with additional smart property values).
+fn equivalent_smartlink_exists(
+    source_hash: &ActionHash,
+    target_hash: &ActionHash,
+    link_tag: &LinkTag,
+) -> Result<bool, HolonError> {
+    let links_query = LinkQuery::try_new(source_hash.clone(), LinkTypes::SmartLink)
+        .map_err(|e| holon_error_from_wasm_error(e))?
+        .tag_prefix(link_tag.clone());
+
+    let links = get_links(links_query, GetStrategy::default())
+        .map_err(|e| holon_error_from_wasm_error(e))?;
+
+    Ok(links.into_iter().any(|link| {
+        link.tag == *link_tag && link.target.into_action_hash().as_ref() == Some(target_hash)
+    }))
 }
 
 // HELPER FUNCTIONS //
@@ -482,5 +517,73 @@ mod tests {
         assert_eq!(Some(space_id), decoded_link_tag_object.proxy_id);
         assert!(decoded_link_tag_object.smart_property_values.is_some());
         assert_eq!(Some(property_values), decoded_link_tag_object.smart_property_values);
+    }
+
+    /// Pins the equivalence-model assumption behind duplicate suppression in
+    /// `save_smartlink`: equivalent inputs must encode to byte-identical tags
+    /// regardless of property insertion order (`PropertyMap` is a `BTreeMap`).
+    #[test]
+    fn test_encode_link_tag_is_deterministic_for_equivalent_inputs() {
+        let local_id =
+            LocalId("uhCkkLQ8hxxrt27W8TtkpcX1XAqbUyfD5_Rv5Us0X_-YeCT6RtMxU".as_bytes().to_vec());
+        let holon_id = HolonId::Local(local_id);
+        let relationship_name = RelationshipName(MapString("ex_relationship_name".to_string()));
+
+        let mut property_values_ascending: PropertyMap = BTreeMap::new();
+        property_values_ascending.insert(
+            PropertyName(MapString("ex_name_1".to_string())),
+            BaseValue::StringValue(MapString("ex_value_1".to_string())),
+        );
+        property_values_ascending.insert(
+            PropertyName(MapString("ex_name_2".to_string())),
+            BaseValue::StringValue(MapString("ex_value_2".to_string())),
+        );
+
+        let mut property_values_descending: PropertyMap = BTreeMap::new();
+        property_values_descending.insert(
+            PropertyName(MapString("ex_name_2".to_string())),
+            BaseValue::StringValue(MapString("ex_value_2".to_string())),
+        );
+        property_values_descending.insert(
+            PropertyName(MapString("ex_name_1".to_string())),
+            BaseValue::StringValue(MapString("ex_value_1".to_string())),
+        );
+
+        let tag_from_ascending =
+            encode_link_tag(&relationship_name, holon_id.clone(), Some(property_values_ascending))
+                .unwrap();
+        let tag_from_descending =
+            encode_link_tag(&relationship_name, holon_id, Some(property_values_descending))
+                .unwrap();
+
+        assert_eq!(tag_from_ascending.into_inner(), tag_from_descending.into_inner());
+    }
+
+    /// Pins why `equivalent_smartlink_exists` compares exact tag bytes after the
+    /// full-tag `tag_prefix` query: a tag carrying additional smart property values
+    /// extends the property-free tag as a prefix, so it would be returned by the
+    /// prefix query but must not count as an equivalent link.
+    #[test]
+    fn test_extended_link_tag_matches_prefix_but_not_exact_bytes() {
+        let local_id =
+            LocalId("uhCkkLQ8hxxrt27W8TtkpcX1XAqbUyfD5_Rv5Us0X_-YeCT6RtMxU".as_bytes().to_vec());
+        let holon_id = HolonId::Local(local_id);
+        let relationship_name = RelationshipName(MapString("ex_relationship_name".to_string()));
+
+        let base_tag = encode_link_tag(&relationship_name, holon_id.clone(), None).unwrap();
+
+        let mut property_values: PropertyMap = BTreeMap::new();
+        property_values.insert(
+            PropertyName(MapString("Key".to_string())),
+            BaseValue::StringValue(MapString("ex_key".to_string())),
+        );
+        let extended_tag =
+            encode_link_tag(&relationship_name, holon_id, Some(property_values)).unwrap();
+
+        let base_bytes = base_tag.into_inner();
+        let extended_bytes = extended_tag.into_inner();
+
+        assert!(extended_bytes.starts_with(&base_bytes));
+        assert_ne!(extended_bytes, base_bytes);
     }
 }
