@@ -936,10 +936,8 @@ impl LoaderRefResolver {
         }
 
         let number_of_targets = write_targets.len() as i64;
-        staged_source.add_related_holons_ungoverned(
-            declared_relationship_name.clone(),
-            write_targets,
-        )?;
+        staged_source
+            .add_related_holons_ungoverned(declared_relationship_name.clone(), write_targets)?;
 
         Ok(number_of_targets)
     }
