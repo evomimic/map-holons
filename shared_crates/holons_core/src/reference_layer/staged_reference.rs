@@ -209,28 +209,28 @@ impl StagedReference {
         format!("TemporaryId={}", self.id)
     }
 
+    fn staged_state(&self) -> Result<StagedState, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
+
+        match &*holon {
+            Holon::Staged(staged_holon) => Ok(staged_holon.get_staged_state()),
+            _ => Err(HolonError::InvalidType(
+                "StagedReference should point to a StagedHolon".to_string(),
+            )),
+        }
+    }
+
     fn relationship_mutation_policy(
         &self,
         relationship_name: &RelationshipName,
     ) -> Result<RelationshipMutationPolicy, HolonError> {
-        let rc_holon = self.get_rc_holon()?;
-        let staged_state = {
-            let holon = rc_holon.read().map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on staged holon: {}",
-                    e
-                ))
-            })?;
-
-            match &*holon {
-                Holon::Staged(staged_holon) => staged_holon.get_staged_state(),
-                _ => {
-                    return Err(HolonError::InvalidType(
-                        "StagedReference should point to a StagedHolon".to_string(),
-                    ))
-                }
-            }
-        };
+        let staged_state = self.staged_state()?;
 
         let source_ref = HolonReference::Staged(self.clone());
         let relationship_descriptor = match effective_relationship_declaration(
@@ -288,6 +288,21 @@ impl StagedReference {
         };
 
         Ok(RelationshipMutationPolicy { note_definitional, duplicate_policy })
+    }
+
+    fn classify_relationship_removal(
+        &self,
+        relationship_name: &RelationshipName,
+    ) -> Result<Option<bool>, HolonError> {
+        if self.staged_state()? == StagedState::ForCreate {
+            return Ok(None);
+        }
+
+        let source_ref = HolonReference::Staged(self.clone());
+        let relationship_descriptor =
+            effective_relationship_declaration(&source_ref, relationship_name.clone())?;
+
+        Ok(Some(relationship_descriptor.is_definitional()?))
     }
 
     fn filter_duplicate_disallowed_entries(
@@ -696,7 +711,7 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let policy = self.relationship_mutation_policy(&relationship_name)?;
+        let is_definitional = self.classify_relationship_removal(&relationship_name)?;
         let holons_with_keys = Self::related_holons_with_keys(holons)?;
         info!(
             "Removing {:?} related holons from relationship: {:?}",
@@ -706,7 +721,7 @@ impl WritableHolonImpl for StagedReference {
         self.remove_related_holons_with_classification(
             &relationship_name,
             holons_with_keys,
-            policy.note_definitional,
+            is_definitional,
         )?;
 
         Ok(self)
@@ -1165,6 +1180,30 @@ mod tests {
             .add_related_holons_ungoverned("UndeclaredRelationship", vec![target.into()])?;
 
         assert_eq!(relationship_member_count(&staged_source, "UndeclaredRelationship")?, 1);
+        assert!(staged_source.is_in_state(&context, StagedState::ForCreate)?);
+        Ok(())
+    }
+
+    #[test]
+    fn for_create_remove_skips_descriptor_classification_after_descriptor_added(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let source_descriptor = context.mutation().stage_new_holon(new_holon_type_descriptor(
+            &context,
+            "source-type",
+            "SourceType",
+        )?)?;
+        let source = new_test_holon(&context, "new-source")?;
+        let mut staged_source = context.mutation().stage_new_holon(source)?;
+        let target = staged_target(&context, "new-target")?;
+
+        staged_source.add_related_holons("UndeclaredRelationship", vec![target.clone().into()])?;
+        staged_source.with_descriptor(source_descriptor.into())?;
+        assert_eq!(relationship_member_count(&staged_source, "UndeclaredRelationship")?, 1);
+
+        staged_source.remove_related_holons("UndeclaredRelationship", vec![target.into()])?;
+
+        assert_eq!(relationship_member_count(&staged_source, "UndeclaredRelationship")?, 0);
         assert!(staged_source.is_in_state(&context, StagedState::ForCreate)?);
         Ok(())
     }
