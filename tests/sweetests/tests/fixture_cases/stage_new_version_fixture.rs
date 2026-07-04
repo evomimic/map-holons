@@ -148,11 +148,13 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // Replay the already-persisted graph-only edge to prove commit-time SmartLink
-    // idempotency (issue #516). Removing then re-adding the target leaves the staged
-    // collection unchanged but marks `Properties` as touched, so commit re-attempts a
-    // SmartLink write equivalent to the one persisted by the previous commit.
-    // Duplicate suppression must leave exactly one forward/inverse link pair,
-    // asserted by the relationship-anchoring verification step below.
+    // idempotency (issue #516). `stage_new_version` clones all persisted
+    // relationships into the staged map, so appending a second Properties target
+    // marks the relationship touched; the graph-only commit then re-persists the
+    // whole collection, including a SmartLink equivalent to the already-persisted
+    // Book --Properties--> Title.PropertyType edge. Duplicate suppression must
+    // leave exactly one link per direction for that edge, asserted by the
+    // relationship-anchoring verification step below.
     test_case.add_begin_transaction_step(
         None,
         Some("Begin new transaction before replaying the persisted Properties edge".to_string()),
@@ -168,31 +170,26 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // Fresh saved-key lookup so the target binds to this transaction (issue #515).
-    let replay_title_stub =
-        fixture_context.mutation().new_holon(Some(MapString("Title.PropertyType".to_string())))?;
-    let replay_title_token = test_case.add_lookup_saved_holon_by_key_step(
+    let name_property_stub =
+        fixture_context.mutation().new_holon(Some(MapString("Name.PropertyType".to_string())))?;
+    let name_property_token = test_case.add_lookup_saved_holon_by_key_step(
         &mut fixture_holons,
-        replay_title_stub,
-        MapString("Title.PropertyType".to_string()),
+        name_property_stub,
+        MapString("Name.PropertyType".to_string()),
         None,
         None,
     )?;
 
-    let replay_update = test_case.add_remove_related_holons_step(
-        &mut fixture_holons,
-        replay_update,
-        RelationshipName(MapString("Properties".to_string())),
-        vec![replay_title_token.clone()],
-        None,
-        Some("Remove cloned Book --Properties--> Title.PropertyType member".to_string()),
-    )?;
     test_case.add_add_related_holons_step(
         &mut fixture_holons,
         replay_update,
         RelationshipName(MapString("Properties".to_string())),
-        vec![replay_title_token],
+        vec![name_property_token],
         None,
-        Some("Re-add already-persisted Book --Properties--> Title.PropertyType".to_string()),
+        Some(
+            "Append Book --Properties--> Name.PropertyType beside the cloned Title member"
+                .to_string(),
+        ),
     )?;
 
     test_case.add_commit_step(

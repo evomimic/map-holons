@@ -305,6 +305,15 @@ impl StagedReference {
         Ok(Some(relationship_descriptor.is_definitional()?))
     }
 
+    /// Filters add entries for a duplicate-disallowed relationship against the staged
+    /// collection: exact repeats (same reference identity) are dropped as idempotent
+    /// no-ops, while a same-key entry with a different identity fails with
+    /// `DuplicateError`.
+    ///
+    /// This check sees only the staged collection, so it is authoritative for
+    /// `ForCreate` sources but best-effort for `ForUpdate*` sources, whose prior
+    /// relationships live in the persisted graph. Commit-time SmartLink suppression
+    /// is the authoritative duplicate guard against persisted links (issue #516).
     fn filter_duplicate_disallowed_entries(
         &self,
         relationship_name: &RelationshipName,
@@ -1224,6 +1233,80 @@ mod tests {
 
         assert_eq!(relationship_member_count(&staged_source, "AuthoredBy")?, 1);
         assert!(staged_source.is_in_state(&context, StagedState::ForUpdate)?);
+        Ok(())
+    }
+
+    /// Pins the issue #516 §4.6 authority matrix for `ForCreate`: all of a new
+    /// holon's relationships are staged, so the mutation-time duplicate check is
+    /// authoritative there — the exact repeat is dropped without descriptor
+    /// escalation and the source stays `ForCreate`.
+    #[test]
+    fn duplicate_disallowed_repeated_add_is_idempotent_for_described_for_create_source(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_descriptor, _) =
+            staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
+        let source = new_test_holon(&context, "source-instance")?;
+        let mut staged_source = context.mutation().stage_new_holon(source)?;
+        staged_source.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![source_descriptor.into()],
+        )?;
+        let target = staged_target(&context, "author")?;
+
+        staged_source.add_related_holons("AuthoredBy", vec![target.clone().into()])?;
+        staged_source.add_related_holons("AuthoredBy", vec![target.into()])?;
+
+        assert_eq!(relationship_member_count(&staged_source, "AuthoredBy")?, 1);
+        assert!(staged_source.is_in_state(&context, StagedState::ForCreate)?);
+        Ok(())
+    }
+
+    /// A duplicate declared base name anywhere in the source's effective lineage is
+    /// an eager local schema defect; it must surface through ordinary mutation
+    /// validation rather than being swallowed or treated as a permissive fallback.
+    #[test]
+    fn duplicate_inherited_declaration_surfaces_through_mutation() -> Result<(), HolonError> {
+        let context = build_context();
+        let source_type = new_holon_type_descriptor(&context, "source-type", "SourceType")?;
+        let target_type = new_holon_type_descriptor(&context, "target-type", "TargetType")?;
+        let staged_source_type = context.mutation().stage_new_holon(source_type)?;
+        let staged_target_type = context.mutation().stage_new_holon(target_type)?;
+
+        let first_declaration = new_relationship_descriptor_holon(
+            &context,
+            "relationship-descriptor-a",
+            "AuthoredBy",
+            staged_source_type.clone().into(),
+            staged_target_type.clone().into(),
+        )?;
+        let second_declaration = new_relationship_descriptor_holon(
+            &context,
+            "relationship-descriptor-b",
+            "AuthoredBy",
+            staged_source_type.clone().into(),
+            staged_target_type.into(),
+        )?;
+        let staged_first = context.mutation().stage_new_holon(first_declaration)?;
+        let staged_second = context.mutation().stage_new_holon(second_declaration)?;
+
+        let mut staged_source_type = staged_source_type;
+        staged_source_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![staged_first.into(), staged_second.into()],
+        )?;
+
+        let mut staged_source = staged_update_source(&context, staged_source_type)?;
+        let target = staged_target(&context, "author")?;
+
+        let result = staged_source.add_related_holons("AuthoredBy", vec![target.into()]);
+
+        assert!(matches!(
+            result,
+            Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+                if kind == "relationship" && name == "AuthoredBy"
+        ));
+        assert_eq!(relationship_member_count(&staged_source, "AuthoredBy")?, 0);
         Ok(())
     }
 

@@ -725,12 +725,20 @@ pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionStat
 
     // Non-definitional graph-only mutation: no new node was created for this
     // commit, so the Properties edge and its inverse must be anchored to the
-    // existing Book id. The fixture also replayed this edge in a second
-    // graph-only commit (issue #516), so exactly one link must exist in each
-    // direction: commit-time duplicate suppression absorbed the equivalent
-    // re-write.
+    // existing Book id. The fixture's second graph-only commit re-persisted the
+    // full cloned Properties collection (issue #516), so exactly one link must
+    // exist in each direction: commit-time duplicate suppression absorbed the
+    // equivalent re-write.
     assert_related_ids_contain_exactly_once(&original_book, "Properties", &title_property_id);
     assert_related_ids_contain_exactly_once(&title_property, "PropertyOf", &original_book_id);
+
+    // The replay commit also appended Name.PropertyType; its links prove that
+    // commit persisted the touched collection, so the single Title link above
+    // reflects duplicate suppression rather than a skipped write.
+    let name_property = find_holon_by_key(&holons, "Name.PropertyType");
+    let name_property_id = local_id(&name_property);
+    assert_related_ids_contain_exactly_once(&original_book, "Properties", &name_property_id);
+    assert_related_ids_contain_exactly_once(&name_property, "PropertyOf", &original_book_id);
 
     // Definitional mutation: the AuthoredBy edge and its Authors inverse must
     // be anchored to the new Book version, not the prior persisted source.
