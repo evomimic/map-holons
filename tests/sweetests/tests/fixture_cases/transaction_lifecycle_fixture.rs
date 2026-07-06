@@ -141,7 +141,7 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // Finalize
-    test_case.finalize(&fixture_context)?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
 
     Ok(test_case)
 }

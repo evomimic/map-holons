@@ -5,19 +5,23 @@
 //! This resolver adapts those harness concepts to the phase-generic resolver
 //! port exposed by `holons_core`.
 
-use crate::{ExecutionHolons, SAVED_LOOKUP_STUB_MARKER};
+use crate::{ExecutionHolons, FixtureHeadIndex, SAVED_LOOKUP_STUB_MARKER};
 use holons_prelude::prelude::*;
 use type_names::property_names::ToPropertyName;
 
 /// Resolver used by saved-content assertions.
 pub struct ExecutionEquivalenceResolver<'a> {
     execution_holons: &'a ExecutionHolons,
+    fixture_head_index: &'a FixtureHeadIndex,
 }
 
 impl<'a> ExecutionEquivalenceResolver<'a> {
     /// Creates a resolver over the execution registry for the current test run.
-    pub fn new(execution_holons: &'a ExecutionHolons) -> Self {
-        Self { execution_holons }
+    pub fn new(
+        execution_holons: &'a ExecutionHolons,
+        fixture_head_index: &'a FixtureHeadIndex,
+    ) -> Self {
+        Self { execution_holons, fixture_head_index }
     }
 }
 
@@ -28,7 +32,7 @@ impl EquivalenceResolver for ExecutionEquivalenceResolver<'_> {
         }
 
         if let Some(resolved_reference) =
-            canonical_saved_reference(reference, self.execution_holons)?
+            canonical_saved_reference(reference, self.execution_holons, self.fixture_head_index)?
         {
             return Ok(NodeResolution::Canonical(resolved_reference));
         }
@@ -58,6 +62,7 @@ fn is_saved_lookup_stub(reference: &HolonReference) -> Result<bool, HolonError> 
 fn canonical_saved_reference(
     reference: &HolonReference,
     execution_holons: &ExecutionHolons,
+    fixture_head_index: &FixtureHeadIndex,
 ) -> Result<Option<HolonReference>, HolonError> {
     let snapshot_id = match reference {
         HolonReference::Transient(transient) => transient.temporary_id(),
@@ -65,7 +70,9 @@ fn canonical_saved_reference(
         HolonReference::Smart(_) => return Ok(None),
     };
 
-    let Some(resolved) = execution_holons.by_snapshot_id.get(&snapshot_id) else {
+    let head_id = fixture_head_index.get(&snapshot_id).unwrap_or(&snapshot_id);
+
+    let Some(resolved) = execution_holons.by_snapshot_id.get(head_id) else {
         return Ok(None);
     };
 

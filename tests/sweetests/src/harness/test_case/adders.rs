@@ -85,11 +85,12 @@ impl DancesTestCase {
     pub fn finalize(
         &mut self,
         fixture_context: &Arc<TransactionContext>,
+        fixture_holons: &FixtureHolons,
     ) -> Result<(), HolonError> {
         if self.is_finalized == true {
             return Err(HolonError::InvalidState("DancesTestCase already finalized!".to_string()));
         }
-        self.load_test_session_state(fixture_context);
+        self.load_test_session_state(fixture_context, fixture_holons);
         self.is_finalized = true;
 
         Ok(())
@@ -106,10 +107,15 @@ impl DancesTestCase {
     /// * `test_session_state` - A mutable reference to the `TestSessionState` that will be updated with transient holons.
     ///
     /// This function is called automatically within `rs_test` and should not be used directly.
-    pub fn load_test_session_state(&mut self, fixture_context: &Arc<TransactionContext>) {
+    pub fn load_test_session_state(
+        &mut self,
+        fixture_context: &Arc<TransactionContext>,
+        fixture_holons: &FixtureHolons,
+    ) {
         let transient_holons = fixture_context.export_transient_holons().unwrap();
         self.test_session_state
             .set_transient_holons(SerializableHolonPool::from(&transient_holons));
+        self.test_session_state.set_fixture_head_index(fixture_holons.head_snapshot_index());
     }
 
     // === Execution Steps === //

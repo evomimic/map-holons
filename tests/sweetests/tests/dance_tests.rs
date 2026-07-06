@@ -64,7 +64,6 @@ use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_book_person_inverse_schema_fixture::*;
 use fixture_cases::load_core_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
-use fixture_cases::load_inverse_oriented_book_person_instances_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
@@ -116,22 +115,29 @@ use holons_prelude::prelude::*;
 #[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
 #[case::load_core_schema_test(load_core_schema_fixture())]
 #[case::load_book_person_inverse_schema_test(load_book_person_inverse_schema_fixture())]
+#[case::frozen_member_head_redirect_test(frozen_member_head_redirect_fixture())]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
-    // Setup
+    run_dance_test_case(input.unwrap()).await;
+}
 
+/// Drives a finalized `DancesTestCase` through runtime setup and step execution.
+///
+/// Shared by the parametrized `rstest_dance_tests` cases and by standalone tests
+/// such as the `#[ignore]`d cross-transaction regression pending issue #556.
+async fn run_dance_test_case(mut test_case: DancesTestCase) {
     // The heavy lifting for this test is in the test data set creation.
 
-    let mut test_case: DancesTestCase = input.unwrap();
     assert!(
         test_case.is_finalized(),
-        "DancesTestCase must be finalized before execution. Call test_case.finalize(&fixture_context) in the fixture."
+        "DancesTestCase must be finalized before execution. Call test_case.finalize(&fixture_context, &fixture_holons) in the fixture."
     );
     // Initialize runtime and execution state
     let fixture_transient_holons = test_case.test_session_state.get_transient_holons().clone();
+    let fixture_head_index = test_case.test_session_state.fixture_head_index().clone();
     let (runtime, tx_id) = init_test_runtime(&mut test_case).await;
     let mut test_execution_state =
-        TestExecutionState::new(runtime, tx_id, fixture_transient_holons);
+        TestExecutionState::new(runtime, tx_id, fixture_transient_holons, fixture_head_index);
 
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {} TEST CASE WITH {} TEST STEPS ***************************", test_case.name, test_case.steps.len());
     info!("\n   Test Case Description: {}", test_case.description);
@@ -345,4 +351,20 @@ async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
         }
     }
     info!("\n{TEST_CLIENT_PREFIX} ------- END OF {} TEST CASE  ---------------", test_case.name);
+}
+
+/// Cross-transaction frozen-member regression, kept ready for issue #556.
+///
+/// Ignored until the sweettest relationship adders head-resolve execution-step
+/// target tokens (issue #556). Until then the frozen staged Person reference is
+/// carried into a later transaction's commit and correctly rejected by the
+/// production session-import bind. Remove `#[ignore]` once #556 lands.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "unblocked by #556: execution-step token head resolution"]
+async fn frozen_member_head_redirect_cross_tx_test() {
+    run_dance_test_case(
+        frozen_member_head_redirect_cross_tx_fixture()
+            .expect("cross-tx frozen-member fixture should build"),
+    )
+    .await;
 }

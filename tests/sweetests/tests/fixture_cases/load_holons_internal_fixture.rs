@@ -338,7 +338,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
 
     // Finalize
-    test_case.finalize(&fixture_context)?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
 
     Ok(test_case)
 }

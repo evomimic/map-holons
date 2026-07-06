@@ -9,7 +9,7 @@
 //! - [`TestSessionState`], which captures transient holon state produced during
 //!   fixture setup and injects it into the test execution context.
 
-use crate::{init_fixture_context, FixtureBindings, FixtureHolons};
+use crate::{init_fixture_context, FixtureBindings, FixtureHeadIndex, FixtureHolons};
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use std::sync::Arc;
@@ -60,6 +60,7 @@ impl TestCaseInit {
 #[derive(Clone, Debug, Default)]
 pub struct TestSessionState {
     transient_holons: SerializableHolonPool,
+    fixture_head_index: FixtureHeadIndex,
 }
 
 impl TestSessionState {
@@ -69,5 +70,13 @@ impl TestSessionState {
 
     pub fn get_transient_holons(&self) -> &SerializableHolonPool {
         &self.transient_holons
+    }
+
+    pub fn set_fixture_head_index(&mut self, fixture_head_index: FixtureHeadIndex) {
+        self.fixture_head_index = fixture_head_index;
+    }
+
+    pub fn fixture_head_index(&self) -> &FixtureHeadIndex {
+        &self.fixture_head_index
     }
 }

@@ -14,8 +14,8 @@
 //! The expected snapshot that comes from the executor input token is intent; the resulting reference is 'DHT' reality.
 
 use crate::{
-    ExecutionEquivalenceResolver, ExecutionHolons, ExpectedSnapshot, TestReference,
-    SAVED_LOOKUP_STUB_MARKER,
+    ExecutionEquivalenceResolver, ExecutionHolons, ExpectedSnapshot, FixtureHeadIndex,
+    TestReference, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
@@ -121,13 +121,17 @@ impl ExecutionReference {
     /// derive definitional relationship policy from the actual saved root, and
     /// delegate relationship member comparison to the shared reference-layer
     /// comparator through `ExecutionEquivalenceResolver`.
-    pub fn assert_saved_content_eq(&self, execution_holons: &ExecutionHolons) {
+    pub fn assert_saved_content_eq(
+        &self,
+        execution_holons: &ExecutionHolons,
+        fixture_head_index: &FixtureHeadIndex,
+    ) {
         let expected_root = HolonReference::from(self.expected_snapshot.snapshot());
         let actual_root = self
             .execution_handle
             .get_holon_reference()
             .expect("Failed to get HolonReference for execution_handle");
-        let resolver = ExecutionEquivalenceResolver::new(execution_holons);
+        let resolver = ExecutionEquivalenceResolver::new(execution_holons, fixture_head_index);
 
         Self::compare_saved_content_root(&expected_root, &actual_root, &resolver).unwrap_or_else(
             |message| {
