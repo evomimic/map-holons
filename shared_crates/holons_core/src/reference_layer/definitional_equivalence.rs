@@ -503,3 +503,581 @@ impl VisitedPairKey {
         })
     }
 }
+
+#[cfg(test)]
+// These tests run against the in-memory `build_context()` over `TestHolonService`,
+// which cannot perform real commits (host/guest crossings return `NotImplemented`).
+// Consequences for coverage:
+// - Genuine saved holons carrying content don't exist here, so saved-vs-unsaved
+//   *structural* recursion (reading a saved side's property map and members while the
+//   other side is transient/staged) is intentionally NOT exercised in this module; it
+//   is covered by the Phase 5 sweettest regression.
+// - Saved-identity tests use synthetic `SmartReference` ids, which is valid precisely
+//   because the saved short-circuit never reads content.
+// - All descriptors here are transient; no staged-phase holon is exercised.
+mod tests {
+    use super::*;
+    use crate::descriptors::test_support::{
+        build_context, new_holon_type_descriptor, new_relationship_descriptor_holon, new_test_holon,
+    };
+    use crate::reference_layer::{SmartReference, TransientReference, WritableHolon};
+    use base_types::{BaseValue, MapBoolean, MapString};
+    use core_types::{LocalId, PropertyName};
+    use std::sync::Arc;
+    use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToPropertyName};
+
+    type TestContext = Arc<crate::core_shared_objects::transactions::TransactionContext>;
+
+    fn relationship_name(name: &str) -> RelationshipName {
+        RelationshipName(MapString(name.to_string()))
+    }
+
+    fn property_name(name: &str) -> PropertyName {
+        MapString(name.to_string()).to_property_name()
+    }
+
+    fn holon_id(byte: u8) -> HolonId {
+        HolonId::Local(LocalId(vec![byte; 39]))
+    }
+
+    fn saved_reference(context: &TestContext, byte: u8) -> HolonReference {
+        HolonReference::Smart(SmartReference::new_from_id(context.context_handle(), holon_id(byte)))
+    }
+
+    fn saved_reference_with_key(context: &TestContext, byte: u8, key: &str) -> HolonReference {
+        HolonReference::smart_with_key(
+            context.context_handle(),
+            holon_id(byte),
+            MapString(key.to_string()),
+        )
+    }
+
+    fn described_holon(
+        context: &TestContext,
+        key: &str,
+        descriptor: &TransientReference,
+    ) -> Result<TransientReference, HolonError> {
+        let mut holon = new_test_holon(context, key)?;
+        holon.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(descriptor)],
+        )?;
+        Ok(holon)
+    }
+
+    fn add_relationship_descriptor(
+        context: &TestContext,
+        source_type: &mut TransientReference,
+        target_type: &TransientReference,
+        name: &str,
+        is_definitional: bool,
+        is_ordered: bool,
+    ) -> Result<TransientReference, HolonError> {
+        let mut relationship = new_relationship_descriptor_holon(
+            context,
+            &format!("{}-{}-relationship", name.to_lowercase(), source_type.temporary_id()),
+            name,
+            HolonReference::from(&*source_type),
+            HolonReference::from(target_type),
+        )?;
+        relationship
+            .with_property_value(CorePropertyTypeName::IsDefinitional, is_definitional)?
+            .with_property_value(CorePropertyTypeName::IsOrdered, is_ordered)?;
+        source_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![HolonReference::from(&relationship)],
+        )?;
+        Ok(relationship)
+    }
+
+    fn simple_types(
+        context: &TestContext,
+        prefix: &str,
+    ) -> Result<(TransientReference, TransientReference), HolonError> {
+        Ok((
+            new_holon_type_descriptor(context, &format!("{prefix}-source-type"), "SourceType")?,
+            new_holon_type_descriptor(context, &format!("{prefix}-target-type"), "TargetType")?,
+        ))
+    }
+
+    fn outcome(
+        left: &TransientReference,
+        right: &TransientReference,
+    ) -> Result<EquivalenceOutcome, HolonError> {
+        left.definitional_equivalence(&HolonReference::from(right))
+    }
+
+    fn assert_equivalent(
+        left: &TransientReference,
+        right: &TransientReference,
+    ) -> Result<(), HolonError> {
+        assert_eq!(outcome(left, right)?, EquivalenceOutcome::Equivalent);
+        Ok(())
+    }
+
+    fn assert_divergent(
+        left: &TransientReference,
+        right: &TransientReference,
+    ) -> Result<Divergence, HolonError> {
+        match outcome(left, right)? {
+            EquivalenceOutcome::Equivalent => {
+                panic!("expected divergent definitional-equivalence outcome")
+            }
+            EquivalenceOutcome::Divergent(divergence) => Ok(divergence),
+        }
+    }
+
+    #[test]
+    fn identical_property_maps_without_definitional_relationships_are_equivalent(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_type, _) = simple_types(&context, "same-properties")?;
+        let mut left = described_holon(&context, "same-key", &source_type)?;
+        let mut right = described_holon(&context, "same-key", &source_type)?;
+        left.with_property_value(CorePropertyTypeName::Description, "same")?;
+        right.with_property_value(CorePropertyTypeName::Description, "same")?;
+
+        assert_equivalent(&left, &right)
+    }
+
+    #[test]
+    fn property_map_mismatch_is_divergent_at_root() -> Result<(), HolonError> {
+        let context = build_context();
+        let (source_type, _) = simple_types(&context, "property-mismatch")?;
+        let mut left = described_holon(&context, "same-key", &source_type)?;
+        let mut right = described_holon(&context, "same-key", &source_type)?;
+        left.with_property_value(CorePropertyTypeName::Description, "left")?;
+        right.with_property_value(CorePropertyTypeName::Description, "right")?;
+
+        let divergence = assert_divergent(&left, &right)?;
+
+        assert!(divergence.path.is_empty());
+        assert!(divergence.reason.contains("Description"));
+        Ok(())
+    }
+
+    #[test]
+    fn saved_pairs_short_circuit_on_identity() -> Result<(), HolonError> {
+        let context = build_context();
+        let left = saved_reference(&context, 7);
+        let same = saved_reference(&context, 7);
+        let different = saved_reference(&context, 8);
+
+        assert_eq!(left.definitional_equivalence(&same)?, EquivalenceOutcome::Equivalent);
+        assert!(matches!(
+            left.definitional_equivalence(&different)?,
+            EquivalenceOutcome::Divergent(_)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn missing_extra_definitional_relationship_members_diverge_both_directions(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let (mut source_type, target_type) = simple_types(&context, "missing-member")?;
+        let relation = relationship_name("RelatedTo");
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "RelatedTo",
+            true,
+            false,
+        )?;
+        let mut left = described_holon(&context, "root", &source_type)?;
+        let right = described_holon(&context, "root", &source_type)?;
+        let member = described_holon(&context, "member", &target_type)?;
+        left.add_related_holons(relation.clone(), vec![HolonReference::from(member)])?;
+
+        assert!(matches!(outcome(&left, &right)?, EquivalenceOutcome::Divergent(_)));
+        assert!(matches!(outcome(&right, &left)?, EquivalenceOutcome::Divergent(_)));
+        Ok(())
+    }
+
+    #[test]
+    fn wrong_definitional_target_diverges_with_relationship_path() -> Result<(), HolonError> {
+        let context = build_context();
+        let (mut source_type, target_type) = simple_types(&context, "wrong-target")?;
+        let relation = relationship_name("RelatedTo");
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "RelatedTo",
+            true,
+            false,
+        )?;
+        let mut left = described_holon(&context, "root", &source_type)?;
+        let mut right = described_holon(&context, "root", &source_type)?;
+        let left_member = described_holon(&context, "left-member", &target_type)?;
+        let right_member = described_holon(&context, "right-member", &target_type)?;
+        left.add_related_holons(relation.clone(), vec![HolonReference::from(left_member)])?;
+        right.add_related_holons(relation.clone(), vec![HolonReference::from(right_member)])?;
+
+        let divergence = assert_divergent(&left, &right)?;
+
+        assert_eq!(divergence.path, vec![relation]);
+        Ok(())
+    }
+
+    #[test]
+    fn definitional_relationship_name_sets_must_match() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut left_type = new_holon_type_descriptor(&context, "left-name-set-type", "RootType")?;
+        let right_type = new_holon_type_descriptor(&context, "right-name-set-type", "RootType")?;
+        let target_type =
+            new_holon_type_descriptor(&context, "name-set-target-type", "TargetType")?;
+        add_relationship_descriptor(
+            &context,
+            &mut left_type,
+            &target_type,
+            "OnlyOnLeft",
+            true,
+            false,
+        )?;
+        let left = described_holon(&context, "root", &left_type)?;
+        let right = described_holon(&context, "root", &right_type)?;
+
+        let divergence = assert_divergent(&left, &right)?;
+
+        assert!(divergence.reason.contains("OnlyOnLeft"));
+        Ok(())
+    }
+
+    #[test]
+    fn different_described_by_targets_diverge_through_relationship_rule() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let meta_type = new_holon_type_descriptor(&context, "descriptor-meta-type", "MetaType")?;
+        let mut left_type =
+            new_holon_type_descriptor(&context, "left-described-by-type", "LeftType")?;
+        let mut right_type =
+            new_holon_type_descriptor(&context, "right-described-by-type", "RightType")?;
+        let described_by = CoreRelationshipTypeName::DescribedBy.as_relationship_name();
+        add_relationship_descriptor(
+            &context,
+            &mut left_type,
+            &meta_type,
+            "DescribedBy",
+            true,
+            false,
+        )?;
+        add_relationship_descriptor(
+            &context,
+            &mut right_type,
+            &meta_type,
+            "DescribedBy",
+            true,
+            false,
+        )?;
+        left_type.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&meta_type)],
+        )?;
+        right_type.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&meta_type)],
+        )?;
+        let left = described_holon(&context, "root", &left_type)?;
+        let right = described_holon(&context, "root", &right_type)?;
+
+        let divergence = assert_divergent(&left, &right)?;
+
+        assert_eq!(divergence.path, vec![described_by]);
+        Ok(())
+    }
+
+    #[test]
+    fn same_key_different_saved_targets_are_divergent() -> Result<(), HolonError> {
+        let context = build_context();
+        let (mut source_type, target_type) = simple_types(&context, "saved-target")?;
+        let relation = relationship_name("SavedTarget");
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "SavedTarget",
+            true,
+            true,
+        )?;
+        let mut left = described_holon(&context, "root", &source_type)?;
+        let mut right = described_holon(&context, "root", &source_type)?;
+        left.add_related_holons(
+            relation.clone(),
+            vec![saved_reference_with_key(&context, 1, "same-saved-key")],
+        )?;
+        right.add_related_holons(
+            relation.clone(),
+            vec![saved_reference_with_key(&context, 2, "same-saved-key")],
+        )?;
+
+        let divergence = assert_divergent(&left, &right)?;
+
+        assert_eq!(divergence.path, vec![relation]);
+        assert!(divergence.reason.contains("Saved holon ids differ"));
+        Ok(())
+    }
+
+    #[test]
+    fn ordered_relationship_members_are_compared_positionally() -> Result<(), HolonError> {
+        let context = build_context();
+        let (mut source_type, target_type) = simple_types(&context, "ordered")?;
+        let relation = relationship_name("OrderedMembers");
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "OrderedMembers",
+            true,
+            true,
+        )?;
+        let mut left = described_holon(&context, "root", &source_type)?;
+        let mut right = described_holon(&context, "root", &source_type)?;
+        let left_a = described_holon(&context, "a", &target_type)?;
+        let left_b = described_holon(&context, "b", &target_type)?;
+        let right_a = described_holon(&context, "a", &target_type)?;
+        let right_b = described_holon(&context, "b", &target_type)?;
+
+        left.add_related_holons(
+            relation.clone(),
+            vec![HolonReference::from(left_a), HolonReference::from(left_b)],
+        )?;
+        right.add_related_holons(
+            relation,
+            vec![HolonReference::from(right_b), HolonReference::from(right_a)],
+        )?;
+
+        assert!(matches!(outcome(&left, &right)?, EquivalenceOutcome::Divergent(_)));
+        Ok(())
+    }
+
+    #[test]
+    fn unordered_relationship_members_are_matched_as_multisets() -> Result<(), HolonError> {
+        let context = build_context();
+        let (mut source_type, target_type) = simple_types(&context, "unordered")?;
+        let relation = relationship_name("UnorderedMembers");
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "UnorderedMembers",
+            true,
+            false,
+        )?;
+        let mut left = described_holon(&context, "root", &source_type)?;
+        let mut right = described_holon(&context, "root", &source_type)?;
+        let left_a = described_holon(&context, "a", &target_type)?;
+        let left_b = described_holon(&context, "b", &target_type)?;
+        let right_a = described_holon(&context, "a", &target_type)?;
+        let right_b = described_holon(&context, "b", &target_type)?;
+
+        left.add_related_holons(
+            relation.clone(),
+            vec![HolonReference::from(left_a), HolonReference::from(left_b)],
+        )?;
+        right.add_related_holons(
+            relation,
+            vec![HolonReference::from(right_b), HolonReference::from(right_a)],
+        )?;
+
+        assert_equivalent(&left, &right)
+    }
+
+    #[test]
+    fn undescribed_holons_compare_by_properties_only_when_relationless() -> Result<(), HolonError> {
+        let context = build_context();
+        let left = new_test_holon(&context, "same-key")?;
+        let right = new_test_holon(&context, "same-key")?;
+
+        assert_equivalent(&left, &right)
+    }
+
+    #[test]
+    fn undescribed_holons_with_relationship_members_error() -> Result<(), HolonError> {
+        let context = build_context();
+        let relation = relationship_name("Unlicensed");
+        let mut left = new_test_holon(&context, "same-key")?;
+        let right = new_test_holon(&context, "same-key")?;
+        let member = new_test_holon(&context, "member")?;
+        left.add_related_holons(relation, vec![HolonReference::from(member)])?;
+
+        assert!(matches!(outcome(&left, &right), Err(HolonError::MissingDescribedBy { .. })));
+        Ok(())
+    }
+
+    #[test]
+    fn non_definitional_relationships_are_ignored() -> Result<(), HolonError> {
+        let context = build_context();
+        let (mut source_type, target_type) = simple_types(&context, "non-def")?;
+        let relation = relationship_name("NavigatesTo");
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "NavigatesTo",
+            false,
+            false,
+        )?;
+        let mut left = described_holon(&context, "root", &source_type)?;
+        let right = described_holon(&context, "root", &source_type)?;
+        let member = described_holon(&context, "member", &target_type)?;
+        left.add_related_holons(relation, vec![HolonReference::from(member)])?;
+
+        assert_equivalent(&left, &right)
+    }
+
+    #[test]
+    fn self_referencing_definitional_cycles_terminate() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut source_type = new_holon_type_descriptor(&context, "self-cycle-type", "CycleType")?;
+        let relation = relationship_name("LinksTo");
+        let target_type = source_type.clone();
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "LinksTo",
+            true,
+            false,
+        )?;
+        let mut left = described_holon(&context, "root", &source_type)?;
+        let mut right = described_holon(&context, "root", &source_type)?;
+        left.add_related_holons(relation.clone(), vec![HolonReference::from(&left)])?;
+        right.add_related_holons(relation, vec![HolonReference::from(&right)])?;
+
+        assert_equivalent(&left, &right)
+    }
+
+    #[test]
+    fn mutually_referencing_definitional_cycles_terminate() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut source_type =
+            new_holon_type_descriptor(&context, "mutual-cycle-type", "CycleType")?;
+        let relation = relationship_name("LinksTo");
+        let target_type = source_type.clone();
+        add_relationship_descriptor(
+            &context,
+            &mut source_type,
+            &target_type,
+            "LinksTo",
+            true,
+            false,
+        )?;
+        let mut left_a = described_holon(&context, "a", &source_type)?;
+        let mut left_b = described_holon(&context, "b", &source_type)?;
+        let mut right_a = described_holon(&context, "a", &source_type)?;
+        let mut right_b = described_holon(&context, "b", &source_type)?;
+        left_a.add_related_holons(relation.clone(), vec![HolonReference::from(&left_b)])?;
+        left_b.add_related_holons(relation.clone(), vec![HolonReference::from(&left_a)])?;
+        right_a.add_related_holons(relation.clone(), vec![HolonReference::from(&right_b)])?;
+        right_b.add_related_holons(relation, vec![HolonReference::from(&right_a)])?;
+
+        assert_equivalent(&left_a, &right_a)
+    }
+
+    struct TestResolver {
+        canonical_key: MapString,
+        canonical_reference: HolonReference,
+        match_by_key_property: PropertyName,
+    }
+
+    impl EquivalenceResolver for TestResolver {
+        fn resolve(&self, reference: &HolonReference) -> Result<NodeResolution, HolonError> {
+            match reference {
+                HolonReference::Smart(smart_reference) => {
+                    if smart_reference
+                        .smart_property_values()
+                        .and_then(|properties| properties.get(&self.match_by_key_property))
+                        .is_some()
+                    {
+                        return Ok(NodeResolution::MatchByKey);
+                    }
+                }
+                _ if reference.property_value(self.match_by_key_property.clone())?.is_some() => {
+                    return Ok(NodeResolution::MatchByKey);
+                }
+                _ => {}
+            }
+            if !reference.is_saved() && reference.key()? == Some(self.canonical_key.clone()) {
+                return Ok(NodeResolution::Canonical(self.canonical_reference.clone()));
+            }
+            Ok(NodeResolution::AsIs)
+        }
+    }
+
+    #[test]
+    fn resolver_canonical_substitution_feeds_saved_identity_rule() -> Result<(), HolonError> {
+        let context = build_context();
+        let alias = new_test_holon(&context, "alias")?;
+        let canonical = saved_reference(&context, 9);
+        let resolver = TestResolver {
+            canonical_key: MapString("alias".to_string()),
+            canonical_reference: canonical.clone(),
+            match_by_key_property: property_name("MatchByKey"),
+        };
+
+        assert_eq!(
+            alias.definitional_equivalence_with_resolver(&canonical, &resolver)?,
+            EquivalenceOutcome::Equivalent
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn resolver_match_by_key_compares_keys_without_recursing() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut marker_properties = PropertyMap::new();
+        marker_properties
+            .insert(property_name("MatchByKey"), BaseValue::BooleanValue(MapBoolean(true)));
+        let left = HolonReference::smart_with_properties(context.context_handle(), holon_id(1), {
+            let mut properties = marker_properties.clone();
+            properties.insert(
+                CorePropertyTypeName::Key.to_property_name(),
+                BaseValue::StringValue(MapString("shared-key".to_string())),
+            );
+            properties
+        });
+        let right = saved_reference_with_key(&context, 2, "shared-key");
+        let resolver = TestResolver {
+            canonical_key: MapString("unused".to_string()),
+            canonical_reference: saved_reference(&context, 3),
+            match_by_key_property: property_name("MatchByKey"),
+        };
+
+        assert_eq!(
+            left.definitional_equivalence_with_resolver(&right, &resolver)?,
+            EquivalenceOutcome::Equivalent
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn divergence_path_is_assembled_outermost_first() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut root_type = new_holon_type_descriptor(&context, "path-root-type", "RootType")?;
+        let mut child_type = new_holon_type_descriptor(&context, "path-child-type", "ChildType")?;
+        let grand_type = new_holon_type_descriptor(&context, "path-grand-type", "GrandType")?;
+        let outer = relationship_name("Outer");
+        let inner = relationship_name("Inner");
+        add_relationship_descriptor(&context, &mut root_type, &child_type, "Outer", true, true)?;
+        add_relationship_descriptor(&context, &mut child_type, &grand_type, "Inner", true, true)?;
+        let mut left_root = described_holon(&context, "root", &root_type)?;
+        let mut right_root = described_holon(&context, "root", &root_type)?;
+        let mut left_child = described_holon(&context, "child", &child_type)?;
+        let mut right_child = described_holon(&context, "child", &child_type)?;
+        let mut left_grand = described_holon(&context, "grand", &grand_type)?;
+        let mut right_grand = described_holon(&context, "grand", &grand_type)?;
+        left_grand.with_property_value(CorePropertyTypeName::Description, "left")?;
+        right_grand.with_property_value(CorePropertyTypeName::Description, "right")?;
+        left_child.add_related_holons(inner.clone(), vec![HolonReference::from(left_grand)])?;
+        right_child.add_related_holons(inner.clone(), vec![HolonReference::from(right_grand)])?;
+        left_root.add_related_holons(outer.clone(), vec![HolonReference::from(left_child)])?;
+        right_root.add_related_holons(outer.clone(), vec![HolonReference::from(right_child)])?;
+
+        let divergence = assert_divergent(&left_root, &right_root)?;
+
+        assert_eq!(divergence.path, vec![outer, inner]);
+        Ok(())
+    }
+}
