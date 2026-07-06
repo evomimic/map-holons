@@ -1,12 +1,28 @@
+//! Tools for translating MAP loader JSON imports into TDL and semantic diagnostics.
+//!
+//! This crate is the native tooling layer around the MAP schema corpus. It reads the
+//! JSON import format used by the loader, lowers those files into the shared semantic
+//! schema IR, and renders concise TDL that can be compiled back into loader JSON.
+//! The decompile path intentionally works over a corpus rather than isolated files
+//! so schema dependencies and cross-file references can be resolved consistently.
+
 use anyhow::{anyhow, Context, Result};
+/// Diagnostic formatting and source-oriented validation messages.
 pub mod diagnostics;
 mod literal_bridge;
+/// Loader-facing JSON import/export structures.
 pub mod loader_ir;
+/// Symbol indexing for schemas, descriptors, and cross-file references.
 pub mod schema_index;
+/// Shared semantic schema model used by the decompiler and compiler.
 pub mod schema_ir;
+/// Lowering from semantic schema IR back into loader JSON documents.
 pub mod schema_to_loader_ir;
+/// Semantic helpers shared by schema tooling commands.
 pub mod semantic;
+/// Human-readable symbol table rendering.
 pub mod symbols;
+/// TDL parser, checker, and compiler entry points.
 pub mod tdl_compiler;
 #[cfg(test)]
 mod test_support;
@@ -100,6 +116,12 @@ enum JsonDescriptorKind {
     Holon,
 }
 
+/// Decompiles JSON import files into TDL files under `out_dir`.
+///
+/// Each input may be either a single `.json` file or a directory tree containing
+/// JSON import files. Directory inputs preserve relative paths in the output tree,
+/// replacing each `.json` extension with `.tdl`. The returned paths are the TDL
+/// files written during this run.
 pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>> {
     let lowered = lower_inputs_to_schema_ir(inputs)?;
     let mut written = Vec::new();
@@ -121,6 +143,11 @@ pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBu
 }
 
 /// Decompiles one JSON import document provided as a raw string.
+///
+/// This helper is intended for tests and embeddings that already have the import
+/// contents in memory. Because it receives a single document, dependency names are
+/// inferred only from that document and cannot be resolved through neighboring
+/// files the way `decompile_inputs` can.
 pub fn decompile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
     let source_name = source_name.into();
     let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
@@ -144,6 +171,10 @@ pub fn dump_symbols(inputs: &[PathBuf]) -> Result<String> {
 }
 
 /// Builds the derived semantic symbol table for one raw JSON import document.
+///
+/// This mirrors `decompile_input_string`: it is useful for focused inspection of a
+/// single document, but it cannot resolve `meta.load_with` references against a
+/// surrounding corpus.
 pub fn dump_symbols_from_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
     let source_name = source_name.into();
     let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
@@ -404,12 +435,42 @@ fn semantic_model_from_loader_document(
         column: None,
     };
     let mut model = SemanticModel::new();
-    let dependencies = schema_dependencies(file, corpus_index)
+    let mut dependency_targets = HashSet::<String>::new();
+    let mut dependencies = schema_dependencies(file, corpus_index)
         .into_iter()
+        .filter(|dependency| dependency_targets.insert(dependency.clone()))
         .map(|dependency| SemanticReference::unresolved(ReferenceRole::DependsOn, dependency))
         .collect::<Vec<_>>();
     let schema_holon =
         document.holons.iter().find(|holon| holon.descriptor_type == "Schema.HolonType");
+    let mut literal_relationships = Vec::new();
+
+    if let Some(schema_holon) = schema_holon {
+        for relationship in &schema_holon.relationships {
+            if relationship.name == "DependsOn" {
+                for target in &relationship.targets {
+                    let dependency = target.target.clone();
+                    if dependency != file.schema_name
+                        && dependency_targets.insert(dependency.clone())
+                    {
+                        dependencies.push(SemanticReference::unresolved(
+                            ReferenceRole::DependsOn,
+                            dependency,
+                        ));
+                    }
+                }
+            } else {
+                literal_relationships.push(LiteralRelationship {
+                    name: relationship.name.clone(),
+                    targets: relationship
+                        .targets
+                        .iter()
+                        .map(|target| target.target.clone())
+                        .collect(),
+                });
+            }
+        }
+    }
 
     model.push_schema(Schema {
         name: file.schema_name.clone(),
@@ -421,22 +482,7 @@ fn semantic_model_from_loader_document(
         literal_properties: schema_holon
             .map(|holon| json_map_to_literal_object(&holon.properties))
             .unwrap_or_default(),
-        literal_relationships: schema_holon
-            .map(|holon| {
-                holon
-                    .relationships
-                    .iter()
-                    .map(|relationship| LiteralRelationship {
-                        name: relationship.name.clone(),
-                        targets: relationship
-                            .targets
-                            .iter()
-                            .map(|target| target.target.clone())
-                            .collect(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default(),
+        literal_relationships,
         header: schema_holon.and_then(|holon| semantic_header(&holon.properties)),
         allows_additional_properties: schema_holon
             .map(|holon| bool_property(&holon.properties, "allows_additional_properties"))
@@ -1361,6 +1407,15 @@ mod tests {
             .join("core-schema")
     }
 
+    fn sweettests_import_fixture_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("tests")
+            .join("sweetests")
+            .join("import_files")
+    }
+
     fn schema_src_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("schema-src")
     }
@@ -1420,6 +1475,24 @@ mod tests {
         let files = decompile_inputs(&[source_dir.clone()], &out_dir)?;
         assert_eq!(files.len(), discovered_json_file_count(&source_dir)?);
         crate::test_support::assert_dir_tree_eq(&schema_src_dir(), &out_dir);
+        Ok(())
+    }
+
+    #[test]
+    fn decompiles_schema_depends_on_relationships_into_tdl_dependencies() -> Result<()> {
+        let out_dir = temp_out_dir();
+        let source_file = sweettests_import_fixture_dir()
+            .join("MAP Schema Types-map-test-schema-book-person-inverse.json");
+        decompile_inputs(&[source_file], &out_dir)?;
+
+        let tdl = fs::read_to_string(
+            out_dir.join("MAP Schema Types-map-test-schema-book-person-inverse.tdl"),
+        )?;
+
+        assert!(
+            tdl.contains("schema BookAuthorInverseSchema {\n  depends_on MAP Core Schema-v0.0.7")
+        );
+
         Ok(())
     }
 

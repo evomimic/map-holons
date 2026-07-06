@@ -4,17 +4,41 @@ Standalone developer and CI utilities live under this directory.
 
 ## `map-schema`
 
-`tools/map-schema` provides the MAP schema authoring CLI.
+`tools/map-schema` provides the MAP schema authoring CLI. It is already a Rust
+binary target named `map-schema`; for now, repo-local usage goes through npm so
+contributors do not need to install the binary globally.
 
-Useful commands:
+Repo-local CLI usage:
 
 ```sh
-cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile host/import_files/map-schema/core-schema --out schema-src
-cargo run --manifest-path tools/map-schema/Cargo.toml -- symbols host/import_files/map-schema/core-schema
-npm run map-schema:compile
-npm run map-schema:check
-npm run map-schema:decompile
-npm run map-schema:symbols
+npm run map-schema -- help
+npm run map-schema -- decompile host/import_files/map-schema/core-schema --out-dir schema-src
+npm run map-schema -- check schema-src
+npm run map-schema -- compile schema-src --out-dir generated/json-imports
+npm run map-schema -- symbols host/import_files/map-schema/core-schema
+```
+
+Core schema convenience commands:
+
+```sh
+npm run map-schema:decompile:coreschema
+npm run map-schema:check:coreschema
+npm run map-schema:compile:coreschema
+npm run map-schema:symbols:coreschema
+```
+
+Direct Cargo usage remains available when you want to bypass npm:
+
+```sh
+cargo run --manifest-path tools/map-schema/Cargo.toml -- help
+cargo run --manifest-path tools/map-schema/Cargo.toml -- compile schema-src --out-dir generated/json-imports
+```
+
+Later, when we want a shell-native command, this crate is ready for local installation:
+
+```sh
+cargo install --path tools/map-schema
+map-schema help
 ```
 
 The decompiler is intentionally separate from the `host/` workspace so it can be used as a standalone tool without linking into the IntegrationHub runtime.

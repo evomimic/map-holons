@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-06T13:11:57.265804Z",
+    "generated_at": "2026-07-06T13:21:54.660129Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.tdl"

@@ -12,7 +12,7 @@ use std::{
 };
 
 #[derive(Debug, Parser)]
-#[command(author, version, about = "MAP schema authoring tool")]
+#[command(author, version, about = "MAP schema authoring tool", disable_help_subcommand = true)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -20,6 +20,9 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Print a workflow-oriented guide for map-schema commands.
+    Help,
+
     /// Decompile JSON import files into TDL source files.
     Decompile {
         /// Input JSON files or directories containing JSON files.
@@ -57,6 +60,9 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::Help => {
+            print!("{}", map_schema_help());
+        }
         Commands::Decompile { inputs, out_dir } => {
             if inputs.is_empty() {
                 let stdin = read_stdin()?;
@@ -99,6 +105,52 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn map_schema_help() -> &'static str {
+    r#"map-schema helps maintain MAP schema import JSON and TDL source files.
+
+Commands:
+  help
+      Print this workflow-oriented guide.
+
+  decompile [JSON_FILE_OR_DIR ...] --out-dir <DIR>
+      Convert loader JSON imports into TDL files. Directory inputs preserve
+      relative paths and write one .tdl file per .json file.
+
+  compile [TDL_FILE_OR_DIR ...] --out-dir <DIR>
+      Convert TDL files into loader JSON imports. Compile works over a corpus:
+      pass all TDL files needed to resolve references such as HolonType,
+      PropertyType, DeclaredRelationshipType, and MapStringValueType.
+
+  check [TDL_FILE_OR_DIR ...]
+      Validate TDL syntax and semantic references without writing JSON.
+
+  symbols [JSON_FILE_OR_DIR ...]
+      Print the semantic symbol table derived from JSON imports.
+
+Common workflows:
+  npm run map-schema:decompile:coreschema
+  npm run map-schema:check:coreschema
+  npm run map-schema:compile:coreschema
+
+Direct examples:
+  cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile host/import_files/map-schema/core-schema --out-dir schema-src
+  cargo run --manifest-path tools/map-schema/Cargo.toml -- check schema-src
+  cargo run --manifest-path tools/map-schema/Cargo.toml -- compile schema-src --out-dir generated/json-imports
+
+Single-file stdin/stdout mode:
+  map-schema decompile < input.json > output.tdl
+  map-schema compile < input.tdl > output.json
+
+Notes:
+  Decompile can inspect one JSON file, but dependency names are best resolved
+  when the full JSON corpus is present.
+
+  Compile validates semantic references against the TDL files passed in the
+  same invocation. A dependent standalone file may fail until its core schema
+  dependencies are included in the input corpus.
+"#
 }
 
 fn read_stdin() -> Result<String> {
