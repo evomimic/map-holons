@@ -58,6 +58,26 @@ It will also bring up the Holochain Playground for advanced introspection of the
 npm test
 ```
 
+## MAP Schema CLI
+
+The MAP schema authoring tool lives in `tools/map-schema` and is available through a repo-local npm wrapper:
+
+```bash
+npm run map-schema -- help
+npm run map-schema -- check schema-src
+npm run map-schema -- compile schema-src --out-dir generated/json-imports
+```
+
+Convenience scripts are also available for the core schema workflow:
+
+```bash
+npm run map-schema:decompile:coreschema
+npm run map-schema:check:coreschema
+npm run map-schema:compile:coreschema
+```
+
+The Rust crate already builds a `map-schema` binary target, but the repo does not require installing it globally yet. When we want a shell-native command later, the next step is `cargo install --path tools/map-schema`.
+
 ## Bootstrapping a network
 
 Create a custom network of nodes connected to each other and their respective UIs with:

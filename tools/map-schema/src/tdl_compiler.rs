@@ -128,6 +128,20 @@ pub fn check_inputs(inputs: &[PathBuf]) -> Result<Vec<Diagnostic>> {
     Ok(lower_inputs_to_schema_ir(inputs)?.diagnostics)
 }
 
+/// Renders the CLI output for `map-schema:check`.
+///
+/// The current contract is intentionally simple:
+/// - `no diagnostics` when the schema set is clean
+/// - otherwise, the newline-separated diagnostic stream emitted by
+///   `format_diagnostics`
+pub fn render_check_output(diagnostics: &[Diagnostic]) -> String {
+    if diagnostics.is_empty() {
+        "no diagnostics\n".to_string()
+    } else {
+        format!("{}\n", format_diagnostics(diagnostics))
+    }
+}
+
 /// Validates one TDL document provided as a raw string.
 pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<Vec<Diagnostic>> {
     let source_name = source_name.into();
@@ -1558,6 +1572,15 @@ mod tests {
     fn checks_core_schema_corpus_without_diagnostics() -> Result<()> {
         let diagnostics = check_inputs(&[fixture_dir()])?;
         assert!(diagnostics.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn renders_core_schema_check_output_baseline() -> Result<()> {
+        let diagnostics = check_inputs(&[fixture_dir()])?;
+        let rendered = render_check_output(&diagnostics);
+        let expected = include_str!("../tests/baselines/core-schema-check-output.txt");
+        assert_eq!(rendered, expected);
         Ok(())
     }
 
