@@ -41,6 +41,9 @@ impl EquivalenceResolver for ExecutionEquivalenceResolver<'_> {
 fn is_saved_lookup_stub(reference: &HolonReference) -> Result<bool, HolonError> {
     match reference {
         HolonReference::Smart(smart) => {
+            // A saved-lookup stub may be a SmartReference with only cached
+            // marker/key properties. Calling `property_value()` would try to
+            // fetch backing saved content, which stubs intentionally lack.
             Ok(smart.smart_property_values().is_some_and(|properties| {
                 properties.contains_key(&SAVED_LOOKUP_STUB_MARKER.to_property_name())
             }))

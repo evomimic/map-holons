@@ -19,8 +19,14 @@ use crate::{
 };
 use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
+
+#[derive(Clone, Debug)]
+struct DefinitionalRelationshipPolicy {
+    name: RelationshipName,
+    is_ordered: bool,
+}
 
 #[derive(Clone, Debug)]
 pub struct ExecutionReference {
@@ -105,12 +111,16 @@ impl ExecutionReference {
             .unwrap_or_else(|message| panic!("{}", message));
     }
 
-    /// Assert saved DB content using reference-layer definitional equivalence.
+    /// Assert saved DB content using harness-root policy plus shared member equivalence.
     ///
     /// Commit may persist non-definitional navigational edges, such as inverse
-    /// SmartLinks, that were never present in fixture snapshots. The shared
-    /// comparator derives each side's definitional relationship surface from
-    /// its descriptor and ignores non-definitional edges.
+    /// SmartLinks, that were never present in fixture snapshots. Loader-owned
+    /// schema descriptors may also appear in fixtures only as key-only
+    /// `SavedLookup` stubs. The harness therefore keeps the root comparison
+    /// aligned with fixture reality: compare root properties structurally,
+    /// derive definitional relationship policy from the actual saved root, and
+    /// delegate relationship member comparison to the shared reference-layer
+    /// comparator through `ExecutionEquivalenceResolver`.
     pub fn assert_saved_content_eq(&self, execution_holons: &ExecutionHolons) {
         let expected_root = HolonReference::from(self.expected_snapshot.snapshot());
         let actual_root = self
@@ -119,30 +129,76 @@ impl ExecutionReference {
             .expect("Failed to get HolonReference for execution_handle");
         let resolver = ExecutionEquivalenceResolver::new(execution_holons);
 
-        match expected_root.definitional_equivalence_with_resolver(&actual_root, &resolver) {
-            Ok(EquivalenceOutcome::Equivalent) => {}
-            Ok(EquivalenceOutcome::Divergent(divergence)) => {
+        Self::compare_saved_content_root(&expected_root, &actual_root, &resolver).unwrap_or_else(
+            |message| {
                 panic!(
-                    "saved content mismatch for expected {}:{} vs actual {}:{}\npath: {}\nreason: {}",
+                    "saved content mismatch for expected {}:{} vs actual {}:{}\n{}",
                     expected_root.reference_kind_string(),
                     expected_root.reference_id_string(),
                     actual_root.reference_kind_string(),
                     actual_root.reference_id_string(),
-                    Self::format_divergence_path(&divergence.path),
-                    divergence.reason
-                );
-            }
-            Err(e) => {
-                panic!(
-                    "failed to compare saved content for expected {}:{} vs actual {}:{}: {:?}",
-                    expected_root.reference_kind_string(),
-                    expected_root.reference_id_string(),
-                    actual_root.reference_kind_string(),
-                    actual_root.reference_id_string(),
-                    e
-                );
-            }
+                    message
+                )
+            },
+        );
+    }
+
+    /// Saved-content root policy for fixture-authored expectations.
+    ///
+    /// This is intentionally not the full shared definitional-equivalence
+    /// relation at the root. Fixture snapshots own authored root properties and
+    /// declared root edges, but loader-saved schema/type descriptors are modeled
+    /// as opaque key-only stubs. The actual saved descriptor is therefore the
+    /// source of truth for which root relationships are definitional; member
+    /// subtrees use the shared comparator.
+    #[allow(deprecated)]
+    fn compare_saved_content_root(
+        expected: &HolonReference,
+        actual: &HolonReference,
+        resolver: &ExecutionEquivalenceResolver<'_>,
+    ) -> Result<(), String> {
+        let expected_content = expected.essential_content().map_err(|e| {
+            format!(
+                "failed to read expected root content {}:{}: {:?}",
+                expected.reference_kind_string(),
+                expected.reference_id_string(),
+                e
+            )
+        })?;
+        let actual_content = actual.essential_content().map_err(|e| {
+            format!(
+                "failed to read actual root content {}:{}: {:?}",
+                actual.reference_kind_string(),
+                actual.reference_id_string(),
+                e
+            )
+        })?;
+
+        if expected_content.property_map != actual_content.property_map {
+            return Err(format!(
+                "path: <root>\nreason: property map mismatch\nexpected: {:#?}\nactual: {:#?}",
+                expected_content.property_map, actual_content.property_map
+            ));
         }
+
+        let relationship_policies = Self::actual_definitional_relationship_policies(actual)?;
+        let expected_relationship_map = expected
+            .all_related_holons()
+            .map_err(|e| format!("failed to get expected root all_related_holons: {:?}", e))?;
+        let actual_relationship_map = actual
+            .all_related_holons()
+            .map_err(|e| format!("failed to get actual root all_related_holons: {:?}", e))?;
+
+        for relationship_policy in relationship_policies {
+            Self::compare_saved_root_relationship(
+                &expected_relationship_map,
+                &actual_relationship_map,
+                &relationship_policy,
+                resolver,
+            )?;
+        }
+
+        Ok(())
     }
 
     /// Harness-local subset assertion for per-step expected-content checks.
@@ -280,6 +336,227 @@ impl ExecutionReference {
         }
 
         Ok(())
+    }
+
+    fn actual_definitional_relationship_policies(
+        actual: &HolonReference,
+    ) -> Result<Vec<DefinitionalRelationshipPolicy>, String> {
+        let descriptor = match actual.holon_descriptor() {
+            Ok(descriptor) => descriptor,
+            Err(HolonError::MissingDescribedBy { .. }) => {
+                let relationship_map = actual.all_related_holons().map_err(|e| {
+                    format!(
+                        "failed to get actual root relationships for undescribed holon check: {:?}",
+                        e
+                    )
+                })?;
+                if Self::relationship_entries_with_members(&relationship_map)?.is_empty() {
+                    return Ok(Vec::new());
+                }
+                return Err(format!(
+                    "path: <root>\nreason: cannot derive definitional relationships for undescribed actual holon {}:{} with relationship content",
+                    actual.reference_kind_string(),
+                    actual.reference_id_string()
+                ));
+            }
+            Err(e) => {
+                return Err(format!(
+                    "path: <root>\nreason: failed to resolve actual root descriptor: {:?}",
+                    e
+                ));
+            }
+        };
+
+        let mut policies = HashMap::new();
+        for relationship_descriptor in descriptor.instance_relationships().map_err(|e| {
+            format!(
+                "path: <root>\nreason: failed to resolve actual root instance relationships: {:?}",
+                e
+            )
+        })? {
+            if relationship_descriptor.is_definitional().map_err(|e| {
+                format!("path: <root>\nreason: failed to read IsDefinitional: {:?}", e)
+            })? {
+                let name = relationship_descriptor.base_relationship_name().map_err(|e| {
+                    format!(
+                        "path: <root>\nreason: failed to read definitional relationship name: {:?}",
+                        e
+                    )
+                })?;
+                let is_ordered = relationship_descriptor.is_ordered().map_err(|e| {
+                    format!(
+                        "path: <root>\nreason: failed to read IsOrdered for {:?}: {:?}",
+                        name, e
+                    )
+                })?;
+                policies.entry(name).or_insert(is_ordered);
+            }
+        }
+
+        let mut policies: Vec<_> = policies
+            .into_iter()
+            .map(|(name, is_ordered)| DefinitionalRelationshipPolicy { name, is_ordered })
+            .collect();
+        policies.sort_by(|left, right| left.name.cmp(&right.name));
+        Ok(policies)
+    }
+
+    fn compare_saved_root_relationship(
+        expected_relationship_map: &RelationshipMap,
+        actual_relationship_map: &RelationshipMap,
+        relationship_policy: &DefinitionalRelationshipPolicy,
+        resolver: &dyn EquivalenceResolver,
+    ) -> Result<(), String> {
+        let expected_members =
+            Self::relationship_members(expected_relationship_map, &relationship_policy.name)?;
+        let actual_members =
+            Self::relationship_members(actual_relationship_map, &relationship_policy.name)?;
+
+        if expected_members.is_empty() && actual_members.is_empty() {
+            return Ok(());
+        }
+
+        if relationship_policy.is_ordered {
+            return Self::compare_ordered_saved_root_members(
+                &relationship_policy.name,
+                &expected_members,
+                &actual_members,
+                resolver,
+            );
+        }
+
+        Self::compare_unordered_saved_root_members(
+            &relationship_policy.name,
+            &expected_members,
+            &actual_members,
+            resolver,
+        )
+    }
+
+    fn compare_ordered_saved_root_members(
+        relationship_name: &RelationshipName,
+        expected_members: &[HolonReference],
+        actual_members: &[HolonReference],
+        resolver: &dyn EquivalenceResolver,
+    ) -> Result<(), String> {
+        if expected_members.len() != actual_members.len() {
+            return Err(format!(
+                "path: {:?}\nreason: ordered member count mismatch: expected {}, actual {}",
+                relationship_name,
+                expected_members.len(),
+                actual_members.len()
+            ));
+        }
+
+        for (index, (expected_member, actual_member)) in
+            expected_members.iter().zip(actual_members.iter()).enumerate()
+        {
+            Self::compare_saved_root_member_pair(
+                relationship_name,
+                expected_member,
+                actual_member,
+                resolver,
+            )
+            .map_err(|message| format!("{} at index {}", message, index))?;
+        }
+
+        Ok(())
+    }
+
+    fn compare_unordered_saved_root_members(
+        relationship_name: &RelationshipName,
+        expected_members: &[HolonReference],
+        actual_members: &[HolonReference],
+        resolver: &dyn EquivalenceResolver,
+    ) -> Result<(), String> {
+        let mut unmatched_actual = actual_members.to_vec();
+        let mut last_error = None;
+
+        for expected_member in expected_members {
+            let mut matched_index = None;
+            for (index, actual_member) in unmatched_actual.iter().enumerate() {
+                match Self::compare_saved_root_member_pair(
+                    relationship_name,
+                    expected_member,
+                    actual_member,
+                    resolver,
+                ) {
+                    Ok(()) => {
+                        matched_index = Some(index);
+                        break;
+                    }
+                    Err(err) => last_error = Some(err),
+                }
+            }
+
+            match matched_index {
+                Some(index) => {
+                    unmatched_actual.remove(index);
+                }
+                None => {
+                    return Err(format!(
+                        "path: {:?}\nreason: no matching member found for expected member {}:{}. Last mismatch: {}",
+                        relationship_name,
+                        expected_member.reference_kind_string(),
+                        expected_member.reference_id_string(),
+                        last_error.unwrap_or_else(|| "no candidate mismatch details available".to_string())
+                    ));
+                }
+            }
+        }
+
+        if !unmatched_actual.is_empty() {
+            return Err(format!(
+                "path: {:?}\nreason: actual root has {} extra definitional member(s)",
+                relationship_name,
+                unmatched_actual.len()
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn compare_saved_root_member_pair(
+        relationship_name: &RelationshipName,
+        expected_member: &HolonReference,
+        actual_member: &HolonReference,
+        resolver: &dyn EquivalenceResolver,
+    ) -> Result<(), String> {
+        match expected_member.definitional_equivalence_with_resolver(actual_member, resolver) {
+            Ok(EquivalenceOutcome::Equivalent) => Ok(()),
+            Ok(EquivalenceOutcome::Divergent(mut divergence)) => {
+                divergence.path.insert(0, relationship_name.clone());
+                Err(format!(
+                    "path: {}\nreason: {}",
+                    Self::format_divergence_path(&divergence.path),
+                    divergence.reason
+                ))
+            }
+            Err(e) => Err(format!(
+                "path: {:?}\nreason: failed to compare relationship member: {:?}",
+                relationship_name, e
+            )),
+        }
+    }
+
+    fn relationship_members(
+        relationship_map: &RelationshipMap,
+        relationship_name: &RelationshipName,
+    ) -> Result<Vec<HolonReference>, String> {
+        let Some(collection_arc) = relationship_map
+            .iter()
+            .into_iter()
+            .find(|(name, _)| name == relationship_name)
+            .map(|(_, collection_arc)| collection_arc.clone())
+        else {
+            return Ok(Vec::new());
+        };
+
+        let collection = collection_arc.read().map_err(|e| {
+            format!("Failed to acquire read lock for relationship {:?}: {}", relationship_name, e)
+        })?;
+
+        Ok(collection.get_members().clone())
     }
 
     /// Returns whether the expected holon carries the saved-lookup stub marker.
