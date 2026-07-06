@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-02T17:04:18.284653Z",
+    "generated_at": "2026-07-06T13:11:57.267214Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-relationship-types.tdl"

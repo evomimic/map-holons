@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
-    decompile_input_string, decompile_inputs,
-    diagnostics::format_diagnostics,
-    dump_symbols, dump_symbols_from_string,
-    tdl_compiler::{check_input_string, check_inputs, compile_input_string, compile_inputs},
+    decompile_input_string, decompile_inputs, dump_symbols, dump_symbols_from_string,
+    tdl_compiler::{
+        check_input_string, check_inputs, compile_input_string, compile_inputs, render_check_output,
+    },
 };
 use std::{
     io::{self, Read},
@@ -94,11 +94,7 @@ fn main() -> Result<()> {
             } else {
                 check_inputs(&inputs)?
             };
-            if diagnostics.is_empty() {
-                println!("no diagnostics");
-            } else {
-                println!("{}", format_diagnostics(&diagnostics));
-            }
+            print!("{}", render_check_output(&diagnostics));
         }
     }
 

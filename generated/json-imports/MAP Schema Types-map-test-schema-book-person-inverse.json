@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-02T18:06:04.215656Z",
+    "generated_at": "2026-07-06T13:11:57.268126Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-test-schema-book-person-inverse.tdl"
