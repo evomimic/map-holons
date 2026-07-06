@@ -51,7 +51,8 @@ pub use holons_core::dances::{
 };
 pub use holons_core::query_layer::{Node, NodeCollection, QueryExpression, QueryPathMap};
 pub use holons_core::reference_layer::{
-    HolonCollectionApi, HolonReference, HolonSpaceBehavior, HolonStagingBehavior, ReadableHolon,
+    Divergence, EquivalenceOutcome, EquivalenceResolver, HolonCollectionApi, HolonReference,
+    HolonSpaceBehavior, HolonStagingBehavior, NoOpResolver, NodeResolution, ReadableHolon,
     SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
 };
 pub use holons_core::{
