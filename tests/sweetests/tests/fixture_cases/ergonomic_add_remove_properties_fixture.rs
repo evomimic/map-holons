@@ -9,6 +9,7 @@ use rstest::*;
 use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 
 #[fixture]
+#[allow(deprecated)]
 pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
 

@@ -267,6 +267,7 @@ fn dump_error_holons_from_response(response_reference: &TransientReference) -> S
 }
 
 /// Compact dump of essential holon content (property map, key, errors).
+#[allow(deprecated)]
 fn dump_essential(holon_reference: &impl ReadableHolon) -> String {
     let essential_content_result = holon_reference.essential_content();
 

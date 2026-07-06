@@ -18,7 +18,11 @@ use super::state::{HolonState, ValidationState};
 //   HELPER OBJECTS
 //  ================
 
-/// Used for testing in order to match the EssentialContent of a Holon.
+/// Snapshot of raw holon content used by legacy comparison and wire-contract paths.
+///
+/// This type remains supported while callers migrate to reference-layer
+/// definitional equivalence for comparison. Planned retirement is tied to the
+/// future wire and SDK cleanup that removes raw essential-content extraction.
 #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EssentialHolonContent {
     pub property_map: PropertyMap,

@@ -37,8 +37,6 @@
 //! Breadcrumb segments are prepended while the recursion unwinds, so successful
 //! comparisons allocate no path segments.
 //!
-#![allow(dead_code)]
-
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{Arc, RwLock};
 

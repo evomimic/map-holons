@@ -24,6 +24,8 @@ fn handle_read(
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
         }
         ReadableHolonAction::GetEssentialContent => {
+            // Legacy wire-contract path retained until raw essential-content APIs are retired.
+            #[allow(deprecated)]
             let content = target.essential_content()?;
             Ok(MapResult::EssentialContent(content))
         }

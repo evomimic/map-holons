@@ -176,6 +176,7 @@ impl ExpectedSnapshot {
         SourceSnapshot::new(self.snapshot.clone(), self.state)
     }
 
+    #[allow(deprecated)]
     pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         self.snapshot.essential_content()
     }

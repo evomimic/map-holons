@@ -10,6 +10,7 @@ use tracing::{debug, info};
 ///
 /// Version lineage is established at commit time, not stage time, so this step
 /// intentionally does not assert a staged `Predecessor` relationship.
+#[allow(deprecated)]
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     step_token: TestReference,

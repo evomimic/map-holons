@@ -46,6 +46,7 @@ pub enum ExecutionHandle {
 }
 
 impl ExecutionHandle {
+    #[allow(deprecated)]
     pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         match self {
             Self::LiveReference(holon_reference) => holon_reference.essential_content(),
@@ -145,6 +146,9 @@ impl ExecutionReference {
         .unwrap_or_else(|message| panic!("{}", message));
     }
 
+    // Legacy subset assertion still compares raw essential content until the
+    // harness-local subset policy is separated from definitional equivalence.
+    #[allow(deprecated)]
     fn compare_holon_graph_eq(
         expected: &HolonReference,
         actual: &HolonReference,
