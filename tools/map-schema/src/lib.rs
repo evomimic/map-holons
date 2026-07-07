@@ -7,6 +7,7 @@
 //! so schema dependencies and cross-file references can be resolved consistently.
 
 use anyhow::{anyhow, Context, Result};
+use map_schema_semantic::{normalize_relationship_pairs, normalize_validation_model, validate_model};
 /// Diagnostic formatting and source-oriented validation messages.
 pub mod diagnostics;
 mod literal_bridge;
@@ -28,7 +29,7 @@ pub mod tdl_compiler;
 mod test_support;
 
 use crate::{
-    diagnostics::Diagnostic,
+    diagnostics::{format_diagnostics, Diagnostic},
     literal_bridge::{json_map_to_literal_object, render_literal_value},
     loader_ir::{LoaderDocument, LoaderHolon, LoaderMeta, LoaderReference, LoaderRelationship},
     schema_index::SymbolIndex,
@@ -45,7 +46,7 @@ use crate::{
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -182,6 +183,246 @@ pub fn dump_symbols_from_string(raw: &str, source_name: impl Into<PathBuf>) -> R
     Ok(render_symbol_dump(&lowered.global_model, &lowered.symbols, &lowered.diagnostics))
 }
 
+/// Compares two schema corpora by lowering both into Canonical Holon IR and diffing semantics.
+///
+/// Each side must lower without blocking diagnostics. The left and right corpora may use different
+/// source adapters (`.json` or `.tdl`), but each side must be internally homogeneous.
+pub fn diff_inputs(left: &[PathBuf], right: &[PathBuf]) -> Result<String> {
+    let left_model = load_valid_semantic_model(left, "left")?;
+    let right_model = load_valid_semantic_model(right, "right")?;
+
+    let left_signature = left_model.comparable_signature();
+    let right_signature = right_model.comparable_signature();
+
+    Ok(render_semantic_diff(&left_signature, &right_signature))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InputFormat {
+    Json,
+    Tdl,
+}
+
+fn load_valid_semantic_model(inputs: &[PathBuf], side: &str) -> Result<SemanticModel> {
+    let (model, diagnostics) = match detect_input_format(inputs)? {
+        InputFormat::Json => {
+            let lowered = lower_inputs_to_schema_ir(inputs)?;
+            (lowered.global_model, lowered.diagnostics)
+        }
+        InputFormat::Tdl => crate::tdl_compiler::load_semantic_model(inputs)?,
+    };
+
+    if diagnostics.is_empty() {
+        Ok(model)
+    } else {
+        Err(anyhow!("{} inputs are not semantically valid:\n{}", side, format_diagnostics(&diagnostics)))
+    }
+}
+
+fn detect_input_format(inputs: &[PathBuf]) -> Result<InputFormat> {
+    let json_files = collect_input_files(inputs)?;
+    let tdl_file_count = crate::tdl_compiler::discovered_input_count(inputs)?;
+
+    match (!json_files.is_empty(), tdl_file_count > 0) {
+        (true, false) => Ok(InputFormat::Json),
+        (false, true) => Ok(InputFormat::Tdl),
+        (true, true) => Err(anyhow!(
+            "input set mixes .json and .tdl files; semantic diff expects one source format per side"
+        )),
+        (false, false) => Err(anyhow!(
+            "no supported schema inputs found; expected at least one .json or .tdl file"
+        )),
+    }
+}
+
+fn render_semantic_diff(
+    left: &crate::schema_ir::ComparableSemanticModel,
+    right: &crate::schema_ir::ComparableSemanticModel,
+) -> String {
+    let schema_diff = semantic_schema_diff(left, right);
+    let descriptor_diff = semantic_descriptor_diff(left, right);
+
+    if schema_diff.is_empty() && descriptor_diff.is_empty() {
+        return "no semantic diff\n".to_string();
+    }
+
+    let mut out = String::from("semantic diff\n");
+    for line in schema_diff {
+        out.push_str(&line);
+        out.push('\n');
+    }
+    for line in descriptor_diff {
+        out.push_str(&line);
+        out.push('\n');
+    }
+    out
+}
+
+fn semantic_schema_diff(
+    left: &crate::schema_ir::ComparableSemanticModel,
+    right: &crate::schema_ir::ComparableSemanticModel,
+) -> Vec<String> {
+    let left_by_key =
+        left.schemas.iter().cloned().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
+    let right_by_key =
+        right.schemas.iter().cloned().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
+    let all_keys = left_by_key
+        .keys()
+        .chain(right_by_key.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    let mut lines = Vec::new();
+    for key in all_keys {
+        match (left_by_key.get(&key), right_by_key.get(&key)) {
+            (Some(left_schema), Some(right_schema)) => {
+                let field_diff = render_schema_field_diff(left_schema, right_schema);
+                if !field_diff.is_empty() {
+                    lines.push(format!("schema `{}` changed", key));
+                    lines.extend(field_diff.into_iter().map(|line| format!("  {line}")));
+                }
+            }
+            (Some(_), None) => lines.push(format!("schema `{}` only in left", key)),
+            (None, Some(_)) => lines.push(format!("schema `{}` only in right", key)),
+            (None, None) => {}
+        }
+    }
+    lines
+}
+
+fn render_schema_field_diff(
+    left: &crate::schema_ir::ComparableSchema,
+    right: &crate::schema_ir::ComparableSchema,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    push_changed_field(&mut lines, "name", &left.name, &right.name);
+    push_changed_field(&mut lines, "dependencies", &left.dependencies, &right.dependencies);
+    push_changed_field(
+        &mut lines,
+        "allows_additional_properties",
+        &left.allows_additional_properties,
+        &right.allows_additional_properties,
+    );
+    push_changed_field(
+        &mut lines,
+        "allows_additional_relationships",
+        &left.allows_additional_relationships,
+        &right.allows_additional_relationships,
+    );
+    lines
+}
+
+fn semantic_descriptor_diff(
+    left: &crate::schema_ir::ComparableSemanticModel,
+    right: &crate::schema_ir::ComparableSemanticModel,
+) -> Vec<String> {
+    let left_by_key = left
+        .descriptors
+        .iter()
+        .cloned()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let right_by_key = right
+        .descriptors
+        .iter()
+        .cloned()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let all_keys = left_by_key
+        .keys()
+        .chain(right_by_key.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    let mut lines = Vec::new();
+    for key in all_keys {
+        match (left_by_key.get(&key), right_by_key.get(&key)) {
+            (Some(left_descriptor), Some(right_descriptor)) => {
+                let field_diff = render_descriptor_field_diff(left_descriptor, right_descriptor);
+                if !field_diff.is_empty() {
+                    lines.push(format!("descriptor `{}` changed", key));
+                    lines.extend(field_diff.into_iter().map(|line| format!("  {line}")));
+                }
+            }
+            (Some(_), None) => lines.push(format!("descriptor `{}` only in left", key)),
+            (None, Some(_)) => lines.push(format!("descriptor `{}` only in right", key)),
+            (None, None) => {}
+        }
+    }
+    lines
+}
+
+fn render_descriptor_field_diff(
+    left: &crate::schema_ir::ComparableDescriptor,
+    right: &crate::schema_ir::ComparableDescriptor,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    push_changed_field(&mut lines, "name", &left.name, &right.name);
+    push_changed_field(&mut lines, "kind", &left.kind, &right.kind);
+    push_changed_field(&mut lines, "owning_schema", &left.owning_schema, &right.owning_schema);
+    push_changed_field(&mut lines, "is_abstract", &left.is_abstract, &right.is_abstract);
+    push_changed_field(&mut lines, "references", &left.references, &right.references);
+    push_changed_field(
+        &mut lines,
+        "relationship_flavor",
+        &left.relationship_flavor,
+        &right.relationship_flavor,
+    );
+    push_changed_field(
+        &mut lines,
+        "is_definitional",
+        &left.is_definitional,
+        &right.is_definitional,
+    );
+    push_changed_field(
+        &mut lines,
+        "min_cardinality",
+        &left.min_cardinality,
+        &right.min_cardinality,
+    );
+    push_changed_field(
+        &mut lines,
+        "max_cardinality",
+        &left.max_cardinality,
+        &right.max_cardinality,
+    );
+    push_changed_field(
+        &mut lines,
+        "deletion_semantic",
+        &left.deletion_semantic,
+        &right.deletion_semantic,
+    );
+    push_changed_field(&mut lines, "is_ordered", &left.is_ordered, &right.is_ordered);
+    push_changed_field(
+        &mut lines,
+        "allows_duplicates",
+        &left.allows_duplicates,
+        &right.allows_duplicates,
+    );
+    push_changed_field(
+        &mut lines,
+        "allows_additional_properties",
+        &left.allows_additional_properties,
+        &right.allows_additional_properties,
+    );
+    push_changed_field(
+        &mut lines,
+        "allows_additional_relationships",
+        &left.allows_additional_relationships,
+        &right.allows_additional_relationships,
+    );
+    lines
+}
+
+fn push_changed_field<T>(lines: &mut Vec<String>, field: &str, left: &T, right: &T)
+where
+    T: std::fmt::Debug + PartialEq,
+{
+    if left != right {
+        lines.push(format!("{field}: left={left:?} right={right:?}"));
+    }
+}
+
 #[derive(Debug, Clone)]
 struct DiscoveredFile {
     source_path: PathBuf,
@@ -276,7 +517,14 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedFile>) -> Result<LoweredJso
         });
     }
 
-    let (symbols, diagnostics) = SymbolIndex::build(&mut global_model);
+    let (symbols, mut diagnostics) = SymbolIndex::build(&mut global_model);
+    let mut validation_model = global_model.clone();
+    normalize_validation_model(&mut validation_model);
+    normalize_relationship_pairs(&mut validation_model, &symbols);
+    diagnostics.extend(validate_model(&validation_model, &symbols));
+    for file in &mut files {
+        file.schema_model.resolve_references(&symbols);
+    }
 
     Ok(LoweredJsonProject { files, global_model, symbols, diagnostics })
 }
@@ -572,7 +820,6 @@ fn semantic_descriptor_from_holon(
     } else if kind == DescriptorKind::RelationshipType {
         descriptor.relationship_flavor = Some(RelationshipFlavor::Declared);
     }
-
     descriptor.literal_relationships = holon
         .relationships
         .iter()
@@ -1464,6 +1711,15 @@ mod tests {
         Ok(())
     }
 
+    fn write_tdl_file(path: &Path, contents: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(path)?;
+        file.write_all(contents.as_bytes())?;
+        Ok(())
+    }
+
     fn discovered_json_file_count(root: &Path) -> Result<usize> {
         Ok(collect_input_files(&[root.to_path_buf()])?.len())
     }
@@ -1472,9 +1728,24 @@ mod tests {
     fn decompiles_core_schema_corpus() -> Result<()> {
         let source_dir = source_fixture_dir();
         let out_dir = temp_out_dir();
+        let expected_dir = temp_out_dir();
         let files = decompile_inputs(&[source_dir.clone()], &out_dir)?;
         assert_eq!(files.len(), discovered_json_file_count(&source_dir)?);
-        crate::test_support::assert_dir_tree_eq(&schema_src_dir(), &out_dir);
+
+        fs::create_dir_all(&expected_dir)?;
+        for entry in fs::read_dir(schema_src_dir())? {
+            let path = entry?.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("tdl") {
+                continue;
+            }
+            let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
+            if !file_name.contains("map-core-schema-") {
+                continue;
+            }
+            fs::copy(&path, expected_dir.join(file_name))?;
+        }
+
+        crate::test_support::assert_dir_tree_eq(&expected_dir, &out_dir);
         Ok(())
     }
 
@@ -1551,6 +1822,62 @@ mod tests {
                 comparable_signature_mismatch_report(&source_signature, &regenerated_signature)
             );
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_no_difference_for_json_and_decompiled_tdl() -> Result<()> {
+        let source_dir = source_fixture_dir();
+        let decompiled_tdl_dir = temp_roundtrip_tdl_dir();
+        decompile_inputs(&[source_dir.clone()], &decompiled_tdl_dir)?;
+
+        let rendered = diff_inputs(&[source_dir], &[decompiled_tdl_dir])?;
+        assert_eq!(rendered, "no semantic diff\n");
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_changed_descriptor_fields() -> Result<()> {
+        let left_dir = temp_domain_json_dir().join("left");
+        let right_dir = temp_domain_json_dir().join("right");
+        copy_directory_tree(&source_fixture_dir(), &left_dir)?;
+        copy_directory_tree(&source_fixture_dir(), &right_dir)?;
+
+        let right_root_path = right_dir.join("MAP Schema Types-map-core-schema-root.json");
+        let right_root = fs::read_to_string(&right_root_path)?;
+        let right_root = right_root
+            .replace("\"allows_additional_properties\": false", "\"allows_additional_properties\": true")
+            .replace("\"is_abstract_type\": false", "\"is_abstract_type\": true");
+        write_json_file(&right_root_path, &right_root)?;
+
+        let rendered = diff_inputs(&[left_dir], &[right_dir])?;
+        assert!(rendered.contains("semantic diff\n"), "{rendered}");
+        assert!(rendered.contains("allows_additional_properties: left=false right=true"), "{rendered}");
+        assert!(rendered.contains("descriptor `"), "{rendered}");
+        assert!(rendered.contains("is_abstract: left=false right=true"), "{rendered}");
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_requires_diagnostic_free_inputs() -> Result<()> {
+        let invalid_tdl_dir = temp_roundtrip_tdl_dir();
+        write_tdl_file(
+            &invalid_tdl_dir.join("invalid.tdl"),
+            r#"schema InvalidSchema
+
+relationship Broken {
+  source HolonType
+}
+"#,
+        )?;
+
+        let error = diff_inputs(&[invalid_tdl_dir], &[source_fixture_dir()]).unwrap_err();
+        let rendered = error.to_string();
+        assert!(rendered.contains("left inputs are not semantically valid"));
+        assert!(rendered.contains("missing required field `TargetType`"));
 
         Ok(())
     }

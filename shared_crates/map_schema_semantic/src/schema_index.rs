@@ -5,7 +5,7 @@
 //! source of truth.
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticKind},
+    diagnostics::{Diagnostic, DiagnosticKind, DiagnosticLayer},
     schema_ir::{
         DescriptorKind, Origin, ReferenceRole, Schema, SemanticModel, SemanticReference,
         TypeDescriptor,
@@ -120,6 +120,7 @@ impl SymbolIndex {
         if self.by_key.contains_key(&symbol.key) {
             self.duplicate_keys.insert(symbol.key.clone());
             return Err(Diagnostic::error(
+                DiagnosticLayer::ReferenceSymbol,
                 DiagnosticKind::DuplicateSymbol { key: symbol.key.clone() },
                 Some(symbol.origin),
             ));
@@ -219,7 +220,7 @@ impl SymbolIndex {
         unresolved
     }
 
-    /// Validates references and required relationship fields after resolution.
+    /// Validates reference resolution and role/kind compatibility after resolution.
     ///
     /// This check is intentionally semantic-role based: a `ValueType` reference must target a value
     /// type or enum regardless of whether it came from JSON import data, TDL syntax, or generated
@@ -246,27 +247,6 @@ impl SymbolIndex {
                     reference,
                     Some(descriptor.origin.clone()),
                 );
-            }
-
-            if descriptor.kind == DescriptorKind::RelationshipType {
-                if descriptor.source_type.is_none() {
-                    diagnostics.push(Diagnostic::error(
-                        DiagnosticKind::MissingRequiredField {
-                            descriptor: descriptor.key.clone(),
-                            field: "SourceType".to_string(),
-                        },
-                        Some(descriptor.origin.clone()),
-                    ));
-                }
-                if descriptor.target_type.is_none() {
-                    diagnostics.push(Diagnostic::error(
-                        DiagnosticKind::MissingRequiredField {
-                            descriptor: descriptor.key.clone(),
-                            field: "TargetType".to_string(),
-                        },
-                        Some(descriptor.origin.clone()),
-                    ));
-                }
             }
         }
 
@@ -299,6 +279,7 @@ fn push_reference_diagnostic(
 ) {
     let Some(symbol_id) = reference.resolved else {
         diagnostics.push(Diagnostic::error(
+            DiagnosticLayer::ReferenceSymbol,
             DiagnosticKind::UnresolvedReference {
                 role: reference.role,
                 target: reference.target.clone(),
@@ -315,6 +296,7 @@ fn push_reference_diagnostic(
     let expected = expected_kinds(reference.role);
     if !expected.is_empty() && !expected.contains(&symbol.kind) {
         diagnostics.push(Diagnostic::error(
+            DiagnosticLayer::ReferenceSymbol,
             DiagnosticKind::WrongDescriptorKind {
                 role: reference.role,
                 target: reference.target.clone(),
@@ -343,10 +325,10 @@ fn expected_kinds(role: ReferenceRole) -> Vec<DescriptorKind> {
         ReferenceRole::VariantOf => vec![DescriptorKind::Enum],
         ReferenceRole::InstanceProperty => vec![DescriptorKind::PropertyType],
         ReferenceRole::InstanceRelationship => vec![DescriptorKind::RelationshipType],
-        ReferenceRole::Extends
-        | ReferenceRole::KeyRule
-        | ReferenceRole::InverseOf
-        | ReferenceRole::HasInverse => Vec::new(),
+        ReferenceRole::InverseOf | ReferenceRole::HasInverse => {
+            vec![DescriptorKind::RelationshipType]
+        }
+        ReferenceRole::Extends | ReferenceRole::KeyRule => Vec::new(),
     }
 }
 
@@ -582,7 +564,7 @@ mod tests {
     }
 
     #[test]
-    fn detects_missing_required_relationship_fields() {
+    fn leaves_required_relationship_fields_to_the_validator_layer() {
         let mut model = SemanticModel::new();
         model.push_schema(schema(json_origin()));
         model.push_descriptor(descriptor(
@@ -594,20 +576,7 @@ mod tests {
 
         let (_, diagnostics) = SymbolIndex::build(&mut model);
 
-        assert!(diagnostics.iter().any(|diagnostic| {
-            matches!(
-                &diagnostic.kind,
-                DiagnosticKind::MissingRequiredField { descriptor, field }
-                    if descriptor == "Owns.RelationshipType" && field == "SourceType"
-            )
-        }));
-        assert!(diagnostics.iter().any(|diagnostic| {
-            matches!(
-                &diagnostic.kind,
-                DiagnosticKind::MissingRequiredField { descriptor, field }
-                    if descriptor == "Owns.RelationshipType" && field == "TargetType"
-            )
-        }));
+        assert!(diagnostics.is_empty());
     }
 
     #[test]

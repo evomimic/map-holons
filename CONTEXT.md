@@ -132,6 +132,82 @@ _Avoid_: Internal execution state
 The future materialization boundary that converts bound navigation state into descriptor-defined projection output.
 _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 
+**Source Adapter**:
+A format-specific translator that lowers authored or imported content into the Canonical Holon IR or projects it out to a concrete output format.
+_Avoid_: Semantic core, IR owner
+
+**Validation Layer**:
+A named responsibility boundary for diagnostics, such as syntax, IR structural, schema-aware, or runtime-loader boundary validation.
+_Avoid_: Unclassified diagnostic bucket
+
+**Diagnostic Origin**:
+The source location, symbol, or authored/imported element that a diagnostic should be attributed to.
+_Avoid_: Validation responsibility category
+
+**Canonical Holon IR**:
+The source-neutral semantic middle shared by MAP schema tooling, validation, diffing, code generation, and future editor services.
+_Avoid_: JSON model, TDL AST, loader DTO
+
+**Semantic Diff**:
+A review-oriented comparison derived from valid Canonical Holon IR models rather than concrete source text.
+_Avoid_: JSON text diff, parser recovery diff
+
+**Semantic Fidelity Check**:
+A source-neutral comparison of normalized Canonical Holon IR models used to verify compile/decompile or adapter round-trips without treating formatting, ordering, or shorthand syntax as semantic differences.
+_Avoid_: Textual round-trip equality
+
+**Runtime Loader Projectability**:
+The Issue 578 boundary check that Canonical Holon IR can be projected into the existing loader/import shape without changing loader behavior or creating a new runtime import path.
+_Avoid_: Loader unification, runtime validation rewrite
+
+**TypeKind-Compatible Inheritance**:
+The schema-authoring rule that a type descriptor may extend another type descriptor only when both descriptors have the same TypeKind.
+_Avoid_: Non-extensible descriptor rule as the primary inheritance test
+
+**Projected TypeKind**:
+The TypeKind derived from a descriptor's source-neutral semantic kind for validation and comparison.
+_Avoid_: Treating authored `instance_type_kind` as the sole semantic authority
+
+**Relationship Pair Completeness**:
+The schema-authoring invariant that every declared relationship descriptor has exactly one inverse relationship descriptor paired with it.
+_Avoid_: Optional inverse metadata for declared relationships
+
+**Optional Property Suffix**:
+The `?` suffix on a descriptor property name that marks the property as optional in schema authoring.
+_Avoid_: Treating missing required properties as implicitly optional
+
+**Required Slot Table**:
+The fixed Issue 578 validation table that names required semantic slots per descriptor kind without deriving optionality from the full meta-descriptor graph.
+_Avoid_: Full meta-schema requiredness engine
+
+**Post-Lowering Requiredness**:
+The rule that required descriptor slots are validated on Canonical Holon IR after a source adapter has applied only the explicit defaults and conveniences of its source format.
+_Avoid_: Inventing semantic defaults during IR validation
+
+**Closed-World Authoring Uniqueness**:
+The Issue 578 uniqueness boundary that checks duplicates only inside the model being validated, not across the persisted MAP runtime or broader social graph.
+_Avoid_: Global MAP uniqueness validation
+
+**Blocking Semantic Diagnostic**:
+An Issue 578 validation finding that makes the Canonical Holon IR unsuitable for successful check, compile, or semantic diff.
+_Avoid_: Treating invalid schema semantics as warnings
+
+**Effective Descriptor View**:
+The flattened descriptor structure produced by following a descriptor's Extends chain and combining inherited structural declarations and affordances.
+_Avoid_: Local-only descriptor surface
+
+**Descriptor Flattener**:
+An existing descriptor-layer operation that computes effective inherited descriptor members, such as instance properties, instance relationships, commands, or dances.
+_Avoid_: Reimplemented inheritance flattening in schema tooling
+
+**Effective Key Rule**:
+The key rule selected for a descriptor or instance after resolving authored `UsesKeyRule`, applicable `Extends` lineage, and `DescribedBy`/type fallback according to MAP schema key-generation semantics.
+_Avoid_: General inherited descriptor flattening
+
+**Descriptor Semantics Service**:
+A small source-neutral service for descriptor-shaped graph rules that must be shared by TDL IR validation and runtime descriptor behavior.
+_Avoid_: Broad descriptor engine, ad hoc schema-tooling clone
+
 ## Relationships
 
 - Query PRO3 removes the transaction-level query envelope family rather than replacing it with a new command-owned query envelope.
@@ -160,6 +236,24 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - Without a future **ProjectStep**, navigation results should remain holon-native and selected by the **Output Binding**.
 - **Old-World Relationship Traversal Types** may remain for compatibility, but **New-World Query Contract** design must not depend on them.
 - A **Spec Revision Session** closes when the team produces a stable artifact for one coherent design slice, such as a revised issue body.
+- A **Source Adapter** owns format-specific parsing and syntax validation; the **Canonical Holon IR** owns source-neutral semantics.
+- A **Validation Layer** may classify diagnostics from adapters or derived semantic services, but adapter-specific validation responsibilities must not contaminate **Canonical Holon IR** semantics.
+- A diagnostic's **Validation Layer** identifies which responsibility boundary failed; its **Diagnostic Origin** identifies where the author or tool should look.
+- A **Semantic Diff** compares only valid **Canonical Holon IR** models; invalid inputs produce layered diagnostics instead of partial semantic differences.
+- A **Semantic Fidelity Check** compares canonical semantics, not source formatting, JSON field order, or equivalent adapter shorthand.
+- **Runtime Loader Projectability** checks whether schema-authoring semantics can flow into the existing loader/import shape without changing loader behavior.
+- **TypeKind-Compatible Inheritance** allows multi-step `Extends` chains, but rejects inheritance across TypeKind boundaries.
+- **Projected TypeKind** is used for **TypeKind-Compatible Inheritance**; authored `instance_type_kind` values are preserved and validated against the projection when present.
+- **Relationship Pair Completeness** requires every declared relationship to have exactly one inverse and every inverse relationship to point back to a declared relationship.
+- **Optional Property Suffix** is the authoring signal for property optionality; properties without the suffix are required by the corresponding meta-descriptor.
+- An **Effective Descriptor View** includes inherited instance properties, instance relationships, commands, dances, key rules, operators, and related structural declarations according to each descriptor family.
+- A **Descriptor Flattener** is the authoritative implementation for effective inherited descriptor members when inherited member validation is in scope; TDL R4 defers general member flattening.
+- **Effective Key Rule** resolution is the narrow TDL R4 inheritance exception because Airtable already performs key generation by walking `Extends` and, when needed, `DescribedBy`/type fallback.
+- A **Descriptor Semantics Service** is deferred for TDL R4 unless a required validation cannot be expressed without it.
+- The **Required Slot Table** is the R4 source for descriptor-kind requiredness checks.
+- **Post-Lowering Requiredness** keeps source-format defaults in the adapter and treats missing required Canonical Holon IR slots as validation diagnostics.
+- **Closed-World Authoring Uniqueness** covers duplicate canonical symbols or keys, duplicate local property names, duplicate local relationship names, and duplicate inverse ownership in the current input model.
+- **Blocking Semantic Diagnostics** include missing required slots, unresolved references, duplicate symbols, wrong descriptor or meta-kind, relationship inverse-pair violations, inheritance graph violations, TypeKind mismatches, effective-key failures, and generated-key mismatches.
 
 ## Example dialogue
 
@@ -190,3 +284,20 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - Pipeline ordering is relationship order in PRO3. Resolved: ordered **Pipeline Steps** use `HolonCollection` member order rather than per-step index properties or linked-list relationships.
 - Minimal plan shape is holon-native in PRO3. Resolved: **ExecutionPlan** has **Output Binding** and **RootNode**; a pipeline **PlanNode** has ordered **Pipeline Steps**; step kind is conveyed by step subtype descriptor/facade rather than a `PlanStepKind` property.
 - **Step Parameters** follow MAP holon modeling. Resolved: scalar parameters are properties; holon-reference-valued parameters are relationships.
+- "validation" in TDL R4 can refer to syntax, IR structural, schema-aware, or runtime-loader boundary checks. Resolved: use **Validation Layer** for the classification and keep source-adapter responsibilities separate from **Canonical Holon IR** semantics.
+- Partial semantic diff over invalid input is deferred. Resolved: R4 `diff` requires diagnostic-free lowering on both sides and reports layered diagnostics instead of attempting recovery.
+- "extensibility" in TDL R4 should not mean a blanket ban on extending property or relationship descriptors. Resolved: use **TypeKind-Compatible Inheritance** as the authoring validation rule.
+- `instance_type_kind` can be authored or imported, but it should not override the descriptor's semantic declaration kind. Resolved: R4 uses **Projected TypeKind** for inheritance checks and reports contradictions when authored/imported `instance_type_kind` disagrees.
+- Inverse metadata for declared relationships is not optional schema-authoring information. Resolved: use **Relationship Pair Completeness** and require exactly one inverse per declared relationship in R4.
+- Relationship descriptor cardinality bounds are required meta-descriptor properties. Resolved: R4 should require both `min_cardinality` and `max_cardinality` for relationship descriptors and validate `min_cardinality <= max_cardinality`.
+- Descriptor inheritance flattening is deferred for Issue 578. Resolved: Airtable does not appear to provide inherited-effective validation, so R4 should validate local/schema-authoring structure without adding a new **Descriptor Semantics Service**.
+- Duplicate local property names and relationship names are authoring errors in R4; duplicate inherited effective members are deferred with inheritance flattening.
+- Inheritance graph health remains in scope for Issue 578. Resolved: R4 validates single-parent `Extends`, acyclic `Extends` chains, resolved `Extends` targets, and **TypeKind-Compatible Inheritance** without flattening inherited members.
+- Full meta-descriptor requiredness derivation is deferred for Issue 578. Resolved: R4 uses a fixed **Required Slot Table**, including at least one variant for enum descriptors.
+- Effective key validation is in scope for Issue 578 as the only inheritance-flattening exception. Resolved: R4 should validate Airtable-equivalent **Effective Key Rule** resolution, including `Extends` preference, `DescribedBy`/type fallback, known key-rule kinds, required key-rule inputs, and generated-key mismatch when an authored key is present; this does not reopen general property, relationship, command, dance, or operator flattening.
+- Required descriptor slots are validated after source-adapter lowering. Resolved: TDL may apply explicit syntax-level conveniences or defaults, but Canonical Holon IR validation must report missing required semantic slots rather than inventing adapter-specific defaults.
+- Uniqueness validation is closed-world for Issue 578. Resolved: R4 flags duplicates within the TDL, JSON, or Canonical Holon IR model under validation, but does not check whether another persisted MAP schema already uses the same key or symbol.
+- Issue 578 semantic validation failures are errors. Resolved: all scoped schema-semantic invalidity produces **Blocking Semantic Diagnostics**; warnings are reserved for compatibility aliases or non-canonical source-adapter observations that do not make the Canonical Holon IR invalid.
+- Diagnostics should carry both **Validation Layer** and **Diagnostic Origin**. Resolved: R4 should add an explicit layer field for responsibility classification while preserving origin for source location, symbol, or element attribution.
+- Compile/decompile fidelity is semantic for Issue 578. Resolved: R4 compares normalized **Canonical Holon IR** content, including descriptors, projected kinds, references, required slots, key-rule semantics, relationship pairs, cardinalities, and literal semantic values, while ignoring source formatting, source ordering, and equivalent source-format shorthand.
+- Runtime-loader boundary validation is limited to **Runtime Loader Projectability**. Resolved: R4 should catch Canonical Holon IR facts that make projection to the existing loader/import shape impossible or malformed, without refactoring loader validation, changing Nursery/PVL semantics, or introducing a new runtime import path.

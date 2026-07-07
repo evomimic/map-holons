@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use anyhow::{anyhow, Context, Result};
+use map_schema_semantic::{normalize_relationship_pairs, normalize_validation_model, validate_model};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -149,6 +150,13 @@ pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<
     Ok(lower_parsed_files_to_schema_ir(vec![parsed])?.diagnostics)
 }
 
+pub(crate) fn load_semantic_model(
+    inputs: &[PathBuf],
+) -> Result<(SemanticModel, Vec<Diagnostic>)> {
+    let lowered = lower_inputs_to_schema_ir(inputs)?;
+    Ok((lowered.global_model, lowered.diagnostics))
+}
+
 struct Compilation {
     files: Vec<CompiledLoaderFile>,
     diagnostics: Vec<Diagnostic>,
@@ -201,6 +209,10 @@ fn collect_tdl_files(inputs: &[PathBuf]) -> Result<Vec<DiscoveredFile>> {
     ensure_unique_relative_paths(&files)?;
     files.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(files)
+}
+
+pub(crate) fn discovered_input_count(inputs: &[PathBuf]) -> Result<usize> {
+    Ok(collect_tdl_files(inputs)?.len())
 }
 
 fn collect_tdl_files_recursive(
@@ -1097,9 +1109,12 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<Lowered
     }
 
     let (symbols, mut diagnostics) = SymbolIndex::build(&mut global_model);
+    let mut validation_model = global_model.clone();
+    normalize_validation_model(&mut validation_model);
+    normalize_relationship_pairs(&mut validation_model, &symbols);
+    diagnostics.extend(validate_model(&validation_model, &symbols));
     for file in &mut files {
         file.schema_model.resolve_references(&symbols);
-        diagnostics.extend(symbols.collect_reference_diagnostics(&file.schema_model));
     }
 
     Ok(LoweredTdlProject { files, global_model, symbols, diagnostics })
@@ -1172,10 +1187,15 @@ fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
 }
 
 fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<TypeDescriptor> {
+    let kind = if descriptor.kind == DescriptorKind::HolonType && descriptor.name == "TypeDescriptor" {
+        DescriptorKind::TypeDescriptor
+    } else {
+        descriptor.kind
+    };
     let mut lowered = TypeDescriptor::new(
         descriptor_key(descriptor, schema_name),
         descriptor.name.clone(),
-        descriptor.kind,
+        kind,
         schema_name,
         descriptor.origin.clone(),
     );
