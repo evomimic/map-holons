@@ -45,9 +45,9 @@ impl Receptor {
     pub async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
         match self {
             Receptor::Holochain(r) => r.get_space_info().await,
-            Receptor::Session(_) => Err(HolonError::NotImplemented(
-                "SessionReceptor does not expose space info".into(),
-            )),
+            Receptor::Session(_) => {
+                Err(HolonError::NotImplemented("SessionReceptor does not expose space info".into()))
+            }
         }
     }
 }

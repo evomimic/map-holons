@@ -1,5 +1,5 @@
 use super::deprecated_receptor_cache::{ReceptorCache, ReceptorKey};
-use crate::{SessionReceptor, Receptor};
+use crate::{Receptor, SessionReceptor};
 use client_shared_types::{
     base_receptor::ReceptorType, deprecated_base_receptor::DeprecatedBaseReceptor,
     holon_space::SpaceInfo,
