@@ -308,7 +308,7 @@ fn definitional_relationships(
         }
         Err(HolonError::MissingDescribedBy { .. }) => {
             let all_related = reference.all_related_holons()?;
-            if relationship_map_is_empty(&all_related) {
+            if relationship_map_is_empty(&all_related)? {
                 Ok(BTreeMap::new())
             } else {
                 Err(HolonError::MissingDescribedBy { holon: reference.summarize()? })
@@ -318,8 +318,30 @@ fn definitional_relationships(
     }
 }
 
-fn relationship_map_is_empty(relationship_map: &RelationshipMap) -> bool {
-    relationship_map.count() == 0
+/// Returns `true` only when no relationship in the map holds any members.
+///
+/// A relationship name can linger in the map with an empty collection after all
+/// of its members are removed, so map size alone does not indicate emptiness;
+/// each collection's membership must be inspected. This keeps a relationless
+/// undescribed holon's definitional surface empty (per the equivalence rule)
+/// instead of forcing a spurious `MissingDescribedBy`.
+fn relationship_map_is_empty(relationship_map: &RelationshipMap) -> Result<bool, HolonError> {
+    for (_relationship_name, collection) in relationship_map.iter() {
+        let has_members = !collection
+            .read()
+            .map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on holon collection: {}",
+                    e
+                ))
+            })?
+            .get_members()
+            .is_empty();
+        if has_members {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn compare_relationship_name_sets(
@@ -904,6 +926,21 @@ mod tests {
 
         assert!(matches!(outcome(&left, &right), Err(HolonError::MissingDescribedBy { .. })));
         Ok(())
+    }
+
+    #[test]
+    fn undescribed_holons_with_emptied_relationship_are_relationless() -> Result<(), HolonError> {
+        // Removing the only member leaves the relationship name in the map with an
+        // empty collection. An undescribed holon in that state must still present an
+        // empty definitional surface rather than erroring with MissingDescribedBy.
+        let context = build_context();
+        let mut left = new_test_holon(&context, "same-key")?;
+        let right = new_test_holon(&context, "same-key")?;
+        let member = HolonReference::from(new_test_holon(&context, "member")?);
+        left.add_related_holons(relationship_name("Unlicensed"), vec![member.clone()])?;
+        left.remove_related_holons(relationship_name("Unlicensed"), vec![member])?;
+
+        assert_equivalent(&left, &right)
     }
 
     #[test]
