@@ -45,7 +45,7 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
     let session =
         Arc::new(RuntimeSession::new(Arc::clone(&space_manager), session_receptor.clone()));
 
-    if recovery_receptor.is_some() {
+    if session_receptor.is_some() {
         if crate::env::dev_mode_enabled() {
             tracing::info!("[RUNTIME] Startup session recovery suppressed: MAP_START_MODE=dev.");
         } else {
