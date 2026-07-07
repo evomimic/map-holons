@@ -6,7 +6,7 @@ use std::fmt::Debug;
 #[serde(rename_all = "snake_case")]
 pub enum ReceptorType {
     Local,
-    LocalRecovery,
+    Session,
     Holochain,
 }
 

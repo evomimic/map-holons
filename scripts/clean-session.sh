@@ -9,11 +9,11 @@ case "$(uname -s)" in
     DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/com.map-holons.tauri.dev"
     ;;
   *)
-    echo "clean:recovery: unsupported platform $(uname -s)" >&2
+    echo "clean:session: unsupported platform $(uname -s)" >&2
     exit 1
     ;;
 esac
 
-TARGET="$DATA_DIR/storage/local_recovery"
+TARGET="$DATA_DIR/storage/session"
 rm -rf "$TARGET"
-echo "Recovery session data cleared: $TARGET"
+echo "Session data cleared: $TARGET"

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use core_types::HolonError;
-use holons_client::{ClientSession, LocalRecoveryReceptor};
+use holons_client::{ClientSession, SessionReceptor};
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::TransientReference;
@@ -11,7 +11,7 @@ use crate::ExecutionPolicy;
 
 pub struct RuntimeSession {
     space_manager: Arc<HolonSpaceManager>,
-    recovery: Option<Arc<LocalRecoveryReceptor>>,
+    recovery: Option<Arc<SessionReceptor>>,
     active_sessions: RwLock<HashMap<TxId, Arc<ClientSession>>>,
     archived_sessions: RwLock<HashMap<TxId, Arc<ClientSession>>>,
 }
@@ -19,7 +19,7 @@ pub struct RuntimeSession {
 impl RuntimeSession {
     pub fn new(
         space_manager: Arc<HolonSpaceManager>,
-        recovery: Option<Arc<LocalRecoveryReceptor>>,
+        recovery: Option<Arc<SessionReceptor>>,
     ) -> Self {
         Self {
             space_manager,

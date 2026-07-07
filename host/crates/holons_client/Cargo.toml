@@ -24,6 +24,6 @@ holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
 holons_boundary = { path = "../../../shared_crates/holons_boundary" }
 client_shared_types = {path = "../shared_types"}
 holochain_receptor = { path = "../holochain_receptor" }
-recovery_receptor = { path = "../recovery_receptor" }
+session_receptor = { path = "../session_receptor" }
 #local_receptors = { path = "../local_receptors" }
 #holons_receptor = { path = "../holons_receptor" }

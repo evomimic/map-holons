@@ -1,5 +1,5 @@
 use super::deprecated_receptor_cache::{ReceptorCache, ReceptorKey};
-use crate::{LocalRecoveryReceptor, Receptor};
+use crate::{SessionReceptor, Receptor};
 use client_shared_types::{
     base_receptor::ReceptorType, deprecated_base_receptor::DeprecatedBaseReceptor,
     holon_space::SpaceInfo,
@@ -34,9 +34,9 @@ impl DeprecatedReceptorFactory {
             ReceptorType::Local => Err(Box::new(HolonError::NotImplemented(
                 "LocalReceptor creation is currently disabled".into(),
             ))),
-            ReceptorType::LocalRecovery => {
-                tracing::info!("Creating LocalRecoveryReceptor from base configuration");
-                Ok(Arc::new(Receptor::LocalRecovery(LocalRecoveryReceptor::new(base)?)))
+            ReceptorType::Session => {
+                tracing::info!("Creating SessionReceptor from base configuration");
+                Ok(Arc::new(Receptor::Session(SessionReceptor::new(base)?)))
             }
             ReceptorType::Holochain => {
                 tracing::info!("Creating HolochainReceptor from base configuration");

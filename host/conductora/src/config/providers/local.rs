@@ -8,8 +8,6 @@ pub struct LocalConfig {
     pub max_size_mb: Option<u64>,
     pub compression: bool,
     pub encryption: bool,
-    #[serde(default)]
-    pub features: Vec<String>,
     pub enabled: bool,
 }
 

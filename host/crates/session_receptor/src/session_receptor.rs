@@ -11,25 +11,25 @@ use holons_core::core_shared_objects::transactions::TransactionContext;
 use super::storage::transaction_snapshot::TransactionSnapshot;
 use super::storage::{RecoveryStore, TransactionRecoveryStore};
 
-pub struct LocalRecoveryReceptor {
+pub struct SessionReceptor {
     receptor_id: String,
     receptor_type: ReceptorType,
     properties: HashMap<String, String>,
     recovery_store: Arc<TransactionRecoveryStore>,
 }
 
-impl LocalRecoveryReceptor {
+impl SessionReceptor {
     //deprecated function for factory
     pub fn new(base: DeprecatedBaseReceptor) -> Result<Self, HolonError> {
         let client_any = base
             .client_handler
             .as_ref()
-            .expect("a handler is required for LocalRecoveryReceptor")
+            .expect("a handler is required for SessionReceptor")
             .clone();
 
         let recovery_store = client_any.downcast::<TransactionRecoveryStore>().map_err(|_| {
             HolonError::DowncastFailure(format!(
-                "Failed to cast client handler for LocalRecoveryReceptor '{}'",
+                "Failed to cast client handler for SessionReceptor '{}'",
                 base.receptor_id
             ))
         })?;
@@ -158,9 +158,9 @@ impl LocalRecoveryReceptor {
     }
 }
 
-impl fmt::Debug for LocalRecoveryReceptor {
+impl fmt::Debug for SessionReceptor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LocalRecoveryReceptor")
+        f.debug_struct("SessionReceptor")
             .field("receptor_id", &self.receptor_id)
             .field("receptor_type", &self.receptor_type)
             .field("properties", &self.properties)
