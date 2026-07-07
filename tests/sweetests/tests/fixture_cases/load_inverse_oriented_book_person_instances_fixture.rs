@@ -5,7 +5,7 @@ use holons_test::{DancesTestCase, TestCaseInit};
 /// that public loader ingress rejects authoring an instance relationship through
 /// the inverse `Authors` descriptor.
 pub fn load_inverse_oriented_book_person_instances_fixture() -> Result<DancesTestCase, HolonError> {
-    let TestCaseInit { mut test_case, fixture_context, .. } = TestCaseInit::new(
+    let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } = TestCaseInit::new(
         "load_inverse_oriented_book_person_instances",
         "Load core and Book/Person schemas, then reject an inverse-oriented Authors import",
     );
@@ -24,7 +24,7 @@ pub fn load_inverse_oriented_book_person_instances_fixture() -> Result<DancesTes
     )?;
     test_case.add_load_inverse_oriented_book_person_instances_expect_failure_step(None)?;
 
-    test_case.finalize(&fixture_context)?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
 
     Ok(test_case)
 }

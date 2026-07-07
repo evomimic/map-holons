@@ -56,7 +56,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_match_saved_content_step()?;
 
     // Finalize
-    test_case.finalize(&fixture_context)?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
 
     Ok(test_case)
 }

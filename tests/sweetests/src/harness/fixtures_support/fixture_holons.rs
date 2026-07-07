@@ -13,6 +13,23 @@ use holons_core::ReadableHolon;
 use sha2::{Digest, Sha256};
 use uuid::{Builder, Uuid};
 
+/// Immutable snapshot-id to current-head snapshot-id lookup for execution-time
+/// consumers that cannot depend on mutable fixture-authoring state.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FixtureHeadIndex {
+    by_snapshot_id: BTreeMap<SnapshotId, SnapshotId>,
+}
+
+impl FixtureHeadIndex {
+    pub fn new(by_snapshot_id: BTreeMap<SnapshotId, SnapshotId>) -> Self {
+        Self { by_snapshot_id }
+    }
+
+    pub fn get(&self, snapshot_id: &SnapshotId) -> Option<&SnapshotId> {
+        self.by_snapshot_id.get(snapshot_id)
+    }
+}
+
 /// Hashes the TemporaryId of the first source snapshot token minted
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FixtureHolonId(pub Uuid);
@@ -201,6 +218,26 @@ impl FixtureHolons {
         let id = token.expected_id();
         let fixture_holon = self.get_fixture_holon_by_snapshot(&id)?;
         Ok(fixture_holon.head_snapshot.snapshot().into())
+    }
+
+    /// Returns the current head snapshot id for the logical holon that owns
+    /// `snapshot_id`, or `None` when the id is not tracked by fixture state.
+    pub fn head_snapshot_id_for(&self, snapshot_id: &SnapshotId) -> Option<SnapshotId> {
+        let fixture_id = self.snapshot_to_fixture_holon.get(snapshot_id)?;
+        Some(self.holons.get(fixture_id)?.head_snapshot.id())
+    }
+
+    /// Freezes fixture head redirection for execution-time consumers.
+    ///
+    /// Head advancement is complete by fixture finalization, so this index is
+    /// stable for the duration of execution.
+    pub fn head_snapshot_index(&self) -> FixtureHeadIndex {
+        FixtureHeadIndex::new(
+            self.snapshot_to_fixture_holon
+                .keys()
+                .filter_map(|id| self.head_snapshot_id_for(id).map(|head_id| (id.clone(), head_id)))
+                .collect(),
+        )
     }
 
     /// Removes relationships from staged head snapshots that target the supplied

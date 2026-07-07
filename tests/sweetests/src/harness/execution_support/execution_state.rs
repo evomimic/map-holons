@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use crate::harness::{
     execution_support::{ExecutionHolons, ExecutionReference, ResolveBy},
-    fixtures_support::TestReference,
+    fixtures_support::{FixtureHeadIndex, TestReference},
 };
 use holons_boundary::SerializableHolonPool;
 use holons_prelude::prelude::*;
@@ -31,6 +31,7 @@ pub struct TestExecutionState {
     runtime: Runtime,
     active_tx_id: TxId,
     fixture_transient_holons: SerializableHolonPool,
+    fixture_head_index: FixtureHeadIndex,
     // Registry of realized references keyed by source token's `TemporaryId`.
     execution_holons: ExecutionHolons,
 }
@@ -40,11 +41,13 @@ impl TestExecutionState {
         runtime: Runtime,
         tx_id: TxId,
         fixture_transient_holons: SerializableHolonPool,
+        fixture_head_index: FixtureHeadIndex,
     ) -> Self {
         TestExecutionState {
             runtime,
             active_tx_id: tx_id,
             fixture_transient_holons,
+            fixture_head_index,
             execution_holons: ExecutionHolons::default(),
         }
     }
@@ -147,6 +150,12 @@ impl TestExecutionState {
     #[inline]
     pub fn holons(&self) -> &ExecutionHolons {
         &self.execution_holons
+    }
+
+    /// Borrow frozen fixture head redirection for assertion-time reference translation.
+    #[inline]
+    pub fn fixture_head_index(&self) -> &FixtureHeadIndex {
+        &self.fixture_head_index
     }
 
     /// Borrow the registry (mutable).

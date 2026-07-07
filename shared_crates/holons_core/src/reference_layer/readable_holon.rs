@@ -3,6 +3,9 @@ use std::sync::{Arc, RwLock};
 use super::{HolonReference, TransientReference};
 use crate::descriptors::{HolonDescriptor, QualifiedRelationship};
 use crate::reference_layer::available_relationships;
+use crate::reference_layer::definitional_equivalence::{
+    self, EquivalenceOutcome, EquivalenceResolver, NoOpResolver,
+};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::{
     core_shared_objects::{
@@ -23,6 +26,35 @@ pub trait ReadableHolon: ReadableHolonImpl {
     fn clone_holon(&self) -> Result<TransientReference, HolonError> {
         ReadableHolonImpl::clone_holon_impl(self)
     }
+
+    /// Returns true when this holon and `other` have the same definition-level content.
+    #[inline]
+    fn is_definitionally_equivalent(&self, other: &HolonReference) -> Result<bool, HolonError> {
+        Ok(matches!(self.definitional_equivalence(other)?, EquivalenceOutcome::Equivalent))
+    }
+
+    /// Compares this holon with `other`, returning diagnostic detail on divergence.
+    #[inline]
+    fn definitional_equivalence(
+        &self,
+        other: &HolonReference,
+    ) -> Result<EquivalenceOutcome, HolonError> {
+        self.definitional_equivalence_with_resolver(other, &NoOpResolver)
+    }
+
+    /// Compares this holon with `other` using caller-supplied reference resolution.
+    #[inline]
+    fn definitional_equivalence_with_resolver(
+        &self,
+        other: &HolonReference,
+        resolver: &dyn EquivalenceResolver,
+    ) -> Result<EquivalenceOutcome, HolonError> {
+        definitional_equivalence::definitional_equivalence(self, other, resolver)
+    }
+
+    #[deprecated(
+        note = "raw-content extraction is being retired; use is_definitionally_equivalent()/definitional_equivalence() for comparison"
+    )]
     #[inline]
     fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
         ReadableHolonImpl::essential_content_impl(self)

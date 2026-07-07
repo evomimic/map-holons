@@ -12,7 +12,7 @@ use type_names::{CoreRelationshipTypeName::DescribedBy, ToRelationshipName};
 #[fixture]
 pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
-    let TestCaseInit { mut test_case, fixture_context, fixture_holons: _fixture_holons, fixture_bindings: _fixture_bindings } = TestCaseInit::new(
+    let TestCaseInit { mut test_case, fixture_context, fixture_holons, fixture_bindings: _fixture_bindings } = TestCaseInit::new(
         "Ergonomic Add / Remove Related Holons Testcase".to_string(),
         "Tests the adding and removing of related Holons, using all combinations of ergonomic relationship names, for both Transient & Staged Holons".to_string(),
     );
@@ -187,7 +187,7 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
     // == //
 
     // Finalize
-    test_case.finalize(&fixture_context)?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
 
     Ok(test_case)
 }

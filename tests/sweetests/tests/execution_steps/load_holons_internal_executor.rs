@@ -34,6 +34,7 @@ fn read_string_property(
 
 /// Dump the `EssentialHolonContent` for any holon-like reference in a stable,
 /// human-readable format (test debugging aid).
+#[allow(deprecated)]
 fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl ReadableHolon) -> String {
     let essential_content = match holon_reference.essential_content() {
         Ok(content) => content,

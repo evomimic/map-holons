@@ -1,4 +1,5 @@
 pub(crate) mod available_relationships;
+pub(crate) mod definitional_equivalence;
 pub mod holon_collection_api;
 pub mod holon_reference;
 pub mod holon_service_api;
@@ -13,6 +14,9 @@ pub mod transient_reference;
 pub mod writable_holon;
 pub(crate) mod writable_impl;
 
+pub use definitional_equivalence::{
+    Divergence, EquivalenceOutcome, EquivalenceResolver, NoOpResolver, NodeResolution,
+};
 pub use holon_collection_api::HolonCollectionApi;
 pub use holon_reference::HolonReference;
 pub use holon_service_api::HolonServiceApi;

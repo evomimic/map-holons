@@ -168,7 +168,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     // )?;
 
     // Finalize
-    test_case.finalize(&fixture_context)?;
+    test_case.finalize(&fixture_context, &fixture_holons)?;
 
     Ok(test_case)
 }

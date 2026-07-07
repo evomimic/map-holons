@@ -28,7 +28,8 @@ pub use descriptors::{
     RelationshipDirection, TransactionDescriptor, TypeHeader, ValueDescriptor,
 };
 pub use reference_layer::{
-    HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior,
+    Divergence, EquivalenceOutcome, EquivalenceResolver, HolonCollectionApi, HolonReference,
+    HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior, NoOpResolver, NodeResolution,
     ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior, TransientReference,
     WritableHolon,
 };
