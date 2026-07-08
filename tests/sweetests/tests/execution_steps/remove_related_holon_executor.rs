@@ -18,11 +18,26 @@ pub async fn execute_remove_related_holons(
 ) {
     let context = state.context();
 
-    // 1. LOOKUP — resolve source and target holons
+    // 1. LOOKUP — resolve source and target holons. Target resolution rejects
+    // cross-transaction staged targets, so its errors flow through the
+    // expected_error path like dispatch errors.
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
     let holons_to_remove: Vec<HolonReference> =
-        state.resolve_execution_references(&context, ResolveBy::Expected, &holons).unwrap();
+        match state.resolve_relationship_targets(&context, &relationship_name, &holons) {
+            Ok(references) => references,
+            Err(e) => {
+                let actual = HolonErrorKind::from(&e);
+                assert_eq!(
+                    Some(actual),
+                    expected_error,
+                    "remove_related_holons: target resolution failed unexpectedly: {:?}",
+                    e,
+                );
+                info!("Success! remove_related_holons target resolution failed as expected: {}", e);
+                return;
+            }
+        };
 
     // 2. DISPATCH
     let command = MapCommand::Holon(HolonCommand {

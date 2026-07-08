@@ -220,6 +220,28 @@ impl FixtureHolons {
         Ok(fixture_holon.head_snapshot.snapshot().into())
     }
 
+    /// Resolves a relationship-target token to its logical holon's current head token.
+    ///
+    /// Relationship adders use this so execution steps carry the target's current
+    /// head (e.g. the post-commit Saved snapshot) instead of a stale author-supplied
+    /// snapshot whose runtime realization may be bound to an earlier transaction.
+    /// Tokens whose expected snapshot already is the head — including same-transaction
+    /// staged targets and SavedLookup stubs — are returned unchanged.
+    pub fn resolve_target_token_to_head(
+        &self,
+        token: &TestReference,
+    ) -> Result<TestReference, HolonError> {
+        let fixture_holon = self.get_fixture_holon_by_snapshot(&token.expected_id())?;
+        let head = &fixture_holon.head_snapshot;
+        if head.id() == token.expected_id() {
+            return Ok(token.clone());
+        }
+        // The head token is deliberately not pushed onto the `tokens` ledger,
+        // mirroring commit-minted tokens: it re-labels an already-registered head
+        // snapshot rather than introducing a new one.
+        Ok(TestReference::new(head.as_source(), head.clone()))
+    }
+
     /// Returns the current head snapshot id for the logical holon that owns
     /// `snapshot_id`, or `None` when the id is not tracked by fixture state.
     pub fn head_snapshot_id_for(&self, snapshot_id: &SnapshotId) -> Option<SnapshotId> {
@@ -429,4 +451,85 @@ pub struct FixtureHolonCounts {
     pub transient: i64,
     pub staged: i64,
     pub saved: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::init_fixture_context;
+    use base_types::MapString;
+    use holons_core::core_shared_objects::transactions::TransactionContext;
+    use std::sync::Arc;
+
+    /// Registers a new Staged FixtureHolon and mints its authoring token,
+    /// mirroring the snapshot flow used by `add_stage_holon_step`.
+    fn mint_staged_token(
+        context: &Arc<TransactionContext>,
+        fixture_holons: &mut FixtureHolons,
+        key: &str,
+    ) -> TestReference {
+        let transient = context
+            .mutation()
+            .new_holon(Some(MapString(key.to_string())))
+            .expect("new_holon should succeed");
+        let staged = ExpectedSnapshot::new(
+            transient.clone_holon().expect("clone_holon should succeed"),
+            TestHolonState::Staged,
+        );
+        fixture_holons.create_fixture_holon(staged.clone()).expect("create_fixture_holon");
+        fixture_holons
+            .mint_test_reference(SourceSnapshot::new(transient, TestHolonState::Transient), staged)
+    }
+
+    #[test]
+    fn head_advanced_token_resolves_to_saved_head() {
+        let context = init_fixture_context();
+        let mut fixture_holons = FixtureHolons::new();
+        let staged_token = mint_staged_token(&context, &mut fixture_holons, "book-key");
+
+        fixture_holons.commit().expect("commit should advance staged heads");
+
+        let head_token = fixture_holons
+            .resolve_target_token_to_head(&staged_token)
+            .expect("head resolution should succeed");
+        assert_eq!(head_token.expected_snapshot().state(), TestHolonState::Saved);
+        assert_ne!(head_token.expected_id(), staged_token.expected_id());
+        assert_eq!(
+            Some(head_token.expected_id()),
+            fixture_holons.head_snapshot_id_for(&staged_token.expected_id())
+        );
+    }
+
+    #[test]
+    fn same_head_token_is_returned_unchanged() {
+        let context = init_fixture_context();
+        let mut fixture_holons = FixtureHolons::new();
+        let staged_token = mint_staged_token(&context, &mut fixture_holons, "person-key");
+
+        let resolved = fixture_holons
+            .resolve_target_token_to_head(&staged_token)
+            .expect("head resolution should succeed");
+        assert_eq!(resolved, staged_token);
+    }
+
+    #[test]
+    fn untracked_token_errors() {
+        let context = init_fixture_context();
+        let mut fixture_holons = FixtureHolons::new();
+        // Mint a token without registering a FixtureHolon for its snapshot.
+        let transient = context
+            .mutation()
+            .new_holon(Some(MapString("orphan-key".to_string())))
+            .expect("new_holon should succeed");
+        let expected = ExpectedSnapshot::new(
+            transient.clone_holon().expect("clone_holon should succeed"),
+            TestHolonState::Staged,
+        );
+        let token = fixture_holons.mint_test_reference(
+            SourceSnapshot::new(transient, TestHolonState::Transient),
+            expected,
+        );
+
+        assert!(fixture_holons.resolve_target_token_to_head(&token).is_err());
+    }
 }

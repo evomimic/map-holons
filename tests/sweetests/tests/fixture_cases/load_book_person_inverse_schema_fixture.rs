@@ -262,19 +262,20 @@ pub fn frozen_member_head_redirect_fixture() -> Result<DancesTestCase, HolonErro
     Ok(test_case)
 }
 
-/// Cross-transaction variant of the frozen-member regression, pending issue #556.
+/// Cross-transaction variant of the frozen-member regression (issue #556).
 ///
-/// Person is staged and committed in one transaction; Book — authored with a
-/// frozen reference to Person's *staged* snapshot — is staged and committed in a
-/// *later* transaction. The frozen staged Person reference is carried into the
-/// later commit, where the production session-import bind correctly rejects it as
-/// a cross-transaction reference. This cannot pass until the sweettest
-/// relationship adders head-resolve execution-step target tokens (issue #556); it
-/// is driven by the `#[ignore]`d `frozen_member_head_redirect_cross_tx_test`.
+/// Person is staged, described, and committed in one transaction. Book is staged
+/// in a *later* transaction and related `Book --AuthoredBy--> Person` using the
+/// original staged-era Person token. The relationship adder must resolve that
+/// token to Person's current head (the committed Saved snapshot) so the execution
+/// step carries a reference that rebinds to the active transaction; embedding the
+/// raw staged token would round-trip a stale cross-transaction `StagedReference`
+/// into the later commit, which the production session-import bind correctly
+/// rejects.
 pub fn frozen_member_head_redirect_cross_tx_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "frozen_member_head_redirect_cross_tx",
-        "Cross-transaction frozen relationship member (pending issue #556)",
+        "Relate a later-transaction Book to a committed Person via the original staged-era token",
     );
 
     test_case.add_load_core_schema_step(None)?;
@@ -283,18 +284,9 @@ pub fn frozen_member_head_redirect_cross_tx_fixture() -> Result<DancesTestCase, 
 
     test_case.add_begin_transaction_step(
         None,
-        Some("Begin transaction for staged Person and transient Book".to_string()),
+        Some("Begin transaction for staged Person".to_string()),
     )?;
 
-    let book_type_stub =
-        fixture_context.mutation().new_holon(Some(MapString(BOOK_DESCRIPTOR_KEY.to_string())))?;
-    let book_type_token = test_case.add_lookup_saved_holon_by_key_step(
-        &mut fixture_holons,
-        book_type_stub,
-        MapString(BOOK_DESCRIPTOR_KEY.to_string()),
-        None,
-        None,
-    )?;
     let person_type_stub =
         fixture_context.mutation().new_holon(Some(MapString(PERSON_DESCRIPTOR_KEY.to_string())))?;
     let person_type_token = test_case.add_lookup_saved_holon_by_key_step(
@@ -320,13 +312,37 @@ pub fn frozen_member_head_redirect_cross_tx_fixture() -> Result<DancesTestCase, 
     )?;
     let person_token =
         test_case.add_stage_holon_step(&mut fixture_holons, person_token, None, None)?;
+    // The last staged-era Person token; reused as a relationship target after the
+    // commit below advances Person's head to Saved.
     let person_token = test_case.add_add_related_holons_step(
         &mut fixture_holons,
         person_token,
         CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
         vec![person_type_token],
         None,
-        Some("Describe Person before first commit".to_string()),
+        Some("Describe Person before commit".to_string()),
+    )?;
+
+    test_case.add_commit_step(
+        &mut fixture_holons,
+        ExpectedCommitStatus::Complete,
+        None,
+        Some("Commit Person; head advances to Saved".to_string()),
+    )?;
+
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin transaction to stage Book after Person is saved".to_string()),
+    )?;
+
+    let book_type_stub =
+        fixture_context.mutation().new_holon(Some(MapString(BOOK_DESCRIPTOR_KEY.to_string())))?;
+    let book_type_token = test_case.add_lookup_saved_holon_by_key_step(
+        &mut fixture_holons,
+        book_type_stub,
+        MapString(BOOK_DESCRIPTOR_KEY.to_string()),
+        None,
+        None,
     )?;
 
     let book_source =
@@ -342,41 +358,29 @@ pub fn frozen_member_head_redirect_cross_tx_fixture() -> Result<DancesTestCase, 
         None,
         None,
     )?;
+    let book_token = test_case.add_stage_holon_step(&mut fixture_holons, book_token, None, None)?;
     let book_token = test_case.add_add_related_holons_step(
         &mut fixture_holons,
         book_token,
         CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
         vec![book_type_token],
         None,
-        Some("Describe transient Book before first commit".to_string()),
+        Some("Describe staged Book".to_string()),
     )?;
-    let book_token = test_case.add_add_related_holons_step(
+    test_case.add_add_related_holons_step(
         &mut fixture_holons,
         book_token,
         RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string())),
         vec![person_token],
         None,
-        Some("Freeze Book --AuthoredBy--> staged Person before Person commit".to_string()),
+        Some("Relate Book --AuthoredBy--> Person via the staged-era token".to_string()),
     )?;
 
     test_case.add_commit_step(
         &mut fixture_holons,
         ExpectedCommitStatus::Complete,
         None,
-        Some("Commit Person while Book remains transient".to_string()),
-    )?;
-
-    test_case.add_begin_transaction_step(
-        None,
-        Some("Begin transaction to stage and commit Book after Person is saved".to_string()),
-    )?;
-    let _book_token =
-        test_case.add_stage_holon_step(&mut fixture_holons, book_token, None, None)?;
-    test_case.add_commit_step(
-        &mut fixture_holons,
-        ExpectedCommitStatus::Complete,
-        None,
-        Some("Commit Book with frozen Person relationship member".to_string()),
+        Some("Commit Book; AuthoredBy must anchor to the committed Person".to_string()),
     )?;
 
     let expected_db_count = MapInteger(
@@ -386,6 +390,75 @@ pub fn frozen_member_head_redirect_cross_tx_fixture() -> Result<DancesTestCase, 
     );
     test_case.add_ensure_database_count_step(expected_db_count, None)?;
     test_case.add_match_saved_content_step()?;
+
+    test_case.finalize(&fixture_context, &fixture_holons)?;
+
+    Ok(test_case)
+}
+
+/// Negative case for the cross-transaction relationship-target diagnostic (issue #556).
+///
+/// Person is staged but *never committed* before the fixture crosses a transaction
+/// boundary, so its head never advances and build-time head resolution passes the
+/// staged token through unchanged. Relating a later-transaction Book to it must
+/// fail at the add step with an authoring-oriented `CrossTransactionReference`
+/// naming the relationship and target — not as an opaque `Conflict` at commit
+/// session-import.
+pub fn cross_transaction_staged_target_diagnostic_fixture() -> Result<DancesTestCase, HolonError> {
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
+        "cross_transaction_staged_target_diagnostic",
+        "Relating to a never-committed staged holon from an earlier transaction fails fast",
+    );
+
+    let person_source =
+        fixture_context.mutation().new_holon(Some(MapString(PERSON_1_KEY.to_string())))?;
+    let mut person_properties = PropertyMap::new();
+    person_properties
+        .insert("Name".to_property_name(), MapString(PERSON_1_KEY.to_string()).to_base_value());
+    let person_token = test_case.add_new_holon_step(
+        &mut fixture_holons,
+        person_source,
+        person_properties,
+        Some(MapString(PERSON_1_KEY.to_string())),
+        None,
+        None,
+    )?;
+    let person_token =
+        test_case.add_stage_holon_step(&mut fixture_holons, person_token, None, None)?;
+
+    // Cross the transaction boundary without committing Person.
+    test_case.add_begin_transaction_step(
+        None,
+        Some("Begin transaction while Person remains staged in the previous one".to_string()),
+    )?;
+
+    let book_source =
+        fixture_context.mutation().new_holon(Some(MapString(BOOK_KEY.to_string())))?;
+    let mut book_properties = PropertyMap::new();
+    book_properties
+        .insert("Title".to_property_name(), MapString(BOOK_KEY.to_string()).to_base_value());
+    let book_token = test_case.add_new_holon_step(
+        &mut fixture_holons,
+        book_source,
+        book_properties,
+        Some(MapString(BOOK_KEY.to_string())),
+        None,
+        None,
+    )?;
+    let book_token = test_case.add_stage_holon_step(&mut fixture_holons, book_token, None, None)?;
+
+    test_case.add_add_related_holons_step(
+        &mut fixture_holons,
+        book_token,
+        RelationshipName(MapString(BOOK_TO_PERSON_RELATIONSHIP.to_string())),
+        vec![person_token],
+        Some(HolonErrorKind::CrossTransactionReference),
+        Some(
+            "Relate Book to the never-committed staged Person; expect the cross-transaction \
+             diagnostic"
+                .to_string(),
+        ),
+    )?;
 
     test_case.finalize(&fixture_context, &fixture_holons)?;
 

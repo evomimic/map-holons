@@ -116,15 +116,16 @@ use holons_prelude::prelude::*;
 #[case::load_core_schema_test(load_core_schema_fixture())]
 #[case::load_book_person_inverse_schema_test(load_book_person_inverse_schema_fixture())]
 #[case::frozen_member_head_redirect_test(frozen_member_head_redirect_fixture())]
+#[case::frozen_member_head_redirect_cross_tx_test(frozen_member_head_redirect_cross_tx_fixture())]
+#[case::cross_transaction_staged_target_diagnostic_test(
+    cross_transaction_staged_target_diagnostic_fixture()
+)]
 #[tokio::test(flavor = "multi_thread")]
 async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
     run_dance_test_case(input.unwrap()).await;
 }
 
 /// Drives a finalized `DancesTestCase` through runtime setup and step execution.
-///
-/// Shared by the parametrized `rstest_dance_tests` cases and by standalone tests
-/// such as the `#[ignore]`d cross-transaction regression pending issue #556.
 async fn run_dance_test_case(mut test_case: DancesTestCase) {
     // The heavy lifting for this test is in the test data set creation.
 
@@ -351,20 +352,4 @@ async fn run_dance_test_case(mut test_case: DancesTestCase) {
         }
     }
     info!("\n{TEST_CLIENT_PREFIX} ------- END OF {} TEST CASE  ---------------", test_case.name);
-}
-
-/// Cross-transaction frozen-member regression, kept ready for issue #556.
-///
-/// Ignored until the sweettest relationship adders head-resolve execution-step
-/// target tokens (issue #556). Until then the frozen staged Person reference is
-/// carried into a later transaction's commit and correctly rejected by the
-/// production session-import bind. Remove `#[ignore]` once #556 lands.
-#[tokio::test(flavor = "multi_thread")]
-#[ignore = "unblocked by #556: execution-step token head resolution"]
-async fn frozen_member_head_redirect_cross_tx_test() {
-    run_dance_test_case(
-        frozen_member_head_redirect_cross_tx_fixture()
-            .expect("cross-tx frozen-member fixture should build"),
-    )
-    .await;
 }
