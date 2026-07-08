@@ -211,4 +211,17 @@ impl TestExecutionState {
     ) -> Result<Vec<HolonReference>, HolonError> {
         self.execution_holons.resolve_execution_references(context, resolution_type, tokens)
     }
+
+    /// Resolves relationship-target tokens, rejecting staged targets bound to a
+    /// transaction other than the active one with an authoring-oriented error
+    /// naming the relationship and target key.
+    #[inline]
+    pub fn resolve_relationship_targets(
+        &self,
+        context: &Arc<TransactionContext>,
+        relationship_name: &RelationshipName,
+        tokens: &[TestReference],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        self.execution_holons.resolve_relationship_targets(context, relationship_name, tokens)
+    }
 }

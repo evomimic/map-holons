@@ -497,6 +497,12 @@ impl DancesTestCase {
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| "Add related holons".to_string());
+        // Head-resolve target tokens so the execution step carries each logical
+        // holon's current head, consistent with the expected-graph resolution below.
+        let holons_to_add = holons_to_add
+            .iter()
+            .map(|token| fixture_holons.resolve_target_token_to_head(token))
+            .collect::<Result<Vec<_>, HolonError>>()?;
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;
@@ -573,6 +579,12 @@ impl DancesTestCase {
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| "Remove related holons".to_string());
+        // Head-resolve target tokens so the execution step carries each logical
+        // holon's current head, consistent with the expected-graph resolution below.
+        let holons_to_remove = holons_to_remove
+            .iter()
+            .map(|token| fixture_holons.resolve_target_token_to_head(token))
+            .collect::<Result<Vec<_>, HolonError>>()?;
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
         let mut new_snapshot = new_source.snapshot().clone_holon()?;

@@ -198,6 +198,51 @@ impl ExecutionHolons {
         }
         Ok(references)
     }
+
+    /// Resolves relationship-target tokens, rejecting staged targets bound to a
+    /// transaction other than the active one.
+    ///
+    /// Build-time head resolution (see `FixtureHolons::resolve_target_token_to_head`)
+    /// leaves only one way for a stale staged target to reach this point: the target
+    /// was never committed before the fixture crossed a transaction boundary. Without
+    /// this guard that misuse only surfaces later as an opaque `Conflict` during
+    /// commit session-import; here it fails at the authoring site, naming the
+    /// relationship and target key.
+    pub fn resolve_relationship_targets(
+        &self,
+        context: &Arc<TransactionContext>,
+        relationship_name: &RelationshipName,
+        tokens: &[TestReference],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        let mut references = Vec::new();
+        for token in tokens {
+            let reference =
+                self.resolve_execution_reference(context, ResolveBy::Expected, token)?;
+            if let HolonReference::Staged(staged_reference) = &reference {
+                if staged_reference.tx_id() != context.tx_id() {
+                    let target_key = token
+                        .expected_reference()
+                        .key()
+                        .ok()
+                        .flatten()
+                        .map(|key| key.0)
+                        .unwrap_or_else(|| format!("{:?}", token.expected_id()));
+                    return Err(HolonError::CrossTransactionReference {
+                        reference_kind: format!("relationship '{}' target", relationship_name),
+                        reference_id: format!(
+                            "'{}' (staged in tx {}, never committed)",
+                            target_key,
+                            staged_reference.tx_id().value()
+                        ),
+                        reference_tx: staged_reference.tx_id().value(),
+                        context_tx: context.tx_id().value(),
+                    });
+                }
+            }
+            references.push(reference);
+        }
+        Ok(references)
+    }
 }
 
 // -- HELPERS -- //
