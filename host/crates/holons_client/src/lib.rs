@@ -14,12 +14,12 @@ use client_shared_types::{MapRequest, MapResponse, SpaceInfo};
 use core_types::HolonError;
 pub use holochain_receptor::DeprecatedHolochainReceptor;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-pub use recovery_receptor::local_recovery_receptor::LocalRecoveryReceptor;
+pub use session_receptor::session_receptor::SessionReceptor;
 
 pub enum Receptor {
     //Local(LocalReceptor),
     Holochain(DeprecatedHolochainReceptor),
-    LocalRecovery(LocalRecoveryReceptor),
+    Session(SessionReceptor),
 }
 
 //these are temporarily here until transition to the map commands spec is ready
@@ -27,8 +27,8 @@ impl Receptor {
     pub fn transaction_context(&self) -> Result<Arc<TransactionContext>, HolonError> {
         match self {
             Receptor::Holochain(r) => Ok(r.transaction_context()),
-            Receptor::LocalRecovery(_) => Err(HolonError::NotImplemented(
-                "LocalRecoveryReceptor does not expose transaction_context".into(),
+            Receptor::Session(_) => Err(HolonError::NotImplemented(
+                "SessionReceptor does not expose transaction_context".into(),
             )),
         }
     }
@@ -36,8 +36,8 @@ impl Receptor {
     pub async fn handle_map_request(&self, request: MapRequest) -> Result<MapResponse, HolonError> {
         match self {
             Receptor::Holochain(r) => r.handle_map_request(request).await,
-            Receptor::LocalRecovery(_) => Err(HolonError::NotImplemented(
-                "LocalRecoveryReceptor does not handle map requests".into(),
+            Receptor::Session(_) => Err(HolonError::NotImplemented(
+                "SessionReceptor does not handle map requests".into(),
             )),
         }
     }
@@ -45,9 +45,9 @@ impl Receptor {
     pub async fn get_space_info(&self) -> Result<SpaceInfo, HolonError> {
         match self {
             Receptor::Holochain(r) => r.get_space_info().await,
-            Receptor::LocalRecovery(_) => Err(HolonError::NotImplemented(
-                "LocalRecoveryReceptor does not expose space info".into(),
-            )),
+            Receptor::Session(_) => {
+                Err(HolonError::NotImplemented("SessionReceptor does not expose space info".into()))
+            }
         }
     }
 }

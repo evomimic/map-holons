@@ -3417,9 +3417,9 @@ dependencies = [
  "holons_boundary",
  "holons_core",
  "integrity_core_types",
- "recovery_receptor",
  "serde",
  "serde_bytes",
+ "session_receptor",
  "tokio",
  "tracing",
 ]
@@ -4923,8 +4923,8 @@ dependencies = [
  "holons_core",
  "holons_loader_client",
  "map_commands_contract",
- "recovery_receptor",
  "serde_json",
+ "session_receptor",
  "tokio",
 ]
 
@@ -6598,24 +6598,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "recovery_receptor"
-version = "0.1.0"
-dependencies = [
- "client_shared_types",
- "core_types",
- "futures-executor",
- "holons_boundary",
- "holons_core",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tokio",
- "tracing",
- "uuid 1.21.0",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7540,6 +7522,24 @@ checksum = "66cf8fedced2fcf12406bcb34223dffb92eaf34908ede12fed414c82b7f00b3e"
 dependencies = [
  "base16ct",
  "serde",
+]
+
+[[package]]
+name = "session_receptor"
+version = "0.1.0"
+dependencies = [
+ "client_shared_types",
+ "core_types",
+ "futures-executor",
+ "holons_boundary",
+ "holons_core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tokio",
+ "tracing",
+ "uuid 1.21.0",
 ]
 
 [[package]]

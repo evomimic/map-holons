@@ -1,11 +1,11 @@
 use crate::config::providers::local::LocalConfig;
 use crate::config::providers::ProviderConfig;
 use crate::config::StorageProvider;
-use crate::runtime::init_runtime::RecoveryReceptorState;
+use crate::runtime::init_runtime::SessionReceptorState;
 use crate::setup::common_setup::serialize_props;
 use client_shared_types::base_receptor::{BaseReceptor, ReceptorType};
-use recovery_receptor::local_recovery_receptor::LocalRecoveryReceptor;
-use recovery_receptor::{RecoveryStore, TransactionRecoveryStore};
+use session_receptor::session_receptor::SessionReceptor;
+use session_receptor::{RecoveryStore, TransactionRecoveryStore};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager}; // alias lives in runtime, not here
 
@@ -21,47 +21,41 @@ impl LocalSetup {
         let StorageProvider::Local(local_cfg) = provider else {
             return Err(anyhow::anyhow!("Invalid storage provider config for Local"));
         };
-        //let t_setup = std::time::Instant::now(); //remove feature in 570
-        let is_recovery = local_cfg.features.iter().any(|f| f == "recovery");
-        if is_recovery {
-            Self::build_recovery_receptor(&handle, name, local_cfg).await?;
-        } else {
-            return Err(anyhow::anyhow!(
-                "Local storage '{}' enabled without 'recovery' feature: Registering a non-recovery receptor is currently not allowed as we have not defined other local receptors.",name));
-        }
+        //let t_setup = std::time::Instant::now();
+        Self::build_session_receptor(&handle, name, local_cfg).await?;
         Ok(())
     }
 
     /// Build the receptor configuration for Local storage
-    async fn build_recovery_receptor(
+    async fn build_session_receptor(
         handle: &AppHandle,
         name: &str,
         local_config: &LocalConfig,
     ) -> anyhow::Result<()> {
-        tracing::info!("[LOCAL SETUP] Session feature enabled for Local storage.");
         let snapshot_store = create_snapshot_store(handle, local_config, name).await?;
         // continue with receptor config creation as normal
         let props = serialize_props(local_config);
-        let receptor = Arc::new(LocalRecoveryReceptor::from_base(
+        let receptor = Arc::new(SessionReceptor::from_base(
             BaseReceptor {
                 // clean BaseReceptor (no client_handler)
                 receptor_id: name.to_string(),
-                receptor_type: ReceptorType::LocalRecovery,
+                receptor_type: ReceptorType::Session,
                 properties: props.clone(),
             },
             Arc::clone(&snapshot_store),
         ));
-        if let Some(state) = handle.try_state::<RecoveryReceptorState>() {
+        tracing::info!("[LOCAL SETUP] Session storage enabled.");
+        if let Some(state) = handle.try_state::<SessionReceptorState>() {
             if let Ok(mut guard) = state.write() {
                 *guard = Some(receptor);
-                tracing::info!("[LOCAL SETUP] LocalRecoveryReceptor stored in typed state.");
+                tracing::info!("[LOCAL SETUP] SessionReceptor stored in typed state.");
             }
         }
         Ok(())
 
         // Ok(BaseReceptor {
         //     receptor_id: name.to_string(),
-        //     receptor_type: ReceptorType::LocalRecovery,
+        //     receptor_type: ReceptorType::Session,
         //     properties: props,
         // })
     }
@@ -75,7 +69,7 @@ impl LocalSetup {
 ///
 /// The database is placed at:
 /// - production: `{app_data_dir}/storage/{name}/snapshots.db`
-/// - HC dev mode: `/tmp/conductora_dev/local_recovery/{name}/snapshots.db`
+/// - HC dev mode: `/tmp/conductora_dev/{name}/snapshots.db`
 ///
 /// The dev path mirrors the Holochain conductor dev-data convention, so `clean:hc:deep`
 /// wipes both automatically.

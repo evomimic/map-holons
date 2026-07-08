@@ -8,19 +8,19 @@ use holons_core::{
     },
     HolonPool,
 };
-use recovery_receptor::local_recovery_receptor::LocalRecoveryReceptor;
+use session_receptor::session_receptor::SessionReceptor;
 
 //#[derive(Debug)]
 pub struct ClientSession {
     context: Arc<TransactionContext>,
-    recovery: Option<Arc<LocalRecoveryReceptor>>,
+    recovery: Option<Arc<SessionReceptor>>,
 }
 
 impl ClientSession {
     /// Open a new session for a new transaction, optionally with a recovery receptor for state persistence.
     pub fn open_new(
         space_manager: Arc<HolonSpaceManager>,
-        recovery: Option<Arc<LocalRecoveryReceptor>>,
+        recovery: Option<Arc<SessionReceptor>>,
     ) -> Result<Self, HolonError> {
         let context = space_manager
             .get_transaction_manager()
@@ -32,7 +32,7 @@ impl ClientSession {
     /// Open a session for an existing transaction, restoring state from the recovery receptor if available.
     pub fn recover(
         space_manager: Arc<HolonSpaceManager>,
-        recovery: Option<Arc<LocalRecoveryReceptor>>,
+        recovery: Option<Arc<SessionReceptor>>,
         tx_id: String,
     ) -> Result<Self, HolonError> {
         let tx_id = TxId::from_str(&tx_id)

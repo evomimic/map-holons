@@ -5,7 +5,7 @@ members = [
     "crates/holons_client",
     "crates/holochain_receptor",
     "crates/holons_loader_client",
-    "crates/recovery_receptor",
+    "crates/session_receptor",
     "crates/shared_types",
     "conductora/plugins/tauri-plugin-holochain",
     "crates/map_commands_contract",
@@ -51,7 +51,7 @@ tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
 map_commands_contract = { path = "crates/map_commands_contract" }
 map_commands_wire = { path = "crates/map_commands_wire" }
 map_commands_runtime = { path = "crates/map_commands_runtime" }
-recovery_receptor = { path = "crates/recovery_receptor" }
+session_receptor = { path = "crates/session_receptor" }
 
 [patch.crates-io]
 holochain_wasmer_host = { path = "patches/holochain_wasmer_host" }
