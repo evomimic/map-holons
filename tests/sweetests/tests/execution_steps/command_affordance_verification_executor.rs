@@ -27,7 +27,6 @@ use tracing::info;
 const STABLE_COMMAND_TYPES: &[(&str, CoreCommandTypeName)] = &[
     ("BeginTransaction.CommandType", CoreCommandTypeName::BeginTransaction),
     ("CloneHolon.CommandType", CoreCommandTypeName::CloneHolon),
-    ("GetEssentialContent.CommandType", CoreCommandTypeName::GetEssentialContent),
     ("Summarize.CommandType", CoreCommandTypeName::Summarize),
     ("GetHolonId.CommandType", CoreCommandTypeName::GetHolonId),
     ("GetPredecessor.CommandType", CoreCommandTypeName::GetPredecessor),
@@ -69,7 +68,6 @@ const STABLE_COMMAND_TYPES: &[(&str, CoreCommandTypeName)] = &[
 // The command surface that every `HolonType` descendant should inherit from the core schema.
 const HOLON_TYPE_AFFORDED_COMMANDS: &[CoreCommandTypeName] = &[
     CoreCommandTypeName::CloneHolon,
-    CoreCommandTypeName::GetEssentialContent,
     CoreCommandTypeName::Summarize,
     CoreCommandTypeName::GetHolonId,
     CoreCommandTypeName::GetPredecessor,

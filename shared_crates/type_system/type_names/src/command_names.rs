@@ -80,7 +80,6 @@ impl ToCommandName for &CommandName {
 pub enum CoreCommandTypeName {
     BeginTransaction,
     CloneHolon,
-    GetEssentialContent,
     Summarize,
     GetHolonId,
     GetPredecessor,
@@ -155,7 +154,6 @@ mod tests {
         vec![
             CoreCommandTypeName::BeginTransaction,
             CoreCommandTypeName::CloneHolon,
-            CoreCommandTypeName::GetEssentialContent,
             CoreCommandTypeName::Summarize,
             CoreCommandTypeName::GetHolonId,
             CoreCommandTypeName::GetPredecessor,
@@ -226,14 +224,11 @@ mod tests {
         );
         assert_eq!(expected_command_name("GetRelatedHolons"), (&command_name).to_command_name());
 
-        let core_command_type_name = CoreCommandTypeName::GetEssentialContent;
+        let core_command_type_name = CoreCommandTypeName::Summarize;
         assert_eq!(
-            expected_command_name("GetEssentialContent"),
+            expected_command_name("Summarize"),
             core_command_type_name.clone().to_command_name()
         );
-        assert_eq!(
-            expected_command_name("GetEssentialContent"),
-            (&core_command_type_name).to_command_name()
-        );
+        assert_eq!(expected_command_name("Summarize"), (&core_command_type_name).to_command_name());
     }
 }
