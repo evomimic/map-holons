@@ -10,7 +10,6 @@ use tracing::{debug, info};
 ///
 /// Version lineage is established at commit time, not stage time, so this step
 /// intentionally does not assert a staged `Predecessor` relationship.
-#[allow(deprecated)]
 pub async fn execute_stage_new_version(
     state: &mut TestExecutionState,
     step_token: TestReference,
@@ -46,8 +45,8 @@ pub async fn execute_stage_new_version(
             let execution_handle = ExecutionHandle::from(response_ref.clone());
             let execution_reference =
                 ExecutionReference::from_token_execution(&step_token, execution_handle.clone());
-            execution_reference.assert_essential_content_eq();
-            info!("Success! Staged new version holon's essential content matched expected");
+            execution_reference.assert_expected_content_eq();
+            info!("Success! Staged new version holon's content matched the expected snapshot");
 
             // 4. RECORD
             state.record(&step_token, execution_reference).unwrap();
@@ -155,11 +154,17 @@ pub async fn execute_stage_new_version(
                                     length,
                                     version_count.0,
                                 );
-                                let first_content = refs[0].essential_content().unwrap();
-                                let second_content = refs[1].essential_content().unwrap();
+                                let first_property_map = refs[0].into_model().unwrap().property_map;
+                                let second_property_map =
+                                    refs[1].into_model().unwrap().property_map;
                                 assert_eq!(
-                                    first_content, second_content,
-                                    "References from get_staged_holons_by_base_key do not match essential content"
+                                    first_property_map, second_property_map,
+                                    "References from get_staged_holons_by_base_key do not match property maps"
+                                );
+                                assert_eq!(
+                                    refs[0].key().unwrap(),
+                                    refs[1].key().unwrap(),
+                                    "References from get_staged_holons_by_base_key do not match keys"
                                 );
                             }
                             other => panic!(

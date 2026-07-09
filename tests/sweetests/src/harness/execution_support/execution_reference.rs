@@ -17,7 +17,6 @@ use crate::{
     ExecutionEquivalenceResolver, ExecutionHolons, ExpectedSnapshot, FixtureHeadIndex,
     TestReference, SAVED_LOOKUP_STUB_MARKER,
 };
-use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_prelude::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
@@ -43,16 +42,6 @@ pub enum ExecutionHandle {
 }
 
 impl ExecutionHandle {
-    #[allow(deprecated)]
-    pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        match self {
-            Self::LiveReference(holon_reference) => holon_reference.essential_content(),
-            Self::Deleted => Err(HolonError::InvalidParameter(
-                "Holon is marked as deleted, there is no content to compare".to_string(),
-            )),
-        }
-    }
-
     pub fn get_holon_reference(&self) -> Result<HolonReference, HolonError> {
         match self {
             Self::LiveReference(holon_reference) => Ok(holon_reference.clone()),
@@ -61,6 +50,13 @@ impl ExecutionHandle {
             )),
         }
     }
+}
+
+/// Narrow property-map snapshot for harness comparisons (issue #582).
+/// Raw-map subset/root semantics stay harness-local; definition-level
+/// comparison goes through definitional_equivalence().
+fn property_map_of(reference: &HolonReference) -> Result<PropertyMap, HolonError> {
+    Ok(reference.into_model()?.property_map)
 }
 
 impl From<HolonReference> for ExecutionHandle {
@@ -100,7 +96,7 @@ impl ExecutionReference {
     ///
     /// Intended for use by test executors to enforce fixture invariants.
     /// A mismatch indicates a test failure, not a recoverable error.
-    pub fn assert_essential_content_eq(&self) {
+    pub fn assert_expected_content_eq(&self) {
         let expected_root = HolonReference::from(self.expected_snapshot.snapshot());
         let actual_root = self
             .execution_handle
@@ -155,13 +151,12 @@ impl ExecutionReference {
     /// as opaque key-only stubs. The actual saved descriptor is therefore the
     /// source of truth for which root relationships are definitional; member
     /// subtrees use the shared comparator.
-    #[allow(deprecated)]
     fn compare_saved_content_root(
         expected: &HolonReference,
         actual: &HolonReference,
         resolver: &ExecutionEquivalenceResolver<'_>,
     ) -> Result<(), String> {
-        let expected_content = expected.essential_content().map_err(|e| {
+        let expected_property_map = property_map_of(expected).map_err(|e| {
             format!(
                 "failed to read expected root content {}:{}: {:?}",
                 expected.reference_kind_string(),
@@ -169,7 +164,7 @@ impl ExecutionReference {
                 e
             )
         })?;
-        let actual_content = actual.essential_content().map_err(|e| {
+        let actual_property_map = property_map_of(actual).map_err(|e| {
             format!(
                 "failed to read actual root content {}:{}: {:?}",
                 actual.reference_kind_string(),
@@ -178,10 +173,10 @@ impl ExecutionReference {
             )
         })?;
 
-        if expected_content.property_map != actual_content.property_map {
+        if expected_property_map != actual_property_map {
             return Err(format!(
                 "path: <root>\nreason: property map mismatch\nexpected: {:#?}\nactual: {:#?}",
-                expected_content.property_map, actual_content.property_map
+                expected_property_map, actual_property_map
             ));
         }
 
@@ -209,8 +204,7 @@ impl ExecutionReference {
     ///
     /// Definitional equivalence lives in `holons_core`; this helper intentionally
     /// keeps the older expected-subset/all-relationships semantics used by
-    /// `assert_essential_content_eq`.
-    #[allow(deprecated)]
+    /// `assert_expected_content_eq`.
     fn compare_expected_subset(
         expected: &HolonReference,
         actual: &HolonReference,
@@ -228,7 +222,7 @@ impl ExecutionReference {
             return Self::compare_keys_only(expected, actual);
         }
 
-        let expected_content = expected.essential_content().map_err(|e| {
+        let expected_property_map = property_map_of(expected).map_err(|e| {
             format!(
                 "failed to read expected holon content {}:{}: {:?}",
                 expected.reference_kind_string(),
@@ -236,7 +230,7 @@ impl ExecutionReference {
                 e
             )
         })?;
-        let actual_content = actual.essential_content().map_err(|e| {
+        let actual_property_map = property_map_of(actual).map_err(|e| {
             format!(
                 "failed to read actual holon content {}:{}: {:?}",
                 actual.reference_kind_string(),
@@ -244,15 +238,33 @@ impl ExecutionReference {
                 e
             )
         })?;
-        if expected_content != actual_content {
+        let expected_key = expected.key().map_err(|e| {
+            format!(
+                "failed to read expected holon key {}:{}: {:?}",
+                expected.reference_kind_string(),
+                expected.reference_id_string(),
+                e
+            )
+        })?;
+        let actual_key = actual.key().map_err(|e| {
+            format!(
+                "failed to read actual holon key {}:{}: {:?}",
+                actual.reference_kind_string(),
+                actual.reference_id_string(),
+                e
+            )
+        })?;
+        if expected_property_map != actual_property_map || expected_key != actual_key {
             return Err(format!(
-                "essential content mismatch for expected {}:{} vs actual {}:{}\nexpected: {:#?}\nactual: {:#?}",
+                "expected content mismatch for expected {}:{} vs actual {}:{}\nexpected property_map: {:#?}\nactual property_map: {:#?}\nexpected key: {:#?}\nactual key: {:#?}",
                 expected.reference_kind_string(),
                 expected.reference_id_string(),
                 actual.reference_kind_string(),
                 actual.reference_id_string(),
-                expected_content,
-                actual_content
+                expected_property_map,
+                actual_property_map,
+                expected_key,
+                actual_key
             ));
         }
 
@@ -272,7 +284,7 @@ impl ExecutionReference {
         };
 
         // Some references (notably SmartReference on client side) cannot fetch
-        // related holons yet. In that case, compare essential content only.
+        // related holons yet. In that case, compare property map and key only.
         if expected_relationship_map.is_none() || actual_relationship_map.is_none() {
             return Ok(());
         }
@@ -320,18 +332,24 @@ impl ExecutionReference {
                         }
                     }
                     None => {
-                        let expected_member_content = expected_member.essential_content().map_err(
-                            |e| {
+                        let expected_member_property_map =
+                            property_map_of(&expected_member).map_err(|e| {
                                 format!(
                                     "Failed to read expected member content for relationship {:?}: {:?}",
                                     relationship_name, e
                                 )
-                            },
-                        )?;
+                            })?;
+                        let expected_member_key = expected_member.key().map_err(|e| {
+                            format!(
+                                "Failed to read expected member key for relationship {:?}: {:?}",
+                                relationship_name, e
+                            )
+                        })?;
                         return Err(format!(
-                            "No matching member found for relationship {:?} and expected member content {:#?}. Last mismatch: {}",
+                            "No matching member found for relationship {:?} and expected member property_map {:#?}, key {:#?}. Last mismatch: {}",
                             relationship_name,
-                            expected_member_content,
+                            expected_member_property_map,
+                            expected_member_key,
                             last_error.unwrap_or_else(|| "no candidate mismatch details available".to_string())
                         ));
                     }

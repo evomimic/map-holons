@@ -13,7 +13,7 @@ use tracing::info;
 /// transaction in which it will be used.
 ///
 /// Recording validates the token's key-only stub expectation via
-/// `assert_essential_content_eq`, which matches saved-lookup stubs by key.
+/// `assert_expected_content_eq`, which matches saved-lookup stubs by key.
 pub async fn execute_lookup_saved_holon_by_key(
     state: &mut TestExecutionState,
     step_token: TestReference,
@@ -57,7 +57,7 @@ pub async fn execute_lookup_saved_holon_by_key(
             );
             // Stub expectations are matched key-only; this validates the
             // resolved holon's key against the fixture-declared key.
-            execution_reference.assert_essential_content_eq();
+            execution_reference.assert_expected_content_eq();
             state.record(&step_token, execution_reference).unwrap();
             info!("Success! lookup_saved_holon_by_key resolved key '{}'", key.0);
         }

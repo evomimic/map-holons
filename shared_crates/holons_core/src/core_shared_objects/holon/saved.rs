@@ -13,10 +13,7 @@ use core_types::{
 };
 use type_names::CorePropertyTypeName;
 
-use super::{
-    state::{AccessType, HolonState, SavedState, ValidationState},
-    EssentialHolonContent,
-};
+use super::state::{AccessType, HolonState, SavedState, ValidationState};
 
 /// Represents a Holon that has been persisted in the DHT.
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -82,11 +79,6 @@ impl ReadableHolonState for SavedHolon {
         Err(HolonError::NotImplemented(
             "Must go through reference layer for getting relationships".to_string(),
         ))
-    }
-
-    // Populates empty relationship map since relationships are stored in the cache via SmartReference
-    fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent::new(self.property_map.clone(), self.key(), Vec::new())
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {

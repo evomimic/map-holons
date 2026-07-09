@@ -32,7 +32,7 @@ pub async fn execute_abandon_staged_changes(
             let execution_handle = ExecutionHandle::from(holon_reference.clone());
             let execution_reference =
                 ExecutionReference::from_token_execution(&step_token, execution_handle);
-            execution_reference.assert_essential_content_eq();
+            execution_reference.assert_expected_content_eq();
 
             // Verify abandoned holon is immutable.
             assert_eq!(

@@ -21,9 +21,8 @@ use crate::{
 // Provides methods for creating/transient holons
 use crate::{
     core_shared_objects::{
-        holon::{holon_utils::EssentialHolonContent, state::AccessType},
-        transient_holon_manager::ToHolonCloneModel,
-        Holon, HolonCollection, ReadableHolonState, WriteableHolonState,
+        holon::state::AccessType, transient_holon_manager::ToHolonCloneModel, Holon,
+        HolonCollection, ReadableHolonState, WriteableHolonState,
     },
     RelationshipMap,
 };
@@ -649,19 +648,6 @@ impl ReadableHolonImpl for StagedReference {
         })?;
 
         Ok(borrowed_holon.property_map_clone())
-    }
-
-    fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
-        self.is_accessible(AccessType::Read)?;
-        let rc_holon = self.get_rc_holon()?;
-        let borrowed_holon = rc_holon.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on staged holon: {}",
-                e
-            ))
-        })?;
-
-        Ok(borrowed_holon.essential_content())
     }
 
     fn summarize_impl(&self) -> Result<String, HolonError> {

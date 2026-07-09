@@ -61,7 +61,7 @@ pub async fn execute_with_properties(
     let execution_handle = ExecutionHandle::from(source_reference);
     let execution_reference =
         ExecutionReference::from_token_execution(&step_token, execution_handle);
-    execution_reference.assert_essential_content_eq();
-    info!("Success! Updated holon's essential content matched expected");
+    execution_reference.assert_expected_content_eq();
+    info!("Success! Updated holon's content matched the expected snapshot");
     state.record(&step_token, execution_reference).unwrap();
 }
