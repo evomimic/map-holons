@@ -52,18 +52,16 @@ pub trait ReadableHolonState {
     /// Retrieves the specified property value from the Holon.
     ///
     /// # Semantics
-    /// - Returns `Ok(None)` if the property exists but has a `None` value.  
-    /// - Returns `Ok(None)` if the property does **not exist at all**.  
-    ///
-    /// **Note:** To differentiate between a `None` value and a missing property,
-    /// callers should read explicit properties required by their workflow instead of
-    /// depending on a generic raw-content snapshot.
+    /// - Returns `Ok(Some(value))` if the property is present in the `property_map`.
+    /// - Returns `Ok(None)` if the property is absent. The property model has no
+    ///   null value (`BaseValue` has no none variant), so absence is the only
+    ///   "no value" state.
     fn property_value(
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError>;
 
-    /// Gets a related holons for a given relationship name.
+    /// Gets all related holons for a given relationship name.
     ///
     /// Returns a HolonCollection where its members are the related HolonReferences.
     fn related_holons(
