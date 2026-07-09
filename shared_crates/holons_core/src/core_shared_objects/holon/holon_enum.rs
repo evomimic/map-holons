@@ -50,6 +50,17 @@ pub struct HolonCloneModel {
     pub relationships: Option<RelationshipMap>,
 }
 
+impl Holon {
+    // Crate-private snapshot for the reference layer's property_map_impl (definitional comparison)
+    pub(crate) fn property_map_clone(&self) -> PropertyMap {
+        match self {
+            Holon::Transient(h) => h.property_map().clone(),
+            Holon::Staged(h) => h.property_map().clone(),
+            Holon::Saved(h) => h.property_map().clone(),
+        }
+    }
+}
+
 // =================================
 //   HOLONBEHAVIOR IMPLEMENTATIONS
 // =================================

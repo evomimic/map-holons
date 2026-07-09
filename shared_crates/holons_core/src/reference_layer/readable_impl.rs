@@ -4,7 +4,7 @@ use crate::reference_layer::TransientReference;
 use crate::{HolonCollection, HolonReference, RelationshipMap};
 use base_types::MapString;
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 use std::sync::{Arc, RwLock};
 
@@ -31,6 +31,8 @@ pub trait ReadableHolonImpl {
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
 
     fn versioned_key_impl(&self) -> Result<MapString, HolonError>;
+
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError>;
 
     fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError>;
 

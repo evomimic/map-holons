@@ -29,8 +29,8 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
-    TemporaryId, ValidationError,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName, TemporaryId, ValidationError,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -636,6 +636,19 @@ impl ReadableHolonImpl for StagedReference {
             .versioned_key()?;
 
         Ok(key)
+    }
+
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let rc_holon = self.get_rc_holon()?;
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged holon: {}",
+                e
+            ))
+        })?;
+
+        Ok(borrowed_holon.property_map_clone())
     }
 
     fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {

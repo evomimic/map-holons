@@ -372,6 +372,16 @@ impl ReadableHolonImpl for HolonReference {
         }
     }
 
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
+        match self {
+            HolonReference::Transient(transient_reference) => {
+                transient_reference.property_map_impl()
+            }
+            HolonReference::Staged(staged_reference) => staged_reference.property_map_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.property_map_impl(),
+        }
+    }
+
     fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {

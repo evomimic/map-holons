@@ -209,6 +209,19 @@ impl ReadableHolonImpl for SmartReference {
         Ok(relationship_map)
     }
 
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let rc_holon = self.get_rc_holon()?;
+        let borrowed_holon = rc_holon.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on holon for property_map_impl: {}",
+                e
+            ))
+        })?;
+
+        Ok(borrowed_holon.property_map_clone())
+    }
+
     fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;

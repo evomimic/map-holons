@@ -68,6 +68,10 @@ impl SavedHolon {
     pub fn get_local_id(&self) -> Result<LocalId, HolonError> {
         Ok(self.saved_id.clone())
     }
+
+    pub fn property_map(&self) -> &PropertyMap {
+        &self.property_map
+    }
 }
 
 // ================================================

@@ -187,6 +187,14 @@ impl ReadableHolonImpl for TransientReference {
         Ok(borrowed_holon.all_related_holons()?)
     }
 
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        let rc_holon = self.get_rc_holon()?;
+        let borrowed_holon = self.read_holon_guard(&rc_holon, "property_map_impl")?;
+
+        Ok(borrowed_holon.property_map_clone())
+    }
+
     fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;
