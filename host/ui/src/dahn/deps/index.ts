@@ -1,6 +1,5 @@
 export type {
   BaseValue,
-  EssentialHolonContent,
   HolonCollection,
   HolonId,
   HolonReference,

@@ -12,7 +12,6 @@ use holons_boundary::{
     NodeCollectionWire, NodeWire, QueryPathMapWire, RequestBodyWire, ResponseBodyWire,
     SmartReferenceWire, StagedReferenceWire, TransientReferenceWire,
 };
-use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use holons_core::dances::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
@@ -215,19 +214,6 @@ fn generate_fixtures() {
     );
     write_fixture(
         &fixtures_dir,
-        "request-holon-read-essential.json",
-        &request(
-            18,
-            holon_command(
-                41,
-                staged_reference(41, uuid_b()),
-                HolonActionWire::Read(ReadableHolonActionWire::GetEssentialContent),
-            ),
-            default_options(),
-        ),
-    );
-    write_fixture(
-        &fixtures_dir,
         "request-holon-read-key.json",
         &request(
             19,
@@ -381,11 +367,6 @@ fn generate_fixtures() {
         &fixtures_dir,
         "response-ok-holon-id.json",
         &response(110, Ok(MapResultWire::HolonId(external_holon_id(&[1, 2, 3], &[4, 5, 6])))),
-    );
-    write_fixture(
-        &fixtures_dir,
-        "response-ok-essential-content.json",
-        &response(111, Ok(MapResultWire::EssentialContent(sample_essential_content()))),
     );
     write_fixture(
         &fixtures_dir,
@@ -630,16 +611,5 @@ fn sample_dance_response() -> DanceResponseWire {
         description: map_string("legacy compatibility dance completed"),
         body: ResponseBodyWire::NodeCollection(sample_node_collection()),
         descriptor: Some(smart_reference(41, local_holon_id(&[151, 152, 153]), None)),
-    }
-}
-
-fn sample_essential_content() -> EssentialHolonContent {
-    EssentialHolonContent {
-        property_map: sample_property_map(),
-        key: Some(map_string("alpha")),
-        errors: vec![
-            HolonError::EmptyField("description".to_string()),
-            HolonError::InvalidRelationship("children".to_string(), "Descriptor".to_string()),
-        ],
     }
 }

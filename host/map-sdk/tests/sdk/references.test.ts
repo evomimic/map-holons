@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   BaseValue,
-  EssentialHolonContent,
   HolonCollectionWire,
   HolonId,
   HolonReferenceWire,
@@ -11,7 +10,6 @@ import type {
 const {
   addRelatedHolonsMock,
   cloneHolonMock,
-  essentialContentMock,
   predecessorMock,
   readHolonIdMock,
   readKeyMock,
@@ -26,7 +24,6 @@ const {
 } = vi.hoisted(() => ({
   addRelatedHolonsMock: vi.fn(),
   cloneHolonMock: vi.fn(),
-  essentialContentMock: vi.fn(),
   predecessorMock: vi.fn(),
   readHolonIdMock: vi.fn(),
   readKeyMock: vi.fn(),
@@ -43,7 +40,6 @@ const {
 vi.mock('../../src/internal/commands/holon', () => ({
   addRelatedHolons: addRelatedHolonsMock,
   cloneHolon: cloneHolonMock,
-  essentialContent: essentialContentMock,
   predecessor: predecessorMock,
   readHolonId: readHolonIdMock,
   readKey: readKeyMock,
@@ -107,14 +103,6 @@ const holonId: HolonId = {
   Local: [9, 8, 7, 6],
 };
 
-const essentialContent: EssentialHolonContent = {
-  property_map: {
-    title: stringValue,
-  },
-  key: 'alpha',
-  errors: [],
-};
-
 const relatedCollection: HolonCollectionWire = {
   state: 'Fetched',
   members: [transientReference, smartReference],
@@ -140,7 +128,6 @@ describe('HolonReference', () => {
   beforeEach(() => {
     addRelatedHolonsMock.mockReset();
     cloneHolonMock.mockReset();
-    essentialContentMock.mockReset();
     predecessorMock.mockReset();
     readHolonIdMock.mockReset();
     readKeyMock.mockReset();
@@ -174,15 +161,6 @@ describe('HolonReference', () => {
     expect(cloneHolonMock).toHaveBeenCalledTimes(1);
     expect(cloneHolonMock).toHaveBeenCalledWith(txId, stagedReference);
     expect(clone).toBeInstanceOf(TransientHolonReference);
-  });
-
-  it('delegates essentialContent directly', async () => {
-    essentialContentMock.mockResolvedValue(essentialContent);
-
-    await expect(stagedHandle().essentialContent()).resolves.toEqual(
-      essentialContent,
-    );
-    expect(essentialContentMock).toHaveBeenCalledWith(txId, stagedReference);
   });
 
   it('extracts the summarized string payload', async () => {

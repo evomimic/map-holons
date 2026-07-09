@@ -4,7 +4,6 @@ import * as sdk from '../../src';
 import type {
   BaseValue,
   ContentSet,
-  EssentialHolonContent,
   FileData,
   HolonError,
   HolonId,
@@ -84,14 +83,6 @@ describe('public SDK exports', () => {
       files_to_load: [fileData],
     };
     const holonError: HolonError = { HolonNotFound: 'missing-holon' };
-    const essentialContent: EssentialHolonContent = {
-      property_map: {
-        title: baseValue,
-      },
-      key: 'alpha',
-      errors: [holonError],
-    };
-
     const acceptsReadable = (_value: ReadableHolon | null): void => {};
     const acceptsWritable = (_value: WritableHolon | null): void => {};
 
@@ -108,6 +99,6 @@ describe('public SDK exports', () => {
     expect(relationshipName).toBe('related_to');
     expect(smartReference).toEqual({ holonId });
     expect(contentSet.files_to_load).toEqual([fileData]);
-    expect(essentialContent.errors).toEqual([holonError]);
+    expect(holonError).toEqual({ HolonNotFound: 'missing-holon' });
   });
 });

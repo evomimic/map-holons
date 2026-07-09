@@ -33,9 +33,6 @@ pub enum ReadableHolonActionWire {
     /// `clone_holon()` → `TransientReference`
     CloneHolon,
 
-    /// `essential_content()` → `EssentialHolonContent`
-    GetEssentialContent,
-
     /// `summarize()` → `String`
     Summarize,
 
@@ -106,9 +103,6 @@ impl ReadableHolonActionWire {
     fn bind(self) -> ReadableHolonAction {
         match self {
             ReadableHolonActionWire::CloneHolon => ReadableHolonAction::CloneHolon,
-            ReadableHolonActionWire::GetEssentialContent => {
-                ReadableHolonAction::GetEssentialContent
-            }
             ReadableHolonActionWire::Summarize => ReadableHolonAction::Summarize,
             ReadableHolonActionWire::GetHolonId => ReadableHolonAction::GetHolonId,
             ReadableHolonActionWire::GetPredecessor => ReadableHolonAction::GetPredecessor,

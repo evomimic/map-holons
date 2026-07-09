@@ -1,7 +1,6 @@
 use base_types::BaseValue;
 use core_types::HolonId;
 use holons_boundary::{DanceResponseWire, HolonCollectionWire, HolonReferenceWire};
-use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use serde::{Deserialize, Serialize};
 
@@ -48,9 +47,6 @@ pub enum MapResultWire {
     /// Returns a holon id.
     HolonId(HolonId),
 
-    /// Returns the essential content of a holon.
-    EssentialContent(EssentialHolonContent),
-
     /// Transitional dance-result exception retained at the IPC boundary.
     DanceResponse(DanceResponseWire),
 }
@@ -71,7 +67,6 @@ impl From<MapResult> for MapResultWire {
             MapResult::Collection(c) => MapResultWire::Collection(HolonCollectionWire::from(&c)),
             MapResult::Value(v) => MapResultWire::Value(v),
             MapResult::HolonId(id) => MapResultWire::HolonId(id),
-            MapResult::EssentialContent(c) => MapResultWire::EssentialContent(c),
             MapResult::DanceResponse(r) => {
                 MapResultWire::DanceResponse(DanceResponseWire::from(&r))
             }

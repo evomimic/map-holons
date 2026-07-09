@@ -41,7 +41,6 @@ impl HolonAction {
     pub fn label(&self) -> &'static str {
         match self {
             HolonAction::Read(ReadableHolonAction::CloneHolon) => "clone_holon",
-            HolonAction::Read(ReadableHolonAction::GetEssentialContent) => "get_essential_content",
             HolonAction::Read(ReadableHolonAction::Summarize) => "summarize",
             HolonAction::Read(ReadableHolonAction::GetHolonId) => "get_holon_id",
             HolonAction::Read(ReadableHolonAction::GetPredecessor) => "get_predecessor",
@@ -64,9 +63,6 @@ impl HolonAction {
 pub enum ReadableHolonAction {
     /// `ReadableHolon::clone_holon()` → `TransientReference`
     CloneHolon,
-
-    /// `ReadableHolon::essential_content()` → `EssentialHolonContent`
-    GetEssentialContent,
 
     /// `ReadableHolon::summarize()` → `String`
     Summarize,

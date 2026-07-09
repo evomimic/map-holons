@@ -9,7 +9,6 @@ import type {
 import { HolonCollection } from './collection';
 import {
   type BaseValue,
-  type EssentialHolonContent,
   extractString,
   type HolonId,
   type WritableHolon,
@@ -47,10 +46,6 @@ export class HolonReference implements WritableHolon {
     const txId = txIdFor(this);
     const wireRef = await internalHolon.cloneHolon(txId, wireRefFor(this));
     return createTransientHolonReference(txId, wireRef);
-  }
-
-  essentialContent(): Promise<EssentialHolonContent> {
-    return internalHolon.essentialContent(txIdFor(this), wireRefFor(this));
   }
 
   async summarize(): Promise<string> {

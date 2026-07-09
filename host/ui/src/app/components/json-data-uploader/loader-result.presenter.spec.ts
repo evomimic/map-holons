@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
   BaseValue,
-  EssentialHolonContent,
   HolonCollection,
   HolonId,
   HolonReference,
@@ -29,7 +28,6 @@ function holonMock(
 
   return {
     cloneHolon: vi.fn<() => Promise<never>>(),
-    essentialContent: vi.fn<() => Promise<EssentialHolonContent>>(),
     summarize: vi.fn<() => Promise<string>>(),
     holonId: vi.fn<() => Promise<HolonId>>(),
     predecessor: vi.fn<() => Promise<HolonReference | null>>(),

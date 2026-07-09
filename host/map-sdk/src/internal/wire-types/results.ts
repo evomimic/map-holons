@@ -2,34 +2,21 @@ import {
   type BaseValue,
   type DanceResponseWire,
   type HolonCollectionWire,
-  type HolonErrorWire,
   type HolonId,
   type HolonReferenceWire,
   hasSingleKey,
   isBaseValue,
   isDanceResponseWire,
   isHolonCollectionWire,
-  isHolonErrorWire,
   isHolonId,
   isHolonReferenceWire,
   isNumber,
   isRecord,
-  isString,
-  isPropertyMap,
 } from './references';
 
 // ===========================================
 // Result Payload Types
 // ===========================================
-
-/**
- * Wire-safe form of `EssentialHolonContent`.
- */
-export interface EssentialHolonContent {
-  property_map: Record<string, BaseValue>;
-  key: string | null;
-  errors: HolonErrorWire[];
-}
 
 /**
  * Successful MAP command results.
@@ -50,24 +37,11 @@ export type MapResultWire =
   | { Collection: HolonCollectionWire }
   | { Value: BaseValue }
   | { HolonId: HolonId }
-  | { EssentialContent: EssentialHolonContent }
   | { DanceResponse: DanceResponseWire };
 
 // ===========================================
 // Result Guards
 // ===========================================
-
-export function isEssentialHolonContent(
-  value: unknown,
-): value is EssentialHolonContent {
-  return (
-    isRecord(value) &&
-    isPropertyMap(value['property_map']) &&
-    (value['key'] === null || isString(value['key'])) &&
-    Array.isArray(value['errors']) &&
-    value['errors'].every(isHolonErrorWire)
-  );
-}
 
 export function isMapResultWire(value: unknown): value is MapResultWire {
   return (
@@ -87,8 +61,6 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
       isHolonCollectionWire(value.Collection)) ||
     (hasSingleKey(value, 'Value') && isBaseValue(value.Value)) ||
     (hasSingleKey(value, 'HolonId') && isHolonId(value.HolonId)) ||
-    (hasSingleKey(value, 'EssentialContent') &&
-      isEssentialHolonContent(value.EssentialContent)) ||
     (hasSingleKey(value, 'DanceResponse') &&
       isDanceResponseWire(value.DanceResponse))
   );
