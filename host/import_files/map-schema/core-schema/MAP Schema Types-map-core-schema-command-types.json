@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-06-29T16:09:11",
+    "generated_at": "2026-07-08T23:18:39",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.csv"
@@ -85,35 +85,6 @@
         "display_name": "Clone Holon Command",
         "display_name_plural": "Clone Holon Commands",
         "description": "Creates a transient clone of the target holon.",
-        "instance_type_kind": "TypeKind.Holon",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
-      },
-      "relationships": [
-        {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
-        },
-        {
-          "name": "Extends",
-          "target": {
-            "$ref": "CommandType.HolonType"
-          }
-        }
-      ]
-    },
-    {
-      "key": "GetEssentialContent.CommandType",
-      "type": "TypeDescriptor.HolonType",
-      "properties": {
-        "type_name": "GetEssentialContent",
-        "type_name_plural": "GetEssentialContentCommands",
-        "display_name": "Get Essential Content Command",
-        "display_name_plural": "Get Essential Content Commands",
-        "description": "Returns the target holon's essential content.",
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
