@@ -36,17 +36,6 @@ holon CloneHolon {
 }
 
 
-holon GetEssentialContent {
-  extends CommandType.HolonType
-  header {
-    description: "Returns the target holon's essential content."
-    display_name: "Get Essential Content Command"
-    display_plural: "Get Essential Content Commands"
-    plural: "GetEssentialContentCommands"
-  }
-}
-
-
 holon Summarize {
   extends CommandType.HolonType
   header {
