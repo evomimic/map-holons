@@ -80,7 +80,7 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
         vec![HolonReference::Transient(descriptor_transient_reference.clone())],
     )?;
 
-    // Assert essential content equal
+    // Assert expected content equal
     assert_eq!(book_expected_relationships, book_transient_reference.all_related_holons()?.into());
     // -- //
 

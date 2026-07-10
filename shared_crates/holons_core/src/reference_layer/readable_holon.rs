@@ -8,10 +8,7 @@ use crate::reference_layer::definitional_equivalence::{
 };
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::{
-    core_shared_objects::{
-        holon::{state::AccessType, EssentialHolonContent},
-        HolonCollection,
-    },
+    core_shared_objects::{holon::state::AccessType, HolonCollection},
     RelationshipMap,
 };
 use base_types::MapString;
@@ -50,14 +47,6 @@ pub trait ReadableHolon: ReadableHolonImpl {
         resolver: &dyn EquivalenceResolver,
     ) -> Result<EquivalenceOutcome, HolonError> {
         definitional_equivalence::definitional_equivalence(self, other, resolver)
-    }
-
-    #[deprecated(
-        note = "raw-content extraction is being retired; use is_definitionally_equivalent()/definitional_equivalence() for comparison"
-    )]
-    #[inline]
-    fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        ReadableHolonImpl::essential_content_impl(self)
     }
 
     /// Returns a String summary of the Holon.

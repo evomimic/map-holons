@@ -130,16 +130,6 @@ export type ValidationState =
   | "Validated"
   | "Invalid";
 
-// ===========================================
-// Holon Content Types
-// ===========================================
-
-export interface EssentialHolonContent {
-  property_map: PropertyMap;
-  key?: MapString | null;
-  related_holons: any[]; // Vec<_> in Rust, type unclear from context
-}
-
 export interface HolonNodeModel {
   original_id?: LocalId | null;
   property_map: PropertyMap;

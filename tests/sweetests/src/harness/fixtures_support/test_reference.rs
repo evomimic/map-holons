@@ -19,12 +19,9 @@
 //! - All fields are private.
 //! - Tokens are immutable, representing a frozen "snapshot".
 
-use core_types::{HolonError, TemporaryId};
+use core_types::TemporaryId;
 use derive_new::new;
-use holons_core::{
-    core_shared_objects::holon::EssentialHolonContent, reference_layer::TransientReference,
-    ReadableHolon,
-};
+use holons_core::reference_layer::TransientReference;
 use std::fmt;
 
 /// Stable identity for a fixture snapshot across execution.
@@ -174,11 +171,6 @@ impl ExpectedSnapshot {
     /// the expected outcome of one step becomes the input to the next.
     pub fn as_source(&self) -> SourceSnapshot {
         SourceSnapshot::new(self.snapshot.clone(), self.state)
-    }
-
-    #[allow(deprecated)]
-    pub fn essential_content(&self) -> Result<EssentialHolonContent, HolonError> {
-        self.snapshot.essential_content()
     }
 
     pub fn id(&self) -> SnapshotId {

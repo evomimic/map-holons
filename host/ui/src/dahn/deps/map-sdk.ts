@@ -7,7 +7,6 @@
 export type {
   BaseValue,
   ContentSet,
-  EssentialHolonContent,
   FileData,
   HolonCollection,
   HolonId,

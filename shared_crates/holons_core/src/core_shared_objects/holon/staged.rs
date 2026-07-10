@@ -5,10 +5,7 @@ use std::{
 
 use crate::{
     core_shared_objects::{
-        holon::{
-            AccessType, EssentialHolonContent, HolonCloneModel, HolonState, StagedState,
-            ValidationState,
-        },
+        holon::{AccessType, HolonCloneModel, HolonState, StagedState, ValidationState},
         ReadableHolonState, ReadableRelationship, WritableRelationship, WriteableHolonState,
     },
     HolonCollection, HolonReference, RelationshipMap, StagedRelationshipMap,
@@ -398,10 +395,6 @@ impl ReadableHolonState for StagedHolon {
     fn all_related_holons(&self) -> Result<RelationshipMap, HolonError> {
         let relationship_map = RelationshipMap::from(self.get_staged_relationship_map()?);
         Ok(relationship_map)
-    }
-
-    fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent::new(self.property_map.clone(), self.key(), self.errors.clone())
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {

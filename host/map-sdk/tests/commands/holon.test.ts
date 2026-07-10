@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addRelatedHolons,
   cloneHolon,
-  essentialContent,
   predecessor,
   readHolonId,
   readKey,
@@ -20,7 +19,6 @@ import { MalformedResponseError } from '../../src/internal/errors';
 import { resetRequestIdCounter } from '../../src/internal/request-context';
 import type {
   BaseValue,
-  EssentialHolonContent,
   HolonCollectionWire,
   HolonId,
   HolonReferenceWire,
@@ -93,14 +91,6 @@ const holonId: HolonId = {
   Local: [4, 3, 2, 1],
 };
 
-const essential: EssentialHolonContent = {
-  property_map: {
-    title: stringValue,
-  },
-  key: 'alpha',
-  errors: [],
-};
-
 const collection: HolonCollectionWire = {
   state: 'Fetched',
   members: [transientReference, descriptor],
@@ -144,14 +134,6 @@ const holonCases: HolonCase<unknown>[] = [
     okResult: { Reference: transientReference },
     expected: transientReference,
     wrongResult: 'None',
-  },
-  {
-    name: 'essentialContent',
-    run: () => essentialContent(txId, target),
-    action: { Read: 'GetEssentialContent' },
-    okResult: { EssentialContent: essential },
-    expected: essential,
-    wrongResult: { Reference: transientReference },
   },
   {
     name: 'summarize',

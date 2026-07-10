@@ -32,36 +32,31 @@ fn read_string_property(
     }
 }
 
-/// Dump the `EssentialHolonContent` for any holon-like reference in a stable,
+/// Dump property content for any holon-like reference in a stable,
 /// human-readable format (test debugging aid).
-#[allow(deprecated)]
-fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl ReadableHolon) -> String {
-    let essential_content = match holon_reference.essential_content() {
-        Ok(content) => content,
+fn dump_property_content(
+    _state: &mut TestExecutionState,
+    holon_reference: &impl ReadableHolon,
+) -> String {
+    let property_map = match holon_reference.into_model() {
+        Ok(model) => model.property_map,
         Err(error) => {
-            return format!("<error reading essential content: {:?}>", error);
+            return format!("<error reading property map: {:?}>", error);
         }
     };
 
     let mut output = String::new();
-    output.push_str("\n==== EssentialContent ===\n");
+    output.push_str("\n==== HolonPropertyMap ===\n");
 
-    let mut sorted_entries: Vec<_> = essential_content.property_map.iter().collect();
+    let mut sorted_entries: Vec<_> = property_map.iter().collect();
     sorted_entries.sort_by(|(name_a, _), (name_b, _)| name_a.0 .0.cmp(&name_b.0 .0));
 
     for (property_name, property_value) in sorted_entries {
         output.push_str(&format!("  {} = {:?}\n", property_name.0 .0, property_value));
     }
 
-    if let Some(key_value) = essential_content.key.clone() {
+    if let Ok(Some(key_value)) = holon_reference.key() {
         output.push_str(&format!("  (key) = {}\n", key_value.0));
-    }
-
-    if !essential_content.errors.is_empty() {
-        output.push_str("  errors:\n");
-        for error in essential_content.errors {
-            output.push_str(&format!("    - {:?}\n", error));
-        }
     }
 
     output.push_str("==== end ====\n");
@@ -72,7 +67,7 @@ fn dump_essential(_state: &mut TestExecutionState, holon_reference: &impl Readab
 fn dump_full_response(state: &mut TestExecutionState, response: &TransientReference) -> String {
     let mut out = String::new();
     out.push_str("\n===== HolonLoadResponse dump =====\n");
-    out.push_str(&dump_essential(state, response));
+    out.push_str(&dump_property_content(state, response));
 
     out.push_str("----- important (best-effort loader fields) -----\n");
     for p_name in [
@@ -136,8 +131,8 @@ fn dump_error_holons_from_response(
 
         output.push_str(&format!("  --- error holon #{} ---\n", index + 1));
 
-        let essential_dump = dump_essential(state, &transient_reference);
-        for line in essential_dump.lines() {
+        let property_dump = dump_property_content(state, &transient_reference);
+        for line in property_dump.lines() {
             output.push_str("    ");
             output.push_str(line);
             output.push('\n');

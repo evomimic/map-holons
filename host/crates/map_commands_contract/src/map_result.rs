@@ -1,6 +1,5 @@
 use base_types::BaseValue;
 use core_types::HolonId;
-use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_core::core_shared_objects::transactions::TxId;
 use holons_core::core_shared_objects::HolonCollection;
 use holons_core::dances::DanceResponse;
@@ -46,9 +45,6 @@ pub enum MapResult {
 
     /// Returns a holon id.
     HolonId(HolonId),
-
-    /// Returns the essential content of a holon.
-    EssentialContent(EssentialHolonContent),
 
     /// Transitional dance-result exception retained for legacy and in-flight dance paths.
     DanceResponse(DanceResponse),

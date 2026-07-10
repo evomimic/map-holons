@@ -49,8 +49,8 @@ pub async fn execute_stage_new_from_clone(
             let execution_handle = ExecutionHandle::from(holon_ref);
             let execution_reference =
                 ExecutionReference::from_token_execution(&step_token, execution_handle);
-            execution_reference.assert_essential_content_eq();
-            info!("Success! Cloned holon's essential content matched expected");
+            execution_reference.assert_expected_content_eq();
+            info!("Success! Cloned holon's content matched the expected snapshot");
             state.record(&step_token, execution_reference).unwrap();
         }
         Err(e) => {

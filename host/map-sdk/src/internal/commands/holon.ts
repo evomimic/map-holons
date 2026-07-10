@@ -2,7 +2,6 @@ import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import {
   expectCollection,
-  expectEssentialContent,
   expectHolonId,
   expectNone,
   expectOptionalReference,
@@ -13,7 +12,6 @@ import {
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type {
   BaseValue,
-  EssentialHolonContent,
   HolonId,
   HolonReferenceWire,
   MapResultWire,
@@ -79,23 +77,6 @@ export function cloneHolon(
     target,
     { Read: 'CloneHolon' },
     expectReference,
-    options,
-  );
-}
-
-/**
- * Return the wire-safe essential content for the target holon.
- */
-export function essentialContent(
-  txId: TxId,
-  target: HolonReferenceWire,
-  options?: RequestOptionsOverrides,
-): Promise<EssentialHolonContent> {
-  return runHolonCommand(
-    txId,
-    target,
-    { Read: 'GetEssentialContent' },
-    expectEssentialContent,
     options,
   );
 }

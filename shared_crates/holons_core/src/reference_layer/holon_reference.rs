@@ -5,10 +5,7 @@ use crate::core_shared_objects::transactions::{TransactionContextHandle, TxId};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
-    core_shared_objects::{
-        holon::{holon_utils::EssentialHolonContent, state::AccessType},
-        HolonCollection,
-    },
+    core_shared_objects::{holon::state::AccessType, HolonCollection},
     reference_layer::{ReadableHolon, SmartReference, StagedReference, TransientReference},
     RelationshipMap,
 };
@@ -372,13 +369,13 @@ impl ReadableHolonImpl for HolonReference {
         }
     }
 
-    fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {
-                transient_reference.essential_content_impl()
+                transient_reference.property_map_impl()
             }
-            HolonReference::Staged(staged_reference) => staged_reference.essential_content_impl(),
-            HolonReference::Smart(smart_reference) => smart_reference.essential_content_impl(),
+            HolonReference::Staged(staged_reference) => staged_reference.property_map_impl(),
+            HolonReference::Smart(smart_reference) => smart_reference.property_map_impl(),
         }
     }
 

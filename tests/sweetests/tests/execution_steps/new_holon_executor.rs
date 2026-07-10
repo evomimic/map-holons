@@ -60,8 +60,8 @@ pub async fn execute_new_holon(
             let execution_handle = ExecutionHandle::from(holon_ref);
             let execution_reference =
                 ExecutionReference::from_token_execution(&step_token, execution_handle);
-            execution_reference.assert_essential_content_eq();
-            info!("Success! Holon's essential content matched expected");
+            execution_reference.assert_expected_content_eq();
+            info!("Success! Holon's content matched the expected snapshot");
             state.record(&step_token, execution_reference).unwrap();
         }
         Err(e) => {

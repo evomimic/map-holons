@@ -12,7 +12,7 @@ use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
         cache_access::HolonCacheAccess,
-        holon::{state::AccessType, EssentialHolonContent, HolonCloneModel},
+        holon::{state::AccessType, HolonCloneModel},
         relationship_behavior::ReadableRelationship,
         transient_holon_manager::ToHolonCloneModel,
         Holon, HolonCollection, ReadableHolonState,
@@ -209,16 +209,17 @@ impl ReadableHolonImpl for SmartReference {
         Ok(relationship_map)
     }
 
-    fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on holon for essential_content_impl: {}",
+                "Failed to acquire read lock on holon for property_map_impl: {}",
                 e
             ))
         })?;
-        Ok(borrowed_holon.essential_content())
+
+        Ok(borrowed_holon.property_map_clone())
     }
 
     fn holon_id_impl(&self) -> Result<HolonId, HolonError> {

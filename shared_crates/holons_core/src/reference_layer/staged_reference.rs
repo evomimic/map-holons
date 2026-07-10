@@ -21,16 +21,15 @@ use crate::{
 // Provides methods for creating/transient holons
 use crate::{
     core_shared_objects::{
-        holon::{holon_utils::EssentialHolonContent, state::AccessType},
-        transient_holon_manager::ToHolonCloneModel,
-        Holon, HolonCollection, ReadableHolonState, WriteableHolonState,
+        holon::state::AccessType, transient_holon_manager::ToHolonCloneModel, Holon,
+        HolonCollection, ReadableHolonState, WriteableHolonState,
     },
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
-    TemporaryId, ValidationError,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue,
+    RelationshipName, TemporaryId, ValidationError,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -638,7 +637,7 @@ impl ReadableHolonImpl for StagedReference {
         Ok(key)
     }
 
-    fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;
         let borrowed_holon = rc_holon.read().map_err(|e| {
@@ -648,7 +647,7 @@ impl ReadableHolonImpl for StagedReference {
             ))
         })?;
 
-        Ok(borrowed_holon.essential_content())
+        Ok(borrowed_holon.property_map_clone())
     }
 
     fn summarize_impl(&self) -> Result<String, HolonError> {

@@ -4,7 +4,6 @@ import { MalformedResponseError } from '../src/internal/errors';
 import {
   expectCollection,
   expectDanceResponse,
-  expectEssentialContent,
   expectHolonId,
   expectNone,
   expectOptionalReference,
@@ -17,7 +16,6 @@ import {
 import type {
   BaseValue,
   DanceResponseWire,
-  EssentialHolonContent,
   HolonCollectionWire,
   HolonId,
   HolonReferenceWire,
@@ -61,14 +59,6 @@ const holonCollection: HolonCollectionWire = {
 
 const holonId: HolonId = {
   Local: [1, 2, 3, 4],
-};
-
-const essentialContent: EssentialHolonContent = {
-  property_map: {
-    title: baseValue,
-  },
-  key: 'alpha',
-  errors: [],
 };
 
 const danceResponse: DanceResponseWire = {
@@ -199,20 +189,6 @@ describe('result decoders', () => {
 
   it('throws on the wrong result variant when expecting HolonId', () => {
     expect(() => expectHolonId({ Value: integerValue })).toThrow(
-      MalformedResponseError,
-    );
-  });
-
-  it('decodes EssentialContent results', () => {
-    expect(
-      expectEssentialContent({
-        EssentialContent: essentialContent,
-      }),
-    ).toEqual(essentialContent);
-  });
-
-  it('throws on the wrong result variant when expecting EssentialContent', () => {
-    expect(() => expectEssentialContent({ Reference: stagedReference })).toThrow(
       MalformedResponseError,
     );
   });

@@ -15,7 +15,6 @@ import {
   HolonCollection,
   HolonNodeModel,
   ValidationState,
-  EssentialHolonContent,
   BaseValue
 } from './shared-types';
 import { HolonError } from './map.response';
@@ -156,7 +155,6 @@ export function isStagedStateForUpdateNewVersion(state: StagedState): state is "
 export interface HolonBehavior {
   // Data Accessors
   cloneHolon(): TransientHolon;
-  essentialContent(): EssentialHolonContent;
   getKey(): MapString | null;
   getLocalId(): LocalId | null;
   getOriginalId(): LocalId | null;

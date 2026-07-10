@@ -11,7 +11,6 @@ import type {
   ContentSet as InternalContentSet,
   FileData as InternalFileData,
 } from '../internal/wire-types/commands';
-import type { EssentialHolonContent as InternalEssentialHolonContent } from '../internal/wire-types/results';
 import type { HolonCollection } from './collection';
 import type { HolonReference, TransientHolonReference } from './references';
 
@@ -58,19 +57,6 @@ export type ContentSet = InternalContentSet;
  */
 export type HolonError = HolonErrorWire;
 
-/**
- * Public essential content payload returned by readable holon operations.
- *
- * Field names stay aligned with the runtime payload shape. The nested error
- * items are exposed as public `HolonError` values.
- */
-export type EssentialHolonContent = Omit<
-  InternalEssentialHolonContent,
-  'errors'
-> & {
-  errors: HolonError[];
-};
-
 // ===========================================
 // Public Holon Capabilities
 // ===========================================
@@ -80,7 +66,6 @@ export type EssentialHolonContent = Omit<
  */
 export interface ReadableHolon {
   cloneHolon(): Promise<TransientHolonReference>;
-  essentialContent(): Promise<EssentialHolonContent>;
   summarize(): Promise<string>;
   holonId(): Promise<HolonId>;
   predecessor(): Promise<HolonReference | null>;

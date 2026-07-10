@@ -105,7 +105,6 @@ export interface HolonCommandWire {
 // Read-only holon actions.
 export type ReadableHolonActionWire =
   | 'CloneHolon'
-  | 'GetEssentialContent'
   | 'Summarize'
   | 'GetHolonId'
   | 'GetPredecessor'
@@ -145,7 +144,6 @@ export type MapCommandWire =
 
 const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'CloneHolon',
-  'GetEssentialContent',
   'Summarize',
   'GetHolonId',
   'GetPredecessor',

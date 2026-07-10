@@ -6,7 +6,7 @@ use core_types::{
 };
 
 use crate::{
-    core_shared_objects::holon::{state::AccessType, EssentialHolonContent, HolonCloneModel},
+    core_shared_objects::holon::{state::AccessType, HolonCloneModel},
     HolonCollection, HolonReference, RelationshipMap,
 };
 
@@ -17,12 +17,6 @@ pub trait ReadableHolonState {
     ///
     /// Returns a generic RelationshipMap (HashMap)
     fn all_related_holons(&self) -> Result<RelationshipMap, HolonError>;
-
-    /// Extracts the core data content for comparison, validation, or lightweight inspection.
-    ///
-    /// Includes property data and key information, but excludes phase-specific metadata like
-    /// `StagedState`, `HolonState`, or `SavedState`.
-    fn essential_content(&self) -> EssentialHolonContent;
 
     /// Converts a Holon into a HolonCloneModel.
     ///
@@ -58,17 +52,16 @@ pub trait ReadableHolonState {
     /// Retrieves the specified property value from the Holon.
     ///
     /// # Semantics
-    /// - Returns `Ok(None)` if the property exists but has a `None` value.  
-    /// - Returns `Ok(None)` if the property does **not exist at all**.  
-    ///
-    /// **Note:** To differentiate between a `None` value and a missing property,  
-    /// clients should use `.property_value()` along with `.essential_content()`.
+    /// - Returns `Ok(Some(value))` if the property is present in the `property_map`.
+    /// - Returns `Ok(None)` if the property is absent. The property model has no
+    ///   null value (`BaseValue` has no none variant), so absence is the only
+    ///   "no value" state.
     fn property_value(
         &self,
         property_name: &PropertyName,
     ) -> Result<Option<PropertyValue>, HolonError>;
 
-    /// Gets a related holons for a given relationship name.
+    /// Gets all related holons for a given relationship name.
     ///
     /// Returns a HolonCollection where its members are the related HolonReferences.
     fn related_holons(

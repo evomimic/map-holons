@@ -23,12 +23,6 @@ fn handle_read(
             let transient = target.clone_holon()?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
         }
-        ReadableHolonAction::GetEssentialContent => {
-            // Legacy wire-contract path retained until raw essential-content APIs are retired.
-            #[allow(deprecated)]
-            let content = target.essential_content()?;
-            Ok(MapResult::EssentialContent(content))
-        }
         ReadableHolonAction::Summarize => {
             let summary = target.summarize()?;
             Ok(MapResult::Value(BaseValue::StringValue(MapString::from(summary))))

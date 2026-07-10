@@ -9,7 +9,6 @@ use derive_new::new;
 
 use super::state::AccessType;
 use super::{SavedHolon, StagedHolon, TransientHolon};
-use crate::core_shared_objects::holon::EssentialHolonContent;
 use crate::core_shared_objects::holon_behavior::{ReadableHolonState, WriteableHolonState};
 use crate::{HolonCollection, HolonReference, RelationshipMap};
 
@@ -50,6 +49,17 @@ pub struct HolonCloneModel {
     pub relationships: Option<RelationshipMap>,
 }
 
+impl Holon {
+    // Crate-private snapshot for the reference layer's property_map_impl (definitional comparison)
+    pub(crate) fn property_map_clone(&self) -> PropertyMap {
+        match self {
+            Holon::Transient(h) => h.property_map().clone(),
+            Holon::Staged(h) => h.property_map().clone(),
+            Holon::Saved(h) => h.property_map().clone(),
+        }
+    }
+}
+
 // =================================
 //   HOLONBEHAVIOR IMPLEMENTATIONS
 // =================================
@@ -61,14 +71,6 @@ impl ReadableHolonState for Holon {
             Holon::Saved(h) => {
                 h.all_related_holons() // Will throw error, as not implemented, call must go through reference layer
             }
-        }
-    }
-
-    fn essential_content(&self) -> EssentialHolonContent {
-        match self {
-            Holon::Transient(h) => h.essential_content(),
-            Holon::Staged(h) => h.essential_content(),
-            Holon::Saved(h) => h.essential_content(),
         }
     }
 

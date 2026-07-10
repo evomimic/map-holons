@@ -19,7 +19,7 @@ use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
-        holon::{holon_utils::EssentialHolonContent, state::AccessType, Holon, HolonCloneModel},
+        holon::{state::AccessType, Holon, HolonCloneModel},
         transient_holon_manager::ToHolonCloneModel,
         ReadableHolonState, WriteableHolonState,
     },
@@ -187,12 +187,12 @@ impl ReadableHolonImpl for TransientReference {
         Ok(borrowed_holon.all_related_holons()?)
     }
 
-    fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError> {
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;
-        let borrowed_holon = self.read_holon_guard(&rc_holon, "essential_content_impl")?;
+        let borrowed_holon = self.read_holon_guard(&rc_holon, "property_map_impl")?;
 
-        Ok(borrowed_holon.essential_content())
+        Ok(borrowed_holon.property_map_clone())
     }
 
     fn holon_id_impl(&self) -> Result<HolonId, HolonError> {

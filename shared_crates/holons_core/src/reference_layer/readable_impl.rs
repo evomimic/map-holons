@@ -1,10 +1,9 @@
 use crate::core_shared_objects::holon::state::AccessType;
-use crate::core_shared_objects::holon::EssentialHolonContent;
 use crate::reference_layer::TransientReference;
 use crate::{HolonCollection, HolonReference, RelationshipMap};
 use base_types::MapString;
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue, RelationshipName,
+    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
 use std::sync::{Arc, RwLock};
 
@@ -32,7 +31,7 @@ pub trait ReadableHolonImpl {
 
     fn versioned_key_impl(&self) -> Result<MapString, HolonError>;
 
-    fn essential_content_impl(&self) -> Result<EssentialHolonContent, HolonError>;
+    fn property_map_impl(&self) -> Result<PropertyMap, HolonError>;
 
     fn summarize_impl(&self) -> Result<String, HolonError>;
 

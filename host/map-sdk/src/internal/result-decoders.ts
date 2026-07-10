@@ -2,7 +2,6 @@ import { MalformedResponseError } from './errors';
 import type {
   BaseValue,
   DanceResponseWire,
-  EssentialHolonContent,
   HolonCollectionWire,
   HolonId,
   HolonReferenceWire,
@@ -185,23 +184,6 @@ export function expectHolonId(result: MapResultWire): HolonId {
   }
 
   throw unexpectedResultVariant('HolonId', result);
-}
-
-/**
- * Decode a `MapResultWire::EssentialContent` payload.
- */
-export function expectEssentialContent(
-  result: MapResultWire,
-): EssentialHolonContent {
-  if (
-    typeof result === 'object' &&
-    result !== null &&
-    'EssentialContent' in result
-  ) {
-    return result.EssentialContent;
-  }
-
-  throw unexpectedResultVariant('EssentialContent', result);
 }
 
 /**

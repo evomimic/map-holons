@@ -1,4 +1,3 @@
-use holons_core::core_shared_objects::holon::EssentialHolonContent;
 use holons_test::{DancesTestCase, TestCaseInit};
 use pretty_assertions::assert_eq;
 // use tracing::{error, info};
@@ -9,7 +8,6 @@ use rstest::*;
 use type_names::{CorePropertyTypeName::Description, ToPropertyName};
 
 #[fixture]
-#[allow(deprecated)]
 pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, HolonError> {
     // == Init == //
 
@@ -49,8 +47,7 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     ); // MapString, str
     expected_properties.insert("Int".to_property_name(), 42.to_base_value()); // str, int
     expected_properties.insert("Bool".to_property_name(), true.to_base_value()); // str, bool
-    let essential =
-        EssentialHolonContent::new(expected_properties.clone(), Some(book_key.clone()), Vec::new());
+
     // Modify source
     book_transient_reference
         .with_property_value(Description, "Changed description")? // Enum, str
@@ -58,8 +55,9 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
         .with_property_value("Int", 42)? // str, int
         .with_property_value("Bool", true)?; // str, bool
 
-    // Assert essential content equal
-    assert_eq!(essential, book_transient_reference.essential_content()?);
+    // Assert expected property content and key.
+    assert_eq!(expected_properties.clone(), book_transient_reference.into_model()?.property_map);
+    assert_eq!(Some(book_key.clone()), book_transient_reference.key()?);
 
     // -- REMOVE -- //
     let mut expected_properties_after_remove = expected_properties.clone();
@@ -67,18 +65,16 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
         .remove(&MapString("NewProperty".to_string()).to_property_name());
     expected_properties_after_remove.remove(&"Int".to_string().to_property_name());
     expected_properties_after_remove.remove(&"Bool".to_property_name());
-    let essential_after_remove = EssentialHolonContent::new(
-        expected_properties_after_remove,
-        Some(book_key.clone()),
-        Vec::new(),
-    );
-
     book_transient_reference
         .remove_property_value("NewProperty".to_string())? // String
         .remove_property_value("Int")? // str
         .remove_property_value(MapString("Bool".to_string()))?; // MapString
 
-    assert_eq!(essential_after_remove, book_transient_reference.essential_content()?);
+    assert_eq!(
+        expected_properties_after_remove,
+        book_transient_reference.into_model()?.property_map
+    );
+    assert_eq!(Some(book_key.clone()), book_transient_reference.key()?);
 
     // === STAGED === //
     let mut book_staged_reference =
@@ -95,12 +91,6 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
         "AnotherProperty".to_string().to_property_name(), // String
         BaseValue::StringValue(MapString("Adding a property".to_string())).to_base_value(), // BaseValue
     );
-    let staged_essential = EssentialHolonContent::new(
-        staged_expected_properties.clone(),
-        Some(book_key.clone()),
-        Vec::new(),
-    );
-
     book_staged_reference
         .with_property_value(
             PropertyName(MapString("Description".to_string())), // PropertyName,
@@ -111,18 +101,16 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
             MapString("Adding a property".to_string()), // MapString
         )?;
 
-    assert_eq!(staged_essential, book_staged_reference.essential_content()?);
+    assert_eq!(
+        staged_expected_properties.clone(),
+        book_staged_reference.into_model()?.property_map
+    );
+    assert_eq!(Some(book_key.clone()), book_staged_reference.key()?);
 
     // -- REMOVE -- //
     let mut staged_expected_properties_after_remove = staged_expected_properties.clone();
     staged_expected_properties_after_remove.remove(&"Description".to_property_name());
     staged_expected_properties_after_remove.remove(&"AnotherProperty".to_property_name());
-    let staged_essential_after_remove = EssentialHolonContent::new(
-        staged_expected_properties_after_remove,
-        Some(book_key.clone()),
-        Vec::new(),
-    );
-
     book_staged_reference.remove_property_value(
         Description, // Enum
     )?;
@@ -130,7 +118,11 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
         PropertyName(MapString("AnotherProperty".to_string())), // PropertyName
     )?;
 
-    assert_eq!(staged_essential_after_remove, book_staged_reference.essential_content()?);
+    assert_eq!(
+        staged_expected_properties_after_remove,
+        book_staged_reference.into_model()?.property_map
+    );
+    assert_eq!(Some(book_key.clone()), book_staged_reference.key()?);
 
     // Finalize
     test_case.finalize(&fixture_context, &fixture_holons)?;

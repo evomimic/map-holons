@@ -14,10 +14,7 @@ use core_types::{
 };
 use type_names::CorePropertyTypeName;
 
-use super::{
-    state::{AccessType, HolonState, ValidationState},
-    EssentialHolonContent,
-};
+use super::state::{AccessType, HolonState, ValidationState};
 
 /// Represents a Holon that exists only in-memory and cannot be persisted unless it becomes a StagedHolon.
 /// (for more information, see Holon LifeCycle [insert link] documentation/diagram)
@@ -138,14 +135,6 @@ impl ReadableHolonState for TransientHolon {
         let relationship_map = RelationshipMap::from(self.get_transient_relationship_map()?);
 
         Ok(relationship_map)
-    }
-
-    fn essential_content(&self) -> EssentialHolonContent {
-        EssentialHolonContent::new(
-            self.property_map.clone(),
-            self.key(),
-            Vec::new(), // defaulting to empty
-        )
     }
 
     fn holon_clone_model(&self) -> HolonCloneModel {

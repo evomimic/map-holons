@@ -16,11 +16,9 @@
 //!    no structural fallback is attempted and no content is read.
 //! 3. Apply coinductive cycle termination via a visited-pair set keyed by typed
 //!    reference identity.
-//! 4. Compare raw `property_map` values internally via
-//!    `essential_content_impl()?.property_map`. This intentionally excludes
-//!    `EssentialHolonContent.key` and `.errors`; key semantics are already part
-//!    of the property surface, and `errors` are lifecycle-dependent rather than
-//!    definition-level content.
+//! 4. Compare raw property maps through a crate-private accessor. This
+//!    intentionally excludes lifecycle-dependent state such as staged errors;
+//!    key semantics are already part of the property surface.
 //! 5. Derive each side's definitional relationship-name set from that side's
 //!    own descriptor. Undescribed holons with no relationship content are
 //!    treated as having an empty definitional surface; undescribed holons with
@@ -140,13 +138,11 @@ fn compare_references(
     visited.insert(pair_key);
 
     // Step 4: Compare the raw property surface internally. This is the only
-    // raw-map touch in the algorithm, and it excludes key/errors from
-    // EssentialHolonContent for the reasons described in the module header.
-    let left_content = left_reference.essential_content_impl()?;
-    let right_content = right_reference.essential_content_impl()?;
-    if let Some(divergence) =
-        compare_property_maps(&left_content.property_map, &right_content.property_map)
-    {
+    // raw-map touch in the algorithm, and it excludes lifecycle state for the
+    // reasons described in the module header.
+    let left_property_map = left_reference.property_map_impl()?;
+    let right_property_map = right_reference.property_map_impl()?;
+    if let Some(divergence) = compare_property_maps(&left_property_map, &right_property_map) {
         return Ok(EquivalenceOutcome::Divergent(divergence));
     }
 

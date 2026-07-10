@@ -29,7 +29,7 @@ abstract holon HolonType {
     allows_additional_relationships: false
   }
   relationships {
-    AffordsCommand -> ["CloneHolon.CommandType", "GetEssentialContent.CommandType", "Summarize.CommandType", "GetHolonId.CommandType", "GetPredecessor.CommandType", "GetKey.CommandType", "GetVersionedKey.CommandType", "GetPropertyValue.CommandType", "GetRelatedHolons.CommandType", "WithPropertyValue.CommandType", "RemovePropertyValue.CommandType", "AddRelatedHolons.CommandType", "RemoveRelatedHolons.CommandType", "WithDescriptor.CommandType"]
+    AffordsCommand -> ["CloneHolon.CommandType", "Summarize.CommandType", "GetHolonId.CommandType", "GetPredecessor.CommandType", "GetKey.CommandType", "GetVersionedKey.CommandType", "GetPropertyValue.CommandType", "GetRelatedHolons.CommandType", "WithPropertyValue.CommandType", "RemovePropertyValue.CommandType", "AddRelatedHolons.CommandType", "RemoveRelatedHolons.CommandType", "WithDescriptor.CommandType"]
     ComponentOf -> "MAP Core Schema-v0.0.7"
     Extends -> "MetaHolonType"
     UsesKeyRule -> "ExtendedTypeRule.KeyRuleType"
