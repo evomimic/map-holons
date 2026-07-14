@@ -38,6 +38,10 @@ pub enum DiagnosticSeverity {
 /// semantic model exists.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiagnosticKind {
+    /// Source syntax was malformed while parsing authored content.
+    InvalidSyntax { context: String, message: String },
+    /// A required syntax element was missing from authored content.
+    MissingSyntaxElement { context: String, expected: String },
     /// Two schemas/descriptors produced the same canonical symbol key.
     DuplicateSymbol { key: String },
     /// A reference target could not be resolved against the derived symbol index.
@@ -133,6 +137,12 @@ impl fmt::Display for DiagnosticSeverity {
 impl fmt::Display for DiagnosticKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidSyntax { context, message } => {
+                write!(f, "invalid syntax in `{context}`: {message}")
+            }
+            Self::MissingSyntaxElement { context, expected } => {
+                write!(f, "missing syntax element `{expected}` in `{context}`")
+            }
             Self::DuplicateSymbol { key } => {
                 write!(f, "duplicate symbol key `{key}`")
             }
@@ -271,6 +281,14 @@ mod tests {
     fn formats_multiple_diagnostics_as_newline_separated_list() {
         let diagnostics = vec![
             Diagnostic::error(
+                DiagnosticLayer::Syntax,
+                DiagnosticKind::InvalidSyntax {
+                    context: "schema".to_string(),
+                    message: "unexpected token".to_string(),
+                },
+                Some(Origin::tdl_file("broken.tdl", Some(1), Some(1))),
+            ),
+            Diagnostic::error(
                 DiagnosticLayer::ReferenceSymbol,
                 DiagnosticKind::DuplicateSymbol { key: "Name.PropertyType".to_string() },
                 Some(Origin::json_file("fixture.json")),
@@ -292,7 +310,7 @@ mod tests {
 
         assert_eq!(
             format_diagnostics(&diagnostics),
-            "error[reference_symbol]: duplicate symbol key `Name.PropertyType` (fixture.json)\nerror[schema_aware]: descriptor `Owns.RelationshipType` is missing required field `SourceType` (generated.tdl)"
+            "error[syntax]: invalid syntax in `schema`: unexpected token (broken.tdl:1:1)\nerror[reference_symbol]: duplicate symbol key `Name.PropertyType` (fixture.json)\nerror[schema_aware]: descriptor `Owns.RelationshipType` is missing required field `SourceType` (generated.tdl)"
         );
     }
 }

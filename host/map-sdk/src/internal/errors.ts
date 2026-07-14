@@ -75,5 +75,39 @@ export class DomainError extends MapError {
  */
 export function parseDomainError(wire: HolonErrorWire): DomainError {
   const [variant, payload] = Object.entries(wire)[0] ?? ['UnknownDomainError', undefined];
-  return new DomainError(variant, payload);
+  return new DomainError(variant, payload, formatDomainErrorMessage(variant, payload));
+}
+
+function formatDomainErrorMessage(variant: string, payload: unknown): string {
+  const detail = formatDomainErrorPayload(payload);
+  return detail ? `${variant}: ${detail}` : `MAP domain error: ${variant}`;
+}
+
+function formatDomainErrorPayload(payload: unknown): string {
+  if (typeof payload === 'string') {
+    return payload;
+  }
+
+  if (Array.isArray(payload)) {
+    return payload.map((item) => formatDomainErrorPayload(item)).join(': ');
+  }
+
+  if (payload && typeof payload === 'object') {
+    const entries = Object.entries(payload as Record<string, unknown>);
+    if (entries.length === 1) {
+      const [key, value] = entries[0];
+      const nested = formatDomainErrorPayload(value);
+      return nested ? `${key}: ${nested}` : key;
+    }
+
+    return entries
+      .map(([key, value]) => `${key}=${formatDomainErrorPayload(value)}`)
+      .join(', ');
+  }
+
+  if (payload === null || payload === undefined) {
+    return '';
+  }
+
+  return String(payload);
 }

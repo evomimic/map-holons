@@ -1,8 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
-    decompile_input_string, decompile_inputs, dump_symbols, dump_symbols_from_string,
-    diff_inputs,
+    decompile_input_string, decompile_inputs, diff_inputs, dump_symbols, dump_symbols_from_string,
     tdl_compiler::{
         check_input_string, check_inputs, compile_input_string, compile_inputs, render_check_output,
     },

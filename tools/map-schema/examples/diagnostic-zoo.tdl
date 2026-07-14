@@ -1,0 +1,99 @@
+// Intentionally invalid TDL for exercising accumulated semantic diagnostics.
+// Run with the core schema corpus so canonical references can resolve:
+// cargo run --manifest-path tools/map-schema/Cargo.toml -- check schema-src tools/map-schema/examples/diagnostic-zoo.tdl
+
+schema Diagnostic Zoo-v0.0.1 {
+  depends_on MAP Core Schema-v0.0.7
+  header {
+    description: "Intentional semantic diagnostic corpus."
+  }
+}
+
+holon ZooBook {
+  header {
+    description: "Local holon used as a deliberately wrong property value type."
+  }
+}
+
+property LocalName {
+  value MapStringValueType
+}
+
+holon DuplicateSymbolThing {
+  properties {
+    LocalName.PropertyType
+  }
+}
+
+holon DuplicateSymbolThing {
+  properties {
+    LocalName.PropertyType
+  }
+}
+
+property MissingValueType {
+  header {
+    description: "Intentionally omits ValueType."
+  }
+}
+
+property WrongValueType {
+  value ZooBook
+}
+
+holon DuplicateMembers {
+  properties {
+    LocalName.PropertyType
+    LocalName.PropertyType
+  }
+}
+
+property PropertyExtendsHolon {
+  extends ZooBook
+  value MapStringValueType
+}
+
+holon WrongProjectedKind {
+  properties {
+    instance_type_kind: "TypeKind.Relationship"
+  }
+}
+
+holon CycleA {
+  extends CycleB
+}
+
+holon CycleB {
+  extends CycleA
+}
+
+def relationship MissingInverseRelationship {
+  source TypeDescriptor.HolonType
+  target Schema.HolonType
+  cardinality 5..1
+}
+
+def relationship DeclaredWrongFlavorA {
+  source TypeDescriptor.HolonType
+  target Schema.HolonType
+  inverse SharedInverse
+  cardinality 0..32767
+}
+
+def relationship DeclaredWrongFlavorB {
+  source TypeDescriptor.HolonType
+  target Schema.HolonType
+  inverse SharedInverse
+  cardinality 0..32767
+}
+
+inverse relationship SharedInverse {
+  source Schema.HolonType
+  target TypeDescriptor.HolonType
+  inverse DeclaredWrongFlavorB
+  cardinality 0..32767
+}
+
+holon UnsupportedRuleThing {
+  keyrule FormatRule.KeyRuleType
+}

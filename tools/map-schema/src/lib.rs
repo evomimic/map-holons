@@ -7,7 +7,9 @@
 //! so schema dependencies and cross-file references can be resolved consistently.
 
 use anyhow::{anyhow, Context, Result};
-use map_schema_semantic::{normalize_relationship_pairs, normalize_validation_model, validate_model};
+use map_schema_semantic::{
+    normalize_relationship_pairs, normalize_validation_model, validate_model,
+};
 /// Diagnostic formatting and source-oriented validation messages.
 pub mod diagnostics;
 mod literal_bridge;
@@ -194,7 +196,7 @@ pub fn diff_inputs(left: &[PathBuf], right: &[PathBuf]) -> Result<String> {
     let left_signature = left_model.comparable_signature();
     let right_signature = right_model.comparable_signature();
 
-    Ok(render_semantic_diff(&left_signature, &right_signature))
+    Ok(render_semantic_diff(&left_signature, &right_signature, &left_model, &right_model))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -215,7 +217,11 @@ fn load_valid_semantic_model(inputs: &[PathBuf], side: &str) -> Result<SemanticM
     if diagnostics.is_empty() {
         Ok(model)
     } else {
-        Err(anyhow!("{} inputs are not semantically valid:\n{}", side, format_diagnostics(&diagnostics)))
+        Err(anyhow!(
+            "{} inputs are not semantically valid:\n{}",
+            side,
+            format_diagnostics(&diagnostics)
+        ))
     }
 }
 
@@ -238,39 +244,213 @@ fn detect_input_format(inputs: &[PathBuf]) -> Result<InputFormat> {
 fn render_semantic_diff(
     left: &crate::schema_ir::ComparableSemanticModel,
     right: &crate::schema_ir::ComparableSemanticModel,
+    left_model: &SemanticModel,
+    right_model: &SemanticModel,
 ) -> String {
-    let schema_diff = semantic_schema_diff(left, right);
-    let descriptor_diff = semantic_descriptor_diff(left, right);
+    let canonical_schema_diff = semantic_schema_diff(left, right);
+    let canonical_descriptor_diff = semantic_descriptor_diff(left, right);
+    let residue_diff = semantic_residue_diff(left_model, right_model);
 
-    if schema_diff.is_empty() && descriptor_diff.is_empty() {
+    if canonical_schema_diff.is_empty()
+        && canonical_descriptor_diff.is_empty()
+        && residue_diff.is_empty()
+    {
         return "no semantic diff\n".to_string();
     }
 
     let mut out = String::from("semantic diff\n");
-    for line in schema_diff {
-        out.push_str(&line);
-        out.push('\n');
+    if !canonical_schema_diff.is_empty() || !canonical_descriptor_diff.is_empty() {
+        out.push_str("canonical semantic changes\n");
+        for line in canonical_schema_diff {
+            out.push_str(&line);
+            out.push('\n');
+        }
+        for line in canonical_descriptor_diff {
+            out.push_str(&line);
+            out.push('\n');
+        }
     }
-    for line in descriptor_diff {
-        out.push_str(&line);
-        out.push('\n');
+    if !residue_diff.is_empty() {
+        out.push_str("preserved literal residue changes\n");
+        for line in residue_diff {
+            out.push_str(&line);
+            out.push('\n');
+        }
     }
     out
+}
+
+fn semantic_residue_diff(left: &SemanticModel, right: &SemanticModel) -> Vec<String> {
+    let mut lines = Vec::new();
+
+    let left_schemas =
+        left.schemas.iter().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
+    let right_schemas =
+        right.schemas.iter().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
+    let schema_keys =
+        left_schemas.keys().chain(right_schemas.keys()).cloned().collect::<BTreeSet<_>>();
+    for key in schema_keys {
+        if let (Some(left_schema), Some(right_schema)) =
+            (left_schemas.get(&key), right_schemas.get(&key))
+        {
+            let mut field_lines = Vec::new();
+            push_changed_field(
+                &mut field_lines,
+                "header",
+                &left_schema.header,
+                &right_schema.header,
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_properties",
+                &normalized_schema_literal_properties(left_schema),
+                &normalized_schema_literal_properties(right_schema),
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_relationships",
+                &normalized_schema_literal_relationships(left_schema),
+                &normalized_schema_literal_relationships(right_schema),
+            );
+            if !field_lines.is_empty() {
+                lines.push(format!("schema `{}` residue changed", key));
+                lines.extend(field_lines.into_iter().map(|line| format!("  {line}")));
+            }
+        }
+    }
+
+    let left_descriptors = left
+        .descriptors
+        .iter()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let right_descriptors = right
+        .descriptors
+        .iter()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let descriptor_keys =
+        left_descriptors.keys().chain(right_descriptors.keys()).cloned().collect::<BTreeSet<_>>();
+    for key in descriptor_keys {
+        if let (Some(left_descriptor), Some(right_descriptor)) =
+            (left_descriptors.get(&key), right_descriptors.get(&key))
+        {
+            let mut field_lines = Vec::new();
+            push_changed_field(
+                &mut field_lines,
+                "header",
+                &left_descriptor.header,
+                &right_descriptor.header,
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_properties",
+                &normalized_descriptor_literal_properties(left_descriptor),
+                &normalized_descriptor_literal_properties(right_descriptor),
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_relationships",
+                &normalized_descriptor_literal_relationships(left_descriptor),
+                &normalized_descriptor_literal_relationships(right_descriptor),
+            );
+            if !field_lines.is_empty() {
+                lines.push(format!("descriptor `{}` residue changed", key));
+                lines.extend(field_lines.into_iter().map(|line| format!("  {line}")));
+            }
+        }
+    }
+
+    lines
+}
+
+fn normalized_schema_literal_properties(schema: &Schema) -> map_schema_semantic::LiteralObject {
+    let mut normalized = map_schema_semantic::LiteralObject::new();
+    for (key, value) in schema.literal_properties.iter() {
+        if matches!(
+            key.as_str(),
+            "description"
+                | "display_name"
+                | "display_name_plural"
+                | "type_name_plural"
+                | "schema_name"
+                | "allows_additional_properties"
+                | "allows_additional_relationships"
+        ) {
+            continue;
+        }
+        normalized.insert(key.clone(), value.clone());
+    }
+    normalized
+}
+
+fn normalized_schema_literal_relationships(schema: &Schema) -> Vec<LiteralRelationship> {
+    schema
+        .literal_relationships
+        .iter()
+        .filter(|relationship| relationship.name != "DependsOn")
+        .cloned()
+        .collect()
+}
+
+fn normalized_descriptor_literal_properties(
+    descriptor: &TypeDescriptor,
+) -> map_schema_semantic::LiteralObject {
+    let mut normalized = map_schema_semantic::LiteralObject::new();
+    for (key, value) in descriptor.literal_properties.iter() {
+        if matches!(
+            key.as_str(),
+            "type_name"
+                | "type_name_plural"
+                | "display_name"
+                | "display_name_plural"
+                | "description"
+                | "instance_type_kind"
+                | "is_abstract_type"
+                | "is_definitional"
+                | "min_cardinality"
+                | "max_cardinality"
+                | "deletion_semantic"
+                | "is_ordered"
+                | "allows_duplicates"
+                | "allows_additional_properties"
+                | "allows_additional_relationships"
+        ) {
+            continue;
+        }
+        normalized.insert(key.clone(), value.clone());
+    }
+    normalized
+}
+
+fn normalized_descriptor_literal_relationships(
+    descriptor: &TypeDescriptor,
+) -> Vec<LiteralRelationship> {
+    descriptor
+        .literal_relationships
+        .iter()
+        .filter(|relationship| reference_role_for_relationship(&relationship.name).is_none())
+        .cloned()
+        .collect()
 }
 
 fn semantic_schema_diff(
     left: &crate::schema_ir::ComparableSemanticModel,
     right: &crate::schema_ir::ComparableSemanticModel,
 ) -> Vec<String> {
-    let left_by_key =
-        left.schemas.iter().cloned().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
-    let right_by_key =
-        right.schemas.iter().cloned().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
-    let all_keys = left_by_key
-        .keys()
-        .chain(right_by_key.keys())
+    let left_by_key = left
+        .schemas
+        .iter()
         .cloned()
-        .collect::<BTreeSet<_>>();
+        .map(|schema| (schema.key.clone(), schema))
+        .collect::<BTreeMap<_, _>>();
+    let right_by_key = right
+        .schemas
+        .iter()
+        .cloned()
+        .map(|schema| (schema.key.clone(), schema))
+        .collect::<BTreeMap<_, _>>();
+    let all_keys = left_by_key.keys().chain(right_by_key.keys()).cloned().collect::<BTreeSet<_>>();
 
     let mut lines = Vec::new();
     for key in all_keys {
@@ -328,11 +508,7 @@ fn semantic_descriptor_diff(
         .cloned()
         .map(|descriptor| (descriptor.key.clone(), descriptor))
         .collect::<BTreeMap<_, _>>();
-    let all_keys = left_by_key
-        .keys()
-        .chain(right_by_key.keys())
-        .cloned()
-        .collect::<BTreeSet<_>>();
+    let all_keys = left_by_key.keys().chain(right_by_key.keys()).cloned().collect::<BTreeSet<_>>();
 
     let mut lines = Vec::new();
     for key in all_keys {
@@ -1641,8 +1817,11 @@ mod tests {
     use std::{
         env,
         io::Write,
+        sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
     fn source_fixture_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -1667,24 +1846,26 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("schema-src")
     }
 
-    fn temp_out_dir() -> PathBuf {
+    fn unique_temp_dir(prefix: &str) -> PathBuf {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-decompile-{nanos}"))
+        let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        env::temp_dir().join(format!("{prefix}-{nanos}-{counter}"))
+    }
+
+    fn temp_out_dir() -> PathBuf {
+        unique_temp_dir("map-schema-decompile")
     }
 
     fn temp_roundtrip_tdl_dir() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-roundtrip-tdl-{nanos}"))
+        unique_temp_dir("map-schema-roundtrip-tdl")
     }
 
     fn temp_roundtrip_json_dir() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-roundtrip-json-{nanos}"))
+        unique_temp_dir("map-schema-roundtrip-json")
     }
 
     fn temp_domain_json_dir() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-domain-json-{nanos}"))
+        unique_temp_dir("map-schema-domain-json")
     }
 
     fn copy_directory_tree(source: &Path, target: &Path) -> Result<()> {
@@ -1827,13 +2008,18 @@ mod tests {
     }
 
     #[test]
-    fn semantic_diff_reports_no_difference_for_json_and_decompiled_tdl() -> Result<()> {
+    fn semantic_diff_reports_no_canonical_difference_for_json_and_decompiled_tdl() -> Result<()> {
         let source_dir = source_fixture_dir();
         let decompiled_tdl_dir = temp_roundtrip_tdl_dir();
         decompile_inputs(&[source_dir.clone()], &decompiled_tdl_dir)?;
 
         let rendered = diff_inputs(&[source_dir], &[decompiled_tdl_dir])?;
-        assert_eq!(rendered, "no semantic diff\n");
+        assert!(
+            rendered == "no semantic diff\n"
+                || (rendered.contains("semantic diff\n")
+                    && !rendered.contains("canonical semantic changes")),
+            "{rendered}"
+        );
 
         Ok(())
     }
@@ -1848,13 +2034,20 @@ mod tests {
         let right_root_path = right_dir.join("MAP Schema Types-map-core-schema-root.json");
         let right_root = fs::read_to_string(&right_root_path)?;
         let right_root = right_root
-            .replace("\"allows_additional_properties\": false", "\"allows_additional_properties\": true")
+            .replace(
+                "\"allows_additional_properties\": false",
+                "\"allows_additional_properties\": true",
+            )
             .replace("\"is_abstract_type\": false", "\"is_abstract_type\": true");
         write_json_file(&right_root_path, &right_root)?;
 
         let rendered = diff_inputs(&[left_dir], &[right_dir])?;
         assert!(rendered.contains("semantic diff\n"), "{rendered}");
-        assert!(rendered.contains("allows_additional_properties: left=false right=true"), "{rendered}");
+        assert!(rendered.contains("canonical semantic changes"), "{rendered}");
+        assert!(
+            rendered.contains("allows_additional_properties: left=false right=true"),
+            "{rendered}"
+        );
         assert!(rendered.contains("descriptor `"), "{rendered}");
         assert!(rendered.contains("is_abstract: left=false right=true"), "{rendered}");
 
@@ -1878,6 +2071,29 @@ relationship Broken {
         let rendered = error.to_string();
         assert!(rendered.contains("left inputs are not semantically valid"));
         assert!(rendered.contains("missing required field `TargetType`"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_preserved_literal_residue_changes() -> Result<()> {
+        let left_dir = temp_domain_json_dir().join("left-residue");
+        let right_dir = temp_domain_json_dir().join("right-residue");
+        copy_directory_tree(&source_fixture_dir(), &left_dir)?;
+        copy_directory_tree(&source_fixture_dir(), &right_dir)?;
+
+        let right_root_path = right_dir.join("MAP Schema Types-map-core-schema-root.json");
+        let right_root = fs::read_to_string(&right_root_path)?;
+        let right_root = right_root.replace(
+            "\"description\": \"Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.\"",
+            "\"description\": \"Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself. Residue diff.\"",
+        );
+        write_json_file(&right_root_path, &right_root)?;
+
+        let rendered = diff_inputs(&[left_dir], &[right_dir])?;
+        assert!(rendered.contains("preserved literal residue changes"), "{rendered}");
+        assert!(rendered.contains("schema `MAP Core Schema-v0.0.7` residue changed"), "{rendered}");
+        assert!(rendered.contains("header: left="), "{rendered}");
 
         Ok(())
     }
