@@ -578,6 +578,7 @@ fn save_smartlinks_for_collection(
             from_address: source_id.clone(),
             to_address: HolonId::Local(resolved_target.target_local_id.clone()),
             relationship_name: name.clone(),
+            forward_link_provenance: None,
             smart_property_values: smart_property_values_from_key(
                 resolved_target.target_key.clone(),
                 &key_prop,
@@ -594,6 +595,7 @@ fn save_smartlinks_for_collection(
             from_address: resolved_target.target_local_id.clone(),
             to_address: HolonId::Local(source_id.clone()),
             relationship_name: inverse_name.clone(),
+            forward_link_provenance: None,
             smart_property_values: inverse_smart_property_values.clone(),
         };
 
