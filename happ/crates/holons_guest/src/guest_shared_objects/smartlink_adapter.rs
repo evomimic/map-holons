@@ -1,40 +1,38 @@
 use base_types::MapString;
-use core_types::{ExternalId, HolonError, HolonId};
+use core_types::{
+    decode_smartlink_tag, encode_smartlink_tag, smartlink_relationship_prefix, CanonicalKey,
+    HolonError, HolonId, SmartLinkId, SmartLinkTagInput, TargetPropertyCacheCandidate,
+};
 use hdi::prelude::*;
 use hdk::prelude::*;
-use holons_core::core_shared_objects::holon::key_from_property_map;
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
-use shared_validation::{decode_link_tag, encode_link_tag, encode_link_tag_prolog};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SmartLink {
+    pub smartlink_id: Option<SmartLinkId>,
     pub from_address: LocalId,
     pub to_address: HolonId,
     pub relationship_name: RelationshipName,
-    pub forward_link_provenance: Option<LocalId>,
-    pub smart_property_values: Option<PropertyMap>,
+    pub canonical_key: CanonicalKey,
+    pub relationship_property_values: PropertyMap,
+    pub target_property_values: PropertyMap,
 }
 
 impl SmartLink {
-    /// The implementation of this function currently relies on a "key" property being stored
-    /// in the property_map. The intended design is to derive the key from the HolonDescriptor's
-    /// KEY_PROPERTIES relationship. However, the current parameters to this function are not
-    /// sufficient to do this.
-    /// TODO: update this function to align with described key property list design
     pub fn key(&self) -> Result<Option<MapString>, HolonError> {
-        if let Some(ref map) = self.smart_property_values {
-            key_from_property_map(map)
-        } else {
-            Ok(None)
-        }
+        Ok((!self.canonical_key.as_str().is_empty())
+            .then(|| MapString(self.canonical_key.as_str().to_string())))
     }
 
     /// Returns the persisted target identity and any cached smart properties.
     /// This is context-free and does not mint runtime references.
     pub fn to_pointer(&self) -> (HolonId, Option<PropertyMap>) {
-        (self.to_address.clone(), self.smart_property_values.clone())
+        (
+            self.to_address.clone(),
+            (!self.target_property_values.is_empty()).then(|| self.target_property_values.clone()),
+        )
     }
 }
 
@@ -90,7 +88,8 @@ pub fn get_relationship_links(
 ) -> Result<Vec<SmartLink>, HolonError> {
     debug!("Entered get_relationship_links for: {:?}", relationship_name.0.to_string());
     let link_tag_filter = LinkTag(
-        encode_link_tag_prolog(relationship_name).map_err(smartlink_tag_error_to_holon_error)?,
+        smartlink_relationship_prefix(relationship_name)
+            .map_err(smartlink_tag_error_to_holon_error)?,
     );
 
     let links_query = LinkQuery::try_new(source_action_hash.clone(), LinkTypes::SmartLink)
@@ -123,78 +122,91 @@ fn get_smartlink_from_link(
         ))))
         .map_err(holon_error_from_wasm_error)?;
     let link_tag_object =
-        decode_link_tag(&link.tag.into_inner()).map_err(smartlink_tag_error_to_holon_error)?;
-
-    let to_address = match link_tag_object.proxy_id {
-        Some(proxy_id) => HolonId::External(ExternalId {
-            space_id: proxy_id,
-            local_id: local_id_from_action_hash(local_target),
-        }),
-        None => HolonId::Local(local_id_from_action_hash(local_target)),
-    };
+        decode_smartlink_tag(&link.tag.into_inner(), local_id_from_action_hash(local_target))
+            .map_err(smartlink_tag_error_to_holon_error)?;
 
     Ok(SmartLink {
+        smartlink_id: Some(SmartLinkId(local_id_from_action_hash(link.create_link_hash))),
         from_address: local_id_from_action_hash(source_local_hash),
-        to_address,
-        relationship_name: RelationshipName(MapString(link_tag_object.relationship_name)),
-        forward_link_provenance: link_tag_object.forward_link_provenance,
-        smart_property_values: link_tag_object.smart_property_values,
+        to_address: link_tag_object.target_id,
+        relationship_name: link_tag_object.relationship_name,
+        canonical_key: link_tag_object.canonical_key,
+        relationship_property_values: link_tag_object.relationship_property_values,
+        target_property_values: link_tag_object.target_property_values,
     })
 }
 
-/// Persists a SmartLink, suppressing the write when an equivalent link already exists.
+/// Persists a SmartLink and returns its create action hash.
 ///
-/// Equivalence is source `LocalId` + target action hash + byte-identical encoded tag. The
-/// canonical shared codec encodes `PropertyMap` in `BTreeMap` order, making repeated commit
-/// passes idempotent at this choke point.
-pub fn save_smartlink(input: SmartLink) -> Result<(), HolonError> {
+/// An equivalent persisted link returns its canonical existing action hash instead of writing a
+/// duplicate. Deterministic selection keeps replay behavior independent of DHT query ordering.
+pub fn save_smartlink(input: SmartLink) -> Result<ActionHash, HolonError> {
+    let target_property_cache_candidates = input
+        .target_property_values
+        .iter()
+        .map(|(property_name, value)| TargetPropertyCacheCandidate {
+            property_name: property_name.clone(),
+            value: value.clone(),
+        })
+        .collect();
     let link_tag = LinkTag(
-        encode_link_tag(
-            &input.relationship_name,
-            &input.to_address,
-            input.smart_property_values.as_ref(),
-            input.forward_link_provenance.as_ref(),
-        )
+        encode_smartlink_tag(&SmartLinkTagInput {
+            target_id: input.to_address.clone(),
+            relationship_name: input.relationship_name.clone(),
+            canonical_key: input.canonical_key,
+            occurrence_id: None,
+            relationship_property_values: input.relationship_property_values,
+            target_property_cache_candidates,
+        })
         .map_err(smartlink_tag_error_to_holon_error)?,
     );
     let source_hash = try_action_hash_from_local_id(&input.from_address)?;
     let target_hash = try_action_hash_from_local_id(input.to_address.local_id())?;
 
-    if equivalent_smartlink_exists(&source_hash, &target_hash, &link_tag)? {
+    if let Some(existing_action_hash) =
+        equivalent_smartlink_action_hash(&source_hash, &target_hash, &link_tag)?
+    {
         debug!(
             "SmartLink already persisted for relationship {:?} from {:?}; skipping duplicate write",
             input.relationship_name.0 .0, input.from_address
         );
-        return Ok(());
+        return Ok(existing_action_hash);
     }
 
     create_link(source_hash, target_hash, LinkTypes::SmartLink, link_tag)
-        .map_err(holon_error_from_wasm_error)?;
-
-    Ok(())
+        .map_err(holon_error_from_wasm_error)
 }
 
-/// Returns true when a live SmartLink from `source_hash` to `target_hash` carrying exactly
-/// `link_tag` already exists.
+/// Returns the canonical existing action hash for an equivalent live SmartLink.
 ///
 /// The full encoded tag serves as the narrowest possible `tag_prefix` filter. Exact bytes are
-/// compared after querying because prefix filtering alone does not establish equivalence.
-fn equivalent_smartlink_exists(
+/// compared after querying because prefix filtering alone does not establish equivalence. If old
+/// data contains multiple exact matches, select the lowest `ActionHash` so replay behavior is
+/// stable regardless of DHT query ordering.
+fn equivalent_smartlink_action_hash(
     source_hash: &ActionHash,
     target_hash: &ActionHash,
     link_tag: &LinkTag,
-) -> Result<bool, HolonError> {
+) -> Result<Option<ActionHash>, HolonError> {
     let links_query = LinkQuery::try_new(source_hash.clone(), LinkTypes::SmartLink)
         .map_err(holon_error_from_wasm_error)?
         .tag_prefix(link_tag.clone());
     let links =
         get_links(links_query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
 
-    Ok(links.into_iter().any(|link| {
-        link.tag == *link_tag && link.target.into_action_hash().as_ref() == Some(target_hash)
-    }))
+    Ok(links
+        .into_iter()
+        .filter(|link| {
+            link.tag == *link_tag
+                && link.target.clone().into_action_hash().as_ref() == Some(target_hash)
+        })
+        .map(|link| link.create_link_hash)
+        .min())
 }
 
 fn smartlink_tag_error_to_holon_error(error: impl std::fmt::Display) -> HolonError {
-    HolonError::InvalidParameter(format!("Invalid SmartLink tag: {error}"))
+    HolonError::InvalidWireFormat {
+        wire_type: "SmartLinkTagV1".to_string(),
+        reason: error.to_string(),
+    }
 }

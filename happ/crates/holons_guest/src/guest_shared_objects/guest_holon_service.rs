@@ -187,31 +187,33 @@ impl HolonServiceApi for GuestHolonService {
         let mut relationship_map: HashMap<RelationshipName, Arc<RwLock<HolonCollection>>> =
             HashMap::new();
 
-        let mut reference_map: HashMap<RelationshipName, Vec<HolonReference>> = HashMap::new();
+        let mut reference_map: HashMap<RelationshipName, Vec<(Option<MapString>, HolonReference)>> =
+            HashMap::new();
 
         let smartlinks = get_all_relationship_links(source_id.local_id())?;
         debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {
+            let canonical_key = smartlink.key()?;
             let (holon_id, smart_props) = smartlink.to_pointer();
             let reference =
                 self.mint_smart_reference_from_pointer(context, holon_id, smart_props)?;
 
             // The following:
             // 1) adds an entry for relationship name if not already present (via `entry` API)
-            // 2) adds a value (Vec<HolonReference>) for the entry, if not already present (`.or_insert_with`)
-            // 3) pushes the new HolonReference into the vector -- without having to clone the vector
+            // 2) adds a value for the entry if not already present (`.or_insert_with`)
+            // 3) retains the tag's canonical key beside the reference to avoid hydrating the target
 
             reference_map
                 .entry(smartlink.relationship_name)
                 .or_insert_with(Vec::new)
-                .push(reference);
+                .push((canonical_key, reference));
         }
 
         for (map_name, holon_references) in reference_map {
             let mut collection = HolonCollection::new_existing();
-            for reference in holon_references {
-                let key = reference.key()?.ok_or_else(|| {
+            for (canonical_key, reference) in holon_references {
+                let key = canonical_key.ok_or_else(|| {
                     HolonError::Misc(
                         "Expected Smartlink to have a key, didn't get one.".to_string(),
                     )
