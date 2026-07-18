@@ -3458,7 +3458,6 @@ dependencies = [
  "holons_loader",
  "integrity_core_types",
  "serde",
- "shared_validation",
  "tracing",
  "type_names",
 ]

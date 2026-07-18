@@ -722,7 +722,6 @@ dependencies = [
  "holons_loader",
  "integrity_core_types",
  "serde",
- "shared_validation",
  "tracing",
  "type_names",
 ]
@@ -1125,7 +1124,6 @@ dependencies = [
 name = "shared_validation"
 version = "0.1.0"
 dependencies = [
- "base_types",
  "core_types",
  "integrity_core_types",
 ]

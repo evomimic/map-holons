@@ -49,6 +49,3 @@ path = "../holons_loader"
 
 [dependencies.holons_boundary]
 path = "../../../shared_crates/holons_boundary"
-
-[dependencies.shared_validation]
-path = "../../../shared_crates/shared_validation"
