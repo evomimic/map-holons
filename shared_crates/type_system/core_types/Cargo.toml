@@ -14,8 +14,8 @@ serde = { version = "1", features = ["derive"] }
 [dependencies.integrity_core_types]
 path = "../integrity_core_types"
 
-#[dependencies.base_types]
-#path = "../base_types"
+[dependencies.base_types]
+path = "../base_types"
 
 [dependencies.uuid]
 version = "1"

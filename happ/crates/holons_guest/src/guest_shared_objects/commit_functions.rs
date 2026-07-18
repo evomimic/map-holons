@@ -1,7 +1,6 @@
 use hdk::prelude::*;
 use holons_guest_integrity::type_conversions::*;
 use holons_guest_integrity::HolonNode;
-use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use crate::guest_shared_objects::{save_smartlink, SmartLink};
@@ -17,13 +16,13 @@ use holons_core::{
     HolonReference, SmartReference, StagedReference, WritableHolon,
 };
 
-use base_types::{BaseValue, MapString};
-use core_types::{HolonError, HolonId};
+use base_types::MapString;
+use core_types::{CanonicalKey, HolonError, HolonId};
 use holons_core::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle,
 };
 use holons_core::reference_layer::TransientReference;
-use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
+use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
 pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
 pub use type_names::{
@@ -506,8 +505,6 @@ fn save_smartlinks_for_collection(
     collection: &HolonCollection,
 ) -> Result<(), HolonError> {
     let source_id = source.source_local_id();
-    let key_prop = CorePropertyTypeName::Key.as_property_name();
-
     debug!(
         "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
         source_id,
@@ -568,20 +565,19 @@ fn save_smartlinks_for_collection(
             .push(ResolvedRelationshipTarget { target_local_id, target_key: key_option });
     }
 
-    let inverse_smart_property_values =
-        smart_property_values_from_key(source.source_key.clone(), &key_prop);
+    let inverse_canonical_key = canonical_key_from_optional_key(source.source_key.clone())?;
 
     for (target_index, resolved_target) in resolved_targets.iter().enumerate() {
         // Persist both directions from one resolved endpoint pair so the forward
         // and inverse SmartLinks stay anchored to the same committed source.
         let forward_smartlink = SmartLink {
+            smartlink_id: None,
             from_address: source_id.clone(),
             to_address: HolonId::Local(resolved_target.target_local_id.clone()),
             relationship_name: name.clone(),
-            smart_property_values: smart_property_values_from_key(
-                resolved_target.target_key.clone(),
-                &key_prop,
-            ),
+            canonical_key: canonical_key_from_optional_key(resolved_target.target_key.clone())?,
+            relationship_property_values: PropertyMap::new(),
+            target_property_values: PropertyMap::new(),
         };
 
         debug!(
@@ -591,10 +587,13 @@ fn save_smartlinks_for_collection(
         save_smartlink(forward_smartlink)?;
 
         let inverse_smartlink = SmartLink {
+            smartlink_id: None,
             from_address: resolved_target.target_local_id.clone(),
             to_address: HolonId::Local(source_id.clone()),
             relationship_name: inverse_name.clone(),
-            smart_property_values: inverse_smart_property_values.clone(),
+            canonical_key: inverse_canonical_key.clone(),
+            relationship_property_values: PropertyMap::new(),
+            target_property_values: PropertyMap::new(),
         };
 
         debug!(
@@ -627,13 +626,6 @@ fn require_local_target(
     }
 }
 
-fn smart_property_values_from_key(
-    key_option: Option<MapString>,
-    key_property_name: &PropertyName,
-) -> Option<PropertyMap> {
-    key_option.map(|key| {
-        let mut property_values: PropertyMap = BTreeMap::new();
-        property_values.insert(key_property_name.clone(), BaseValue::StringValue(key));
-        property_values
-    })
+fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKey, HolonError> {
+    CanonicalKey::new(key.map_or_else(String::new, |value| value.0))
 }

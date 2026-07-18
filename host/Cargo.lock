@@ -1319,6 +1319,7 @@ dependencies = [
 name = "core_types"
 version = "0.1.0"
 dependencies = [
+ "base_types",
  "integrity_core_types",
  "serde",
  "uuid 1.18.1",

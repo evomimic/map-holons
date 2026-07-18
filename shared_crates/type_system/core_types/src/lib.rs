@@ -16,11 +16,15 @@
 
 pub mod ids;
 pub mod loader_content;
+pub mod smartlink;
 pub mod type_kinds;
 
 pub use ids::*;
 pub use loader_content::*;
+pub use smartlink::*;
 pub use type_kinds::*;
+
+pub use base_types::BaseValue;
 
 //Re-export selected integrity_core_types at the root.
 // Prefer explicit lists over globs to keep the API curated and stable.
