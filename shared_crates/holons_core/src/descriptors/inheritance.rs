@@ -1,9 +1,10 @@
-use std::collections::HashSet;
-
 use crate::descriptors::accessor_helpers::{descriptor_label, lock_error, search_extends_chain};
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use base_types::BaseValue;
 use core_types::HolonError;
+use descriptor_semantics::{
+    DescriptorGraph, DescriptorSemanticsError, ExtendsTraversal as SemanticExtendsTraversal,
+};
 use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Direction of a relationship type descriptor relative to its declared edge.
@@ -15,22 +16,61 @@ pub enum RelationshipDirection {
     Inverse,
 }
 
-/// Resolves the direct `Extends` parent for a descriptor holon.
-///
-/// Cardinality is enforced here so all iterator-based callers inherit the same
-/// multiple-parent error semantics.
-pub(crate) fn extends_parent(holon: &HolonReference) -> Result<Option<HolonReference>, HolonError> {
-    let collection_arc = holon.related_holons(CoreRelationshipTypeName::Extends)?;
-    let collection = collection_arc.read().map_err(lock_error)?;
-    let members = collection.get_members();
+struct HolonReferenceGraph;
 
-    match members.as_slice() {
-        [] => Ok(None),
-        [single] => Ok(Some(single.clone())),
-        many => Err(HolonError::MultipleExtends {
-            descriptor: descriptor_label(holon),
-            count: many.len(),
-        }),
+impl DescriptorGraph for HolonReferenceGraph {
+    type Node = HolonReference;
+    type Identity = String;
+    type MemberKind = CoreRelationshipTypeName;
+    type Error = HolonError;
+
+    fn identity(&self, node: &Self::Node) -> Self::Identity {
+        node.reference_id_string()
+    }
+
+    fn extends_targets(&self, node: &Self::Node) -> Result<Vec<Self::Node>, Self::Error> {
+        related_members(node, CoreRelationshipTypeName::Extends)
+    }
+
+    fn described_by_targets(&self, node: &Self::Node) -> Result<Vec<Self::Node>, Self::Error> {
+        related_members(node, CoreRelationshipTypeName::DescribedBy)
+    }
+
+    fn related_members(
+        &self,
+        node: &Self::Node,
+        member_kind: &Self::MemberKind,
+    ) -> Result<Vec<Self::Node>, Self::Error> {
+        related_members(node, member_kind.clone())
+    }
+
+    fn is_type_descriptor(&self, node: &Self::Node) -> Result<bool, Self::Error> {
+        is_type_descriptor_descriptor(node)
+    }
+}
+
+fn related_members(
+    holon: &HolonReference,
+    relationship_name: CoreRelationshipTypeName,
+) -> Result<Vec<HolonReference>, HolonError> {
+    let collection_arc = holon.related_holons(relationship_name)?;
+    let collection = collection_arc.read().map_err(lock_error)?;
+    Ok(collection.get_members().to_vec())
+}
+
+fn map_semantics_error(error: DescriptorSemanticsError<HolonError, HolonReference>) -> HolonError {
+    match error {
+        DescriptorSemanticsError::Access(error) => error,
+        DescriptorSemanticsError::MultipleExtends { descriptor, count } => {
+            HolonError::MultipleExtends { descriptor: descriptor_label(&descriptor), count }
+        }
+        DescriptorSemanticsError::MultipleDescribedBy { .. } => HolonError::DuplicateError(
+            "DescribedBy".into(),
+            "Expected exactly one descriptor target".into(),
+        ),
+        DescriptorSemanticsError::CyclicExtends { descriptor } => {
+            HolonError::CyclicExtends { descriptor: descriptor_label(&descriptor) }
+        }
     }
 }
 
@@ -58,15 +98,8 @@ pub(crate) fn equals_or_extends(
     candidate: &HolonReference,
     anchor: &HolonReference,
 ) -> Result<bool, HolonError> {
-    let anchor_id = anchor.reference_id_string();
-
-    for ancestor in walk_extends_chain(candidate) {
-        if ancestor?.reference_id_string() == anchor_id {
-            return Ok(true);
-        }
-    }
-
-    Ok(false)
+    descriptor_semantics::equals_or_extends(&HolonReferenceGraph, candidate, anchor)
+        .map_err(map_semantics_error)
 }
 
 /// Computes the effective descriptor lineage for a holon(per MAP Type System) v1.2.
@@ -77,29 +110,17 @@ pub(crate) fn equals_or_extends(
 pub fn effective_descriptor_lineage(
     holon: &HolonReference,
 ) -> Result<Vec<HolonReference>, HolonError> {
-    let Some(described_by_descriptor) = described_by_descriptor(holon)? else {
-        return ancestors(holon);
-    };
-
-    if is_type_descriptor_descriptor(&described_by_descriptor)? {
-        let mut lineage = ancestors(holon)?;
-        append_unique(&mut lineage, ancestors(&described_by_descriptor)?);
-        return Ok(lineage);
-    }
-
-    ancestors(&described_by_descriptor)
+    descriptor_semantics::effective_descriptor_lineage(&HolonReferenceGraph, holon)
+        .map_err(map_semantics_error)
 }
 
 pub(crate) fn described_by_descriptor(
     holon: &HolonReference,
 ) -> Result<Option<HolonReference>, HolonError> {
-    let collection_arc = holon.related_holons(CoreRelationshipTypeName::DescribedBy)?;
-    let collection = collection_arc.read().map_err(lock_error)?;
-    let members = collection.get_members();
-
-    match members.as_slice() {
+    let targets = HolonReferenceGraph.described_by_targets(holon)?;
+    match targets.as_slice() {
         [] => Ok(None),
-        [single] => Ok(Some(single.clone())),
+        [descriptor] => Ok(Some(descriptor.clone())),
         _ => Err(HolonError::DuplicateError(
             "DescribedBy".into(),
             "Expected exactly one descriptor target".into(),
@@ -113,16 +134,6 @@ fn is_type_descriptor_descriptor(descriptor: &HolonReference) -> Result<bool, Ho
         Some(BaseValue::StringValue(type_name)) => Ok(type_name == expected),
         Some(BaseValue::EnumValue(type_name)) => Ok(type_name.0 == expected),
         Some(_) | None => Ok(false),
-    }
-}
-
-fn append_unique(lineage: &mut Vec<HolonReference>, additional: Vec<HolonReference>) {
-    let mut seen = lineage.iter().map(HolonReference::reference_id_string).collect::<HashSet<_>>();
-
-    for descriptor in additional {
-        if seen.insert(descriptor.reference_id_string()) {
-            lineage.push(descriptor);
-        }
     }
 }
 
@@ -165,47 +176,21 @@ pub(crate) fn flatten_related_members(
     start: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
 ) -> Result<Vec<HolonReference>, HolonError> {
-    let mut members = Vec::new();
-    let mut seen = HashSet::new();
-
-    for ancestor in walk_extends_chain(start) {
-        let ancestor = ancestor?;
-        let collection_arc = ancestor.related_holons(relationship_name.clone())?;
-        let collection = collection_arc.read().map_err(lock_error)?;
-
-        for member in collection.get_members() {
-            if seen.insert(member.reference_id_string()) {
-                members.push(member.clone());
-            }
-        }
-    }
-
-    Ok(members)
+    descriptor_semantics::flatten_related_members(&HolonReferenceGraph, start, &relationship_name)
+        .map_err(map_semantics_error)
 }
 
 /// Lazy iterator over a descriptor's `Extends` lineage.
 ///
-/// State model:
-/// - `next` is the next descriptor to yield
-/// - `pending_error` stores a structural error discovered while preparing the
-///   next step
-/// - `visited` tracks already-yielded descriptors for cycle detection
-/// - `finished` marks terminal exhaustion after either the root or an error
+/// Traversal state and structural policy are owned by `descriptor_semantics`;
+/// this wrapper preserves the established runtime iterator and `HolonError` API.
 pub struct ExtendsIter {
-    next: Option<HolonReference>,
-    pending_error: Option<HolonError>,
-    visited: HashSet<String>,
-    finished: bool,
+    traversal: SemanticExtendsTraversal<HolonReference, String, HolonError>,
 }
 
 impl ExtendsIter {
     fn new(start: &HolonReference) -> Self {
-        Self {
-            next: Some(start.clone()),
-            pending_error: None,
-            visited: HashSet::new(),
-            finished: false,
-        }
+        Self { traversal: SemanticExtendsTraversal::new(start.clone()) }
     }
 }
 
@@ -213,47 +198,11 @@ impl Iterator for ExtendsIter {
     type Item = Result<HolonReference, HolonError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Terminal state: once the chain is exhausted or an error has been
-        // emitted, iteration stays closed.
-        if self.finished {
-            return None;
-        }
-
-        // Deferred error emission preserves the current item for callers that
-        // intentionally stop early (for example, first-match inheritance lookups).
-        if let Some(error) = self.pending_error.take() {
-            self.finished = true;
-            return Some(Err(error));
-        }
-
-        let current = self.next.take()?;
-        // Cycle detection relies on reference_id_string() being a stable,
-        // collision-resistant identity for each concrete holon reference. Do
-        // not implement reference_id_string() with lossy display fallbacks such
-        // as "<invalid utf-8>" for binary saved IDs.
-        self.visited.insert(current.reference_id_string());
-
-        // Resolve the next step after capturing the current item. This keeps
-        // the iterator self-first while still surfacing cycles and
-        // multiple-parent structures on the following call.
-        match extends_parent(&current) {
-            Ok(Some(parent)) => {
-                if self.visited.contains(&parent.reference_id_string()) {
-                    self.pending_error =
-                        Some(HolonError::CyclicExtends { descriptor: descriptor_label(&parent) });
-                } else {
-                    self.next = Some(parent);
-                }
-            }
-            Ok(None) => {
-                self.finished = true;
-            }
-            Err(error) => {
-                self.pending_error = Some(error);
-            }
-        }
-
-        Some(Ok(current))
+        self.traversal
+            .next_with(HolonReference::reference_id_string, |current| {
+                HolonReferenceGraph.extends_targets(current)
+            })
+            .map(|result| result.map_err(map_semantics_error))
     }
 }
 

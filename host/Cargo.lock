@@ -1897,6 +1897,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "descriptor_semantics"
+version = "0.1.0"
+
+[[package]]
 name = "diatomic-waker"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4080,6 +4084,7 @@ dependencies = [
  "base_types",
  "core_types",
  "derive-new",
+ "descriptor_semantics",
  "quick_cache",
  "serde",
  "serde_json",

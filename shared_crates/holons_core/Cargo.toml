@@ -11,6 +11,7 @@ name = "holons_core"
 # only used by holons_core
 quick_cache = { version = "0.6.14", default-features = false }
 serde_json = { workspace = true }
+descriptor_semantics = { path = "../descriptor_semantics" }
 
 
 # General dev-dependencies (platform-agnostic)
