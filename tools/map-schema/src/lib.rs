@@ -31,7 +31,7 @@ pub mod tdl_compiler;
 mod test_support;
 
 use crate::{
-    diagnostics::{format_diagnostics, Diagnostic},
+    diagnostics::{format_diagnostics, Diagnostic, DiagnosticKind, DiagnosticLayer},
     literal_bridge::{json_map_to_literal_object, render_literal_value},
     loader_ir::{LoaderDocument, LoaderHolon, LoaderMeta, LoaderReference, LoaderRelationship},
     schema_index::SymbolIndex,
@@ -207,10 +207,7 @@ enum InputFormat {
 
 fn load_valid_semantic_model(inputs: &[PathBuf], side: &str) -> Result<SemanticModel> {
     let (model, diagnostics) = match detect_input_format(inputs)? {
-        InputFormat::Json => {
-            let lowered = lower_inputs_to_schema_ir(inputs)?;
-            (lowered.global_model, lowered.diagnostics)
-        }
+        InputFormat::Json => load_json_semantic_model(inputs)?,
         InputFormat::Tdl => crate::tdl_compiler::load_semantic_model(inputs)?,
     };
 
@@ -223,6 +220,17 @@ fn load_valid_semantic_model(inputs: &[PathBuf], side: &str) -> Result<SemanticM
             format_diagnostics(&diagnostics)
         ))
     }
+}
+
+fn load_json_semantic_model(inputs: &[PathBuf]) -> Result<(SemanticModel, Vec<Diagnostic>)> {
+    let files = collect_input_files(inputs)?;
+    let (parsed, diagnostics) = parse_files_for_validation(&files)?;
+    if !diagnostics.is_empty() {
+        return Ok((SemanticModel::new(), diagnostics));
+    }
+
+    let lowered = lower_parsed_files_to_schema_ir(parsed)?;
+    Ok((lowered.global_model, lowered.diagnostics))
 }
 
 fn detect_input_format(inputs: &[PathBuf]) -> Result<InputFormat> {
@@ -654,16 +662,66 @@ fn parse_files(discovered: &[DiscoveredFile]) -> Result<Vec<ParsedFile>> {
     Ok(parsed)
 }
 
+fn parse_files_for_validation(
+    discovered: &[DiscoveredFile],
+) -> Result<(Vec<ParsedFile>, Vec<Diagnostic>)> {
+    let mut parsed = Vec::with_capacity(discovered.len());
+    let mut diagnostics = Vec::new();
+
+    for discovered_file in discovered {
+        let path = &discovered_file.source_path;
+        let raw = fs::read_to_string(path)
+            .with_context(|| format!("reading JSON import file {}", path.display()))?;
+        let import = match parse_json_import(&raw, discovered_file.relative_path.clone()) {
+            Ok(import) => import,
+            Err(diagnostic) => {
+                diagnostics.push(diagnostic);
+                continue;
+            }
+        };
+        let schema_name = infer_schema_name(&import)
+            .with_context(|| format!("inferring schema name for {}", path.display()))?;
+        parsed.push(ParsedFile {
+            relative_path: discovered_file.relative_path.clone(),
+            schema_name,
+            import,
+        });
+    }
+
+    Ok((parsed, diagnostics))
+}
+
 fn parse_import_file_contents(
     raw: &str,
     source_path: &Path,
     relative_path: PathBuf,
 ) -> Result<ParsedFile> {
-    let import: ImportFile = serde_json::from_str(raw)
-        .with_context(|| format!("parsing JSON import file {}", source_path.display()))?;
+    let import = parse_json_import(raw, relative_path.clone())
+        .map_err(|diagnostic| anyhow!(diagnostic.to_string()))?;
     let schema_name = infer_schema_name(&import)
         .with_context(|| format!("inferring schema name for {}", source_path.display()))?;
     Ok(ParsedFile { relative_path, schema_name, import })
+}
+
+fn parse_json_import(
+    raw: &str,
+    relative_path: PathBuf,
+) -> std::result::Result<ImportFile, Diagnostic> {
+    serde_json::from_str::<ImportFile>(raw).map_err(|error| {
+        Diagnostic::error(
+            DiagnosticLayer::Syntax,
+            DiagnosticKind::InvalidSyntax {
+                context: "JSON import".to_string(),
+                message: error.to_string(),
+            },
+            Some(Origin {
+                source_kind: SourceKind::JsonImport,
+                file_path: Some(relative_path),
+                line: u32::try_from(error.line()).ok(),
+                column: u32::try_from(error.column()).ok(),
+            }),
+        )
+    })
 }
 
 fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredJsonProject> {
@@ -2071,6 +2129,23 @@ relationship Broken {
         let rendered = error.to_string();
         assert!(rendered.contains("left inputs are not semantically valid"));
         assert!(rendered.contains("missing required field `TargetType`"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_malformed_json_as_a_syntax_diagnostic() -> Result<()> {
+        let invalid_json_dir = temp_domain_json_dir();
+        write_json_file(&invalid_json_dir.join("malformed-a.json"), "{\n  \"holons\": [\n")?;
+        write_json_file(&invalid_json_dir.join("malformed-b.json"), "{ not-json }\n")?;
+
+        let error = diff_inputs(&[invalid_json_dir], &[source_fixture_dir()]).unwrap_err();
+        let rendered = error.to_string();
+
+        assert!(rendered.contains("left inputs are not semantically valid"), "{rendered}");
+        assert!(rendered.contains("error[syntax]"), "{rendered}");
+        assert!(rendered.contains("malformed-a.json:"), "{rendered}");
+        assert!(rendered.contains("malformed-b.json:"), "{rendered}");
 
         Ok(())
     }

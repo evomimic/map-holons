@@ -1,3 +1,11 @@
+//! TDL source adapter and compiler pipeline.
+//!
+//! This module owns TDL-specific parsing and lowering, but not the meaning of the schema. Parsed
+//! declarations are converted into the canonical [`SemanticModel`], where shared symbol
+//! resolution, normalization, and semantic validation run. Successful models are then projected
+//! into loader JSON. Keeping that boundary explicit allows other authoring and output formats to
+//! share schema semantics without inheriting TDL syntax rules.
+
 use crate::{
     diagnostics::{format_diagnostics, Diagnostic},
     literal_bridge::json_value_to_literal,
@@ -87,6 +95,11 @@ struct TdlDescriptor {
     literal_relationships: Vec<LiteralRelationship>,
 }
 
+/// Compiles all TDL files discovered beneath `inputs` into corresponding loader JSON files.
+///
+/// Compilation is all-or-nothing with respect to diagnostics: no output is written unless the
+/// complete input set parses, resolves, and passes semantic validation. Relative input paths are
+/// retained beneath `out_dir`, with each `.tdl` extension replaced by `.json`.
 pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>> {
     let lowered = lower_inputs_to_schema_ir(inputs)?;
     let compilation = build_compilation(lowered)?;
@@ -112,6 +125,10 @@ pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>
 }
 
 /// Compiles one TDL document provided as a raw string into loader JSON.
+///
+/// `source_name` is retained as diagnostic provenance and loader metadata; it does not need to
+/// identify a file on disk. Syntax or semantic diagnostics are returned as a formatted error and
+/// no JSON is emitted.
 pub fn compile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
     let source_name = source_name.into();
     let parsed = parse_tdl_file(raw, &source_name)
@@ -129,6 +146,11 @@ pub fn compile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Resul
     emit_loader_document_json(&file.document)
 }
 
+/// Checks a project of TDL inputs without emitting loader documents.
+///
+/// Syntax diagnostics are collected across files. Semantic checking begins only when every file
+/// parses, because lowering an incomplete project would turn missing declarations into misleading
+/// reference diagnostics.
 pub fn check_inputs(inputs: &[PathBuf]) -> Result<Vec<Diagnostic>> {
     let (parsed, mut diagnostics) = parse_inputs_for_check(inputs)?;
     if !diagnostics.is_empty() {
@@ -152,7 +174,10 @@ pub fn render_check_output(diagnostics: &[Diagnostic]) -> String {
     }
 }
 
-/// Validates one TDL document provided as a raw string.
+/// Checks one in-memory TDL document without emitting loader JSON.
+///
+/// The supplied source name is used in diagnostic origins in the same way as a discovered relative
+/// file path.
 pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<Vec<Diagnostic>> {
     let source_name = source_name.into();
     let (parsed, mut diagnostics) = parse_input_string_for_check(raw, &source_name);
@@ -165,6 +190,11 @@ pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<
     Ok(diagnostics)
 }
 
+/// Loads TDL inputs into the canonical semantic model used by cross-format operations.
+///
+/// A syntax-invalid project returns an empty model alongside its syntax diagnostics. Callers must
+/// not compare or emit that placeholder model; it exists so diagnostics can remain structured at
+/// the adapter boundary.
 pub(crate) fn load_semantic_model(inputs: &[PathBuf]) -> Result<(SemanticModel, Vec<Diagnostic>)> {
     let (parsed, diagnostics) = parse_inputs_for_check(inputs)?;
     if !diagnostics.is_empty() {
@@ -174,6 +204,7 @@ pub(crate) fn load_semantic_model(inputs: &[PathBuf]) -> Result<(SemanticModel, 
     Ok((lowered.global_model, lowered.diagnostics))
 }
 
+/// Output-ready loader documents paired with any diagnostics found before emission.
 struct Compilation {
     files: Vec<CompiledLoaderFile>,
     diagnostics: Vec<Diagnostic>,
@@ -185,12 +216,17 @@ struct CompiledLoaderFile {
     document: LoaderDocument,
 }
 
+/// One parsed file and the file-scoped semantic model used to preserve output partitioning.
 #[derive(Debug, Clone)]
 struct LoweredTdlFile {
     parsed: ParsedTdlFile,
     schema_model: SemanticModel,
 }
 
+/// Project-wide lowering state shared by validation and per-file emission.
+///
+/// `global_model` and `symbols` provide cross-file resolution, while `files` retain the original
+/// boundaries needed to emit one loader document per source file.
 #[derive(Debug, Clone)]
 struct LoweredTdlProject {
     files: Vec<LoweredTdlFile>,
@@ -199,6 +235,10 @@ struct LoweredTdlProject {
     diagnostics: Vec<Diagnostic>,
 }
 
+/// Parses inputs for compilation, stopping at the first syntax-invalid file.
+///
+/// Compile mode cannot produce a partial output set, so syntax diagnostics are promoted into the
+/// operation-level error channel here.
 fn parse_inputs(inputs: &[PathBuf]) -> Result<Vec<ParsedTdlFile>> {
     let files = collect_tdl_files(inputs)?;
     let mut parsed = Vec::with_capacity(files.len());
@@ -213,6 +253,10 @@ fn parse_inputs(inputs: &[PathBuf]) -> Result<Vec<ParsedTdlFile>> {
     Ok(parsed)
 }
 
+/// Parses every discovered file and accumulates syntax diagnostics for authoring feedback.
+///
+/// Successfully parsed files are returned only to support the clean-input path. Callers must not
+/// lower them when `diagnostics` is non-empty because they do not represent the complete project.
 fn parse_inputs_for_check(inputs: &[PathBuf]) -> Result<(Vec<ParsedTdlFile>, Vec<Diagnostic>)> {
     let files = collect_tdl_files(inputs)?;
     let mut parsed = Vec::with_capacity(files.len());
@@ -309,6 +353,7 @@ fn normalize_relative_path(path: &Path) -> String {
 
 type ParseResult<T> = std::result::Result<T, TdlParseError>;
 
+/// A syntax failure with its exact TDL source location, before conversion to shared diagnostics.
 #[derive(Debug, Clone)]
 struct TdlParseError {
     kind: DiagnosticKind,
@@ -326,6 +371,10 @@ fn parse_tdl_file(raw: &str, relative_path: &Path) -> ParseResult<ParsedTdlFile>
     parser.parse_file()
 }
 
+/// Stateful, line-oriented parser for one TDL source document.
+///
+/// The parser builds a TDL-shaped representation only. Name resolution and schema semantics are
+/// intentionally deferred until all project files have been lowered into the canonical IR.
 struct Parser<'a> {
     lines: Vec<&'a str>,
     index: usize,
@@ -391,6 +440,10 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses exactly one schema declaration plus any number of descriptor declarations.
+    ///
+    /// Descriptor order is preserved for deterministic lowering. Nested declarations accumulated
+    /// in `pending_descriptors` are promoted to the same file-level descriptor stream.
     fn parse_file(&mut self) -> ParseResult<ParsedTdlFile> {
         let file_path = self.relative_path.clone();
         let origin = Origin {
@@ -466,16 +519,23 @@ impl<'a> Parser<'a> {
                         .extend(properties.iter().map(|(key, value)| (key.clone(), value.clone())));
                 } else if current == "relationships {" {
                     self.consume_trimmed();
-                    for line in self.parse_reference_block()? {
-                        if let Some(relationship) =
-                            parse_literal_relationship_line(&line, self.current_origin())?
-                        {
+                    for source_line in self.parse_reference_block()? {
+                        if let Some(relationship) = parse_literal_relationship_line(
+                            &source_line.text,
+                            source_line.origin.clone(),
+                        )? {
                             literal_relationships.push(relationship);
                         } else {
-                            return Err(self.syntax_message(
-                                "schema relationships",
-                                format!("unexpected schema relationship line: {}", line),
-                            ));
+                            return Err(TdlParseError {
+                                kind: DiagnosticKind::InvalidSyntax {
+                                    context: "schema relationships".to_string(),
+                                    message: format!(
+                                        "unexpected schema relationship line: {}",
+                                        source_line.text
+                                    ),
+                                },
+                                origin: source_line.origin,
+                            });
                         }
                     }
                 } else if current == "allows_additional_properties" {
@@ -641,13 +701,14 @@ impl<'a> Parser<'a> {
                     }
                     "relationships {" => {
                         self.consume_trimmed();
-                        for line in self.parse_reference_block()? {
-                            if let Some(relationship) =
-                                parse_literal_relationship_line(&line, self.current_origin())?
-                            {
+                        for source_line in self.parse_reference_block()? {
+                            if let Some(relationship) = parse_literal_relationship_line(
+                                &source_line.text,
+                                source_line.origin,
+                            )? {
                                 descriptor.literal_relationships.push(relationship);
                             } else {
-                                descriptor.instance_relationships.push(line);
+                                descriptor.instance_relationships.push(source_line.text);
                             }
                         }
                     }
@@ -753,13 +814,13 @@ impl<'a> Parser<'a> {
                     descriptor.instance_properties.extend(instance_properties);
                 } else if current == "relationships {" {
                     self.consume_trimmed();
-                    for line in self.parse_reference_block()? {
+                    for source_line in self.parse_reference_block()? {
                         if let Some(relationship) =
-                            parse_literal_relationship_line(&line, self.current_origin())?
+                            parse_literal_relationship_line(&source_line.text, source_line.origin)?
                         {
                             descriptor.literal_relationships.push(relationship);
                         } else {
-                            descriptor.instance_relationships.push(line);
+                            descriptor.instance_relationships.push(source_line.text);
                         }
                     }
                 } else if current.starts_with("extends ") {
@@ -849,7 +910,11 @@ impl<'a> Parser<'a> {
         Ok(DescriptorHeader { description, display_name, display_name_plural, type_name_plural })
     }
 
-    fn parse_reference_block(&mut self) -> ParseResult<Vec<String>> {
+    /// Captures reference-like block entries together with their authored locations.
+    ///
+    /// Origins must be snapshotted before consuming each line. Downstream literal parsing can then
+    /// report the offending line rather than whichever line the parser cursor reached afterward.
+    fn parse_reference_block(&mut self) -> ParseResult<Vec<SourceLine>> {
         let mut refs = Vec::new();
         while self.skip_blank_lines() {
             let current = self.peek_trimmed().unwrap().to_string();
@@ -857,7 +922,7 @@ impl<'a> Parser<'a> {
                 self.consume_trimmed();
                 break;
             }
-            refs.push(current);
+            refs.push(SourceLine { text: current, origin: self.current_origin() });
             self.consume_trimmed();
         }
         Ok(refs)
@@ -937,6 +1002,12 @@ impl<'a> Parser<'a> {
             Err(self.missing_syntax("block", "{"))
         }
     }
+}
+
+/// Source text whose origin remains stable after the parser advances.
+struct SourceLine {
+    text: String,
+    origin: Origin,
 }
 
 #[derive(Debug, Clone)]
@@ -1320,10 +1391,16 @@ fn normalize_relationship_pair_targets(descriptor: &mut TdlDescriptor) {
     }
 }
 
+/// Runs the strict parse-and-lower path used by compilation.
 fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredTdlProject> {
     lower_parsed_files_to_schema_ir(parse_inputs(inputs)?)
 }
 
+/// Lowers a complete parsed project and performs project-wide semantic validation.
+///
+/// Validation uses a normalized clone so validation-only canonicalization cannot alter the model
+/// later emitted to loader JSON. Per-file models resolve through the global symbol index after
+/// validation, preserving source partitioning while allowing cross-file references.
 fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<LoweredTdlProject> {
     let mut files = Vec::new();
     let mut global_model = SemanticModel::new();
@@ -1350,6 +1427,10 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<Lowered
     Ok(LoweredTdlProject { files, global_model, symbols, diagnostics })
 }
 
+/// Projects validated semantic models into loader documents without reinterpreting TDL syntax.
+///
+/// Cross-file references determine each document's `load_with` metadata. The emitted-key lookup
+/// ensures references use the same canonical keys as their projected loader holons.
 fn build_compilation(lowered: LoweredTdlProject) -> Result<Compilation> {
     let LoweredTdlProject { files, global_model: _global_model, symbols, diagnostics } = lowered;
     let schema_models = files.iter().map(|file| &file.schema_model).collect::<Vec<_>>();
@@ -1389,6 +1470,7 @@ fn current_timestamp_rfc3339() -> Result<String> {
     Ok(OffsetDateTime::now_utc().format(&Rfc3339)?)
 }
 
+/// Converts one TDL-shaped parse result into representation-neutral schema IR.
 fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
     let mut model = SemanticModel::new();
     model.push_schema(Schema {
@@ -1416,6 +1498,10 @@ fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
     Ok(model)
 }
 
+/// Lowers TDL descriptor sugar and defaults into explicit canonical descriptor fields.
+///
+/// This function may encode TDL defaults, such as implicit `Extends` targets, but semantic
+/// validity remains the responsibility of the shared validator operating on the resulting IR.
 fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<TypeDescriptor> {
     let kind =
         if descriptor.kind == DescriptorKind::HolonType && descriptor.name == "TypeDescriptor" {
@@ -1830,6 +1916,22 @@ mod tests {
     fn checks_core_schema_corpus_without_diagnostics() -> Result<()> {
         let diagnostics = check_inputs(&[fixture_dir()])?;
         assert!(diagnostics.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn relationship_literal_syntax_diagnostic_uses_the_authored_line() -> Result<()> {
+        let diagnostics = check_input_string(
+            "schema Origin Test {\n}\n\nholon Thing {\n  relationships {\n    Broken -> [\"missing-end\"\n  }\n}\n",
+            "relationship-origin.tdl",
+        )?;
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].layer, DiagnosticLayer::Syntax);
+        assert!(matches!(diagnostics[0].kind, DiagnosticKind::InvalidSyntax { .. }));
+        assert_eq!(diagnostics[0].origin.as_ref().and_then(|origin| origin.line), Some(6));
+        assert_eq!(diagnostics[0].origin.as_ref().and_then(|origin| origin.column), Some(1));
+
         Ok(())
     }
 
