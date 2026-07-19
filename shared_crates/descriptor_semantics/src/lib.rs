@@ -11,7 +11,10 @@ pub mod inheritance;
 pub mod value;
 
 pub use conformance::{
-    property_requirement, validate_cardinality, CardinalityViolation, PropertyRequirement,
+    property_requirement, validate_cardinality, validate_holon_conformance,
+    value_policy_for_type_kind, CardinalityViolation, ConformanceValue, ConformanceViolation,
+    HolonConformance, PropertyDeclaration, PropertyRequirement, PropertyValue,
+    RelationshipDeclaration, RelationshipValue, ValuePolicy,
 };
 pub use graph::{DescriptorGraph, DescriptorSemanticsError};
 pub use inheritance::{

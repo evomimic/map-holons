@@ -123,6 +123,11 @@ impl CanonicalDescriptorGraph {
         self.nodes_by_key.get(key).copied()
     }
 
+    /// Iterates all canonical graph nodes in deterministic model order.
+    pub fn nodes(&self) -> impl Iterator<Item = CanonicalNodeId> + '_ {
+        (0..self.holons.len()).map(CanonicalNodeId)
+    }
+
     /// Returns generic holon data for a graph node.
     pub fn holon(&self, node: CanonicalNodeId) -> Option<&CanonicalHolon> {
         self.holons.get(node.0)

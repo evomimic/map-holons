@@ -93,6 +93,22 @@ pub enum DiagnosticKind {
         target: Option<String>,
         message: String,
     },
+    /// A holon omits a property required by its effective descriptor.
+    MissingConformanceProperty { holon: String, property: String },
+    /// A closed descriptor does not declare an authored property.
+    AdditionalConformanceProperty { holon: String, property: String },
+    /// A property value does not satisfy its resolved value descriptor.
+    InvalidConformanceValue { holon: String, property: String, value: String, expected: String },
+    /// A closed descriptor does not declare an authored relationship.
+    AdditionalConformanceRelationship { holon: String, relationship: String },
+    /// A relationship target collection violates its descriptor-provided bounds.
+    ConformanceRelationshipCardinality {
+        holon: String,
+        relationship: String,
+        actual: usize,
+        minimum: usize,
+        maximum: usize,
+    },
     /// No effective key rule could be derived for a descriptor key.
     MissingEffectiveKeyRule { descriptor: String },
     /// A resolved effective key rule is not one of the supported canonical rules.
@@ -231,6 +247,29 @@ impl fmt::Display for DiagnosticKind {
                 }
                 write!(f, ": {message}")
             }
+            Self::MissingConformanceProperty { holon, property } => {
+                write!(f, "holon `{holon}` is missing required property `{property}`")
+            }
+            Self::AdditionalConformanceProperty { holon, property } => {
+                write!(f, "holon `{holon}` has undeclared property `{property}`")
+            }
+            Self::InvalidConformanceValue { holon, property, value, expected } => write!(
+                f,
+                "holon `{holon}` property `{property}` has invalid value `{value}`; expected {expected}"
+            ),
+            Self::AdditionalConformanceRelationship { holon, relationship } => {
+                write!(f, "holon `{holon}` has undeclared relationship `{relationship}`")
+            }
+            Self::ConformanceRelationshipCardinality {
+                holon,
+                relationship,
+                actual,
+                minimum,
+                maximum,
+            } => write!(
+                f,
+                "holon `{holon}` has {actual} `{relationship}` targets; expected {minimum}..{maximum}"
+            ),
             Self::MissingEffectiveKeyRule { descriptor } => {
                 write!(f, "descriptor `{descriptor}` has no effective key rule")
             }
