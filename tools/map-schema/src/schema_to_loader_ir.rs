@@ -105,7 +105,7 @@ fn lower_schema_holon(schema: &Schema) -> LoaderHolon {
     if !schema.literal_properties.is_empty() || !schema.literal_relationships.is_empty() {
         return LoaderHolon {
             key: schema.name.clone(),
-            descriptor_type: "Schema.HolonType".to_string(),
+            descriptor_type: descriptor_type(&schema.described_by, "Schema.HolonType"),
             properties: if schema.literal_properties.is_empty() {
                 let mut properties = serde_json::Map::new();
                 properties.insert("schema_name".to_string(), json!(schema.name));
@@ -158,7 +158,7 @@ fn lower_schema_holon_semantic(schema: &Schema) -> LoaderHolon {
 
     LoaderHolon {
         key: schema.name.clone(),
-        descriptor_type: "Schema.HolonType".to_string(),
+        descriptor_type: descriptor_type(&schema.described_by, "Schema.HolonType"),
         properties,
         relationships,
     }
@@ -171,7 +171,7 @@ fn lower_descriptor_holon(
     if !descriptor.literal_properties.is_empty() || !descriptor.literal_relationships.is_empty() {
         return LoaderHolon {
             key: descriptor.key.clone(),
-            descriptor_type: "TypeDescriptor.HolonType".to_string(),
+            descriptor_type: descriptor_type(&descriptor.described_by, "TypeDescriptor.HolonType"),
             properties: lower_descriptor_properties(descriptor),
             relationships: lower_descriptor_relationships(descriptor, emitted_key_lookup),
         };
@@ -186,10 +186,17 @@ fn lower_descriptor_holon_semantic(
 ) -> LoaderHolon {
     LoaderHolon {
         key: descriptor.key.clone(),
-        descriptor_type: "TypeDescriptor.HolonType".to_string(),
+        descriptor_type: descriptor_type(&descriptor.described_by, "TypeDescriptor.HolonType"),
         properties: lower_descriptor_properties_semantic(descriptor),
         relationships: lower_descriptor_relationships_semantic(descriptor, emitted_key_lookup),
     }
+}
+
+fn descriptor_type(references: &[SemanticReference], fallback: &str) -> String {
+    references
+        .first()
+        .map(|reference| reference.target.clone())
+        .unwrap_or_else(|| fallback.to_string())
 }
 
 fn lower_descriptor_properties(descriptor: &TypeDescriptor) -> serde_json::Map<String, Value> {

@@ -960,6 +960,12 @@ fn semantic_model_from_loader_document(
             .map(|holon| holon.key.clone())
             .unwrap_or_else(|| file.schema_name.clone()),
         origin: origin.clone(),
+        described_by: vec![SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            schema_holon
+                .map(|holon| holon.descriptor_type.clone())
+                .unwrap_or_else(|| "Schema.HolonType".to_string()),
+        )],
         dependencies,
         literal_properties: schema_holon
             .map(|holon| json_map_to_literal_object(&holon.properties))
@@ -1036,6 +1042,10 @@ fn semantic_descriptor_from_holon(
     let kind = semantic_kind(holon);
     let mut descriptor =
         TypeDescriptor::new(holon.key.clone(), descriptor_name(holon), kind, schema_name, origin);
+    descriptor.described_by.push(SemanticReference::unresolved(
+        ReferenceRole::DescribedBy,
+        holon.descriptor_type.clone(),
+    ));
     descriptor.header = semantic_header(&holon.properties);
     descriptor.literal_properties = json_map_to_literal_object(&holon.properties);
     descriptor.is_abstract = bool_property(&holon.properties, "is_abstract_type");
@@ -2003,6 +2013,57 @@ mod tests {
             tdl.contains("schema BookAuthorInverseSchema {\n  depends_on MAP Core Schema-v0.0.7")
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn json_lowering_preserves_descriptor_identity_and_unvalidated_property_values() -> Result<()> {
+        let input_dir = temp_domain_json_dir();
+        write_json_file(
+            &input_dir.join("invalid-type-kind.json"),
+            r#"{
+  "meta": { "load_with": [] },
+  "holons": [
+    {
+      "key": "ExampleSchema",
+      "type": "Schema.HolonType",
+      "properties": { "schema_name": "ExampleSchema" },
+      "relationships": []
+    },
+    {
+      "key": "Person.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Person",
+        "instance_type_kind": "TypeKind.HolonFoo"
+      },
+      "relationships": [
+        { "name": "ComponentOf", "target": { "$ref": "ExampleSchema" } }
+      ]
+    }
+  ]
+}"#,
+        )?;
+
+        let lowered = lower_inputs_to_schema_ir(&[input_dir])?;
+        let person = lowered
+            .global_model
+            .canonical_holons()
+            .into_iter()
+            .find(|holon| holon.key == "Person.HolonType")
+            .expect("Person canonical holon");
+
+        assert_eq!(
+            person.described_by,
+            vec![map_schema_semantic::CanonicalReference {
+                target: "TypeDescriptor.HolonType".to_string(),
+                resolved: None,
+            }]
+        );
+        assert_eq!(
+            person.properties.get("instance_type_kind").and_then(|value| value.as_str()),
+            Some("TypeKind.HolonFoo")
+        );
         Ok(())
     }
 

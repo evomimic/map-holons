@@ -880,6 +880,7 @@ mod tests {
             name: "Test Schema".to_string(),
             key: "Test Schema".to_string(),
             origin: origin(),
+            described_by: Vec::new(),
             dependencies: Vec::new(),
             literal_properties: crate::literal_value::LiteralObject::new(),
             literal_relationships: Vec::new(),

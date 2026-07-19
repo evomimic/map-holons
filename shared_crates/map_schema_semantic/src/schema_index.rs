@@ -202,8 +202,9 @@ impl SymbolIndex {
         for schema in &model.schemas {
             unresolved.extend(
                 schema
-                    .dependencies
+                    .described_by
                     .iter()
+                    .chain(schema.dependencies.iter())
                     .filter(|reference| reference.resolved.is_none())
                     .cloned(),
             );
@@ -229,7 +230,7 @@ impl SymbolIndex {
         let mut diagnostics = Vec::new();
 
         for schema in &model.schemas {
-            for reference in &schema.dependencies {
+            for reference in schema.described_by.iter().chain(schema.dependencies.iter()) {
                 push_reference_diagnostic(
                     &mut diagnostics,
                     self,
@@ -310,6 +311,7 @@ fn push_reference_diagnostic(
 
 fn expected_kinds(role: ReferenceRole) -> Vec<DescriptorKind> {
     match role {
+        ReferenceRole::DescribedBy => Vec::new(),
         ReferenceRole::ComponentOf | ReferenceRole::DependsOn => vec![DescriptorKind::Schema],
         ReferenceRole::SourceType | ReferenceRole::TargetType => vec![
             DescriptorKind::TypeDescriptor,
@@ -358,6 +360,7 @@ mod tests {
             name: "Test Schema".to_string(),
             key: "Test Schema".to_string(),
             origin,
+            described_by: Vec::new(),
             dependencies: Vec::new(),
             literal_properties: LiteralObject::new(),
             literal_relationships: Vec::new(),

@@ -1477,6 +1477,10 @@ fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
         name: file.schema.name.clone(),
         key: file.schema.name.clone(),
         origin: file.schema.origin.clone(),
+        described_by: vec![SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            "Schema.HolonType",
+        )],
         dependencies: file
             .schema
             .dependencies
@@ -1517,6 +1521,10 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
         descriptor.origin.clone(),
     );
     lowered.header = descriptor.header.clone();
+    lowered.described_by.push(SemanticReference::unresolved(
+        ReferenceRole::DescribedBy,
+        "TypeDescriptor.HolonType",
+    ));
     lowered.is_abstract = descriptor.is_abstract;
     lowered.literal_properties = descriptor.literal_properties.clone();
     lowered.literal_relationships = descriptor.literal_relationships.clone();
