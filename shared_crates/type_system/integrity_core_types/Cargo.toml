@@ -10,3 +10,6 @@ hex = "0.4"
 thiserror = "2"
 [dependencies.base_types]
 path = "../base_types"
+
+[dev-dependencies]
+serde_json = "1"
