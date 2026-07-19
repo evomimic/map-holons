@@ -273,6 +273,138 @@ export type ValidationErrorWire =
   | { WasmError: string }
   | { JsonSchemaError: string };
 
+export type PvlFieldWire =
+  | 'PropertyName'
+  | 'PropertyValueDiscriminant'
+  | 'PropertyValue'
+  | 'HolonNodeEntry'
+  | 'PropertyMap'
+  | 'TagHeader'
+  | 'RelationshipName'
+  | 'CanonicalKey'
+  | 'PayloadVersion'
+  | 'PayloadFlags'
+  | 'OutboundProxyId'
+  | 'OccurrenceId'
+  | 'PropertySectionType'
+  | 'PropertySection';
+
+export type PvlMalformedReasonWire =
+  | 'DecodeFailed'
+  | 'InvalidFieldCombination'
+  | 'NonCanonicalEncoding'
+  | { MissingField: PvlFieldWire }
+  | { InvalidDiscriminant: PvlFieldWire }
+  | { InvalidUtf8: PvlFieldWire }
+  | { InvalidLength: PvlFieldWire };
+
+export type PvlViolationWire =
+  | { MalformedHolonNode: { reason: PvlMalformedReasonWire } }
+  | { MalformedSmartLink: { reason: PvlMalformedReasonWire } }
+  | {
+      UnsupportedNativeValue: {
+        property_name: PropertyName | null;
+        value_kind: string;
+      };
+    }
+  | { EmptyEnumValue: { property_name: PropertyName } }
+  | {
+      MalformedPropertyValue: {
+        property_name: PropertyName;
+        reason: PvlMalformedReasonWire;
+      };
+    }
+  | { HolonNodeTooLarge: { actual_bytes: number; max_bytes: number } }
+  | { TooManyProperties: { actual_count: number; max_count: number } }
+  | { PropertyNameTooLong: { actual_bytes: number; max_bytes: number } }
+  | {
+      StringValueTooLarge: {
+        property_name: PropertyName;
+        actual_bytes: number;
+        max_bytes: number;
+      };
+    }
+  | {
+      EnumValueTooLarge: {
+        property_name: PropertyName;
+        actual_bytes: number;
+        max_bytes: number;
+      };
+    }
+  | {
+      BytesValueTooLarge: {
+        property_name: PropertyName;
+        actual_bytes: number;
+        max_bytes: number;
+      };
+    }
+  | { CanonicalKeyTooLarge: { actual_bytes: number; max_bytes: number } }
+  | {
+      CollectionTooLarge: {
+        property_name: PropertyName;
+        actual_items: number;
+        max_items: number;
+      };
+    }
+  | {
+      ValueNestingTooDeep: {
+        property_name: PropertyName;
+        actual_depth: number;
+        max_depth: number;
+      };
+    }
+  | { SmartLinkTagTooLarge: { actual_bytes: number; max_bytes: number } }
+  | { RelationshipNameTooLong: { actual_bytes: number; max_bytes: number } }
+  | {
+      IdentifierTooLong: {
+        field_name: string;
+        identifier_kind: string;
+        actual_bytes: number;
+        max_bytes: number;
+      };
+    }
+  | { ValidationDependencyLimitExceeded: { requested: number; max: number } }
+  | 'EmptyPropertyName'
+  | { InvalidPropertyName: { reason: string } }
+  | 'EmptyRelationshipName'
+  | { InvalidRelationshipName: { reason: string } }
+  | {
+      HeterogeneousCollection: {
+        property_name: PropertyName;
+        expected_kind: string;
+        actual_kind: string;
+        item_index: number;
+      };
+    }
+  | {
+      InvalidIdentifier: {
+        field_name: string;
+        identifier_kind: string;
+        reason: string;
+      };
+    }
+  | { EmptyIdentifier: { field_name: string; identifier_kind: string } }
+  | { InvalidSmartLinkEndpoint: { endpoint: string; reason: string } }
+  | {
+      UnsupportedSmartLinkEndpointKind: {
+        endpoint: string;
+        endpoint_kind: string;
+      };
+    }
+  | {
+      InvalidUpdateTarget: {
+        expected_entry_kind: string;
+        actual_entry_kind: string;
+      };
+    }
+  | { ImmutableNativeFieldChanged: { field_name: string } }
+  | {
+      InvalidDeleteTarget: {
+        expected_target_kind: string;
+        actual_target_kind: string;
+      };
+    };
+
 /**
  * Wire-safe `HolonError`.
  *
@@ -322,6 +454,7 @@ export type HolonErrorWire =
   | { MissingStagedCollection: string }
   | { NotAccessible: [string, string] }
   | { NotImplemented: string }
+  | { PvlViolation: PvlViolationWire }
   | { RecordConversion: string }
   | {
       ReferenceBindingFailed: {
@@ -371,6 +504,23 @@ const VALIDATION_STATES = new Set<ValidationState>([
   'ValidationRequired',
   'Validated',
   'Invalid',
+]);
+
+const PVL_FIELDS = new Set<PvlFieldWire>([
+  'PropertyName',
+  'PropertyValueDiscriminant',
+  'PropertyValue',
+  'HolonNodeEntry',
+  'PropertyMap',
+  'TagHeader',
+  'RelationshipName',
+  'CanonicalKey',
+  'PayloadVersion',
+  'PayloadFlags',
+  'OutboundProxyId',
+  'OccurrenceId',
+  'PropertySectionType',
+  'PropertySection',
 ]);
 
 const RESPONSE_STATUS_CODES = new Set<ResponseStatusCode>([
@@ -625,6 +775,267 @@ export function isValidationErrorWire(value: unknown): value is ValidationErrorW
   );
 }
 
+export function isPvlFieldWire(value: unknown): value is PvlFieldWire {
+  return typeof value === 'string' && PVL_FIELDS.has(value as PvlFieldWire);
+}
+
+export function isPvlMalformedReasonWire(
+  value: unknown,
+): value is PvlMalformedReasonWire {
+  return (
+    value === 'DecodeFailed' ||
+    value === 'InvalidFieldCombination' ||
+    value === 'NonCanonicalEncoding' ||
+    isTaggedValue(value, 'MissingField', isPvlFieldWire) ||
+    isTaggedValue(value, 'InvalidDiscriminant', isPvlFieldWire) ||
+    isTaggedValue(value, 'InvalidUtf8', isPvlFieldWire) ||
+    isTaggedValue(value, 'InvalidLength', isPvlFieldWire)
+  );
+}
+
+function isMalformedPvlPayload(
+  value: unknown,
+): value is { reason: PvlMalformedReasonWire } {
+  return isRecord(value) && isPvlMalformedReasonWire(value['reason']);
+}
+
+function isByteLimitPayload(
+  value: unknown,
+): value is { actual_bytes: number; max_bytes: number } {
+  return (
+    isRecord(value) &&
+    isNumber(value['actual_bytes']) &&
+    isNumber(value['max_bytes'])
+  );
+}
+
+function isPropertyByteLimitPayload(
+  value: unknown,
+): value is {
+  property_name: PropertyName;
+  actual_bytes: number;
+  max_bytes: number;
+} {
+  return (
+    isRecord(value) &&
+    isString(value['property_name']) &&
+    isNumber(value['actual_bytes']) &&
+    isNumber(value['max_bytes'])
+  );
+}
+
+export function isPvlViolationWire(value: unknown): value is PvlViolationWire {
+  return (
+    value === 'EmptyPropertyName' ||
+    value === 'EmptyRelationshipName' ||
+    isTaggedValue(value, 'MalformedHolonNode', isMalformedPvlPayload) ||
+    isTaggedValue(value, 'MalformedSmartLink', isMalformedPvlPayload) ||
+    isTaggedValue(
+      value,
+      'UnsupportedNativeValue',
+      (
+        candidate,
+      ): candidate is {
+        property_name: PropertyName | null;
+        value_kind: string;
+      } =>
+        isRecord(candidate) &&
+        isNullable(candidate['property_name'], isString) &&
+        isString(candidate['value_kind']),
+    ) ||
+    isTaggedValue(
+      value,
+      'EmptyEnumValue',
+      (candidate): candidate is { property_name: PropertyName } =>
+        isRecord(candidate) && isString(candidate['property_name']),
+    ) ||
+    isTaggedValue(
+      value,
+      'MalformedPropertyValue',
+      (
+        candidate,
+      ): candidate is {
+        property_name: PropertyName;
+        reason: PvlMalformedReasonWire;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['property_name']) &&
+        isPvlMalformedReasonWire(candidate['reason']),
+    ) ||
+    isTaggedValue(value, 'HolonNodeTooLarge', isByteLimitPayload) ||
+    isTaggedValue(
+      value,
+      'TooManyProperties',
+      (candidate): candidate is { actual_count: number; max_count: number } =>
+        isRecord(candidate) &&
+        isNumber(candidate['actual_count']) &&
+        isNumber(candidate['max_count']),
+    ) ||
+    isTaggedValue(value, 'PropertyNameTooLong', isByteLimitPayload) ||
+    isTaggedValue(value, 'StringValueTooLarge', isPropertyByteLimitPayload) ||
+    isTaggedValue(value, 'EnumValueTooLarge', isPropertyByteLimitPayload) ||
+    isTaggedValue(value, 'BytesValueTooLarge', isPropertyByteLimitPayload) ||
+    isTaggedValue(value, 'CanonicalKeyTooLarge', isByteLimitPayload) ||
+    isTaggedValue(
+      value,
+      'CollectionTooLarge',
+      (
+        candidate,
+      ): candidate is {
+        property_name: PropertyName;
+        actual_items: number;
+        max_items: number;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['property_name']) &&
+        isNumber(candidate['actual_items']) &&
+        isNumber(candidate['max_items']),
+    ) ||
+    isTaggedValue(
+      value,
+      'ValueNestingTooDeep',
+      (
+        candidate,
+      ): candidate is {
+        property_name: PropertyName;
+        actual_depth: number;
+        max_depth: number;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['property_name']) &&
+        isNumber(candidate['actual_depth']) &&
+        isNumber(candidate['max_depth']),
+    ) ||
+    isTaggedValue(value, 'SmartLinkTagTooLarge', isByteLimitPayload) ||
+    isTaggedValue(value, 'RelationshipNameTooLong', isByteLimitPayload) ||
+    isTaggedValue(
+      value,
+      'IdentifierTooLong',
+      (
+        candidate,
+      ): candidate is {
+        field_name: string;
+        identifier_kind: string;
+        actual_bytes: number;
+        max_bytes: number;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['field_name']) &&
+        isString(candidate['identifier_kind']) &&
+        isNumber(candidate['actual_bytes']) &&
+        isNumber(candidate['max_bytes']),
+    ) ||
+    isTaggedValue(
+      value,
+      'ValidationDependencyLimitExceeded',
+      (candidate): candidate is { requested: number; max: number } =>
+        isRecord(candidate) &&
+        isNumber(candidate['requested']) &&
+        isNumber(candidate['max']),
+    ) ||
+    isTaggedValue(
+      value,
+      'InvalidPropertyName',
+      (candidate): candidate is { reason: string } =>
+        isRecord(candidate) && isString(candidate['reason']),
+    ) ||
+    isTaggedValue(
+      value,
+      'InvalidRelationshipName',
+      (candidate): candidate is { reason: string } =>
+        isRecord(candidate) && isString(candidate['reason']),
+    ) ||
+    isTaggedValue(
+      value,
+      'HeterogeneousCollection',
+      (
+        candidate,
+      ): candidate is {
+        property_name: PropertyName;
+        expected_kind: string;
+        actual_kind: string;
+        item_index: number;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['property_name']) &&
+        isString(candidate['expected_kind']) &&
+        isString(candidate['actual_kind']) &&
+        isNumber(candidate['item_index']),
+    ) ||
+    isTaggedValue(
+      value,
+      'InvalidIdentifier',
+      (
+        candidate,
+      ): candidate is {
+        field_name: string;
+        identifier_kind: string;
+        reason: string;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['field_name']) &&
+        isString(candidate['identifier_kind']) &&
+        isString(candidate['reason']),
+    ) ||
+    isTaggedValue(
+      value,
+      'EmptyIdentifier',
+      (candidate): candidate is { field_name: string; identifier_kind: string } =>
+        isRecord(candidate) &&
+        isString(candidate['field_name']) &&
+        isString(candidate['identifier_kind']),
+    ) ||
+    isTaggedValue(
+      value,
+      'InvalidSmartLinkEndpoint',
+      (candidate): candidate is { endpoint: string; reason: string } =>
+        isRecord(candidate) &&
+        isString(candidate['endpoint']) &&
+        isString(candidate['reason']),
+    ) ||
+    isTaggedValue(
+      value,
+      'UnsupportedSmartLinkEndpointKind',
+      (candidate): candidate is { endpoint: string; endpoint_kind: string } =>
+        isRecord(candidate) &&
+        isString(candidate['endpoint']) &&
+        isString(candidate['endpoint_kind']),
+    ) ||
+    isTaggedValue(
+      value,
+      'InvalidUpdateTarget',
+      (
+        candidate,
+      ): candidate is {
+        expected_entry_kind: string;
+        actual_entry_kind: string;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['expected_entry_kind']) &&
+        isString(candidate['actual_entry_kind']),
+    ) ||
+    isTaggedValue(
+      value,
+      'ImmutableNativeFieldChanged',
+      (candidate): candidate is { field_name: string } =>
+        isRecord(candidate) && isString(candidate['field_name']),
+    ) ||
+    isTaggedValue(
+      value,
+      'InvalidDeleteTarget',
+      (
+        candidate,
+      ): candidate is {
+        expected_target_kind: string;
+        actual_target_kind: string;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['expected_target_kind']) &&
+        isString(candidate['actual_target_kind']),
+    )
+  );
+}
+
 export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
   return (
     isTaggedValue(value, 'CacheError', isString) ||
@@ -687,6 +1098,7 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
     isTaggedValue(value, 'MissingStagedCollection', isString) ||
     isTaggedValue(value, 'NotAccessible', isStringPair) ||
     isTaggedValue(value, 'NotImplemented', isString) ||
+    isTaggedValue(value, 'PvlViolation', isPvlViolationWire) ||
     isTaggedValue(value, 'RecordConversion', isString) ||
     isTaggedValue(
       value,
