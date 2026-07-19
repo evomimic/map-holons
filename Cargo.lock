@@ -4938,6 +4938,9 @@ dependencies = [
 [[package]]
 name = "map_schema_semantic"
 version = "0.1.0"
+dependencies = [
+ "descriptor_semantics",
+]
 
 [[package]]
 name = "matchers"

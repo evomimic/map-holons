@@ -79,6 +79,20 @@ pub enum DiagnosticKind {
     },
     /// An `Extends` chain contains a cycle.
     InheritanceCycle { descriptor: String, target: String },
+    /// A descriptor graph relationship violates kernel-owned structural cardinality.
+    DescriptorRelationshipCardinality {
+        holon: String,
+        relationship: String,
+        actual: usize,
+        maximum: usize,
+    },
+    /// The Canonical Holon IR graph could not provide a target required by descriptor semantics.
+    DescriptorGraphAccess {
+        holon: String,
+        relationship: String,
+        target: Option<String>,
+        message: String,
+    },
     /// No effective key rule could be derived for a descriptor key.
     MissingEffectiveKeyRule { descriptor: String },
     /// A resolved effective key rule is not one of the supported canonical rules.
@@ -203,6 +217,19 @@ impl fmt::Display for DiagnosticKind {
                     f,
                     "descriptor `{descriptor}` participates in an Extends cycle through `{target}`"
                 )
+            }
+            Self::DescriptorRelationshipCardinality { holon, relationship, actual, maximum } => {
+                write!(
+                    f,
+                    "holon `{holon}` has {actual} `{relationship}` targets; expected at most {maximum}"
+                )
+            }
+            Self::DescriptorGraphAccess { holon, relationship, target, message } => {
+                write!(f, "cannot traverse `{relationship}` for holon `{holon}`")?;
+                if let Some(target) = target {
+                    write!(f, " through target `{target}`")?;
+                }
+                write!(f, ": {message}")
             }
             Self::MissingEffectiveKeyRule { descriptor } => {
                 write!(f, "descriptor `{descriptor}` has no effective key rule")
