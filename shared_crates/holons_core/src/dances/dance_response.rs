@@ -226,6 +226,7 @@ impl From<HolonError> for ResponseStatusCode {
             }
             HolonError::MultipleRelatedHolons { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::NoEffectiveKeyRule { .. } => ResponseStatusCode::UnprocessableEntity,
+            HolonError::PvlViolation(_) => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceBindingFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::ReferenceResolutionFailed { .. } => ResponseStatusCode::UnprocessableEntity,
             HolonError::StringLengthOutOfRange { .. } => ResponseStatusCode::UnprocessableEntity,
