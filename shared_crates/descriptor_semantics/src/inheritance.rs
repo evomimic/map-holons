@@ -109,7 +109,104 @@ pub fn equals_or_extends<G: DescriptorGraph>(
     Ok(false)
 }
 
+/// Returns the exactly one concrete type that describes `holon`.
+pub fn describing_type<G: DescriptorGraph>(
+    graph: &G,
+    holon: &G::Node,
+) -> Result<G::Node, DescriptorSemanticsError<G::Error, G::Node>> {
+    let targets = graph.described_by_targets(holon).map_err(DescriptorSemanticsError::Access)?;
+    match targets.as_slice() {
+        [] => Err(DescriptorSemanticsError::MissingDescribedBy { holon: holon.clone() }),
+        [descriptor] => Ok(descriptor.clone()),
+        many => Err(DescriptorSemanticsError::MultipleDescribedBy {
+            holon: holon.clone(),
+            count: many.len(),
+        }),
+    }
+}
+
+/// Resolves the effective key rule governing instances described by `type_descriptor`.
+///
+/// `UsesKeyRule` is inherited self-first through the descriptor's `Extends` lineage. A lineage
+/// node may declare at most one rule.
+pub fn effective_instance_key_rule<G: DescriptorGraph>(
+    graph: &G,
+    type_descriptor: &G::Node,
+    uses_key_rule: &G::MemberKind,
+) -> Result<Option<G::Node>, DescriptorSemanticsError<G::Error, G::Node>> {
+    first_single_member_from_lineage(
+        graph,
+        ancestors(graph, type_descriptor)?,
+        uses_key_rule,
+        "UsesKeyRule",
+    )
+}
+
+/// Resolves the key rule governing `holon` itself.
+///
+/// A descriptor holon's own direct `UsesKeyRule` governs its instances, so own-key resolution
+/// starts at its direct `Extends` parent. If that lineage supplies no rule, resolution falls back
+/// to the actual `DescribedBy` type and its effective instance rule.
+pub fn effective_holon_key_rule<G: DescriptorGraph>(
+    graph: &G,
+    holon: &G::Node,
+    uses_key_rule: &G::MemberKind,
+) -> Result<Option<G::Node>, DescriptorSemanticsError<G::Error, G::Node>> {
+    let parents = graph.extends_targets(holon).map_err(DescriptorSemanticsError::Access)?;
+    match parents.as_slice() {
+        [parent] => {
+            if let Some(rule) = first_single_member_from_lineage(
+                graph,
+                ancestors(graph, parent)?,
+                uses_key_rule,
+                "UsesKeyRule",
+            )? {
+                return Ok(Some(rule));
+            }
+        }
+        [] => {}
+        many => {
+            return Err(DescriptorSemanticsError::MultipleExtends {
+                descriptor: holon.clone(),
+                count: many.len(),
+            })
+        }
+    }
+
+    effective_instance_key_rule(graph, &describing_type(graph, holon)?, uses_key_rule)
+}
+
+fn first_single_member_from_lineage<G: DescriptorGraph>(
+    graph: &G,
+    lineage: impl IntoIterator<Item = G::Node>,
+    member_kind: &G::MemberKind,
+    kind_label: &'static str,
+) -> Result<Option<G::Node>, DescriptorSemanticsError<G::Error, G::Node>> {
+    for descriptor in lineage {
+        let members = graph
+            .related_members(&descriptor, member_kind)
+            .map_err(DescriptorSemanticsError::Access)?;
+        match members.as_slice() {
+            [] => {}
+            [member] => return Ok(Some(member.clone())),
+            many => {
+                return Err(DescriptorSemanticsError::MultipleRelatedMembers {
+                    descriptor,
+                    kind: kind_label,
+                    count: many.len(),
+                })
+            }
+        }
+    }
+    Ok(None)
+}
+
 /// Computes the effective descriptor lineage defined by MAP Type System v1.2.
+///
+/// A partially assembled descriptor may not yet have its required `DescribedBy` relationship. In
+/// that authoring state, its own `Extends` lineage is still available for effective-member lookup.
+/// Semantic conformance must call [`describing_type`] first to enforce the exact-one relationship
+/// invariant; this function does not weaken that validity rule.
 pub fn effective_descriptor_lineage<G: DescriptorGraph>(
     graph: &G,
     holon: &G::Node,
@@ -118,7 +215,7 @@ pub fn effective_descriptor_lineage<G: DescriptorGraph>(
         graph.described_by_targets(holon).map_err(DescriptorSemanticsError::Access)?;
     let described_by = match described_by_targets.as_slice() {
         [] => return ancestors(graph, holon),
-        [descriptor] => descriptor,
+        [descriptor] => descriptor.clone(),
         many => {
             return Err(DescriptorSemanticsError::MultipleDescribedBy {
                 holon: holon.clone(),
@@ -127,13 +224,13 @@ pub fn effective_descriptor_lineage<G: DescriptorGraph>(
         }
     };
 
-    if graph.is_type_descriptor(described_by).map_err(DescriptorSemanticsError::Access)? {
+    if graph.is_type_descriptor(&described_by).map_err(DescriptorSemanticsError::Access)? {
         let mut lineage = ancestors(graph, holon)?;
-        append_unique(graph, &mut lineage, ancestors(graph, described_by)?);
+        append_unique(graph, &mut lineage, ancestors(graph, &described_by)?);
         return Ok(lineage);
     }
 
-    ancestors(graph, described_by)
+    ancestors(graph, &described_by)
 }
 
 /// Collects related members in self-first lineage order, deduplicated by node identity.
@@ -158,6 +255,75 @@ pub fn flatten_related_members<G: DescriptorGraph>(
     }
 
     Ok(members)
+}
+
+/// Flattens inherited members and rejects distinct declarations with the same semantic name.
+///
+/// Repeated references are first deduplicated by node identity. A repeated name therefore only
+/// fails when it belongs to two distinct declaration nodes in the effective type lineage.
+pub fn flatten_named_members<G, F>(
+    graph: &G,
+    start: &G::Node,
+    member_kind: &G::MemberKind,
+    declaration_kind: &'static str,
+    semantic_name: F,
+) -> Result<Vec<G::Node>, DescriptorSemanticsError<G::Error, G::Node>>
+where
+    G: DescriptorGraph,
+    F: FnMut(&G::Node) -> Result<String, G::Error>,
+{
+    let lineage = ancestors(graph, start)?;
+    collect_named_members_from_lineage(graph, lineage, member_kind, declaration_kind, semantic_name)
+}
+
+/// Collects named declarations from a caller-selected self-first lineage.
+pub fn collect_named_members_from_lineage<G, F>(
+    graph: &G,
+    lineage: impl IntoIterator<Item = G::Node>,
+    member_kind: &G::MemberKind,
+    declaration_kind: &'static str,
+    mut semantic_name: F,
+) -> Result<Vec<G::Node>, DescriptorSemanticsError<G::Error, G::Node>>
+where
+    G: DescriptorGraph,
+    F: FnMut(&G::Node) -> Result<String, G::Error>,
+{
+    let mut members = Vec::new();
+    let mut seen_members = HashSet::new();
+    let mut names = Vec::new();
+    let mut subject = None;
+    for anchor in lineage {
+        if subject.is_none() {
+            subject = Some(anchor.clone());
+        }
+        for member in
+            graph.related_members(&anchor, member_kind).map_err(DescriptorSemanticsError::Access)?
+        {
+            if !seen_members.insert(graph.identity(&member)) {
+                continue;
+            }
+            let name = semantic_name(&member).map_err(DescriptorSemanticsError::Access)?;
+            names.push(name);
+            members.push(member);
+        }
+    }
+    if let Some(name) = duplicate_declaration_name(names) {
+        return Err(DescriptorSemanticsError::DuplicateInheritedDeclaration {
+            descriptor: subject.expect("a collected member always has a lineage anchor"),
+            kind: declaration_kind,
+            name,
+        });
+    }
+    Ok(members)
+}
+
+/// Returns the first repeated semantic declaration name, if any.
+///
+/// Callers must deduplicate repeated references by declaration identity before supplying names;
+/// only distinct declarations sharing a name are invalid.
+pub fn duplicate_declaration_name(names: impl IntoIterator<Item = String>) -> Option<String> {
+    let mut seen = HashSet::new();
+    names.into_iter().find(|name| !seen.insert(name.clone()))
 }
 
 fn append_unique<G: DescriptorGraph>(
@@ -317,5 +483,91 @@ mod tests {
             effective_descriptor_lineage(&graph, &"instance"),
             Err(DescriptorSemanticsError::MultipleDescribedBy { holon: "instance", count: 2 })
         );
+    }
+
+    #[test]
+    fn missing_described_by_is_rejected_by_the_validity_gate() {
+        let graph = TestGraph::default();
+        assert_eq!(
+            describing_type(&graph, &"instance"),
+            Err(DescriptorSemanticsError::MissingDescribedBy { holon: "instance" })
+        );
+    }
+
+    #[test]
+    fn partial_descriptor_lineage_is_available_before_described_by_is_attached() {
+        let graph =
+            TestGraph { extends: HashMap::from([("Child", vec!["Parent"])]), ..Default::default() };
+
+        assert_eq!(effective_descriptor_lineage(&graph, &"Child"), Ok(vec!["Child", "Parent"]));
+    }
+
+    #[test]
+    fn named_member_flattening_rejects_distinct_duplicate_declarations() {
+        let graph = TestGraph {
+            extends: HashMap::from([("Child", vec!["Parent"])]),
+            members: HashMap::from([
+                (("Child", "properties"), vec!["ChildName"]),
+                (("Parent", "properties"), vec!["ParentName"]),
+            ]),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            flatten_named_members(&graph, &"Child", &"properties", "property", |_| {
+                Ok("name".to_string())
+            }),
+            Err(DescriptorSemanticsError::DuplicateInheritedDeclaration {
+                descriptor: "Child",
+                kind: "property",
+                name: "name".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn duplicate_name_policy_reports_the_first_repeated_name() {
+        assert_eq!(
+            duplicate_declaration_name([
+                "title".to_string(),
+                "author".to_string(),
+                "title".to_string(),
+            ]),
+            Some("title".to_string())
+        );
+    }
+
+    #[test]
+    fn instance_key_rule_is_self_first_but_descriptor_own_key_excludes_self() {
+        let graph = TestGraph {
+            extends: HashMap::from([("BookType", vec!["HolonType"])]),
+            described_by: HashMap::from([("BookType", vec!["TypeDescriptor"])]),
+            members: HashMap::from([
+                (("BookType", "key-rule"), vec!["BookRule"]),
+                (("HolonType", "key-rule"), vec!["ExtendedTypeRule"]),
+                (("TypeDescriptor", "key-rule"), vec!["TypeNameRule"]),
+            ]),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            effective_instance_key_rule(&graph, &"BookType", &"key-rule"),
+            Ok(Some("BookRule"))
+        );
+        assert_eq!(
+            effective_holon_key_rule(&graph, &"BookType", &"key-rule"),
+            Ok(Some("ExtendedTypeRule"))
+        );
+    }
+
+    #[test]
+    fn holon_key_rule_falls_back_through_described_by() {
+        let graph = TestGraph {
+            described_by: HashMap::from([("book-1", vec!["BookType"])]),
+            members: HashMap::from([(("BookType", "key-rule"), vec!["BookRule"])]),
+            ..Default::default()
+        };
+
+        assert_eq!(effective_holon_key_rule(&graph, &"book-1", &"key-rule"), Ok(Some("BookRule")));
     }
 }

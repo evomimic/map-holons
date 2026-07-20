@@ -4,7 +4,10 @@
 //! relationship target collections to `descriptor_semantics`, then projects kernel failures into
 //! the shared diagnostic vocabulary at this representation boundary.
 
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 use descriptor_semantics::{DescriptorGraph, DescriptorSemanticsError};
 
@@ -79,6 +82,7 @@ pub struct CanonicalDescriptorGraph {
     holons: Vec<CanonicalHolon>,
     nodes_by_key: HashMap<String, CanonicalNodeId>,
     type_descriptor_nodes: Vec<CanonicalNodeId>,
+    schema_nodes: HashSet<CanonicalNodeId>,
     symbols: SymbolIndex,
 }
 
@@ -115,7 +119,19 @@ impl CanonicalDescriptorGraph {
             .filter_map(|key| nodes_by_key.get(key).copied())
             .collect();
 
-        Ok(Self { holons, nodes_by_key, type_descriptor_nodes, symbols: symbols.clone() })
+        let schema_nodes = model
+            .schemas
+            .iter()
+            .filter_map(|schema| nodes_by_key.get(&schema.key).copied())
+            .collect();
+
+        Ok(Self {
+            holons,
+            nodes_by_key,
+            type_descriptor_nodes,
+            schema_nodes,
+            symbols: symbols.clone(),
+        })
     }
 
     /// Returns the node with the supplied canonical key.
@@ -126,6 +142,11 @@ impl CanonicalDescriptorGraph {
     /// Iterates all canonical graph nodes in deterministic model order.
     pub fn nodes(&self) -> impl Iterator<Item = CanonicalNodeId> + '_ {
         (0..self.holons.len()).map(CanonicalNodeId)
+    }
+
+    /// Returns whether the node is a schema container rather than a descriptor-governed holon.
+    pub fn is_schema(&self, node: CanonicalNodeId) -> bool {
+        self.schema_nodes.contains(&node)
     }
 
     /// Returns generic holon data for a graph node.
@@ -150,11 +171,37 @@ impl CanonicalDescriptorGraph {
             DescriptorSemanticsError::MultipleDescribedBy { holon, count } => {
                 self.cardinality_diagnostic(holon, "DescribedBy", count)
             }
+            DescriptorSemanticsError::MissingDescribedBy { holon } => Diagnostic::error(
+                DiagnosticLayer::SchemaAware,
+                DiagnosticKind::DescriptorGraphAccess {
+                    holon: self.node_label(holon),
+                    relationship: "DescribedBy".to_string(),
+                    target: None,
+                    message: "expected exactly one target; found 0".to_string(),
+                },
+                self.origin(holon),
+            ),
             DescriptorSemanticsError::CyclicExtends { descriptor } => {
                 let key = self.node_label(descriptor);
                 Diagnostic::error(
                     DiagnosticLayer::SchemaAware,
                     DiagnosticKind::InheritanceCycle { descriptor: key.clone(), target: key },
+                    self.origin(descriptor),
+                )
+            }
+            DescriptorSemanticsError::MultipleRelatedMembers { descriptor, kind, count } => {
+                self.cardinality_diagnostic(descriptor, kind, count)
+            }
+            DescriptorSemanticsError::DuplicateInheritedDeclaration { descriptor, kind, name } => {
+                Diagnostic::error(
+                    DiagnosticLayer::SchemaAware,
+                    DiagnosticKind::DescriptorGraphAccess {
+                        holon: self.node_label(descriptor),
+                        relationship: format!("effective {kind} declarations"),
+                        target: Some(name),
+                        message: "distinct inherited declarations have the same semantic name"
+                            .to_string(),
+                    },
                     self.origin(descriptor),
                 )
             }

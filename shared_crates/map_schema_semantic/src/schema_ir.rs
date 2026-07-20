@@ -280,6 +280,10 @@ pub struct TypeDescriptor {
     /// Raw descriptor identity retained independently of projected [`DescriptorKind`].
     pub described_by: Vec<SemanticReference>,
     pub header: Option<DescriptorHeader>,
+    /// Authored or adapter-lowered TypeKind enum identity for this descriptor holon.
+    pub instance_type_kind: Option<String>,
+    /// Requiredness declared by a PropertyType; absent for non-property descriptors.
+    pub property_required: Option<bool>,
     pub is_abstract: bool,
     pub extends: Option<SemanticReference>,
     pub component_of: Option<SemanticReference>,
@@ -296,6 +300,12 @@ pub struct TypeDescriptor {
     /// Variant-owned link to its enum when preserved from a source shape.
     pub variant_of: Option<SemanticReference>,
     pub literal_properties: LiteralObject,
+    /// Source conveniences lowered into explicit canonical property values.
+    ///
+    /// Entries use descriptor member names rather than source-format field spellings. Once
+    /// materialized they are ordinary semantic values; downstream validation and projection must
+    /// not reinterpret the source convention that produced them.
+    pub materialized_properties: LiteralObject,
     pub instance_properties: Vec<SemanticReference>,
     pub instance_relationships: Vec<SemanticReference>,
     pub literal_relationships: Vec<LiteralRelationship>,
@@ -327,6 +337,8 @@ impl TypeDescriptor {
             origin,
             described_by: Vec::new(),
             header: None,
+            instance_type_kind: None,
+            property_required: None,
             is_abstract: false,
             extends: None,
             component_of: None,
@@ -339,6 +351,7 @@ impl TypeDescriptor {
             variants: Vec::new(),
             variant_of: None,
             literal_properties: LiteralObject::new(),
+            materialized_properties: LiteralObject::new(),
             instance_properties: Vec::new(),
             instance_relationships: Vec::new(),
             literal_relationships: Vec::new(),
@@ -453,7 +466,7 @@ impl SemanticModel {
             .map(|schema| CanonicalHolon {
                 key: schema.key.clone(),
                 described_by: canonical_refs(&schema.described_by),
-                properties: schema.literal_properties.clone(),
+                properties: canonical_schema_properties(schema),
                 relationships: canonical_relationships(
                     &schema.literal_relationships,
                     [(&ReferenceRole::DependsOn, schema.dependencies.as_slice())],
@@ -465,7 +478,7 @@ impl SemanticModel {
         holons.extend(self.descriptors.iter().map(|descriptor| CanonicalHolon {
             key: descriptor.key.clone(),
             described_by: canonical_refs(&descriptor.described_by),
-            properties: descriptor.literal_properties.clone(),
+            properties: canonical_descriptor_properties(descriptor),
             relationships: canonical_relationships(
                 &descriptor.literal_relationships,
                 descriptor_reference_groups(descriptor),
@@ -499,6 +512,9 @@ impl SemanticModel {
                 name: descriptor.name.clone(),
                 kind: descriptor.kind,
                 owning_schema: descriptor.owning_schema.clone(),
+                instance_type_kind: descriptor.instance_type_kind.clone(),
+                property_required: (descriptor.kind == DescriptorKind::PropertyType)
+                    .then_some(descriptor.property_required.unwrap_or(true)),
                 is_abstract: descriptor.is_abstract,
                 references: comparable_descriptor_refs(descriptor),
                 relationship_flavor: descriptor.relationship_flavor,
@@ -549,6 +565,8 @@ pub struct ComparableDescriptor {
     pub name: String,
     pub kind: DescriptorKind,
     pub owning_schema: String,
+    pub instance_type_kind: Option<String>,
+    pub property_required: Option<bool>,
     pub is_abstract: bool,
     pub references: Vec<(ReferenceRole, String)>,
     pub relationship_flavor: Option<RelationshipFlavor>,
@@ -560,6 +578,197 @@ pub struct ComparableDescriptor {
     pub allows_duplicates: bool,
     pub allows_additional_properties: bool,
     pub allows_additional_relationships: bool,
+}
+
+fn canonical_descriptor_properties(descriptor: &TypeDescriptor) -> LiteralObject {
+    let mut properties = LiteralObject::new();
+    for (name, value) in descriptor.literal_properties.iter() {
+        if !is_projected_descriptor_property(name) {
+            properties.insert(name.clone(), value.clone());
+        }
+    }
+    for (name, value) in descriptor.materialized_properties.iter() {
+        insert_literal_if_absent(&mut properties, name, value.clone());
+    }
+    insert_literal_if_absent(
+        &mut properties,
+        "TypeName",
+        crate::LiteralValue::String(descriptor.name.clone()),
+    );
+    insert_literal_if_absent(
+        &mut properties,
+        "SchemaName",
+        crate::LiteralValue::String(descriptor.owning_schema.clone()),
+    );
+    if let Some(header) = &descriptor.header {
+        for (name, value) in [
+            ("Description", header.description.as_ref()),
+            ("DisplayName", header.display_name.as_ref()),
+            ("DisplayNamePlural", header.display_name_plural.as_ref()),
+            ("TypeNamePlural", header.type_name_plural.as_ref()),
+        ] {
+            if let Some(value) = value {
+                insert_literal_if_absent(
+                    &mut properties,
+                    name,
+                    crate::LiteralValue::String(value.clone()),
+                );
+            }
+        }
+    }
+    if let Some(instance_type_kind) = &descriptor.instance_type_kind {
+        insert_literal_if_absent(
+            &mut properties,
+            "TypeKind",
+            crate::LiteralValue::String(instance_type_kind.clone()),
+        );
+    }
+    insert_literal_if_absent(
+        &mut properties,
+        "IsAbstractType",
+        crate::LiteralValue::Boolean(descriptor.is_abstract),
+    );
+
+    match descriptor.kind {
+        DescriptorKind::TypeDescriptor | DescriptorKind::HolonType => {
+            for (canonical_name, authored_name, shorthand_value) in [
+                (
+                    "AllowsAdditionalProperties",
+                    "allows_additional_properties",
+                    descriptor.allows_additional_properties,
+                ),
+                (
+                    "AllowsAdditionalRelationships",
+                    "allows_additional_relationships",
+                    descriptor.allows_additional_relationships,
+                ),
+            ] {
+                let value = descriptor
+                    .literal_properties
+                    .get(authored_name)
+                    .and_then(crate::LiteralValue::as_bool)
+                    .or_else(|| shorthand_value.then_some(true));
+                if let Some(value) = value {
+                    insert_literal_if_absent(
+                        &mut properties,
+                        canonical_name,
+                        crate::LiteralValue::Boolean(value),
+                    );
+                }
+            }
+        }
+        DescriptorKind::PropertyType => {
+            if let Some(required) = descriptor.property_required {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "IsRequired",
+                    crate::LiteralValue::Boolean(required),
+                );
+            }
+        }
+        DescriptorKind::RelationshipType => {
+            insert_literal_if_absent(
+                &mut properties,
+                "IsDefinitional",
+                crate::LiteralValue::Boolean(descriptor.is_definitional),
+            );
+            insert_literal_if_absent(
+                &mut properties,
+                "IsOrdered",
+                crate::LiteralValue::Boolean(descriptor.is_ordered),
+            );
+            insert_literal_if_absent(
+                &mut properties,
+                "AllowsDuplicates",
+                crate::LiteralValue::Boolean(descriptor.allows_duplicates),
+            );
+            if let Some(minimum) = descriptor.min_cardinality {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "MinCardinality",
+                    crate::LiteralValue::Integer(minimum),
+                );
+            }
+            if let Some(maximum) = descriptor.max_cardinality {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "MaxCardinality",
+                    crate::LiteralValue::Integer(maximum),
+                );
+            }
+            if let Some(deletion_semantic) = &descriptor.deletion_semantic {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "DeletionSemantic",
+                    crate::LiteralValue::String(deletion_semantic.clone()),
+                );
+            }
+        }
+        DescriptorKind::Schema
+        | DescriptorKind::ValueType
+        | DescriptorKind::Enum
+        | DescriptorKind::EnumVariant => {}
+    }
+    properties
+}
+
+fn is_projected_descriptor_property(name: &str) -> bool {
+    matches!(
+        name,
+        "type_name"
+            | "schema_name"
+            | "description"
+            | "display_name"
+            | "display_name_plural"
+            | "type_name_plural"
+            | "instance_type_kind"
+            | "is_abstract_type"
+            | "allows_additional_properties"
+            | "allows_additional_relationships"
+            | "is_required"
+            | "is_definitional"
+            | "is_ordered"
+            | "allows_duplicates"
+            | "min_cardinality"
+            | "max_cardinality"
+            | "deletion_semantic"
+    )
+}
+
+fn canonical_schema_properties(schema: &Schema) -> LiteralObject {
+    let mut properties = schema.literal_properties.clone();
+    insert_literal_if_absent(
+        &mut properties,
+        "schema_name",
+        crate::LiteralValue::String(schema.name.clone()),
+    );
+    if let Some(header) = &schema.header {
+        for (name, value) in [
+            ("description", header.description.as_ref()),
+            ("display_name", header.display_name.as_ref()),
+            ("display_name_plural", header.display_name_plural.as_ref()),
+            ("type_name_plural", header.type_name_plural.as_ref()),
+        ] {
+            if let Some(value) = value {
+                insert_literal_if_absent(
+                    &mut properties,
+                    name,
+                    crate::LiteralValue::String(value.clone()),
+                );
+            }
+        }
+    }
+    properties
+}
+
+fn insert_literal_if_absent(
+    properties: &mut LiteralObject,
+    name: &str,
+    value: crate::LiteralValue,
+) {
+    if properties.get(name).is_none() {
+        properties.insert(name, value);
+    }
 }
 
 fn comparable_descriptor_refs(descriptor: &TypeDescriptor) -> Vec<(ReferenceRole, String)> {

@@ -68,8 +68,28 @@ fn map_semantics_error(error: DescriptorSemanticsError<HolonError, HolonReferenc
             "DescribedBy".into(),
             "Expected exactly one descriptor target".into(),
         ),
+        DescriptorSemanticsError::MissingDescribedBy { holon } => {
+            HolonError::MissingRequiredRelationship {
+                relationship: "DescribedBy".to_string(),
+                descriptor: descriptor_label(&holon),
+            }
+        }
         DescriptorSemanticsError::CyclicExtends { descriptor } => {
             HolonError::CyclicExtends { descriptor: descriptor_label(&descriptor) }
+        }
+        DescriptorSemanticsError::MultipleRelatedMembers { descriptor, kind, count } => {
+            HolonError::MultipleRelatedHolons {
+                relationship: kind.to_string(),
+                descriptor: descriptor_label(&descriptor),
+                count,
+            }
+        }
+        DescriptorSemanticsError::DuplicateInheritedDeclaration { descriptor, kind, name } => {
+            HolonError::DuplicateInheritedDeclaration {
+                kind: kind.to_string(),
+                name,
+                descriptor: descriptor_label(&descriptor),
+            }
         }
     }
 }
@@ -178,6 +198,50 @@ pub(crate) fn flatten_related_members(
 ) -> Result<Vec<HolonReference>, HolonError> {
     descriptor_semantics::flatten_related_members(&HolonReferenceGraph, start, &relationship_name)
         .map_err(map_semantics_error)
+}
+
+/// Collects inherited members and rejects distinct declarations with the same semantic name.
+pub(crate) fn flatten_named_related_members(
+    start: &HolonReference,
+    relationship_name: CoreRelationshipTypeName,
+    declaration_kind: &'static str,
+    semantic_name: impl FnMut(&HolonReference) -> Result<String, HolonError>,
+) -> Result<Vec<HolonReference>, HolonError> {
+    descriptor_semantics::flatten_named_members(
+        &HolonReferenceGraph,
+        start,
+        &relationship_name,
+        declaration_kind,
+        semantic_name,
+    )
+    .map_err(map_semantics_error)
+}
+
+pub(crate) fn collect_named_related_members_from_lineage(
+    lineage: impl IntoIterator<Item = HolonReference>,
+    relationship_name: CoreRelationshipTypeName,
+    declaration_kind: &'static str,
+    semantic_name: impl FnMut(&HolonReference) -> Result<String, HolonError>,
+) -> Result<Vec<HolonReference>, HolonError> {
+    descriptor_semantics::collect_named_members_from_lineage(
+        &HolonReferenceGraph,
+        lineage,
+        &relationship_name,
+        declaration_kind,
+        semantic_name,
+    )
+    .map_err(map_semantics_error)
+}
+
+pub(crate) fn effective_instance_key_rule(
+    descriptor: &HolonReference,
+) -> Result<Option<HolonReference>, HolonError> {
+    descriptor_semantics::effective_instance_key_rule(
+        &HolonReferenceGraph,
+        descriptor,
+        &CoreRelationshipTypeName::UsesKeyRule,
+    )
+    .map_err(map_semantics_error)
 }
 
 /// Lazy iterator over a descriptor's `Extends` lineage.

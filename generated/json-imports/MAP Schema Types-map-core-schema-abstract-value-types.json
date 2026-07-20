@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.911151Z",
+    "generated_at": "2026-07-22T12:12:39.820905Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-abstract-value-types.tdl"
@@ -95,7 +95,9 @@
         "display_name": "StringValueType",
         "display_name_plural": "StringValueTypes",
         "description": "Abstract type for string-based value types.",
-        "instance_type_kind": "TypeKind.Value.String"
+        "instance_type_kind": "TypeKind.Value.String",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -139,7 +141,9 @@
         "display_name": "IntegerValueType",
         "display_name_plural": "IntegerValueTypes",
         "description": "Abstract type for integer-based value types.",
-        "instance_type_kind": "TypeKind.Value.Integer"
+        "instance_type_kind": "TypeKind.Value.Integer",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -183,7 +187,9 @@
         "display_name": "BooleanValueType",
         "display_name_plural": "BooleanValueTypes",
         "description": "Abstract type for boolean-based value types.",
-        "instance_type_kind": "TypeKind.Value.Boolean"
+        "instance_type_kind": "TypeKind.Value.Boolean",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -216,7 +222,9 @@
         "display_name_plural": "BytesValueTypes",
         "description": "Abstract type for byte sequence value types.",
         "instance_type_kind": "TypeKind.Value.Bytes",
-        "is_abstract_type": true
+        "is_abstract_type": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -249,7 +257,9 @@
         "display_name": "EnumValueType",
         "display_name_plural": "EnumValueTypes",
         "description": "Abstract type for enum-based value types.",
-        "instance_type_kind": "TypeKind.Value.Enum"
+        "instance_type_kind": "TypeKind.Value.Enum",
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -288,7 +298,9 @@
         "display_name_plural": "EnumVariant Value Types",
         "description": "Abstract type for variants of enum-based value types.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": true
+        "is_abstract_type": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -315,7 +327,9 @@
         "display_name_plural": "ValueArrayTypes",
         "description": "Abstract type for value array types.",
         "instance_type_kind": "TypeKind.Value.Array",
-        "is_abstract_type": true
+        "is_abstract_type": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {

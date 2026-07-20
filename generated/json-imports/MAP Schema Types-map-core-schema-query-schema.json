@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.916522Z",
+    "generated_at": "2026-07-22T12:12:39.824553Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-query-schema.tdl"
@@ -562,7 +562,10 @@
         "display_name_plural": "Query Names",
         "description": "Human-facing name of a QueryGraph.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -595,7 +598,10 @@
         "display_name_plural": "Query Descriptions",
         "description": "Human-readable description of what a QueryGraph means.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -628,7 +634,10 @@
         "display_name_plural": "Binding Names",
         "description": "Symbolic variable name carried by a QueryBinding.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -661,7 +670,10 @@
         "display_name_plural": "Step Ordinals",
         "description": "Ordinal position of a QueryStep within its QueryGraph.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -694,7 +706,10 @@
         "display_name_plural": "Step Labels",
         "description": "Optional human-readable label for a QueryStep.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -727,7 +742,10 @@
         "display_name_plural": "Execution Statuses",
         "description": "Status of an ExecutionInstance, recorded as an ExecutionStatus enum value.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -760,7 +778,9 @@
         "display_name_plural": "Execution Statuses",
         "description": "Enum value type for the lifecycle status of an ExecutionInstance.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -804,7 +824,9 @@
         "display_name_plural": "Pendings",
         "description": "Execution has been created but not yet started.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -831,7 +853,9 @@
         "display_name_plural": "Runnings",
         "description": "Execution is in progress.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -858,7 +882,9 @@
         "display_name_plural": "Completes",
         "description": "Execution finished successfully.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -885,7 +911,9 @@
         "display_name_plural": "Faileds",
         "description": "Execution terminated with a failure.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -918,7 +946,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -964,11 +994,14 @@
         "description": "Inverse of QueryGraph, from QueryGraph to QueryDanceRequest.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1013,7 +1046,9 @@
         "is_ordered": true,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1059,11 +1094,14 @@
         "description": "Inverse of InitialBindings, from ExecutionBinding to QueryDanceRequest.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1108,7 +1146,9 @@
         "is_ordered": true,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1154,11 +1194,14 @@
         "description": "Inverse of QuerySteps, from QueryStep to QueryGraph.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1203,7 +1246,9 @@
         "is_ordered": true,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1249,11 +1294,14 @@
         "description": "Inverse of DeclaredInputBindings, from QueryBinding to QueryGraph.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1298,7 +1346,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1344,11 +1394,14 @@
         "description": "Inverse of DeclaredResultBinding, from QueryBinding to QueryGraph.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1393,7 +1446,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1439,11 +1494,14 @@
         "description": "Inverse of StepKind, from QueryStepKind to QueryStep.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1488,7 +1546,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1534,11 +1594,14 @@
         "description": "Inverse of UsesInitialBinding, from QueryBinding to QueryStep.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1583,7 +1646,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1629,11 +1694,14 @@
         "description": "Inverse of StepOutputBinding, from QueryBinding to QueryStep.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1678,7 +1746,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1724,11 +1794,14 @@
         "description": "Inverse of StepParameters, from Projection to QueryStep.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1773,7 +1846,9 @@
         "is_ordered": true,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1819,11 +1894,14 @@
         "description": "Inverse of StepDependsOn, from a QueryStep to the successor QuerySteps that depend on it.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1868,7 +1946,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1914,11 +1994,14 @@
         "description": "Inverse of StepInputType, from HolonCollection to QueryStepKind.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1963,7 +2046,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2009,11 +2094,14 @@
         "description": "Inverse of StepResultType, from HolonCollection to QueryStepKind.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2058,7 +2146,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2104,11 +2194,14 @@
         "description": "Inverse of StepParameterType, from Projection to QueryStepKind.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2153,7 +2246,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2199,11 +2294,14 @@
         "description": "Inverse of ExecutesRequest, from QueryDanceRequest to ExecutionInstance.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2248,7 +2346,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2294,11 +2394,14 @@
         "description": "Inverse of ExecutionBindings, from ExecutionBinding to ExecutionInstance.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2343,7 +2446,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2389,11 +2494,14 @@
         "description": "Inverse of BindsQueryVariable, from QueryBinding to ExecutionBinding.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2438,7 +2546,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2484,11 +2594,14 @@
         "description": "Inverse of BoundCollection, from HolonCollection to ExecutionBinding.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2533,7 +2646,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2579,11 +2694,14 @@
         "description": "Inverse of ExecutionResult, from HolonCollection to ExecutionInstance.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {

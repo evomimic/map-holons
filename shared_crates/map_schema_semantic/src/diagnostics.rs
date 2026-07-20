@@ -59,8 +59,6 @@ pub enum DiagnosticKind {
     DuplicateLocalMember { descriptor: String, role: ReferenceRole, name: String },
     /// An inheritance edge crosses projected TypeKind boundaries.
     TypeKindMismatch { descriptor: String, target: String, actual: String, expected: String },
-    /// Authored/imported `instance_type_kind` contradicts the descriptor's projected TypeKind.
-    InvalidProjectedTypeKind { descriptor: String, actual: String, expected: String },
     /// Relationship cardinality bounds are present but invalid.
     InvalidCardinalityBounds { descriptor: String, min: i64, max: i64 },
     /// A relationship descriptor is missing the required paired inverse metadata.
@@ -196,12 +194,6 @@ impl fmt::Display for DiagnosticKind {
                 write!(
                     f,
                     "descriptor `{descriptor}` cannot extend `{target}` because projected TypeKind `{actual}` does not match `{expected}`"
-                )
-            }
-            Self::InvalidProjectedTypeKind { descriptor, actual, expected } => {
-                write!(
-                    f,
-                    "descriptor `{descriptor}` has authored/imported instance_type_kind `{actual}` but projected TypeKind is `{expected}`"
                 )
             }
             Self::InvalidCardinalityBounds { descriptor, min, max } => {

@@ -404,7 +404,7 @@ property DanceName {
 }
 
 
-property DanceDescription {
+property DanceDescription? {
   value MapStringValueType
   header {
     description: "Human-readable explanation of what the dance does or when it should be invoked."
@@ -426,7 +426,7 @@ property Context {
 }
 
 
-property DanceDiagnosticSeverity {
+property DanceDiagnosticSeverity? {
   value DanceDiagnosticSeverity
   header {
     description: "Severity classification for a DanceDiagnostic holon."
@@ -437,7 +437,7 @@ property DanceDiagnosticSeverity {
 }
 
 
-property DiagnosticCode {
+property DiagnosticCode? {
   value MapStringValueType
   header {
     description: "Stable machine-readable code for a DanceDiagnostic holon."
@@ -448,7 +448,7 @@ property DiagnosticCode {
 }
 
 
-property DiagnosticMessage {
+property DiagnosticMessage? {
   value MapStringValueType
   header {
     description: "Human-readable message for a DanceDiagnostic holon."
@@ -459,7 +459,7 @@ property DiagnosticMessage {
 }
 
 
-property ResponseStatusCode {
+property ResponseStatusCode? {
   value ResponseStatusCode
   header {
     description: "Machine-readable status code indicating the result of the dance."
@@ -470,7 +470,7 @@ property ResponseStatusCode {
 }
 
 
-property Engine {
+property Engine? {
   value DanceEngine
   header {
     description: "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin)."
@@ -481,7 +481,7 @@ property Engine {
 }
 
 
-property ModuleRef {
+property ModuleRef? {
   value MapStringValueType
   header {
     description: "Content-address or locator of the executable module (e.g., hash/URL/capability address)."
@@ -492,7 +492,7 @@ property ModuleRef {
 }
 
 
-property Entrypoint {
+property Entrypoint? {
   value MapStringValueType
   header {
     description: "Function/export name to invoke inside the module."
@@ -503,7 +503,7 @@ property Entrypoint {
 }
 
 
-property AbiId {
+property AbiId? {
   value MapStringValueType
   header {
     description: "Identifier of the stable smart contract ABI expected by the module/entrypoint."
@@ -514,7 +514,7 @@ property AbiId {
 }
 
 
-property Version {
+property Version? {
   value MapStringValueType
   header {
     description: "Semantic version or content hash pin of the implementation."
@@ -525,7 +525,7 @@ property Version {
 }
 
 
-property Compat {
+property Compat? {
   value MapStringValueType
   header {
     description: "Compatibility range or constraints (e.g., ABI or schema versions)."
@@ -536,7 +536,7 @@ property Compat {
 }
 
 
-property DanceSummary {
+property DanceSummary? {
   value MapStringValueType
   header {
     description: "Human-readable summary of a dance outcome."

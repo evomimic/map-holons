@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.914956Z",
+    "generated_at": "2026-07-22T12:12:39.823334Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.tdl"
@@ -352,7 +352,9 @@
         "is_ordered": true,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -398,11 +400,14 @@
         "description": "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -447,7 +452,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -493,11 +500,14 @@
         "description": "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -542,7 +552,9 @@
         "is_ordered": true,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -588,11 +600,14 @@
         "description": "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -637,7 +652,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -683,11 +700,14 @@
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -732,7 +752,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -778,11 +800,14 @@
         "description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -827,7 +852,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -873,11 +900,14 @@
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -916,7 +946,9 @@
         "display_name_plural": "LoadCommitStatuses",
         "description": "An enum representing the commit outcome of a holon load.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -956,7 +988,9 @@
         "display_name": "Complete",
         "description": "An enum variant indicating a complete commit.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -982,7 +1016,9 @@
         "display_name": "Incomplete",
         "description": "An enum variant indicating an incomplete commit.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1008,7 +1044,9 @@
         "display_name": "Skipped",
         "description": "An enum variant indicating that commit was skipped.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1035,7 +1073,10 @@
         "display_name_plural": "relationship_names",
         "description": "Name of the relationship as declared in the JSON input.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1068,7 +1109,10 @@
         "display_name_plural": "holon_keys",
         "description": "Local key for the referenced holon.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1101,7 +1145,10 @@
         "display_name_plural": "proxy_keys",
         "description": "Key of the ProxySpace through which this external reference is routed.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1134,7 +1181,10 @@
         "display_name_plural": "proxy_ids",
         "description": "ActionHash of the ProxySpace holon, used to route external references.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1167,7 +1217,10 @@
         "display_name_plural": "holons_stageds",
         "description": "Number of holons staged during the load operation.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1200,7 +1253,10 @@
         "display_name_plural": "holons_committeds",
         "description": "Number of holons successfully committed.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1233,7 +1289,10 @@
         "display_name_plural": "links_createds",
         "description": "Number of links successfully created.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1266,7 +1325,10 @@
         "display_name_plural": "filenames",
         "description": "The name of a file.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1299,7 +1361,10 @@
         "display_name_plural": "loader_holon_keys",
         "description": "Key to reference a loader holon within a load set.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1332,7 +1397,10 @@
         "display_name_plural": "start_utf8_byte_offsets",
         "description": "Byte offset that signifies the start of a segment of a source file.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1365,7 +1433,10 @@
         "display_name_plural": "load_commit_statuses",
         "description": "Represents the commit status for a holon loading operation.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {

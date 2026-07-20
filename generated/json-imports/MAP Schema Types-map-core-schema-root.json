@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.91905Z",
+    "generated_at": "2026-07-22T12:12:39.826218Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.tdl"
@@ -171,7 +171,8 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_required": false
       },
       "relationships": [
         {
@@ -206,7 +207,10 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false
       },
       "relationships": [
         {
@@ -241,7 +245,10 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false
       },
       "relationships": [
         {
@@ -417,7 +424,8 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_required": false
       },
       "relationships": [
         {
@@ -458,7 +466,10 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false
       },
       "relationships": [
         {
@@ -518,7 +529,10 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false
       },
       "relationships": [
         {
@@ -559,7 +573,10 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": true,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_definitional": false,
+        "is_ordered": false,
+        "allows_duplicates": false
       },
       "relationships": [
         {
@@ -830,7 +847,9 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "is_ordered": false,
+        "allows_duplicates": false
       },
       "relationships": [
         {

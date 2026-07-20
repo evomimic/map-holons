@@ -11,15 +11,17 @@ pub mod inheritance;
 pub mod value;
 
 pub use conformance::{
-    property_requirement, validate_cardinality, validate_holon_conformance,
+    compose_restrictive_boolean, validate_cardinality, validate_holon_conformance,
     value_policy_for_type_kind, CardinalityViolation, ConformanceValue, ConformanceViolation,
-    HolonConformance, PropertyDeclaration, PropertyRequirement, PropertyValue,
-    RelationshipDeclaration, RelationshipValue, ValuePolicy,
+    HolonConformance, PropertyDeclaration, PropertyValue, RelationshipDeclaration,
+    RelationshipValue, ValuePolicy,
 };
 pub use graph::{DescriptorGraph, DescriptorSemanticsError};
 pub use inheritance::{
-    ancestors, effective_descriptor_lineage, equals_or_extends, flatten_related_members,
-    walk_extends_chain, ExtendsTraversal, ExtendsWalk,
+    ancestors, collect_named_members_from_lineage, describing_type, duplicate_declaration_name,
+    effective_descriptor_lineage, effective_holon_key_rule, effective_instance_key_rule,
+    equals_or_extends, flatten_named_members, flatten_related_members, walk_extends_chain,
+    ExtendsTraversal, ExtendsWalk,
 };
 pub use value::{
     validate_enum_variant, validate_integer_maximum, validate_integer_minimum,

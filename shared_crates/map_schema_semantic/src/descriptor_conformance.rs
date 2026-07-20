@@ -7,10 +7,11 @@
 use std::collections::HashSet;
 
 use descriptor_semantics::{
-    effective_descriptor_lineage, property_requirement, validate_holon_conformance,
-    value_policy_for_type_kind, ConformanceValue, ConformanceViolation, DescriptorGraph,
-    DescriptorSemanticsError, HolonConformance, PropertyDeclaration, PropertyValue,
-    RelationshipDeclaration, RelationshipValue, ValuePolicy,
+    compose_restrictive_boolean, describing_type, duplicate_declaration_name,
+    effective_descriptor_lineage, validate_holon_conformance, value_policy_for_type_kind,
+    ConformanceValue, ConformanceViolation, DescriptorGraph, DescriptorSemanticsError,
+    HolonConformance, PropertyDeclaration, PropertyValue, RelationshipDeclaration,
+    RelationshipValue, ValuePolicy,
 };
 
 use crate::{
@@ -23,7 +24,26 @@ use crate::{
 /// Callers may retain legacy/model-wide passes alongside this result while migrating checks; this
 /// pass itself applies one descriptor-driven path to schema, descriptor, and ordinary holons.
 pub fn validate_canonical_model_conformance(graph: &CanonicalDescriptorGraph) -> Vec<Diagnostic> {
-    graph.nodes().flat_map(|node| validate_canonical_holon_conformance(graph, node)).collect()
+    graph
+        .nodes()
+        .filter(|node| !graph.is_schema(*node))
+        .flat_map(|node| validate_canonical_holon_conformance(graph, node))
+        .collect()
+}
+
+/// Runs the production-ready value-policy subset of descriptor conformance.
+///
+/// This staged entry point validates primitive shape and enum membership for every property whose
+/// effective descriptor supplies a value policy. Required/member/cardinality diagnostics remain
+/// available through [`validate_canonical_model_conformance`] while the Core Schema corpus is
+/// brought into strict conformance.
+pub fn validate_canonical_model_values(graph: &CanonicalDescriptorGraph) -> Vec<Diagnostic> {
+    validate_canonical_model_conformance(graph)
+        .into_iter()
+        .filter(|diagnostic| {
+            matches!(diagnostic.kind, DiagnosticKind::InvalidConformanceValue { .. })
+        })
+        .collect()
 }
 
 /// Validates one canonical holon using declarations resolved from its effective descriptor graph.
@@ -33,19 +53,7 @@ pub fn validate_canonical_holon_conformance(
 ) -> Vec<Diagnostic> {
     let input = match conformance_input(graph, node) {
         Ok(input) => input,
-        Err(ConformanceBuildError::Graph(error)) => return vec![graph.diagnostic(error)],
-        Err(ConformanceBuildError::InvalidDescriptor { descriptor, message }) => {
-            return vec![Diagnostic::error(
-                DiagnosticLayer::SchemaAware,
-                DiagnosticKind::DescriptorGraphAccess {
-                    holon: graph.key(node).unwrap_or("<unknown>").to_string(),
-                    relationship: "descriptor conformance".to_string(),
-                    target: Some(descriptor),
-                    message,
-                },
-                graph.holon(node).map(|holon| holon.origin.clone()),
-            )]
-        }
+        Err(error) => return vec![conformance_build_diagnostic(graph, node, error)],
     };
 
     let holon = graph.key(node).unwrap_or("<unknown>").to_string();
@@ -56,10 +64,49 @@ pub fn validate_canonical_holon_conformance(
         .collect()
 }
 
+/// Resolves Boolean property declarations effective for one canonical holon.
+///
+/// Source adapters use this view to lower source-level Boolean default conventions into explicit
+/// canonical values without copying inheritance or value-type classification rules.
+pub fn effective_boolean_property_names(
+    graph: &CanonicalDescriptorGraph,
+    node: CanonicalNodeId,
+) -> Result<Vec<String>, Diagnostic> {
+    effective_property_declarations(graph, node)
+        .map(|declarations| {
+            declarations
+                .into_iter()
+                .filter(|declaration| declaration.value_policy == ValuePolicy::Boolean)
+                .map(|declaration| declaration.name)
+                .collect()
+        })
+        .map_err(|error| conformance_build_diagnostic(graph, node, error))
+}
+
 #[derive(Debug)]
 enum ConformanceBuildError {
     Graph(DescriptorSemanticsError<CanonicalGraphError, CanonicalNodeId>),
     InvalidDescriptor { descriptor: String, message: String },
+}
+
+fn conformance_build_diagnostic(
+    graph: &CanonicalDescriptorGraph,
+    node: CanonicalNodeId,
+    error: ConformanceBuildError,
+) -> Diagnostic {
+    match error {
+        ConformanceBuildError::Graph(error) => graph.diagnostic(error),
+        ConformanceBuildError::InvalidDescriptor { descriptor, message } => Diagnostic::error(
+            DiagnosticLayer::SchemaAware,
+            DiagnosticKind::DescriptorGraphAccess {
+                holon: graph.key(node).unwrap_or("<unknown>").to_string(),
+                relationship: "descriptor conformance".to_string(),
+                target: Some(descriptor),
+                message,
+            },
+            graph.holon(node).map(|holon| holon.origin.clone()),
+        ),
+    }
 }
 
 fn conformance_input(
@@ -70,49 +117,90 @@ fn conformance_input(
         descriptor: format!("{node:?}"),
         message: "canonical holon is absent".to_string(),
     })?;
+    describing_type(graph, &node).map_err(ConformanceBuildError::Graph)?;
     let lineage =
         effective_descriptor_lineage(graph, &node).map_err(ConformanceBuildError::Graph)?;
-    let property_nodes = effective_members(graph, &lineage, "InstanceProperties")?;
     let relationship_nodes = effective_members(graph, &lineage, "InstanceRelationships")?;
 
-    let property_declarations = property_nodes
-        .into_iter()
-        .map(|descriptor| property_declaration(graph, descriptor))
-        .collect::<Result<Vec<_>, _>>()?;
+    let property_declarations = effective_property_declarations(graph, node)?;
     let relationship_declarations = relationship_nodes
         .into_iter()
         .map(|descriptor| relationship_declaration(graph, descriptor))
         .collect::<Result<Vec<_>, _>>()?;
+    reject_duplicate_declarations(
+        graph,
+        &lineage,
+        "relationship",
+        &relationship_declarations,
+        |item| &item.name,
+    )?;
+
+    let mut properties = holon
+        .properties
+        .iter()
+        .map(|(name, value)| PropertyValue { name: name.clone(), value: conformance_value(value) })
+        .collect::<Vec<_>>();
+    align_property_names(&mut properties, &property_declarations);
+    let relationships = holon
+        .relationships
+        .iter()
+        .map(|relationship| RelationshipValue {
+            name: relationship.name.clone(),
+            target_count: relationship.targets.len(),
+        })
+        .collect::<Vec<_>>();
 
     Ok(HolonConformance {
-        properties: holon
-            .properties
-            .iter()
-            .map(|(name, value)| PropertyValue {
-                name: name.clone(),
-                value: conformance_value(value),
-            })
-            .collect(),
-        relationships: holon
-            .relationships
-            .iter()
-            .map(|relationship| RelationshipValue {
-                name: relationship.name.clone(),
-                target_count: relationship.targets.len(),
-            })
-            .collect(),
+        properties,
+        relationships,
         property_declarations,
         relationship_declarations,
         allows_additional_properties: lineage_boolean(
             graph,
             &lineage,
             "allows_additional_properties",
-        ),
+        )?,
         allows_additional_relationships: lineage_boolean(
             graph,
             &lineage,
             "allows_additional_relationships",
-        ),
+        )?,
+    })
+}
+
+fn effective_property_declarations(
+    graph: &CanonicalDescriptorGraph,
+    node: CanonicalNodeId,
+) -> Result<Vec<PropertyDeclaration>, ConformanceBuildError> {
+    describing_type(graph, &node).map_err(ConformanceBuildError::Graph)?;
+    let lineage =
+        effective_descriptor_lineage(graph, &node).map_err(ConformanceBuildError::Graph)?;
+    let property_nodes = effective_members(graph, &lineage, "InstanceProperties")?;
+    let declarations = property_nodes
+        .into_iter()
+        .map(|descriptor| property_declaration(graph, descriptor))
+        .collect::<Result<Vec<_>, _>>()?;
+    reject_duplicate_declarations(graph, &lineage, "property", &declarations, |item| &item.name)?;
+    Ok(declarations)
+}
+
+fn reject_duplicate_declarations<T>(
+    graph: &CanonicalDescriptorGraph,
+    lineage: &[CanonicalNodeId],
+    kind: &str,
+    declarations: &[T],
+    name: impl Fn(&T) -> &str,
+) -> Result<(), ConformanceBuildError> {
+    let Some(duplicate) =
+        duplicate_declaration_name(declarations.iter().map(|item| name(item).to_string()))
+    else {
+        return Ok(());
+    };
+    let descriptor =
+        lineage.first().and_then(|node| graph.key(*node)).unwrap_or("<unknown>").to_string();
+    Err(ConformanceBuildError::InvalidDescriptor {
+        descriptor,
+        message: format!("distinct inherited {kind} declarations share the name `{duplicate}`"),
     })
 }
 
@@ -153,7 +241,9 @@ fn property_declaration(
                 "property descriptor has no property_name or type_name",
             )
         })?;
-    let requirement = property_requirement(declared_name);
+    let required = literal_property(holon, "is_required")
+        .and_then(LiteralValue::as_bool)
+        .ok_or_else(|| invalid_descriptor(graph, descriptor, "missing Boolean is_required"))?;
     let value_types = graph
         .related_members(&descriptor, &"ValueType".to_string())
         .map_err(|error| ConformanceBuildError::Graph(DescriptorSemanticsError::Access(error)))?;
@@ -169,11 +259,28 @@ fn property_declaration(
         }
     };
 
-    Ok(PropertyDeclaration {
-        name: requirement.name.to_string(),
-        required: requirement.required,
-        value_policy,
-    })
+    Ok(PropertyDeclaration { name: declared_name.to_string(), required, value_policy })
+}
+
+fn align_property_names(properties: &mut [PropertyValue], declarations: &[PropertyDeclaration]) {
+    for property in properties {
+        let candidates = declarations
+            .iter()
+            .filter(|declaration| {
+                normalized_member_name(&declaration.name) == normalized_member_name(&property.name)
+            })
+            .collect::<Vec<_>>();
+        if let [declaration] = candidates.as_slice() {
+            property.name = declaration.name.clone();
+        }
+    }
+}
+
+fn normalized_member_name(name: &str) -> String {
+    name.chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 fn relationship_declaration(
@@ -192,8 +299,10 @@ fn relationship_declaration(
                 "relationship descriptor has no relationship_name or type_name",
             )
         })?;
-    let minimum = integer_property(holon, "min_cardinality").unwrap_or(0);
-    let maximum = integer_property(holon, "max_cardinality").unwrap_or(i64::MAX);
+    let minimum = integer_property(holon, "min_cardinality")
+        .ok_or_else(|| invalid_descriptor(graph, descriptor, "missing integer min_cardinality"))?;
+    let maximum = integer_property(holon, "max_cardinality")
+        .ok_or_else(|| invalid_descriptor(graph, descriptor, "missing integer max_cardinality"))?;
     if minimum < 0 || maximum < minimum {
         return Err(invalid_descriptor(
             graph,
@@ -219,28 +328,60 @@ fn value_policy(
         .related_members(&value_type, &"Variants".to_string())
         .map_err(|error| ConformanceBuildError::Graph(DescriptorSemanticsError::Access(error)))?
         .into_iter()
-        .filter_map(|variant| graph.key(variant).map(ToString::to_string))
+        .flat_map(|variant| {
+            let mut aliases = Vec::new();
+            if let Some(key) = graph.key(variant) {
+                aliases.push(key.to_string());
+            }
+            if let Some(type_name) =
+                graph.holon(variant).and_then(|holon| string_property(holon, "type_name"))
+            {
+                aliases.push(type_name.to_string());
+            }
+            aliases
+        })
         .collect();
-    Ok(value_policy_for_type_kind(string_property(holon, "instance_type_kind"), variants))
+    Ok(value_policy_for_type_kind(string_property(holon, "TypeKind"), variants))
 }
 
 fn lineage_boolean(
     graph: &CanonicalDescriptorGraph,
     lineage: &[CanonicalNodeId],
     property: &str,
-) -> bool {
-    lineage
-        .iter()
-        .find_map(|node| graph.holon(*node)?.properties.get(property)?.as_bool())
-        .unwrap_or(false)
+) -> Result<bool, ConformanceBuildError> {
+    let mut values = Vec::with_capacity(lineage.len());
+    for node in lineage {
+        let holon = graph.holon(*node).ok_or_else(|| ConformanceBuildError::InvalidDescriptor {
+            descriptor: format!("{node:?}"),
+            message: "canonical holon is absent".to_string(),
+        })?;
+        let value =
+            literal_property(holon, property).and_then(LiteralValue::as_bool).ok_or_else(|| {
+                invalid_descriptor(graph, *node, &format!("missing Boolean {property}"))
+            })?;
+        values.push(value);
+    }
+    compose_restrictive_boolean(values).ok_or_else(|| ConformanceBuildError::InvalidDescriptor {
+        descriptor: "<empty describing type lineage>".to_string(),
+        message: format!("cannot resolve {property}"),
+    })
 }
 
 fn string_property<'a>(holon: &'a crate::CanonicalHolon, name: &str) -> Option<&'a str> {
-    holon.properties.get(name).and_then(LiteralValue::as_str)
+    literal_property(holon, name).and_then(LiteralValue::as_str)
 }
 
 fn integer_property(holon: &crate::CanonicalHolon, name: &str) -> Option<i64> {
-    holon.properties.get(name).and_then(LiteralValue::as_i64)
+    literal_property(holon, name).and_then(LiteralValue::as_i64)
+}
+
+fn literal_property<'a>(holon: &'a crate::CanonicalHolon, name: &str) -> Option<&'a LiteralValue> {
+    let normalized = normalized_member_name(name);
+    holon
+        .properties
+        .iter()
+        .find(|(candidate, _)| normalized_member_name(candidate) == normalized)
+        .map(|(_, value)| value)
 }
 
 fn conformance_value(value: &LiteralValue) -> ConformanceValue {
@@ -342,7 +483,7 @@ mod tests {
         model.push_descriptor(descriptor("TypeDescriptor.HolonType"));
 
         let mut enum_type = descriptor_of_kind("KindEnum", DescriptorKind::Enum);
-        string_property_value(&mut enum_type, "instance_type_kind", "TypeKind.Value.Enum");
+        enum_type.instance_type_kind = Some("TypeKind.Value.Enum".to_string());
         enum_type.literal_relationships.push(LiteralRelationship {
             name: "Variants".to_string(),
             targets: vec!["Kind.One".to_string(), "Kind.Two".to_string()],
@@ -353,6 +494,7 @@ mod tests {
 
         let mut property = descriptor_of_kind("Kind.PropertyType", DescriptorKind::PropertyType);
         string_property_value(&mut property, "property_name", "kind");
+        property.property_required = Some(true);
         property.literal_relationships.push(LiteralRelationship {
             name: "ValueType".to_string(),
             targets: vec!["KindEnum".to_string()],
@@ -364,7 +506,12 @@ mod tests {
             ReferenceRole::InstanceProperty,
             "Kind.PropertyType",
         ));
-        thing_type.allows_additional_properties = false;
+        thing_type
+            .literal_properties
+            .insert("allows_additional_properties".to_string(), LiteralValue::Boolean(false));
+        thing_type
+            .literal_properties
+            .insert("allows_additional_relationships".to_string(), LiteralValue::Boolean(false));
         model.push_descriptor(thing_type);
 
         let mut thing = descriptor("Thing.One");
@@ -382,12 +529,13 @@ mod tests {
             graph.node_by_key("Thing.One").expect("thing"),
         );
 
-        assert!(matches!(
-            diagnostics.as_slice(),
-            [Diagnostic {
-                kind: DiagnosticKind::InvalidConformanceValue { property, value, .. },
-                ..
-            }] if property == "kind" && value == "Kind.Unknown"
-        ));
+        assert!(
+            diagnostics.iter().any(|diagnostic| matches!(
+                &diagnostic.kind,
+                DiagnosticKind::InvalidConformanceValue { property, value, .. }
+                    if property == "kind" && value == "Kind.Unknown"
+            )),
+            "{diagnostics:#?}"
+        );
     }
 }

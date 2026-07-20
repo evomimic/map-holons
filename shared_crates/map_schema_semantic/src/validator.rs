@@ -3,7 +3,11 @@
 //! This module owns source-neutral semantic checks that apply after lowering and reference
 //! resolution. Source adapters remain responsible for syntax and source-format conveniences.
 
+use descriptor_semantics::{ancestors, effective_holon_key_rule};
+
 use crate::{
+    descriptor_conformance::validate_canonical_model_values,
+    descriptor_graph::CanonicalDescriptorGraph,
     diagnostics::{Diagnostic, DiagnosticKind, DiagnosticLayer},
     schema_index::{Symbol, SymbolIndex},
     schema_ir::{
@@ -31,33 +35,15 @@ pub fn validate_model(model: &SemanticModel, symbols: &SymbolIndex) -> Vec<Diagn
     let mut diagnostics = Vec::new();
 
     diagnostics.extend(validate_required_slots(model));
-    diagnostics.extend(validate_projected_type_kinds(model));
-    diagnostics.extend(validate_extends_graph(model, symbols, &descriptor_by_key));
+    if let Ok(graph) = CanonicalDescriptorGraph::new(model, symbols) {
+        diagnostics.extend(validate_canonical_model_values(&graph));
+        diagnostics.extend(validate_inheritance_graph(model, &graph));
+        diagnostics.extend(validate_effective_keys(model, symbols, &descriptor_by_key, &graph));
+    }
     diagnostics.extend(validate_relationship_pairs(model, symbols, &descriptor_by_key));
     diagnostics.extend(validate_local_duplicates(model, symbols));
-    diagnostics.extend(validate_effective_keys(model, symbols, &descriptor_by_key));
 
     diagnostics
-}
-
-/// Applies validation-only normalization that should not mutate emitted source artifacts.
-pub fn normalize_validation_model(model: &mut SemanticModel) {
-    for descriptor in &mut model.descriptors {
-        if descriptor.kind != DescriptorKind::RelationshipType {
-            continue;
-        }
-        if descriptor.min_cardinality.is_none() {
-            descriptor.min_cardinality = Some(0);
-        }
-        if descriptor.max_cardinality.is_none() {
-            descriptor.max_cardinality = Some(32_767);
-        }
-        if descriptor.relationship_flavor != Some(RelationshipFlavor::Inverse)
-            && descriptor.deletion_semantic.is_none()
-        {
-            descriptor.deletion_semantic = Some("Allow".to_string());
-        }
-    }
 }
 
 /// Synthesizes missing inverse-pair references from the side that was authored explicitly.
@@ -203,87 +189,17 @@ fn validate_required_slots(model: &SemanticModel) -> Vec<Diagnostic> {
     diagnostics
 }
 
-fn validate_projected_type_kinds(model: &SemanticModel) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
-    for descriptor in &model.descriptors {
-        if is_bootstrap_descriptor(descriptor) {
-            continue;
-        }
-        let Some(projected) = projected_type_kind(descriptor) else {
-            continue;
-        };
-        let Some(authored) = descriptor
-            .literal_properties
-            .get("instance_type_kind")
-            .and_then(|value| value.as_str())
-        else {
-            continue;
-        };
-        if type_kind_family_for_text(authored) != type_kind_family_for_descriptor(descriptor) {
-            diagnostics.push(Diagnostic::error(
-                DiagnosticLayer::DescriptorKind,
-                DiagnosticKind::InvalidProjectedTypeKind {
-                    descriptor: descriptor.key.clone(),
-                    actual: authored.to_string(),
-                    expected: projected.to_string(),
-                },
-                Some(descriptor.origin.clone()),
-            ));
-        }
-    }
-    diagnostics
-}
-
-fn validate_extends_graph(
+fn validate_inheritance_graph(
     model: &SemanticModel,
-    symbols: &SymbolIndex,
-    descriptor_by_key: &HashMap<&str, &TypeDescriptor>,
+    graph: &CanonicalDescriptorGraph,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for descriptor in &model.descriptors {
-        let Some(extends) = &descriptor.extends else {
+        let Some(node) = graph.node_by_key(&descriptor.key) else {
             continue;
         };
-        let Some(target_symbol) = resolved_symbol(extends, symbols) else {
-            continue;
-        };
-        let Some(parent) = descriptor_by_key.get(target_symbol.key.as_str()).copied() else {
-            continue;
-        };
-
-        if descriptor.name.starts_with("Meta") || parent.name.starts_with("Meta") {
-            continue;
-        }
-        if let (Some(actual), Some(expected)) =
-            (type_kind_family_for_descriptor(descriptor), type_kind_family_for_descriptor(parent))
-        {
-            if !type_kind_families_compatible(actual, expected) {
-                diagnostics.push(Diagnostic::error(
-                    DiagnosticLayer::SchemaAware,
-                    DiagnosticKind::TypeKindMismatch {
-                        descriptor: descriptor.key.clone(),
-                        target: parent.key.clone(),
-                        actual: projected_type_kind(descriptor)
-                            .unwrap_or(actual.as_str())
-                            .to_string(),
-                        expected: projected_type_kind(parent)
-                            .unwrap_or(expected.as_str())
-                            .to_string(),
-                    },
-                    Some(descriptor.origin.clone()),
-                ));
-            }
-        }
-
-        if has_extends_cycle(descriptor, symbols, descriptor_by_key) {
-            diagnostics.push(Diagnostic::error(
-                DiagnosticLayer::SchemaAware,
-                DiagnosticKind::InheritanceCycle {
-                    descriptor: descriptor.key.clone(),
-                    target: parent.key.clone(),
-                },
-                Some(descriptor.origin.clone()),
-            ));
+        if let Err(error) = ancestors(graph, &node) {
+            diagnostics.push(graph.diagnostic(error));
         }
     }
     diagnostics
@@ -459,11 +375,22 @@ fn validate_effective_keys(
     model: &SemanticModel,
     symbols: &SymbolIndex,
     descriptor_by_key: &HashMap<&str, &TypeDescriptor>,
+    graph: &CanonicalDescriptorGraph,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for descriptor in &model.descriptors {
-        let Some(resolution) = resolve_effective_key_rule(descriptor, symbols, descriptor_by_key)
-        else {
+        let Some(node) = graph.node_by_key(&descriptor.key) else {
+            continue;
+        };
+        let resolution = match effective_holon_key_rule(graph, &node, &"UsesKeyRule".to_string()) {
+            Ok(Some(rule)) => graph.key(rule).map(canonical_key_rule),
+            Ok(None) => None,
+            Err(error) => {
+                diagnostics.push(graph.diagnostic(error));
+                continue;
+            }
+        };
+        let Some(resolution) = resolution else {
             diagnostics.push(Diagnostic::error(
                 DiagnosticLayer::SchemaAware,
                 DiagnosticKind::MissingEffectiveKeyRule { descriptor: descriptor.key.clone() },
@@ -505,28 +432,6 @@ fn requires_extends(descriptor: &TypeDescriptor) -> bool {
             && descriptor.name == "MetaTypeDescriptor"))
 }
 
-fn has_extends_cycle(
-    descriptor: &TypeDescriptor,
-    symbols: &SymbolIndex,
-    descriptor_by_key: &HashMap<&str, &TypeDescriptor>,
-) -> bool {
-    let mut seen = HashSet::new();
-    let mut current = descriptor.extends.as_ref();
-    while let Some(reference) = current {
-        let Some(symbol) = resolved_symbol(reference, symbols) else {
-            return false;
-        };
-        if !seen.insert(symbol.key.clone()) {
-            return true;
-        }
-        if symbol.key == descriptor.key {
-            return true;
-        }
-        current = descriptor_by_key.get(symbol.key.as_str()).and_then(|next| next.extends.as_ref());
-    }
-    false
-}
-
 fn find_duplicate_members(
     descriptor: &TypeDescriptor,
     references: &[SemanticReference],
@@ -554,55 +459,6 @@ fn find_duplicate_members(
     diagnostics
 }
 
-fn resolve_effective_key_rule<'a>(
-    descriptor: &'a TypeDescriptor,
-    symbols: &'a SymbolIndex,
-    descriptor_by_key: &'a HashMap<&str, &TypeDescriptor>,
-) -> Option<String> {
-    if descriptor.extends.is_some() {
-        let mut current = descriptor.extends.as_ref();
-        let mut visited = HashSet::new();
-        while let Some(reference) = current {
-            let symbol = resolved_symbol(reference, symbols)?;
-            if !visited.insert(symbol.key.clone()) {
-                break;
-            }
-            let parent = descriptor_by_key.get(symbol.key.as_str())?;
-            if let Some(rule) =
-                parent.key_rule.as_ref().map(|reference| canonical_key_rule(&reference.target))
-            {
-                return Some(rule);
-            }
-            current = parent.extends.as_ref();
-        }
-    } else if let Some(rule) =
-        descriptor.key_rule.as_ref().map(|reference| canonical_key_rule(&reference.target))
-    {
-        return Some(rule);
-    }
-
-    let described_by = describing_type_target(descriptor)?;
-    let describing_symbol = symbols.lookup_reference_target(described_by)?;
-    let mut current = descriptor_by_key.get(describing_symbol.key.as_str()).copied();
-    let mut visited = HashSet::new();
-    while let Some(next) = current {
-        if !visited.insert(next.key.clone()) {
-            break;
-        }
-        if let Some(rule) =
-            next.key_rule.as_ref().map(|reference| canonical_key_rule(&reference.target))
-        {
-            return Some(rule);
-        }
-        current = next
-            .extends
-            .as_ref()
-            .and_then(|reference| resolved_symbol(reference, symbols))
-            .and_then(|symbol| descriptor_by_key.get(symbol.key.as_str()).copied());
-    }
-    None
-}
-
 fn generate_key(
     descriptor: &TypeDescriptor,
     key_rule: &str,
@@ -612,7 +468,9 @@ fn generate_key(
     match key_rule {
         TYPE_NAME_RULE => Ok(descriptor.name.clone()),
         SCHEMA_NAME_RULE => Ok(descriptor.owning_schema.clone()),
-        TYPE_KIND_RULE => projected_type_kind(descriptor)
+        TYPE_KIND_RULE => descriptor
+            .instance_type_kind
+            .as_deref()
             .map(|kind| format!("{}.{}", descriptor.name, kind))
             .ok_or_else(|| DiagnosticKind::MissingKeyRuleInput {
                 descriptor: descriptor.key.clone(),
@@ -692,22 +550,6 @@ fn canonical_key_rule(target: &str) -> String {
     }
 }
 
-fn describing_type_target(descriptor: &TypeDescriptor) -> Option<&'static str> {
-    match descriptor.kind {
-        DescriptorKind::TypeDescriptor | DescriptorKind::HolonType => Some("MetaHolonType"),
-        DescriptorKind::PropertyType => Some("MetaPropertyType"),
-        DescriptorKind::RelationshipType => {
-            Some(if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
-                "MetaInverseRelationshipType"
-            } else {
-                "MetaDeclaredRelationshipType"
-            })
-        }
-        DescriptorKind::ValueType | DescriptorKind::Enum => Some("MetaValueType"),
-        DescriptorKind::EnumVariant | DescriptorKind::Schema => None,
-    }
-}
-
 fn relationship_flavor_label(flavor: Option<RelationshipFlavor>) -> String {
     match flavor {
         Some(RelationshipFlavor::Declared) => "declared".to_string(),
@@ -721,148 +563,6 @@ fn resolved_symbol<'a>(
     symbols: &'a SymbolIndex,
 ) -> Option<&'a Symbol> {
     reference.resolved.and_then(|id| symbols.lookup_by_id(id))
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TypeKindFamily {
-    Holon,
-    Property,
-    Relationship,
-    Value,
-    EnumVariant,
-}
-
-impl TypeKindFamily {
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::Holon => "TypeKind.Holon",
-            Self::Property => "TypeKind.Property",
-            Self::Relationship => "TypeKind.Relationship",
-            Self::Value => "TypeKind.Value",
-            Self::EnumVariant => "TypeKind.EnumVariant",
-        }
-    }
-}
-
-fn type_kind_family_for_descriptor(descriptor: &TypeDescriptor) -> Option<TypeKindFamily> {
-    match descriptor.kind {
-        DescriptorKind::Schema => None,
-        DescriptorKind::PropertyType => Some(TypeKindFamily::Property),
-        DescriptorKind::RelationshipType => Some(TypeKindFamily::Relationship),
-        DescriptorKind::ValueType | DescriptorKind::Enum => Some(TypeKindFamily::Value),
-        DescriptorKind::EnumVariant => Some(TypeKindFamily::EnumVariant),
-        DescriptorKind::TypeDescriptor | DescriptorKind::HolonType => {
-            if descriptor.name == "PropertyType" || descriptor.name.ends_with("PropertyType") {
-                Some(TypeKindFamily::Property)
-            } else if descriptor.name == "ValueType" || descriptor.name.ends_with("ValueType") {
-                Some(TypeKindFamily::Value)
-            } else if descriptor.name == "DeclaredRelationshipType"
-                || descriptor.name == "InverseRelationshipType"
-                || descriptor.name == "MetaRelationshipType"
-                || descriptor.name.ends_with("RelationshipType")
-            {
-                Some(TypeKindFamily::Relationship)
-            } else {
-                Some(TypeKindFamily::Holon)
-            }
-        }
-    }
-}
-
-fn type_kind_family_for_text(text: &str) -> Option<TypeKindFamily> {
-    if text.starts_with("TypeKind.Property") {
-        Some(TypeKindFamily::Property)
-    } else if text.starts_with("TypeKind.Relationship") {
-        Some(TypeKindFamily::Relationship)
-    } else if text.starts_with("TypeKind.Value") {
-        Some(TypeKindFamily::Value)
-    } else if text.starts_with("TypeKind.EnumVariant") {
-        Some(TypeKindFamily::EnumVariant)
-    } else if text.starts_with("TypeKind.Holon") {
-        Some(TypeKindFamily::Holon)
-    } else {
-        None
-    }
-}
-
-fn type_kind_families_compatible(actual: TypeKindFamily, expected: TypeKindFamily) -> bool {
-    actual == expected
-        || matches!(
-            (actual, expected),
-            (TypeKindFamily::EnumVariant, TypeKindFamily::Value)
-                | (TypeKindFamily::Value, TypeKindFamily::EnumVariant)
-        )
-}
-
-fn is_bootstrap_descriptor(descriptor: &TypeDescriptor) -> bool {
-    descriptor.name.starts_with("Meta")
-        || matches!(
-            descriptor.name.as_str(),
-            "TypeDescriptor"
-                | "HolonType"
-                | "ValueType"
-                | "PropertyType"
-                | "RelationshipType"
-                | "DeclaredRelationshipType"
-                | "InverseRelationshipType"
-        )
-}
-
-fn projected_type_kind(descriptor: &TypeDescriptor) -> Option<&'static str> {
-    match descriptor.kind {
-        DescriptorKind::Schema => None,
-        DescriptorKind::TypeDescriptor | DescriptorKind::HolonType => Some("TypeKind.Holon"),
-        DescriptorKind::PropertyType => Some("TypeKind.Property"),
-        DescriptorKind::RelationshipType => Some("TypeKind.Relationship"),
-        DescriptorKind::Enum => Some("TypeKind.Value.Enum"),
-        DescriptorKind::EnumVariant => Some("TypeKind.EnumVariant"),
-        DescriptorKind::ValueType => Some(infer_value_kind(descriptor)),
-    }
-}
-
-fn infer_value_kind(descriptor: &TypeDescriptor) -> &'static str {
-    if descriptor.name == "MetaValueType" {
-        return "TypeKind.Holon";
-    }
-    if descriptor.name == "ValueType" {
-        return "TypeKind.Value";
-    }
-    if matches!(descriptor.name.as_str(), "EnumVariantValueType" | "MapEnumVariantValueType") {
-        return "TypeKind.EnumVariant";
-    }
-    if descriptor.name.ends_with("StringValueType") {
-        return "TypeKind.Value.String";
-    }
-    if descriptor.name.ends_with("IntegerValueType") {
-        return "TypeKind.Value.Integer";
-    }
-    if descriptor.name.ends_with("BooleanValueType") {
-        return "TypeKind.Value.Boolean";
-    }
-    if descriptor.name.ends_with("BytesValueType") || descriptor.name == "HolonIdValueType" {
-        return "TypeKind.Value.Bytes";
-    }
-    if descriptor.name.ends_with("ValueArrayType")
-        || descriptor.name.ends_with("ValueArrayValueType")
-    {
-        return "TypeKind.Value.Array";
-    }
-    if descriptor.name.ends_with("EnumValueType") {
-        return "TypeKind.Value.Enum";
-    }
-    match descriptor.extends.as_ref().map(|reference| reference.target.as_str()) {
-        Some("MetaTypeDescriptor") | Some("MetaValueType") => "TypeKind.Holon",
-        Some("StringValueType") | Some("MapStringValueType") => "TypeKind.Value.String",
-        Some("IntegerValueType") | Some("MapIntegerValueType") => "TypeKind.Value.Integer",
-        Some("BooleanValueType") | Some("MapBooleanValueType") => "TypeKind.Value.Boolean",
-        Some("BytesValueType") | Some("MapBytesValueType") | Some("HolonIdValueType") => {
-            "TypeKind.Value.Bytes"
-        }
-        Some("ValueArrayValueType") | Some("MapValueArrayType") => "TypeKind.Value.Array",
-        Some("EnumValueType") | Some("MapEnumValueType") => "TypeKind.Value.Enum",
-        Some("EnumVariantValueType") | Some("MapEnumVariantValueType") => "TypeKind.EnumVariant",
-        _ => "TypeKind.Value.String",
-    }
 }
 
 #[cfg(test)]

@@ -1,14 +1,15 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.912447Z",
+    "generated_at": "2026-07-22T12:12:39.821664Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-concrete-value-types.tdl"
     ],
     "load_with": [
       "MAP Schema Types-map-core-schema-abstract-value-types.json",
-      "MAP Schema Types-map-core-schema-keyrules-schema.json"
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-root.json"
     ]
   },
   "holons": [
@@ -22,7 +23,9 @@
         "display_name_plural": "MapStringValueTypes",
         "description": "Concrete value type representing strings.",
         "instance_type_kind": "TypeKind.Value.String",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -55,7 +58,9 @@
         "display_name_plural": "MapIntegerValueTypes",
         "description": "Concrete value type representing integers.",
         "instance_type_kind": "TypeKind.Value.Integer",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -88,7 +93,9 @@
         "display_name_plural": "MapBooleanValueTypes",
         "description": "Concrete value type representing booleans.",
         "instance_type_kind": "TypeKind.Value.Boolean",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -121,7 +128,9 @@
         "display_name_plural": "MapBytesValueTypes",
         "description": "Concrete value type representing byte sequences.",
         "instance_type_kind": "TypeKind.Value.Bytes",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -154,7 +163,9 @@
         "display_name_plural": "MapEnumValueTypes",
         "description": "Concrete value type representing enums.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -187,7 +198,9 @@
         "display_name_plural": "MapEnumVariant Value Types",
         "description": "Abstract type for variants of enum-based value types.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -220,7 +233,9 @@
         "display_name_plural": "MapValueArrayTypes",
         "description": "Concrete value type representing arrays of values.",
         "instance_type_kind": "TypeKind.Value.Array",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -253,7 +268,9 @@
         "display_name_plural": "DeletionSemantics",
         "description": "Enum value type for deletion semantics.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -293,7 +310,9 @@
         "display_name": "Allow",
         "description": "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -319,7 +338,9 @@
         "display_name": "Block",
         "description": "Prevent deletion of the source holon if any target holons are related through this relationship.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -345,7 +366,9 @@
         "display_name": "Cascade",
         "description": "If the source holon is deleted, also delete any related target holons.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -372,7 +395,9 @@
         "display_name_plural": "TypeKinds",
         "description": "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship).",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -439,7 +464,9 @@
         "display_name": "Property",
         "description": "Represents a property type. Variant of the TypeKind enum.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -465,7 +492,9 @@
         "display_name": "Relationship",
         "description": "Represents a relationship type. Variant of the TypeKind enum.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -491,7 +520,9 @@
         "display_name": "EnumVariant",
         "description": "Represents an enum variant type. Variant of the TypeKind enum.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -517,7 +548,9 @@
         "display_name": "Holon",
         "description": "Represents a holon type.  Variant of the TypeKind enum.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -543,7 +576,9 @@
         "display_name": "Collection",
         "description": "Represents a collection type. Variant of the TypeKind enum.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -569,7 +604,9 @@
         "display_name": "Dance",
         "description": "Represents a dance service type. Variant of the TypeKind enum.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -595,7 +632,9 @@
         "display_name": "Value.String",
         "description": "Value type wrapping base type representing strings.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -621,7 +660,9 @@
         "display_name": "Value.Array",
         "description": "Value type wrapping an array of base type items.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -647,7 +688,9 @@
         "display_name": "Value.Integer",
         "description": "Value type wrapping base type representing integers.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -673,7 +716,9 @@
         "display_name": "Value.Boolean",
         "description": "Value type wrapping base type representing booleans.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -699,7 +744,9 @@
         "display_name": "Value.Enum",
         "description": "Value type wrapping base type representing enumerations.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -725,7 +772,9 @@
         "display_name": "Value.Bytes",
         "description": "Value type wrapping base type representing byte sequences.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -752,7 +801,9 @@
         "display_name_plural": "Collection Types",
         "description": "Enum value type for selecting the runtime wrapper used to inflate a persisted collection holon.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -785,7 +836,9 @@
         "display_name_plural": "Holon Array",
         "description": "Collection wrapper variant for ordered or index-addressable array-style holon collections.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -812,7 +865,9 @@
         "display_name_plural": "HolonIdValueTypes",
         "description": "Concrete bytes value type representing the canonical serialized form of a HolonId.",
         "instance_type_kind": "TypeKind.Value.Bytes",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {

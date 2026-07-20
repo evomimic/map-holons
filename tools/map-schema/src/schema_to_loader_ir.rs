@@ -1,5 +1,5 @@
 use crate::{
-    literal_bridge::literal_object_to_json_map,
+    literal_bridge::{literal_object_to_json_map, literal_value_to_json},
     loader_ir::{LoaderDocument, LoaderHolon, LoaderMeta, LoaderReference, LoaderRelationship},
     schema_ir::{DescriptorKind, Schema, SemanticModel, SemanticReference, TypeDescriptor},
 };
@@ -201,7 +201,9 @@ fn descriptor_type(references: &[SemanticReference], fallback: &str) -> String {
 
 fn lower_descriptor_properties(descriptor: &TypeDescriptor) -> serde_json::Map<String, Value> {
     if !descriptor.literal_properties.is_empty() {
-        return literal_object_to_json_map(&descriptor.literal_properties);
+        let mut properties = literal_object_to_json_map(&descriptor.literal_properties);
+        append_materialized_properties(&mut properties, descriptor);
+        return properties;
     }
 
     lower_descriptor_properties_semantic(descriptor)
@@ -240,16 +242,19 @@ fn lower_descriptor_properties_semantic(
             .insert("display_name_plural".to_string(), json!(pluralize_name(&descriptor.name)));
     }
 
-    let instance_type_kind = match descriptor.kind {
-        DescriptorKind::HolonType => Some(json!("TypeKind.Holon")),
-        DescriptorKind::PropertyType => Some(json!("TypeKind.Property")),
-        DescriptorKind::RelationshipType => Some(json!("TypeKind.Relationship")),
-        DescriptorKind::ValueType => Some(json!(infer_value_kind(descriptor))),
-        DescriptorKind::Enum => Some(json!("TypeKind.Value.Enum")),
-        DescriptorKind::EnumVariant => Some(json!("TypeKind.EnumVariant")),
-        DescriptorKind::TypeDescriptor => Some(json!("TypeKind.Holon")),
-        DescriptorKind::Schema => None,
-    };
+    let instance_type_kind =
+        descriptor.instance_type_kind.as_ref().map(|value| json!(value)).or_else(
+            || match descriptor.kind {
+                DescriptorKind::HolonType => Some(json!("TypeKind.Holon")),
+                DescriptorKind::PropertyType => Some(json!("TypeKind.Property")),
+                DescriptorKind::RelationshipType => Some(json!("TypeKind.Relationship")),
+                DescriptorKind::ValueType => Some(json!(infer_value_kind(descriptor))),
+                DescriptorKind::Enum => Some(json!("TypeKind.Value.Enum")),
+                DescriptorKind::EnumVariant => Some(json!("TypeKind.EnumVariant")),
+                DescriptorKind::TypeDescriptor => Some(json!("TypeKind.Holon")),
+                DescriptorKind::Schema => None,
+            },
+        );
     if let Some(instance_type_kind) = instance_type_kind {
         properties.insert("instance_type_kind".to_string(), instance_type_kind);
     }
@@ -280,13 +285,50 @@ fn lower_descriptor_properties_semantic(
                 properties.insert("max_cardinality".to_string(), json!(max));
             }
         }
-        DescriptorKind::PropertyType
-        | DescriptorKind::ValueType
+        DescriptorKind::PropertyType => {
+            if let Some(required) = descriptor.property_required {
+                properties.insert("is_required".to_string(), json!(required));
+            }
+        }
+        DescriptorKind::ValueType
         | DescriptorKind::Enum
         | DescriptorKind::EnumVariant
         | DescriptorKind::Schema => {}
     }
+    append_materialized_properties(&mut properties, descriptor);
     properties
+}
+
+fn append_materialized_properties(
+    properties: &mut serde_json::Map<String, Value>,
+    descriptor: &TypeDescriptor,
+) {
+    for (name, value) in descriptor.materialized_properties.iter() {
+        properties
+            .entry(canonical_property_to_snake_case(name))
+            .or_insert_with(|| literal_value_to_json(value));
+    }
+}
+
+fn canonical_property_to_snake_case(name: &str) -> String {
+    let characters = name.chars().collect::<Vec<_>>();
+    let mut snake = String::with_capacity(name.len());
+    for (index, character) in characters.iter().copied().enumerate() {
+        let previous_is_lowercase = index
+            .checked_sub(1)
+            .and_then(|previous| characters.get(previous))
+            .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit());
+        let next_is_lowercase =
+            characters.get(index + 1).is_some_and(|next| next.is_ascii_lowercase());
+        if character.is_ascii_uppercase()
+            && index > 0
+            && (previous_is_lowercase || next_is_lowercase)
+        {
+            snake.push('_');
+        }
+        snake.push(character.to_ascii_lowercase());
+    }
+    snake
 }
 
 fn infer_value_kind(descriptor: &TypeDescriptor) -> &'static str {

@@ -7,9 +7,7 @@
 //! so schema dependencies and cross-file references can be resolved consistently.
 
 use anyhow::{anyhow, Context, Result};
-use map_schema_semantic::{
-    normalize_relationship_pairs, normalize_validation_model, validate_model,
-};
+use map_schema_semantic::{normalize_relationship_pairs, validate_model};
 /// Diagnostic formatting and source-oriented validation messages.
 pub mod diagnostics;
 mod literal_bridge;
@@ -753,7 +751,6 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedFile>) -> Result<LoweredJso
 
     let (symbols, mut diagnostics) = SymbolIndex::build(&mut global_model);
     let mut validation_model = global_model.clone();
-    normalize_validation_model(&mut validation_model);
     normalize_relationship_pairs(&mut validation_model, &symbols);
     diagnostics.extend(validate_model(&validation_model, &symbols));
     for file in &mut files {
@@ -1048,6 +1045,8 @@ fn semantic_descriptor_from_holon(
     ));
     descriptor.header = semantic_header(&holon.properties);
     descriptor.literal_properties = json_map_to_literal_object(&holon.properties);
+    descriptor.instance_type_kind = string_property(&holon.properties, "instance_type_kind");
+    descriptor.property_required = holon.properties.get("is_required").and_then(Value::as_bool);
     descriptor.is_abstract = bool_property(&holon.properties, "is_abstract_type");
     descriptor.is_definitional = bool_property(&holon.properties, "is_definitional");
     descriptor.min_cardinality = integer_property(&holon.properties, "min_cardinality");
@@ -1403,7 +1402,10 @@ fn render_semantic_property(
     descriptor: &TypeDescriptor,
     emitted_key_lookup: &crate::schema_to_loader_ir::EmittedKeyLookup,
 ) -> Result<()> {
-    let head = descriptor_head("property", descriptor);
+    let mut head = descriptor_head("property", descriptor);
+    if descriptor.property_required == Some(false) {
+        head.push('?');
+    }
     let mut clauses = Vec::new();
     let uses_literal_body = descriptor_uses_literal_body(descriptor, emitted_key_lookup);
     if !uses_literal_body {
@@ -2017,7 +2019,7 @@ mod tests {
     }
 
     #[test]
-    fn json_lowering_preserves_descriptor_identity_and_unvalidated_property_values() -> Result<()> {
+    fn json_lowering_preserves_descriptor_identity_and_authored_property_values() -> Result<()> {
         let input_dir = temp_domain_json_dir();
         write_json_file(
             &input_dir.join("invalid-type-kind.json"),
@@ -2061,9 +2063,61 @@ mod tests {
             }]
         );
         assert_eq!(
-            person.properties.get("instance_type_kind").and_then(|value| value.as_str()),
+            person.properties.get("TypeKind").and_then(|value| value.as_str()),
             Some("TypeKind.HolonFoo")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn json_lowering_does_not_apply_tdl_boolean_omission_defaults() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
+        let descriptor = lowered
+            .global_model
+            .descriptors
+            .iter()
+            .find(|descriptor| descriptor.key == "DeclaredRelationshipType")
+            .expect("DeclaredRelationshipType descriptor");
+
+        assert!(descriptor.materialized_properties.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn json_corpus_rejects_invalid_type_kind_through_descriptor_enum_policy() -> Result<()> {
+        let input_dir = temp_domain_json_dir();
+        fs::create_dir_all(&input_dir)?;
+        for entry in fs::read_dir(source_fixture_dir())? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
+                continue;
+            }
+            let mut document = serde_json::from_str::<Value>(&fs::read_to_string(&path)?)?;
+            if let Some(person) =
+                document.get_mut("holons").and_then(Value::as_array_mut).and_then(|holons| {
+                    holons.iter_mut().find(|holon| {
+                        holon.get("key").and_then(Value::as_str) == Some("HolonSpace.HolonType")
+                    })
+                })
+            {
+                person["properties"]["instance_type_kind"] =
+                    Value::String("TypeKind.HolonFoo".to_string());
+            }
+            fs::write(
+                input_dir.join(path.file_name().expect("fixture file name")),
+                serde_json::to_string_pretty(&document)?,
+            )?;
+        }
+
+        let lowered = lower_inputs_to_schema_ir(&[input_dir])?;
+        assert!(lowered.diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::InvalidConformanceValue { holon, property, value, .. }
+                if holon == "HolonSpace.HolonType"
+                    && property == "TypeKind"
+                    && value == "TypeKind.HolonFoo"
+        )));
         Ok(())
     }
 
@@ -2091,7 +2145,11 @@ mod tests {
 
         let source_lowered = lower_inputs_to_schema_ir(&[source_dir.clone()])?;
         let regenerated_lowered = lower_inputs_to_schema_ir(&[regenerated_json_dir.clone()])?;
-        assert!(source_lowered.diagnostics.is_empty(), "source JSON should remain diagnostic-free");
+        assert!(
+            source_lowered.diagnostics.is_empty(),
+            "source JSON should remain diagnostic-free:\n{}",
+            format_diagnostics(&source_lowered.diagnostics)
+        );
         assert!(
             regenerated_lowered.diagnostics.is_empty(),
             "round-tripped JSON should remain diagnostic-free"
@@ -2259,7 +2317,7 @@ relationship Broken {
         let source_dir = source_fixture_dir();
         let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
 
-        assert!(lowered.diagnostics.is_empty());
+        assert!(lowered.diagnostics.is_empty(), "{}", format_diagnostics(&lowered.diagnostics));
         assert_eq!(lowered.files.len(), discovered_json_file_count(&source_dir)?);
         assert!(!lowered.global_model.schemas.is_empty());
         assert!(!lowered.global_model.descriptors.is_empty());

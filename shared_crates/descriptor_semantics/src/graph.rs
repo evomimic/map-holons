@@ -31,8 +31,11 @@ pub trait DescriptorGraph {
 pub enum DescriptorSemanticsError<E, N> {
     Access(E),
     MultipleExtends { descriptor: N, count: usize },
+    MissingDescribedBy { holon: N },
     MultipleDescribedBy { holon: N, count: usize },
     CyclicExtends { descriptor: N },
+    MultipleRelatedMembers { descriptor: N, kind: &'static str, count: usize },
+    DuplicateInheritedDeclaration { descriptor: N, kind: &'static str, name: String },
 }
 
 impl<E: fmt::Display, N: fmt::Debug> fmt::Display for DescriptorSemanticsError<E, N> {
@@ -43,13 +46,24 @@ impl<E: fmt::Display, N: fmt::Debug> fmt::Display for DescriptorSemanticsError<E
                 formatter,
                 "descriptor {descriptor:?} has {count} Extends targets; expected at most one"
             ),
+            Self::MissingDescribedBy { holon } => {
+                write!(formatter, "holon {holon:?} has no DescribedBy target; expected exactly one")
+            }
             Self::MultipleDescribedBy { holon, count } => write!(
                 formatter,
-                "holon {holon:?} has {count} DescribedBy targets; expected at most one"
+                "holon {holon:?} has {count} DescribedBy targets; expected exactly one"
             ),
             Self::CyclicExtends { descriptor } => {
                 write!(formatter, "cyclic Extends chain at {descriptor:?}")
             }
+            Self::MultipleRelatedMembers { descriptor, kind, count } => write!(
+                formatter,
+                "descriptor {descriptor:?} has {count} {kind} targets; expected at most one"
+            ),
+            Self::DuplicateInheritedDeclaration { descriptor, kind, name } => write!(
+                formatter,
+                "descriptor {descriptor:?} inherits more than one {kind} declaration named `{name}`"
+            ),
         }
     }
 }

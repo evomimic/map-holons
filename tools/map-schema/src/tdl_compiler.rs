@@ -12,7 +12,7 @@ use crate::{
     loader_ir::{LoaderDocument, LoaderMeta},
     schema_index::SymbolIndex,
     schema_ir::{
-        DescriptorHeader, DescriptorKind, LiteralRelationship, Origin, ReferenceRole,
+        DescriptorHeader, DescriptorKind, LiteralRelationship, LiteralValue, Origin, ReferenceRole,
         RelationshipFlavor, Schema, SemanticModel, SemanticReference, SourceKind, TypeDescriptor,
     },
     schema_to_loader_ir::{
@@ -21,10 +21,12 @@ use crate::{
 };
 use anyhow::{anyhow, Context, Result};
 use map_schema_semantic::{
-    normalize_relationship_pairs, normalize_validation_model, validate_model,
+    effective_boolean_property_names, normalize_relationship_pairs, validate_model,
+    CanonicalDescriptorGraph,
 };
 use map_schema_semantic::{DiagnosticKind, DiagnosticLayer};
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -71,6 +73,7 @@ struct TdlDescriptor {
     origin: Origin,
     header: Option<DescriptorHeader>,
     is_abstract: bool,
+    property_required: Option<bool>,
     relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     value_type: Option<String>,
@@ -581,6 +584,7 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            property_required: parsed.property_required,
             relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
@@ -771,6 +775,7 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            property_required: parsed.property_required,
             relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
@@ -1015,6 +1020,7 @@ struct ParsedHead {
     kind: DescriptorKind,
     name: String,
     is_abstract: bool,
+    property_required: Option<bool>,
     is_definitional: bool,
     relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
@@ -1110,7 +1116,17 @@ fn parse_descriptor_header(line: &str, origin: Origin) -> ParseResult<ParsedHead
             origin,
         });
     }
-    let name = after_kind.trim_end_matches('{').trim().to_string();
+    let authored_name = after_kind.trim_end_matches('{').trim();
+    let property_required = if kind == DescriptorKind::PropertyType {
+        Some(!authored_name.ends_with('?'))
+    } else {
+        None
+    };
+    let name = if property_required == Some(false) {
+        authored_name.trim_end_matches('?').to_string()
+    } else {
+        authored_name.to_string()
+    };
     if kind == DescriptorKind::RelationshipType {
         if let Some((_, remainder)) = name.split_once(" extends ") {
             extends = Some(remainder.trim().to_string());
@@ -1131,6 +1147,7 @@ fn parse_descriptor_header(line: &str, origin: Origin) -> ParseResult<ParsedHead
         kind,
         name,
         is_abstract,
+        property_required,
         is_definitional,
         relationship_flavor,
         extends,
@@ -1416,8 +1433,12 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<Lowered
     }
 
     let (symbols, mut diagnostics) = SymbolIndex::build(&mut global_model);
+    let boolean_defaults = derive_tdl_boolean_defaults(&global_model, &symbols);
+    apply_tdl_boolean_defaults(&mut global_model, &boolean_defaults);
+    for file in &mut files {
+        apply_tdl_boolean_defaults(&mut file.schema_model, &boolean_defaults);
+    }
     let mut validation_model = global_model.clone();
-    normalize_validation_model(&mut validation_model);
     normalize_relationship_pairs(&mut validation_model, &symbols);
     diagnostics.extend(validate_model(&validation_model, &symbols));
     for file in &mut files {
@@ -1425,6 +1446,63 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<Lowered
     }
 
     Ok(LoweredTdlProject { files, global_model, symbols, diagnostics })
+}
+
+/// Resolves TDL's omitted-Boolean convention through effective property descriptors.
+///
+/// The adapter decides that omission means `false`; the shared descriptor graph decides which
+/// Boolean properties are actually applicable to each holon.
+fn derive_tdl_boolean_defaults(
+    model: &SemanticModel,
+    symbols: &SymbolIndex,
+) -> HashMap<String, Vec<String>> {
+    let Ok(graph) = CanonicalDescriptorGraph::new(model, symbols) else {
+        return HashMap::new();
+    };
+    let mut defaults = HashMap::new();
+    for descriptor in &model.descriptors {
+        let Some(node) = graph.node_by_key(&descriptor.key) else {
+            continue;
+        };
+        let Some(holon) = graph.holon(node) else {
+            continue;
+        };
+        let Ok(boolean_properties) = effective_boolean_property_names(&graph, node) else {
+            continue;
+        };
+        let missing = boolean_properties
+            .into_iter()
+            .filter(|property| {
+                !holon.properties.iter().any(|(name, _)| {
+                    normalized_property_name(name) == normalized_property_name(property)
+                })
+            })
+            .collect::<Vec<_>>();
+        if !missing.is_empty() {
+            defaults.insert(descriptor.key.clone(), missing);
+        }
+    }
+    defaults
+}
+
+fn apply_tdl_boolean_defaults(model: &mut SemanticModel, defaults: &HashMap<String, Vec<String>>) {
+    for descriptor in &mut model.descriptors {
+        let Some(properties) = defaults.get(&descriptor.key) else {
+            continue;
+        };
+        for property in properties {
+            descriptor
+                .materialized_properties
+                .insert(property.clone(), LiteralValue::Boolean(false));
+        }
+    }
+}
+
+fn normalized_property_name(name: &str) -> String {
+    name.chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 /// Projects validated semantic models into loader documents without reinterpreting TDL syntax.
@@ -1526,12 +1604,26 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
         "TypeDescriptor.HolonType",
     ));
     lowered.is_abstract = descriptor.is_abstract;
+    lowered.instance_type_kind = descriptor
+        .literal_properties
+        .get("instance_type_kind")
+        .and_then(|value| value.as_str())
+        .map(ToString::to_string)
+        .or_else(|| tdl_instance_type_kind(descriptor));
+    lowered.property_required = descriptor.property_required;
     lowered.literal_properties = descriptor.literal_properties.clone();
     lowered.literal_relationships = descriptor.literal_relationships.clone();
     lowered.is_definitional = descriptor.is_definitional;
-    lowered.min_cardinality = descriptor.min_cardinality;
-    lowered.max_cardinality = descriptor.max_cardinality;
-    lowered.deletion_semantic = descriptor.deletion_semantic.clone();
+    if descriptor.kind == DescriptorKind::RelationshipType {
+        lowered.min_cardinality = Some(descriptor.min_cardinality.unwrap_or(0));
+        lowered.max_cardinality = Some(descriptor.max_cardinality.unwrap_or(32_767));
+        lowered.deletion_semantic =
+            Some(descriptor.deletion_semantic.clone().unwrap_or_else(|| "Allow".to_string()));
+    } else {
+        lowered.min_cardinality = descriptor.min_cardinality;
+        lowered.max_cardinality = descriptor.max_cardinality;
+        lowered.deletion_semantic = descriptor.deletion_semantic.clone();
+    }
     lowered.is_ordered = descriptor.is_ordered;
     lowered.allows_duplicates = descriptor.allows_duplicates;
     lowered.allows_additional_properties = descriptor.allows_additional_properties;
@@ -1661,6 +1753,30 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
     }
 
     Ok(lowered)
+}
+
+/// Lowers TDL declaration keywords into the explicit TypeKind value emitted by the adapter.
+///
+/// This is syntax desugaring, not validation: descriptor conformance subsequently validates the
+/// resulting enum value through `TypeKind.PropertyType` and its resolved enum descriptor.
+fn tdl_instance_type_kind(descriptor: &TdlDescriptor) -> Option<String> {
+    let value = match descriptor.kind {
+        DescriptorKind::TypeDescriptor | DescriptorKind::HolonType => "TypeKind.Holon",
+        DescriptorKind::PropertyType => "TypeKind.Property",
+        DescriptorKind::RelationshipType => "TypeKind.Relationship",
+        DescriptorKind::Enum => "TypeKind.Value.Enum",
+        DescriptorKind::EnumVariant => "TypeKind.EnumVariant",
+        DescriptorKind::ValueType => match descriptor.extends.as_deref() {
+            Some("StringValueType") | Some("MapStringValueType") => "TypeKind.Value.String",
+            Some("IntegerValueType") | Some("MapIntegerValueType") => "TypeKind.Value.Integer",
+            Some("BooleanValueType") | Some("MapBooleanValueType") => "TypeKind.Value.Boolean",
+            Some("BytesValueType") | Some("MapBytesValueType") => "TypeKind.Value.Bytes",
+            Some("ValueArrayValueType") | Some("MapValueArrayType") => "TypeKind.Value.Array",
+            _ => return None,
+        },
+        DescriptorKind::Schema => return None,
+    };
+    Some(value.to_string())
 }
 
 fn reference_role_for_relationship_name(name: &str) -> Option<ReferenceRole> {
@@ -1923,7 +2039,139 @@ mod tests {
     #[test]
     fn checks_core_schema_corpus_without_diagnostics() -> Result<()> {
         let diagnostics = check_inputs(&[fixture_dir()])?;
-        assert!(diagnostics.is_empty());
+        assert!(diagnostics.is_empty(), "{}", format_diagnostics(&diagnostics));
+        Ok(())
+    }
+
+    #[test]
+    fn descriptor_value_conformance_accepts_core_schema_corpus() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        let diagnostics = map_schema_semantic::validate_canonical_model_values(&graph);
+        assert!(diagnostics.is_empty(), "{} descriptor-value diagnostics", diagnostics.len());
+        Ok(())
+    }
+
+    #[test]
+    fn omitted_tdl_booleans_materialize_false_from_effective_descriptors() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        map_schema_semantic::effective_boolean_property_names(
+            &graph,
+            graph.node_by_key("PropertyType").expect("PropertyType node"),
+        )
+        .expect("PropertyType Boolean declarations should resolve");
+        let expected = [
+            ("PropertyType", &["IsRequired"][..]),
+            (
+                "Book.HolonType",
+                &["AllowsAdditionalProperties", "AllowsAdditionalRelationships"][..],
+            ),
+            ("MetaValueType", &["AllowsAdditionalProperties", "AllowsAdditionalRelationships"][..]),
+            ("DeclaredRelationshipType", &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..]),
+            ("InverseRelationshipType", &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..]),
+            (
+                "MetaDeclaredRelationshipType",
+                &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..],
+            ),
+            (
+                "MetaInverseRelationshipType",
+                &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..],
+            ),
+        ];
+
+        for (key, properties) in expected {
+            let descriptor = lowered
+                .global_model
+                .descriptors
+                .iter()
+                .find(|descriptor| descriptor.key == key)
+                .unwrap_or_else(|| panic!("missing descriptor `{key}`"));
+            for property in properties {
+                assert_eq!(
+                    descriptor
+                        .materialized_properties
+                        .get(property)
+                        .and_then(LiteralValue::as_bool),
+                    Some(false),
+                    "`{key}.{property}` should materialize TDL omission as false"
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn omitted_tdl_booleans_satisfy_required_property_conformance() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        let diagnostics = map_schema_semantic::validate_canonical_model_conformance(&graph);
+        let defaulted_boolean_properties = [
+            "IsRequired",
+            "IsDefinitional",
+            "IsOrdered",
+            "AllowsDuplicates",
+            "AllowsAdditionalProperties",
+            "AllowsAdditionalRelationships",
+        ];
+        assert!(!diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::MissingConformanceProperty { property, .. }
+                if defaulted_boolean_properties.contains(&property.as_str())
+        )));
+        assert!(!diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::AdditionalConformanceProperty { property, .. }
+                if matches!(
+                    property.as_str(),
+                    "AllowsAdditionalProperties" | "AllowsAdditionalRelationships"
+                )
+        )));
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_type_kind_is_rejected_by_descriptor_enum_policy() -> Result<()> {
+        let mut lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let descriptor = lowered
+            .global_model
+            .descriptors
+            .iter_mut()
+            .find(|descriptor| descriptor.key == "Book.HolonType")
+            .expect("book descriptor");
+        descriptor.instance_type_kind = Some("TypeKind.HolonFoo".to_string());
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        let diagnostics = map_schema_semantic::validate_canonical_holon_conformance(
+            &graph,
+            graph.node_by_key("Book.HolonType").expect("book node"),
+        );
+        assert!(
+            diagnostics.iter().any(|diagnostic| matches!(
+                &diagnostic.kind,
+                DiagnosticKind::InvalidConformanceValue { holon, property, value, .. }
+                    if holon == "Book.HolonType"
+                        && property == "TypeKind"
+                        && value == "TypeKind.HolonFoo"
+            )),
+            "{diagnostics:#?}"
+        );
         Ok(())
     }
 

@@ -1,18 +1,13 @@
 use std::collections::HashSet;
 
-/// Requiredness derived from a descriptor property name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PropertyRequirement<'a> {
-    pub name: &'a str,
-    pub required: bool,
-}
-
-/// Interprets the MAP optional-property `?` suffix without owning source syntax.
-pub fn property_requirement(name: &str) -> PropertyRequirement<'_> {
-    match name.strip_suffix('?') {
-        Some(name) => PropertyRequirement { name, required: false },
-        None => PropertyRequirement { name, required: true },
-    }
+/// Composes an inherited openness policy restrictively.
+///
+/// A `false` value anywhere in the type lineage closes the corresponding surface. `None` means
+/// no descriptor in the supplied lineage declared the required policy value.
+pub fn compose_restrictive_boolean(values: impl IntoIterator<Item = bool>) -> Option<bool> {
+    let mut values = values.into_iter();
+    let first = values.next()?;
+    Some(values.fold(first, |effective, value| effective && value))
 }
 
 /// Source-neutral literal shape consumed by descriptor conformance.
@@ -246,15 +241,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn optional_suffix_is_descriptor_data() {
-        assert_eq!(
-            property_requirement("description?"),
-            PropertyRequirement { name: "description", required: false }
-        );
-        assert_eq!(
-            property_requirement("type_name"),
-            PropertyRequirement { name: "type_name", required: true }
-        );
+    fn openness_composes_restrictively() {
+        assert_eq!(compose_restrictive_boolean([true, true]), Some(true));
+        assert_eq!(compose_restrictive_boolean([true, false, true]), Some(false));
+        assert_eq!(compose_restrictive_boolean([]), None);
     }
 
     #[test]
