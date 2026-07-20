@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::pvl_error::PvlViolation;
 use crate::validation_error::ValidationError;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
@@ -115,6 +116,8 @@ pub enum HolonError {
     NotAccessible(String, String),
     #[error("{0} Not Implemented")]
     NotImplemented(String),
+    #[error("{0}")]
+    PvlViolation(PvlViolation),
     #[error("Couldn't convert Record to {0}")]
     RecordConversion(String),
     #[error(
@@ -222,6 +225,7 @@ pub enum HolonErrorKind {
     NoEffectiveKeyRule,
     NotAccessible,
     NotImplemented,
+    PvlViolation,
     RecordConversion,
     ReferenceBindingFailed,
     ReferenceResolutionFailed,
@@ -287,6 +291,7 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::NoEffectiveKeyRule { .. } => Self::NoEffectiveKeyRule,
             HolonError::NotAccessible(_, _) => Self::NotAccessible,
             HolonError::NotImplemented(_) => Self::NotImplemented,
+            HolonError::PvlViolation(_) => Self::PvlViolation,
             HolonError::RecordConversion(_) => Self::RecordConversion,
             HolonError::ReferenceBindingFailed { .. } => Self::ReferenceBindingFailed,
             HolonError::ReferenceResolutionFailed { .. } => Self::ReferenceResolutionFailed,
@@ -318,6 +323,19 @@ impl HolonError {
             combined.push_str(&error.to_string());
         }
         combined
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pvl_violation_preserves_structured_kind_and_deterministic_message() {
+        let error = HolonError::PvlViolation(PvlViolation::EmptyPropertyName);
+
+        assert_eq!(HolonErrorKind::from(&error), HolonErrorKind::PvlViolation);
+        assert_eq!(error.to_string(), "MAP-PVL-1102: property name is empty");
     }
 }
 

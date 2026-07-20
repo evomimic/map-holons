@@ -16,6 +16,7 @@ use holons_core::core_shared_objects::transactions::TxId;
 use holons_core::dances::ResponseStatusCode;
 use holons_core::query_layer::QueryExpression;
 use holons_core::CollectionState;
+use integrity_core_types::{PvlField, PvlMalformedReason, PvlViolation};
 use map_commands_wire::{
     HolonActionWire, HolonCommandWire, MapCommandWire, MapIpcRequest, MapIpcResponse,
     MapResultWire, MarkerId, ReadableHolonActionWire, RequestId, RequestOptions, SpaceCommandWire,
@@ -416,6 +417,16 @@ fn generate_fixtures() {
         &fixtures_dir,
         "response-ok-value-bytes.json",
         &response(117, Ok(MapResultWire::Value(BaseValue::BytesValue(MapBytes(vec![1, 2, 3]))))),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "response-err-pvl-violation.json",
+        &response(
+            118,
+            Err(HolonError::PvlViolation(PvlViolation::MalformedSmartLink {
+                reason: PvlMalformedReason::MissingField(PvlField::RelationshipName),
+            })),
+        ),
     );
 }
 

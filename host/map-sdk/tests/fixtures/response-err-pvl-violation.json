@@ -1,0 +1,14 @@
+{
+  "request_id": 118,
+  "result": {
+    "Err": {
+      "PvlViolation": {
+        "MalformedSmartLink": {
+          "reason": {
+            "MissingField": "RelationshipName"
+          }
+        }
+      }
+    }
+  }
+}

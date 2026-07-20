@@ -5624,6 +5624,7 @@ dependencies = [
  "core_types",
  "holons_boundary",
  "holons_core",
+ "integrity_core_types",
  "map_commands_contract",
  "serde",
  "serde_json",
