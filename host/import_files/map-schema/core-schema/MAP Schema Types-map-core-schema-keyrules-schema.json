@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-07-21T11:22:51",
+    "generated_at": "2026-07-21T14:08:14",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-keyrules-schema.csv"
@@ -356,6 +356,7 @@
         "display_name_plural": "UsesKeyRule Relationships",
         "description": "Declares the KeyRuleType used to derive keys for instances of a type.",
         "instance_type_kind": "TypeKind.Relationship",
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
