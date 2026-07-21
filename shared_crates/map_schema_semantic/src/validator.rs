@@ -3,7 +3,7 @@
 //! This module owns source-neutral semantic checks that apply after lowering and reference
 //! resolution. Source adapters remain responsible for syntax and source-format conveniences.
 
-use descriptor_semantics::{ancestors, effective_holon_key_rule};
+use descriptor_semantics::{ancestors, describing_type, effective_holon_key_rule, DescriptorGraph};
 
 use crate::{
     descriptor_conformance::validate_canonical_model_values,
@@ -37,7 +37,7 @@ pub fn validate_model(model: &SemanticModel, symbols: &SymbolIndex) -> Vec<Diagn
     diagnostics.extend(validate_required_slots(model));
     if let Ok(graph) = CanonicalDescriptorGraph::new(model, symbols) {
         diagnostics.extend(validate_canonical_model_values(&graph));
-        diagnostics.extend(validate_inheritance_graph(model, &graph));
+        diagnostics.extend(validate_inheritance_graph(&graph));
         diagnostics.extend(validate_effective_keys(model, symbols, &descriptor_by_key, &graph));
     }
     diagnostics.extend(validate_relationship_pairs(model, symbols, &descriptor_by_key));
@@ -46,7 +46,10 @@ pub fn validate_model(model: &SemanticModel, symbols: &SymbolIndex) -> Vec<Diagn
     diagnostics
 }
 
-/// Synthesizes missing inverse-pair references from the side that was authored explicitly.
+/// Completes inverse-pair references from whichever side authored the pair.
+///
+/// Source adapters may apply this to a validation clone when their representation serializes only
+/// one direction. The authored model remains unchanged for faithful round trips.
 pub fn normalize_relationship_pairs(model: &mut SemanticModel, symbols: &SymbolIndex) {
     let descriptor_indexes = model
         .descriptors
@@ -189,20 +192,75 @@ fn validate_required_slots(model: &SemanticModel) -> Vec<Diagnostic> {
     diagnostics
 }
 
-fn validate_inheritance_graph(
-    model: &SemanticModel,
-    graph: &CanonicalDescriptorGraph,
-) -> Vec<Diagnostic> {
+fn validate_inheritance_graph(graph: &CanonicalDescriptorGraph) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
-    for descriptor in &model.descriptors {
-        let Some(node) = graph.node_by_key(&descriptor.key) else {
-            continue;
+    for node in graph.nodes() {
+        let described_by = match describing_type(graph, &node) {
+            Ok(described_by) => described_by,
+            Err(error) => {
+                diagnostics.push(graph.diagnostic(error));
+                continue;
+            }
         };
+        let source_is_type = match graph.is_type_descriptor(&described_by) {
+            Ok(is_type) => is_type,
+            Err(error) => {
+                diagnostics.push(
+                    graph.diagnostic(descriptor_semantics::DescriptorSemanticsError::Access(error)),
+                );
+                continue;
+            }
+        };
+        let extends_targets = match graph.extends_targets(&node) {
+            Ok(targets) => targets,
+            Err(error) => {
+                diagnostics.push(
+                    graph.diagnostic(descriptor_semantics::DescriptorSemanticsError::Access(error)),
+                );
+                continue;
+            }
+        };
+
+        if !extends_targets.is_empty() && !source_is_type {
+            diagnostics.push(extends_endpoint_not_type(graph, node, node));
+        }
+
         if let Err(error) = ancestors(graph, &node) {
             diagnostics.push(graph.diagnostic(error));
         }
+
+        for target in extends_targets {
+            let target_is_type = describing_type(graph, &target).and_then(|target_descriptor| {
+                graph
+                    .is_type_descriptor(&target_descriptor)
+                    .map_err(descriptor_semantics::DescriptorSemanticsError::Access)
+            });
+            match target_is_type {
+                Ok(false) => diagnostics.push(extends_endpoint_not_type(graph, node, target)),
+                Err(error) => {
+                    diagnostics.push(graph.diagnostic(error));
+                    continue;
+                }
+                Ok(true) => {}
+            }
+        }
     }
     diagnostics
+}
+
+fn extends_endpoint_not_type(
+    graph: &CanonicalDescriptorGraph,
+    source: crate::CanonicalNodeId,
+    endpoint: crate::CanonicalNodeId,
+) -> Diagnostic {
+    Diagnostic::error(
+        DiagnosticLayer::SchemaAware,
+        DiagnosticKind::ExtendsEndpointNotType {
+            descriptor: graph.key(source).unwrap_or("<unknown>").to_string(),
+            endpoint: graph.key(endpoint).unwrap_or("<unknown>").to_string(),
+        },
+        graph.holon(source).map(|holon| holon.origin.clone()),
+    )
 }
 
 fn validate_relationship_pairs(
@@ -664,6 +722,87 @@ mod tests {
         assert!(diagnostics.iter().any(|diagnostic| matches!(
             diagnostic.kind,
             DiagnosticKind::DuplicateLocalMember { role: ReferenceRole::InstanceProperty, .. }
+        )));
+    }
+
+    fn inheritance_model(
+        child_type_kind: &str,
+        parent_type_kind: &str,
+        parent_described_by: &str,
+    ) -> SemanticModel {
+        let mut model = SemanticModel::new();
+        let mut type_descriptor = TypeDescriptor::new(
+            "TypeDescriptor.HolonType",
+            "TypeDescriptor",
+            DescriptorKind::TypeDescriptor,
+            "Test Schema",
+            origin(),
+        );
+        type_descriptor.described_by.push(SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            "TypeDescriptor.HolonType",
+        ));
+        type_descriptor.instance_type_kind = Some("TypeKind.Holon".to_string());
+
+        let mut ordinary_descriptor = TypeDescriptor::new(
+            "OrdinaryDescriptor.HolonType",
+            "OrdinaryDescriptor",
+            DescriptorKind::HolonType,
+            "Test Schema",
+            origin(),
+        );
+        ordinary_descriptor.described_by.push(SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            "TypeDescriptor.HolonType",
+        ));
+
+        let mut parent = TypeDescriptor::new(
+            "Parent.HolonType",
+            "Parent",
+            DescriptorKind::HolonType,
+            "Test Schema",
+            origin(),
+        );
+        parent
+            .described_by
+            .push(SemanticReference::unresolved(ReferenceRole::DescribedBy, parent_described_by));
+        parent.instance_type_kind = Some(parent_type_kind.to_string());
+
+        let mut child = TypeDescriptor::new(
+            "Child.HolonType",
+            "Child",
+            DescriptorKind::HolonType,
+            "Test Schema",
+            origin(),
+        );
+        child.described_by.push(SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            "TypeDescriptor.HolonType",
+        ));
+        child.instance_type_kind = Some(child_type_kind.to_string());
+        child.extends =
+            Some(SemanticReference::unresolved(ReferenceRole::Extends, "Parent.HolonType"));
+
+        model.push_descriptor(type_descriptor);
+        model.push_descriptor(ordinary_descriptor);
+        model.push_descriptor(parent);
+        model.push_descriptor(child);
+        model
+    }
+
+    #[test]
+    fn rejects_extends_target_that_is_not_a_type() {
+        let mut model =
+            inheritance_model("TypeKind.Holon", "TypeKind.Holon", "OrdinaryDescriptor.HolonType");
+        let (symbols, _) = SymbolIndex::build(&mut model);
+        let graph = CanonicalDescriptorGraph::new(&model, &symbols).expect("canonical graph");
+
+        let diagnostics = validate_inheritance_graph(&graph);
+
+        assert!(diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::ExtendsEndpointNotType { descriptor, endpoint }
+                if descriptor == "Child.HolonType" && endpoint == "Parent.HolonType"
         )));
     }
 }

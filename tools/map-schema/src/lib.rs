@@ -2084,6 +2084,31 @@ mod tests {
     }
 
     #[test]
+    fn json_lowering_preserves_single_sided_inverse_metadata_and_validates_the_pair() -> Result<()>
+    {
+        let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
+        let inverse = lowered
+            .global_model
+            .descriptors
+            .iter()
+            .find(|descriptor| {
+                descriptor.key == "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)"
+            })
+            .expect("Components inverse descriptor");
+
+        assert!(inverse.inverse_of.is_none(), "JSON omissions must not be synthesized");
+        assert!(!lowered.diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::MissingRequiredField { descriptor, field }
+                if descriptor
+                    == "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)"
+                    && field == "InverseOf"
+        )));
+
+        Ok(())
+    }
+
+    #[test]
     fn json_corpus_rejects_invalid_type_kind_through_descriptor_enum_policy() -> Result<()> {
         let input_dir = temp_domain_json_dir();
         fs::create_dir_all(&input_dir)?;

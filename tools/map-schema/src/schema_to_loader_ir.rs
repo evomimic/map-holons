@@ -242,21 +242,8 @@ fn lower_descriptor_properties_semantic(
             .insert("display_name_plural".to_string(), json!(pluralize_name(&descriptor.name)));
     }
 
-    let instance_type_kind =
-        descriptor.instance_type_kind.as_ref().map(|value| json!(value)).or_else(
-            || match descriptor.kind {
-                DescriptorKind::HolonType => Some(json!("TypeKind.Holon")),
-                DescriptorKind::PropertyType => Some(json!("TypeKind.Property")),
-                DescriptorKind::RelationshipType => Some(json!("TypeKind.Relationship")),
-                DescriptorKind::ValueType => Some(json!(infer_value_kind(descriptor))),
-                DescriptorKind::Enum => Some(json!("TypeKind.Value.Enum")),
-                DescriptorKind::EnumVariant => Some(json!("TypeKind.EnumVariant")),
-                DescriptorKind::TypeDescriptor => Some(json!("TypeKind.Holon")),
-                DescriptorKind::Schema => None,
-            },
-        );
-    if let Some(instance_type_kind) = instance_type_kind {
-        properties.insert("instance_type_kind".to_string(), instance_type_kind);
+    if let Some(instance_type_kind) = &descriptor.instance_type_kind {
+        properties.insert("instance_type_kind".to_string(), json!(instance_type_kind));
     }
     properties.insert("is_abstract_type".to_string(), json!(descriptor.is_abstract));
 
@@ -331,53 +318,6 @@ fn canonical_property_to_snake_case(name: &str) -> String {
     snake
 }
 
-fn infer_value_kind(descriptor: &TypeDescriptor) -> &'static str {
-    if matches!(descriptor.name.as_str(), "MetaValueType" | "ValueType") {
-        return "TypeKind.Holon";
-    }
-
-    if matches!(descriptor.name.as_str(), "EnumVariantValueType" | "MapEnumVariantValueType") {
-        return "TypeKind.EnumVariant";
-    }
-
-    if descriptor.name.ends_with("StringValueType") {
-        return "TypeKind.Value.String";
-    }
-    if descriptor.name.ends_with("IntegerValueType") {
-        return "TypeKind.Value.Integer";
-    }
-    if descriptor.name.ends_with("BooleanValueType") {
-        return "TypeKind.Value.Boolean";
-    }
-    if descriptor.name.ends_with("BytesValueType") || descriptor.name == "HolonIdValueType" {
-        return "TypeKind.Value.Bytes";
-    }
-    if descriptor.name.ends_with("ValueArrayType")
-        || descriptor.name.ends_with("ValueArrayValueType")
-    {
-        return "TypeKind.Value.Array";
-    }
-    if descriptor.name.ends_with("EnumValueType") {
-        return "TypeKind.Value.Enum";
-    }
-
-    if let Some(extends) = descriptor.extends.as_ref().map(|extends| extends.target.as_str()) {
-        match extends {
-            "MetaTypeDescriptor" | "MetaValueType" => "TypeKind.Holon",
-            "StringValueType" | "MapStringValueType" => "TypeKind.Value.String",
-            "IntegerValueType" | "MapIntegerValueType" => "TypeKind.Value.Integer",
-            "BooleanValueType" | "MapBooleanValueType" => "TypeKind.Value.Boolean",
-            "BytesValueType" | "MapBytesValueType" | "HolonIdValueType" => "TypeKind.Value.Bytes",
-            "ValueArrayValueType" | "MapValueArrayType" => "TypeKind.Value.Array",
-            "EnumValueType" | "MapEnumValueType" => "TypeKind.Value.Enum",
-            "EnumVariantValueType" | "MapEnumVariantValueType" => "TypeKind.EnumVariant",
-            _ => "TypeKind.Value.String",
-        }
-    } else {
-        "TypeKind.Value.String"
-    }
-}
-
 fn lower_descriptor_relationships(
     descriptor: &TypeDescriptor,
     emitted_key_lookup: &EmittedKeyLookup,
@@ -386,6 +326,7 @@ fn lower_descriptor_relationships(
         return descriptor
             .literal_relationships
             .iter()
+            .filter(|relationship| relationship.name != "InverseOf")
             .map(|relationship| {
                 loader_relationship(
                     &relationship.name,
@@ -415,12 +356,6 @@ fn lower_descriptor_relationships_semantic(
         relationships.push(loader_relationship(
             "Extends",
             vec![normalize_emitted_reference_target(&extends.target, emitted_key_lookup)],
-        ));
-    }
-    if let Some(inverse_of) = &descriptor.inverse_of {
-        relationships.push(loader_relationship(
-            "InverseOf",
-            vec![normalize_inverse_reference_target(descriptor, inverse_of, emitted_key_lookup)],
         ));
     }
     if let Some(has_inverse) = &descriptor.has_inverse {
@@ -513,34 +448,6 @@ fn normalize_emitted_reference_target(
         .get(target)
         .cloned()
         .unwrap_or_else(|| target.to_string())
-}
-
-fn normalize_inverse_reference_target(
-    descriptor: &TypeDescriptor,
-    inverse_of: &SemanticReference,
-    emitted_key_lookup: &EmittedKeyLookup,
-) -> String {
-    let inverse_target = &inverse_of.target;
-    if inverse_target.contains(")-[") {
-        return normalize_emitted_reference_target(inverse_target, emitted_key_lookup);
-    }
-
-    match (
-        descriptor.relationship_flavor,
-        descriptor.source_type.as_ref(),
-        descriptor.target_type.as_ref(),
-    ) {
-        (
-            Some(crate::schema_ir::RelationshipFlavor::Inverse),
-            Some(source_type),
-            Some(target_type),
-        ) => {
-            format!("({})-[{}]->({})", target_type.target, inverse_target, source_type.target)
-        }
-        _ => emitted_key_lookup.unique_keys_by_name.get(inverse_target).cloned().unwrap_or_else(
-            || normalize_emitted_reference_target(inverse_target, emitted_key_lookup),
-        ),
-    }
 }
 
 fn schema_literal_property_is_renderable(key: &str) -> bool {
@@ -734,5 +641,61 @@ fn pluralize_name(name: &str) -> String {
         format!("{name}es")
     } else {
         format!("{name}s")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema_ir::{
+        LiteralRelationship, Origin, ReferenceRole, RelationshipFlavor, SourceKind,
+    };
+
+    #[test]
+    fn loader_projection_emits_only_the_declared_side_of_an_inverse_pair() {
+        let declared_key = "(Book.HolonType)-[WrittenBy]->(Person.HolonType)";
+        let inverse_key = "(Person.HolonType)-[AuthorOf]->(Book.HolonType)";
+
+        let mut declared = TypeDescriptor::new(
+            declared_key,
+            "WrittenBy",
+            DescriptorKind::RelationshipType,
+            "TestSchema",
+            Origin::new(SourceKind::TdlSource),
+        );
+        declared.relationship_flavor = Some(RelationshipFlavor::Declared);
+        declared.has_inverse =
+            Some(SemanticReference::unresolved(ReferenceRole::HasInverse, inverse_key));
+
+        let mut inverse = TypeDescriptor::new(
+            inverse_key,
+            "AuthorOf",
+            DescriptorKind::RelationshipType,
+            "TestSchema",
+            Origin::new(SourceKind::TdlSource),
+        );
+        inverse.relationship_flavor = Some(RelationshipFlavor::Inverse);
+        inverse.inverse_of =
+            Some(SemanticReference::unresolved(ReferenceRole::InverseOf, declared_key));
+
+        let emitted_key_lookup = EmittedKeyLookup::default();
+        let declared_relationships = lower_descriptor_relationships(&declared, &emitted_key_lookup);
+        let semantic_inverse_relationships =
+            lower_descriptor_relationships(&inverse, &emitted_key_lookup);
+        inverse.literal_relationships.push(LiteralRelationship {
+            name: "InverseOf".to_string(),
+            targets: vec![declared_key.to_string()],
+        });
+        let literal_inverse_relationships =
+            lower_descriptor_relationships(&inverse, &emitted_key_lookup);
+
+        assert!(declared_relationships
+            .iter()
+            .any(|relationship| relationship.name == "HasInverse"));
+        assert!(!declared_relationships
+            .iter()
+            .chain(semantic_inverse_relationships.iter())
+            .chain(literal_inverse_relationships.iter())
+            .any(|relationship| relationship.name == "InverseOf"));
     }
 }

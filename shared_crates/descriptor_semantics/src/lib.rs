@@ -20,7 +20,7 @@ pub use graph::{DescriptorGraph, DescriptorSemanticsError};
 pub use inheritance::{
     ancestors, collect_named_members_from_lineage, describing_type, duplicate_declaration_name,
     effective_descriptor_lineage, effective_holon_key_rule, effective_instance_key_rule,
-    equals_or_extends, flatten_named_members, flatten_related_members, walk_extends_chain,
+    equals_or_extends, flatten_named_members, flatten_related_members, lineage, walk_extends_chain,
     ExtendsTraversal, ExtendsWalk,
 };
 pub use value::{

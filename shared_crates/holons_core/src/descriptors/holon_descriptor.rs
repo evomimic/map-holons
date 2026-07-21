@@ -404,10 +404,7 @@ mod tests {
         let staged_descriptor = context.mutation().stage_new_holon(descriptor)?;
         let source = new_test_holon(&context, "source-staged")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![staged_descriptor.into()],
-        )?;
+        staged_source.with_descriptor(staged_descriptor.into())?;
 
         let resolved = staged_source.holon_descriptor()?;
 

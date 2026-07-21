@@ -195,10 +195,8 @@ pub(crate) fn effective_relationships(
 
 /// Finds a relationship declaration on a holon's effective relationship surface.
 ///
-/// Ordinary runtime holons draw this surface from `DescribedBy -> Extends*`.
-/// Descriptor holons also contribute their own `Extends*` lineage, which is
-/// where descriptor-populated relationships like `SourceType`, `TargetType`,
-/// `InverseOf`, and `ValueType` are licensed in MAP Type System v1.2.
+/// Ordinary runtime holons draw this surface from `DescribedBy -> Extends*`. Type holons also
+/// contribute their own `Extends*` lineage before the describing-type lineage.
 pub fn effective_relationship_declaration(
     source_holon: &HolonReference,
     name: impl ToRelationshipName,
@@ -975,8 +973,12 @@ mod tests {
     #[test]
     fn finds_descriptor_holon_declaration_through_own_extends_lineage() -> Result<(), HolonError> {
         let context = build_context();
-        let type_descriptor =
-            new_holon_type_descriptor(&context, "surface-type-descriptor", "TypeDescriptor")?;
+        let mut type_descriptor =
+            new_holon_type_descriptor(&context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+        type_descriptor.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor)],
+        )?;
         let mut meta_relationship_type = new_holon_type_descriptor(
             &context,
             "surface-meta-relationship-type",
@@ -1042,7 +1044,11 @@ mod tests {
         let mut holon_type =
             new_holon_type_descriptor(&context, "surface-tail-holon-type", "HolonType")?;
         let mut type_descriptor =
-            new_holon_type_descriptor(&context, "surface-tail-type-descriptor", "TypeDescriptor")?;
+            new_holon_type_descriptor(&context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+        type_descriptor.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor)],
+        )?;
         let properties = new_relationship_descriptor_holon(
             &context,
             "surface-properties",

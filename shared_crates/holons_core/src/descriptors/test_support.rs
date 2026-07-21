@@ -180,6 +180,69 @@ pub(crate) fn new_holon_type_descriptor(
     Ok(descriptor)
 }
 
+/// Attaches the canonical TypeDescriptor identity to a descriptor fixture.
+///
+/// Runtime authoring tests use this before staging or otherwise invoking descriptor semantics; the
+/// semantic kernel intentionally does not treat a missing `DescribedBy` as a partial own lineage.
+pub(crate) fn describe_as_type(
+    context: &Arc<TransactionContext>,
+    descriptor: &mut TransientReference,
+) -> Result<StagedReference, HolonError> {
+    let bootstrap_type_descriptor =
+        new_holon_type_descriptor(context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+    let mut bootstrap_type_descriptor =
+        context.mutation().stage_new_holon(bootstrap_type_descriptor)?;
+    bootstrap_type_descriptor.with_descriptor(HolonReference::from(&bootstrap_type_descriptor))?;
+
+    let mut declared_relationship_type = new_descriptor_holon(
+        context,
+        "test-declared-relationship-type",
+        &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+        TypeKind::Relationship,
+    )?;
+    declared_relationship_type.with_descriptor(HolonReference::from(&bootstrap_type_descriptor))?;
+    let declared_relationship_type =
+        context.mutation().stage_new_holon(declared_relationship_type)?;
+
+    let structural_relationships = [
+        CoreRelationshipTypeName::Extends,
+        CoreRelationshipTypeName::HasInverse,
+        CoreRelationshipTypeName::InstanceRelationships,
+        CoreRelationshipTypeName::InverseOf,
+        CoreRelationshipTypeName::TargetOf,
+    ];
+    let mut relationship_declarations = Vec::with_capacity(structural_relationships.len());
+    for relationship_name in structural_relationships {
+        let semantic_name = relationship_name.as_relationship_name().to_string();
+        let mut relationship_descriptor = new_relationship_descriptor_holon(
+            context,
+            &format!("test-{semantic_name}-relationship"),
+            &semantic_name,
+            HolonReference::from(&bootstrap_type_descriptor),
+            HolonReference::from(&bootstrap_type_descriptor),
+        )?;
+        relationship_descriptor
+            .with_descriptor(HolonReference::from(&bootstrap_type_descriptor))?;
+        relationship_descriptor.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&declared_relationship_type)],
+        )?;
+        relationship_declarations
+            .push(context.mutation().stage_new_holon(relationship_descriptor)?.into());
+    }
+
+    let mut type_descriptor =
+        new_holon_type_descriptor(context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+    type_descriptor.add_related_holons(
+        CoreRelationshipTypeName::InstanceRelationships,
+        relationship_declarations,
+    )?;
+    let mut type_descriptor = context.mutation().stage_new_holon(type_descriptor)?;
+    type_descriptor.with_descriptor(HolonReference::from(&type_descriptor))?;
+    descriptor.with_descriptor(HolonReference::from(&type_descriptor))?;
+    Ok(type_descriptor)
+}
+
 /// Creates a property descriptor with structural fields and its value type edge.
 pub(crate) fn new_property_descriptor_holon(
     context: &Arc<TransactionContext>,

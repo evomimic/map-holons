@@ -152,28 +152,18 @@ pub fn effective_holon_key_rule<G: DescriptorGraph>(
     holon: &G::Node,
     uses_key_rule: &G::MemberKind,
 ) -> Result<Option<G::Node>, DescriptorSemanticsError<G::Error, G::Node>> {
-    let parents = graph.extends_targets(holon).map_err(DescriptorSemanticsError::Access)?;
-    match parents.as_slice() {
-        [parent] => {
-            if let Some(rule) = first_single_member_from_lineage(
-                graph,
-                ancestors(graph, parent)?,
-                uses_key_rule,
-                "UsesKeyRule",
-            )? {
-                return Ok(Some(rule));
-            }
-        }
-        [] => {}
-        many => {
-            return Err(DescriptorSemanticsError::MultipleExtends {
-                descriptor: holon.clone(),
-                count: many.len(),
-            })
-        }
+    let described_by = describing_type(graph, holon)?;
+    let own_lineage = lineage_with_describing_type(graph, holon, &described_by)?;
+    if let Some(rule) = first_single_member_from_lineage(
+        graph,
+        own_lineage.into_iter().skip(1),
+        uses_key_rule,
+        "UsesKeyRule",
+    )? {
+        return Ok(Some(rule));
     }
 
-    effective_instance_key_rule(graph, &describing_type(graph, holon)?, uses_key_rule)
+    effective_instance_key_rule(graph, &described_by, uses_key_rule)
 }
 
 fn first_single_member_from_lineage<G: DescriptorGraph>(
@@ -201,36 +191,42 @@ fn first_single_member_from_lineage<G: DescriptorGraph>(
     Ok(None)
 }
 
-/// Computes the effective descriptor lineage defined by MAP Type System v1.2.
+/// Computes `L(H)`, the holon's own type lineage.
 ///
-/// A partially assembled descriptor may not yet have its required `DescribedBy` relationship. In
-/// that authoring state, its own `Extends` lineage is still available for effective-member lookup.
-/// Semantic conformance must call [`describing_type`] first to enforce the exact-one relationship
-/// invariant; this function does not weaken that validity rule.
+/// A holon is a type exactly when its unique `DescribedBy` target is `TypeDescriptor`. Type
+/// lineages are self-first; ordinary holons have an empty own lineage.
+pub fn lineage<G: DescriptorGraph>(
+    graph: &G,
+    holon: &G::Node,
+) -> Result<Vec<G::Node>, DescriptorSemanticsError<G::Error, G::Node>> {
+    let described_by = describing_type(graph, holon)?;
+    lineage_with_describing_type(graph, holon, &described_by)
+}
+
+fn lineage_with_describing_type<G: DescriptorGraph>(
+    graph: &G,
+    holon: &G::Node,
+    described_by: &G::Node,
+) -> Result<Vec<G::Node>, DescriptorSemanticsError<G::Error, G::Node>> {
+    if graph.is_type_descriptor(described_by).map_err(DescriptorSemanticsError::Access)? {
+        ancestors(graph, holon)
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+/// Computes `E(H) = L(H) union-by-identity L(D(H))`.
+///
+/// The own lineage is retained first. Nodes from the describing type's lineage are appended only
+/// when their graph identity has not already appeared.
 pub fn effective_descriptor_lineage<G: DescriptorGraph>(
     graph: &G,
     holon: &G::Node,
 ) -> Result<Vec<G::Node>, DescriptorSemanticsError<G::Error, G::Node>> {
-    let described_by_targets =
-        graph.described_by_targets(holon).map_err(DescriptorSemanticsError::Access)?;
-    let described_by = match described_by_targets.as_slice() {
-        [] => return ancestors(graph, holon),
-        [descriptor] => descriptor.clone(),
-        many => {
-            return Err(DescriptorSemanticsError::MultipleDescribedBy {
-                holon: holon.clone(),
-                count: many.len(),
-            })
-        }
-    };
-
-    if graph.is_type_descriptor(&described_by).map_err(DescriptorSemanticsError::Access)? {
-        let mut lineage = ancestors(graph, holon)?;
-        append_unique(graph, &mut lineage, ancestors(graph, &described_by)?);
-        return Ok(lineage);
-    }
-
-    ancestors(graph, &described_by)
+    let described_by = describing_type(graph, holon)?;
+    let mut effective = lineage_with_describing_type(graph, holon, &described_by)?;
+    append_unique(graph, &mut effective, ancestors(graph, &described_by)?);
+    Ok(effective)
 }
 
 /// Collects related members in self-first lineage order, deduplicated by node identity.
@@ -332,9 +328,9 @@ fn append_unique<G: DescriptorGraph>(
     additional: Vec<G::Node>,
 ) {
     let mut seen = lineage.iter().map(|node| graph.identity(node)).collect::<HashSet<_>>();
-    for descriptor in additional {
-        if seen.insert(graph.identity(&descriptor)) {
-            lineage.push(descriptor);
+    for node in additional {
+        if seen.insert(graph.identity(&node)) {
+            lineage.push(node);
         }
     }
 }
@@ -427,7 +423,11 @@ mod tests {
     fn ordinary_holons_use_their_describing_descriptor_lineage() {
         let graph = TestGraph {
             extends: HashMap::from([("BookType", vec!["DocumentType"])]),
-            described_by: HashMap::from([("book-1", vec!["BookType"])]),
+            described_by: HashMap::from([
+                ("book-1", vec!["BookType"]),
+                ("BookType", vec!["TypeDescriptor"]),
+            ]),
+            type_descriptors: HashSet::from(["TypeDescriptor"]),
             ..Default::default()
         };
 
@@ -438,13 +438,16 @@ mod tests {
     }
 
     #[test]
-    fn descriptor_holons_combine_own_and_describing_lineages_without_duplicates() {
+    fn type_holons_combine_own_and_describing_lineages_without_duplicates() {
         let graph = TestGraph {
             extends: HashMap::from([
                 ("BookType", vec!["HolonType"]),
                 ("TypeDescriptor", vec!["HolonType"]),
             ]),
-            described_by: HashMap::from([("BookType", vec!["TypeDescriptor"])]),
+            described_by: HashMap::from([
+                ("BookType", vec!["TypeDescriptor"]),
+                ("TypeDescriptor", vec!["TypeDescriptor"]),
+            ]),
             type_descriptors: HashSet::from(["TypeDescriptor"]),
             ..Default::default()
         };
@@ -452,6 +455,21 @@ mod tests {
         assert_eq!(
             effective_descriptor_lineage(&graph, &"BookType"),
             Ok(vec!["BookType", "HolonType", "TypeDescriptor"])
+        );
+    }
+
+    #[test]
+    fn self_describing_type_has_one_identity_deduplicated_lineage() {
+        let graph = TestGraph {
+            extends: HashMap::from([("TypeDescriptor", vec!["HolonType"])]),
+            described_by: HashMap::from([("TypeDescriptor", vec!["TypeDescriptor"])]),
+            type_descriptors: HashSet::from(["TypeDescriptor"]),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            effective_descriptor_lineage(&graph, &"TypeDescriptor"),
+            Ok(vec!["TypeDescriptor", "HolonType"])
         );
     }
 
@@ -495,11 +513,14 @@ mod tests {
     }
 
     #[test]
-    fn partial_descriptor_lineage_is_available_before_described_by_is_attached() {
+    fn missing_described_by_is_not_reinterpreted_as_own_lineage() {
         let graph =
             TestGraph { extends: HashMap::from([("Child", vec!["Parent"])]), ..Default::default() };
 
-        assert_eq!(effective_descriptor_lineage(&graph, &"Child"), Ok(vec!["Child", "Parent"]));
+        assert_eq!(
+            effective_descriptor_lineage(&graph, &"Child"),
+            Err(DescriptorSemanticsError::MissingDescribedBy { holon: "Child" })
+        );
     }
 
     #[test]
@@ -547,6 +568,7 @@ mod tests {
                 (("HolonType", "key-rule"), vec!["ExtendedTypeRule"]),
                 (("TypeDescriptor", "key-rule"), vec!["TypeNameRule"]),
             ]),
+            type_descriptors: HashSet::from(["TypeDescriptor"]),
             ..Default::default()
         };
 
@@ -563,11 +585,66 @@ mod tests {
     #[test]
     fn holon_key_rule_falls_back_through_described_by() {
         let graph = TestGraph {
-            described_by: HashMap::from([("book-1", vec!["BookType"])]),
+            described_by: HashMap::from([
+                ("book-1", vec!["BookType"]),
+                ("BookType", vec!["TypeDescriptor"]),
+            ]),
             members: HashMap::from([(("BookType", "key-rule"), vec!["BookRule"])]),
+            type_descriptors: HashSet::from(["TypeDescriptor"]),
             ..Default::default()
         };
 
         assert_eq!(effective_holon_key_rule(&graph, &"book-1", &"key-rule"), Ok(Some("BookRule")));
+    }
+
+    #[test]
+    fn root_type_key_excludes_its_own_instance_rule_and_falls_back_to_described_by() {
+        let graph = TestGraph {
+            described_by: HashMap::from([("RootType", vec!["TypeDescriptor"])]),
+            members: HashMap::from([
+                (("RootType", "key-rule"), vec!["RootInstanceRule"]),
+                (("TypeDescriptor", "key-rule"), vec!["TypeNameRule"]),
+            ]),
+            type_descriptors: HashSet::from(["TypeDescriptor"]),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            effective_holon_key_rule(&graph, &"RootType", &"key-rule"),
+            Ok(Some("TypeNameRule"))
+        );
+    }
+
+    #[test]
+    fn ordinary_holon_ignores_its_own_extends_edge_during_key_resolution() {
+        let graph = TestGraph {
+            extends: HashMap::from([("book-1", vec!["NotItsType"])]),
+            described_by: HashMap::from([
+                ("book-1", vec!["BookType"]),
+                ("BookType", vec!["TypeDescriptor"]),
+            ]),
+            members: HashMap::from([
+                (("NotItsType", "key-rule"), vec!["WrongRule"]),
+                (("BookType", "key-rule"), vec!["BookRule"]),
+            ]),
+            type_descriptors: HashSet::from(["TypeDescriptor"]),
+            ..Default::default()
+        };
+
+        assert_eq!(effective_holon_key_rule(&graph, &"book-1", &"key-rule"), Ok(Some("BookRule")));
+    }
+
+    #[test]
+    fn holon_key_resolution_validates_described_by_before_using_own_ancestors() {
+        let graph = TestGraph {
+            extends: HashMap::from([("BookType", vec!["HolonType"])]),
+            members: HashMap::from([(("HolonType", "key-rule"), vec!["InheritedRule"])]),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            effective_holon_key_rule(&graph, &"BookType", &"key-rule"),
+            Err(DescriptorSemanticsError::MissingDescribedBy { holon: "BookType" })
+        );
     }
 }

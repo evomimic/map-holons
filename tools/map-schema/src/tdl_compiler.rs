@@ -21,8 +21,7 @@ use crate::{
 };
 use anyhow::{anyhow, Context, Result};
 use map_schema_semantic::{
-    effective_boolean_property_names, normalize_relationship_pairs, validate_model,
-    CanonicalDescriptorGraph,
+    effective_boolean_property_names, validate_model, CanonicalDescriptorGraph,
 };
 use map_schema_semantic::{DiagnosticKind, DiagnosticLayer};
 use std::{
@@ -1415,9 +1414,9 @@ fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredTdlProject> {
 
 /// Lowers a complete parsed project and performs project-wide semantic validation.
 ///
-/// Validation uses a normalized clone so validation-only canonicalization cannot alter the model
-/// later emitted to loader JSON. Per-file models resolve through the global symbol index after
-/// validation, preserving source partitioning while allowing cross-file references.
+/// TDL conventions are materialized into the canonical models before validation and projection.
+/// Per-file models resolve through the global symbol index after validation, preserving source
+/// partitioning while allowing cross-file references.
 fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<LoweredTdlProject> {
     let mut files = Vec::new();
     let mut global_model = SemanticModel::new();
@@ -1433,19 +1432,155 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<Lowered
     }
 
     let (symbols, mut diagnostics) = SymbolIndex::build(&mut global_model);
+    let type_kind_defaults = derive_tdl_type_kind_defaults(&global_model, &symbols);
+    apply_tdl_type_kind_defaults(&mut global_model, &type_kind_defaults);
+    for file in &mut files {
+        apply_tdl_type_kind_defaults(&mut file.schema_model, &type_kind_defaults);
+    }
     let boolean_defaults = derive_tdl_boolean_defaults(&global_model, &symbols);
     apply_tdl_boolean_defaults(&mut global_model, &boolean_defaults);
     for file in &mut files {
         apply_tdl_boolean_defaults(&mut file.schema_model, &boolean_defaults);
     }
-    let mut validation_model = global_model.clone();
-    normalize_relationship_pairs(&mut validation_model, &symbols);
-    diagnostics.extend(validate_model(&validation_model, &symbols));
+    expand_tdl_relationship_pairs(&mut global_model, &symbols);
     for file in &mut files {
+        expand_tdl_relationship_pairs(&mut file.schema_model, &symbols);
         file.schema_model.resolve_references(&symbols);
     }
+    diagnostics.extend(validate_model(&global_model, &symbols));
 
     Ok(LoweredTdlProject { files, global_model, symbols, diagnostics })
+}
+
+/// Propagates the TDL `value ... extends Parent` shorthand from explicit parent TypeKinds.
+///
+/// The propagation is computed from descriptor data and may span several files or inheritance
+/// steps. Root value families whose syntax does not identify a concrete kind must author the
+/// `instance_type_kind` property explicitly.
+fn derive_tdl_type_kind_defaults(
+    model: &SemanticModel,
+    symbols: &SymbolIndex,
+) -> HashMap<String, String> {
+    let descriptors_by_key = model
+        .descriptors
+        .iter()
+        .map(|descriptor| (descriptor.key.as_str(), descriptor))
+        .collect::<HashMap<_, _>>();
+    let mut effective = model
+        .descriptors
+        .iter()
+        .filter_map(|descriptor| {
+            descriptor
+                .instance_type_kind
+                .as_ref()
+                .map(|kind| (descriptor.key.clone(), kind.clone()))
+        })
+        .collect::<HashMap<_, _>>();
+
+    loop {
+        let mut changed = false;
+        for descriptor in &model.descriptors {
+            if descriptor.kind != DescriptorKind::ValueType
+                || descriptor.instance_type_kind.is_some()
+                || effective.contains_key(&descriptor.key)
+            {
+                continue;
+            }
+            let Some(parent) = descriptor.extends.as_ref() else {
+                continue;
+            };
+            let Some(parent_symbol) = parent
+                .resolved
+                .and_then(|symbol_id| symbols.lookup_by_id(symbol_id))
+                .or_else(|| symbols.lookup_by_key(&parent.target))
+            else {
+                continue;
+            };
+            if !descriptors_by_key.contains_key(parent_symbol.key.as_str()) {
+                continue;
+            }
+            let Some(parent_kind) = effective.get(&parent_symbol.key).cloned() else {
+                continue;
+            };
+            effective.insert(descriptor.key.clone(), parent_kind);
+            changed = true;
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    effective
+        .into_iter()
+        .filter(|(key, _)| {
+            descriptors_by_key.get(key.as_str()).is_some_and(|descriptor| {
+                descriptor.kind == DescriptorKind::ValueType
+                    && descriptor.instance_type_kind.is_none()
+            })
+        })
+        .collect()
+}
+
+fn apply_tdl_type_kind_defaults(model: &mut SemanticModel, defaults: &HashMap<String, String>) {
+    for descriptor in &mut model.descriptors {
+        if descriptor.instance_type_kind.is_none() {
+            descriptor.instance_type_kind = defaults.get(&descriptor.key).cloned();
+        }
+    }
+}
+
+/// Expands TDL's one-sided inverse shorthand into explicit canonical pair metadata.
+fn expand_tdl_relationship_pairs(model: &mut SemanticModel, symbols: &SymbolIndex) {
+    let descriptor_indexes = model
+        .descriptors
+        .iter()
+        .enumerate()
+        .map(|(index, descriptor)| (descriptor.key.clone(), index))
+        .collect::<HashMap<_, _>>();
+
+    for index in 0..model.descriptors.len() {
+        if model.descriptors[index].kind != DescriptorKind::RelationshipType {
+            continue;
+        }
+
+        let current_key = model.descriptors[index].key.clone();
+        let current_symbol_id = symbols.lookup_by_key(&current_key).map(|symbol| symbol.id);
+        if let Some(has_inverse) = model.descriptors[index].has_inverse.clone() {
+            if let Some(target_symbol) = has_inverse
+                .resolved
+                .and_then(|symbol_id| symbols.lookup_by_id(symbol_id))
+                .or_else(|| symbols.lookup_by_key(&has_inverse.target))
+            {
+                if let Some(target_index) = descriptor_indexes.get(&target_symbol.key).copied() {
+                    if model.descriptors[target_index].inverse_of.is_none() {
+                        model.descriptors[target_index].inverse_of = Some(SemanticReference {
+                            role: ReferenceRole::InverseOf,
+                            target: current_key.clone(),
+                            resolved: current_symbol_id,
+                        });
+                    }
+                }
+            }
+        }
+
+        if let Some(inverse_of) = model.descriptors[index].inverse_of.clone() {
+            if let Some(target_symbol) = inverse_of
+                .resolved
+                .and_then(|symbol_id| symbols.lookup_by_id(symbol_id))
+                .or_else(|| symbols.lookup_by_key(&inverse_of.target))
+            {
+                if let Some(target_index) = descriptor_indexes.get(&target_symbol.key).copied() {
+                    if model.descriptors[target_index].has_inverse.is_none() {
+                        model.descriptors[target_index].has_inverse = Some(SemanticReference {
+                            role: ReferenceRole::HasInverse,
+                            target: current_key.clone(),
+                            resolved: current_symbol_id,
+                        });
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Resolves TDL's omitted-Boolean convention through effective property descriptors.
@@ -1766,14 +1901,7 @@ fn tdl_instance_type_kind(descriptor: &TdlDescriptor) -> Option<String> {
         DescriptorKind::RelationshipType => "TypeKind.Relationship",
         DescriptorKind::Enum => "TypeKind.Value.Enum",
         DescriptorKind::EnumVariant => "TypeKind.EnumVariant",
-        DescriptorKind::ValueType => match descriptor.extends.as_deref() {
-            Some("StringValueType") | Some("MapStringValueType") => "TypeKind.Value.String",
-            Some("IntegerValueType") | Some("MapIntegerValueType") => "TypeKind.Value.Integer",
-            Some("BooleanValueType") | Some("MapBooleanValueType") => "TypeKind.Value.Boolean",
-            Some("BytesValueType") | Some("MapBytesValueType") => "TypeKind.Value.Bytes",
-            Some("ValueArrayValueType") | Some("MapValueArrayType") => "TypeKind.Value.Array",
-            _ => return None,
-        },
+        DescriptorKind::ValueType => return None,
         DescriptorKind::Schema => return None,
     };
     Some(value.to_string())
@@ -2172,6 +2300,40 @@ mod tests {
             )),
             "{diagnostics:#?}"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn tdl_materializes_parent_derived_value_kinds_and_inverse_pairs() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+
+        for (key, expected_kind) in [
+            ("MapBytesValueType", "TypeKind.Value.Bytes"),
+            ("HolonIdValueType", "TypeKind.Value.Bytes"),
+            ("MapValueArrayType", "TypeKind.Value.Array"),
+        ] {
+            let descriptor = lowered
+                .global_model
+                .descriptors
+                .iter()
+                .find(|descriptor| descriptor.key == key)
+                .unwrap_or_else(|| panic!("missing descriptor `{key}`"));
+            assert_eq!(descriptor.instance_type_kind.as_deref(), Some(expected_kind));
+        }
+
+        let inverse = lowered
+            .global_model
+            .descriptors
+            .iter()
+            .find(|descriptor| {
+                descriptor.key == "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)"
+            })
+            .expect("Components inverse descriptor");
+        assert_eq!(
+            inverse.inverse_of.as_ref().map(|reference| reference.target.as_str()),
+            Some("(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)")
+        );
+
         Ok(())
     }
 

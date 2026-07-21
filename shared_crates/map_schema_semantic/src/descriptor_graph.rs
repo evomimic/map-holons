@@ -60,6 +60,7 @@ pub enum CanonicalGraphError {
     UnknownNode { node: CanonicalNodeId },
     UnresolvedTarget { source: CanonicalNodeId, relationship: String, target: String },
     ResolvedTargetOutsideModel { source: CanonicalNodeId, relationship: String, target: String },
+    InvalidDescriptorData { node: CanonicalNodeId, message: String },
 }
 
 impl fmt::Display for CanonicalGraphError {
@@ -73,6 +74,7 @@ impl fmt::Display for CanonicalGraphError {
                 formatter,
                 "resolved `{relationship}` target `{target}` is outside the Canonical Holon IR model"
             ),
+            Self::InvalidDescriptorData { message, .. } => write!(formatter, "{message}"),
         }
     }
 }
@@ -282,6 +284,9 @@ impl CanonicalDescriptorGraph {
             | CanonicalGraphError::ResolvedTargetOutsideModel { source, relationship, target } => {
                 (*source, relationship.clone(), Some(target.clone()))
             }
+            CanonicalGraphError::InvalidDescriptorData { node, .. } => {
+                (*node, "descriptor data".to_string(), None)
+            }
         };
         Diagnostic::error(
             DiagnosticLayer::SchemaAware,
@@ -349,10 +354,13 @@ mod tests {
 
     fn graph_model() -> (SemanticModel, SymbolIndex) {
         let mut model = SemanticModel::new();
-        model.push_descriptor(descriptor(
+        let mut type_descriptor =
+            descriptor("TypeDescriptor.HolonType", DescriptorKind::TypeDescriptor);
+        type_descriptor.described_by.push(SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
             "TypeDescriptor.HolonType",
-            DescriptorKind::TypeDescriptor,
         ));
+        model.push_descriptor(type_descriptor);
         model.push_descriptor(descriptor("Name.PropertyType", DescriptorKind::PropertyType));
         model.push_descriptor(descriptor("Title.PropertyType", DescriptorKind::PropertyType));
 

@@ -4,10 +4,8 @@
 //! holons, delegates policy evaluation to `descriptor_semantics`, and projects neutral violations
 //! into shared diagnostics. It intentionally contains no property-specific validation rules.
 
-use std::collections::HashSet;
-
 use descriptor_semantics::{
-    compose_restrictive_boolean, describing_type, duplicate_declaration_name,
+    collect_named_members_from_lineage, compose_restrictive_boolean, describing_type,
     effective_descriptor_lineage, validate_holon_conformance, value_policy_for_type_kind,
     ConformanceValue, ConformanceViolation, DescriptorGraph, DescriptorSemanticsError,
     HolonConformance, PropertyDeclaration, PropertyValue, RelationshipDeclaration,
@@ -120,20 +118,19 @@ fn conformance_input(
     describing_type(graph, &node).map_err(ConformanceBuildError::Graph)?;
     let lineage =
         effective_descriptor_lineage(graph, &node).map_err(ConformanceBuildError::Graph)?;
-    let relationship_nodes = effective_members(graph, &lineage, "InstanceRelationships")?;
+    let relationship_nodes = effective_named_members(
+        graph,
+        &lineage,
+        "InstanceRelationships",
+        "relationship",
+        &["relationship_name", "type_name"],
+    )?;
 
     let property_declarations = effective_property_declarations(graph, node)?;
     let relationship_declarations = relationship_nodes
         .into_iter()
         .map(|descriptor| relationship_declaration(graph, descriptor))
         .collect::<Result<Vec<_>, _>>()?;
-    reject_duplicate_declarations(
-        graph,
-        &lineage,
-        "relationship",
-        &relationship_declarations,
-        |item| &item.name,
-    )?;
 
     let mut properties = holon
         .properties
@@ -175,54 +172,49 @@ fn effective_property_declarations(
     describing_type(graph, &node).map_err(ConformanceBuildError::Graph)?;
     let lineage =
         effective_descriptor_lineage(graph, &node).map_err(ConformanceBuildError::Graph)?;
-    let property_nodes = effective_members(graph, &lineage, "InstanceProperties")?;
+    let property_nodes = effective_named_members(
+        graph,
+        &lineage,
+        "InstanceProperties",
+        "property",
+        &["property_name", "type_name"],
+    )?;
     let declarations = property_nodes
         .into_iter()
         .map(|descriptor| property_declaration(graph, descriptor))
         .collect::<Result<Vec<_>, _>>()?;
-    reject_duplicate_declarations(graph, &lineage, "property", &declarations, |item| &item.name)?;
     Ok(declarations)
 }
 
-fn reject_duplicate_declarations<T>(
-    graph: &CanonicalDescriptorGraph,
-    lineage: &[CanonicalNodeId],
-    kind: &str,
-    declarations: &[T],
-    name: impl Fn(&T) -> &str,
-) -> Result<(), ConformanceBuildError> {
-    let Some(duplicate) =
-        duplicate_declaration_name(declarations.iter().map(|item| name(item).to_string()))
-    else {
-        return Ok(());
-    };
-    let descriptor =
-        lineage.first().and_then(|node| graph.key(*node)).unwrap_or("<unknown>").to_string();
-    Err(ConformanceBuildError::InvalidDescriptor {
-        descriptor,
-        message: format!("distinct inherited {kind} declarations share the name `{duplicate}`"),
-    })
-}
-
-fn effective_members(
+fn effective_named_members(
     graph: &CanonicalDescriptorGraph,
     lineage: &[CanonicalNodeId],
     relationship: &str,
+    declaration_kind: &'static str,
+    name_properties: &[&str],
 ) -> Result<Vec<CanonicalNodeId>, ConformanceBuildError> {
-    let mut members = Vec::new();
-    let mut seen = HashSet::new();
-    for descriptor in lineage {
-        for member in
-            graph.related_members(descriptor, &relationship.to_string()).map_err(|error| {
-                ConformanceBuildError::Graph(DescriptorSemanticsError::Access(error))
-            })?
-        {
-            if seen.insert(graph.identity(&member)) {
-                members.push(member);
-            }
-        }
-    }
-    Ok(members)
+    collect_named_members_from_lineage(
+        graph,
+        lineage.iter().copied(),
+        &relationship.to_string(),
+        declaration_kind,
+        |node| {
+            let holon =
+                graph.holon(*node).ok_or(CanonicalGraphError::UnknownNode { node: *node })?;
+            name_properties
+                .iter()
+                .find_map(|property| string_property(holon, property))
+                .map(ToString::to_string)
+                .ok_or_else(|| CanonicalGraphError::InvalidDescriptorData {
+                    node: *node,
+                    message: format!(
+                        "{declaration_kind} descriptor has no semantic name in {}",
+                        name_properties.join(" or ")
+                    ),
+                })
+        },
+    )
+    .map_err(ConformanceBuildError::Graph)
 }
 
 fn property_declaration(
@@ -480,7 +472,12 @@ mod tests {
     #[test]
     fn invalid_enum_value_is_rejected_through_descriptor_data() {
         let mut model = SemanticModel::new();
-        model.push_descriptor(descriptor("TypeDescriptor.HolonType"));
+        let mut type_descriptor = descriptor("TypeDescriptor.HolonType");
+        type_descriptor.described_by.push(SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            "TypeDescriptor.HolonType",
+        ));
+        model.push_descriptor(type_descriptor);
 
         let mut enum_type = descriptor_of_kind("KindEnum", DescriptorKind::Enum);
         enum_type.instance_type_kind = Some("TypeKind.Value.Enum".to_string());
@@ -502,6 +499,10 @@ mod tests {
         model.push_descriptor(property);
 
         let mut thing_type = descriptor("Thing.HolonType");
+        thing_type.described_by.push(SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            "TypeDescriptor.HolonType",
+        ));
         thing_type.instance_properties.push(SemanticReference::unresolved(
             ReferenceRole::InstanceProperty,
             "Kind.PropertyType",

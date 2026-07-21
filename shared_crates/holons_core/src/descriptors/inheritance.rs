@@ -122,11 +122,10 @@ pub(crate) fn equals_or_extends(
         .map_err(map_semantics_error)
 }
 
-/// Computes the effective descriptor lineage for a holon(per MAP Type System) v1.2.
+/// Computes the effective lineage for a holon (MAP Type System v1.2).
 ///
-/// Ordinary instances use the `Extends` lineage of their `DescribedBy` descriptor.
-/// Descriptor holons additionally contribute their own `Extends` lineage before
-/// the effective lineage of their describing `TypeDescriptor` descriptor.
+/// The result is the ordered identity union of the holon's own type lineage and the lineage of its
+/// exactly one `DescribedBy` target. Ordinary holons have no own lineage.
 pub fn effective_descriptor_lineage(
     holon: &HolonReference,
 ) -> Result<Vec<HolonReference>, HolonError> {
@@ -149,10 +148,9 @@ pub(crate) fn described_by_descriptor(
 }
 
 fn is_type_descriptor_descriptor(descriptor: &HolonReference) -> Result<bool, HolonError> {
-    let expected = CoreHolonTypeName::TypeDescriptor.as_holon_name();
-    match descriptor.property_value(CorePropertyTypeName::TypeName)? {
-        Some(BaseValue::StringValue(type_name)) => Ok(type_name == expected),
-        Some(BaseValue::EnumValue(type_name)) => Ok(type_name.0 == expected),
+    const TYPE_DESCRIPTOR_KEY: &str = "TypeDescriptor.HolonType";
+    match descriptor.property_value(CorePropertyTypeName::Key)? {
+        Some(BaseValue::StringValue(key)) => Ok(key.0 == TYPE_DESCRIPTOR_KEY),
         Some(_) | None => Ok(false),
     }
 }
@@ -371,7 +369,7 @@ mod tests {
     }
 
     #[test]
-    fn effective_descriptor_lineage_for_descriptor_combines_own_and_describing_lineages(
+    fn effective_descriptor_lineage_for_type_combines_own_and_describing_lineages(
     ) -> Result<(), HolonError> {
         let context = build_context();
         let meta_type_descriptor =
@@ -386,6 +384,11 @@ mod tests {
             "MetaTypeDescriptor.Instance",
             "MetaTypeDescriptor",
             "Holon",
+        )?;
+
+        type_descriptor.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor)],
         )?;
 
         meta_holon_type.add_related_holons(
