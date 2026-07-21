@@ -427,7 +427,6 @@ inverse relationship CommandAffordedBy {
   source CommandType.HolonType
   target HolonType
   cardinality 0..32767
-  deletion_semantic Allow
   header {
     description: "Inverse of AffordsCommand, relationship from CommandType to HolonType."
     display_name: "CommandAffordedBy Relationship"
@@ -442,6 +441,7 @@ def relationship CommandPayloadType {
   target HolonType
   inverse CommandPayloadTypeFor
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a CommandType to the holon type carried as its command payload."
     display_name: "CommandPayloadType Relationship"

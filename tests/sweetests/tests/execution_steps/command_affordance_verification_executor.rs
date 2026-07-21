@@ -372,7 +372,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
         transaction_model_inverse
             .deletion_semantic()
             .expect("TransactionModelAffordedBy deletion_semantic"),
-        Some(MapString("Allow".to_string()))
+        None
     );
 
     info!(

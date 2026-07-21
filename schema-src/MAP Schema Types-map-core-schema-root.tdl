@@ -7,6 +7,7 @@ schema MAP Core Schema-v0.0.7 {
   }
 }
 holon TypeDescriptor {
+  keyrule TypeNameRule.KeyRuleType
   header {
     description: "The TypeDescriptor is a concrete, self-describing type in the MAP Type System that defines the structure, metadata, and behavioral obligations of all other types—including itself. It plays a dual role: as a descriptor, it declares the properties and relationships that instances of a given type must populate (via InstanceProperties and InstanceRelationships); as a holon, it is an instantiable entity that belongs to a schema, is owned by a holon space, and participates in MAP’s introspectable type graph. All concrete type definitions in MAP—such as property types, relationship types, and holon types—are instances of TypeDescriptor, making it the cornerstone of MAP’s fully self-describing architecture.."
     display_name: "Type Descriptor"
@@ -155,7 +156,6 @@ abstract holon MetaRelationshipType {
     AllowsDuplicates.PropertyType
     MinCardinality.PropertyType
     MaxCardinality.PropertyType
-    DeletionSemantic.PropertyType
   }
   relationships {
     (MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)
@@ -171,6 +171,9 @@ abstract holon MetaDeclaredRelationshipType {
     display_name: "Meta Declared Relationship Type"
     display_plural: "Meta Declared Relationship Types"
     plural: "MetaDeclaredRelationshipTypes"
+  }
+  properties {
+    DeletionSemantic.PropertyType
   }
   relationships {
     (DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)

@@ -21,6 +21,7 @@ relationship AffordsOperator {
   target OperatorType.HolonType
   inverse AffordedBy
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction."
     display_name: "AffordsOperator Relationship"
