@@ -730,11 +730,13 @@ dependencies = [
 name = "holons_guest_integrity"
 version = "0.1.0"
 dependencies = [
+ "base_types",
  "derive-new",
  "hdi",
  "holochain_serialized_bytes",
  "integrity_core_types",
  "serde",
+ "shared_validation",
 ]
 
 [[package]]

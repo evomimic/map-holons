@@ -1,20 +1,10 @@
 use core_types::{decode_smartlink_tag, ValidationError, HOLOCHAIN_ACTION_HASH_BYTES};
-use integrity_core_types::{HolonNodeModel, LocalId, PersistenceLinkTag};
+use integrity_core_types::{LocalId, PersistenceLinkTag};
 
 /// Foundational routines for property and relationship checks
 /// applicable to both zomes
 
 // ==== Entry CUD ====
-
-pub fn validate_create_holon(_holon_node_model: HolonNodeModel) -> Result<(), ValidationError> {
-    // Deferring logic until Descriptors
-
-    Ok(())
-}
-
-pub fn validate_update_holon(_holon_node_model: HolonNodeModel) -> Result<(), ValidationError> {
-    Ok(())
-}
 
 pub fn validate_delete_holon() -> Result<(), ValidationError> {
     Ok(())
