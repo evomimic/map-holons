@@ -564,7 +564,7 @@
         "description": "Maximum number of target holons allowed for the relationship.",
         "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false,
-        "is_required": true,
+        "is_required": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },

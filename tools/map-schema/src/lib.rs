@@ -134,7 +134,7 @@ pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBu
                 .with_context(|| format!("creating output directory {}", parent.display()))?;
         }
 
-        let contents = render_lowered_file(file)?;
+        let contents = render_lowered_file(file, &lowered.global_model)?;
         fs::write(&output, contents)
             .with_context(|| format!("writing decompiled TDL to {}", output.display()))?;
         written.push(output);
@@ -153,12 +153,9 @@ pub fn decompile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Res
     let source_name = source_name.into();
     let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
     let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
-    let file = lowered
-        .files
-        .into_iter()
-        .next()
-        .ok_or_else(|| anyhow!("no JSON import document was lowered"))?;
-    render_lowered_file(&file)
+    let file =
+        lowered.files.first().ok_or_else(|| anyhow!("no JSON import document was lowered"))?;
+    render_lowered_file(file, &lowered.global_model)
 }
 
 /// Builds the derived semantic symbol table for JSON import inputs and returns a text dump.
@@ -191,10 +188,63 @@ pub fn diff_inputs(left: &[PathBuf], right: &[PathBuf]) -> Result<String> {
     let left_model = load_valid_semantic_model(left, "left")?;
     let right_model = load_valid_semantic_model(right, "right")?;
 
-    let left_signature = left_model.comparable_signature();
-    let right_signature = right_model.comparable_signature();
+    let left_signature = adapter_comparable_signature(&left_model);
+    let right_signature = adapter_comparable_signature(&right_model);
 
     Ok(render_semantic_diff(&left_signature, &right_signature, &left_model, &right_model))
+}
+
+/// Normalizes facts that concise TDL relationship syntax necessarily makes explicit.
+///
+/// JSON imports may encode an inverse pair only from the declared side and may omit the inverse
+/// deletion value. TDL's concise `inverse` clause closes the pair and applies its `Allow` default.
+/// These are adapter-representation differences, not changes to the represented relationship.
+fn adapter_comparable_signature(
+    model: &SemanticModel,
+) -> crate::schema_ir::ComparableSemanticModel {
+    let mut signature = model.comparable_signature();
+    let mut pairs = Vec::new();
+    for descriptor in &signature.descriptors {
+        for (role, target) in &descriptor.references {
+            match role {
+                ReferenceRole::HasInverse => pairs.push((descriptor.key.clone(), target.clone())),
+                ReferenceRole::InverseOf => pairs.push((target.clone(), descriptor.key.clone())),
+                _ => {}
+            }
+        }
+    }
+    pairs.sort();
+    pairs.dedup();
+
+    let descriptor_indexes = signature
+        .descriptors
+        .iter()
+        .enumerate()
+        .map(|(index, descriptor)| (descriptor.key.clone(), index))
+        .collect::<HashMap<_, _>>();
+    for (declared_key, inverse_key) in pairs {
+        if let Some(index) = descriptor_indexes.get(&declared_key).copied() {
+            signature.descriptors[index]
+                .references
+                .push((ReferenceRole::HasInverse, inverse_key.clone()));
+        }
+        if let Some(index) = descriptor_indexes.get(&inverse_key).copied() {
+            signature.descriptors[index]
+                .references
+                .push((ReferenceRole::InverseOf, declared_key.clone()));
+        }
+    }
+
+    for descriptor in &mut signature.descriptors {
+        descriptor.references.sort();
+        descriptor.references.dedup();
+        if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse)
+            && descriptor.deletion_semantic.is_none()
+        {
+            descriptor.deletion_semantic = Some("Allow".to_string());
+        }
+    }
+    signature
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -421,6 +471,7 @@ fn normalized_descriptor_literal_properties(
                 | "allows_duplicates"
                 | "allows_additional_properties"
                 | "allows_additional_relationships"
+                | "is_required"
         ) {
             continue;
         }
@@ -833,8 +884,8 @@ fn component_of_schema_name(holon: &HolonRecord) -> Option<String> {
     relationship_targets(holon, "ComponentOf").into_iter().next()
 }
 
-fn render_lowered_file(file: &LoweredJsonFile) -> Result<String> {
-    render_semantic_file(&file.schema_model)
+fn render_lowered_file(file: &LoweredJsonFile, global_model: &SemanticModel) -> Result<String> {
+    render_semantic_file(&file.schema_model, global_model)
 }
 
 fn lower_file_to_loader_ir(file: &ParsedFile) -> LoaderDocument {
@@ -1140,7 +1191,7 @@ fn reference_role_for_relationship(name: &str) -> Option<ReferenceRole> {
     }
 }
 
-fn render_semantic_file(model: &SemanticModel) -> Result<String> {
+fn render_semantic_file(model: &SemanticModel, global_model: &SemanticModel) -> Result<String> {
     let mut out = String::new();
     let schema = model.schemas.first().context("semantic model has no schema")?;
     let emitted_key_lookup = build_emitted_key_lookup(&[model]);
@@ -1164,6 +1215,7 @@ fn render_semantic_file(model: &SemanticModel) -> Result<String> {
             descriptor,
             &enum_variant_groups,
             &emitted_key_lookup,
+            global_model,
         )?;
         if !out.ends_with("\n\n") {
             out.push('\n');
@@ -1257,9 +1309,12 @@ fn render_semantic_descriptor(
     descriptor: &TypeDescriptor,
     enum_variant_groups: &HashMap<String, Vec<&TypeDescriptor>>,
     emitted_key_lookup: &crate::schema_to_loader_ir::EmittedKeyLookup,
+    global_model: &SemanticModel,
 ) -> Result<()> {
     match preferred_descriptor_kind(descriptor) {
-        DescriptorKind::ValueType => render_semantic_value(out, descriptor, emitted_key_lookup),
+        DescriptorKind::ValueType => {
+            render_semantic_value(out, descriptor, emitted_key_lookup, global_model)
+        }
         DescriptorKind::Enum => {
             render_semantic_enum(out, descriptor, enum_variant_groups, emitted_key_lookup)
         }
@@ -1332,6 +1387,7 @@ fn render_semantic_value(
     out: &mut String,
     descriptor: &TypeDescriptor,
     emitted_key_lookup: &crate::schema_to_loader_ir::EmittedKeyLookup,
+    global_model: &SemanticModel,
 ) -> Result<()> {
     let head = descriptor_head("value", descriptor);
     let mut clauses = Vec::new();
@@ -1352,12 +1408,36 @@ fn render_semantic_value(
     if descriptor.allows_additional_relationships {
         clauses.push("allows_additional_relationships".to_string());
     }
-    append_semantic_body_with_lines(
-        &head,
-        out,
-        &clauses,
-        &descriptor_body_lines(descriptor, uses_literal_body),
-    )
+    let mut body_lines = descriptor_body_lines(descriptor, uses_literal_body);
+    if !uses_literal_body && value_type_kind_requires_literal(descriptor, global_model) {
+        let mut literal_lines = vec!["properties {".to_string()];
+        literal_lines.extend(
+            descriptor.literal_properties.iter().map(|(name, value)| {
+                format!("{}{}: {}", INDENT, name, render_literal_value(value))
+            }),
+        );
+        literal_lines.push("}".to_string());
+        body_lines.splice(0..0, literal_lines);
+    }
+    append_semantic_body_with_lines(&head, out, &clauses, &body_lines)
+}
+
+fn value_type_kind_requires_literal(
+    descriptor: &TypeDescriptor,
+    global_model: &SemanticModel,
+) -> bool {
+    let Some(kind) = descriptor.instance_type_kind.as_deref() else {
+        return false;
+    };
+    let Some(parent) = descriptor.extends.as_ref() else {
+        return true;
+    };
+    let parent_descriptor = global_model
+        .descriptors
+        .iter()
+        .find(|candidate| candidate.key == parent.target || candidate.name == parent.target);
+
+    parent_descriptor.and_then(|parent| parent.instance_type_kind.as_deref()) != Some(kind)
 }
 
 fn render_semantic_enum(
@@ -2177,7 +2257,8 @@ mod tests {
         );
         assert!(
             regenerated_lowered.diagnostics.is_empty(),
-            "round-tripped JSON should remain diagnostic-free"
+            "round-tripped JSON should remain diagnostic-free:\n{}",
+            format_diagnostics(&regenerated_lowered.diagnostics)
         );
 
         assert_eq!(
@@ -2197,8 +2278,8 @@ mod tests {
             source_lowered.symbols.symbols().len(),
             regenerated_lowered.symbols.symbols().len()
         );
-        let source_signature = source_lowered.global_model.comparable_signature();
-        let regenerated_signature = regenerated_lowered.global_model.comparable_signature();
+        let source_signature = adapter_comparable_signature(&source_lowered.global_model);
+        let regenerated_signature = adapter_comparable_signature(&regenerated_lowered.global_model);
         if source_signature != regenerated_signature {
             panic!(
                 "round-tripped JSON should preserve schema semantics\n{}",
@@ -2436,8 +2517,8 @@ relationship Broken {
 
         let regenerated_lowered = lower_inputs_to_schema_ir(&[regenerated_dir.clone()])?;
         assert_eq!(
-            lowered.global_model.comparable_signature(),
-            regenerated_lowered.global_model.comparable_signature()
+            adapter_comparable_signature(&lowered.global_model),
+            adapter_comparable_signature(&regenerated_lowered.global_model)
         );
 
         Ok(())

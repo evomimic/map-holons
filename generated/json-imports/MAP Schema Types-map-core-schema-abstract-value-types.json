@@ -216,13 +216,13 @@
       "key": "BytesValueType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
+        "is_abstract_type": true,
         "type_name": "BytesValueType",
         "type_name_plural": "BytesValueTypes",
         "display_name": "BytesValueType",
         "display_name_plural": "BytesValueTypes",
         "description": "Abstract type for byte sequence value types.",
         "instance_type_kind": "TypeKind.Value.Bytes",
-        "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },
@@ -321,13 +321,13 @@
       "key": "ValueArrayValueType",
       "type": "TypeDescriptor.HolonType",
       "properties": {
+        "is_abstract_type": true,
         "type_name": "ValueArrayValueType",
         "type_name_plural": "ValueArrayValueTypes",
         "display_name": "ValueArrayType",
         "display_name_plural": "ValueArrayTypes",
         "description": "Abstract type for value array types.",
         "instance_type_kind": "TypeKind.Value.Array",
-        "is_abstract_type": true,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
       },

@@ -164,7 +164,7 @@ property MapString? {
 }
 
 
-property MaxCardinality {
+property MaxCardinality? {
   value MapIntegerValueType
   header {
     description: "Maximum number of target holons allowed for the relationship."
