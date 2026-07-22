@@ -7,12 +7,18 @@
 //! descriptor vocabulary without depending on a host-only parser or a particular serialization
 //! format.
 
+pub mod descriptor_conformance;
+pub mod descriptor_graph;
 pub mod diagnostics;
 pub mod literal_value;
 pub mod schema_index;
 pub mod schema_ir;
+pub mod validator;
 
+pub use descriptor_conformance::*;
+pub use descriptor_graph::*;
 pub use diagnostics::*;
 pub use literal_value::*;
 pub use schema_index::*;
 pub use schema_ir::*;
+pub use validator::*;

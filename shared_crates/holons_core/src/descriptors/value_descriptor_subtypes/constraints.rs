@@ -3,6 +3,10 @@ use crate::descriptors::inheritance::{flatten_related_members, walk_extends_chai
 use crate::descriptors::TypeHeader;
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, SchemaInvalidityKind};
+use descriptor_semantics::{
+    validate_integer_maximum, validate_integer_minimum, validate_string_maximum_length,
+    validate_string_minimum_length,
+};
 use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -73,7 +77,7 @@ struct ConstraintClassification {
 
 impl IntegerConstraintValidation for MinimumValueConstraint {
     fn is_valid(&self, value: i64, descriptor_label: &str) -> Result<(), HolonError> {
-        if value > self.value || (self.inclusive && value == self.value) {
+        if validate_integer_minimum(value, self.value, self.inclusive).is_ok() {
             return Ok(());
         }
 
@@ -90,7 +94,7 @@ impl IntegerConstraintValidation for MinimumValueConstraint {
 
 impl IntegerConstraintValidation for MaximumValueConstraint {
     fn is_valid(&self, value: i64, descriptor_label: &str) -> Result<(), HolonError> {
-        if value < self.value || (self.inclusive && value == self.value) {
+        if validate_integer_maximum(value, self.value, self.inclusive).is_ok() {
             return Ok(());
         }
 
@@ -108,7 +112,7 @@ impl IntegerConstraintValidation for MaximumValueConstraint {
 impl StringConstraintValidation for MinimumLengthConstraint {
     fn is_valid(&self, value: &str, descriptor_label: &str) -> Result<(), HolonError> {
         let length = value.chars().count();
-        if (length as i128) >= i128::from(self.length) {
+        if validate_string_minimum_length(value, self.length).is_ok() {
             return Ok(());
         }
 
@@ -124,7 +128,7 @@ impl StringConstraintValidation for MinimumLengthConstraint {
 impl StringConstraintValidation for MaximumLengthConstraint {
     fn is_valid(&self, value: &str, descriptor_label: &str) -> Result<(), HolonError> {
         let length = value.chars().count();
-        if (length as i128) <= i128::from(self.length) {
+        if validate_string_maximum_length(value, self.length).is_ok() {
             return Ok(());
         }
 

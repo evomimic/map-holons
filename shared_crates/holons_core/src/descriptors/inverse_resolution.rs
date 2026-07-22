@@ -23,8 +23,8 @@ mod tests {
     use super::*;
     use crate::core_shared_objects::transactions::TransactionContext;
     use crate::descriptors::test_support::{
-        build_context, core_holon_type_name, new_descriptor_holon, new_holon_type_descriptor,
-        new_relationship_descriptor_holon, new_test_holon,
+        build_context, core_holon_type_name, describe_as_type, new_descriptor_holon,
+        new_holon_type_descriptor, new_relationship_descriptor_holon, new_test_holon,
     };
     use crate::reference_layer::{StagedReference, TransientReference, WritableHolon};
     use base_types::MapString;
@@ -64,31 +64,32 @@ mod tests {
             &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?)?;
-        let source_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
-            &context,
-            "book-type",
-            "BookType",
-        )?)?;
+        let mut source_type_transient =
+            new_holon_type_descriptor(&context, "book-type", "BookType")?;
+        describe_as_type(&context, &mut source_type_transient)?;
+        let source_type = context.mutation().stage_new_holon(source_type_transient)?;
         let target_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
             &context,
             "person-type",
             "PersonType",
         )?)?;
 
-        let declared_transient = new_relationship_descriptor_holon(
+        let mut declared_transient = new_relationship_descriptor_holon(
             &context,
             "declared-relationship",
             relationship_name,
             (&source_type).into(),
             (&target_type).into(),
         )?;
-        let inverse_transient = new_relationship_descriptor_holon(
+        describe_as_type(&context, &mut declared_transient)?;
+        let mut inverse_transient = new_relationship_descriptor_holon(
             &context,
             "inverse-relationship",
             inverse_name,
             (&target_type).into(),
             (&source_type).into(),
         )?;
+        describe_as_type(&context, &mut inverse_transient)?;
 
         let mut declared = context.mutation().stage_new_holon(declared_transient)?;
         let mut inverse = context.mutation().stage_new_holon(inverse_transient)?;
@@ -153,8 +154,8 @@ mod tests {
 
         assert!(matches!(
             resolve_inverse_relationship_name(&(&source).into(), &authored_by()),
-            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
-                if kind == "relationship" && name == "AuthoredBy"
+            Err(HolonError::MissingRequiredRelationship { relationship, .. })
+                if relationship == "DescribedBy"
         ));
         Ok(())
     }
@@ -163,21 +164,34 @@ mod tests {
     fn resolves_descriptor_holon_relationship_through_own_extends_lineage() -> Result<(), HolonError>
     {
         let context = build_context();
-        let type_descriptor = context.mutation().stage_new_holon(new_holon_type_descriptor(
-            &context,
-            "type-descriptor",
-            "TypeDescriptor",
-        )?)?;
-        let meta_relationship_type = context.mutation().stage_new_holon(
-            new_holon_type_descriptor(&context, "meta-relationship-type", "MetaRelationshipType")?,
+        let mut type_descriptor_transient =
+            new_holon_type_descriptor(&context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+        type_descriptor_transient.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor_transient)],
         )?;
-        let mut declared_relationship_type =
-            context.mutation().stage_new_holon(new_descriptor_holon(
-                &context,
-                "declared-relationship-type-for-source-type",
-                &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
-                "Relationship",
-            )?)?;
+        let type_descriptor = context.mutation().stage_new_holon(type_descriptor_transient)?;
+        let mut meta_relationship_type_transient =
+            new_holon_type_descriptor(&context, "meta-relationship-type", "MetaRelationshipType")?;
+        describe_as_type(&context, &mut meta_relationship_type_transient)?;
+        let meta_relationship_type =
+            context.mutation().stage_new_holon(meta_relationship_type_transient)?;
+        let mut declared_relationship_type_transient = new_descriptor_holon(
+            &context,
+            "declared-relationship-type-for-source-type",
+            &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+            "Relationship",
+        )?;
+        declared_relationship_type_transient.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![(&type_descriptor).into()],
+        )?;
+        declared_relationship_type_transient.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![(&meta_relationship_type).into()],
+        )?;
+        let declared_relationship_type =
+            context.mutation().stage_new_holon(declared_relationship_type_transient)?;
         let inverse_relationship_type =
             context.mutation().stage_new_holon(new_descriptor_holon(
                 &context,
@@ -186,27 +200,25 @@ mod tests {
                 "Relationship",
             )?)?;
 
-        let source_type_transient = new_relationship_descriptor_holon(
+        let mut source_type_transient = new_relationship_descriptor_holon(
             &context,
             "source-type",
             "SourceType",
             (&meta_relationship_type).into(),
             (&type_descriptor).into(),
         )?;
-        let source_for_transient = new_relationship_descriptor_holon(
+        describe_as_type(&context, &mut source_type_transient)?;
+        let mut source_for_transient = new_relationship_descriptor_holon(
             &context,
             "source-for",
             "SourceFor",
             (&type_descriptor).into(),
             (&meta_relationship_type).into(),
         )?;
+        describe_as_type(&context, &mut source_for_transient)?;
         let mut source_type = context.mutation().stage_new_holon(source_type_transient)?;
         let mut source_for = context.mutation().stage_new_holon(source_for_transient)?;
 
-        declared_relationship_type.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![(&meta_relationship_type).into()],
-        )?;
         source_type.add_related_holons(
             CoreRelationshipTypeName::Extends,
             vec![declared_relationship_type.into()],
@@ -224,20 +236,18 @@ mod tests {
             vec![(&source_type).into()],
         )?;
 
+        let mut concrete_relationship_transient = new_relationship_descriptor_holon(
+            &context,
+            "affords-operator",
+            "AffordsOperator",
+            (&meta_relationship_type).into(),
+            (&type_descriptor).into(),
+        )?;
+        describe_as_type(&context, &mut concrete_relationship_transient)?;
         let mut concrete_relationship =
-            context.mutation().stage_new_holon(new_relationship_descriptor_holon(
-                &context,
-                "affords-operator",
-                "AffordsOperator",
-                (&meta_relationship_type).into(),
-                (&type_descriptor).into(),
-            )?)?;
+            context.mutation().stage_new_holon(concrete_relationship_transient)?;
         concrete_relationship
             .add_related_holons(CoreRelationshipTypeName::Extends, vec![(&source_type).into()])?;
-        concrete_relationship.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![type_descriptor.into()],
-        )?;
 
         let inverse_name = resolve_inverse_relationship_name(
             &(&concrete_relationship).into(),
@@ -269,13 +279,15 @@ mod tests {
             &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?)?;
+        let mut wrong_kind_relationship = new_descriptor_holon(
+            &fixture.context,
+            "wrong-kind-authored-by",
+            "AuthoredBy",
+            "Relationship",
+        )?;
+        describe_as_type(&fixture.context, &mut wrong_kind_relationship)?;
         let mut wrong_kind_relationship =
-            fixture.context.mutation().stage_new_holon(new_descriptor_holon(
-                &fixture.context,
-                "wrong-kind-authored-by",
-                "AuthoredBy",
-                "Relationship",
-            )?)?;
+            fixture.context.mutation().stage_new_holon(wrong_kind_relationship)?;
         wrong_kind_relationship
             .add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse_type.into()])?;
         let mut source_type = fixture.source_type.clone();

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.919564Z",
+    "generated_at": "2026-07-22T12:12:39.826519Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-value-constraint-types.tdl"
@@ -271,7 +271,8 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "constraint_is_inclusive": false
       },
       "relationships": [
         {
@@ -311,7 +312,8 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "constraint_is_inclusive": false
       },
       "relationships": [
         {
@@ -421,7 +423,8 @@
         "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "allows_additional_relationships": false,
+        "constraint_enabled": false
       },
       "relationships": [
         {
@@ -454,7 +457,10 @@
         "display_name_plural": "Constraint Lengths",
         "description": "Limit of allowed character count for a string value.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -487,7 +493,10 @@
         "display_name_plural": "Constraint Integer Values",
         "description": "Limit of an integer value.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -520,7 +529,10 @@
         "display_name_plural": "Constraint Item Counts",
         "description": "Limit on the number of items in an array.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -553,7 +565,10 @@
         "display_name_plural": "IsInclusive Constraints",
         "description": "If the limit value included in the allowed range.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -586,7 +601,10 @@
         "display_name_plural": "Constraint Enabled Values",
         "description": "Boolean parameter indicating whether a boolean-style constraint rule is active.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -625,7 +643,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -676,7 +696,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -727,7 +749,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -778,7 +802,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -824,11 +850,14 @@
         "description": "Inverse of Constraints, from a string value constraint to the string value type it constrains.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -868,11 +897,14 @@
         "description": "Inverse of Constraints, from an integer value constraint to the integer value type it constrains.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -912,11 +944,14 @@
         "description": "Inverse of Constraints, from a bytes value constraint to the bytes value type it constrains.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -956,11 +991,14 @@
         "description": "Inverse of Constraints, from a value array constraint to the value array type it constrains.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {

@@ -62,6 +62,7 @@ describe('errors', () => {
     expect(error.code).toBe('DOMAIN_ERROR');
     expect(error.variant).toBe('HolonNotFound');
     expect(error.payload).toBe('missing-holon');
+    expect(error.message).toBe('HolonNotFound: missing-holon');
   });
 
   it('parses a structured wire domain error payload', () => {
@@ -94,5 +95,16 @@ describe('errors', () => {
     expect(error.payload).toEqual({
       PropertyError: 'title is required',
     });
+    expect(error.message).toBe('ValidationError: PropertyError: title is required');
+  });
+
+  it('formats tuple-style error payloads into readable messages', () => {
+    const error = parseDomainError({
+      InvalidRelationship: ['ComponentOf', 'target BookAuthorInverseSchemata was not found'],
+    });
+
+    expect(error.message).toBe(
+      'InvalidRelationship: ComponentOf: target BookAuthorInverseSchemata was not found',
+    );
   });
 });

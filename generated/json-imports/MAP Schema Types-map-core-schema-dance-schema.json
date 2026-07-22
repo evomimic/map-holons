@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.913116Z",
+    "generated_at": "2026-07-22T12:12:39.822099Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.tdl"
@@ -359,7 +359,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -405,11 +407,14 @@
         "description": "Inverse of AffordsDance, from DanceType to HolonType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -454,7 +459,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -500,11 +507,14 @@
         "description": "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -549,7 +559,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -595,11 +607,14 @@
         "description": "Inverse of ForDance, from DanceType to DanceImplementation.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -644,7 +659,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -690,11 +707,14 @@
         "description": "Inverse of DanceInput, from HolonType to DanceType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -739,7 +759,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -785,11 +807,14 @@
         "description": "Inverse of Response, from DanceResponseType to DanceType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -834,7 +859,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -880,11 +907,14 @@
         "description": "Inverse of ResponseBody, from HolonType to DanceResponseType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -929,7 +959,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 1,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -975,11 +1007,14 @@
         "description": "Inverse of InvokesDance, from DanceType to DanceInvocation.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1024,7 +1059,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1070,11 +1107,14 @@
         "description": "Inverse of AffordingHolon, from HolonType to DanceInvocation.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1119,7 +1159,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1165,11 +1207,14 @@
         "description": "Inverse of Request, from HolonType to DanceInvocation.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1214,7 +1259,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1260,11 +1307,14 @@
         "description": "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1303,7 +1353,10 @@
         "display_name_plural": "dance_names",
         "description": "Unique string identifier for a DanceType descriptor, used in dispatch tables.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1336,7 +1389,10 @@
         "display_name_plural": "dance_descriptions",
         "description": "Human-readable explanation of what the dance does or when it should be invoked.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1369,7 +1425,10 @@
         "display_name_plural": "contexts",
         "description": "Ingress context for a DanceInvocation, recorded as an InvocationSource enum value.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1402,7 +1461,10 @@
         "display_name_plural": "dance_diagnostic_severities",
         "description": "Severity classification for a DanceDiagnostic holon.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1435,7 +1497,10 @@
         "display_name_plural": "diagnostic_codes",
         "description": "Stable machine-readable code for a DanceDiagnostic holon.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1468,7 +1533,10 @@
         "display_name_plural": "diagnostic_messages",
         "description": "Human-readable message for a DanceDiagnostic holon.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1501,7 +1569,10 @@
         "display_name_plural": "response_status_codes",
         "description": "Machine-readable status code indicating the result of the dance.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1534,7 +1605,10 @@
         "display_name_plural": "engines",
         "description": "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin).",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1567,7 +1641,10 @@
         "display_name_plural": "module_refs",
         "description": "Content-address or locator of the executable module (e.g., hash/URL/capability address).",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1600,7 +1677,10 @@
         "display_name_plural": "entrypoints",
         "description": "Function/export name to invoke inside the module.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1633,7 +1713,10 @@
         "display_name_plural": "abi_ids",
         "description": "Identifier of the stable smart contract ABI expected by the module/entrypoint.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1666,7 +1749,10 @@
         "display_name_plural": "versions",
         "description": "Semantic version or content hash pin of the implementation.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1699,7 +1785,10 @@
         "display_name_plural": "compats",
         "description": "Compatibility range or constraints (e.g., ABI or schema versions).",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1732,7 +1821,10 @@
         "display_name_plural": "dance_summaries",
         "description": "Human-readable summary of a dance outcome.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1765,7 +1857,10 @@
         "display_name_plural": "implementation_names",
         "description": "Unique name of a DanceImplementation instance.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1798,7 +1893,9 @@
         "display_name_plural": "Invocation Sources",
         "description": "Enum value type that records how a DanceInvocation entered the runtime.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1839,7 +1936,9 @@
         "display_name_plural": "Client Commands",
         "description": "Invocation entered the runtime through a client command ingress path.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1866,7 +1965,9 @@
         "display_name_plural": "Trust Channels",
         "description": "Invocation entered the runtime through a trust-channel ingress path.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1893,7 +1994,9 @@
         "display_name_plural": "Internals",
         "description": "Invocation originated from trusted internal runtime code.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1920,7 +2023,9 @@
         "display_name_plural": "Dance Diagnostic Severities",
         "description": "Enum value type for the severity of a DanceDiagnostic holon.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1958,7 +2063,9 @@
         "display_name_plural": "Infos",
         "description": "Informational non-fatal diagnostic note.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -1985,7 +2092,9 @@
         "display_name_plural": "Warnings",
         "description": "Warning-level non-fatal diagnostic note.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2012,7 +2121,9 @@
         "display_name_plural": "Response Status Codes",
         "description": "Deprecated old-world enum value type for dance status codes. New-world success and failure are expressed by the outer Result contract.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2077,7 +2188,9 @@
         "display_name_plural": "OKs",
         "description": "200 — Request succeeded.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2104,7 +2217,9 @@
         "display_name_plural": "Accepteds",
         "description": "202 — Request accepted but not yet processed.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2131,7 +2246,9 @@
         "display_name_plural": "Bad Requests",
         "description": "400 — The request was malformed or invalid.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2158,7 +2275,9 @@
         "display_name_plural": "Unauthorized",
         "description": "401 — The requester is not authenticated.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2185,7 +2304,9 @@
         "display_name_plural": "Forbidden",
         "description": "403 — The requester lacks permission.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2212,7 +2333,9 @@
         "display_name_plural": "Not Founds",
         "description": "404 — The target resource was not found.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2239,7 +2362,9 @@
         "display_name_plural": "Conflicts",
         "description": "409 — Conflict with the current state of the resource.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2266,7 +2391,9 @@
         "display_name_plural": "Unprocessable Entities",
         "description": "422 — Semantic validation failed.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2293,7 +2420,9 @@
         "display_name_plural": "Server Errors",
         "description": "500 — Unexpected internal error.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2320,7 +2449,9 @@
         "display_name_plural": "Not Implemented",
         "description": "501 — Functionality required to fulfill the request is not supported.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2347,7 +2478,9 @@
         "display_name_plural": "Service Unavailable",
         "description": "503 — The server is currently unable to handle the request (overload/maintenance).",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2374,7 +2507,9 @@
         "display_name_plural": "Dance Engines",
         "description": "Enum value type for execution engines used by DanceImplementations.",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2418,7 +2553,9 @@
         "display_name_plural": "WasmWasi",
         "description": "Execute a WASM module under WASI (preferred).",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2445,7 +2582,9 @@
         "display_name_plural": "Processes",
         "description": "Spawn a separate OS process with protocol pipes.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2472,7 +2611,9 @@
         "display_name_plural": "RustDylibs",
         "description": "Dynamically load a Rust dylib via FFI (platform-coupled).",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2499,7 +2640,9 @@
         "display_name_plural": "Builtins",
         "description": "Call a registered host builtin function.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2601,7 +2744,10 @@
         "display_name_plural": "commits_attempted",
         "description": "Number of holons the commit operation attempted to save.",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2634,7 +2780,9 @@
         "display_name_plural": "CommitRequestStatus",
         "description": "Enum value type for commit request outcomes (Complete, Incomplete).",
         "instance_type_kind": "TypeKind.Value.Enum",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2672,7 +2820,9 @@
         "display_name_plural": "Completes",
         "description": "All staged holons committed; no staged holons remain.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2699,7 +2849,9 @@
         "display_name_plural": "Incompletes",
         "description": "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution.",
         "instance_type_kind": "TypeKind.EnumVariant",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2726,7 +2878,10 @@
         "display_name_plural": "commit_request_statuses",
         "description": "Overall status of the commit request (Complete or Incomplete).",
         "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "is_abstract_type": false,
+        "is_required": true,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2765,7 +2920,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2811,11 +2968,14 @@
         "description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2860,7 +3020,9 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {
@@ -2906,11 +3068,14 @@
         "description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 1
+        "max_cardinality": 1,
+        "allows_additional_properties": false,
+        "allows_additional_relationships": false
       },
       "relationships": [
         {

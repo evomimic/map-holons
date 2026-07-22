@@ -1,7 +1,6 @@
-use std::collections::HashSet;
-
 use crate::descriptors::{
-    accessor_helpers, effective_relationships, inheritance::flatten_related_members,
+    accessor_helpers, effective_relationships,
+    inheritance::{effective_instance_key_rule, flatten_named_related_members},
     walk_extends_chain, CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor,
     Descriptor, InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor,
     QualifiedRelationship, RelationshipDescriptor, TypeHeader,
@@ -34,18 +33,12 @@ impl HolonDescriptor {
 
     /// Returns whether instances may carry properties beyond the descriptor declaration.
     pub fn allows_additional_properties(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(
-            &self.holon,
-            CorePropertyTypeName::AllowsAdditionalProperties,
-        )
+        self.compose_inherited_boolean(CorePropertyTypeName::AllowsAdditionalProperties)
     }
 
     /// Returns whether instances may carry relationships beyond the descriptor declaration.
     pub fn allows_additional_relationships(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(
-            &self.holon,
-            CorePropertyTypeName::AllowsAdditionalRelationships,
-        )
+        self.compose_inherited_boolean(CorePropertyTypeName::AllowsAdditionalRelationships)
     }
 
     /// Returns effective instance property descriptors across this descriptor's inheritance chain.
@@ -55,20 +48,47 @@ impl HolonDescriptor {
 
     /// Returns effective instance relationship descriptors across this descriptor's inheritance chain.
     pub fn instance_relationships(&self) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        flatten_related_members(&self.holon, CoreRelationshipTypeName::InstanceRelationships)
-            .map(|members| members.into_iter().map(RelationshipDescriptor::from_holon).collect())
+        flatten_named_related_members(
+            &self.holon,
+            CoreRelationshipTypeName::InstanceRelationships,
+            "relationship",
+            |member| {
+                RelationshipDescriptor::from_holon(member.clone())
+                    .base_relationship_name()
+                    .map(|name| name.to_string())
+            },
+        )
+        .map(|members| members.into_iter().map(RelationshipDescriptor::from_holon).collect())
     }
 
     /// Returns effective command descriptors across this descriptor's inheritance chain.
     pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
-        flatten_related_members(&self.holon, CoreRelationshipTypeName::AffordsCommand)
-            .map(|members| members.into_iter().map(CommandDescriptor::from_holon).collect())
+        flatten_named_related_members(
+            &self.holon,
+            CoreRelationshipTypeName::AffordsCommand,
+            "command",
+            |member| {
+                CommandDescriptor::from_holon(member.clone())
+                    .command_name()
+                    .map(|name| name.to_string())
+            },
+        )
+        .map(|members| members.into_iter().map(CommandDescriptor::from_holon).collect())
     }
 
     /// Returns effective dance descriptors across this descriptor's inheritance chain.
     pub fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
-        flatten_related_members(&self.holon, CoreRelationshipTypeName::AffordsDance)
-            .map(|members| members.into_iter().map(DanceDescriptor::from_holon).collect())
+        flatten_named_related_members(
+            &self.holon,
+            CoreRelationshipTypeName::AffordsDance,
+            "dance",
+            |member| {
+                DanceDescriptor::from_holon(member.clone())
+                    .dance_name()
+                    .map(|name| name.to_string())
+            },
+        )
+        .map(|members| members.into_iter().map(DanceDescriptor::from_holon).collect())
     }
 
     /// Returns effective property type descriptors across this descriptor's inheritance chain.
@@ -91,25 +111,13 @@ impl HolonDescriptor {
     ) -> Result<PropertyDescriptor, HolonError> {
         let requested_name = name.to_property_name();
         let requested = requested_name.to_string();
-        let mut seen = HashSet::new();
-        let mut found = None;
-
         for descriptor in self.instance_properties()? {
             let declaration_name = PropertyName(descriptor.header().type_name()?);
-            let declaration_label = declaration_name.to_string();
-            if !seen.insert(declaration_label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "property".to_string(),
-                    name: declaration_label,
-                    descriptor: accessor_helpers::descriptor_label(&self.holon),
-                });
-            }
             if declaration_name == requested_name {
-                found = Some(descriptor);
+                return Ok(descriptor);
             }
         }
-
-        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+        Err(HolonError::DescriptorDeclarationNotFound {
             kind: "property".to_string(),
             name: requested,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
@@ -131,25 +139,13 @@ impl HolonDescriptor {
     ) -> Result<CommandDescriptor, HolonError> {
         let requested_name = name.to_command_name();
         let requested = requested_name.to_string();
-        let mut seen = HashSet::new();
-        let mut found = None;
-
         for descriptor in self.afforded_commands()? {
             let declaration_name = descriptor.command_name()?;
-            let declaration_label = declaration_name.to_string();
-            if !seen.insert(declaration_label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "command".to_string(),
-                    name: declaration_label,
-                    descriptor: accessor_helpers::descriptor_label(&self.holon),
-                });
-            }
             if declaration_name == requested_name {
-                found = Some(descriptor);
+                return Ok(descriptor);
             }
         }
-
-        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+        Err(HolonError::DescriptorDeclarationNotFound {
             kind: "command".to_string(),
             name: requested,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
@@ -165,25 +161,13 @@ impl HolonDescriptor {
     pub fn get_dance_by_name(&self, name: impl ToDanceName) -> Result<DanceDescriptor, HolonError> {
         let requested_name = name.to_dance_name();
         let requested = requested_name.to_string();
-        let mut seen = HashSet::new();
-        let mut found = None;
-
         for descriptor in self.afforded_dances()? {
             let declaration_name = descriptor.dance_name()?;
-            let declaration_label = declaration_name.to_string();
-            if !seen.insert(declaration_label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "dance".to_string(),
-                    name: declaration_label,
-                    descriptor: accessor_helpers::descriptor_label(&self.holon),
-                });
-            }
             if declaration_name == requested_name {
-                found = Some(descriptor);
+                return Ok(descriptor);
             }
         }
-
-        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+        Err(HolonError::DescriptorDeclarationNotFound {
             kind: "dance".to_string(),
             name: requested,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
@@ -197,25 +181,13 @@ impl HolonDescriptor {
     ) -> Result<RelationshipDescriptor, HolonError> {
         let requested_name = name.to_relationship_name();
         let requested = requested_name.to_string();
-        let mut seen = HashSet::new();
-        let mut found = None;
-
         for descriptor in self.instance_relationships()? {
             let declaration_name = descriptor.base_relationship_name()?;
-            let declaration_label = declaration_name.to_string();
-            if !seen.insert(declaration_label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "relationship".to_string(),
-                    name: declaration_label,
-                    descriptor: accessor_helpers::descriptor_label(&self.holon),
-                });
-            }
             if declaration_name == requested_name {
-                found = Some(descriptor);
+                return Ok(descriptor);
             }
         }
-
-        found.ok_or_else(|| HolonError::DescriptorDeclarationNotFound {
+        Err(HolonError::DescriptorDeclarationNotFound {
             kind: "relationship".to_string(),
             name: requested,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
@@ -281,41 +253,55 @@ impl HolonDescriptor {
 
     /// Resolves the effective key rule for instances of this descriptor.
     pub fn effective_key_rule(&self) -> Result<KeyRuleDescriptor, HolonError> {
-        for ancestor in walk_extends_chain(&self.holon) {
-            let ancestor = ancestor?;
-            if let Some(rule) = accessor_helpers::optional_single_related(
-                &ancestor,
-                CoreRelationshipTypeName::UsesKeyRule,
-            )? {
-                let rule_descriptor = KeyRuleDescriptor::from_holon(rule);
-                if !rule_descriptor.is_key_rule()? {
-                    return Err(HolonError::WrongDescriptorKind {
-                        expected: "KeyRuleType".to_string(),
-                        found: rule_descriptor
-                            .header()
-                            .type_name()
-                            .map(|type_name| type_name.to_string())
-                            .unwrap_or_else(|_| {
-                                accessor_helpers::descriptor_label(rule_descriptor.holon())
-                            }),
-                        descriptor: accessor_helpers::descriptor_label(rule_descriptor.holon()),
-                    });
-                }
-                return Ok(rule_descriptor);
+        let rule = effective_instance_key_rule(&self.holon)?.ok_or_else(|| {
+            HolonError::NoEffectiveKeyRule {
+                descriptor: accessor_helpers::descriptor_label(&self.holon),
             }
+        })?;
+        let rule_descriptor = KeyRuleDescriptor::from_holon(rule);
+        if !rule_descriptor.is_key_rule()? {
+            return Err(HolonError::WrongDescriptorKind {
+                expected: "KeyRuleType".to_string(),
+                found: rule_descriptor
+                    .header()
+                    .type_name()
+                    .map(|type_name| type_name.to_string())
+                    .unwrap_or_else(|_| {
+                        accessor_helpers::descriptor_label(rule_descriptor.holon())
+                    }),
+                descriptor: accessor_helpers::descriptor_label(rule_descriptor.holon()),
+            });
         }
-
-        Err(HolonError::NoEffectiveKeyRule {
-            descriptor: accessor_helpers::descriptor_label(&self.holon),
-        })
+        Ok(rule_descriptor)
     }
 
     fn flatten_property_descriptors(
         &self,
         relationship_name: CoreRelationshipTypeName,
     ) -> Result<Vec<PropertyDescriptor>, HolonError> {
-        flatten_related_members(&self.holon, relationship_name)
-            .map(|members| members.into_iter().map(PropertyDescriptor::from_holon).collect())
+        flatten_named_related_members(&self.holon, relationship_name, "property", |member| {
+            PropertyDescriptor::from_holon(member.clone())
+                .header()
+                .type_name()
+                .map(|name| name.to_string())
+        })
+        .map(|members| members.into_iter().map(PropertyDescriptor::from_holon).collect())
+    }
+
+    fn compose_inherited_boolean(
+        &self,
+        property_name: CorePropertyTypeName,
+    ) -> Result<bool, HolonError> {
+        let values = walk_extends_chain(&self.holon)
+            .map(|descriptor| {
+                descriptor.and_then(|descriptor| {
+                    accessor_helpers::require_bool(&descriptor, property_name.clone())
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        descriptor_semantics::compose_restrictive_boolean(values)
+            .ok_or_else(|| HolonError::InvalidState("empty descriptor lineage".to_string()))
     }
 }
 
@@ -418,10 +404,7 @@ mod tests {
         let staged_descriptor = context.mutation().stage_new_holon(descriptor)?;
         let source = new_test_holon(&context, "source-staged")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![staged_descriptor.into()],
-        )?;
+        staged_source.with_descriptor(staged_descriptor.into())?;
 
         let resolved = staged_source.holon_descriptor()?;
 
@@ -473,6 +456,26 @@ mod tests {
         assert!(descriptor.allows_additional_properties()?);
         assert!(!descriptor.allows_additional_relationships()?);
 
+        Ok(())
+    }
+
+    #[test]
+    fn structural_flags_compose_restrictively_across_extends() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut parent = new_descriptor_holon(&context, "open-parent", "OpenParent")?;
+        parent
+            .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, true)?
+            .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
+        let mut child = new_descriptor_holon(&context, "closed-child", "ClosedChild")?;
+        child
+            .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
+            .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?
+            .add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+
+        let descriptor = HolonDescriptor::from_holon(child.into());
+
+        assert!(!descriptor.allows_additional_properties()?);
+        assert!(descriptor.allows_additional_relationships()?);
         Ok(())
     }
 

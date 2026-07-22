@@ -8,7 +8,7 @@ import { environment } from '../../../environments/environment.mock';
 import { ContentSet, FileData } from '../../models/shared-types';
 import { ContentStoreInstance } from '../../stores/content.store';
 import { ContentController } from '../../contollers/content.controller';
-import { type HolonReference } from '../../../dahn/deps/map-sdk';
+import { DomainError, type HolonReference } from '../../../dahn/deps/map-sdk';
 import { presentLoaderResult, type LoaderResultView } from './loader-result.presenter';
 
 // Helper function to check if the app is running in a Tauri window
@@ -266,7 +266,13 @@ export class JsonDataUploader implements OnInit {
         this.clearForms();
         this.cdr.markForCheck();
       } catch (error) {
-        this.errorMessage = `Tauri Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        if (error instanceof DomainError) {
+          this.errorMessage = error.message;
+        } else if (error instanceof Error) {
+          this.errorMessage = `Tauri Error: ${error.message}`;
+        } else {
+          this.errorMessage = 'Tauri Error: Unknown error';
+        }
         this.cdr.markForCheck();
       } finally {
         this.isLoading = false;

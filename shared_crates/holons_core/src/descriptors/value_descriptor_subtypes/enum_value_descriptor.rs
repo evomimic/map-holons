@@ -9,6 +9,7 @@ use crate::descriptors::{Descriptor, OperatorDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
 use base_types::BaseValue;
 use core_types::HolonError;
+use descriptor_semantics::validate_enum_variant;
 use type_names::CoreRelationshipTypeName;
 
 /// Semantic wrapper for enum value descriptors.
@@ -34,7 +35,8 @@ impl EnumValueDescriptor {
             other => return Err(value_kind_mismatch(&self.holon, "Enum", other)),
         };
 
-        if self.declared_variants()?.contains(&variant) {
+        let declared_variants = self.declared_variants()?;
+        if validate_enum_variant(&variant, declared_variants.iter().map(String::as_str)).is_ok() {
             return Ok(());
         }
 

@@ -334,7 +334,7 @@ property RelationshipName {
 }
 
 
-property HolonKey {
+property HolonKey? {
   value MapStringValueType
   header {
     description: "Local key for the referenced holon."
@@ -345,7 +345,7 @@ property HolonKey {
 }
 
 
-property ProxyKey {
+property ProxyKey? {
   value MapStringValueType
   header {
     description: "Key of the ProxySpace through which this external reference is routed."
@@ -356,7 +356,7 @@ property ProxyKey {
 }
 
 
-property ProxyId {
+property ProxyId? {
   value MapBytesValueType
   header {
     description: "ActionHash of the ProxySpace holon, used to route external references."
@@ -411,7 +411,7 @@ property Filename {
 }
 
 
-property LoaderHolonKey {
+property LoaderHolonKey? {
   value MapStringValueType
   header {
     description: "Key to reference a loader holon within a load set."
@@ -422,7 +422,7 @@ property LoaderHolonKey {
 }
 
 
-property StartUtf8ByteOffset {
+property StartUtf8ByteOffset? {
   value MapIntegerValueType
   header {
     description: "Byte offset that signifies the start of a segment of a source file."

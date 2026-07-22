@@ -65,7 +65,7 @@ property DisplayName {
 }
 
 
-property DisplayNamePlural {
+property DisplayNamePlural? {
   value MapStringValueType
   header {
     description: "The plural form of the label for use in lists or summaries."
@@ -120,7 +120,7 @@ property IsRequired {
 }
 
 
-property MapBoolean {
+property MapBoolean? {
   value MapBooleanValueType
   header {
     description: "Boolean scalar value (true/false)."
@@ -131,7 +131,7 @@ property MapBoolean {
 }
 
 
-property MapBytes {
+property MapBytes? {
   value MapBytesValueType
   header {
     description: "Binary data (blob of bytes)."
@@ -142,7 +142,7 @@ property MapBytes {
 }
 
 
-property MapInteger {
+property MapInteger? {
   value MapIntegerValueType
   header {
     description: "Integer scalar value."
@@ -153,7 +153,7 @@ property MapInteger {
 }
 
 
-property MapString {
+property MapString? {
   value MapStringValueType
   header {
     description: "Textual scalar value."
@@ -164,7 +164,7 @@ property MapString {
 }
 
 
-property MaxCardinality {
+property MaxCardinality? {
   value MapIntegerValueType
   header {
     description: "Maximum number of target holons allowed for the relationship."
@@ -219,7 +219,7 @@ property SchemaName {
 }
 
 
-property TypeNamePlural {
+property TypeNamePlural? {
   value MapStringValueType
   header {
     description: "The plural form of the type's identifier used for display or grouping."
@@ -285,7 +285,7 @@ property CollectionType {
 }
 
 
-property Key {
+property Key? {
   value MapStringValueType
   header {
     description: "Identifying key of a holon instance."
@@ -296,7 +296,7 @@ property Key {
 }
 
 
-property HolonId {
+property HolonId? {
   value HolonIdValueType
   header {
     description: "ActionHash identifier of a referenced holon."

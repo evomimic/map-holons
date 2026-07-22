@@ -237,6 +237,14 @@ impl StagedReference {
             relationship_name.clone(),
         ) {
             Ok(descriptor) => descriptor,
+            Err(HolonError::MissingRequiredRelationship { relationship, .. })
+                if staged_state == StagedState::ForCreate && relationship == "DescribedBy" =>
+            {
+                return Ok(RelationshipMutationPolicy {
+                    note_definitional: None,
+                    duplicate_policy: DuplicatePolicy::Ungoverned,
+                });
+            }
             Err(
                 original_error @ HolonError::DescriptorDeclarationNotFound {
                     kind: _,
@@ -854,8 +862,8 @@ mod tests {
     use crate::{
         core_shared_objects::StagedHolon,
         descriptors::test_support::{
-            build_context, core_holon_type_name, new_descriptor_holon, new_holon_type_descriptor,
-            new_relationship_descriptor_holon, new_test_holon,
+            build_context, core_holon_type_name, describe_as_type, new_descriptor_holon,
+            new_holon_type_descriptor, new_relationship_descriptor_holon, new_test_holon,
         },
         reference_layer::WritableHolon,
     };
@@ -895,7 +903,8 @@ mod tests {
         relationship_name: &str,
         is_definitional: Option<bool>,
     ) -> Result<(StagedReference, StagedReference), HolonError> {
-        let source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        let mut source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        describe_as_type(context, &mut source_type)?;
         let target_type = new_holon_type_descriptor(context, "target-type", "TargetType")?;
         let staged_source_type = context.mutation().stage_new_holon(source_type)?;
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;
@@ -935,7 +944,8 @@ mod tests {
         context: &Arc<TransactionContext>,
         relationship_name: &str,
     ) -> Result<(StagedReference, StagedReference), HolonError> {
-        let source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        let mut source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        describe_as_type(context, &mut source_type)?;
         let target_type = new_holon_type_descriptor(context, "target-type", "TargetType")?;
         let staged_source_type = context.mutation().stage_new_holon(source_type)?;
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;
@@ -967,7 +977,8 @@ mod tests {
         is_definitional: Option<BaseValue>,
         allows_duplicates: Option<BaseValue>,
     ) -> Result<(StagedReference, StagedReference), HolonError> {
-        let source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        let mut source_type = new_holon_type_descriptor(context, "source-type", "SourceType")?;
+        describe_as_type(context, &mut source_type)?;
         let target_type = new_holon_type_descriptor(context, "target-type", "TargetType")?;
         let staged_source_type = context.mutation().stage_new_holon(source_type)?;
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;
@@ -1021,31 +1032,32 @@ mod tests {
             &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?)?;
-        let mut source_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
+        let mut source_type_transient =
+            new_holon_type_descriptor(context, "book-type", "BookType")?;
+        describe_as_type(context, &mut source_type_transient)?;
+        let mut target_type_transient =
+            new_holon_type_descriptor(context, "person-type", "PersonType")?;
+        describe_as_type(context, &mut target_type_transient)?;
+        let mut source_type = context.mutation().stage_new_holon(source_type_transient)?;
+        let mut target_type = context.mutation().stage_new_holon(target_type_transient)?;
+        let mut declared_transient = new_relationship_descriptor_holon(
             context,
-            "book-type",
-            "BookType",
-        )?)?;
-        let mut target_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
-            context,
-            "person-type",
-            "PersonType",
-        )?)?;
-        let mut declared =
-            context.mutation().stage_new_holon(new_relationship_descriptor_holon(
-                context,
-                "authored-by",
-                "AuthoredBy",
-                HolonReference::from(&source_type),
-                HolonReference::from(&target_type),
-            )?)?;
-        let mut inverse = context.mutation().stage_new_holon(new_relationship_descriptor_holon(
+            "authored-by",
+            "AuthoredBy",
+            HolonReference::from(&source_type),
+            HolonReference::from(&target_type),
+        )?;
+        describe_as_type(context, &mut declared_transient)?;
+        let mut inverse_transient = new_relationship_descriptor_holon(
             context,
             "authors",
             "Authors",
             HolonReference::from(&target_type),
             HolonReference::from(&source_type),
-        )?)?;
+        )?;
+        describe_as_type(context, &mut inverse_transient)?;
+        let mut declared = context.mutation().stage_new_holon(declared_transient)?;
+        let mut inverse = context.mutation().stage_new_holon(inverse_transient)?;
 
         declared
             .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
@@ -1070,10 +1082,7 @@ mod tests {
     ) -> Result<StagedReference, HolonError> {
         let source = new_test_holon(context, "source-instance")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![source_descriptor.into()],
-        )?;
+        staged_source.with_descriptor(source_descriptor.into())?;
         force_staged_reference_for_update(context, &staged_source)?;
         Ok(staged_source)
     }
@@ -1131,6 +1140,7 @@ mod tests {
 
         staged_source.add_related_holons("UndeclaredRelationship", vec![target.into()])?;
 
+        assert_eq!(relationship_member_count(&staged_source, "UndeclaredRelationship")?, 1);
         assert!(staged_source.is_in_state(&context, StagedState::ForCreate)?);
         Ok(())
     }
@@ -1205,7 +1215,8 @@ mod tests {
         let mut staged_source = context.mutation().stage_new_holon(source)?;
         let target = staged_target(&context, "new-target")?;
 
-        staged_source.add_related_holons("UndeclaredRelationship", vec![target.clone().into()])?;
+        staged_source
+            .add_related_holons_ungoverned("UndeclaredRelationship", vec![target.clone().into()])?;
         staged_source.with_descriptor(source_descriptor.into())?;
         assert_eq!(relationship_member_count(&staged_source, "UndeclaredRelationship")?, 1);
 
@@ -1247,10 +1258,7 @@ mod tests {
             staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
         let source = new_test_holon(&context, "source-instance")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![source_descriptor.into()],
-        )?;
+        staged_source.with_descriptor(source_descriptor.into())?;
         let target = staged_target(&context, "author")?;
 
         staged_source.add_related_holons("AuthoredBy", vec![target.clone().into()])?;
@@ -1267,7 +1275,8 @@ mod tests {
     #[test]
     fn duplicate_inherited_declaration_surfaces_through_mutation() -> Result<(), HolonError> {
         let context = build_context();
-        let source_type = new_holon_type_descriptor(&context, "source-type", "SourceType")?;
+        let mut source_type = new_holon_type_descriptor(&context, "source-type", "SourceType")?;
+        describe_as_type(&context, &mut source_type)?;
         let target_type = new_holon_type_descriptor(&context, "target-type", "TargetType")?;
         let staged_source_type = context.mutation().stage_new_holon(source_type)?;
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;

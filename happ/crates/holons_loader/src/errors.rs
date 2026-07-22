@@ -217,3 +217,145 @@ fn resolve_holon_error_type_descriptor(
         Err(e) => Err(e),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core_types::LocalId;
+    use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
+    use holons_core::core_shared_objects::{Holon, ServiceRoutingPolicy};
+    use holons_core::HolonServiceApi;
+    use std::any::Any;
+
+    #[derive(Debug)]
+    struct TestHolonService;
+
+    fn unreachable_in_loader_error_tests<T>() -> Result<T, HolonError> {
+        Err(HolonError::NotImplemented("TestHolonService".to_string()))
+    }
+
+    impl HolonServiceApi for TestHolonService {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn commit_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _staged_references: &[StagedReference],
+        ) -> Result<TransientReference, HolonError> {
+            unreachable_in_loader_error_tests()
+        }
+
+        fn delete_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _local_id: &LocalId,
+        ) -> Result<(), HolonError> {
+            unreachable_in_loader_error_tests()
+        }
+
+        fn fetch_all_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _source_id: &HolonId,
+        ) -> Result<RelationshipMap, HolonError> {
+            unreachable_in_loader_error_tests()
+        }
+
+        fn fetch_holon_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _id: &HolonId,
+        ) -> Result<Holon, HolonError> {
+            unreachable_in_loader_error_tests()
+        }
+
+        fn fetch_related_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _source_id: &HolonId,
+            _relationship_name: &RelationshipName,
+        ) -> Result<HolonCollection, HolonError> {
+            unreachable_in_loader_error_tests()
+        }
+
+        fn get_all_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+        ) -> Result<HolonCollection, HolonError> {
+            Ok(HolonCollection::new_saved())
+        }
+
+        fn load_holons_internal(
+            &self,
+            _context: &Arc<TransactionContext>,
+            _bundle: TransientReference,
+        ) -> Result<TransientReference, HolonError> {
+            unreachable_in_loader_error_tests()
+        }
+    }
+
+    fn build_context() -> Arc<TransactionContext> {
+        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
+        let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            holon_service,
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+
+        space_manager
+            .get_transaction_manager()
+            .open_new_transaction(Arc::clone(&space_manager))
+            .expect("test transaction should open")
+    }
+
+    #[test]
+    fn make_error_holons_enriches_loader_key_filename_and_offset() -> Result<(), HolonError> {
+        let context = build_context();
+        let loader_key = MapString("Person.HolonType".to_string());
+        let mut provenance = ProvenanceIndex::new();
+        provenance.insert(
+            loader_key.clone(),
+            FileProvenance {
+                filename: MapString("bad-schema.json".to_string()),
+                start_utf8_byte_offset: Some(1724),
+            },
+        );
+
+        let errors = vec![ErrorWithContext::new(HolonError::InvalidType(
+            "LoaderRelationshipReference could not be resolved after fixed-point retries: name=ComponentOf, source=Person.HolonType, targets=[BookAuthorInverseSchemata]".to_string(),
+        ))
+        .with_loader_key(loader_key.clone())];
+
+        let mut holons = make_error_holons_best_effort(&context, &errors, Some(&provenance))?;
+        assert_eq!(holons.len(), 1);
+
+        let error_holon = holons.pop().expect("one error holon");
+        assert_eq!(
+            error_holon.property_value(CorePropertyTypeName::LoaderHolonKey.as_property_name())?,
+            Some(BaseValue::StringValue(loader_key))
+        );
+        assert_eq!(
+            error_holon.property_value(CorePropertyTypeName::Filename.as_property_name())?,
+            Some(BaseValue::StringValue(MapString("bad-schema.json".to_string())))
+        );
+        assert_eq!(
+            error_holon
+                .property_value(CorePropertyTypeName::StartUtf8ByteOffset.as_property_name())?,
+            Some(BaseValue::IntegerValue(MapInteger(1724)))
+        );
+
+        let message = error_holon
+            .property_value(ErrorMessage.as_property_name())?
+            .expect("error message property");
+        assert!(matches!(
+            message,
+            BaseValue::StringValue(MapString(text))
+                if text.contains("BookAuthorInverseSchemata")
+        ));
+
+        Ok(())
+    }
+}

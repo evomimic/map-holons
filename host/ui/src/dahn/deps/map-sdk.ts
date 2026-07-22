@@ -17,6 +17,7 @@ export type {
 } from '../../../../map-sdk/src';
 
 export {
+  DomainError,
   MapClient,
   MapTransaction,
   extractNumber,

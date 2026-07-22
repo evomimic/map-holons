@@ -107,6 +107,8 @@ impl Origin {
 /// than any one source syntax.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReferenceRole {
+    /// Descriptor identity (`type` in loader JSON, `DescribedBy` in the MAP graph).
+    DescribedBy,
     /// Schema membership relationship.
     ComponentOf,
     /// Type inheritance relationship.
@@ -138,6 +140,7 @@ pub enum ReferenceRole {
 impl fmt::Display for ReferenceRole {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::DescribedBy => write!(f, "DescribedBy"),
             Self::ComponentOf => write!(f, "ComponentOf"),
             Self::Extends => write!(f, "Extends"),
             Self::KeyRule => write!(f, "UsesKeyRule"),
@@ -202,6 +205,46 @@ pub struct LiteralRelationship {
     pub targets: Vec<String>,
 }
 
+/// A representation-neutral target in the generic Canonical Holon IR view.
+///
+/// `resolved` is build-local derived state. `target` remains the stable source-neutral identity
+/// used by projections, diagnostics, and semantic comparisons.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanonicalReference {
+    pub target: String,
+    pub resolved: Option<SymbolId>,
+}
+
+impl From<&SemanticReference> for CanonicalReference {
+    fn from(reference: &SemanticReference) -> Self {
+        Self { target: reference.target.clone(), resolved: reference.resolved }
+    }
+}
+
+/// A named relationship and its uncollapsed target collection.
+///
+/// Target multiplicity is preserved so descriptor semantics, rather than source adapters or
+/// descriptor-specific compatibility slots, can enforce relationship cardinality.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanonicalRelationship {
+    pub name: String,
+    pub targets: Vec<CanonicalReference>,
+}
+
+/// Generic holon data retained by the Canonical Holon IR.
+///
+/// This is an owned, derived view over the current schema and descriptor records. It gives the
+/// descriptor-semantics adapter a uniform graph surface without introducing runtime references or
+/// creating a second mutable representation that could diverge from the compiler/decompiler view.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanonicalHolon {
+    pub key: String,
+    pub described_by: Vec<CanonicalReference>,
+    pub properties: LiteralObject,
+    pub relationships: Vec<CanonicalRelationship>,
+    pub origin: Origin,
+}
+
 /// Semantic representation of a schema declaration.
 ///
 /// A schema is a descriptor container plus source-preserved metadata. Canonical references such as
@@ -212,6 +255,8 @@ pub struct Schema {
     pub name: String,
     pub key: String,
     pub origin: Origin,
+    /// Raw descriptor identity retained independently of projected schema classification.
+    pub described_by: Vec<SemanticReference>,
     pub dependencies: Vec<SemanticReference>,
     pub literal_properties: LiteralObject,
     pub literal_relationships: Vec<LiteralRelationship>,
@@ -232,7 +277,13 @@ pub struct TypeDescriptor {
     pub kind: DescriptorKind,
     pub owning_schema: String,
     pub origin: Origin,
+    /// Raw descriptor identity retained independently of projected [`DescriptorKind`].
+    pub described_by: Vec<SemanticReference>,
     pub header: Option<DescriptorHeader>,
+    /// Authored or adapter-lowered TypeKind enum identity for this descriptor holon.
+    pub instance_type_kind: Option<String>,
+    /// Requiredness declared by a PropertyType; absent for non-property descriptors.
+    pub property_required: Option<bool>,
     pub is_abstract: bool,
     pub extends: Option<SemanticReference>,
     pub component_of: Option<SemanticReference>,
@@ -249,6 +300,12 @@ pub struct TypeDescriptor {
     /// Variant-owned link to its enum when preserved from a source shape.
     pub variant_of: Option<SemanticReference>,
     pub literal_properties: LiteralObject,
+    /// Source conveniences lowered into explicit canonical property values.
+    ///
+    /// Entries use descriptor member names rather than source-format field spellings. Once
+    /// materialized they are ordinary semantic values; downstream validation and projection must
+    /// not reinterpret the source convention that produced them.
+    pub materialized_properties: LiteralObject,
     pub instance_properties: Vec<SemanticReference>,
     pub instance_relationships: Vec<SemanticReference>,
     pub literal_relationships: Vec<LiteralRelationship>,
@@ -278,7 +335,10 @@ impl TypeDescriptor {
             kind,
             owning_schema: owning_schema.into(),
             origin,
+            described_by: Vec::new(),
             header: None,
+            instance_type_kind: None,
+            property_required: None,
             is_abstract: false,
             extends: None,
             component_of: None,
@@ -291,6 +351,7 @@ impl TypeDescriptor {
             variants: Vec::new(),
             variant_of: None,
             literal_properties: LiteralObject::new(),
+            materialized_properties: LiteralObject::new(),
             instance_properties: Vec::new(),
             instance_relationships: Vec::new(),
             literal_relationships: Vec::new(),
@@ -312,6 +373,7 @@ impl TypeDescriptor {
     /// canonical semantic roles.
     pub fn references(&self) -> Vec<&SemanticReference> {
         let mut refs = Vec::new();
+        refs.extend(self.described_by.iter());
         refs.extend(self.extends.iter());
         refs.extend(self.component_of.iter());
         refs.extend(self.key_rule.iter());
@@ -330,6 +392,7 @@ impl TypeDescriptor {
     /// Returns all semantic references carried by this descriptor for resolution.
     pub fn references_mut(&mut self) -> Vec<&mut SemanticReference> {
         let mut refs = Vec::new();
+        refs.extend(self.described_by.iter_mut());
         refs.extend(self.extends.iter_mut());
         refs.extend(self.component_of.iter_mut());
         refs.extend(self.key_rule.iter_mut());
@@ -375,7 +438,7 @@ impl SemanticModel {
     /// Resolves known references in-place against an already-derived symbol table.
     pub fn resolve_references(&mut self, symbols: &SymbolIndex) {
         for schema in &mut self.schemas {
-            for reference in &mut schema.dependencies {
+            for reference in schema.described_by.iter_mut().chain(schema.dependencies.iter_mut()) {
                 if let Some(symbol) = symbols.lookup_reference_target(&reference.target) {
                     reference.resolve(symbol.id);
                 }
@@ -391,6 +454,40 @@ impl SemanticModel {
         }
     }
 
+    /// Derives a uniform holon graph from the compatibility schema/descriptor records.
+    ///
+    /// Literal relationship collections are retained verbatim. First-class semantic references are
+    /// then added when an equivalent target is not already present, ensuring adapter-authored
+    /// duplicate targets remain visible while projected references are never lost.
+    pub fn canonical_holons(&self) -> Vec<CanonicalHolon> {
+        let mut holons = self
+            .schemas
+            .iter()
+            .map(|schema| CanonicalHolon {
+                key: schema.key.clone(),
+                described_by: canonical_refs(&schema.described_by),
+                properties: canonical_schema_properties(schema),
+                relationships: canonical_relationships(
+                    &schema.literal_relationships,
+                    [(&ReferenceRole::DependsOn, schema.dependencies.as_slice())],
+                ),
+                origin: schema.origin.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        holons.extend(self.descriptors.iter().map(|descriptor| CanonicalHolon {
+            key: descriptor.key.clone(),
+            described_by: canonical_refs(&descriptor.described_by),
+            properties: canonical_descriptor_properties(descriptor),
+            relationships: canonical_relationships(
+                &descriptor.literal_relationships,
+                descriptor_reference_groups(descriptor),
+            ),
+            origin: descriptor.origin.clone(),
+        }));
+        holons
+    }
+
     /// Produces a stable, origin-insensitive signature for round-trip comparisons.
     pub fn comparable_signature(&self) -> ComparableSemanticModel {
         let mut schemas = self
@@ -399,6 +496,7 @@ impl SemanticModel {
             .map(|schema| ComparableSchema {
                 name: schema.name.clone(),
                 key: schema.key.clone(),
+                described_by: comparable_refs(&schema.described_by),
                 dependencies: comparable_refs(&schema.dependencies),
                 allows_additional_properties: schema.allows_additional_properties,
                 allows_additional_relationships: schema.allows_additional_relationships,
@@ -414,6 +512,9 @@ impl SemanticModel {
                 name: descriptor.name.clone(),
                 kind: descriptor.kind,
                 owning_schema: descriptor.owning_schema.clone(),
+                instance_type_kind: descriptor.instance_type_kind.clone(),
+                property_required: (descriptor.kind == DescriptorKind::PropertyType)
+                    .then_some(descriptor.property_required.unwrap_or(true)),
                 is_abstract: descriptor.is_abstract,
                 references: comparable_descriptor_refs(descriptor),
                 relationship_flavor: descriptor.relationship_flavor,
@@ -451,6 +552,7 @@ pub struct ComparableSemanticModel {
 pub struct ComparableSchema {
     pub name: String,
     pub key: String,
+    pub described_by: Vec<(ReferenceRole, String)>,
     pub dependencies: Vec<(ReferenceRole, String)>,
     pub allows_additional_properties: bool,
     pub allows_additional_relationships: bool,
@@ -463,6 +565,8 @@ pub struct ComparableDescriptor {
     pub name: String,
     pub kind: DescriptorKind,
     pub owning_schema: String,
+    pub instance_type_kind: Option<String>,
+    pub property_required: Option<bool>,
     pub is_abstract: bool,
     pub references: Vec<(ReferenceRole, String)>,
     pub relationship_flavor: Option<RelationshipFlavor>,
@@ -474,6 +578,197 @@ pub struct ComparableDescriptor {
     pub allows_duplicates: bool,
     pub allows_additional_properties: bool,
     pub allows_additional_relationships: bool,
+}
+
+fn canonical_descriptor_properties(descriptor: &TypeDescriptor) -> LiteralObject {
+    let mut properties = LiteralObject::new();
+    for (name, value) in descriptor.literal_properties.iter() {
+        if !is_projected_descriptor_property(name) {
+            properties.insert(name.clone(), value.clone());
+        }
+    }
+    for (name, value) in descriptor.materialized_properties.iter() {
+        insert_literal_if_absent(&mut properties, name, value.clone());
+    }
+    insert_literal_if_absent(
+        &mut properties,
+        "TypeName",
+        crate::LiteralValue::String(descriptor.name.clone()),
+    );
+    insert_literal_if_absent(
+        &mut properties,
+        "SchemaName",
+        crate::LiteralValue::String(descriptor.owning_schema.clone()),
+    );
+    if let Some(header) = &descriptor.header {
+        for (name, value) in [
+            ("Description", header.description.as_ref()),
+            ("DisplayName", header.display_name.as_ref()),
+            ("DisplayNamePlural", header.display_name_plural.as_ref()),
+            ("TypeNamePlural", header.type_name_plural.as_ref()),
+        ] {
+            if let Some(value) = value {
+                insert_literal_if_absent(
+                    &mut properties,
+                    name,
+                    crate::LiteralValue::String(value.clone()),
+                );
+            }
+        }
+    }
+    if let Some(instance_type_kind) = &descriptor.instance_type_kind {
+        insert_literal_if_absent(
+            &mut properties,
+            "TypeKind",
+            crate::LiteralValue::String(instance_type_kind.clone()),
+        );
+    }
+    insert_literal_if_absent(
+        &mut properties,
+        "IsAbstractType",
+        crate::LiteralValue::Boolean(descriptor.is_abstract),
+    );
+
+    match descriptor.kind {
+        DescriptorKind::TypeDescriptor | DescriptorKind::HolonType => {
+            for (canonical_name, authored_name, shorthand_value) in [
+                (
+                    "AllowsAdditionalProperties",
+                    "allows_additional_properties",
+                    descriptor.allows_additional_properties,
+                ),
+                (
+                    "AllowsAdditionalRelationships",
+                    "allows_additional_relationships",
+                    descriptor.allows_additional_relationships,
+                ),
+            ] {
+                let value = descriptor
+                    .literal_properties
+                    .get(authored_name)
+                    .and_then(crate::LiteralValue::as_bool)
+                    .or_else(|| shorthand_value.then_some(true));
+                if let Some(value) = value {
+                    insert_literal_if_absent(
+                        &mut properties,
+                        canonical_name,
+                        crate::LiteralValue::Boolean(value),
+                    );
+                }
+            }
+        }
+        DescriptorKind::PropertyType => {
+            if let Some(required) = descriptor.property_required {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "IsRequired",
+                    crate::LiteralValue::Boolean(required),
+                );
+            }
+        }
+        DescriptorKind::RelationshipType => {
+            insert_literal_if_absent(
+                &mut properties,
+                "IsDefinitional",
+                crate::LiteralValue::Boolean(descriptor.is_definitional),
+            );
+            insert_literal_if_absent(
+                &mut properties,
+                "IsOrdered",
+                crate::LiteralValue::Boolean(descriptor.is_ordered),
+            );
+            insert_literal_if_absent(
+                &mut properties,
+                "AllowsDuplicates",
+                crate::LiteralValue::Boolean(descriptor.allows_duplicates),
+            );
+            if let Some(minimum) = descriptor.min_cardinality {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "MinCardinality",
+                    crate::LiteralValue::Integer(minimum),
+                );
+            }
+            if let Some(maximum) = descriptor.max_cardinality {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "MaxCardinality",
+                    crate::LiteralValue::Integer(maximum),
+                );
+            }
+            if let Some(deletion_semantic) = &descriptor.deletion_semantic {
+                insert_literal_if_absent(
+                    &mut properties,
+                    "DeletionSemantic",
+                    crate::LiteralValue::String(deletion_semantic.clone()),
+                );
+            }
+        }
+        DescriptorKind::Schema
+        | DescriptorKind::ValueType
+        | DescriptorKind::Enum
+        | DescriptorKind::EnumVariant => {}
+    }
+    properties
+}
+
+fn is_projected_descriptor_property(name: &str) -> bool {
+    matches!(
+        name,
+        "type_name"
+            | "schema_name"
+            | "description"
+            | "display_name"
+            | "display_name_plural"
+            | "type_name_plural"
+            | "instance_type_kind"
+            | "is_abstract_type"
+            | "allows_additional_properties"
+            | "allows_additional_relationships"
+            | "is_required"
+            | "is_definitional"
+            | "is_ordered"
+            | "allows_duplicates"
+            | "min_cardinality"
+            | "max_cardinality"
+            | "deletion_semantic"
+    )
+}
+
+fn canonical_schema_properties(schema: &Schema) -> LiteralObject {
+    let mut properties = schema.literal_properties.clone();
+    insert_literal_if_absent(
+        &mut properties,
+        "schema_name",
+        crate::LiteralValue::String(schema.name.clone()),
+    );
+    if let Some(header) = &schema.header {
+        for (name, value) in [
+            ("description", header.description.as_ref()),
+            ("display_name", header.display_name.as_ref()),
+            ("display_name_plural", header.display_name_plural.as_ref()),
+            ("type_name_plural", header.type_name_plural.as_ref()),
+        ] {
+            if let Some(value) = value {
+                insert_literal_if_absent(
+                    &mut properties,
+                    name,
+                    crate::LiteralValue::String(value.clone()),
+                );
+            }
+        }
+    }
+    properties
+}
+
+fn insert_literal_if_absent(
+    properties: &mut LiteralObject,
+    name: &str,
+    value: crate::LiteralValue,
+) {
+    if properties.get(name).is_none() {
+        properties.insert(name, value);
+    }
 }
 
 fn comparable_descriptor_refs(descriptor: &TypeDescriptor) -> Vec<(ReferenceRole, String)> {
@@ -525,10 +820,12 @@ impl TdlDescriptorInput {
 
 /// Adds a reference to the matching semantic slot on a descriptor.
 ///
-/// Single-valued roles overwrite the previous value; multi-valued roles append. `DependsOn` is a
-/// schema-level role and is ignored for descriptors.
+/// Single-valued compatibility roles overwrite the previous value. `DescribedBy` and other
+/// multi-valued roles append so raw cardinality remains available to semantic validation.
+/// `DependsOn` is a schema-level role and is ignored for descriptors.
 pub fn push_reference(descriptor: &mut TypeDescriptor, reference: SemanticReference) {
     match reference.role {
+        ReferenceRole::DescribedBy => descriptor.described_by.push(reference),
         ReferenceRole::ComponentOf => descriptor.component_of = Some(reference),
         ReferenceRole::Extends => descriptor.extends = Some(reference),
         ReferenceRole::KeyRule => descriptor.key_rule = Some(reference),
@@ -542,5 +839,138 @@ pub fn push_reference(descriptor: &mut TypeDescriptor, reference: SemanticRefere
         ReferenceRole::InstanceProperty => descriptor.instance_properties.push(reference),
         ReferenceRole::InstanceRelationship => descriptor.instance_relationships.push(reference),
         ReferenceRole::DependsOn => {}
+    }
+}
+
+fn canonical_refs(references: &[SemanticReference]) -> Vec<CanonicalReference> {
+    references.iter().map(CanonicalReference::from).collect()
+}
+
+fn descriptor_reference_groups(
+    descriptor: &TypeDescriptor,
+) -> Vec<(&ReferenceRole, &[SemanticReference])> {
+    vec![
+        (&ReferenceRole::ComponentOf, descriptor.component_of.as_slice()),
+        (&ReferenceRole::Extends, descriptor.extends.as_slice()),
+        (&ReferenceRole::KeyRule, descriptor.key_rule.as_slice()),
+        (&ReferenceRole::ValueType, descriptor.value_type.as_slice()),
+        (&ReferenceRole::SourceType, descriptor.source_type.as_slice()),
+        (&ReferenceRole::TargetType, descriptor.target_type.as_slice()),
+        (&ReferenceRole::InverseOf, descriptor.inverse_of.as_slice()),
+        (&ReferenceRole::HasInverse, descriptor.has_inverse.as_slice()),
+        (&ReferenceRole::Variants, descriptor.variants.as_slice()),
+        (&ReferenceRole::VariantOf, descriptor.variant_of.as_slice()),
+        (&ReferenceRole::InstanceProperty, descriptor.instance_properties.as_slice()),
+        (&ReferenceRole::InstanceRelationship, descriptor.instance_relationships.as_slice()),
+    ]
+}
+
+fn canonical_relationships<'a>(
+    literal_relationships: &[LiteralRelationship],
+    reference_groups: impl IntoIterator<Item = (&'a ReferenceRole, &'a [SemanticReference])>,
+) -> Vec<CanonicalRelationship> {
+    let mut relationships = literal_relationships
+        .iter()
+        .map(|relationship| CanonicalRelationship {
+            name: relationship.name.clone(),
+            targets: relationship
+                .targets
+                .iter()
+                .map(|target| CanonicalReference { target: target.clone(), resolved: None })
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+
+    for (role, references) in reference_groups {
+        if references.is_empty() {
+            continue;
+        }
+        let relationship_name = role.to_string();
+        let relationship =
+            relationships.iter_mut().find(|relationship| relationship.name == relationship_name);
+        if let Some(relationship) = relationship {
+            for reference in references {
+                let mut matched = false;
+                for target in relationship
+                    .targets
+                    .iter_mut()
+                    .filter(|target| target.target == reference.target)
+                {
+                    target.resolved = reference.resolved;
+                    matched = true;
+                }
+                if !matched {
+                    relationship.targets.push(CanonicalReference::from(reference));
+                }
+            }
+        } else {
+            relationships.push(CanonicalRelationship {
+                name: relationship_name,
+                targets: canonical_refs(references),
+            });
+        }
+    }
+    relationships
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn origin() -> Origin {
+        Origin::new(SourceKind::Generated)
+    }
+
+    #[test]
+    fn canonical_holon_view_preserves_descriptor_identity_and_raw_target_multiplicity() {
+        let mut descriptor = TypeDescriptor::new(
+            "Book.HolonType",
+            "Book",
+            DescriptorKind::HolonType,
+            "Books",
+            origin(),
+        );
+        descriptor.described_by.push(SemanticReference {
+            role: ReferenceRole::DescribedBy,
+            target: "TypeDescriptor.HolonType".to_string(),
+            resolved: Some(SymbolId(7)),
+        });
+        descriptor.extends = Some(SemanticReference {
+            role: ReferenceRole::Extends,
+            target: "Document.HolonType".to_string(),
+            resolved: Some(SymbolId(11)),
+        });
+        descriptor.literal_relationships.push(LiteralRelationship {
+            name: "Extends".to_string(),
+            targets: vec!["Document.HolonType".to_string(), "Document.HolonType".to_string()],
+        });
+
+        let mut model = SemanticModel::new();
+        model.push_descriptor(descriptor);
+        let holon = model.canonical_holons().pop().expect("canonical holon");
+
+        assert_eq!(holon.key, "Book.HolonType");
+        assert_eq!(
+            holon.described_by,
+            vec![CanonicalReference {
+                target: "TypeDescriptor.HolonType".to_string(),
+                resolved: Some(SymbolId(7)),
+            }]
+        );
+        assert_eq!(
+            holon
+                .relationships
+                .iter()
+                .find(|relationship| relationship.name == "Extends")
+                .expect("Extends relationship")
+                .targets
+                .iter()
+                .map(|target| (target.target.as_str(), target.resolved))
+                .collect::<Vec<_>>(),
+            vec![
+                ("Document.HolonType", Some(SymbolId(11))),
+                ("Document.HolonType", Some(SymbolId(11))),
+            ]
+        );
     }
 }

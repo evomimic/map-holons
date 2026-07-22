@@ -37,12 +37,13 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, effective_descriptor_lineage, inheritance::equals_or_extends,
-    inheritance::flatten_related_members, walk_extends_chain, DeclaredRelationshipDescriptor,
-    Descriptor, HolonDescriptor, InverseRelationshipDescriptor, RelationshipDescriptor,
-    RelationshipDirection,
+    accessor_helpers, effective_descriptor_lineage,
+    inheritance::collect_named_related_members_from_lineage, inheritance::equals_or_extends,
+    inheritance::flatten_named_related_members, inheritance::flatten_related_members,
+    DeclaredRelationshipDescriptor, Descriptor, HolonDescriptor, InverseRelationshipDescriptor,
+    RelationshipDescriptor, RelationshipDirection,
 };
-use crate::reference_layer::{HolonReference, ReadableHolon};
+use crate::reference_layer::HolonReference;
 use core_types::{HolonError, RelationshipName};
 use type_names::{CoreRelationshipTypeName, ToRelationshipName};
 
@@ -83,38 +84,19 @@ pub(crate) fn collect_relationships_from_anchors(
     anchors: impl IntoIterator<Item = Result<HolonReference, HolonError>>,
     subject_label: impl Fn() -> String,
 ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-    let mut relationship_descriptors = Vec::new();
-    let mut seen_declaration_refs = HashSet::new();
-    let mut seen_declaration_names = HashSet::new();
-
-    for anchor in anchors {
-        let anchor = anchor?;
-        let collection_arc =
-            anchor.related_holons(CoreRelationshipTypeName::InstanceRelationships)?;
-        let collection = collection_arc.read().map_err(accessor_helpers::lock_error)?;
-
-        for declaration_ref in collection.get_members() {
-            if !seen_declaration_refs.insert(declaration_ref.reference_id_string()) {
-                continue;
-            }
-
-            let relationship_descriptor =
-                RelationshipDescriptor::from_holon(declaration_ref.clone());
-            let declaration_name = relationship_descriptor.base_relationship_name()?;
-            let declaration_label = declaration_name.to_string();
-            if !seen_declaration_names.insert(declaration_label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "relationship".to_string(),
-                    name: declaration_label,
-                    descriptor: subject_label(),
-                });
-            }
-
-            relationship_descriptors.push(relationship_descriptor);
-        }
-    }
-
-    Ok(relationship_descriptors)
+    let lineage = anchors.into_iter().collect::<Result<Vec<_>, _>>()?;
+    let members = collect_named_related_members_from_lineage(
+        lineage,
+        CoreRelationshipTypeName::InstanceRelationships,
+        "relationship",
+        |member| {
+            RelationshipDescriptor::from_holon(member.clone())
+                .base_relationship_name()
+                .map(|name| name.to_string())
+        },
+    )?;
+    let _ = subject_label;
+    Ok(members.into_iter().map(RelationshipDescriptor::from_holon).collect())
 }
 
 /// Collects declared relationship descriptors from an already-selected lineage.
@@ -138,9 +120,21 @@ pub(crate) fn collect_declared_from_anchors(
 pub(crate) fn effective_declared_relationships(
     endpoint: &HolonDescriptor,
 ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
-    collect_declared_from_anchors(walk_extends_chain(endpoint.holon()), || {
-        accessor_helpers::descriptor_label(endpoint.holon())
+    flatten_named_related_members(
+        endpoint.holon(),
+        CoreRelationshipTypeName::InstanceRelationships,
+        "relationship",
+        |member| {
+            RelationshipDescriptor::from_holon(member.clone())
+                .base_relationship_name()
+                .map(|name| name.to_string())
+        },
+    )?
+    .into_iter()
+    .map(|member| {
+        RelationshipDescriptor::from_holon(member).try_into_declared_relationship_descriptor()
     })
+    .collect()
 }
 
 /// Enumerates effective inverse relationships for `endpoint`.
@@ -201,10 +195,8 @@ pub(crate) fn effective_relationships(
 
 /// Finds a relationship declaration on a holon's effective relationship surface.
 ///
-/// Ordinary runtime holons draw this surface from `DescribedBy -> Extends*`.
-/// Descriptor holons also contribute their own `Extends*` lineage, which is
-/// where descriptor-populated relationships like `SourceType`, `TargetType`,
-/// `InverseOf`, and `ValueType` are licensed in MAP Type System v1.2.
+/// Ordinary runtime holons draw this surface from `DescribedBy -> Extends*`. Type holons also
+/// contribute their own `Extends*` lineage before the describing-type lineage.
 pub fn effective_relationship_declaration(
     source_holon: &HolonReference,
     name: impl ToRelationshipName,
@@ -981,8 +973,12 @@ mod tests {
     #[test]
     fn finds_descriptor_holon_declaration_through_own_extends_lineage() -> Result<(), HolonError> {
         let context = build_context();
-        let type_descriptor =
-            new_holon_type_descriptor(&context, "surface-type-descriptor", "TypeDescriptor")?;
+        let mut type_descriptor =
+            new_holon_type_descriptor(&context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+        type_descriptor.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor)],
+        )?;
         let mut meta_relationship_type = new_holon_type_descriptor(
             &context,
             "surface-meta-relationship-type",
@@ -1048,7 +1044,11 @@ mod tests {
         let mut holon_type =
             new_holon_type_descriptor(&context, "surface-tail-holon-type", "HolonType")?;
         let mut type_descriptor =
-            new_holon_type_descriptor(&context, "surface-tail-type-descriptor", "TypeDescriptor")?;
+            new_holon_type_descriptor(&context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+        type_descriptor.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor)],
+        )?;
         let properties = new_relationship_descriptor_holon(
             &context,
             "surface-properties",

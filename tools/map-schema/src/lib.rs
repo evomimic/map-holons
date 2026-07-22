@@ -7,6 +7,7 @@
 //! so schema dependencies and cross-file references can be resolved consistently.
 
 use anyhow::{anyhow, Context, Result};
+use map_schema_semantic::{normalize_relationship_pairs, validate_model};
 /// Diagnostic formatting and source-oriented validation messages.
 pub mod diagnostics;
 mod literal_bridge;
@@ -28,7 +29,7 @@ pub mod tdl_compiler;
 mod test_support;
 
 use crate::{
-    diagnostics::Diagnostic,
+    diagnostics::{format_diagnostics, Diagnostic, DiagnosticKind, DiagnosticLayer},
     literal_bridge::{json_map_to_literal_object, render_literal_value},
     loader_ir::{LoaderDocument, LoaderHolon, LoaderMeta, LoaderReference, LoaderRelationship},
     schema_index::SymbolIndex,
@@ -45,7 +46,7 @@ use crate::{
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -133,7 +134,7 @@ pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBu
                 .with_context(|| format!("creating output directory {}", parent.display()))?;
         }
 
-        let contents = render_lowered_file(file)?;
+        let contents = render_lowered_file(file, &lowered.global_model)?;
         fs::write(&output, contents)
             .with_context(|| format!("writing decompiled TDL to {}", output.display()))?;
         written.push(output);
@@ -152,12 +153,9 @@ pub fn decompile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Res
     let source_name = source_name.into();
     let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
     let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
-    let file = lowered
-        .files
-        .into_iter()
-        .next()
-        .ok_or_else(|| anyhow!("no JSON import document was lowered"))?;
-    render_lowered_file(&file)
+    let file =
+        lowered.files.first().ok_or_else(|| anyhow!("no JSON import document was lowered"))?;
+    render_lowered_file(file, &lowered.global_model)
 }
 
 /// Builds the derived semantic symbol table for JSON import inputs and returns a text dump.
@@ -180,6 +178,482 @@ pub fn dump_symbols_from_string(raw: &str, source_name: impl Into<PathBuf>) -> R
     let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
     let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
     Ok(render_symbol_dump(&lowered.global_model, &lowered.symbols, &lowered.diagnostics))
+}
+
+/// Compares two schema corpora by lowering both into Canonical Holon IR and diffing semantics.
+///
+/// Each side must lower without blocking diagnostics. The left and right corpora may use different
+/// source adapters (`.json` or `.tdl`), but each side must be internally homogeneous.
+pub fn diff_inputs(left: &[PathBuf], right: &[PathBuf]) -> Result<String> {
+    let left_model = load_valid_semantic_model(left, "left")?;
+    let right_model = load_valid_semantic_model(right, "right")?;
+
+    let left_signature = adapter_comparable_signature(&left_model);
+    let right_signature = adapter_comparable_signature(&right_model);
+
+    Ok(render_semantic_diff(&left_signature, &right_signature, &left_model, &right_model))
+}
+
+/// Normalizes facts that concise TDL relationship syntax necessarily makes explicit.
+///
+/// JSON imports may encode an inverse pair only from the declared side and may omit the inverse
+/// deletion value. TDL's concise `inverse` clause closes the pair and applies its `Allow` default.
+/// These are adapter-representation differences, not changes to the represented relationship.
+fn adapter_comparable_signature(
+    model: &SemanticModel,
+) -> crate::schema_ir::ComparableSemanticModel {
+    let mut signature = model.comparable_signature();
+    let mut pairs = Vec::new();
+    for descriptor in &signature.descriptors {
+        for (role, target) in &descriptor.references {
+            match role {
+                ReferenceRole::HasInverse => pairs.push((descriptor.key.clone(), target.clone())),
+                ReferenceRole::InverseOf => pairs.push((target.clone(), descriptor.key.clone())),
+                _ => {}
+            }
+        }
+    }
+    pairs.sort();
+    pairs.dedup();
+
+    let descriptor_indexes = signature
+        .descriptors
+        .iter()
+        .enumerate()
+        .map(|(index, descriptor)| (descriptor.key.clone(), index))
+        .collect::<HashMap<_, _>>();
+    for (declared_key, inverse_key) in pairs {
+        if let Some(index) = descriptor_indexes.get(&declared_key).copied() {
+            signature.descriptors[index]
+                .references
+                .push((ReferenceRole::HasInverse, inverse_key.clone()));
+        }
+        if let Some(index) = descriptor_indexes.get(&inverse_key).copied() {
+            signature.descriptors[index]
+                .references
+                .push((ReferenceRole::InverseOf, declared_key.clone()));
+        }
+    }
+
+    for descriptor in &mut signature.descriptors {
+        descriptor.references.sort();
+        descriptor.references.dedup();
+        if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse)
+            && descriptor.deletion_semantic.is_none()
+        {
+            descriptor.deletion_semantic = Some("Allow".to_string());
+        }
+    }
+    signature
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InputFormat {
+    Json,
+    Tdl,
+}
+
+fn load_valid_semantic_model(inputs: &[PathBuf], side: &str) -> Result<SemanticModel> {
+    let (model, diagnostics) = match detect_input_format(inputs)? {
+        InputFormat::Json => load_json_semantic_model(inputs)?,
+        InputFormat::Tdl => crate::tdl_compiler::load_semantic_model(inputs)?,
+    };
+
+    if diagnostics.is_empty() {
+        Ok(model)
+    } else {
+        Err(anyhow!(
+            "{} inputs are not semantically valid:\n{}",
+            side,
+            format_diagnostics(&diagnostics)
+        ))
+    }
+}
+
+fn load_json_semantic_model(inputs: &[PathBuf]) -> Result<(SemanticModel, Vec<Diagnostic>)> {
+    let files = collect_input_files(inputs)?;
+    let (parsed, diagnostics) = parse_files_for_validation(&files)?;
+    if !diagnostics.is_empty() {
+        return Ok((SemanticModel::new(), diagnostics));
+    }
+
+    let lowered = lower_parsed_files_to_schema_ir(parsed)?;
+    Ok((lowered.global_model, lowered.diagnostics))
+}
+
+fn detect_input_format(inputs: &[PathBuf]) -> Result<InputFormat> {
+    let json_files = collect_input_files(inputs)?;
+    let tdl_file_count = crate::tdl_compiler::discovered_input_count(inputs)?;
+
+    match (!json_files.is_empty(), tdl_file_count > 0) {
+        (true, false) => Ok(InputFormat::Json),
+        (false, true) => Ok(InputFormat::Tdl),
+        (true, true) => Err(anyhow!(
+            "input set mixes .json and .tdl files; semantic diff expects one source format per side"
+        )),
+        (false, false) => Err(anyhow!(
+            "no supported schema inputs found; expected at least one .json or .tdl file"
+        )),
+    }
+}
+
+fn render_semantic_diff(
+    left: &crate::schema_ir::ComparableSemanticModel,
+    right: &crate::schema_ir::ComparableSemanticModel,
+    left_model: &SemanticModel,
+    right_model: &SemanticModel,
+) -> String {
+    let canonical_schema_diff = semantic_schema_diff(left, right);
+    let canonical_descriptor_diff = semantic_descriptor_diff(left, right);
+    let residue_diff = semantic_residue_diff(left_model, right_model);
+
+    if canonical_schema_diff.is_empty()
+        && canonical_descriptor_diff.is_empty()
+        && residue_diff.is_empty()
+    {
+        return "no semantic diff\n".to_string();
+    }
+
+    let mut out = String::from("semantic diff\n");
+    if !canonical_schema_diff.is_empty() || !canonical_descriptor_diff.is_empty() {
+        out.push_str("canonical semantic changes\n");
+        for line in canonical_schema_diff {
+            out.push_str(&line);
+            out.push('\n');
+        }
+        for line in canonical_descriptor_diff {
+            out.push_str(&line);
+            out.push('\n');
+        }
+    }
+    if !residue_diff.is_empty() {
+        out.push_str("preserved literal residue changes\n");
+        for line in residue_diff {
+            out.push_str(&line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
+fn semantic_residue_diff(left: &SemanticModel, right: &SemanticModel) -> Vec<String> {
+    let mut lines = Vec::new();
+
+    let left_schemas =
+        left.schemas.iter().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
+    let right_schemas =
+        right.schemas.iter().map(|schema| (schema.key.clone(), schema)).collect::<BTreeMap<_, _>>();
+    let schema_keys =
+        left_schemas.keys().chain(right_schemas.keys()).cloned().collect::<BTreeSet<_>>();
+    for key in schema_keys {
+        if let (Some(left_schema), Some(right_schema)) =
+            (left_schemas.get(&key), right_schemas.get(&key))
+        {
+            let mut field_lines = Vec::new();
+            push_changed_field(
+                &mut field_lines,
+                "header",
+                &left_schema.header,
+                &right_schema.header,
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_properties",
+                &normalized_schema_literal_properties(left_schema),
+                &normalized_schema_literal_properties(right_schema),
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_relationships",
+                &normalized_schema_literal_relationships(left_schema),
+                &normalized_schema_literal_relationships(right_schema),
+            );
+            if !field_lines.is_empty() {
+                lines.push(format!("schema `{}` residue changed", key));
+                lines.extend(field_lines.into_iter().map(|line| format!("  {line}")));
+            }
+        }
+    }
+
+    let left_descriptors = left
+        .descriptors
+        .iter()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let right_descriptors = right
+        .descriptors
+        .iter()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let descriptor_keys =
+        left_descriptors.keys().chain(right_descriptors.keys()).cloned().collect::<BTreeSet<_>>();
+    for key in descriptor_keys {
+        if let (Some(left_descriptor), Some(right_descriptor)) =
+            (left_descriptors.get(&key), right_descriptors.get(&key))
+        {
+            let mut field_lines = Vec::new();
+            push_changed_field(
+                &mut field_lines,
+                "header",
+                &left_descriptor.header,
+                &right_descriptor.header,
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_properties",
+                &normalized_descriptor_literal_properties(left_descriptor),
+                &normalized_descriptor_literal_properties(right_descriptor),
+            );
+            push_changed_field(
+                &mut field_lines,
+                "literal_relationships",
+                &normalized_descriptor_literal_relationships(left_descriptor),
+                &normalized_descriptor_literal_relationships(right_descriptor),
+            );
+            if !field_lines.is_empty() {
+                lines.push(format!("descriptor `{}` residue changed", key));
+                lines.extend(field_lines.into_iter().map(|line| format!("  {line}")));
+            }
+        }
+    }
+
+    lines
+}
+
+fn normalized_schema_literal_properties(schema: &Schema) -> map_schema_semantic::LiteralObject {
+    let mut normalized = map_schema_semantic::LiteralObject::new();
+    for (key, value) in schema.literal_properties.iter() {
+        if matches!(
+            key.as_str(),
+            "description"
+                | "display_name"
+                | "display_name_plural"
+                | "type_name_plural"
+                | "schema_name"
+                | "allows_additional_properties"
+                | "allows_additional_relationships"
+        ) {
+            continue;
+        }
+        normalized.insert(key.clone(), value.clone());
+    }
+    normalized
+}
+
+fn normalized_schema_literal_relationships(schema: &Schema) -> Vec<LiteralRelationship> {
+    schema
+        .literal_relationships
+        .iter()
+        .filter(|relationship| relationship.name != "DependsOn")
+        .cloned()
+        .collect()
+}
+
+fn normalized_descriptor_literal_properties(
+    descriptor: &TypeDescriptor,
+) -> map_schema_semantic::LiteralObject {
+    let mut normalized = map_schema_semantic::LiteralObject::new();
+    for (key, value) in descriptor.literal_properties.iter() {
+        if matches!(
+            key.as_str(),
+            "type_name"
+                | "type_name_plural"
+                | "display_name"
+                | "display_name_plural"
+                | "description"
+                | "instance_type_kind"
+                | "is_abstract_type"
+                | "is_definitional"
+                | "min_cardinality"
+                | "max_cardinality"
+                | "deletion_semantic"
+                | "is_ordered"
+                | "allows_duplicates"
+                | "allows_additional_properties"
+                | "allows_additional_relationships"
+                | "is_required"
+        ) {
+            continue;
+        }
+        normalized.insert(key.clone(), value.clone());
+    }
+    normalized
+}
+
+fn normalized_descriptor_literal_relationships(
+    descriptor: &TypeDescriptor,
+) -> Vec<LiteralRelationship> {
+    descriptor
+        .literal_relationships
+        .iter()
+        .filter(|relationship| reference_role_for_relationship(&relationship.name).is_none())
+        .cloned()
+        .collect()
+}
+
+fn semantic_schema_diff(
+    left: &crate::schema_ir::ComparableSemanticModel,
+    right: &crate::schema_ir::ComparableSemanticModel,
+) -> Vec<String> {
+    let left_by_key = left
+        .schemas
+        .iter()
+        .cloned()
+        .map(|schema| (schema.key.clone(), schema))
+        .collect::<BTreeMap<_, _>>();
+    let right_by_key = right
+        .schemas
+        .iter()
+        .cloned()
+        .map(|schema| (schema.key.clone(), schema))
+        .collect::<BTreeMap<_, _>>();
+    let all_keys = left_by_key.keys().chain(right_by_key.keys()).cloned().collect::<BTreeSet<_>>();
+
+    let mut lines = Vec::new();
+    for key in all_keys {
+        match (left_by_key.get(&key), right_by_key.get(&key)) {
+            (Some(left_schema), Some(right_schema)) => {
+                let field_diff = render_schema_field_diff(left_schema, right_schema);
+                if !field_diff.is_empty() {
+                    lines.push(format!("schema `{}` changed", key));
+                    lines.extend(field_diff.into_iter().map(|line| format!("  {line}")));
+                }
+            }
+            (Some(_), None) => lines.push(format!("schema `{}` only in left", key)),
+            (None, Some(_)) => lines.push(format!("schema `{}` only in right", key)),
+            (None, None) => {}
+        }
+    }
+    lines
+}
+
+fn render_schema_field_diff(
+    left: &crate::schema_ir::ComparableSchema,
+    right: &crate::schema_ir::ComparableSchema,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    push_changed_field(&mut lines, "name", &left.name, &right.name);
+    push_changed_field(&mut lines, "dependencies", &left.dependencies, &right.dependencies);
+    push_changed_field(
+        &mut lines,
+        "allows_additional_properties",
+        &left.allows_additional_properties,
+        &right.allows_additional_properties,
+    );
+    push_changed_field(
+        &mut lines,
+        "allows_additional_relationships",
+        &left.allows_additional_relationships,
+        &right.allows_additional_relationships,
+    );
+    lines
+}
+
+fn semantic_descriptor_diff(
+    left: &crate::schema_ir::ComparableSemanticModel,
+    right: &crate::schema_ir::ComparableSemanticModel,
+) -> Vec<String> {
+    let left_by_key = left
+        .descriptors
+        .iter()
+        .cloned()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let right_by_key = right
+        .descriptors
+        .iter()
+        .cloned()
+        .map(|descriptor| (descriptor.key.clone(), descriptor))
+        .collect::<BTreeMap<_, _>>();
+    let all_keys = left_by_key.keys().chain(right_by_key.keys()).cloned().collect::<BTreeSet<_>>();
+
+    let mut lines = Vec::new();
+    for key in all_keys {
+        match (left_by_key.get(&key), right_by_key.get(&key)) {
+            (Some(left_descriptor), Some(right_descriptor)) => {
+                let field_diff = render_descriptor_field_diff(left_descriptor, right_descriptor);
+                if !field_diff.is_empty() {
+                    lines.push(format!("descriptor `{}` changed", key));
+                    lines.extend(field_diff.into_iter().map(|line| format!("  {line}")));
+                }
+            }
+            (Some(_), None) => lines.push(format!("descriptor `{}` only in left", key)),
+            (None, Some(_)) => lines.push(format!("descriptor `{}` only in right", key)),
+            (None, None) => {}
+        }
+    }
+    lines
+}
+
+fn render_descriptor_field_diff(
+    left: &crate::schema_ir::ComparableDescriptor,
+    right: &crate::schema_ir::ComparableDescriptor,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    push_changed_field(&mut lines, "name", &left.name, &right.name);
+    push_changed_field(&mut lines, "kind", &left.kind, &right.kind);
+    push_changed_field(&mut lines, "owning_schema", &left.owning_schema, &right.owning_schema);
+    push_changed_field(&mut lines, "is_abstract", &left.is_abstract, &right.is_abstract);
+    push_changed_field(&mut lines, "references", &left.references, &right.references);
+    push_changed_field(
+        &mut lines,
+        "relationship_flavor",
+        &left.relationship_flavor,
+        &right.relationship_flavor,
+    );
+    push_changed_field(
+        &mut lines,
+        "is_definitional",
+        &left.is_definitional,
+        &right.is_definitional,
+    );
+    push_changed_field(
+        &mut lines,
+        "min_cardinality",
+        &left.min_cardinality,
+        &right.min_cardinality,
+    );
+    push_changed_field(
+        &mut lines,
+        "max_cardinality",
+        &left.max_cardinality,
+        &right.max_cardinality,
+    );
+    push_changed_field(
+        &mut lines,
+        "deletion_semantic",
+        &left.deletion_semantic,
+        &right.deletion_semantic,
+    );
+    push_changed_field(&mut lines, "is_ordered", &left.is_ordered, &right.is_ordered);
+    push_changed_field(
+        &mut lines,
+        "allows_duplicates",
+        &left.allows_duplicates,
+        &right.allows_duplicates,
+    );
+    push_changed_field(
+        &mut lines,
+        "allows_additional_properties",
+        &left.allows_additional_properties,
+        &right.allows_additional_properties,
+    );
+    push_changed_field(
+        &mut lines,
+        "allows_additional_relationships",
+        &left.allows_additional_relationships,
+        &right.allows_additional_relationships,
+    );
+    lines
+}
+
+fn push_changed_field<T>(lines: &mut Vec<String>, field: &str, left: &T, right: &T)
+where
+    T: std::fmt::Debug + PartialEq,
+{
+    if left != right {
+        lines.push(format!("{field}: left={left:?} right={right:?}"));
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -237,16 +711,66 @@ fn parse_files(discovered: &[DiscoveredFile]) -> Result<Vec<ParsedFile>> {
     Ok(parsed)
 }
 
+fn parse_files_for_validation(
+    discovered: &[DiscoveredFile],
+) -> Result<(Vec<ParsedFile>, Vec<Diagnostic>)> {
+    let mut parsed = Vec::with_capacity(discovered.len());
+    let mut diagnostics = Vec::new();
+
+    for discovered_file in discovered {
+        let path = &discovered_file.source_path;
+        let raw = fs::read_to_string(path)
+            .with_context(|| format!("reading JSON import file {}", path.display()))?;
+        let import = match parse_json_import(&raw, discovered_file.relative_path.clone()) {
+            Ok(import) => import,
+            Err(diagnostic) => {
+                diagnostics.push(diagnostic);
+                continue;
+            }
+        };
+        let schema_name = infer_schema_name(&import)
+            .with_context(|| format!("inferring schema name for {}", path.display()))?;
+        parsed.push(ParsedFile {
+            relative_path: discovered_file.relative_path.clone(),
+            schema_name,
+            import,
+        });
+    }
+
+    Ok((parsed, diagnostics))
+}
+
 fn parse_import_file_contents(
     raw: &str,
     source_path: &Path,
     relative_path: PathBuf,
 ) -> Result<ParsedFile> {
-    let import: ImportFile = serde_json::from_str(raw)
-        .with_context(|| format!("parsing JSON import file {}", source_path.display()))?;
+    let import = parse_json_import(raw, relative_path.clone())
+        .map_err(|diagnostic| anyhow!(diagnostic.to_string()))?;
     let schema_name = infer_schema_name(&import)
         .with_context(|| format!("inferring schema name for {}", source_path.display()))?;
     Ok(ParsedFile { relative_path, schema_name, import })
+}
+
+fn parse_json_import(
+    raw: &str,
+    relative_path: PathBuf,
+) -> std::result::Result<ImportFile, Diagnostic> {
+    serde_json::from_str::<ImportFile>(raw).map_err(|error| {
+        Diagnostic::error(
+            DiagnosticLayer::Syntax,
+            DiagnosticKind::InvalidSyntax {
+                context: "JSON import".to_string(),
+                message: error.to_string(),
+            },
+            Some(Origin {
+                source_kind: SourceKind::JsonImport,
+                file_path: Some(relative_path),
+                line: u32::try_from(error.line()).ok(),
+                column: u32::try_from(error.column()).ok(),
+            }),
+        )
+    })
 }
 
 fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredJsonProject> {
@@ -276,7 +800,13 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedFile>) -> Result<LoweredJso
         });
     }
 
-    let (symbols, diagnostics) = SymbolIndex::build(&mut global_model);
+    let (symbols, mut diagnostics) = SymbolIndex::build(&mut global_model);
+    let mut validation_model = global_model.clone();
+    normalize_relationship_pairs(&mut validation_model, &symbols);
+    diagnostics.extend(validate_model(&validation_model, &symbols));
+    for file in &mut files {
+        file.schema_model.resolve_references(&symbols);
+    }
 
     Ok(LoweredJsonProject { files, global_model, symbols, diagnostics })
 }
@@ -354,8 +884,8 @@ fn component_of_schema_name(holon: &HolonRecord) -> Option<String> {
     relationship_targets(holon, "ComponentOf").into_iter().next()
 }
 
-fn render_lowered_file(file: &LoweredJsonFile) -> Result<String> {
-    render_semantic_file(&file.schema_model)
+fn render_lowered_file(file: &LoweredJsonFile, global_model: &SemanticModel) -> Result<String> {
+    render_semantic_file(&file.schema_model, global_model)
 }
 
 fn lower_file_to_loader_ir(file: &ParsedFile) -> LoaderDocument {
@@ -478,6 +1008,12 @@ fn semantic_model_from_loader_document(
             .map(|holon| holon.key.clone())
             .unwrap_or_else(|| file.schema_name.clone()),
         origin: origin.clone(),
+        described_by: vec![SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            schema_holon
+                .map(|holon| holon.descriptor_type.clone())
+                .unwrap_or_else(|| "Schema.HolonType".to_string()),
+        )],
         dependencies,
         literal_properties: schema_holon
             .map(|holon| json_map_to_literal_object(&holon.properties))
@@ -554,8 +1090,14 @@ fn semantic_descriptor_from_holon(
     let kind = semantic_kind(holon);
     let mut descriptor =
         TypeDescriptor::new(holon.key.clone(), descriptor_name(holon), kind, schema_name, origin);
+    descriptor.described_by.push(SemanticReference::unresolved(
+        ReferenceRole::DescribedBy,
+        holon.descriptor_type.clone(),
+    ));
     descriptor.header = semantic_header(&holon.properties);
     descriptor.literal_properties = json_map_to_literal_object(&holon.properties);
+    descriptor.instance_type_kind = string_property(&holon.properties, "instance_type_kind");
+    descriptor.property_required = holon.properties.get("is_required").and_then(Value::as_bool);
     descriptor.is_abstract = bool_property(&holon.properties, "is_abstract_type");
     descriptor.is_definitional = bool_property(&holon.properties, "is_definitional");
     descriptor.min_cardinality = integer_property(&holon.properties, "min_cardinality");
@@ -572,7 +1114,6 @@ fn semantic_descriptor_from_holon(
     } else if kind == DescriptorKind::RelationshipType {
         descriptor.relationship_flavor = Some(RelationshipFlavor::Declared);
     }
-
     descriptor.literal_relationships = holon
         .relationships
         .iter()
@@ -650,7 +1191,7 @@ fn reference_role_for_relationship(name: &str) -> Option<ReferenceRole> {
     }
 }
 
-fn render_semantic_file(model: &SemanticModel) -> Result<String> {
+fn render_semantic_file(model: &SemanticModel, global_model: &SemanticModel) -> Result<String> {
     let mut out = String::new();
     let schema = model.schemas.first().context("semantic model has no schema")?;
     let emitted_key_lookup = build_emitted_key_lookup(&[model]);
@@ -674,6 +1215,7 @@ fn render_semantic_file(model: &SemanticModel) -> Result<String> {
             descriptor,
             &enum_variant_groups,
             &emitted_key_lookup,
+            global_model,
         )?;
         if !out.ends_with("\n\n") {
             out.push('\n');
@@ -767,9 +1309,12 @@ fn render_semantic_descriptor(
     descriptor: &TypeDescriptor,
     enum_variant_groups: &HashMap<String, Vec<&TypeDescriptor>>,
     emitted_key_lookup: &crate::schema_to_loader_ir::EmittedKeyLookup,
+    global_model: &SemanticModel,
 ) -> Result<()> {
     match preferred_descriptor_kind(descriptor) {
-        DescriptorKind::ValueType => render_semantic_value(out, descriptor, emitted_key_lookup),
+        DescriptorKind::ValueType => {
+            render_semantic_value(out, descriptor, emitted_key_lookup, global_model)
+        }
         DescriptorKind::Enum => {
             render_semantic_enum(out, descriptor, enum_variant_groups, emitted_key_lookup)
         }
@@ -842,6 +1387,7 @@ fn render_semantic_value(
     out: &mut String,
     descriptor: &TypeDescriptor,
     emitted_key_lookup: &crate::schema_to_loader_ir::EmittedKeyLookup,
+    global_model: &SemanticModel,
 ) -> Result<()> {
     let head = descriptor_head("value", descriptor);
     let mut clauses = Vec::new();
@@ -862,12 +1408,36 @@ fn render_semantic_value(
     if descriptor.allows_additional_relationships {
         clauses.push("allows_additional_relationships".to_string());
     }
-    append_semantic_body_with_lines(
-        &head,
-        out,
-        &clauses,
-        &descriptor_body_lines(descriptor, uses_literal_body),
-    )
+    let mut body_lines = descriptor_body_lines(descriptor, uses_literal_body);
+    if !uses_literal_body && value_type_kind_requires_literal(descriptor, global_model) {
+        let mut literal_lines = vec!["properties {".to_string()];
+        literal_lines.extend(
+            descriptor.literal_properties.iter().map(|(name, value)| {
+                format!("{}{}: {}", INDENT, name, render_literal_value(value))
+            }),
+        );
+        literal_lines.push("}".to_string());
+        body_lines.splice(0..0, literal_lines);
+    }
+    append_semantic_body_with_lines(&head, out, &clauses, &body_lines)
+}
+
+fn value_type_kind_requires_literal(
+    descriptor: &TypeDescriptor,
+    global_model: &SemanticModel,
+) -> bool {
+    let Some(kind) = descriptor.instance_type_kind.as_deref() else {
+        return false;
+    };
+    let Some(parent) = descriptor.extends.as_ref() else {
+        return true;
+    };
+    let parent_descriptor = global_model
+        .descriptors
+        .iter()
+        .find(|candidate| candidate.key == parent.target || candidate.name == parent.target);
+
+    parent_descriptor.and_then(|parent| parent.instance_type_kind.as_deref()) != Some(kind)
 }
 
 fn render_semantic_enum(
@@ -912,7 +1482,10 @@ fn render_semantic_property(
     descriptor: &TypeDescriptor,
     emitted_key_lookup: &crate::schema_to_loader_ir::EmittedKeyLookup,
 ) -> Result<()> {
-    let head = descriptor_head("property", descriptor);
+    let mut head = descriptor_head("property", descriptor);
+    if descriptor.property_required == Some(false) {
+        head.push('?');
+    }
     let mut clauses = Vec::new();
     let uses_literal_body = descriptor_uses_literal_body(descriptor, emitted_key_lookup);
     if !uses_literal_body {
@@ -1394,8 +1967,11 @@ mod tests {
     use std::{
         env,
         io::Write,
+        sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
     fn source_fixture_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -1420,24 +1996,26 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("schema-src")
     }
 
-    fn temp_out_dir() -> PathBuf {
+    fn unique_temp_dir(prefix: &str) -> PathBuf {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-decompile-{nanos}"))
+        let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        env::temp_dir().join(format!("{prefix}-{nanos}-{counter}"))
+    }
+
+    fn temp_out_dir() -> PathBuf {
+        unique_temp_dir("map-schema-decompile")
     }
 
     fn temp_roundtrip_tdl_dir() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-roundtrip-tdl-{nanos}"))
+        unique_temp_dir("map-schema-roundtrip-tdl")
     }
 
     fn temp_roundtrip_json_dir() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-roundtrip-json-{nanos}"))
+        unique_temp_dir("map-schema-roundtrip-json")
     }
 
     fn temp_domain_json_dir() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-domain-json-{nanos}"))
+        unique_temp_dir("map-schema-domain-json")
     }
 
     fn copy_directory_tree(source: &Path, target: &Path) -> Result<()> {
@@ -1464,6 +2042,15 @@ mod tests {
         Ok(())
     }
 
+    fn write_tdl_file(path: &Path, contents: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(path)?;
+        file.write_all(contents.as_bytes())?;
+        Ok(())
+    }
+
     fn discovered_json_file_count(root: &Path) -> Result<usize> {
         Ok(collect_input_files(&[root.to_path_buf()])?.len())
     }
@@ -1472,9 +2059,24 @@ mod tests {
     fn decompiles_core_schema_corpus() -> Result<()> {
         let source_dir = source_fixture_dir();
         let out_dir = temp_out_dir();
+        let expected_dir = temp_out_dir();
         let files = decompile_inputs(&[source_dir.clone()], &out_dir)?;
         assert_eq!(files.len(), discovered_json_file_count(&source_dir)?);
-        crate::test_support::assert_dir_tree_eq(&schema_src_dir(), &out_dir);
+
+        fs::create_dir_all(&expected_dir)?;
+        for entry in fs::read_dir(schema_src_dir())? {
+            let path = entry?.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("tdl") {
+                continue;
+            }
+            let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
+            if !file_name.contains("map-core-schema-") {
+                continue;
+            }
+            fs::copy(&path, expected_dir.join(file_name))?;
+        }
+
+        crate::test_support::assert_dir_tree_eq(&expected_dir, &out_dir);
         Ok(())
     }
 
@@ -1493,6 +2095,134 @@ mod tests {
             tdl.contains("schema BookAuthorInverseSchema {\n  depends_on MAP Core Schema-v0.0.7")
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn json_lowering_preserves_descriptor_identity_and_authored_property_values() -> Result<()> {
+        let input_dir = temp_domain_json_dir();
+        write_json_file(
+            &input_dir.join("invalid-type-kind.json"),
+            r#"{
+  "meta": { "load_with": [] },
+  "holons": [
+    {
+      "key": "ExampleSchema",
+      "type": "Schema.HolonType",
+      "properties": { "schema_name": "ExampleSchema" },
+      "relationships": []
+    },
+    {
+      "key": "Person.HolonType",
+      "type": "TypeDescriptor.HolonType",
+      "properties": {
+        "type_name": "Person",
+        "instance_type_kind": "TypeKind.HolonFoo"
+      },
+      "relationships": [
+        { "name": "ComponentOf", "target": { "$ref": "ExampleSchema" } }
+      ]
+    }
+  ]
+}"#,
+        )?;
+
+        let lowered = lower_inputs_to_schema_ir(&[input_dir])?;
+        let person = lowered
+            .global_model
+            .canonical_holons()
+            .into_iter()
+            .find(|holon| holon.key == "Person.HolonType")
+            .expect("Person canonical holon");
+
+        assert_eq!(
+            person.described_by,
+            vec![map_schema_semantic::CanonicalReference {
+                target: "TypeDescriptor.HolonType".to_string(),
+                resolved: None,
+            }]
+        );
+        assert_eq!(
+            person.properties.get("TypeKind").and_then(|value| value.as_str()),
+            Some("TypeKind.HolonFoo")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn json_lowering_does_not_apply_tdl_boolean_omission_defaults() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
+        let descriptor = lowered
+            .global_model
+            .descriptors
+            .iter()
+            .find(|descriptor| descriptor.key == "DeclaredRelationshipType")
+            .expect("DeclaredRelationshipType descriptor");
+
+        assert!(descriptor.materialized_properties.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn json_lowering_preserves_single_sided_inverse_metadata_and_validates_the_pair() -> Result<()>
+    {
+        let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
+        let inverse = lowered
+            .global_model
+            .descriptors
+            .iter()
+            .find(|descriptor| {
+                descriptor.key == "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)"
+            })
+            .expect("Components inverse descriptor");
+
+        assert!(inverse.inverse_of.is_none(), "JSON omissions must not be synthesized");
+        assert!(!lowered.diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::MissingRequiredField { descriptor, field }
+                if descriptor
+                    == "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)"
+                    && field == "InverseOf"
+        )));
+
+        Ok(())
+    }
+
+    #[test]
+    fn json_corpus_rejects_invalid_type_kind_through_descriptor_enum_policy() -> Result<()> {
+        let input_dir = temp_domain_json_dir();
+        fs::create_dir_all(&input_dir)?;
+        for entry in fs::read_dir(source_fixture_dir())? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
+                continue;
+            }
+            let mut document = serde_json::from_str::<Value>(&fs::read_to_string(&path)?)?;
+            if let Some(person) =
+                document.get_mut("holons").and_then(Value::as_array_mut).and_then(|holons| {
+                    holons.iter_mut().find(|holon| {
+                        holon.get("key").and_then(Value::as_str) == Some("HolonSpace.HolonType")
+                    })
+                })
+            {
+                person["properties"]["instance_type_kind"] =
+                    Value::String("TypeKind.HolonFoo".to_string());
+            }
+            fs::write(
+                input_dir.join(path.file_name().expect("fixture file name")),
+                serde_json::to_string_pretty(&document)?,
+            )?;
+        }
+
+        let lowered = lower_inputs_to_schema_ir(&[input_dir])?;
+        assert!(lowered.diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::InvalidConformanceValue { holon, property, value, .. }
+                if holon == "HolonSpace.HolonType"
+                    && property == "TypeKind"
+                    && value == "TypeKind.HolonFoo"
+        )));
         Ok(())
     }
 
@@ -1520,10 +2250,15 @@ mod tests {
 
         let source_lowered = lower_inputs_to_schema_ir(&[source_dir.clone()])?;
         let regenerated_lowered = lower_inputs_to_schema_ir(&[regenerated_json_dir.clone()])?;
-        assert!(source_lowered.diagnostics.is_empty(), "source JSON should remain diagnostic-free");
+        assert!(
+            source_lowered.diagnostics.is_empty(),
+            "source JSON should remain diagnostic-free:\n{}",
+            format_diagnostics(&source_lowered.diagnostics)
+        );
         assert!(
             regenerated_lowered.diagnostics.is_empty(),
-            "round-tripped JSON should remain diagnostic-free"
+            "round-tripped JSON should remain diagnostic-free:\n{}",
+            format_diagnostics(&regenerated_lowered.diagnostics)
         );
 
         assert_eq!(
@@ -1543,14 +2278,122 @@ mod tests {
             source_lowered.symbols.symbols().len(),
             regenerated_lowered.symbols.symbols().len()
         );
-        let source_signature = source_lowered.global_model.comparable_signature();
-        let regenerated_signature = regenerated_lowered.global_model.comparable_signature();
+        let source_signature = adapter_comparable_signature(&source_lowered.global_model);
+        let regenerated_signature = adapter_comparable_signature(&regenerated_lowered.global_model);
         if source_signature != regenerated_signature {
             panic!(
                 "round-tripped JSON should preserve schema semantics\n{}",
                 comparable_signature_mismatch_report(&source_signature, &regenerated_signature)
             );
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_no_canonical_difference_for_json_and_decompiled_tdl() -> Result<()> {
+        let source_dir = source_fixture_dir();
+        let decompiled_tdl_dir = temp_roundtrip_tdl_dir();
+        decompile_inputs(&[source_dir.clone()], &decompiled_tdl_dir)?;
+
+        let rendered = diff_inputs(&[source_dir], &[decompiled_tdl_dir])?;
+        assert!(
+            rendered == "no semantic diff\n"
+                || (rendered.contains("semantic diff\n")
+                    && !rendered.contains("canonical semantic changes")),
+            "{rendered}"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_changed_descriptor_fields() -> Result<()> {
+        let left_dir = temp_domain_json_dir().join("left");
+        let right_dir = temp_domain_json_dir().join("right");
+        copy_directory_tree(&source_fixture_dir(), &left_dir)?;
+        copy_directory_tree(&source_fixture_dir(), &right_dir)?;
+
+        let right_root_path = right_dir.join("MAP Schema Types-map-core-schema-root.json");
+        let right_root = fs::read_to_string(&right_root_path)?;
+        let right_root = right_root
+            .replace(
+                "\"allows_additional_properties\": false",
+                "\"allows_additional_properties\": true",
+            )
+            .replace("\"is_abstract_type\": false", "\"is_abstract_type\": true");
+        write_json_file(&right_root_path, &right_root)?;
+
+        let rendered = diff_inputs(&[left_dir], &[right_dir])?;
+        assert!(rendered.contains("semantic diff\n"), "{rendered}");
+        assert!(rendered.contains("canonical semantic changes"), "{rendered}");
+        assert!(
+            rendered.contains("allows_additional_properties: left=false right=true"),
+            "{rendered}"
+        );
+        assert!(rendered.contains("descriptor `"), "{rendered}");
+        assert!(rendered.contains("is_abstract: left=false right=true"), "{rendered}");
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_requires_diagnostic_free_inputs() -> Result<()> {
+        let invalid_tdl_dir = temp_roundtrip_tdl_dir();
+        write_tdl_file(
+            &invalid_tdl_dir.join("invalid.tdl"),
+            r#"schema InvalidSchema
+
+relationship Broken {
+  source HolonType
+}
+"#,
+        )?;
+
+        let error = diff_inputs(&[invalid_tdl_dir], &[source_fixture_dir()]).unwrap_err();
+        let rendered = error.to_string();
+        assert!(rendered.contains("left inputs are not semantically valid"));
+        assert!(rendered.contains("missing required field `TargetType`"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_malformed_json_as_a_syntax_diagnostic() -> Result<()> {
+        let invalid_json_dir = temp_domain_json_dir();
+        write_json_file(&invalid_json_dir.join("malformed-a.json"), "{\n  \"holons\": [\n")?;
+        write_json_file(&invalid_json_dir.join("malformed-b.json"), "{ not-json }\n")?;
+
+        let error = diff_inputs(&[invalid_json_dir], &[source_fixture_dir()]).unwrap_err();
+        let rendered = error.to_string();
+
+        assert!(rendered.contains("left inputs are not semantically valid"), "{rendered}");
+        assert!(rendered.contains("error[syntax]"), "{rendered}");
+        assert!(rendered.contains("malformed-a.json:"), "{rendered}");
+        assert!(rendered.contains("malformed-b.json:"), "{rendered}");
+
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_diff_reports_preserved_literal_residue_changes() -> Result<()> {
+        let left_dir = temp_domain_json_dir().join("left-residue");
+        let right_dir = temp_domain_json_dir().join("right-residue");
+        copy_directory_tree(&source_fixture_dir(), &left_dir)?;
+        copy_directory_tree(&source_fixture_dir(), &right_dir)?;
+
+        let right_root_path = right_dir.join("MAP Schema Types-map-core-schema-root.json");
+        let right_root = fs::read_to_string(&right_root_path)?;
+        let right_root = right_root.replace(
+            "\"description\": \"Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself.\"",
+            "\"description\": \"Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself. Residue diff.\"",
+        );
+        write_json_file(&right_root_path, &right_root)?;
+
+        let rendered = diff_inputs(&[left_dir], &[right_dir])?;
+        assert!(rendered.contains("preserved literal residue changes"), "{rendered}");
+        assert!(rendered.contains("schema `MAP Core Schema-v0.0.7` residue changed"), "{rendered}");
+        assert!(rendered.contains("header: left="), "{rendered}");
 
         Ok(())
     }
@@ -1580,7 +2423,7 @@ mod tests {
         let source_dir = source_fixture_dir();
         let lowered = lower_inputs_to_schema_ir(&[source_fixture_dir()])?;
 
-        assert!(lowered.diagnostics.is_empty());
+        assert!(lowered.diagnostics.is_empty(), "{}", format_diagnostics(&lowered.diagnostics));
         assert_eq!(lowered.files.len(), discovered_json_file_count(&source_dir)?);
         assert!(!lowered.global_model.schemas.is_empty());
         assert!(!lowered.global_model.descriptors.is_empty());
@@ -1674,8 +2517,8 @@ mod tests {
 
         let regenerated_lowered = lower_inputs_to_schema_ir(&[regenerated_dir.clone()])?;
         assert_eq!(
-            lowered.global_model.comparable_signature(),
-            regenerated_lowered.global_model.comparable_signature()
+            adapter_comparable_signature(&lowered.global_model),
+            adapter_comparable_signature(&regenerated_lowered.global_model)
         );
 
         Ok(())

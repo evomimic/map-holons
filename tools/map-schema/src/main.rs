@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
-    decompile_input_string, decompile_inputs, dump_symbols, dump_symbols_from_string,
+    decompile_input_string, decompile_inputs, diff_inputs, dump_symbols, dump_symbols_from_string,
     tdl_compiler::{
         check_input_string, check_inputs, compile_input_string, compile_inputs, render_check_output,
     },
@@ -54,6 +54,17 @@ enum Commands {
         /// Input TDL files or directories containing TDL files.
         inputs: Vec<PathBuf>,
     },
+
+    /// Compare two schema corpora by Canonical Holon IR semantics.
+    Diff {
+        /// Left-hand input files or directories. One source format per side.
+        #[arg(long = "left", required = true)]
+        left: Vec<PathBuf>,
+
+        /// Right-hand input files or directories. One source format per side.
+        #[arg(long = "right", required = true)]
+        right: Vec<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -102,6 +113,9 @@ fn main() -> Result<()> {
             };
             print!("{}", render_check_output(&diagnostics));
         }
+        Commands::Diff { left, right } => {
+            print!("{}", diff_inputs(&left, &right)?);
+        }
     }
 
     Ok(())
@@ -126,6 +140,10 @@ Commands:
   check [TDL_FILE_OR_DIR ...]
       Validate TDL syntax and semantic references without writing JSON.
 
+  diff --left <JSON_OR_TDL_FILE_OR_DIR ...> --right <JSON_OR_TDL_FILE_OR_DIR ...>
+      Compare two schema corpora by Canonical Holon IR semantics. Each side must
+      lower without blocking diagnostics before a diff is produced.
+
   symbols [JSON_FILE_OR_DIR ...]
       Print the semantic symbol table derived from JSON imports.
 
@@ -138,6 +156,7 @@ Direct examples:
   cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile host/import_files/map-schema/core-schema --out-dir schema-src
   cargo run --manifest-path tools/map-schema/Cargo.toml -- check schema-src
   cargo run --manifest-path tools/map-schema/Cargo.toml -- compile schema-src --out-dir generated/json-imports
+  cargo run --manifest-path tools/map-schema/Cargo.toml -- diff --left host/import_files/map-schema/core-schema --right generated/json-imports
 
 Single-file stdin/stdout mode:
   map-schema decompile < input.json > output.tdl
@@ -150,6 +169,9 @@ Notes:
   Compile validates semantic references against the TDL files passed in the
   same invocation. A dependent standalone file may fail until its core schema
   dependencies are included in the input corpus.
+
+  Diff accepts JSON on one side and TDL on the other, but a single side must
+  not mix source formats.
 "#
 }
 

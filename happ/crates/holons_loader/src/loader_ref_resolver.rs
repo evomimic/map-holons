@@ -1139,7 +1139,14 @@ impl LoaderRefResolver {
     fn brief_lrr_summary(lrr: &TransientReference) -> String {
         let name = Self::extract_relationship_metadata(lrr)
             .unwrap_or_else(|_| RelationshipName(MapString("<unknown>".into())));
-        format!("name={}", name)
+        let source = Self::source_loader_key_of_lrr(lrr)
+            .map(|key| key.0)
+            .unwrap_or_else(|| "<unknown>".to_string());
+        let targets = Self::target_loader_keys_of_lrr(lrr);
+        let formatted_targets =
+            if targets.is_empty() { "<none>".to_string() } else { targets.join(", ") };
+
+        format!("name={name}, source={source}, targets=[{formatted_targets}]")
     }
 
     /// Deferrable errors are those that might succeed after earlier writes land.
@@ -1166,6 +1173,29 @@ impl LoaderRefResolver {
             Some(BaseValue::StringValue(k)) if !k.0.is_empty() => Some(k),
             _ => None,
         }
+    }
+
+    /// Extract the LoaderHolon target keys from the LRR's ReferenceTarget collection.
+    fn target_loader_keys_of_lrr(lrr: &TransientReference) -> Vec<String> {
+        let target_rel = CoreRelationshipTypeName::ReferenceTarget.as_relationship_name();
+        let key_prop = CorePropertyTypeName::HolonKey.as_property_name();
+        let handle = match lrr.related_holons(target_rel) {
+            Ok(handle) => handle,
+            Err(_) => return Vec::new(),
+        };
+        let guard = match handle.read() {
+            Ok(guard) => guard,
+            Err(_) => return Vec::new(),
+        };
+
+        guard
+            .get_members()
+            .iter()
+            .filter_map(|reference| match reference.property_value(&key_prop).ok()? {
+                Some(BaseValue::StringValue(key)) if !key.0.is_empty() => Some(key.0),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Wrap a HolonError with contextual loader key (if available).
@@ -1890,6 +1920,60 @@ mod tests {
             .get_members()
             .clone();
         assert!(related_members.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn brief_lrr_summary_includes_source_and_targets() -> Result<(), HolonError> {
+        let context = build_context();
+        let relationship_reference = loader_relationship_reference(
+            &context,
+            "ComponentOf",
+            "Person.HolonType",
+            &["BookAuthorInverseSchemata"],
+        )?;
+
+        let summary = LoaderRefResolver::brief_lrr_summary(&relationship_reference);
+
+        assert!(summary.contains("name=ComponentOf"));
+        assert!(summary.contains("source=Person.HolonType"));
+        assert!(summary.contains("targets=[BookAuthorInverseSchemata]"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_relationships_reports_unresolved_target_with_bad_target_name(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let _source = stage(&context, new_holon(&context, "Person.HolonType")?)?;
+        let relationship_reference = loader_relationship_reference(
+            &context,
+            "ComponentOf",
+            "Person.HolonType",
+            &["BookAuthorInverseSchemata"],
+        )?;
+
+        let outcome =
+            LoaderRefResolver::resolve_relationships(&context, vec![relationship_reference])?;
+
+        assert_eq!(outcome.links_created, 0);
+        assert_eq!(outcome.errors.len(), 1);
+        assert_eq!(
+            outcome.errors[0].source_loader_key,
+            Some(MapString("Person.HolonType".to_string()))
+        );
+
+        match &outcome.errors[0].error {
+            HolonError::InvalidType(message) => {
+                assert!(message.contains("could not be resolved after fixed-point retries"));
+                assert!(message.contains("name=ComponentOf"));
+                assert!(message.contains("source=Person.HolonType"));
+                assert!(message.contains("targets=[BookAuthorInverseSchemata]"));
+            }
+            other => panic!("expected InvalidType unresolved-reference error, got {other:?}"),
+        }
 
         Ok(())
     }

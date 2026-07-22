@@ -17,6 +17,7 @@ members = [
 
     # Shared
     "shared_crates/holon_dance_builders",
+    "shared_crates/descriptor_semantics",
     "shared_crates/map_schema_semantic",
     "shared_crates/holons_core",
     "shared_crates/holons_prelude",
@@ -55,6 +56,7 @@ map_commands_runtime = { path = "host/crates/map_commands_runtime" }
 
 # Shared
 holon_dance_builders = { path = "shared_crates/holon_dance_builders" }
+descriptor_semantics = { path = "shared_crates/descriptor_semantics" }
 map_schema_semantic = { path = "shared_crates/map_schema_semantic" }
 holons_core = { path = "shared_crates/holons_core" }
 holons_prelude = { path = "shared_crates/holons_prelude" }

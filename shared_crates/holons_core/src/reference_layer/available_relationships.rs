@@ -10,10 +10,9 @@
 //! | uncommitted `StagedReference`   | yes      | no      |
 //! | `TransientReference`            | yes      | no      |
 //!
-//! The declared side is collected from `effective_descriptor_lineage`, so
-//! descriptor holon sources include declared relationships from their own
-//! `Extends` lineage. The inverse side remains anchored on the source holon's
-//! `DescribedBy` descriptor and is consulted only for committed sources.
+//! The declared side is collected from the source holon's effective lineage, so type holons include
+//! declarations from both their own and describing-type lineages. The inverse side remains anchored
+//! on the source holon's `DescribedBy` descriptor and is consulted only for committed sources.
 
 use crate::descriptors::{
     accessor_helpers, effective_descriptor_lineage,
@@ -60,8 +59,8 @@ mod tests {
     use super::*;
     use crate::core_shared_objects::Holon;
     use crate::descriptors::test_support::{
-        build_context, core_holon_type_name, new_descriptor_holon, new_holon_type_descriptor,
-        new_relationship_descriptor_holon, new_test_holon,
+        build_context, core_holon_type_name, describe_as_type, new_descriptor_holon,
+        new_holon_type_descriptor, new_relationship_descriptor_holon, new_test_holon,
     };
     use crate::descriptors::RelationshipDirection;
     use crate::reference_layer::{
@@ -105,43 +104,47 @@ mod tests {
             &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?)?;
-        let mut source_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
-            &context,
-            &format!("{key_prefix}-book-type"),
-            "BookType",
-        )?)?;
-        let mut target_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
+        let mut source_type_transient =
+            new_holon_type_descriptor(&context, &format!("{key_prefix}-book-type"), "BookType")?;
+        describe_as_type(&context, &mut source_type_transient)?;
+        let mut target_type_transient = new_holon_type_descriptor(
             &context,
             &format!("{key_prefix}-person-type"),
             "PersonType",
-        )?)?;
+        )?;
+        describe_as_type(&context, &mut target_type_transient)?;
+        let mut source_type = context.mutation().stage_new_holon(source_type_transient)?;
+        let mut target_type = context.mutation().stage_new_holon(target_type_transient)?;
         let club_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
             &context,
             &format!("{key_prefix}-club-type"),
             "ClubType",
         )?)?;
 
-        let authored_by_transient = new_relationship_descriptor_holon(
+        let mut authored_by_transient = new_relationship_descriptor_holon(
             &context,
             &format!("{key_prefix}-authored-by"),
             "AuthoredBy",
             HolonReference::from(&source_type),
             HolonReference::from(&target_type),
         )?;
-        let authors_transient = new_relationship_descriptor_holon(
+        describe_as_type(&context, &mut authored_by_transient)?;
+        let mut authors_transient = new_relationship_descriptor_holon(
             &context,
             &format!("{key_prefix}-authors"),
             "Authors",
             HolonReference::from(&target_type),
             HolonReference::from(&source_type),
         )?;
-        let member_of_transient = new_relationship_descriptor_holon(
+        describe_as_type(&context, &mut authors_transient)?;
+        let mut member_of_transient = new_relationship_descriptor_holon(
             &context,
             &format!("{key_prefix}-member-of"),
             "MemberOf",
             HolonReference::from(&target_type),
             HolonReference::from(&club_type),
         )?;
+        describe_as_type(&context, &mut member_of_transient)?;
         let mut authored_by = context.mutation().stage_new_holon(authored_by_transient)?;
         let mut authors = context.mutation().stage_new_holon(authors_transient)?;
         let mut member_of = context.mutation().stage_new_holon(member_of_transient)?;
@@ -213,10 +216,7 @@ mod tests {
         let fixture = build_availability_fixture("avail-uncommitted-ref")?;
         let source = new_test_holon(&fixture.context, "avail-uncommitted-person")?;
         let mut staged_source = fixture.context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![HolonReference::from(&fixture.target_type)],
-        )?;
+        staged_source.with_descriptor(HolonReference::from(&fixture.target_type))?;
 
         let names = qualified_names(&staged_source.available_relationships()?)?;
 
@@ -229,10 +229,7 @@ mod tests {
         let fixture = build_availability_fixture("avail-committed-ref")?;
         let source = new_test_holon(&fixture.context, "avail-committed-person")?;
         let mut staged_source = fixture.context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![HolonReference::from(&fixture.target_type)],
-        )?;
+        staged_source.with_descriptor(HolonReference::from(&fixture.target_type))?;
         mark_committed(&fixture.context, &staged_source)?;
 
         let names = qualified_names(&staged_source.available_relationships()?)?;
@@ -247,8 +244,12 @@ mod tests {
     fn descriptor_holon_source_includes_own_lineage_declared_relationships(
     ) -> Result<(), HolonError> {
         let context = build_context();
-        let type_descriptor =
-            new_holon_type_descriptor(&context, "avail-type-descriptor", "TypeDescriptor")?;
+        let mut type_descriptor =
+            new_holon_type_descriptor(&context, "TypeDescriptor.HolonType", "TypeDescriptor")?;
+        type_descriptor.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![HolonReference::from(&type_descriptor)],
+        )?;
         let mut meta_relationship_type = new_holon_type_descriptor(
             &context,
             "avail-meta-relationship-type",

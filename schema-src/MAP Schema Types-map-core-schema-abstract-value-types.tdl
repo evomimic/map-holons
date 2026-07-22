@@ -84,6 +84,15 @@ abstract value BooleanValueType {
 
 
 abstract value BytesValueType {
+  properties {
+    is_abstract_type: true
+    type_name: "BytesValueType"
+    type_name_plural: "BytesValueTypes"
+    display_name: "BytesValueType"
+    display_name_plural: "BytesValueTypes"
+    description: "Abstract type for byte sequence value types."
+    instance_type_kind: "TypeKind.Value.Bytes"
+  }
   header {
     description: "Abstract type for byte sequence value types."
     display_name: "BytesValueType"
@@ -127,6 +136,15 @@ abstract variant EnumVariantValueType {
 
 
 abstract value ValueArrayValueType {
+  properties {
+    is_abstract_type: true
+    type_name: "ValueArrayValueType"
+    type_name_plural: "ValueArrayValueTypes"
+    display_name: "ValueArrayType"
+    display_name_plural: "ValueArrayTypes"
+    description: "Abstract type for value array types."
+    instance_type_kind: "TypeKind.Value.Array"
+  }
   header {
     description: "Abstract type for value array types."
     display_name: "ValueArrayType"

@@ -1,10 +1,18 @@
+//! TDL source adapter and compiler pipeline.
+//!
+//! This module owns TDL-specific parsing and lowering, but not the meaning of the schema. Parsed
+//! declarations are converted into the canonical [`SemanticModel`], where shared symbol
+//! resolution, normalization, and semantic validation run. Successful models are then projected
+//! into loader JSON. Keeping that boundary explicit allows other authoring and output formats to
+//! share schema semantics without inheriting TDL syntax rules.
+
 use crate::{
     diagnostics::{format_diagnostics, Diagnostic},
     literal_bridge::json_value_to_literal,
     loader_ir::{LoaderDocument, LoaderMeta},
     schema_index::SymbolIndex,
     schema_ir::{
-        DescriptorHeader, DescriptorKind, LiteralRelationship, Origin, ReferenceRole,
+        DescriptorHeader, DescriptorKind, LiteralRelationship, LiteralValue, Origin, ReferenceRole,
         RelationshipFlavor, Schema, SemanticModel, SemanticReference, SourceKind, TypeDescriptor,
     },
     schema_to_loader_ir::{
@@ -12,7 +20,12 @@ use crate::{
     },
 };
 use anyhow::{anyhow, Context, Result};
+use map_schema_semantic::{
+    effective_boolean_property_names, validate_model, CanonicalDescriptorGraph,
+};
+use map_schema_semantic::{DiagnosticKind, DiagnosticLayer};
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -59,6 +72,7 @@ struct TdlDescriptor {
     origin: Origin,
     header: Option<DescriptorHeader>,
     is_abstract: bool,
+    property_required: Option<bool>,
     relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     value_type: Option<String>,
@@ -83,6 +97,11 @@ struct TdlDescriptor {
     literal_relationships: Vec<LiteralRelationship>,
 }
 
+/// Compiles all TDL files discovered beneath `inputs` into corresponding loader JSON files.
+///
+/// Compilation is all-or-nothing with respect to diagnostics: no output is written unless the
+/// complete input set parses, resolves, and passes semantic validation. Relative input paths are
+/// retained beneath `out_dir`, with each `.tdl` extension replaced by `.json`.
 pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>> {
     let lowered = lower_inputs_to_schema_ir(inputs)?;
     let compilation = build_compilation(lowered)?;
@@ -108,9 +127,14 @@ pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>
 }
 
 /// Compiles one TDL document provided as a raw string into loader JSON.
+///
+/// `source_name` is retained as diagnostic provenance and loader metadata; it does not need to
+/// identify a file on disk. Syntax or semantic diagnostics are returned as a formatted error and
+/// no JSON is emitted.
 pub fn compile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
     let source_name = source_name.into();
-    let parsed = parse_tdl_file(raw, &source_name)?;
+    let parsed = parse_tdl_file(raw, &source_name)
+        .map_err(|error| anyhow!(format_diagnostics(&[error.into_diagnostic()])))?;
     let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
     let compilation = build_compilation(lowered)?;
     if !compilation.diagnostics.is_empty() {
@@ -124,8 +148,18 @@ pub fn compile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Resul
     emit_loader_document_json(&file.document)
 }
 
+/// Checks a project of TDL inputs without emitting loader documents.
+///
+/// Syntax diagnostics are collected across files. Semantic checking begins only when every file
+/// parses, because lowering an incomplete project would turn missing declarations into misleading
+/// reference diagnostics.
 pub fn check_inputs(inputs: &[PathBuf]) -> Result<Vec<Diagnostic>> {
-    Ok(lower_inputs_to_schema_ir(inputs)?.diagnostics)
+    let (parsed, mut diagnostics) = parse_inputs_for_check(inputs)?;
+    if !diagnostics.is_empty() {
+        return Ok(diagnostics);
+    }
+    diagnostics.extend(lower_parsed_files_to_schema_ir(parsed)?.diagnostics);
+    Ok(diagnostics)
 }
 
 /// Renders the CLI output for `map-schema:check`.
@@ -142,13 +176,37 @@ pub fn render_check_output(diagnostics: &[Diagnostic]) -> String {
     }
 }
 
-/// Validates one TDL document provided as a raw string.
+/// Checks one in-memory TDL document without emitting loader JSON.
+///
+/// The supplied source name is used in diagnostic origins in the same way as a discovered relative
+/// file path.
 pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<Vec<Diagnostic>> {
     let source_name = source_name.into();
-    let parsed = parse_tdl_file(raw, &source_name)?;
-    Ok(lower_parsed_files_to_schema_ir(vec![parsed])?.diagnostics)
+    let (parsed, mut diagnostics) = parse_input_string_for_check(raw, &source_name);
+    if !diagnostics.is_empty() {
+        return Ok(diagnostics);
+    }
+    diagnostics.extend(
+        lower_parsed_files_to_schema_ir(vec![parsed.expect("parsed TDL file")])?.diagnostics,
+    );
+    Ok(diagnostics)
 }
 
+/// Loads TDL inputs into the canonical semantic model used by cross-format operations.
+///
+/// A syntax-invalid project returns an empty model alongside its syntax diagnostics. Callers must
+/// not compare or emit that placeholder model; it exists so diagnostics can remain structured at
+/// the adapter boundary.
+pub(crate) fn load_semantic_model(inputs: &[PathBuf]) -> Result<(SemanticModel, Vec<Diagnostic>)> {
+    let (parsed, diagnostics) = parse_inputs_for_check(inputs)?;
+    if !diagnostics.is_empty() {
+        return Ok((SemanticModel::new(), diagnostics));
+    }
+    let lowered = lower_parsed_files_to_schema_ir(parsed)?;
+    Ok((lowered.global_model, lowered.diagnostics))
+}
+
+/// Output-ready loader documents paired with any diagnostics found before emission.
 struct Compilation {
     files: Vec<CompiledLoaderFile>,
     diagnostics: Vec<Diagnostic>,
@@ -160,12 +218,17 @@ struct CompiledLoaderFile {
     document: LoaderDocument,
 }
 
+/// One parsed file and the file-scoped semantic model used to preserve output partitioning.
 #[derive(Debug, Clone)]
 struct LoweredTdlFile {
     parsed: ParsedTdlFile,
     schema_model: SemanticModel,
 }
 
+/// Project-wide lowering state shared by validation and per-file emission.
+///
+/// `global_model` and `symbols` provide cross-file resolution, while `files` retain the original
+/// boundaries needed to emit one loader document per source file.
 #[derive(Debug, Clone)]
 struct LoweredTdlProject {
     files: Vec<LoweredTdlFile>,
@@ -174,6 +237,10 @@ struct LoweredTdlProject {
     diagnostics: Vec<Diagnostic>,
 }
 
+/// Parses inputs for compilation, stopping at the first syntax-invalid file.
+///
+/// Compile mode cannot produce a partial output set, so syntax diagnostics are promoted into the
+/// operation-level error channel here.
 fn parse_inputs(inputs: &[PathBuf]) -> Result<Vec<ParsedTdlFile>> {
     let files = collect_tdl_files(inputs)?;
     let mut parsed = Vec::with_capacity(files.len());
@@ -181,10 +248,43 @@ fn parse_inputs(inputs: &[PathBuf]) -> Result<Vec<ParsedTdlFile>> {
         let raw = fs::read_to_string(&discovered.source_path).with_context(|| {
             format!("reading TDL source file {}", discovered.source_path.display())
         })?;
-        let document = parse_tdl_file(&raw, &discovered.relative_path)?;
+        let document = parse_tdl_file(&raw, &discovered.relative_path)
+            .map_err(|error| anyhow!(format_diagnostics(&[error.into_diagnostic()])))?;
         parsed.push(document);
     }
     Ok(parsed)
+}
+
+/// Parses every discovered file and accumulates syntax diagnostics for authoring feedback.
+///
+/// Successfully parsed files are returned only to support the clean-input path. Callers must not
+/// lower them when `diagnostics` is non-empty because they do not represent the complete project.
+fn parse_inputs_for_check(inputs: &[PathBuf]) -> Result<(Vec<ParsedTdlFile>, Vec<Diagnostic>)> {
+    let files = collect_tdl_files(inputs)?;
+    let mut parsed = Vec::with_capacity(files.len());
+    let mut diagnostics = Vec::new();
+
+    for discovered in files {
+        let raw = fs::read_to_string(&discovered.source_path).with_context(|| {
+            format!("reading TDL source file {}", discovered.source_path.display())
+        })?;
+        match parse_tdl_file(&raw, &discovered.relative_path) {
+            Ok(document) => parsed.push(document),
+            Err(error) => diagnostics.push(error.into_diagnostic()),
+        }
+    }
+
+    Ok((parsed, diagnostics))
+}
+
+fn parse_input_string_for_check(
+    raw: &str,
+    source_name: &Path,
+) -> (Option<ParsedTdlFile>, Vec<Diagnostic>) {
+    match parse_tdl_file(raw, source_name) {
+        Ok(parsed) => (Some(parsed), Vec::new()),
+        Err(error) => (None, vec![error.into_diagnostic()]),
+    }
 }
 
 fn collect_tdl_files(inputs: &[PathBuf]) -> Result<Vec<DiscoveredFile>> {
@@ -201,6 +301,10 @@ fn collect_tdl_files(inputs: &[PathBuf]) -> Result<Vec<DiscoveredFile>> {
     ensure_unique_relative_paths(&files)?;
     files.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(files)
+}
+
+pub(crate) fn discovered_input_count(inputs: &[PathBuf]) -> Result<usize> {
+    Ok(collect_tdl_files(inputs)?.len())
 }
 
 fn collect_tdl_files_recursive(
@@ -249,11 +353,30 @@ fn normalize_relative_path(path: &Path) -> String {
         .join("/")
 }
 
-fn parse_tdl_file(raw: &str, relative_path: &Path) -> Result<ParsedTdlFile> {
+type ParseResult<T> = std::result::Result<T, TdlParseError>;
+
+/// A syntax failure with its exact TDL source location, before conversion to shared diagnostics.
+#[derive(Debug, Clone)]
+struct TdlParseError {
+    kind: DiagnosticKind,
+    origin: Origin,
+}
+
+impl TdlParseError {
+    fn into_diagnostic(self) -> Diagnostic {
+        Diagnostic::error(DiagnosticLayer::Syntax, self.kind, Some(self.origin))
+    }
+}
+
+fn parse_tdl_file(raw: &str, relative_path: &Path) -> ParseResult<ParsedTdlFile> {
     let mut parser = Parser::new(raw, relative_path);
     parser.parse_file()
 }
 
+/// Stateful, line-oriented parser for one TDL source document.
+///
+/// The parser builds a TDL-shaped representation only. Name resolution and schema semantics are
+/// intentionally deferred until all project files have been lowered into the canonical IR.
 struct Parser<'a> {
     lines: Vec<&'a str>,
     index: usize,
@@ -271,7 +394,59 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_file(&mut self) -> Result<ParsedTdlFile> {
+    fn current_origin(&self) -> Origin {
+        Origin {
+            source_kind: SourceKind::TdlSource,
+            file_path: Some(self.relative_path.clone()),
+            line: Some(self.current_line_number() as u32),
+            column: Some(1),
+        }
+    }
+
+    fn previous_origin(&self) -> Origin {
+        Origin {
+            source_kind: SourceKind::TdlSource,
+            file_path: Some(self.relative_path.clone()),
+            line: Some(self.current_line_number().saturating_sub(1) as u32),
+            column: Some(1),
+        }
+    }
+
+    fn syntax_error(&self, kind: DiagnosticKind) -> TdlParseError {
+        TdlParseError { kind, origin: self.current_origin() }
+    }
+
+    fn previous_syntax_error(&self, kind: DiagnosticKind) -> TdlParseError {
+        TdlParseError { kind, origin: self.previous_origin() }
+    }
+
+    fn syntax_message(
+        &self,
+        context: impl Into<String>,
+        message: impl Into<String>,
+    ) -> TdlParseError {
+        self.syntax_error(DiagnosticKind::InvalidSyntax {
+            context: context.into(),
+            message: message.into(),
+        })
+    }
+
+    fn missing_syntax(
+        &self,
+        context: impl Into<String>,
+        expected: impl Into<String>,
+    ) -> TdlParseError {
+        self.syntax_error(DiagnosticKind::MissingSyntaxElement {
+            context: context.into(),
+            expected: expected.into(),
+        })
+    }
+
+    /// Parses exactly one schema declaration plus any number of descriptor declarations.
+    ///
+    /// Descriptor order is preserved for deterministic lowering. Nested declarations accumulated
+    /// in `pending_descriptors` are promoted to the same file-level descriptor stream.
+    fn parse_file(&mut self) -> ParseResult<ParsedTdlFile> {
         let file_path = self.relative_path.clone();
         let origin = Origin {
             source_kind: SourceKind::TdlSource,
@@ -286,31 +461,41 @@ impl<'a> Parser<'a> {
             let line = self.peek_trimmed().unwrap().to_string();
             if line.starts_with("schema ") {
                 if schema.is_some() {
-                    return Err(anyhow!("multiple schema declarations in {}", file_path.display()));
+                    return Err(self.syntax_message(
+                        "schema",
+                        format!("multiple schema declarations in {}", file_path.display()),
+                    ));
                 }
                 schema = Some(self.parse_schema_decl(origin.clone())?);
             } else if is_descriptor_line(&line) {
                 descriptors.push(self.parse_descriptor_decl(None)?);
                 descriptors.append(&mut self.pending_descriptors);
             } else if line == "}" {
-                return Err(anyhow!("unexpected closing brace in {}", file_path.display()));
+                return Err(self.syntax_message(
+                    "top-level declaration",
+                    format!("unexpected closing brace in {}", file_path.display()),
+                ));
             } else {
-                return Err(anyhow!(
-                    "unrecognized top-level declaration in {}: {}",
-                    file_path.display(),
-                    line
+                return Err(self.syntax_message(
+                    "top-level declaration",
+                    format!(
+                        "unrecognized top-level declaration in {}: {}",
+                        file_path.display(),
+                        line
+                    ),
                 ));
             }
         }
 
-        let schema = schema
-            .ok_or_else(|| anyhow!("missing schema declaration in {}", file_path.display()))?;
+        let schema = schema.ok_or_else(|| {
+            self.missing_syntax("file", format!("schema declaration in {}", file_path.display()))
+        })?;
         Ok(ParsedTdlFile { relative_path: file_path, schema, descriptors })
     }
 
-    fn parse_schema_decl(&mut self, origin: Origin) -> Result<TdlSchema> {
+    fn parse_schema_decl(&mut self, origin: Origin) -> ParseResult<TdlSchema> {
         let line = self.consume_trimmed().unwrap();
-        let header = parse_inline_header(&line, "schema")?;
+        let header = parse_inline_header(&line, "schema", self.previous_origin())?;
         let name = header.name;
         let mut dependencies = Vec::new();
         let mut literal_properties = map_schema_semantic::LiteralObject::new();
@@ -336,11 +521,23 @@ impl<'a> Parser<'a> {
                         .extend(properties.iter().map(|(key, value)| (key.clone(), value.clone())));
                 } else if current == "relationships {" {
                     self.consume_trimmed();
-                    for line in self.parse_reference_block()? {
-                        if let Some(relationship) = parse_literal_relationship_line(&line)? {
+                    for source_line in self.parse_reference_block()? {
+                        if let Some(relationship) = parse_literal_relationship_line(
+                            &source_line.text,
+                            source_line.origin.clone(),
+                        )? {
                             literal_relationships.push(relationship);
                         } else {
-                            return Err(anyhow!("unexpected schema relationship line: {}", line));
+                            return Err(TdlParseError {
+                                kind: DiagnosticKind::InvalidSyntax {
+                                    context: "schema relationships".to_string(),
+                                    message: format!(
+                                        "unexpected schema relationship line: {}",
+                                        source_line.text
+                                    ),
+                                },
+                                origin: source_line.origin,
+                            });
                         }
                     }
                 } else if current == "allows_additional_properties" {
@@ -352,7 +549,10 @@ impl<'a> Parser<'a> {
                 } else if current.starts_with("header") {
                     block_header = Some(self.parse_header_block()?);
                 } else {
-                    return Err(anyhow!("unexpected schema clause: {}", current));
+                    return Err(self.syntax_message(
+                        "schema clause",
+                        format!("unexpected schema clause: {}", current),
+                    ));
                 }
             }
         }
@@ -369,9 +569,9 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_descriptor_decl(&mut self, variant_of: Option<String>) -> Result<TdlDescriptor> {
+    fn parse_descriptor_decl(&mut self, variant_of: Option<String>) -> ParseResult<TdlDescriptor> {
         let line = self.consume_trimmed().unwrap();
-        let parsed = parse_descriptor_header(&line)?;
+        let parsed = parse_descriptor_header(&line, self.previous_origin())?;
         let mut descriptor = TdlDescriptor {
             kind: parsed.kind,
             name: parsed.name,
@@ -383,6 +583,7 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            property_required: parsed.property_required,
             relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
@@ -449,11 +650,24 @@ impl<'a> Parser<'a> {
                     }
                     s if s.starts_with("cardinality ") => {
                         let range = s["cardinality ".len()..].trim();
-                        let (min, max) = range
-                            .split_once("..")
-                            .ok_or_else(|| anyhow!("invalid cardinality '{}'", range))?;
-                        descriptor.min_cardinality = Some(min.trim().parse()?);
-                        descriptor.max_cardinality = Some(max.trim().parse()?);
+                        let (min, max) = range.split_once("..").ok_or_else(|| {
+                            self.syntax_message(
+                                "cardinality",
+                                format!("invalid cardinality '{}'", range),
+                            )
+                        })?;
+                        descriptor.min_cardinality = Some(min.trim().parse().map_err(|error| {
+                            self.syntax_message(
+                                "cardinality",
+                                format!("invalid minimum cardinality '{}': {error}", min.trim()),
+                            )
+                        })?);
+                        descriptor.max_cardinality = Some(max.trim().parse().map_err(|error| {
+                            self.syntax_message(
+                                "cardinality",
+                                format!("invalid maximum cardinality '{}': {error}", max.trim()),
+                            )
+                        })?);
                         self.consume_trimmed();
                     }
                     "ordered" => {
@@ -490,11 +704,14 @@ impl<'a> Parser<'a> {
                     }
                     "relationships {" => {
                         self.consume_trimmed();
-                        for line in self.parse_reference_block()? {
-                            if let Some(relationship) = parse_literal_relationship_line(&line)? {
+                        for source_line in self.parse_reference_block()? {
+                            if let Some(relationship) = parse_literal_relationship_line(
+                                &source_line.text,
+                                source_line.origin,
+                            )? {
                                 descriptor.literal_relationships.push(relationship);
                             } else {
-                                descriptor.instance_relationships.push(line);
+                                descriptor.instance_relationships.push(source_line.text);
                             }
                         }
                     }
@@ -516,24 +733,35 @@ impl<'a> Parser<'a> {
                             self.pending_descriptors.push(variant);
                             descriptor.variants.push(variant_key);
                         } else {
-                            return Err(anyhow!("unexpected descriptor clause: {}", other));
+                            return Err(self.syntax_message(
+                                "descriptor clause",
+                                format!("unexpected descriptor clause: {}", other),
+                            ));
                         }
                     }
                 }
             }
         }
 
-        apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
+        apply_literal_properties_to_tdl_descriptor(&mut descriptor).map_err(|error| {
+            self.previous_syntax_error(DiagnosticKind::InvalidSyntax {
+                context: "descriptor literal properties".to_string(),
+                message: error.to_string(),
+            })
+        })?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
         normalize_relationship_pair_targets(&mut descriptor);
         Ok(descriptor)
     }
 
-    fn parse_variant_decl(&mut self, variant_of: Option<String>) -> Result<TdlDescriptor> {
+    fn parse_variant_decl(&mut self, variant_of: Option<String>) -> ParseResult<TdlDescriptor> {
         let line = self.consume_trimmed().unwrap();
-        let parsed = parse_descriptor_header(&line)?;
+        let parsed = parse_descriptor_header(&line, self.previous_origin())?;
         if parsed.kind != DescriptorKind::EnumVariant {
-            return Err(anyhow!("expected variant declaration, found {}", line));
+            return Err(self.previous_syntax_error(DiagnosticKind::InvalidSyntax {
+                context: "variant declaration".to_string(),
+                message: format!("expected variant declaration, found {}", line),
+            }));
         }
         let mut descriptor = TdlDescriptor {
             kind: DescriptorKind::EnumVariant,
@@ -546,6 +774,7 @@ impl<'a> Parser<'a> {
             },
             header: None,
             is_abstract: parsed.is_abstract,
+            property_required: parsed.property_required,
             relationship_flavor: parsed.relationship_flavor,
             extends: parsed.extends,
             value_type: None,
@@ -589,29 +818,39 @@ impl<'a> Parser<'a> {
                     descriptor.instance_properties.extend(instance_properties);
                 } else if current == "relationships {" {
                     self.consume_trimmed();
-                    for line in self.parse_reference_block()? {
-                        if let Some(relationship) = parse_literal_relationship_line(&line)? {
+                    for source_line in self.parse_reference_block()? {
+                        if let Some(relationship) =
+                            parse_literal_relationship_line(&source_line.text, source_line.origin)?
+                        {
                             descriptor.literal_relationships.push(relationship);
                         } else {
-                            descriptor.instance_relationships.push(line);
+                            descriptor.instance_relationships.push(source_line.text);
                         }
                     }
                 } else if current.starts_with("extends ") {
                     descriptor.extends = Some(current["extends ".len()..].trim().to_string());
                     self.consume_trimmed();
                 } else {
-                    return Err(anyhow!("unexpected variant clause: {}", current));
+                    return Err(self.syntax_message(
+                        "variant clause",
+                        format!("unexpected variant clause: {}", current),
+                    ));
                 }
             }
         }
 
-        apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
+        apply_literal_properties_to_tdl_descriptor(&mut descriptor).map_err(|error| {
+            self.previous_syntax_error(DiagnosticKind::InvalidSyntax {
+                context: "variant literal properties".to_string(),
+                message: error.to_string(),
+            })
+        })?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
         normalize_relationship_pair_targets(&mut descriptor);
         Ok(descriptor)
     }
 
-    fn parse_variant_block(&mut self, enum_name: &str) -> Result<Vec<TdlDescriptor>> {
+    fn parse_variant_block(&mut self, enum_name: &str) -> ParseResult<Vec<TdlDescriptor>> {
         let mut variants = Vec::new();
         while self.skip_blank_lines() {
             let current = self.peek_trimmed().unwrap().to_string();
@@ -622,16 +861,22 @@ impl<'a> Parser<'a> {
             if current.starts_with("variant ") {
                 variants.push(self.parse_variant_decl(Some(enum_name.to_string()))?);
             } else {
-                return Err(anyhow!("unexpected variants clause: {}", current));
+                return Err(self.syntax_message(
+                    "variants block",
+                    format!("unexpected variants clause: {}", current),
+                ));
             }
         }
         Ok(variants)
     }
 
-    fn parse_header_block(&mut self) -> Result<DescriptorHeader> {
+    fn parse_header_block(&mut self) -> ParseResult<DescriptorHeader> {
         let line = self.consume_trimmed().unwrap();
         if !line.starts_with("header") {
-            return Err(anyhow!("expected header block, found {}", line));
+            return Err(self.previous_syntax_error(DiagnosticKind::InvalidSyntax {
+                context: "header block".to_string(),
+                message: format!("expected header block, found {}", line),
+            }));
         }
         if !line.trim_end().ends_with('{') {
             self.expect_open_brace()?;
@@ -647,16 +892,21 @@ impl<'a> Parser<'a> {
                 self.consume_trimmed();
                 break;
             }
-            let (field, value) = current
-                .split_once(':')
-                .ok_or_else(|| anyhow!("invalid header field '{}'", current))?;
-            let value = parse_string_literal(value.trim())?;
+            let (field, value) = current.split_once(':').ok_or_else(|| {
+                self.syntax_message("header field", format!("invalid header field '{}'", current))
+            })?;
+            let value = parse_string_literal(value.trim(), self.current_origin(), "header field")?;
             match field.trim() {
                 "description" => description = Some(value),
                 "display_name" => display_name = Some(value),
                 "display_plural" => display_name_plural = Some(value),
                 "plural" => type_name_plural = Some(value),
-                other => return Err(anyhow!("unexpected header field '{}'", other)),
+                other => {
+                    return Err(self.syntax_message(
+                        "header field",
+                        format!("unexpected header field '{}'", other),
+                    ))
+                }
             }
             self.consume_trimmed();
         }
@@ -664,7 +914,11 @@ impl<'a> Parser<'a> {
         Ok(DescriptorHeader { description, display_name, display_name_plural, type_name_plural })
     }
 
-    fn parse_reference_block(&mut self) -> Result<Vec<String>> {
+    /// Captures reference-like block entries together with their authored locations.
+    ///
+    /// Origins must be snapshotted before consuming each line. Downstream literal parsing can then
+    /// report the offending line rather than whichever line the parser cursor reached afterward.
+    fn parse_reference_block(&mut self) -> ParseResult<Vec<SourceLine>> {
         let mut refs = Vec::new();
         while self.skip_blank_lines() {
             let current = self.peek_trimmed().unwrap().to_string();
@@ -672,7 +926,7 @@ impl<'a> Parser<'a> {
                 self.consume_trimmed();
                 break;
             }
-            refs.push(current);
+            refs.push(SourceLine { text: current, origin: self.current_origin() });
             self.consume_trimmed();
         }
         Ok(refs)
@@ -680,7 +934,7 @@ impl<'a> Parser<'a> {
 
     fn parse_properties_block(
         &mut self,
-    ) -> Result<(map_schema_semantic::LiteralObject, Vec<String>)> {
+    ) -> ParseResult<(map_schema_semantic::LiteralObject, Vec<String>)> {
         let mut properties = map_schema_semantic::LiteralObject::new();
         let mut refs = Vec::new();
         while self.skip_blank_lines() {
@@ -689,7 +943,9 @@ impl<'a> Parser<'a> {
                 self.consume_trimmed();
                 break;
             }
-            if let Some((name, value)) = parse_literal_property_line(&current)? {
+            if let Some((name, value)) =
+                parse_literal_property_line(&current, self.current_origin())?
+            {
                 properties.insert(name, value);
             } else {
                 refs.push(current);
@@ -734,7 +990,7 @@ impl<'a> Parser<'a> {
         self.index + 1
     }
 
-    fn try_consume_open_brace(&mut self) -> Result<bool> {
+    fn try_consume_open_brace(&mut self) -> ParseResult<bool> {
         if self.skip_blank_lines() && self.peek_trimmed() == Some("{") {
             self.index += 1;
             Ok(true)
@@ -743,13 +999,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_open_brace(&mut self) -> Result<()> {
+    fn expect_open_brace(&mut self) -> ParseResult<()> {
         if self.try_consume_open_brace()? {
             Ok(())
         } else {
-            Err(anyhow!("expected '{{'"))
+            Err(self.missing_syntax("block", "{"))
         }
     }
+}
+
+/// Source text whose origin remains stable after the parser advances.
+struct SourceLine {
+    text: String,
+    origin: Origin,
 }
 
 #[derive(Debug, Clone)]
@@ -757,16 +1019,23 @@ struct ParsedHead {
     kind: DescriptorKind,
     name: String,
     is_abstract: bool,
+    property_required: Option<bool>,
     is_definitional: bool,
     relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     has_block: bool,
 }
 
-fn parse_inline_header(line: &str, keyword: &str) -> Result<InlineHeader> {
+fn parse_inline_header(line: &str, keyword: &str, origin: Origin) -> ParseResult<InlineHeader> {
     let body = line.trim();
     if !body.starts_with(keyword) {
-        return Err(anyhow!("expected {} declaration", keyword));
+        return Err(TdlParseError {
+            kind: DiagnosticKind::InvalidSyntax {
+                context: format!("{keyword} declaration"),
+                message: format!("expected {} declaration", keyword),
+            },
+            origin,
+        });
     }
     let mut remainder = body[keyword.len()..].trim();
     let has_block = remainder.ends_with('{');
@@ -774,7 +1043,13 @@ fn parse_inline_header(line: &str, keyword: &str) -> Result<InlineHeader> {
         remainder = remainder.trim_end_matches('{').trim();
     }
     if remainder.is_empty() {
-        return Err(anyhow!("missing {} name", keyword));
+        return Err(TdlParseError {
+            kind: DiagnosticKind::MissingSyntaxElement {
+                context: format!("{keyword} declaration"),
+                expected: format!("{keyword} name"),
+            },
+            origin,
+        });
     }
     Ok(InlineHeader { name: remainder.to_string(), header: None, has_block })
 }
@@ -785,7 +1060,7 @@ struct InlineHeader {
     has_block: bool,
 }
 
-fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
+fn parse_descriptor_header(line: &str, origin: Origin) -> ParseResult<ParsedHead> {
     let trimmed = line.trim();
     let has_block = trimmed.ends_with('{');
     let head = if has_block { trimmed.trim_end_matches('{').trim() } else { trimmed };
@@ -820,15 +1095,37 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
         } else if let Some(tail) = remainder.strip_prefix("variant ") {
             (DescriptorKind::EnumVariant, tail)
         } else {
-            return Err(anyhow!("unrecognized TDL declaration: {}", line));
+            return Err(TdlParseError {
+                kind: DiagnosticKind::InvalidSyntax {
+                    context: "descriptor declaration".to_string(),
+                    message: format!("unrecognized TDL declaration: {}", line),
+                },
+                origin,
+            });
         };
         (kind, tail.trim())
     };
 
     if after_kind.is_empty() {
-        return Err(anyhow!("missing declaration name in '{}'", line));
+        return Err(TdlParseError {
+            kind: DiagnosticKind::MissingSyntaxElement {
+                context: "descriptor declaration".to_string(),
+                expected: format!("declaration name in '{}'", line),
+            },
+            origin,
+        });
     }
-    let name = after_kind.trim_end_matches('{').trim().to_string();
+    let authored_name = after_kind.trim_end_matches('{').trim();
+    let property_required = if kind == DescriptorKind::PropertyType {
+        Some(!authored_name.ends_with('?'))
+    } else {
+        None
+    };
+    let name = if property_required == Some(false) {
+        authored_name.trim_end_matches('?').to_string()
+    } else {
+        authored_name.to_string()
+    };
     if kind == DescriptorKind::RelationshipType {
         if let Some((_, remainder)) = name.split_once(" extends ") {
             extends = Some(remainder.trim().to_string());
@@ -849,6 +1146,7 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
         kind,
         name,
         is_abstract,
+        property_required,
         is_definitional,
         relationship_flavor,
         extends,
@@ -868,15 +1166,24 @@ fn is_descriptor_line(line: &str) -> bool {
         || line.starts_with("variant ")
 }
 
-fn parse_string_literal(raw: &str) -> Result<String> {
+fn parse_string_literal(raw: &str, origin: Origin, context: &str) -> ParseResult<String> {
     if raw.starts_with('"') {
-        Ok(serde_json::from_str(raw)?)
+        serde_json::from_str(raw).map_err(|error| TdlParseError {
+            kind: DiagnosticKind::InvalidSyntax {
+                context: context.to_string(),
+                message: format!("invalid string literal: {error}"),
+            },
+            origin,
+        })
     } else {
         Ok(raw.to_string())
     }
 }
 
-fn parse_literal_relationship_line(line: &str) -> Result<Option<LiteralRelationship>> {
+fn parse_literal_relationship_line(
+    line: &str,
+    origin: Origin,
+) -> ParseResult<Option<LiteralRelationship>> {
     if line.starts_with('(') {
         return Ok(None);
     }
@@ -892,9 +1199,21 @@ fn parse_literal_relationship_line(line: &str) -> Result<Option<LiteralRelations
     }
 
     let targets = if raw_targets.starts_with('[') {
-        serde_json::from_str::<Vec<String>>(raw_targets)?
+        serde_json::from_str::<Vec<String>>(raw_targets).map_err(|error| TdlParseError {
+            kind: DiagnosticKind::InvalidSyntax {
+                context: "relationship literal".to_string(),
+                message: format!("invalid relationship target list: {error}"),
+            },
+            origin: origin.clone(),
+        })?
     } else if raw_targets.starts_with('"') {
-        vec![serde_json::from_str::<String>(raw_targets)?]
+        vec![serde_json::from_str::<String>(raw_targets).map_err(|error| TdlParseError {
+            kind: DiagnosticKind::InvalidSyntax {
+                context: "relationship literal".to_string(),
+                message: format!("invalid relationship target string: {error}"),
+            },
+            origin,
+        })?]
     } else {
         vec![raw_targets.to_string()]
     };
@@ -904,7 +1223,8 @@ fn parse_literal_relationship_line(line: &str) -> Result<Option<LiteralRelations
 
 fn parse_literal_property_line(
     line: &str,
-) -> Result<Option<(String, map_schema_semantic::LiteralValue)>> {
+    origin: Origin,
+) -> ParseResult<Option<(String, map_schema_semantic::LiteralValue)>> {
     let Some((name, raw_value)) = line.split_once(':') else {
         return Ok(None);
     };
@@ -915,7 +1235,16 @@ fn parse_literal_property_line(
         return Ok(None);
     }
 
-    Ok(Some((name.to_string(), json_value_to_literal(&serde_json::from_str(raw_value)?))))
+    Ok(Some((
+        name.to_string(),
+        json_value_to_literal(&serde_json::from_str(raw_value).map_err(|error| TdlParseError {
+            kind: DiagnosticKind::InvalidSyntax {
+                context: "property literal".to_string(),
+                message: format!("invalid property literal: {error}"),
+            },
+            origin,
+        })?),
+    )))
 }
 
 fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) -> Result<()> {
@@ -1078,10 +1407,16 @@ fn normalize_relationship_pair_targets(descriptor: &mut TdlDescriptor) {
     }
 }
 
+/// Runs the strict parse-and-lower path used by compilation.
 fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredTdlProject> {
     lower_parsed_files_to_schema_ir(parse_inputs(inputs)?)
 }
 
+/// Lowers a complete parsed project and performs project-wide semantic validation.
+///
+/// TDL conventions are materialized into the canonical models before validation and projection.
+/// Per-file models resolve through the global symbol index after validation, preserving source
+/// partitioning while allowing cross-file references.
 fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<LoweredTdlProject> {
     let mut files = Vec::new();
     let mut global_model = SemanticModel::new();
@@ -1097,14 +1432,218 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<Lowered
     }
 
     let (symbols, mut diagnostics) = SymbolIndex::build(&mut global_model);
+    let type_kind_defaults = derive_tdl_type_kind_defaults(&global_model, &symbols);
+    apply_tdl_type_kind_defaults(&mut global_model, &type_kind_defaults);
     for file in &mut files {
-        file.schema_model.resolve_references(&symbols);
-        diagnostics.extend(symbols.collect_reference_diagnostics(&file.schema_model));
+        apply_tdl_type_kind_defaults(&mut file.schema_model, &type_kind_defaults);
     }
+    let boolean_defaults = derive_tdl_boolean_defaults(&global_model, &symbols);
+    apply_tdl_boolean_defaults(&mut global_model, &boolean_defaults);
+    for file in &mut files {
+        apply_tdl_boolean_defaults(&mut file.schema_model, &boolean_defaults);
+    }
+    expand_tdl_relationship_pairs(&mut global_model, &symbols);
+    for file in &mut files {
+        expand_tdl_relationship_pairs(&mut file.schema_model, &symbols);
+        file.schema_model.resolve_references(&symbols);
+    }
+    diagnostics.extend(validate_model(&global_model, &symbols));
 
     Ok(LoweredTdlProject { files, global_model, symbols, diagnostics })
 }
 
+/// Propagates the TDL `value ... extends Parent` shorthand from explicit parent TypeKinds.
+///
+/// The propagation is computed from descriptor data and may span several files or inheritance
+/// steps. Root value families whose syntax does not identify a concrete kind must author the
+/// `instance_type_kind` property explicitly.
+fn derive_tdl_type_kind_defaults(
+    model: &SemanticModel,
+    symbols: &SymbolIndex,
+) -> HashMap<String, String> {
+    let descriptors_by_key = model
+        .descriptors
+        .iter()
+        .map(|descriptor| (descriptor.key.as_str(), descriptor))
+        .collect::<HashMap<_, _>>();
+    let mut effective = model
+        .descriptors
+        .iter()
+        .filter_map(|descriptor| {
+            descriptor
+                .instance_type_kind
+                .as_ref()
+                .map(|kind| (descriptor.key.clone(), kind.clone()))
+        })
+        .collect::<HashMap<_, _>>();
+
+    loop {
+        let mut changed = false;
+        for descriptor in &model.descriptors {
+            if descriptor.kind != DescriptorKind::ValueType
+                || descriptor.instance_type_kind.is_some()
+                || effective.contains_key(&descriptor.key)
+            {
+                continue;
+            }
+            let Some(parent) = descriptor.extends.as_ref() else {
+                continue;
+            };
+            let Some(parent_symbol) = parent
+                .resolved
+                .and_then(|symbol_id| symbols.lookup_by_id(symbol_id))
+                .or_else(|| symbols.lookup_by_key(&parent.target))
+            else {
+                continue;
+            };
+            if !descriptors_by_key.contains_key(parent_symbol.key.as_str()) {
+                continue;
+            }
+            let Some(parent_kind) = effective.get(&parent_symbol.key).cloned() else {
+                continue;
+            };
+            effective.insert(descriptor.key.clone(), parent_kind);
+            changed = true;
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    effective
+        .into_iter()
+        .filter(|(key, _)| {
+            descriptors_by_key.get(key.as_str()).is_some_and(|descriptor| {
+                descriptor.kind == DescriptorKind::ValueType
+                    && descriptor.instance_type_kind.is_none()
+            })
+        })
+        .collect()
+}
+
+fn apply_tdl_type_kind_defaults(model: &mut SemanticModel, defaults: &HashMap<String, String>) {
+    for descriptor in &mut model.descriptors {
+        if descriptor.instance_type_kind.is_none() {
+            descriptor.instance_type_kind = defaults.get(&descriptor.key).cloned();
+        }
+    }
+}
+
+/// Expands TDL's one-sided inverse shorthand into explicit canonical pair metadata.
+fn expand_tdl_relationship_pairs(model: &mut SemanticModel, symbols: &SymbolIndex) {
+    let descriptor_indexes = model
+        .descriptors
+        .iter()
+        .enumerate()
+        .map(|(index, descriptor)| (descriptor.key.clone(), index))
+        .collect::<HashMap<_, _>>();
+
+    for index in 0..model.descriptors.len() {
+        if model.descriptors[index].kind != DescriptorKind::RelationshipType {
+            continue;
+        }
+
+        let current_key = model.descriptors[index].key.clone();
+        let current_symbol_id = symbols.lookup_by_key(&current_key).map(|symbol| symbol.id);
+        if let Some(has_inverse) = model.descriptors[index].has_inverse.clone() {
+            if let Some(target_symbol) = has_inverse
+                .resolved
+                .and_then(|symbol_id| symbols.lookup_by_id(symbol_id))
+                .or_else(|| symbols.lookup_by_key(&has_inverse.target))
+            {
+                if let Some(target_index) = descriptor_indexes.get(&target_symbol.key).copied() {
+                    if model.descriptors[target_index].inverse_of.is_none() {
+                        model.descriptors[target_index].inverse_of = Some(SemanticReference {
+                            role: ReferenceRole::InverseOf,
+                            target: current_key.clone(),
+                            resolved: current_symbol_id,
+                        });
+                    }
+                }
+            }
+        }
+
+        if let Some(inverse_of) = model.descriptors[index].inverse_of.clone() {
+            if let Some(target_symbol) = inverse_of
+                .resolved
+                .and_then(|symbol_id| symbols.lookup_by_id(symbol_id))
+                .or_else(|| symbols.lookup_by_key(&inverse_of.target))
+            {
+                if let Some(target_index) = descriptor_indexes.get(&target_symbol.key).copied() {
+                    if model.descriptors[target_index].has_inverse.is_none() {
+                        model.descriptors[target_index].has_inverse = Some(SemanticReference {
+                            role: ReferenceRole::HasInverse,
+                            target: current_key.clone(),
+                            resolved: current_symbol_id,
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Resolves TDL's omitted-Boolean convention through effective property descriptors.
+///
+/// The adapter decides that omission means `false`; the shared descriptor graph decides which
+/// Boolean properties are actually applicable to each holon.
+fn derive_tdl_boolean_defaults(
+    model: &SemanticModel,
+    symbols: &SymbolIndex,
+) -> HashMap<String, Vec<String>> {
+    let Ok(graph) = CanonicalDescriptorGraph::new(model, symbols) else {
+        return HashMap::new();
+    };
+    let mut defaults = HashMap::new();
+    for descriptor in &model.descriptors {
+        let Some(node) = graph.node_by_key(&descriptor.key) else {
+            continue;
+        };
+        let Some(holon) = graph.holon(node) else {
+            continue;
+        };
+        let Ok(boolean_properties) = effective_boolean_property_names(&graph, node) else {
+            continue;
+        };
+        let missing = boolean_properties
+            .into_iter()
+            .filter(|property| {
+                !holon.properties.iter().any(|(name, _)| {
+                    normalized_property_name(name) == normalized_property_name(property)
+                })
+            })
+            .collect::<Vec<_>>();
+        if !missing.is_empty() {
+            defaults.insert(descriptor.key.clone(), missing);
+        }
+    }
+    defaults
+}
+
+fn apply_tdl_boolean_defaults(model: &mut SemanticModel, defaults: &HashMap<String, Vec<String>>) {
+    for descriptor in &mut model.descriptors {
+        let Some(properties) = defaults.get(&descriptor.key) else {
+            continue;
+        };
+        for property in properties {
+            descriptor
+                .materialized_properties
+                .insert(property.clone(), LiteralValue::Boolean(false));
+        }
+    }
+}
+
+fn normalized_property_name(name: &str) -> String {
+    name.chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+/// Projects validated semantic models into loader documents without reinterpreting TDL syntax.
+///
+/// Cross-file references determine each document's `load_with` metadata. The emitted-key lookup
+/// ensures references use the same canonical keys as their projected loader holons.
 fn build_compilation(lowered: LoweredTdlProject) -> Result<Compilation> {
     let LoweredTdlProject { files, global_model: _global_model, symbols, diagnostics } = lowered;
     let schema_models = files.iter().map(|file| &file.schema_model).collect::<Vec<_>>();
@@ -1144,12 +1683,17 @@ fn current_timestamp_rfc3339() -> Result<String> {
     Ok(OffsetDateTime::now_utc().format(&Rfc3339)?)
 }
 
+/// Converts one TDL-shaped parse result into representation-neutral schema IR.
 fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
     let mut model = SemanticModel::new();
     model.push_schema(Schema {
         name: file.schema.name.clone(),
         key: file.schema.name.clone(),
         origin: file.schema.origin.clone(),
+        described_by: vec![SemanticReference::unresolved(
+            ReferenceRole::DescribedBy,
+            "Schema.HolonType",
+        )],
         dependencies: file
             .schema
             .dependencies
@@ -1171,22 +1715,50 @@ fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
     Ok(model)
 }
 
+/// Lowers TDL descriptor sugar and defaults into explicit canonical descriptor fields.
+///
+/// This function may encode TDL defaults, such as implicit `Extends` targets, but semantic
+/// validity remains the responsibility of the shared validator operating on the resulting IR.
 fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<TypeDescriptor> {
+    let kind =
+        if descriptor.kind == DescriptorKind::HolonType && descriptor.name == "TypeDescriptor" {
+            DescriptorKind::TypeDescriptor
+        } else {
+            descriptor.kind
+        };
     let mut lowered = TypeDescriptor::new(
         descriptor_key(descriptor, schema_name),
         descriptor.name.clone(),
-        descriptor.kind,
+        kind,
         schema_name,
         descriptor.origin.clone(),
     );
     lowered.header = descriptor.header.clone();
+    lowered.described_by.push(SemanticReference::unresolved(
+        ReferenceRole::DescribedBy,
+        "TypeDescriptor.HolonType",
+    ));
     lowered.is_abstract = descriptor.is_abstract;
+    lowered.instance_type_kind = descriptor
+        .literal_properties
+        .get("instance_type_kind")
+        .and_then(|value| value.as_str())
+        .map(ToString::to_string)
+        .or_else(|| tdl_instance_type_kind(descriptor));
+    lowered.property_required = descriptor.property_required;
     lowered.literal_properties = descriptor.literal_properties.clone();
     lowered.literal_relationships = descriptor.literal_relationships.clone();
     lowered.is_definitional = descriptor.is_definitional;
-    lowered.min_cardinality = descriptor.min_cardinality;
-    lowered.max_cardinality = descriptor.max_cardinality;
-    lowered.deletion_semantic = descriptor.deletion_semantic.clone();
+    if descriptor.kind == DescriptorKind::RelationshipType {
+        lowered.min_cardinality = Some(descriptor.min_cardinality.unwrap_or(0));
+        lowered.max_cardinality = Some(descriptor.max_cardinality.unwrap_or(32_767));
+        lowered.deletion_semantic =
+            Some(descriptor.deletion_semantic.clone().unwrap_or_else(|| "Allow".to_string()));
+    } else {
+        lowered.min_cardinality = descriptor.min_cardinality;
+        lowered.max_cardinality = descriptor.max_cardinality;
+        lowered.deletion_semantic = descriptor.deletion_semantic.clone();
+    }
     lowered.is_ordered = descriptor.is_ordered;
     lowered.allows_duplicates = descriptor.allows_duplicates;
     lowered.allows_additional_properties = descriptor.allows_additional_properties;
@@ -1316,6 +1888,23 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
     }
 
     Ok(lowered)
+}
+
+/// Lowers TDL declaration keywords into the explicit TypeKind value emitted by the adapter.
+///
+/// This is syntax desugaring, not validation: descriptor conformance subsequently validates the
+/// resulting enum value through `TypeKind.PropertyType` and its resolved enum descriptor.
+fn tdl_instance_type_kind(descriptor: &TdlDescriptor) -> Option<String> {
+    let value = match descriptor.kind {
+        DescriptorKind::TypeDescriptor | DescriptorKind::HolonType => "TypeKind.Holon",
+        DescriptorKind::PropertyType => "TypeKind.Property",
+        DescriptorKind::RelationshipType => "TypeKind.Relationship",
+        DescriptorKind::Enum => "TypeKind.Value.Enum",
+        DescriptorKind::EnumVariant => "TypeKind.EnumVariant",
+        DescriptorKind::ValueType => return None,
+        DescriptorKind::Schema => return None,
+    };
+    Some(value.to_string())
 }
 
 fn reference_role_for_relationship_name(name: &str) -> Option<ReferenceRole> {
@@ -1522,8 +2111,11 @@ mod tests {
     use std::{
         env, fs,
         io::Write,
+        sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
     fn fixture_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("schema-src")
@@ -1537,14 +2129,18 @@ mod tests {
             .join("json-imports")
     }
 
-    fn temp_out_dir() -> PathBuf {
+    fn unique_temp_dir(prefix: &str) -> PathBuf {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-compile-{nanos}"))
+        let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        env::temp_dir().join(format!("{prefix}-{nanos}-{counter}"))
+    }
+
+    fn temp_out_dir() -> PathBuf {
+        unique_temp_dir("map-schema-compile")
     }
 
     fn temp_tdl_dir() -> PathBuf {
-        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        env::temp_dir().join(format!("map-schema-tdl-{nanos}"))
+        unique_temp_dir("map-schema-tdl")
     }
 
     fn write_temp_tdl(file_name: &str, contents: &str) -> Result<PathBuf> {
@@ -1571,7 +2167,189 @@ mod tests {
     #[test]
     fn checks_core_schema_corpus_without_diagnostics() -> Result<()> {
         let diagnostics = check_inputs(&[fixture_dir()])?;
-        assert!(diagnostics.is_empty());
+        assert!(diagnostics.is_empty(), "{}", format_diagnostics(&diagnostics));
+        Ok(())
+    }
+
+    #[test]
+    fn descriptor_value_conformance_accepts_core_schema_corpus() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        let diagnostics = map_schema_semantic::validate_canonical_model_values(&graph);
+        assert!(diagnostics.is_empty(), "{} descriptor-value diagnostics", diagnostics.len());
+        Ok(())
+    }
+
+    #[test]
+    fn omitted_tdl_booleans_materialize_false_from_effective_descriptors() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        map_schema_semantic::effective_boolean_property_names(
+            &graph,
+            graph.node_by_key("PropertyType").expect("PropertyType node"),
+        )
+        .expect("PropertyType Boolean declarations should resolve");
+        let expected = [
+            ("PropertyType", &["IsRequired"][..]),
+            (
+                "Book.HolonType",
+                &["AllowsAdditionalProperties", "AllowsAdditionalRelationships"][..],
+            ),
+            ("MetaValueType", &["AllowsAdditionalProperties", "AllowsAdditionalRelationships"][..]),
+            ("DeclaredRelationshipType", &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..]),
+            ("InverseRelationshipType", &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..]),
+            (
+                "MetaDeclaredRelationshipType",
+                &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..],
+            ),
+            (
+                "MetaInverseRelationshipType",
+                &["IsDefinitional", "IsOrdered", "AllowsDuplicates"][..],
+            ),
+        ];
+
+        for (key, properties) in expected {
+            let descriptor = lowered
+                .global_model
+                .descriptors
+                .iter()
+                .find(|descriptor| descriptor.key == key)
+                .unwrap_or_else(|| panic!("missing descriptor `{key}`"));
+            for property in properties {
+                assert_eq!(
+                    descriptor
+                        .materialized_properties
+                        .get(property)
+                        .and_then(LiteralValue::as_bool),
+                    Some(false),
+                    "`{key}.{property}` should materialize TDL omission as false"
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn omitted_tdl_booleans_satisfy_required_property_conformance() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        let diagnostics = map_schema_semantic::validate_canonical_model_conformance(&graph);
+        let defaulted_boolean_properties = [
+            "IsRequired",
+            "IsDefinitional",
+            "IsOrdered",
+            "AllowsDuplicates",
+            "AllowsAdditionalProperties",
+            "AllowsAdditionalRelationships",
+        ];
+        assert!(!diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::MissingConformanceProperty { property, .. }
+                if defaulted_boolean_properties.contains(&property.as_str())
+        )));
+        assert!(!diagnostics.iter().any(|diagnostic| matches!(
+            &diagnostic.kind,
+            DiagnosticKind::AdditionalConformanceProperty { property, .. }
+                if matches!(
+                    property.as_str(),
+                    "AllowsAdditionalProperties" | "AllowsAdditionalRelationships"
+                )
+        )));
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_type_kind_is_rejected_by_descriptor_enum_policy() -> Result<()> {
+        let mut lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+        let descriptor = lowered
+            .global_model
+            .descriptors
+            .iter_mut()
+            .find(|descriptor| descriptor.key == "Book.HolonType")
+            .expect("book descriptor");
+        descriptor.instance_type_kind = Some("TypeKind.HolonFoo".to_string());
+        let graph = map_schema_semantic::CanonicalDescriptorGraph::new(
+            &lowered.global_model,
+            &lowered.symbols,
+        )
+        .expect("canonical descriptor graph");
+        let diagnostics = map_schema_semantic::validate_canonical_holon_conformance(
+            &graph,
+            graph.node_by_key("Book.HolonType").expect("book node"),
+        );
+        assert!(
+            diagnostics.iter().any(|diagnostic| matches!(
+                &diagnostic.kind,
+                DiagnosticKind::InvalidConformanceValue { holon, property, value, .. }
+                    if holon == "Book.HolonType"
+                        && property == "TypeKind"
+                        && value == "TypeKind.HolonFoo"
+            )),
+            "{diagnostics:#?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn tdl_materializes_parent_derived_value_kinds_and_inverse_pairs() -> Result<()> {
+        let lowered = lower_inputs_to_schema_ir(&[fixture_dir()])?;
+
+        for (key, expected_kind) in [
+            ("MapBytesValueType", "TypeKind.Value.Bytes"),
+            ("HolonIdValueType", "TypeKind.Value.Bytes"),
+            ("MapValueArrayType", "TypeKind.Value.Array"),
+        ] {
+            let descriptor = lowered
+                .global_model
+                .descriptors
+                .iter()
+                .find(|descriptor| descriptor.key == key)
+                .unwrap_or_else(|| panic!("missing descriptor `{key}`"));
+            assert_eq!(descriptor.instance_type_kind.as_deref(), Some(expected_kind));
+        }
+
+        let inverse = lowered
+            .global_model
+            .descriptors
+            .iter()
+            .find(|descriptor| {
+                descriptor.key == "(Schema.HolonType)-[Components]->(TypeDescriptor.HolonType)"
+            })
+            .expect("Components inverse descriptor");
+        assert_eq!(
+            inverse.inverse_of.as_ref().map(|reference| reference.target.as_str()),
+            Some("(TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)")
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn relationship_literal_syntax_diagnostic_uses_the_authored_line() -> Result<()> {
+        let diagnostics = check_input_string(
+            "schema Origin Test {\n}\n\nholon Thing {\n  relationships {\n    Broken -> [\"missing-end\"\n  }\n}\n",
+            "relationship-origin.tdl",
+        )?;
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].layer, DiagnosticLayer::Syntax);
+        assert!(matches!(diagnostics[0].kind, DiagnosticKind::InvalidSyntax { .. }));
+        assert_eq!(diagnostics[0].origin.as_ref().and_then(|origin| origin.line), Some(6));
+        assert_eq!(diagnostics[0].origin.as_ref().and_then(|origin| origin.column), Some(1));
+
         Ok(())
     }
 

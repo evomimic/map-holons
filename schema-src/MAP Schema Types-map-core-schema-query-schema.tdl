@@ -228,7 +228,7 @@ property QueryName {
 }
 
 
-property QueryDescription {
+property QueryDescription? {
   value MapStringValueType
   header {
     description: "Human-readable description of what a QueryGraph means."
@@ -239,7 +239,7 @@ property QueryDescription {
 }
 
 
-property BindingName {
+property BindingName? {
   value MapStringValueType
   header {
     description: "Symbolic variable name carried by a QueryBinding."
@@ -261,7 +261,7 @@ property StepOrdinal {
 }
 
 
-property StepLabel {
+property StepLabel? {
   value MapStringValueType
   header {
     description: "Optional human-readable label for a QueryStep."
@@ -272,7 +272,7 @@ property StepLabel {
 }
 
 
-property ExecutionStatus {
+property ExecutionStatus? {
   value ExecutionStatus
   header {
     description: "Status of an ExecutionInstance, recorded as an ExecutionStatus enum value."

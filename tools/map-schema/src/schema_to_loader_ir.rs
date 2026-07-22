@@ -1,5 +1,5 @@
 use crate::{
-    literal_bridge::literal_object_to_json_map,
+    literal_bridge::{literal_object_to_json_map, literal_value_to_json},
     loader_ir::{LoaderDocument, LoaderHolon, LoaderMeta, LoaderReference, LoaderRelationship},
     schema_ir::{DescriptorKind, Schema, SemanticModel, SemanticReference, TypeDescriptor},
 };
@@ -105,7 +105,7 @@ fn lower_schema_holon(schema: &Schema) -> LoaderHolon {
     if !schema.literal_properties.is_empty() || !schema.literal_relationships.is_empty() {
         return LoaderHolon {
             key: schema.name.clone(),
-            descriptor_type: "Schema.HolonType".to_string(),
+            descriptor_type: descriptor_type(&schema.described_by, "Schema.HolonType"),
             properties: if schema.literal_properties.is_empty() {
                 let mut properties = serde_json::Map::new();
                 properties.insert("schema_name".to_string(), json!(schema.name));
@@ -158,7 +158,7 @@ fn lower_schema_holon_semantic(schema: &Schema) -> LoaderHolon {
 
     LoaderHolon {
         key: schema.name.clone(),
-        descriptor_type: "Schema.HolonType".to_string(),
+        descriptor_type: descriptor_type(&schema.described_by, "Schema.HolonType"),
         properties,
         relationships,
     }
@@ -171,7 +171,7 @@ fn lower_descriptor_holon(
     if !descriptor.literal_properties.is_empty() || !descriptor.literal_relationships.is_empty() {
         return LoaderHolon {
             key: descriptor.key.clone(),
-            descriptor_type: "TypeDescriptor.HolonType".to_string(),
+            descriptor_type: descriptor_type(&descriptor.described_by, "TypeDescriptor.HolonType"),
             properties: lower_descriptor_properties(descriptor),
             relationships: lower_descriptor_relationships(descriptor, emitted_key_lookup),
         };
@@ -186,15 +186,24 @@ fn lower_descriptor_holon_semantic(
 ) -> LoaderHolon {
     LoaderHolon {
         key: descriptor.key.clone(),
-        descriptor_type: "TypeDescriptor.HolonType".to_string(),
+        descriptor_type: descriptor_type(&descriptor.described_by, "TypeDescriptor.HolonType"),
         properties: lower_descriptor_properties_semantic(descriptor),
         relationships: lower_descriptor_relationships_semantic(descriptor, emitted_key_lookup),
     }
 }
 
+fn descriptor_type(references: &[SemanticReference], fallback: &str) -> String {
+    references
+        .first()
+        .map(|reference| reference.target.clone())
+        .unwrap_or_else(|| fallback.to_string())
+}
+
 fn lower_descriptor_properties(descriptor: &TypeDescriptor) -> serde_json::Map<String, Value> {
     if !descriptor.literal_properties.is_empty() {
-        return literal_object_to_json_map(&descriptor.literal_properties);
+        let mut properties = literal_object_to_json_map(&descriptor.literal_properties);
+        append_materialized_properties(&mut properties, descriptor);
+        return properties;
     }
 
     lower_descriptor_properties_semantic(descriptor)
@@ -233,18 +242,8 @@ fn lower_descriptor_properties_semantic(
             .insert("display_name_plural".to_string(), json!(pluralize_name(&descriptor.name)));
     }
 
-    let instance_type_kind = match descriptor.kind {
-        DescriptorKind::HolonType => Some(json!("TypeKind.Holon")),
-        DescriptorKind::PropertyType => Some(json!("TypeKind.Property")),
-        DescriptorKind::RelationshipType => Some(json!("TypeKind.Relationship")),
-        DescriptorKind::ValueType => Some(json!(infer_value_kind(descriptor))),
-        DescriptorKind::Enum => Some(json!("TypeKind.Value.Enum")),
-        DescriptorKind::EnumVariant => Some(json!("TypeKind.EnumVariant")),
-        DescriptorKind::TypeDescriptor => Some(json!("TypeKind.Holon")),
-        DescriptorKind::Schema => None,
-    };
-    if let Some(instance_type_kind) = instance_type_kind {
-        properties.insert("instance_type_kind".to_string(), instance_type_kind);
+    if let Some(instance_type_kind) = &descriptor.instance_type_kind {
+        properties.insert("instance_type_kind".to_string(), json!(instance_type_kind));
     }
     properties.insert("is_abstract_type".to_string(), json!(descriptor.is_abstract));
 
@@ -273,60 +272,50 @@ fn lower_descriptor_properties_semantic(
                 properties.insert("max_cardinality".to_string(), json!(max));
             }
         }
-        DescriptorKind::PropertyType
-        | DescriptorKind::ValueType
+        DescriptorKind::PropertyType => {
+            if let Some(required) = descriptor.property_required {
+                properties.insert("is_required".to_string(), json!(required));
+            }
+        }
+        DescriptorKind::ValueType
         | DescriptorKind::Enum
         | DescriptorKind::EnumVariant
         | DescriptorKind::Schema => {}
     }
+    append_materialized_properties(&mut properties, descriptor);
     properties
 }
 
-fn infer_value_kind(descriptor: &TypeDescriptor) -> &'static str {
-    if matches!(descriptor.name.as_str(), "MetaValueType" | "ValueType") {
-        return "TypeKind.Holon";
+fn append_materialized_properties(
+    properties: &mut serde_json::Map<String, Value>,
+    descriptor: &TypeDescriptor,
+) {
+    for (name, value) in descriptor.materialized_properties.iter() {
+        properties
+            .entry(canonical_property_to_snake_case(name))
+            .or_insert_with(|| literal_value_to_json(value));
     }
+}
 
-    if matches!(descriptor.name.as_str(), "EnumVariantValueType" | "MapEnumVariantValueType") {
-        return "TypeKind.EnumVariant";
-    }
-
-    if descriptor.name.ends_with("StringValueType") {
-        return "TypeKind.Value.String";
-    }
-    if descriptor.name.ends_with("IntegerValueType") {
-        return "TypeKind.Value.Integer";
-    }
-    if descriptor.name.ends_with("BooleanValueType") {
-        return "TypeKind.Value.Boolean";
-    }
-    if descriptor.name.ends_with("BytesValueType") || descriptor.name == "HolonIdValueType" {
-        return "TypeKind.Value.Bytes";
-    }
-    if descriptor.name.ends_with("ValueArrayType")
-        || descriptor.name.ends_with("ValueArrayValueType")
-    {
-        return "TypeKind.Value.Array";
-    }
-    if descriptor.name.ends_with("EnumValueType") {
-        return "TypeKind.Value.Enum";
-    }
-
-    if let Some(extends) = descriptor.extends.as_ref().map(|extends| extends.target.as_str()) {
-        match extends {
-            "MetaTypeDescriptor" | "MetaValueType" => "TypeKind.Holon",
-            "StringValueType" | "MapStringValueType" => "TypeKind.Value.String",
-            "IntegerValueType" | "MapIntegerValueType" => "TypeKind.Value.Integer",
-            "BooleanValueType" | "MapBooleanValueType" => "TypeKind.Value.Boolean",
-            "BytesValueType" | "MapBytesValueType" | "HolonIdValueType" => "TypeKind.Value.Bytes",
-            "ValueArrayValueType" | "MapValueArrayType" => "TypeKind.Value.Array",
-            "EnumValueType" | "MapEnumValueType" => "TypeKind.Value.Enum",
-            "EnumVariantValueType" | "MapEnumVariantValueType" => "TypeKind.EnumVariant",
-            _ => "TypeKind.Value.String",
+fn canonical_property_to_snake_case(name: &str) -> String {
+    let characters = name.chars().collect::<Vec<_>>();
+    let mut snake = String::with_capacity(name.len());
+    for (index, character) in characters.iter().copied().enumerate() {
+        let previous_is_lowercase = index
+            .checked_sub(1)
+            .and_then(|previous| characters.get(previous))
+            .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit());
+        let next_is_lowercase =
+            characters.get(index + 1).is_some_and(|next| next.is_ascii_lowercase());
+        if character.is_ascii_uppercase()
+            && index > 0
+            && (previous_is_lowercase || next_is_lowercase)
+        {
+            snake.push('_');
         }
-    } else {
-        "TypeKind.Value.String"
+        snake.push(character.to_ascii_lowercase());
     }
+    snake
 }
 
 fn lower_descriptor_relationships(
@@ -337,6 +326,7 @@ fn lower_descriptor_relationships(
         return descriptor
             .literal_relationships
             .iter()
+            .filter(|relationship| relationship.name != "InverseOf")
             .map(|relationship| {
                 loader_relationship(
                     &relationship.name,
@@ -366,12 +356,6 @@ fn lower_descriptor_relationships_semantic(
         relationships.push(loader_relationship(
             "Extends",
             vec![normalize_emitted_reference_target(&extends.target, emitted_key_lookup)],
-        ));
-    }
-    if let Some(inverse_of) = &descriptor.inverse_of {
-        relationships.push(loader_relationship(
-            "InverseOf",
-            vec![normalize_inverse_reference_target(descriptor, inverse_of, emitted_key_lookup)],
         ));
     }
     if let Some(has_inverse) = &descriptor.has_inverse {
@@ -464,34 +448,6 @@ fn normalize_emitted_reference_target(
         .get(target)
         .cloned()
         .unwrap_or_else(|| target.to_string())
-}
-
-fn normalize_inverse_reference_target(
-    descriptor: &TypeDescriptor,
-    inverse_of: &SemanticReference,
-    emitted_key_lookup: &EmittedKeyLookup,
-) -> String {
-    let inverse_target = &inverse_of.target;
-    if inverse_target.contains(")-[") {
-        return normalize_emitted_reference_target(inverse_target, emitted_key_lookup);
-    }
-
-    match (
-        descriptor.relationship_flavor,
-        descriptor.source_type.as_ref(),
-        descriptor.target_type.as_ref(),
-    ) {
-        (
-            Some(crate::schema_ir::RelationshipFlavor::Inverse),
-            Some(source_type),
-            Some(target_type),
-        ) => {
-            format!("({})-[{}]->({})", target_type.target, inverse_target, source_type.target)
-        }
-        _ => emitted_key_lookup.unique_keys_by_name.get(inverse_target).cloned().unwrap_or_else(
-            || normalize_emitted_reference_target(inverse_target, emitted_key_lookup),
-        ),
-    }
 }
 
 fn schema_literal_property_is_renderable(key: &str) -> bool {
@@ -685,5 +641,61 @@ fn pluralize_name(name: &str) -> String {
         format!("{name}es")
     } else {
         format!("{name}s")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema_ir::{
+        LiteralRelationship, Origin, ReferenceRole, RelationshipFlavor, SourceKind,
+    };
+
+    #[test]
+    fn loader_projection_emits_only_the_declared_side_of_an_inverse_pair() {
+        let declared_key = "(Book.HolonType)-[WrittenBy]->(Person.HolonType)";
+        let inverse_key = "(Person.HolonType)-[AuthorOf]->(Book.HolonType)";
+
+        let mut declared = TypeDescriptor::new(
+            declared_key,
+            "WrittenBy",
+            DescriptorKind::RelationshipType,
+            "TestSchema",
+            Origin::new(SourceKind::TdlSource),
+        );
+        declared.relationship_flavor = Some(RelationshipFlavor::Declared);
+        declared.has_inverse =
+            Some(SemanticReference::unresolved(ReferenceRole::HasInverse, inverse_key));
+
+        let mut inverse = TypeDescriptor::new(
+            inverse_key,
+            "AuthorOf",
+            DescriptorKind::RelationshipType,
+            "TestSchema",
+            Origin::new(SourceKind::TdlSource),
+        );
+        inverse.relationship_flavor = Some(RelationshipFlavor::Inverse);
+        inverse.inverse_of =
+            Some(SemanticReference::unresolved(ReferenceRole::InverseOf, declared_key));
+
+        let emitted_key_lookup = EmittedKeyLookup::default();
+        let declared_relationships = lower_descriptor_relationships(&declared, &emitted_key_lookup);
+        let semantic_inverse_relationships =
+            lower_descriptor_relationships(&inverse, &emitted_key_lookup);
+        inverse.literal_relationships.push(LiteralRelationship {
+            name: "InverseOf".to_string(),
+            targets: vec![declared_key.to_string()],
+        });
+        let literal_inverse_relationships =
+            lower_descriptor_relationships(&inverse, &emitted_key_lookup);
+
+        assert!(declared_relationships
+            .iter()
+            .any(|relationship| relationship.name == "HasInverse"));
+        assert!(!declared_relationships
+            .iter()
+            .chain(semantic_inverse_relationships.iter())
+            .chain(literal_inverse_relationships.iter())
+            .any(|relationship| relationship.name == "InverseOf"));
     }
 }
