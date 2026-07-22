@@ -19,6 +19,7 @@ holochain = { version = "=0.6.1", default-features = false, features = [
     "wasmer_sys",
     "transport-iroh"
 ] }
+holochain_state = "=0.6.1"
 
 
 # Workaround: iroh-base-holochain 0.95.1 hard-pins ed25519-dalek = "=3.0.0-pre.1",
@@ -103,5 +104,4 @@ pretty_assertions = "1.4"
 #futures = { version = "0.3.1", default-features = false }
 tokio = { version = "1", features = ["full"] }
 #async-std = "1"
-
 
