@@ -411,6 +411,9 @@ fn commit_holon(
                 let predecessor_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_full_relationship_commit_scope()?;
                 let node = staged_holon.into_node_model();
+                // Storage SL2 will replace this Create with a native update targeting the
+                // lineage-root Create, remove original_id from the persisted entry shape, and
+                // require the HolonNode serialization-parity fixtures to be revisited.
                 let record = create_holon_node(HolonNode::from(node))
                     .map_err(holon_error_from_wasm_error)?;
                 let new_local_id = LocalId(record.action_address().clone().into_inner());
