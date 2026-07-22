@@ -6,6 +6,7 @@ def relationship ComponentOf {
   target Schema.HolonType
   inverse Components
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Links a type descriptor to the schema that contains it."
     display_name: "ComponentOf"
@@ -19,7 +20,6 @@ inverse relationship Components {
   source Schema.HolonType
   target TypeDescriptor.HolonType
   cardinality 0..32767
-  deletion_semantic Allow
   header {
     description: "Inverse of ComponentOf, from SchemaType to TypeDescriptor."
     display_name: "Components"
@@ -59,6 +59,7 @@ inverse relationship InstancePropertyFor {
 
 def relationship InstanceRelationships {
   cardinality 0..32767
+  deletion_semantic Block
   properties {
     type_name: "InstanceRelationships"
     type_name_plural: "InstanceRelationships"
@@ -67,6 +68,7 @@ def relationship InstanceRelationships {
     description: "Connects a type descriptor to its expected relationship types."
     instance_type_kind: "TypeKind.Relationship"
     is_abstract_type: false
+    deletion_semantic: "Block"
     is_definitional: true
     is_ordered: false
     allows_duplicates: false
@@ -101,6 +103,7 @@ def relationship DescribedBy {
   target TypeDescriptor.HolonType
   inverse Instances
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a holon to the type descriptor that describes it."
     display_name: "DescribedBy"
@@ -128,6 +131,7 @@ relationship OwnedBy {
   target HolonSpace.HolonType
   inverse Owns
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Indicates which holon space owns the given holon."
     display_name: "OwnedBy"
@@ -155,6 +159,7 @@ relationship Properties {
   target PropertyType
   inverse PropertyOf
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Links a holon to its properties."
     display_name: "Properties"
@@ -182,6 +187,7 @@ def relationship ValueType {
   target ValueType
   inverse ValueTypeFor
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Specifies the value type constraint for a property."
     display_name: "ValueType"
@@ -209,6 +215,7 @@ def relationship SourceType {
   target TypeDescriptor.HolonType
   inverse SourceOf
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Defines the source holon type for a relationship type."
     display_name: "SourceType"
@@ -236,6 +243,7 @@ def relationship TargetType {
   target TypeDescriptor.HolonType
   inverse TargetOf
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Defines the target holon type for a meta relationship type."
     display_name: "TargetType"
@@ -263,6 +271,7 @@ def relationship HasInverse {
   target InverseRelationshipType
   inverse InverseOf
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Inverse of InverseOf, from DeclaredRelationshipType to InverseRelationshipType."
     display_name: "HasInverse"
@@ -290,6 +299,7 @@ def relationship Variants {
   target EnumVariantValueType
   inverse VariantOf
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Declares the allowed symbolic variants of an enum value type."
     display_name: "Variants"
@@ -317,6 +327,7 @@ def relationship DependsOn {
   target Schema.HolonType
   inverse Dependents
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Indicates that one schema holon depends on another."
     display_name: "DependsOn"
@@ -344,6 +355,7 @@ def relationship ElementValueType {
   target ValueType
   inverse ElementValueTypeFor
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Specifies the element value type of a value array."
     display_name: "ElementValueType"
@@ -371,6 +383,7 @@ def relationship Extends {
   target TypeDescriptor.HolonType
   inverse ExtendedBy
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Inheritance link, this TypeDescriptor extends another TypeDescriptor (single parent)."
     display_name: "Extends"
@@ -399,6 +412,7 @@ def relationship TemplateParameters {
   inverse TemplateParameterFor
   cardinality 1..32767
   ordered
+  deletion_semantic Block
   header {
     description: "Ordered list of PropertyTypes used as positional parameters for template_string ($0, $1, ...)."
     display_name: "TemplateParameters Relationship"
@@ -440,7 +454,6 @@ inverse relationship TransactionModelAffordedBy {
   source Transaction.HolonType
   target HolonSpace.HolonType
   cardinality 1..1
-  deletion_semantic Allow
   header {
     description: "Inverse of AffordsTransactionModel, from TransactionType back to the HolonSpaceType that affords it."
     display_name: "TransactionModelAffordedBy Relationship"
@@ -471,7 +484,6 @@ inverse relationship MemberOfCollection {
   source HolonType
   target HolonCollection.HolonType
   cardinality 0..32767
-  deletion_semantic Allow
   header {
     description: "Inverse of CollectionMembers. Links a holon to a persisted collection holon that contains it."
     display_name: "MemberOfCollection"
@@ -500,7 +512,6 @@ inverse relationship ElementTypeFor {
   source HolonType
   target HolonCollection.HolonType
   cardinality 0..32767
-  deletion_semantic Allow
   header {
     description: "Inverse of ElementType. Links a holon type to persisted collection types that declare it as their element type."
     display_name: "ElementTypeFor"
@@ -510,11 +521,12 @@ inverse relationship ElementTypeFor {
 }
 
 
-relationship Predecessor {
+def relationship Predecessor {
   source HolonType
   target HolonType
   inverse Successor
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a holon version to the immediately preceding version in its lineage."
     display_name: "Predecessor"

@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-09T15:30:44.69098Z",
+    "generated_at": "2026-07-21T21:23:50.91905Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-root.tdl"
@@ -70,6 +70,12 @@
           "name": "Extends",
           "target": {
             "$ref": "HolonType"
+          }
+        },
+        {
+          "name": "UsesKeyRule",
+          "target": {
+            "$ref": "TypeNameRule.KeyRuleType"
           }
         }
       ]
@@ -484,9 +490,6 @@
             },
             {
               "$ref": "MaxCardinality.PropertyType"
-            },
-            {
-              "$ref": "DeletionSemantic.PropertyType"
             }
           ]
         },
@@ -528,6 +531,12 @@
           "name": "Extends",
           "target": {
             "$ref": "MetaRelationshipType"
+          }
+        },
+        {
+          "name": "InstanceProperties",
+          "target": {
+            "$ref": "DeletionSemantic.PropertyType"
           }
         },
         {

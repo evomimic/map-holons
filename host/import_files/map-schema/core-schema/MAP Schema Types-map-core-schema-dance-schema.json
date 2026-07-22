@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-07-21T11:22:51",
+    "generated_at": "2026-07-21T14:08:14",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-dance-schema.csv"
@@ -442,9 +442,12 @@
         "description": "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
-        "allows_duplicates": false
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
       },
       "relationships": [
         {
@@ -492,7 +495,9 @@
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
-        "allows_duplicates": false
+        "allows_duplicates": false,
+        "min_cardinality": 0,
+        "max_cardinality": 1
       },
       "relationships": [
         {
@@ -532,6 +537,7 @@
         "description": "Pins a DanceImplementation to exactly one DanceType interface it satisfies.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -626,6 +632,7 @@
         "description": "Links a DanceType to the holon type used as its request contract.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -720,6 +727,7 @@
         "description": "Links a DanceType to the DanceResponseType used to structure its response.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -814,6 +822,7 @@
         "description": "Links a DanceResponseType to the concrete holon type that will serve as the structured response body.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -908,6 +917,7 @@
         "description": "Links a DanceInvocation holon to the DanceType it invokes.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1002,6 +1012,7 @@
         "description": "Links a DanceInvocation to the holon affording the invoked dance. The referenced instance must afford the dance named by InvokesDance.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1096,6 +1107,7 @@
         "description": "Links a DanceInvocation holon to the concrete request holon supplied for that invocation.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1190,6 +1202,7 @@
         "description": "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -2806,7 +2819,6 @@
         "description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -2902,7 +2914,6 @@
         "description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,

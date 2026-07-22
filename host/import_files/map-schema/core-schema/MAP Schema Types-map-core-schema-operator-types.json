@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Airtable CSV to MAP JSON Python Script",
-    "generated_at": "2026-07-21T11:22:51",
+    "generated_at": "2026-07-21T14:08:14",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-types.csv"
@@ -75,7 +75,8 @@
         "is_ordered": false,
         "allows_duplicates": false,
         "min_cardinality": 0,
-        "max_cardinality": 32767
+        "max_cardinality": 32767,
+        "deletion_semantic": "Block"
       },
       "relationships": [
         {

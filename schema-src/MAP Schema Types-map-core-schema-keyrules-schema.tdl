@@ -137,6 +137,7 @@ def relationship UsesKeyRule {
   target KeyRuleType
   inverse KeyRuleFor
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Declares the KeyRuleType used to derive keys for instances of a type."
     display_name: "UsesKeyRule"

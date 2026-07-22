@@ -333,6 +333,7 @@ def relationship QueryGraph {
   target QueryGraph.HolonType
   inverse GraphForQueryDanceRequest
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links a QueryDanceRequest to the symbolic QueryGraph it executes."
     display_name: "QueryGraph Relationship"
@@ -361,6 +362,7 @@ def relationship InitialBindings {
   inverse InitialBindingForQueryDanceRequest
   cardinality 0..32767
   ordered
+  deletion_semantic Block
   header {
     description: "Links a QueryDanceRequest to the caller-supplied initial ExecutionBindings that seed the run."
     display_name: "InitialBindings Relationship"
@@ -389,6 +391,7 @@ def relationship QuerySteps {
   inverse StepInQueryGraph
   cardinality 1..32767
   ordered
+  deletion_semantic Block
   header {
     description: "Links a QueryGraph to the QuerySteps that make up its plan body."
     display_name: "QuerySteps Relationship"
@@ -417,6 +420,7 @@ def relationship DeclaredInputBindings {
   inverse InputBindingForQueryGraph
   cardinality 0..32767
   ordered
+  deletion_semantic Block
   header {
     description: "Links a QueryGraph to the symbolic QueryBindings it declares as its external input contract."
     display_name: "DeclaredInputBindings Relationship"
@@ -444,6 +448,7 @@ def relationship DeclaredResultBinding {
   target QueryBinding.HolonType
   inverse ResultBindingForQueryGraph
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links a QueryGraph to the single QueryBinding designated as its exported result."
     display_name: "DeclaredResultBinding Relationship"
@@ -471,6 +476,7 @@ def relationship StepKind {
   target QueryStepKind.HolonType
   inverse StepKindFor
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links a QueryStep to the QueryStepKind describing its operation."
     display_name: "StepKind Relationship"
@@ -498,6 +504,7 @@ def relationship UsesInitialBinding {
   target QueryBinding.HolonType
   inverse InitialBindingUsedByStep
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Lets a root QueryStep name the request-supplied initial QueryBinding it consumes."
     display_name: "UsesInitialBinding Relationship"
@@ -525,6 +532,7 @@ def relationship StepOutputBinding {
   target QueryBinding.HolonType
   inverse OutputBindingForStep
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Optionally attaches a symbolic QueryBinding name to a QueryStep's output."
     display_name: "StepOutputBinding Relationship"
@@ -552,6 +560,7 @@ def relationship StepParameters {
   target Projection.HolonType
   inverse ParametersForStep
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a QueryStep to the Projection holding its operation parameters."
     display_name: "StepParameters Relationship"
@@ -580,6 +589,7 @@ def relationship StepDependsOn {
   inverse StepDependedOnBy
   cardinality 0..32767
   ordered
+  deletion_semantic Block
   header {
     description: "Links a QueryStep to the predecessor QuerySteps whose output it consumes. This is the normal structural flow mechanism between steps."
     display_name: "StepDependsOn Relationship"
@@ -607,6 +617,7 @@ def relationship StepInputType {
   target HolonCollection.HolonType
   inverse InputTypeForStepKind
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a QueryStepKind to the HolonCollection type it consumes as input."
     display_name: "StepInputType Relationship"
@@ -634,6 +645,7 @@ def relationship StepResultType {
   target HolonCollection.HolonType
   inverse ResultTypeForStepKind
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links a QueryStepKind to the HolonCollection type it produces as its result."
     display_name: "StepResultType Relationship"
@@ -661,6 +673,7 @@ def relationship StepParameterType {
   target Projection.HolonType
   inverse ParameterTypeForStepKind
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a QueryStepKind to the Projection type it expects as its parameters."
     display_name: "StepParameterType Relationship"
@@ -688,6 +701,7 @@ def relationship ExecutesRequest {
   target QueryDanceRequest.HolonType
   inverse ExecutedBy
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links an ExecutionInstance to the QueryDanceRequest it is executing."
     display_name: "ExecutesRequest Relationship"
@@ -715,6 +729,7 @@ def relationship ExecutionBindings {
   target ExecutionBinding.HolonType
   inverse BindingForExecutionInstance
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Links an ExecutionInstance to its live runtime ExecutionBindings."
     display_name: "ExecutionBindings Relationship"
@@ -742,6 +757,7 @@ def relationship BindsQueryVariable {
   target QueryBinding.HolonType
   inverse ExecutionVariableBinding
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links an ExecutionBinding to the symbolic QueryBinding (variable) it binds."
     display_name: "BindsQueryVariable Relationship"
@@ -769,6 +785,7 @@ def relationship BoundCollection {
   target HolonCollection.HolonType
   inverse CollectionBoundIn
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links an ExecutionBinding to the runtime HolonCollection it binds its variable to."
     display_name: "BoundCollection Relationship"
@@ -796,6 +813,7 @@ relationship ExecutionResult {
   target HolonCollection.HolonType
   inverse ResultOfExecution
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links an ExecutionInstance to the final HolonCollection result of the run."
     display_name: "ExecutionResult Relationship"

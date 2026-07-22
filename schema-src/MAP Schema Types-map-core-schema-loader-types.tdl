@@ -142,7 +142,6 @@ inverse relationship RelationshipReferenceOf {
   source LoaderRelationshipReference.HolonType
   target LoaderHolon.HolonType
   cardinality 0..1
-  deletion_semantic Allow
   header {
     description: "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon."
     display_name: "RelationshipReferenceOf"
@@ -171,7 +170,6 @@ inverse relationship ReferenceSourceOf {
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
   cardinality 0..32767
-  deletion_semantic Allow
   header {
     description: "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source."
     display_name: "ReferenceSourceOf"
@@ -201,7 +199,6 @@ inverse relationship ReferenceTargetOf {
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
   cardinality 0..32767
-  deletion_semantic Cascade
   header {
     description: "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target."
     display_name: "ReferenceTargetOf"
@@ -230,7 +227,6 @@ inverse relationship BundleMemberOf {
   source LoaderHolon.HolonType
   target HolonLoaderBundle.HolonType
   cardinality 0..1
-  deletion_semantic Allow
   header {
     description: "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle."
     display_name: "BundleMemberOf"
@@ -259,7 +255,6 @@ inverse relationship LoadErrorOf {
   source HolonLoadError.HolonError
   target HolonLoadResponse.DanceResponseType
   cardinality 0..1
-  deletion_semantic Allow
   header {
     description: "Inverse of HasLoadError. Points from HolonError back to the response that reported it."
     display_name: "LoadErrorOf"
@@ -288,7 +283,6 @@ inverse relationship ContainedIn {
   source HolonLoaderBundle.HolonType
   target HolonLoadSet.HolonType
   cardinality 0..1
-  deletion_semantic Allow
   header {
     description: "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle."
     display_name: "ContainedIn"

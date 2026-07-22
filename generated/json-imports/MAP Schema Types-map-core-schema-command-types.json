@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-09T15:30:44.686731Z",
+    "generated_at": "2026-07-21T21:23:50.911517Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-command-types.tdl"
@@ -1131,7 +1131,6 @@
         "description": "Inverse of AffordsCommand, relationship from CommandType to HolonType.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -1176,6 +1175,7 @@
         "description": "Links a CommandType to the holon type carried as its command payload.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": true,
         "is_ordered": false,
         "allows_duplicates": false,

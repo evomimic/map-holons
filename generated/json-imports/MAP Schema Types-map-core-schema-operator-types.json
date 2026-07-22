@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-09T15:30:44.689012Z",
+    "generated_at": "2026-07-21T21:23:50.915636Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-operator-types.tdl"
@@ -71,6 +71,7 @@
         "description": "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
+        "deletion_semantic": "Block",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,

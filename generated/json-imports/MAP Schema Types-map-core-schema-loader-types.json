@@ -1,7 +1,7 @@
 {
   "meta": {
     "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-09T15:30:44.688612Z",
+    "generated_at": "2026-07-21T21:23:50.914956Z",
     "export_mode": "by-file",
     "source_files": [
       "MAP Schema Types-map-core-schema-loader-types.tdl"
@@ -398,7 +398,6 @@
         "description": "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -494,7 +493,6 @@
         "description": "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -590,7 +588,6 @@
         "description": "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Cascade",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -686,7 +683,6 @@
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -782,7 +778,6 @@
         "description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,
@@ -878,7 +873,6 @@
         "description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
         "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
-        "deletion_semantic": "Allow",
         "is_definitional": false,
         "is_ordered": false,
         "allows_duplicates": false,

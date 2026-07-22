@@ -145,6 +145,8 @@ def relationship ImplementsDance {
   source TypeDescriptor.HolonType
   target DanceImplementation.HolonType
   inverse ImplementedFor
+  cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched."
     display_name: "ImplementsDance Relationship"
@@ -157,6 +159,7 @@ def relationship ImplementsDance {
 inverse relationship ImplementedFor {
   source DanceImplementation.HolonType
   target TypeDescriptor.HolonType
+  cardinality 0..1
   header {
     description: "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor."
     display_name: "ImplementedFor Relationship"
@@ -171,6 +174,7 @@ def relationship ForDance {
   target DanceType.HolonType
   inverse HasImplementation
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Pins a DanceImplementation to exactly one DanceType interface it satisfies."
     display_name: "ForDance Relationship"
@@ -198,6 +202,7 @@ def relationship DanceInput {
   target HolonType
   inverse DanceInputFor
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a DanceType to the holon type used as its request contract."
     display_name: "DanceInput Relationship"
@@ -225,6 +230,7 @@ def relationship Response {
   target DanceResponseType.HolonType
   inverse ResponseFor
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links a DanceType to the DanceResponseType used to structure its response."
     display_name: "Response Relationship"
@@ -252,6 +258,7 @@ def relationship ResponseBody {
   target HolonType
   inverse ResponseBodyFor
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a DanceResponseType to the concrete holon type that will serve as the structured response body."
     display_name: "ResponseBody Relationship"
@@ -279,6 +286,7 @@ def relationship InvokesDance {
   target DanceType.HolonType
   inverse InvokedBy
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Links a DanceInvocation holon to the DanceType it invokes."
     display_name: "InvokesDance Relationship"
@@ -306,6 +314,7 @@ def relationship AffordingHolon {
   target HolonType
   inverse AffordsDanceInvocation
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a DanceInvocation to the holon affording the invoked dance. The referenced instance must afford the dance named by InvokesDance."
     display_name: "AffordingHolon Relationship"
@@ -333,6 +342,7 @@ def relationship Request {
   target HolonType
   inverse RequestFor
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Links a DanceInvocation holon to the concrete request holon supplied for that invocation."
     display_name: "Request Relationship"
@@ -360,6 +370,7 @@ def relationship Diagnostics {
   target DanceDiagnostic.HolonType
   inverse DiagnosticFor
   cardinality 0..32767
+  deletion_semantic Block
   header {
     description: "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes."
     display_name: "Diagnostics Relationship"
@@ -858,7 +869,6 @@ inverse relationship SavedByCommit {
   source HolonType
   target CommitResponse.Projection
   cardinality 0..1
-  deletion_semantic Allow
   header {
     description: "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it."
     display_name: "SavedByCommit Relationship"
@@ -887,7 +897,6 @@ inverse relationship AbandonedByCommit {
   source HolonType
   target CommitResponse.Projection
   cardinality 0..1
-  deletion_semantic Allow
   header {
     description: "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it."
     display_name: "AbandonedByCommit Relationship"
