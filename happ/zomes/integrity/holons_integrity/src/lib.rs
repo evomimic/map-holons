@@ -24,6 +24,9 @@ pub mod smartlink;
 pub use holon_node::*;
 pub use smartlink::*;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[hdk_entry_types]

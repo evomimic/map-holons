@@ -92,6 +92,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
+    use holochain_serialized_bytes::UnsafeBytes;
     use integrity_core_types::{LocalId, PropertyMap, PropertyName};
     use serde::ser::{SerializeMap, SerializeStruct};
     use serde::Serialize;
@@ -109,6 +110,189 @@ mod tests {
 
     fn run(raw: &[u8]) -> Result<HolonNodeModel, PvlViolation> {
         run_holon_node_envelope(raw).expect("test values should not fail canonical serialization")
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    enum HolonNodeOpForm {
+        StoreEntryCreate,
+        StoreEntryUpdate,
+        RegisterUpdate,
+        StoreRecordCreate,
+        StoreRecordUpdate,
+    }
+
+    const HOLON_NODE_OP_FORMS: [HolonNodeOpForm; 5] = [
+        HolonNodeOpForm::StoreEntryCreate,
+        HolonNodeOpForm::StoreEntryUpdate,
+        HolonNodeOpForm::RegisterUpdate,
+        HolonNodeOpForm::StoreRecordCreate,
+        HolonNodeOpForm::StoreRecordUpdate,
+    ];
+
+    fn app_entry(raw: Vec<u8>) -> Entry {
+        Entry::App(AppEntryBytes(SerializedBytes::from(UnsafeBytes::from(raw))))
+    }
+
+    fn app_entry_type() -> EntryType {
+        EntryType::App(AppEntryDef::new(
+            HOLON_NODE_ENTRY_DEF_INDEX,
+            ZomeIndex(0),
+            EntryVisibility::Public,
+        ))
+    }
+
+    fn create_action() -> Create {
+        Create {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(1),
+            action_seq: 1,
+            prev_action: ActionHash::from_raw_36(vec![1; 36]),
+            entry_type: app_entry_type(),
+            entry_hash: EntryHash::from_raw_36(vec![2; 36]),
+            weight: EntryRateWeight::default(),
+        }
+    }
+
+    fn update_action() -> Update {
+        Update {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(2),
+            action_seq: 2,
+            prev_action: ActionHash::from_raw_36(vec![3; 36]),
+            original_action_address: ActionHash::from_raw_36(vec![4; 36]),
+            original_entry_address: EntryHash::from_raw_36(vec![5; 36]),
+            entry_type: app_entry_type(),
+            entry_hash: EntryHash::from_raw_36(vec![6; 36]),
+            weight: EntryRateWeight::default(),
+        }
+    }
+
+    fn signed_entry_creation_action(
+        action: EntryCreationAction,
+    ) -> SignedHashed<EntryCreationAction> {
+        SignedHashed::with_presigned(
+            HoloHashed::with_pre_hashed(action, ActionHash::from_raw_36(vec![7; 36])),
+            Signature([0; SIGNATURE_BYTES]),
+        )
+    }
+
+    fn signed_update(update: Update) -> SignedHashed<Update> {
+        SignedHashed::with_presigned(
+            HoloHashed::with_pre_hashed(update, ActionHash::from_raw_36(vec![8; 36])),
+            Signature([0; SIGNATURE_BYTES]),
+        )
+    }
+
+    fn signed_action(action: Action) -> SignedActionHashed {
+        SignedHashed::with_presigned(
+            HoloHashed::with_pre_hashed(action, ActionHash::from_raw_36(vec![9; 36])),
+            Signature([0; SIGNATURE_BYTES]),
+        )
+    }
+
+    fn op_with_raw_entry(form: HolonNodeOpForm, raw: Vec<u8>) -> Op {
+        let entry = app_entry(raw);
+
+        match form {
+            HolonNodeOpForm::StoreEntryCreate => Op::StoreEntry(StoreEntry {
+                action: signed_entry_creation_action(EntryCreationAction::Create(create_action())),
+                entry,
+            }),
+            HolonNodeOpForm::StoreEntryUpdate => Op::StoreEntry(StoreEntry {
+                action: signed_entry_creation_action(EntryCreationAction::Update(update_action())),
+                entry,
+            }),
+            HolonNodeOpForm::RegisterUpdate => Op::RegisterUpdate(RegisterUpdate {
+                update: signed_update(update_action()),
+                new_entry: Some(entry),
+            }),
+            HolonNodeOpForm::StoreRecordCreate => Op::StoreRecord(StoreRecord {
+                record: Record::new(signed_action(Action::Create(create_action())), Some(entry)),
+            }),
+            HolonNodeOpForm::StoreRecordUpdate => Op::StoreRecord(StoreRecord {
+                record: Record::new(signed_action(Action::Update(update_action())), Some(entry)),
+            }),
+        }
+    }
+
+    #[test]
+    fn all_five_op_forms_select_inner_bytes_and_use_the_public_envelope_seam() {
+        for form in HOLON_NODE_OP_FORMS {
+            let node = canonical_node(BTreeMap::from([(
+                property_name("op-form"),
+                BaseValue::StringValue(MapString(format!("{form:?}"))),
+            )]));
+            let expected_model = HolonNodeModel::from(node.clone());
+            let raw = encode(&node).unwrap();
+            let op = op_with_raw_entry(form, raw.clone());
+
+            assert_eq!(
+                holon_node_entry_bytes(&op),
+                Some(raw.as_slice()),
+                "{form:?} selected the wrong inner app-entry bytes"
+            );
+            assert_eq!(
+                prepare_holon_node_envelope(&op).unwrap(),
+                HolonNodeEnvelope::Valid(expected_model),
+                "{form:?} did not complete the shared envelope pipeline"
+            );
+        }
+    }
+
+    #[test]
+    fn all_five_op_forms_reject_oversized_payloads_before_later_processing() {
+        let expected = HolonNodeEnvelope::Invalid(PvlViolation::HolonNodeTooLarge {
+            actual_bytes: 262_145,
+            max_bytes: 262_144,
+        });
+
+        for form in HOLON_NODE_OP_FORMS {
+            let raw = vec![0xc1; MAX_HOLON_NODE_BYTES + 1];
+            let op = op_with_raw_entry(form, raw);
+
+            // In particular, StoreRecordUpdate carries an arbitrary original-action address.
+            // Preparation must reject its current entry without attempting dependency resolution.
+            assert_eq!(
+                prepare_holon_node_envelope(&op).unwrap(),
+                expected,
+                "{form:?} did not apply the raw-size rule through the public seam"
+            );
+        }
+    }
+
+    #[test]
+    fn non_holon_node_and_non_entry_ops_are_not_applicable() {
+        let mut other_entry_create = create_action();
+        other_entry_create.entry_type = EntryType::App(AppEntryDef::new(
+            EntryDefIndex(1),
+            ZomeIndex(0),
+            EntryVisibility::Public,
+        ));
+        let other_entry_op = Op::StoreEntry(StoreEntry {
+            action: signed_entry_creation_action(EntryCreationAction::Create(other_entry_create)),
+            entry: app_entry(vec![0xc1]),
+        });
+
+        let delete = Delete {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            timestamp: Timestamp::from_micros(3),
+            action_seq: 3,
+            prev_action: ActionHash::from_raw_36(vec![10; 36]),
+            deletes_address: ActionHash::from_raw_36(vec![11; 36]),
+            deletes_entry_address: EntryHash::from_raw_36(vec![12; 36]),
+            weight: RateWeight::default(),
+        };
+        let non_entry_op = Op::RegisterDelete(RegisterDelete {
+            delete: SignedHashed::with_presigned(
+                HoloHashed::with_pre_hashed(delete, ActionHash::from_raw_36(vec![13; 36])),
+                Signature([0; SIGNATURE_BYTES]),
+            ),
+        });
+
+        for op in [other_entry_op, non_entry_op] {
+            assert_eq!(holon_node_entry_bytes(&op), None);
+            assert_eq!(prepare_holon_node_envelope(&op).unwrap(), HolonNodeEnvelope::NotApplicable);
+        }
     }
 
     #[test]

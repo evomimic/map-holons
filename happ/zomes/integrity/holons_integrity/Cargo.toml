@@ -28,3 +28,6 @@ path = "../../../../shared_crates/shared_validation"
 
 [dependencies.integrity_core_types]
 path = "../../../../shared_crates/type_system/integrity_core_types"
+
+[dev-dependencies]
+holochain_serialized_bytes = "*"

@@ -744,6 +744,7 @@ name = "holons_integrity"
 version = "0.0.1"
 dependencies = [
  "hdi",
+ "holochain_serialized_bytes",
  "holons_guest_integrity",
  "integrity_core_types",
  "serde",
