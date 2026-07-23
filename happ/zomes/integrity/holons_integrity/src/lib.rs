@@ -24,6 +24,9 @@ pub mod smartlink;
 pub use holon_node::*;
 pub use smartlink::*;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[hdk_entry_types]
@@ -55,56 +58,31 @@ pub fn validate_agent_joining(
 
 #[hdk_extern]
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
+    match prepare_holon_node_envelope(&op)? {
+        HolonNodeEnvelope::Invalid(violation) => {
+            return Ok(ValidateCallbackResult::Invalid(violation.to_string()));
+        }
+        HolonNodeEnvelope::Valid(_) | HolonNodeEnvelope::NotApplicable => {}
+    }
+
     #[allow(unreachable_patterns)]
     match op.flattened::<EntryTypes, LinkTypes>()? {
+        // HolonNode envelope validation already succeeded in the raw-op guard above.
         FlatOp::StoreEntry(store_entry) => match store_entry {
-            OpEntry::CreateEntry { app_entry, action } => match app_entry {
-                EntryTypes::HolonNode(holon_node) => {
-                    let persistence_create = PersistenceCreate::new(
-                        persistence_agent_id_from_agent_pub_key(action.author),
-                        PersistenceTimestamp(action.timestamp.0),
-                        action.action_seq,
-                        local_id_from_action_hash(action.prev_action),
-                    );
-                    let holon_node_model =
-                        HolonNodeModel::new(holon_node.original_id, holon_node.property_map);
-                    validate_create_holon_node(
-                        PersistenceAction::Create(persistence_create),
-                        holon_node_model,
-                    )
-                }
+            OpEntry::CreateEntry { app_entry, .. } => match app_entry {
+                EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
             },
-            OpEntry::UpdateEntry { app_entry, action, .. } => match app_entry {
-                EntryTypes::HolonNode(holon_node) => {
-                    let holon_node_model =
-                        HolonNodeModel::new(holon_node.original_id, holon_node.property_map);
-                    let persistence_update = PersistenceUpdate::new(
-                        persistence_agent_id_from_agent_pub_key(action.author),
-                        PersistenceTimestamp(action.timestamp.0),
-                        action.action_seq,
-                        local_id_from_action_hash(action.prev_action),
-                    );
-                    validate_create_holon_node(
-                        PersistenceAction::Update(persistence_update),
-                        holon_node_model,
-                    )
-                }
+            OpEntry::UpdateEntry { app_entry, .. } => match app_entry {
+                EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
             },
             _ => Ok(ValidateCallbackResult::Valid),
         },
         FlatOp::RegisterUpdate(update_entry) => match update_entry {
-            OpUpdate::Entry { app_entry, action } => match app_entry {
-                EntryTypes::HolonNode(holon_node) => {
-                    let holon_node_model =
-                        HolonNodeModel::new(holon_node.original_id, holon_node.property_map);
-                    let persistence_update = PersistenceUpdate::new(
-                        persistence_agent_id_from_agent_pub_key(action.author),
-                        PersistenceTimestamp(action.timestamp.0),
-                        action.action_seq,
-                        local_id_from_action_hash(action.prev_action),
-                    );
-                    validate_update_holon_node(persistence_update, holon_node_model)
-                }
+            // Storage SL2 will activate this path when version-producing writes become native,
+            // root-addressed updates targeting the lineage-root Create. That transition also
+            // removes original_id from the entry shape and requires parity-fixture review.
+            OpUpdate::Entry { app_entry, .. } => match app_entry {
+                EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
                 _ => Ok(ValidateCallbackResult::Invalid(
                     "Original and updated entry types must be the same".to_string(),
                 )),
@@ -267,84 +245,41 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             ),
         },
         FlatOp::StoreRecord(store_record) => match store_record {
-            OpRecord::CreateEntry { app_entry, action } => match app_entry {
-                EntryTypes::HolonNode(holon_node) => {
-                    let holon_node_model =
-                        HolonNodeModel::new(holon_node.original_id, holon_node.property_map);
-                    let persistence_create = PersistenceCreate::new(
-                        persistence_agent_id_from_agent_pub_key(action.author),
-                        PersistenceTimestamp(action.timestamp.0),
-                        action.action_seq,
-                        local_id_from_action_hash(action.prev_action),
-                    );
-                    validate_create_holon_node(
-                        PersistenceAction::Create(persistence_create),
-                        holon_node_model,
-                    )
-                }
+            // HolonNode envelope validation already succeeded in the raw-op guard above.
+            OpRecord::CreateEntry { app_entry, .. } => match app_entry {
+                EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
             },
-            OpRecord::UpdateEntry { original_action_hash, app_entry, action, .. } => {
+            // MAP writes currently emit Creates. Storage SL2 will exercise this path with native
+            // updates targeting the lineage-root Create; envelope preparation has already run.
+            OpRecord::UpdateEntry { original_action_hash, app_entry, .. } => {
                 let original_record = must_get_valid_record(original_action_hash)?;
-                let original_action = original_record.action().clone();
-                let _original_action = match original_action {
-                    Action::Create(create) => EntryCreationAction::Create(create),
-                    Action::Update(update) => EntryCreationAction::Update(update),
-                    _ => {
-                        return Ok(ValidateCallbackResult::Invalid(
-                            "Original action for an update must be a Create or Update action"
-                                .to_string(),
-                        ));
-                    }
-                };
+                if !matches!(original_record.action(), Action::Create(_) | Action::Update(_)) {
+                    return Ok(ValidateCallbackResult::Invalid(
+                        "Original action for an update must be a Create or Update action"
+                            .to_string(),
+                    ));
+                }
                 match app_entry {
-                    EntryTypes::HolonNode(holon_node) => {
-                        let holon_node_model =
-                            HolonNodeModel::new(holon_node.original_id, holon_node.property_map);
-                        let persistence_update = PersistenceUpdate::new(
-                            persistence_agent_id_from_agent_pub_key(action.author.clone()),
-                            PersistenceTimestamp(action.timestamp.0),
-                            action.action_seq,
-                            local_id_from_action_hash(action.prev_action.clone()),
-                        );
-                        let result = validate_create_holon_node(
-                            PersistenceAction::Update(persistence_update),
-                            holon_node_model.clone(),
-                        )?;
-                        if let ValidateCallbackResult::Valid = result {
-                            let original_holon_node: Option<HolonNode> = original_record
-                                .entry()
-                                .to_app_option()
-                                .map_err(|e| wasm_error!(e))?;
-                            let _original_holon_node = match original_holon_node {
-                                Some(holon_node) => holon_node,
-                                None => {
-                                    return Ok(
-                                            ValidateCallbackResult::Invalid(
-                                                "The updated entry type must be the same as the original entry type"
-                                                    .to_string(),
-                                            ),
-                                        );
-                                }
-                            };
-                            let persistence_update = PersistenceUpdate::new(
-                                persistence_agent_id_from_agent_pub_key(action.author),
-                                PersistenceTimestamp(action.timestamp.0),
-                                action.action_seq,
-                                local_id_from_action_hash(action.prev_action),
-                            );
-                            validate_update_holon_node(persistence_update, holon_node_model)
-                        } else {
-                            Ok(result)
+                    EntryTypes::HolonNode(_) => {
+                        let original_holon_node: Option<HolonNode> =
+                            original_record.entry().to_app_option().map_err(|e| wasm_error!(e))?;
+                        if original_holon_node.is_none() {
+                            return Ok(ValidateCallbackResult::Invalid(
+                                "The updated entry type must be the same as the original entry type"
+                                    .to_string(),
+                            ));
                         }
+
+                        Ok(ValidateCallbackResult::Valid)
                     }
                 }
             }
             OpRecord::DeleteEntry { original_action_hash, action, .. } => {
                 let original_record = must_get_valid_record(original_action_hash)?;
-                let original_action = original_record.action().clone();
-                let original_action = match original_action {
-                    Action::Create(create) => EntryCreationAction::Create(create),
-                    Action::Update(update) => EntryCreationAction::Update(update),
+                let original_action = original_record.action();
+                let original_entry_type = match original_action {
+                    Action::Create(create) => &create.entry_type,
+                    Action::Update(update) => &update.entry_type,
                     _ => {
                         return Ok(ValidateCallbackResult::Invalid(
                             "Original action for a delete must be a Create or Update action"
@@ -352,7 +287,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         ));
                     }
                 };
-                let app_entry_type = match original_action.entry_type() {
+                let app_entry_type = match original_entry_type {
                     EntryType::App(app_entry_type) => app_entry_type,
                     _ => {
                         return Ok(ValidateCallbackResult::Valid);
@@ -361,7 +296,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 let entry = match original_record.entry().as_option() {
                     Some(entry) => entry,
                     None => {
-                        return if original_action.entry_type().visibility().is_public() {
+                        return if original_entry_type.visibility().is_public() {
                             Ok(
                                     ValidateCallbackResult::Invalid(
                                         "Original record for a delete of a public entry must contain an entry"

@@ -3466,11 +3466,13 @@ dependencies = [
 name = "holons_guest_integrity"
 version = "0.1.0"
 dependencies = [
+ "base_types",
  "derive-new",
  "hdi",
  "holochain_serialized_bytes",
  "integrity_core_types",
  "serde",
+ "shared_validation",
 ]
 
 [[package]]
@@ -3478,6 +3480,7 @@ name = "holons_integrity"
 version = "0.0.1"
 dependencies = [
  "hdi",
+ "holochain_serialized_bytes",
  "holons_guest_integrity",
  "integrity_core_types",
  "serde",
@@ -3531,6 +3534,7 @@ dependencies = [
  "digest 0.11.0-rc.3",
  "ed25519 3.0.0-rc.0",
  "holochain",
+ "holochain_state",
  "holon_dance_builders",
  "holons_boundary",
  "holons_client",
