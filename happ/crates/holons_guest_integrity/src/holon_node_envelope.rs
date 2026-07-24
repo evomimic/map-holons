@@ -383,6 +383,40 @@ mod tests {
     }
 
     #[test]
+    fn rejects_numeric_and_string_boolean_substitutes_during_typed_decode() {
+        let numeric = encode(&NodeWithProperties(BTreeMap::from([(
+            property_name("boolean"),
+            ForgedNativeValue::new(1, "BooleanValue", 1_u8),
+        )])))
+        .unwrap();
+        assert_decode_failed(&numeric);
+
+        let string = encode(&NodeWithProperties(BTreeMap::from([(
+            property_name("boolean"),
+            ForgedNativeValue::new(1, "BooleanValue", "true"),
+        )])))
+        .unwrap();
+        assert_decode_failed(&string);
+    }
+
+    #[test]
+    fn rejects_overflowing_and_wrongly_typed_integer_values_during_typed_decode() {
+        let overflowing = encode(&NodeWithProperties(BTreeMap::from([(
+            property_name("integer"),
+            ForgedNativeValue::new(2, "IntegerValue", u64::MAX),
+        )])))
+        .unwrap();
+        assert_decode_failed(&overflowing);
+
+        let wrongly_typed = encode(&NodeWithProperties(BTreeMap::from([(
+            property_name("integer"),
+            ForgedNativeValue::new(2, "IntegerValue", "1"),
+        )])))
+        .unwrap();
+        assert_decode_failed(&wrongly_typed);
+    }
+
+    #[test]
     fn rejects_ignored_extra_field_as_non_canonical() {
         let raw = encode(&NodeWithExtraField {
             original_id: None,
@@ -431,6 +465,13 @@ mod tests {
         );
     }
 
+    fn assert_decode_failed(raw: &[u8]) {
+        assert_eq!(
+            run(raw),
+            Err(PvlViolation::MalformedHolonNode { reason: PvlMalformedReason::DecodeFailed })
+        );
+    }
+
     #[derive(Debug)]
     struct NodeWithProperties<T>(T);
 
@@ -440,6 +481,30 @@ mod tests {
             node.serialize_field("original_id", &Option::<LocalId>::None)?;
             node.serialize_field("property_map", &self.0)?;
             node.end()
+        }
+    }
+
+    #[derive(Debug)]
+    struct ForgedNativeValue<T> {
+        variant_index: u32,
+        variant_name: &'static str,
+        value: T,
+    }
+
+    impl<T> ForgedNativeValue<T> {
+        fn new(variant_index: u32, variant_name: &'static str, value: T) -> Self {
+            Self { variant_index, variant_name, value }
+        }
+    }
+
+    impl<T: Serialize> Serialize for ForgedNativeValue<T> {
+        fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            serializer.serialize_newtype_variant(
+                "BaseValue",
+                self.variant_index,
+                self.variant_name,
+                &self.value,
+            )
         }
     }
 
