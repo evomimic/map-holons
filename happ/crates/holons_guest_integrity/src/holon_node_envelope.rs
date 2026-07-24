@@ -3,7 +3,9 @@
 use hdi::prelude::*;
 use holochain_serialized_bytes::{decode, encode};
 use integrity_core_types::{HolonNodeModel, PvlMalformedReason, PvlViolation};
-use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
+use shared_validation::{
+    validate_holon_node_decoded, validate_holon_node_size, ACTION_HASH_LOCAL_ID_KIND,
+};
 
 use crate::HolonNode;
 
@@ -13,7 +15,6 @@ use crate::HolonNode;
 /// zome, so its index is fixed at zero. Adding or reordering app-entry
 /// definitions requires updating this constant and the associated op tests.
 const HOLON_NODE_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
-const ACTION_HASH_LOCAL_ID_KIND: &str = "ActionHash-shaped LocalId";
 const INVALID_ACTION_HASH_ENCODING: &str = "invalid ActionHash encoding";
 
 /// Outcome of attempting HolonNode envelope preparation for an operation.

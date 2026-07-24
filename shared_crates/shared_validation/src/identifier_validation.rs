@@ -3,7 +3,9 @@
 use core_types::HOLOCHAIN_ACTION_HASH_BYTES;
 use integrity_core_types::{HolonNodeModel, LocalId, PvlViolation};
 
-const ACTION_HASH_LOCAL_ID_KIND: &str = "ActionHash-shaped LocalId";
+/// Consensus-pinned `identifier_kind` shared by the pure shape rule and the substrate adapter's
+/// exact-parse rule for the same field.
+pub const ACTION_HASH_LOCAL_ID_KIND: &str = "ActionHash-shaped LocalId";
 const INCORRECT_BYTE_LENGTH: &str = "incorrect byte length";
 
 /// Validates the pure, substrate-independent shape of an ActionHash-shaped `LocalId`.
