@@ -100,6 +100,17 @@ mod tests {
 
     use super::*;
 
+    fn property_value_from_base_value(value: BaseValue) -> PropertyValue {
+        value
+    }
+
+    fn base_value_from_property_value(value: PropertyValue) -> BaseValue {
+        value
+    }
+
+    const _: fn(BaseValue) -> PropertyValue = property_value_from_base_value;
+    const _: fn(PropertyValue) -> BaseValue = base_value_from_property_value;
+
     fn property_name(value: impl Into<String>) -> PropertyName {
         PropertyName(MapString(value.into()))
     }
@@ -240,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    fn all_five_scalar_variants_are_supported() {
+    fn all_five_scalar_variants_are_supported_at_single_value_depth() {
         let name = property_name("value");
         let values: [PropertyValue; 5] = [
             BaseValue::StringValue(MapString("text".into())),
@@ -253,6 +264,21 @@ mod tests {
         for value in &values {
             assert_eq!(validate_property_value(&name, value), Ok(()));
         }
+    }
+
+    #[test]
+    fn property_values_are_concrete_scalar_base_values() {
+        let name = property_name("value");
+        let value: PropertyValue = BaseValue::IntegerValue(MapInteger(42));
+        let mut property_map = PropertyMap::new();
+
+        assert_eq!(property_map.get(&name), None);
+
+        property_map.insert(name.clone(), value);
+        let present_value: &BaseValue =
+            property_map.get(&name).expect("inserted property must be present");
+
+        assert_eq!(present_value, &BaseValue::IntegerValue(MapInteger(42)));
     }
 
     #[test]

@@ -24,5 +24,5 @@ impl fmt::Display for PropertyName {
 /// The type of a property’s value at runtime.
 pub type PropertyValue = BaseValue;
 
-/// The map from property names to optional property values.
+/// The map from property names to concrete property values.
 pub type PropertyMap = BTreeMap<PropertyName, PropertyValue>;
