@@ -41,7 +41,8 @@ pub fn validate_property_count(count: usize) -> Result<(), PvlViolation> {
     Ok(())
 }
 
-/// Applies decoded-model rules in consensus order: encoding, property count, then properties.
+/// Applies decoded-model rules in consensus order: encoding, property count, properties, then
+/// identifier shape.
 pub fn validate_holon_node_decoded(
     raw: &[u8],
     canonical: &[u8],
@@ -50,13 +51,16 @@ pub fn validate_holon_node_decoded(
     // Check encoding first: decoding can collapse duplicate map keys and hide the malformed input.
     validate_holon_node_encoding(raw, canonical)?;
     validate_property_count(model.property_map.len())?;
-    crate::holon_node_properties::validate_holon_node_properties(&model.property_map)
+    crate::holon_node_properties::validate_holon_node_properties(&model.property_map)?;
+
+    // Storage SL2 must revisit this rule when `original_id` leaves the persisted entry shape.
+    crate::identifier_validation::validate_holon_node_identifiers(model)
 }
 
 #[cfg(test)]
 mod tests {
     use base_types::{BaseValue, MapString};
-    use integrity_core_types::{PropertyMap, PropertyName};
+    use integrity_core_types::{LocalId, PropertyMap, PropertyName};
 
     use super::*;
 
@@ -158,6 +162,54 @@ mod tests {
         assert_eq!(
             validate_holon_node_decoded(&[1, 2, 3], &[1, 2, 3], &model),
             Err(PvlViolation::TooManyProperties { actual_count: 258, max_count: 256 })
+        );
+    }
+
+    #[test]
+    fn decoded_rules_accept_an_absent_original_id() {
+        let model = HolonNodeModel::new(None, PropertyMap::new());
+
+        assert_eq!(validate_holon_node_decoded(&[1], &[1], &model), Ok(()));
+    }
+
+    #[test]
+    fn decoded_rules_apply_identifier_validation_after_existing_rules() {
+        let invalid_identifier = Some(LocalId(Vec::new()));
+        let expected_identifier_violation = PvlViolation::InvalidIdentifier {
+            field_name: "original_id".into(),
+            identifier_kind: "ActionHash-shaped LocalId".into(),
+            reason: "incorrect byte length".into(),
+        };
+
+        let empty_properties = HolonNodeModel::new(invalid_identifier.clone(), PropertyMap::new());
+        assert_eq!(
+            validate_holon_node_decoded(&[1], &[2], &empty_properties),
+            Err(PvlViolation::MalformedHolonNode {
+                reason: PvlMalformedReason::NonCanonicalEncoding,
+            })
+        );
+        assert_eq!(
+            validate_holon_node_decoded(&[1], &[1], &empty_properties),
+            Err(expected_identifier_violation.clone())
+        );
+
+        let mut too_many_properties = model_with_property_count(MAX_PROPERTY_COUNT + 1);
+        too_many_properties.original_id = invalid_identifier.clone();
+        assert_eq!(
+            validate_holon_node_decoded(&[1], &[1], &too_many_properties),
+            Err(PvlViolation::TooManyProperties { actual_count: 257, max_count: 256 })
+        );
+
+        let invalid_property = HolonNodeModel::new(
+            invalid_identifier,
+            PropertyMap::from([(
+                PropertyName(MapString(String::new())),
+                BaseValue::StringValue(MapString("value".into())),
+            )]),
+        );
+        assert_eq!(
+            validate_holon_node_decoded(&[1], &[1], &invalid_property),
+            Err(PvlViolation::EmptyPropertyName)
         );
     }
 }
