@@ -15,6 +15,12 @@ use crate::HolonNode;
 /// zome, so its index is fixed at zero. Adding or reordering app-entry
 /// definitions requires updating this constant and the associated op tests.
 const HOLON_NODE_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
+
+/// Fixed structured-diagnostic reason used when exact `ActionHash` parsing fails.
+///
+/// The underlying parser error is intentionally discarded so peer-authored
+/// identifier bytes and substrate-specific error text cannot enter the
+/// consensus-visible validation message.
 const INVALID_ACTION_HASH_ENCODING: &str = "invalid ActionHash encoding";
 
 /// Outcome of attempting HolonNode envelope preparation for an operation.
@@ -117,6 +123,9 @@ fn run_holon_node_envelope(raw: &[u8]) -> ExternResult<Result<HolonNodeModel, Pv
     if let Err(violation) = validate_holon_node_decoded(raw, &canonical, &model) {
         return Ok(Err(violation));
     }
+
+    // Exact substrate parsing follows every pure decoded-model rule so this new
+    // check cannot change the precedence of established envelope or property failures.
     if let Err(violation) = validate_holon_node_identifiers_exact(&model) {
         return Ok(Err(violation));
     }
@@ -124,7 +133,16 @@ fn run_holon_node_envelope(raw: &[u8]) -> ExternResult<Result<HolonNodeModel, Pv
     Ok(Ok(model))
 }
 
-/// Applies substrate-specific parsing after the pure decoded-model rules have passed.
+/// Parses persisted identifier bytes as their exact Holochain hash roles.
+///
+/// The pure layer has already established that a present `original_id` has the
+/// 39-byte ActionHash shape. This adapter completes validation with
+/// [`ActionHash::try_from_raw_39`], which rejects a correctly sized value whose
+/// Holochain prefix or hash type is not valid for the `ActionHash` role.
+///
+/// `None` remains valid under the current entry model. Parse failures become a
+/// fixed [`PvlViolation::InvalidIdentifier`] rather than a `HolonError` or raw
+/// substrate error.
 fn validate_holon_node_identifiers_exact(model: &HolonNodeModel) -> Result<(), PvlViolation> {
     let Some(original_id) = &model.original_id else {
         return Ok(());

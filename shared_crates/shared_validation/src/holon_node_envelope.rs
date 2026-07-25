@@ -41,8 +41,15 @@ pub fn validate_property_count(count: usize) -> Result<(), PvlViolation> {
     Ok(())
 }
 
-/// Applies decoded-model rules in consensus order: encoding, property count, properties, then
-/// identifier shape.
+/// Applies pure decoded-model rules in consensus order.
+///
+/// Validation proceeds through canonical encoding, property count, properties
+/// in `BTreeMap` order, and finally identifier byte shape. The first violation
+/// is returned, so appending identifier validation preserves the precedence of
+/// all previously established envelope and property rules.
+///
+/// Exact Holochain hash parsing is intentionally absent from this function and
+/// runs afterward in the substrate adapter.
 pub fn validate_holon_node_decoded(
     raw: &[u8],
     canonical: &[u8],
@@ -53,7 +60,6 @@ pub fn validate_holon_node_decoded(
     validate_property_count(model.property_map.len())?;
     crate::holon_node_properties::validate_holon_node_properties(&model.property_map)?;
 
-    // Storage SL2 must revisit this rule when `original_id` leaves the persisted entry shape.
     crate::identifier_validation::validate_holon_node_identifiers(model)
 }
 
