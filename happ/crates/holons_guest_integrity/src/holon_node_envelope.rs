@@ -3,7 +3,9 @@
 use hdi::prelude::*;
 use holochain_serialized_bytes::{decode, encode};
 use integrity_core_types::{HolonNodeModel, PvlMalformedReason, PvlViolation};
-use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
+use shared_validation::{
+    validate_holon_node_decoded, validate_holon_node_size, ACTION_HASH_LOCAL_ID_KIND,
+};
 
 use crate::HolonNode;
 
@@ -13,6 +15,13 @@ use crate::HolonNode;
 /// zome, so its index is fixed at zero. Adding or reordering app-entry
 /// definitions requires updating this constant and the associated op tests.
 const HOLON_NODE_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
+
+/// Fixed structured-diagnostic reason used when exact `ActionHash` parsing fails.
+///
+/// The underlying parser error is intentionally discarded so peer-authored
+/// identifier bytes and substrate-specific error text cannot enter the
+/// consensus-visible validation message.
+const INVALID_ACTION_HASH_ENCODING: &str = "invalid ActionHash encoding";
 
 /// Outcome of attempting HolonNode envelope preparation for an operation.
 ///
@@ -115,7 +124,39 @@ fn run_holon_node_envelope(raw: &[u8]) -> ExternResult<Result<HolonNodeModel, Pv
         return Ok(Err(violation));
     }
 
+    // Exact substrate parsing follows every pure decoded-model rule so this new
+    // check cannot change the precedence of established envelope or property failures.
+    if let Err(violation) = validate_holon_node_identifiers_exact(&model) {
+        return Ok(Err(violation));
+    }
+
     Ok(Ok(model))
+}
+
+/// Parses persisted identifier bytes as their exact Holochain hash roles.
+///
+/// The pure layer has already established that a present `original_id` has the
+/// 39-byte ActionHash shape. This adapter completes validation with
+/// [`ActionHash::try_from_raw_39`], which rejects a correctly sized value whose
+/// Holochain prefix or hash type is not valid for the `ActionHash` role.
+///
+/// `None` remains valid under the current entry model. Parse failures become a
+/// fixed [`PvlViolation::InvalidIdentifier`] rather than a `HolonError` or raw
+/// substrate error.
+fn validate_holon_node_identifiers_exact(model: &HolonNodeModel) -> Result<(), PvlViolation> {
+    let Some(original_id) = &model.original_id else {
+        return Ok(());
+    };
+
+    ActionHash::try_from_raw_39(original_id.as_bytes().to_vec()).map_err(|_| {
+        PvlViolation::InvalidIdentifier {
+            field_name: "original_id".into(),
+            identifier_kind: ACTION_HASH_LOCAL_ID_KIND.into(),
+            reason: INVALID_ACTION_HASH_ENCODING.into(),
+        }
+    })?;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -137,6 +178,10 @@ mod tests {
 
     fn canonical_node(property_map: PropertyMap) -> HolonNode {
         HolonNode::new(None, property_map)
+    }
+
+    fn valid_action_hash_local_id(seed: u8) -> LocalId {
+        LocalId(ActionHash::from_raw_36(vec![seed; 36]).get_raw_39().to_vec())
     }
 
     fn run(raw: &[u8]) -> Result<HolonNodeModel, PvlViolation> {
@@ -345,7 +390,7 @@ mod tests {
                 BaseValue::EnumValue(MapEnumValue(MapString("Active".into()))),
             ),
         ]);
-        let representative = HolonNode::new(Some(LocalId(vec![7; 39])), properties);
+        let representative = HolonNode::new(Some(valid_action_hash_local_id(7)), properties);
 
         assert_eq!(
             encode(&representative).unwrap(),
@@ -379,6 +424,74 @@ mod tests {
         let raw = encode(&node).unwrap();
 
         assert_eq!(run(&raw), Ok(HolonNodeModel::from(node)));
+    }
+
+    #[test]
+    fn accepts_an_original_id_derived_from_a_real_action_hash() {
+        let node = HolonNode::new(Some(valid_action_hash_local_id(17)), PropertyMap::new());
+        let raw = encode(&node).unwrap();
+
+        assert_eq!(run(&raw), Ok(HolonNodeModel::from(node)));
+    }
+
+    #[test]
+    fn rejects_an_exact_width_original_id_with_invalid_action_hash_encoding() {
+        let node = HolonNode::new(Some(LocalId(vec![0; 39])), PropertyMap::new());
+        let model = HolonNodeModel::from(node.clone());
+        let raw = encode(&node).unwrap();
+
+        assert_eq!(
+            shared_validation::validate_holon_node_decoded(&raw, &raw, &model),
+            Ok(()),
+            "the pure layer must not interpret Holochain hash prefixes"
+        );
+        assert_eq!(
+            run(&raw),
+            Err(PvlViolation::InvalidIdentifier {
+                field_name: "original_id".into(),
+                identifier_kind: "ActionHash-shaped LocalId".into(),
+                reason: "invalid ActionHash encoding".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_wrong_width_original_ids_in_the_pure_stage() {
+        for length in [38, 40] {
+            let node = HolonNode::new(Some(LocalId(vec![0; length])), PropertyMap::new());
+            let raw = encode(&node).unwrap();
+
+            assert_eq!(
+                run(&raw),
+                Err(PvlViolation::InvalidIdentifier {
+                    field_name: "original_id".into(),
+                    identifier_kind: "ActionHash-shaped LocalId".into(),
+                    reason: "incorrect byte length".into(),
+                }),
+                "unexpected classification for {length} bytes"
+            );
+        }
+    }
+
+    #[test]
+    fn public_envelope_maps_exact_parse_failures_for_all_five_op_forms() {
+        let node = HolonNode::new(Some(LocalId(vec![0; 39])), PropertyMap::new());
+        let raw = encode(&node).unwrap();
+        let expected = HolonNodeEnvelope::Invalid(PvlViolation::InvalidIdentifier {
+            field_name: "original_id".into(),
+            identifier_kind: "ActionHash-shaped LocalId".into(),
+            reason: "invalid ActionHash encoding".into(),
+        });
+
+        for form in HOLON_NODE_OP_FORMS {
+            let op = op_with_raw_entry(form, raw.clone());
+
+            assert_eq!(
+                prepare_holon_node_envelope(&op).unwrap(),
+                expected,
+                "{form:?} did not apply exact identifier parsing through the public seam"
+            );
+        }
     }
 
     #[test]
