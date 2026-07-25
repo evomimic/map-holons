@@ -7,9 +7,18 @@ use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
 
 use crate::HolonNode;
 
+/// Entry-definition index assigned to `HolonNode`.
+///
+/// `HolonNode` is currently the sole app entry declared by this integrity
+/// zome, so its index is fixed at zero. Adding or reordering app-entry
+/// definitions requires updating this constant and the associated op tests.
 const HOLON_NODE_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
 
-/// Result of preparing the HolonNode envelope carried by an operation.
+/// Outcome of attempting HolonNode envelope preparation for an operation.
+///
+/// `NotApplicable` means the operation is outside this validator's domain;
+/// it is not a validation success or failure. `Invalid` represents a
+/// deterministic consensus-visible rejection.
 #[derive(Debug, PartialEq, Eq)]
 pub enum HolonNodeEnvelope {
     /// The operation does not carry a HolonNode app entry.
@@ -20,7 +29,11 @@ pub enum HolonNodeEnvelope {
     Invalid(PvlViolation),
 }
 
-/// Extracts and validates a HolonNode entry before flattened-op decoding.
+/// Extracts and validates a HolonNode's raw stored entry bytes before the
+/// operation is converted into a flattened lifecycle-validation form.
+///
+/// This preserves access to the original encoding so size and canonicality
+/// checks can run before decoding discards representation details.
 pub fn prepare_holon_node_envelope(op: &Op) -> ExternResult<HolonNodeEnvelope> {
     let Some(raw) = holon_node_entry_bytes(op) else {
         return Ok(HolonNodeEnvelope::NotApplicable);
@@ -32,7 +45,17 @@ pub fn prepare_holon_node_envelope(op: &Op) -> ExternResult<HolonNodeEnvelope> {
     })
 }
 
-/// Locates the stored inner app-entry payload without decoding it.
+/// Returns the exact stored app-entry bytes when `op` carries a `HolonNode`.
+///
+/// Supports the entry-bearing `create` and `update` operation forms used by the
+/// integrity callback. Operations that do not carry entry content, or that
+/// carry another entry type, return `None`.
+///
+/// Returning `None` does not indicate an invalid operation; it simply means
+/// that `HolonNode` envelope validation does not apply.
+///
+/// The bytes are returned without decoding so raw-size and canonical-encoding
+/// checks can inspect the original stored representation.
 fn holon_node_entry_bytes(op: &Op) -> Option<&[u8]> {
     let (entry_type, entry) = match op {
         Op::StoreEntry(store_entry) => (store_entry.action.hashed.entry_type(), &store_entry.entry),
@@ -45,9 +68,8 @@ fn holon_node_entry_bytes(op: &Op) -> Option<&[u8]> {
         _ => return None,
     };
 
-    // HolonNode is the sole app entry in this integrity zome and therefore entry-def index 0.
-    // The integrity callback already scopes the zome index; keep this constant aligned if another
-    // app entry is ever added or the declaration order changes.
+    // Since this code only runs for this zome, the entry index alone
+    // identifies whether this is a HolonNode.
     match entry_type {
         EntryType::App(app_entry_def)
             if app_entry_def.entry_index == HOLON_NODE_ENTRY_DEF_INDEX => {}
@@ -59,8 +81,13 @@ fn holon_node_entry_bytes(op: &Op) -> Option<&[u8]> {
 
 /// Runs the consensus-ordered envelope pipeline against stored inner-entry bytes.
 ///
-/// The outer result is reserved for serialization/callback failures. The inner result carries
-/// deterministic PVL violations that the integrity zome maps explicitly to `Invalid`.
+/// The outer `ExternResult` is reserved for host, serialization, or callback
+/// execution failures that prevent validation from completing. The inner
+/// `Result` represents completed validation: either a valid model or a
+/// deterministic PVL violation.
+///
+/// Keeping those channels separate prevents malformed peer-authored data from
+/// being reported as an integrity-callback execution failure.
 fn run_holon_node_envelope(raw: &[u8]) -> ExternResult<Result<HolonNodeModel, PvlViolation>> {
     // Rejecting size first bounds work even when the payload is malformed or expensive to decode.
     if let Err(violation) = validate_holon_node_size(raw.len()) {
@@ -77,8 +104,12 @@ fn run_holon_node_envelope(raw: &[u8]) -> ExternResult<Result<HolonNodeModel, Pv
     };
     let model = HolonNodeModel::from(node);
 
-    // Canonicalize the model rather than the outer EntryTypes enum: Holochain stores these inner
-    // bytes, and comparing at this boundary preserves alternate-encoding evidence lost by decode.
+    // Re-encode the decoded model into its canonical representation and compare it
+    // with the exact stored bytes. Decoding alone would accept multiple equivalent
+    // encodings and erase the evidence needed to reject non-canonical input.
+    //
+    // Canonicalize the model rather than the outer EntryTypes enum because
+    // Holochain stores and exposes these inner app-entry bytes at this boundary.
     let canonical = encode(&model).map_err(|error| wasm_error!(error))?;
     if let Err(violation) = validate_holon_node_decoded(raw, &canonical, &model) {
         return Ok(Err(violation));
@@ -250,8 +281,9 @@ mod tests {
             let raw = vec![0xc1; MAX_HOLON_NODE_BYTES + 1];
             let op = op_with_raw_entry(form, raw);
 
-            // In particular, StoreRecordUpdate carries an arbitrary original-action address.
-            // Preparation must reject its current entry without attempting dependency resolution.
+            // Raw-size rejection must occur before decoding or dependency resolution.
+            // This is especially important for StoreRecordUpdate, whose original-action
+            // address is untrusted peer-authored input.
             assert_eq!(
                 prepare_holon_node_envelope(&op).unwrap(),
                 expected,
@@ -295,6 +327,9 @@ mod tests {
         }
     }
 
+    // Envelope canonicality validation re-encodes `HolonNodeModel`, so this test
+    // guards the assumption that the model and guest-facing entry type have an
+    // identical serialized representation.
     #[test]
     fn model_encoding_matches_guest_inner_entry_encoding() {
         let empty = HolonNode::new(None, PropertyMap::new());
@@ -318,6 +353,9 @@ mod tests {
         );
     }
 
+    // The envelope validator reads `AppEntryBytes` directly. Guard that those
+    // stored inner bytes are exactly the bytes produced by guest serialization,
+    // with no additional wrapper encoding introduced by `Entry::app`.
     #[test]
     fn stored_app_entry_payload_matches_guest_encoding() {
         let node = canonical_node(BTreeMap::from([(
@@ -472,6 +510,11 @@ mod tests {
         );
     }
 
+    // The following serializers deliberately produce byte representations that
+    // cannot be constructed through the strongly typed HolonNode API. They let
+    // tests exercise malformed, duplicate-key, reordered, and otherwise
+    // non-canonical encodings at the raw envelope boundary.
+
     #[derive(Debug)]
     struct NodeWithProperties<T>(T);
 
@@ -483,6 +526,7 @@ mod tests {
             node.end()
         }
     }
+
 
     #[derive(Debug)]
     struct ForgedNativeValue<T> {
