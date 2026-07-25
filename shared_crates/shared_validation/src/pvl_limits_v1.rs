@@ -43,12 +43,22 @@ pub fn raw_byte_len(value: &[u8]) -> usize {
     value.len()
 }
 
-/// Narrows a measured length to `u32` without wrapping.
+/// Converts a measured `usize` value to `u32` for inclusion in a bounded
+/// validation-violation report.
+///
+/// Values larger than `u32::MAX` are reported as `u32::MAX`, ensuring that
+/// constructing a violation cannot panic or wrap even for adversarially
+/// large inputs.
 pub fn saturating_u32(len: usize) -> u32 {
     u32::try_from(len).unwrap_or(u32::MAX)
 }
 
-/// Narrows a measured length to `u16` without wrapping.
+/// Converts a measured `usize` value to `u16` for inclusion in a bounded
+/// validation-violation report.
+///
+/// Values larger than `u16::MAX` are reported as `u16::MAX`, ensuring that
+/// constructing a violation cannot panic or wrap even for adversarially
+/// large inputs.
 pub fn saturating_u16(len: usize) -> u16 {
     u16::try_from(len).unwrap_or(u16::MAX)
 }
@@ -59,6 +69,9 @@ mod tests {
 
     #[test]
     fn limit_values_match_the_pvl_v1_contract() {
+        // These literals intentionally duplicate the published PVL v1 contract.
+        // Changing either the implementation constants or this test requires an
+        // explicit protocol-versioning decision.
         assert_eq!(MAX_HOLON_NODE_BYTES, 262_144);
         assert_eq!(MAX_PROPERTY_COUNT, 256);
         assert_eq!(MAX_PROPERTY_NAME_BYTES, 128);

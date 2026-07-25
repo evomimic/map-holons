@@ -41,7 +41,7 @@ pub fn validate_property_count(count: usize) -> Result<(), PvlViolation> {
     Ok(())
 }
 
-/// Applies decoded-model rules in consensus order: encoding, then property count.
+/// Applies decoded-model rules in consensus order: encoding, property count, then properties.
 pub fn validate_holon_node_decoded(
     raw: &[u8],
     canonical: &[u8],
@@ -49,7 +49,8 @@ pub fn validate_holon_node_decoded(
 ) -> Result<(), PvlViolation> {
     // Check encoding first: decoding can collapse duplicate map keys and hide the malformed input.
     validate_holon_node_encoding(raw, canonical)?;
-    validate_property_count(model.property_map.len())
+    validate_property_count(model.property_map.len())?;
+    crate::holon_node_properties::validate_holon_node_properties(&model.property_map)
 }
 
 #[cfg(test)]
@@ -128,6 +129,35 @@ mod tests {
         assert_eq!(
             validate_holon_node_decoded(&[1, 2, 3], &[1, 2, 3], &model),
             Err(PvlViolation::TooManyProperties { actual_count: 257, max_count: 256 })
+        );
+    }
+
+    #[test]
+    fn decoded_rules_apply_property_validation_after_property_count() {
+        let mut property_map = PropertyMap::new();
+        property_map.insert(
+            PropertyName(MapString(String::new())),
+            BaseValue::StringValue(MapString("value".to_string())),
+        );
+        let model = HolonNodeModel::new(None, property_map);
+
+        assert_eq!(
+            validate_holon_node_decoded(&[1, 2, 3], &[1, 2, 3], &model),
+            Err(PvlViolation::EmptyPropertyName)
+        );
+    }
+
+    #[test]
+    fn decoded_rules_report_property_count_before_property_rules() {
+        let mut model = model_with_property_count(MAX_PROPERTY_COUNT + 1);
+        model.property_map.insert(
+            PropertyName(MapString(String::new())),
+            BaseValue::StringValue(MapString("value".to_string())),
+        );
+
+        assert_eq!(
+            validate_holon_node_decoded(&[1, 2, 3], &[1, 2, 3], &model),
+            Err(PvlViolation::TooManyProperties { actual_count: 258, max_count: 256 })
         );
     }
 }
