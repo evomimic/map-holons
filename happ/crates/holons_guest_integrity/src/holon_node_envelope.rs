@@ -527,7 +527,6 @@ mod tests {
         }
     }
 
-
     #[derive(Debug)]
     struct ForgedNativeValue<T> {
         variant_index: u32,

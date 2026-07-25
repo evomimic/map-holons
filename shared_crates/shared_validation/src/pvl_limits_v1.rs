@@ -53,7 +53,6 @@ pub fn saturating_u32(len: usize) -> u32 {
     u32::try_from(len).unwrap_or(u32::MAX)
 }
 
-
 /// Converts a measured `usize` value to `u16` for inclusion in a bounded
 /// validation-violation report.
 ///
