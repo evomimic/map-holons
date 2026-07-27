@@ -1,5 +1,5 @@
 use crate::{HolonError, HolonId, LocalId, PropertyMap, PropertyName, RelationshipName};
-use base_types::BaseValue;
+use base_types::{BaseValue, MapString};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -143,6 +143,110 @@ pub struct DecodedSmartLinkTag {
     pub target_property_values: PropertyMap,
 }
 
+/// Fully-prepared, descriptor-unaware input to `put_smartlink`.
+///
+/// Coordination supplies every field; the storage layer never infers or derives
+/// a missing one. `occurrence_id` is always `None` in SL1 Part 2.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PreparedSmartLink {
+    pub source_id: LocalId,
+    pub target_id: HolonId,
+    pub relationship_name: RelationshipName,
+    pub canonical_key: CanonicalKey,
+    pub occurrence_id: Option<OccurrenceId>,
+    pub relationship_property_values: PropertyMap,
+    pub target_property_cache_candidates: Vec<TargetPropertyCacheCandidate>,
+}
+
+impl PreparedSmartLink {
+    /// Builds the codec input for Tag v1 packing, reusing the shared encoder.
+    pub fn to_tag_input(&self) -> SmartLinkTagInput {
+        SmartLinkTagInput {
+            target_id: self.target_id.clone(),
+            relationship_name: self.relationship_name.clone(),
+            canonical_key: self.canonical_key.clone(),
+            occurrence_id: self.occurrence_id,
+            relationship_property_values: self.relationship_property_values.clone(),
+            target_property_cache_candidates: self.target_property_cache_candidates.clone(),
+        }
+    }
+}
+
+/// One decoded, unhydrated SmartLink returned by the storage expansion APIs.
+///
+/// Preserves the physical `SmartLinkId`, keeps the relationship-property and
+/// target-property caches as separate maps, and round-trips the optional
+/// `OccurrenceId` (always absent in SL1 Part 2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmartLink {
+    pub smartlink_id: SmartLinkId,
+    pub from_address: LocalId,
+    pub target_id: HolonId,
+    pub relationship_name: RelationshipName,
+    pub canonical_key: CanonicalKey,
+    pub occurrence_id: Option<OccurrenceId>,
+    pub relationship_property_values: PropertyMap,
+    pub target_property_values: PropertyMap,
+}
+
+impl SmartLink {
+    /// Returns the tag's canonical key as a `MapString`, or `None` when keyless.
+    pub fn key(&self) -> Result<Option<MapString>, HolonError> {
+        Ok((!self.canonical_key.as_str().is_empty())
+            .then(|| MapString(self.canonical_key.as_str().to_string())))
+    }
+
+    /// Returns the persisted target identity and any cached smart properties.
+    /// This is context-free and does not mint runtime references.
+    pub fn to_pointer(&self) -> (HolonId, Option<PropertyMap>) {
+        (
+            self.target_id.clone(),
+            (!self.target_property_values.is_empty()).then(|| self.target_property_values.clone()),
+        )
+    }
+
+    /// True when this live link shares `prepared`'s insertion identity:
+    /// source + target + relationship + occurrence. Canonical key and property
+    /// caches are deliberately excluded.
+    pub fn same_identity(&self, prepared: &PreparedSmartLink) -> bool {
+        self.from_address == prepared.source_id
+            && self.target_id == prepared.target_id
+            && self.relationship_name == prepared.relationship_name
+            && self.occurrence_id == prepared.occurrence_id
+    }
+
+    /// True when this live link is authoritatively equal to `prepared`: identity
+    /// matches AND canonical key and relationship-property values match. Optional
+    /// target-property cache differences are ignored (idempotency requirement).
+    pub fn is_already_present(&self, prepared: &PreparedSmartLink) -> bool {
+        self.same_identity(prepared)
+            && self.canonical_key == prepared.canonical_key
+            && self.relationship_property_values == prepared.relationship_property_values
+    }
+}
+
+/// Outcome of `put_smartlink`. Each variant carries the physical id of the
+/// live link the decision concerns.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PutSmartLinkOutcome {
+    /// A new physical link was created.
+    Inserted(SmartLinkId),
+    /// An authoritatively-identical live link already existed; no write.
+    AlreadyPresent(SmartLinkId),
+    /// A live link shares the insertion identity but differs in canonical key or
+    /// authoritative relationship properties; no write.
+    Conflict(SmartLinkId),
+}
+
+/// Outcome of `delete_smartlink`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DeleteSmartLinkOutcome {
+    /// A live link existed and was deleted by this call.
+    Deleted,
+    /// No live link existed for the id (already deleted or never present).
+    AlreadyAbsent,
+}
+
 fn validate_nul_free(wire_type: &str, value: &str) -> Result<(), HolonError> {
     if value.as_bytes().contains(&0) {
         return Err(HolonError::InvalidWireFormat {
@@ -172,5 +276,97 @@ mod tests {
             CanonicalKeyPrefix::new("prefix\0"),
             Err(HolonError::InvalidWireFormat { .. })
         ));
+    }
+
+    fn local(seed: u8) -> LocalId {
+        LocalId(vec![seed; 4])
+    }
+
+    fn rel(name: &str) -> RelationshipName {
+        RelationshipName(MapString(name.to_string()))
+    }
+
+    fn prop(name: &str, value: &str) -> PropertyMap {
+        std::collections::BTreeMap::from([(
+            PropertyName(MapString(name.to_string())),
+            BaseValue::StringValue(MapString(value.to_string())),
+        )])
+    }
+
+    fn prepared() -> PreparedSmartLink {
+        PreparedSmartLink {
+            source_id: local(1),
+            target_id: HolonId::Local(local(2)),
+            relationship_name: rel("RelatedTo"),
+            canonical_key: CanonicalKey::new("target-key").unwrap(),
+            occurrence_id: None,
+            relationship_property_values: PropertyMap::new(),
+            target_property_cache_candidates: Vec::new(),
+        }
+    }
+
+    /// Builds a live decoded link that authoritatively matches `p` by default.
+    fn live_from(p: &PreparedSmartLink, id: u8) -> SmartLink {
+        SmartLink {
+            smartlink_id: SmartLinkId(local(id)),
+            from_address: p.source_id.clone(),
+            target_id: p.target_id.clone(),
+            relationship_name: p.relationship_name.clone(),
+            canonical_key: p.canonical_key.clone(),
+            occurrence_id: p.occurrence_id,
+            relationship_property_values: p.relationship_property_values.clone(),
+            target_property_values: PropertyMap::new(),
+        }
+    }
+
+    #[test]
+    fn same_identity_ignores_key_and_props() {
+        let p = prepared();
+        let mut live = live_from(&p, 9);
+        live.canonical_key = CanonicalKey::new("different-key").unwrap();
+        live.relationship_property_values = prop("weight", "heavy");
+        assert!(live.same_identity(&p));
+    }
+
+    #[test]
+    fn same_identity_false_on_different_target() {
+        let p = prepared();
+        let mut live = live_from(&p, 9);
+        live.target_id = HolonId::Local(local(7));
+        assert!(!live.same_identity(&p));
+    }
+
+    #[test]
+    fn already_present_when_identity_key_and_props_match() {
+        let p = prepared();
+        let live = live_from(&p, 9);
+        assert!(live.is_already_present(&p));
+    }
+
+    #[test]
+    fn already_present_ignores_target_property_cache() {
+        let p = prepared();
+        let mut live = live_from(&p, 9);
+        live.target_property_values = prop("title", "cached"); // cache-only difference
+        assert!(live.is_already_present(&p));
+    }
+
+    #[test]
+    fn conflict_when_canonical_key_differs() {
+        let p = prepared();
+        let mut live = live_from(&p, 9);
+        live.canonical_key = CanonicalKey::new("other-key").unwrap();
+        assert!(live.same_identity(&p));
+        assert!(!live.is_already_present(&p)); // -> Conflict
+    }
+
+    #[test]
+    fn conflict_when_relationship_props_differ() {
+        let mut p = prepared();
+        p.relationship_property_values = prop("weight", "light");
+        let mut live = live_from(&p, 9);
+        live.relationship_property_values = prop("weight", "heavy");
+        assert!(live.same_identity(&p));
+        assert!(!live.is_already_present(&p)); // -> Conflict
     }
 }

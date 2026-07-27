@@ -3,7 +3,9 @@
 pub mod all_holon_nodes;
 pub mod holon_node;
 pub mod saved_holon_node;
+pub mod smartlink;
 
 pub use all_holon_nodes::*;
 pub use holon_node::*;
 pub use saved_holon_node::*;
+pub use smartlink::*;
