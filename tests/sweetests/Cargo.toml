@@ -13,6 +13,7 @@ publish = false
 async-trait = "0.1.51"
 #base64ct = "=1.7.3"
 derive-new = "0.7"
+serde = { version = "1", features = ["derive"] }
 # Holochain sweettest stack (pin as you already do)
 holochain = { version = "=0.6.1", default-features = false, features = [
     "sweettest",

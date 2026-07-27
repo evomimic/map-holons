@@ -3549,6 +3549,7 @@ dependencies = [
  "pretty_assertions",
  "rand 0.9.4",
  "rstest",
+ "serde",
  "sha1 0.11.0-rc.2",
  "sha2 0.11.0-rc.2",
  "tokio",

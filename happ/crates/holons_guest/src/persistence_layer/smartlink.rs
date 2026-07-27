@@ -121,26 +121,40 @@ pub fn put_smartlink(prepared: PreparedSmartLink) -> Result<PutSmartLinkOutcome,
 
 /// Deletes exactly the physical link named by `smartlink_id`, idempotently.
 ///
-/// HDK `delete_link` is not self-reporting, so liveness is probed via `get_details`
-/// on the create-link action: a record with no delete actions is live.
-/// Deleting one id never affects sibling live links.
+/// HDK `delete_link` is not self-reporting (a repeat delete just commits another
+/// `DeleteLink`), and a `CreateLink` action's record details do **not** track its
+/// `DeleteLink`s. Liveness is therefore established by reading the create-link
+/// action to recover its base, then checking whether the link still appears among
+/// that base's live links (`get_links` excludes deleted links). Deleting one id
+/// never affects sibling live links.
 pub fn delete_smartlink(smartlink_id: &SmartLinkId) -> Result<DeleteSmartLinkOutcome, HolonError> {
     let create_hash = try_action_hash_from_local_id(&smartlink_id.0)?;
-    let details = get_details(create_hash.clone(), GetOptions::default())
-        .map_err(holon_error_from_wasm_error)?;
-    let live = match details {
-        Some(Details::Record(record_details)) => record_details.deletes.is_empty(),
-        Some(Details::Entry(_)) => {
+
+    // Recover the base address from the create-link action (needed to test liveness).
+    let Some(record) =
+        get(create_hash.clone(), GetOptions::default()).map_err(holon_error_from_wasm_error)?
+    else {
+        return Ok(DeleteSmartLinkOutcome::AlreadyAbsent);
+    };
+    let base_address = match record.action() {
+        Action::CreateLink(create_link) => create_link.base_address.clone(),
+        _ => {
             return Err(HolonError::InvalidParameter(format!(
                 "SmartLinkId {:?} does not reference a create-link action",
                 smartlink_id
             )));
         }
-        None => false,
     };
+
+    // A link is live iff it still appears in its base's live links.
+    let query = LinkQuery::try_new(base_address, LinkTypes::SmartLink)
+        .map_err(holon_error_from_wasm_error)?;
+    let links = get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+    let live = links.iter().any(|link| link.create_link_hash == create_hash);
     if !live {
         return Ok(DeleteSmartLinkOutcome::AlreadyAbsent);
     }
+
     delete_link(create_hash, GetOptions::default()).map_err(holon_error_from_wasm_error)?;
     Ok(DeleteSmartLinkOutcome::Deleted)
 }
