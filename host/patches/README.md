@@ -5,6 +5,53 @@ in `host/Cargo.toml`. Each subdirectory is a full crate copy with a targeted fix
 
 ---
 
+## Status — STILL REQUIRED (re-verified 2026-07-27 against Holochain 0.6.3)
+
+**Upstream issue:** https://github.com/holochain/holochain-wasmer/issues/192 (open)
+
+| Check | Result |
+|---|---|
+| `holochain` 0.6.1 / 0.6.2 / **0.6.3** dep on `holochain_wasmer_host` | **`=0.0.102` in all three** — the exact version patched here, so this patch applies unchanged |
+| `holochain` 0.6.x dep on `wasmer` | `^6.0.1` throughout — unchanged |
+| `holochain_wasmer_host` 0.0.103 (latest) `get_from_filesystem` | **still buggy** — byte-identical to 0.0.102 |
+| `holochain/holochain-wasmer` `develop` branch | **still buggy** (`crates/host/src/module.rs:319`) |
+
+No manifest change was needed for the 0.6.3 bump. After updating, confirm the patch is still wired:
+cargo must **not** warn `Patch 'holochain_wasmer_host …' was not used in the crate graph`, and the
+`host/Cargo.lock` entry for `holochain_wasmer_host` must have **no `source = "registry+…"` line**
+(patched crates are listed with `dependencies` only).
+
+Runtime check on 2026-07-27: a cold start on Apple Silicon at 0.6.3 compiled and wrote two fresh
+entries to `/tmp/conductora_dev/<key>/wasm-cache/` with no crash — i.e. the `NotFound` → `Ok(None)`
+path executed successfully. Note this confirms the patch **works**; it is not evidence the patch is
+unnecessary. To test whether it is still load-bearing, comment out the `[patch.crates-io]` block,
+`rm -rf /tmp/conductora_dev/*/wasm-cache`, and start the app — expect a silent SIGSEGV.
+
+### Looking ahead to Holochain 0.7
+
+`holochain` 0.7.0-rc.* moves to **`holochain_wasmer_host =0.0.103`** and **`wasmer =7.1.0`**. Both
+halves of the bug survive that bump:
+
+- 0.0.103's `get_from_filesystem` is unchanged from 0.0.102.
+- `wasmer-compiler` 7.1.0 still captures a backtrace unconditionally on the user-error arm —
+  `Trap::User(_err) => (wasm_trace(&info, None, &Backtrace::new_unresolved()), None)` in
+  `src/engine/trap/stack.rs`. Its only new escape hatch is an `EXIT_CALLED` early return
+  (wasmer #5877), which does not cover this path.
+
+The patch directory must therefore be **re-vendored from 0.0.103, not edited in place** — the crate
+was restructured:
+
+| 0.0.102 | 0.0.103 |
+|---|---|
+| `src/module/wasmer_sys.rs`, `src/module/wasmer_wamr.rs` | `src/module/sys.rs`, `src/module/wasmi.rs` |
+| `wasmer_sys`, `wasmer_sys_dev`, `wasmer_sys_prod`, `wasmer_wamr`, `error_as_host`, `debug_memory` | `wasmer-sys`, `wasmer-sys-cranelift`, `wasmer-sys-llvm`, `wasmer-wasmi`, `error-as-host`, `debug-memory` (underscores → hyphens; `wasmer_sys_dev` split into `wasmer-sys-cranelift`) |
+| default = `["error_as_host", "wasmer_sys_dev"]` | default = `["error-as-host", "wasmer-sys", "wasmer-sys-cranelift"]` |
+
+Re-apply the same `get_from_filesystem` rewrite to the vendored 0.0.103 source; the
+`[patch.crates-io]` line itself needs no change once the vendored `version` reads `0.0.103`.
+
+---
+
 ## `holochain_wasmer_host` (v0.0.102)
 
 ### Patched file
@@ -95,13 +142,17 @@ opts for the broader approach.
 
 ### Upstream report
 
-This should be filed against the Holochain repository:
-`https://github.com/holochain/holochain`
+Filed 2026-07-27 as **https://github.com/holochain/holochain-wasmer/issues/192** (open):
 
-Include:
-- The crash stack from `~/Library/Logs/DiagnosticReports/Conductora-*.ips`
-- Repro: Apple Silicon, fresh/empty wasm-cache, any WASM install
-- The one-line fix as suggested patch
+> `ModuleCache::get_from_filesystem` turns a cache miss into a `RuntimeError`, causing a SIGSEGV on
+> Apple Silicon. [BUG, MACOS]
+
+Note it belongs to `holochain/holochain-wasmer`, not `holochain/holochain` — that is where
+`module.rs` lives. The submitted text is kept at
+[`.notes/holochain-wasmer-sigsegv-issue.md`](../../.notes/holochain-wasmer-sigsegv-issue.md).
+
+**Remove this patch once that issue is fixed and a release carrying the fix is pinned by the
+`holochain` version we depend on.**
 
 ### How the patch is wired
 
