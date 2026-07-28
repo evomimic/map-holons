@@ -14,7 +14,7 @@ use crate::HolonNode;
 /// `HolonNode` is currently the sole app entry declared by this integrity
 /// zome, so its index is fixed at zero. Adding or reordering app-entry
 /// definitions requires updating this constant and the associated op tests.
-const HOLON_NODE_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
+pub(crate) const HOLON_NODE_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
 
 /// Fixed structured-diagnostic reason used when exact `ActionHash` parsing fails.
 ///
@@ -77,8 +77,10 @@ fn holon_node_entry_bytes(op: &Op) -> Option<&[u8]> {
         _ => return None,
     };
 
-    // Since this code only runs for this zome, the entry index alone
-    // identifies whether this is a HolonNode.
+    // The op envelope is interpreted through this zome's declared EntryTypes, so
+    // its entry index selects HolonNode without another host call. Lifecycle
+    // targets are resolved actions that may belong to another integrity-zome
+    // scope and therefore require the stricter full AppEntryDef comparison.
     match entry_type {
         EntryType::App(app_entry_def)
             if app_entry_def.entry_index == HOLON_NODE_ENTRY_DEF_INDEX => {}

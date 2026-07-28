@@ -2475,6 +2475,7 @@ dependencies = [
  "holochain_serialized_bytes",
  "holochain_serialized_bytes_derive",
  "holochain_wasmer_guest",
+ "mockall",
  "paste",
  "serde",
  "serde_bytes",
@@ -3471,6 +3472,7 @@ dependencies = [
  "hdi",
  "holochain_serialized_bytes",
  "integrity_core_types",
+ "mockall",
  "serde",
  "shared_validation",
 ]
