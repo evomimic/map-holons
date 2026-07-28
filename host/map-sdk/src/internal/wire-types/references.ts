@@ -393,8 +393,8 @@ export type PvlViolationWire =
     }
   | {
       InvalidUpdateTarget: {
-        expected_entry_kind: string;
-        actual_entry_kind: string;
+        expected_target_kind: string;
+        actual_target_kind: string;
       };
     }
   | { ImmutableNativeFieldChanged: { field_name: string } }
@@ -1007,12 +1007,12 @@ export function isPvlViolationWire(value: unknown): value is PvlViolationWire {
       (
         candidate,
       ): candidate is {
-        expected_entry_kind: string;
-        actual_entry_kind: string;
+        expected_target_kind: string;
+        actual_target_kind: string;
       } =>
         isRecord(candidate) &&
-        isString(candidate['expected_entry_kind']) &&
-        isString(candidate['actual_entry_kind']),
+        isString(candidate['expected_target_kind']) &&
+        isString(candidate['actual_target_kind']),
     ) ||
     isTaggedValue(
       value,
