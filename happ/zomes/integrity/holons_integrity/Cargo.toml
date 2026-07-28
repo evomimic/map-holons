@@ -31,3 +31,5 @@ path = "../../../../shared_crates/type_system/integrity_core_types"
 
 [dev-dependencies]
 holochain_serialized_bytes = "*"
+hdi = { version = "0.7", features = ["mock"] }
+mockall = "0.13"
