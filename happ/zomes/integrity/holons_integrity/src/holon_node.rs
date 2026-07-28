@@ -1,14 +1,4 @@
 use hdi::prelude::*;
-use integrity_core_types::PersistenceDelete;
-use shared_validation::*;
-
-pub fn validate_delete_holon_node(
-    _action: PersistenceDelete,
-) -> ExternResult<ValidateCallbackResult> {
-    validate_delete_holon().map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
-
-    Ok(ValidateCallbackResult::Valid)
-}
 
 pub fn validate_create_link_holon_node_updates(
     _action: CreateLink,

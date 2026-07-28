@@ -4,12 +4,6 @@ use integrity_core_types::{LocalId, PersistenceLinkTag};
 /// Foundational routines for property and relationship checks
 /// applicable to both zomes
 
-// ==== Entry CUD ====
-
-pub fn validate_delete_holon() -> Result<(), ValidationError> {
-    Ok(())
-}
-
 // ==== Smartlink ====
 
 pub fn validate_create_smartlink_helper(
