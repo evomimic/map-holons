@@ -3,8 +3,9 @@ use holons_guest_integrity::type_conversions::*;
 use holons_guest_integrity::HolonNode;
 use std::sync::{Arc, RwLock};
 
-use crate::guest_shared_objects::{save_smartlink, SmartLink};
+use crate::guest_shared_objects::save_smartlink;
 use crate::persistence_layer::create_holon_node;
+use core_types::PreparedSmartLink;
 
 use holons_core::{
     core_shared_objects::{
@@ -573,30 +574,30 @@ fn save_smartlinks_for_collection(
     for (target_index, resolved_target) in resolved_targets.iter().enumerate() {
         // Persist both directions from one resolved endpoint pair so the forward
         // and inverse SmartLinks stay anchored to the same committed source.
-        let forward_smartlink = SmartLink {
-            smartlink_id: None,
-            from_address: source_id.clone(),
-            to_address: HolonId::Local(resolved_target.target_local_id.clone()),
+        let forward_smartlink = PreparedSmartLink {
+            source_id: source_id.clone(),
+            target_id: HolonId::Local(resolved_target.target_local_id.clone()),
             relationship_name: name.clone(),
             canonical_key: canonical_key_from_optional_key(resolved_target.target_key.clone())?,
+            occurrence_id: None,
             relationship_property_values: PropertyMap::new(),
-            target_property_values: PropertyMap::new(),
+            target_property_cache_candidates: Vec::new(),
         };
 
         debug!(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
-            target_index, name.0 .0, source_id, forward_smartlink.to_address
+            target_index, name.0 .0, source_id, forward_smartlink.target_id
         );
         save_smartlink(forward_smartlink)?;
 
-        let inverse_smartlink = SmartLink {
-            smartlink_id: None,
-            from_address: resolved_target.target_local_id.clone(),
-            to_address: HolonId::Local(source_id.clone()),
+        let inverse_smartlink = PreparedSmartLink {
+            source_id: resolved_target.target_local_id.clone(),
+            target_id: HolonId::Local(source_id.clone()),
             relationship_name: inverse_name.clone(),
             canonical_key: inverse_canonical_key.clone(),
+            occurrence_id: None,
             relationship_property_values: PropertyMap::new(),
-            target_property_values: PropertyMap::new(),
+            target_property_cache_candidates: Vec::new(),
         };
 
         debug!(

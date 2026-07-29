@@ -11,23 +11,25 @@ publish = false
 
 # General deps
 async-trait = "0.1.51"
-#base64ct = "=1.7.3"
 derive-new = "0.7"
+serde = { version = "1", features = ["derive"] }
 # Holochain sweettest stack (pin as you already do)
-holochain = { version = "=0.6.1", default-features = false, features = [
+holochain = { version = "0.6", default-features = false, features = [
     "sweettest",
     "wasmer_sys",
     "transport-iroh"
 ] }
-holochain_state = "=0.6.1"
+holochain_state = "0.6"
 
 
-# Workaround: iroh-base-holochain 0.95.1 hard-pins ed25519-dalek = "=3.0.0-pre.1",
-# which fails to compile against released RustCrypto crates. Pin pkcs8 to the
-# same version Holochain's scaffolded zomes pin to, so consumers that mix this
-# plugin with Holochain zomes get a consistent resolution. Remove once
-# iroh-base-holochain publishes a release that unpins ed25519-dalek.
-ed25519 = "=3.0.0-rc.0"
+# Workaround: iroh-base-holochain (latest is 0.95.2) still hard-pins
+# ed25519-dalek = "=3.0.0-pre.1" and curve25519-dalek = "=5.0.0-pre.1", which fail
+# to compile against released RustCrypto crates. pkcs8 0.11.0 breaks ed25519
+# 3.0.0-rc.x (`?` can't convert Error::KeyMalformed), so pkcs8 must stay on the RC.
+# Re-verified against holochain 0.6.3 on 2026-07-27 — still required.
+# Remove once iroh-base-holochain publishes a release that unpins ed25519-dalek.
+# (An `ed25519 = "=3.0.0-rc.0"` pin used to live here too; it is no longer needed —
+# resolution lands on ed25519 3.0.0-rc.4, which compiles fine against the -pre.1 dalek.)
 pkcs8 = "=0.11.0-rc.11"
 
 
@@ -42,15 +44,11 @@ tracing-subscriber = "0.3"
 sha2 = "=0.11.0-rc.2"
 sha1 = "=0.11.0-rc.2"
 digest = "=0.11.0-rc.3"
-# holochain_client 0.8.1 uses kitsune2_api 0.4.1 (matching holochain 0.6.1);
-# 0.8.0 used kitsune2_api 0.3.2 which caused a two-version conflict.
-# holochain_client = "=0.8.1"
-
-# Holochain 0.6 upgrade guide recommends pinning rand = "0.9". Without this,
-# uuid v4 (pulled in by holochain) resolves rand → 0.10.1 → chacha20 0.10.0,
-# conflicting with iroh-holochain's exact pin chacha20 =0.10.0-rc.2.
-# rand 0.9.x → chacha20 0.9.x (different compat group, coexists cleanly).
-rand = "0.9"
+# Guards against uuid v4 resolving rand → 0.10 → chacha20 0.10.0, which would
+# conflict with iroh-holochain's exact pin chacha20 =0.10.0-rc.2.
+# The companion `rand = "0.9"` pin was dropped on 2026-07-27: holochain 0.6.3
+# declares `rand ^0.9` itself, and a from-scratch resolve without the pin lands
+# on rand 0.9.5 / chacha20 0.10.0-rc.2 cleanly.
 uuid = { version = "=1.21.0", features = ["serde"] }
 
 [dependencies.holons_prelude]
