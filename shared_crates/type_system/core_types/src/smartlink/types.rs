@@ -180,7 +180,7 @@ impl PreparedSmartLink {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SmartLink {
     pub smartlink_id: SmartLinkId,
-    pub from_address: LocalId,
+    pub source_id: LocalId,
     pub target_id: HolonId,
     pub relationship_name: RelationshipName,
     pub canonical_key: CanonicalKey,
@@ -209,7 +209,7 @@ impl SmartLink {
     /// source + target + relationship + occurrence. Canonical key and property
     /// caches are deliberately excluded.
     pub fn same_identity(&self, prepared: &PreparedSmartLink) -> bool {
-        self.from_address == prepared.source_id
+        self.source_id == prepared.source_id
             && self.target_id == prepared.target_id
             && self.relationship_name == prepared.relationship_name
             && self.occurrence_id == prepared.occurrence_id
@@ -223,6 +223,38 @@ impl SmartLink {
             && self.canonical_key == prepared.canonical_key
             && self.relationship_property_values == prepared.relationship_property_values
     }
+}
+
+/// Decodes one persisted SmartLink's Tag v1 `tag_bytes` into a storage `SmartLink`,
+/// pairing it with its physical identity and link endpoints.
+///
+/// On a malformed tag, fails with `HolonError::InvalidWireFormat` whose `reason` names
+/// the offending `SmartLinkId` — the storage layer's "fail the whole expansion and
+/// identify the bad link" contract. A malformed *live* link is unreachable through the
+/// DHT (SmartLink integrity validation decodes the tag with this same codec at create
+/// time), so this failure path is exercised by unit tests rather than a conductor.
+pub fn decode_smartlink(
+    smartlink_id: SmartLinkId,
+    source_id: LocalId,
+    link_target: LocalId,
+    tag_bytes: &[u8],
+) -> Result<SmartLink, HolonError> {
+    let decoded = super::decode_smartlink_tag(tag_bytes, link_target).map_err(|error| {
+        HolonError::InvalidWireFormat {
+            wire_type: "SmartLinkTagV1".to_string(),
+            reason: format!("malformed SmartLink {smartlink_id:?}: {error}"),
+        }
+    })?;
+    Ok(SmartLink {
+        smartlink_id,
+        source_id,
+        target_id: decoded.target_id,
+        relationship_name: decoded.relationship_name,
+        canonical_key: decoded.canonical_key,
+        occurrence_id: decoded.occurrence_id,
+        relationship_property_values: decoded.relationship_property_values,
+        target_property_values: decoded.target_property_values,
+    })
 }
 
 /// Outcome of `put_smartlink`. Each variant carries the physical id of the
@@ -309,7 +341,7 @@ mod tests {
     fn live_from(p: &PreparedSmartLink, id: u8) -> SmartLink {
         SmartLink {
             smartlink_id: SmartLinkId(local(id)),
-            from_address: p.source_id.clone(),
+            source_id: p.source_id.clone(),
             target_id: p.target_id.clone(),
             relationship_name: p.relationship_name.clone(),
             canonical_key: p.canonical_key.clone(),
@@ -368,5 +400,50 @@ mod tests {
         live.relationship_property_values = prop("weight", "heavy");
         assert!(live.same_identity(&p));
         assert!(!live.is_already_present(&p)); // -> Conflict
+    }
+
+    /// 39-byte action-hash-shaped id, required by the codec's hash validation.
+    fn hash39(seed: u8) -> LocalId {
+        let mut bytes = vec![seed; 39];
+        bytes[7] = 0;
+        LocalId(bytes)
+    }
+
+    #[test]
+    fn decode_smartlink_round_trips_valid_tag() {
+        let input = SmartLinkTagInput {
+            target_id: HolonId::Local(hash39(2)),
+            relationship_name: rel("Likes"),
+            canonical_key: CanonicalKey::new("apple").unwrap(),
+            occurrence_id: None,
+            relationship_property_values: PropertyMap::new(),
+            target_property_cache_candidates: Vec::new(),
+        };
+        let bytes = super::super::encode_smartlink_tag(&input).unwrap();
+
+        let sl = decode_smartlink(SmartLinkId(hash39(9)), hash39(1), hash39(2), &bytes).unwrap();
+        assert_eq!(sl.smartlink_id, SmartLinkId(hash39(9)));
+        assert_eq!(sl.source_id, hash39(1));
+        assert_eq!(sl.target_id, HolonId::Local(hash39(2)));
+        assert_eq!(sl.relationship_name, rel("Likes"));
+        assert_eq!(sl.canonical_key, CanonicalKey::new("apple").unwrap());
+    }
+
+    #[test]
+    fn decode_smartlink_malformed_names_offending_id() {
+        let id = SmartLinkId(hash39(9));
+        // Junk bytes are not a valid Tag v1 payload; the link target is valid so the
+        // failure is attributed to the tag.
+        let err = decode_smartlink(id.clone(), hash39(1), hash39(2), &[0u8, 1, 2, 3]).unwrap_err();
+        match err {
+            HolonError::InvalidWireFormat { wire_type, reason } => {
+                assert_eq!(wire_type, "SmartLinkTagV1");
+                assert!(
+                    reason.contains(&format!("{id:?}")),
+                    "reason must name the offending SmartLinkId, got: {reason}"
+                );
+            }
+            other => panic!("expected InvalidWireFormat, got {other:?}"),
+        }
     }
 }

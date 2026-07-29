@@ -6,7 +6,7 @@
 //! It reuses the Tag v1 codec (`core_types::smartlink`) for all encode/decode/prefix work.
 
 use core_types::{
-    decode_smartlink_tag, encode_smartlink_tag, smartlink_exact_key_prefix, smartlink_key_prefix,
+    decode_smartlink, encode_smartlink_tag, smartlink_exact_key_prefix, smartlink_key_prefix,
     smartlink_relationship_prefix, DeleteSmartLinkOutcome, HolonError, KeyMatch, PreparedSmartLink,
     PutSmartLinkOutcome, SmartLink, SmartLinkId,
 };
@@ -174,24 +174,22 @@ fn decode_query(source_id: &LocalId, query: LinkQuery) -> Result<Vec<SmartLink>,
 }
 
 /// Decodes one Holochain `Link` into a storage `SmartLink`, preserving its physical id.
+///
+/// The tag decode (and its malformed → `InvalidWireFormat`-naming-the-id mapping) lives in
+/// `core_types::decode_smartlink`; here we only extract the physical id and endpoints from the
+/// `Link` and delegate.
 fn decode_link_to_smartlink(source_id: &LocalId, link: Link) -> Result<SmartLink, HolonError> {
     let smartlink_id = SmartLinkId(local_id_from_action_hash(link.create_link_hash));
     let target = link
         .target
         .into_action_hash()
         .ok_or_else(|| malformed_link_error(&smartlink_id, "link target is not an action hash"))?;
-    let decoded = decode_smartlink_tag(&link.tag.into_inner(), local_id_from_action_hash(target))
-        .map_err(|e| malformed_link_error(&smartlink_id, e))?;
-    Ok(SmartLink {
+    decode_smartlink(
         smartlink_id,
-        from_address: source_id.clone(),
-        target_id: decoded.target_id,
-        relationship_name: decoded.relationship_name,
-        canonical_key: decoded.canonical_key,
-        occurrence_id: decoded.occurrence_id,
-        relationship_property_values: decoded.relationship_property_values,
-        target_property_values: decoded.target_property_values,
-    })
+        source_id.clone(),
+        local_id_from_action_hash(target),
+        &link.tag.into_inner(),
+    )
 }
 
 fn malformed_link_error(id: &SmartLinkId, error: impl std::fmt::Display) -> HolonError {

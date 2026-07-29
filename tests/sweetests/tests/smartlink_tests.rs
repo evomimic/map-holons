@@ -235,3 +235,34 @@ async fn delete_idempotent_and_leaves_siblings() {
     assert_ne!(remaining[0].smartlink_id, id_a);
     assert_eq!(remaining[0].canonical_key, key("b"));
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn expand_by_key_keyless_exact() {
+    let backend = setup_test_conductor().await;
+    let zome = backend.cell.zome(ZOME);
+    let source = new_endpoint(&backend).await;
+    let target = new_endpoint(&backend).await;
+
+    // A keyless SmartLink: empty canonical key is valid.
+    let out: PutSmartLinkOutcome = backend
+        .conductor
+        .call(&zome, "smartlink_put", prepared(&source, &target, "Likes", ""))
+        .await;
+    let id = match out {
+        PutSmartLinkOutcome::Inserted(id) => id,
+        other => panic!("expected Inserted, got {other:?}"),
+    };
+
+    // Exact match on the empty (keyless) key returns exactly that link.
+    let exact: Vec<SmartLink> = backend
+        .conductor
+        .call(
+            &zome,
+            "smartlink_expand_by_key",
+            (source.clone(), rel("Likes"), KeyMatch::Exact(key(""))),
+        )
+        .await;
+    assert_eq!(exact.len(), 1);
+    assert_eq!(exact[0].smartlink_id, id);
+    assert_eq!(exact[0].canonical_key, key(""));
+}

@@ -61,16 +61,25 @@ pub fn get_relationship_links(
 
 /// Facade shim: persists a SmartLink and returns its create-link action hash.
 ///
-/// Delegates to the storage-layer `put_smartlink`. The physical id is returned for
-/// every outcome so the pre-#594 return contract (an `ActionHash`) is preserved; a
-/// `Conflict` is surfaced as a warning rather than an error, since the commit path
-/// never produces one (stable canonical key, empty relationship properties).
+/// Delegates to the storage-layer `put_smartlink`. `Inserted` / `AlreadyPresent`
+/// return the physical id (preserving the pre-#594 `ActionHash` return contract). A
+/// `Conflict` is surfaced as a **hard error**: a live link already shares this
+/// insertion identity but differs in canonical key or authoritative relationship
+/// properties, so the requested SmartLink was *not* persisted. Returning success
+/// there would let commit Pass 2 continue as if it had been — and legacy DHT rows
+/// (the old dedup matched only exact tag bytes) can genuinely be in that state.
 pub fn save_smartlink(prepared: PreparedSmartLink) -> Result<ActionHash, HolonError> {
+    let source_id = prepared.source_id.clone();
+    let target_id = prepared.target_id.clone();
+    let relationship_name = prepared.relationship_name.clone();
     let smartlink_id = match put_smartlink(prepared)? {
         PutSmartLinkOutcome::Inserted(id) | PutSmartLinkOutcome::AlreadyPresent(id) => id,
-        PutSmartLinkOutcome::Conflict(id) => {
-            warn!("put_smartlink reported Conflict for existing SmartLink {:?}", id);
-            id
+        PutSmartLinkOutcome::Conflict(existing) => {
+            return Err(HolonError::CommitFailure(format!(
+                "SmartLink conflict: a live link {existing:?} already shares the insertion identity \
+                 (source={source_id:?}, target={target_id:?}, relationship={relationship_name:?}) \
+                 but differs in canonical key or relationship properties; requested link not persisted"
+            )));
         }
     };
     try_action_hash_from_local_id(&smartlink_id.0)
