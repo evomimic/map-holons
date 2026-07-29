@@ -265,8 +265,11 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     //  ENSURE DATABASE COUNT //
     test_case.add_ensure_database_count_step(
-        MapInteger(post_setup_db_count.0 + 1),
-        Some("Definitional update must create exactly one new Book node".to_string()),
+        post_setup_db_count.clone(),
+        Some(
+            "Definitional update must add a version to the Book lineage, not a new holon"
+                .to_string(),
+        ),
     )?;
 
     test_case.add_verify_relationship_anchoring_step(None)?;

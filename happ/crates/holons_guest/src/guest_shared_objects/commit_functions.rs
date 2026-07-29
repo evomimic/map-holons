@@ -1,11 +1,9 @@
 use hdk::prelude::*;
-use holons_guest_integrity::type_conversions::*;
-use holons_guest_integrity::HolonNode;
 use std::sync::{Arc, RwLock};
 
 use crate::guest_shared_objects::save_smartlink;
-use crate::persistence_layer::create_holon_node;
-use core_types::PreparedSmartLink;
+use crate::persistence_layer::persist_holon;
+use core_types::{HolonWriteRequest, PreparedSmartLink};
 
 use holons_core::{
     core_shared_objects::{
@@ -386,13 +384,13 @@ fn commit_holon(
         match staged_state {
             // === CREATE NEW NODE ============================================================
             StagedState::ForCreate => {
-                trace!("StagedState::ForCreate — creating HolonNode in DHT");
+                trace!("StagedState::ForCreate — publishing a new HolonNode lineage");
                 staged_holon.prepare_full_relationship_commit_scope()?;
-                let node = staged_holon.into_node_model();
-                let record = create_holon_node(HolonNode::from(node))
-                    .map_err(holon_error_from_wasm_error)?;
+                let stored = persist_holon(HolonWriteRequest::PublishRoot {
+                    holon_node: staged_holon.into_node_model(),
+                })?;
 
-                staged_holon.to_committed(LocalId(record.action_address().clone().into_inner()))?;
+                staged_holon.to_committed(stored.version_metadata.version_id)?;
                 Ok(CommitOutcome::Saved)
             }
 
@@ -408,16 +406,17 @@ fn commit_holon(
 
             // === VERSION-PRODUCING UPDATE ==================================================
             StagedState::ForUpdateNewVersion => {
-                trace!("StagedState::ForUpdateNewVersion — creating next HolonNode version");
+                trace!("StagedState::ForUpdateNewVersion — publishing the next HolonNode version");
                 let predecessor_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_full_relationship_commit_scope()?;
-                let node = staged_holon.into_node_model();
-                // Storage SL2 will replace this Create with a native update targeting the
-                // lineage-root Create, remove original_id from the persisted entry shape, and
-                // require the HolonNode serialization-parity fixtures to be revisited.
-                let record = create_holon_node(HolonNode::from(node))
-                    .map_err(holon_error_from_wasm_error)?;
-                let new_local_id = LocalId(record.action_address().clone().into_inner());
+                // Storage decides how a version is written: it resolves the lineage this
+                // predecessor belongs to and roots the new version there. Immediate-predecessor
+                // ordering is not carried by the node — it is staged below as a SmartLink.
+                let stored = persist_holon(HolonWriteRequest::PublishVersion {
+                    holon_node: staged_holon.into_node_model(),
+                    predecessor_ids: vec![predecessor_id.clone()],
+                })?;
+                let new_local_id = stored.version_metadata.version_id;
 
                 if let Err(error) =
                     stage_predecessor_relationship(staged_holon, context, predecessor_id)
