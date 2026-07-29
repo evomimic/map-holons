@@ -3,13 +3,14 @@ schema MAP Core Schema-v0.0.7 {
   depends_on MAP Dance Schema-v0.0.4
   depends_on MAP Query Schema-v0.0.1
   header {
-    description: "Schema containing all meta-level descriptors for MAP type definitions, including the TypeDescriptor itself."
+    description: "Schema containing the root descriptor-type and meta-type definitions for the MAP Type System."
   }
 }
-holon TypeDescriptor {
+
+abstract holon TypeDescriptor {
   keyrule TypeNameRule.KeyRuleType
   header {
-    description: "The TypeDescriptor is a concrete, self-describing type in the MAP Type System that defines the structure, metadata, and behavioral obligations of all other types—including itself. It plays a dual role: as a descriptor, it declares the properties and relationships that instances of a given type must populate (via InstanceProperties and InstanceRelationships); as a holon, it is an instantiable entity that belongs to a schema, is owned by a holon space, and participates in MAP’s introspectable type graph. All concrete type definitions in MAP—such as property types, relationship types, and holon types—are instances of TypeDescriptor, making it the cornerstone of MAP’s fully self-describing architecture.."
+    description: "Abstract root of the descriptor-type hierarchy. It classifies descriptor types and serves as a polymorphic target for schema components and other descriptor-oriented relationships. It is not the generic describing type for descriptor holons."
     display_name: "Type Descriptor"
     display_plural: "Type Descriptors"
     plural: "TypeDescriptors"
@@ -18,31 +19,46 @@ holon TypeDescriptor {
 
 
 abstract holon HolonType {
-  properties {
-    type_name: "HolonType"
-    type_name_plural: "HolonTypes"
+  keyrule ExtendedTypeRule.KeyRuleType
+  extends TypeDescriptor
+  header {
+    description: "Abstract root for descriptor types whose described instances are holons. Concrete holon type descriptors extend this type to classify their instances and inherit the baseline holon instance contract."
     display_name: "Abstract Holon Type"
-    display_name_plural: "Abstract Holon Types"
-    description: "HolonType is an abstract type descriptor that defines the structural role of all types used to describe holons in the MAP system. It serves as an anchor for concrete type descriptors—such as BookType, PersonType, or SchemaHolonType—which extend it to define specific categories of holons. By extending HolonType, these concrete types inherit a common set of structural obligations that govern how holons relate to their type and to the holon space in which they reside. This type is not intended to be instantiated directly."
-    instance_type_kind: "TypeKind.Holon"
-    is_abstract_type: true
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_plural: "Abstract Holon Types"
+    plural: "HolonTypes"
   }
   relationships {
-    AffordsCommand -> ["CloneHolon.CommandType", "Summarize.CommandType", "GetHolonId.CommandType", "GetPredecessor.CommandType", "GetKey.CommandType", "GetVersionedKey.CommandType", "GetPropertyValue.CommandType", "GetRelatedHolons.CommandType", "WithPropertyValue.CommandType", "RemovePropertyValue.CommandType", "AddRelatedHolons.CommandType", "RemoveRelatedHolons.CommandType", "WithDescriptor.CommandType"]
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "MetaHolonType"
-    UsesKeyRule -> "ExtendedTypeRule.KeyRuleType"
+    InstanceRelationships -> [
+      (HolonType)-[DescribedBy]->(TypeDescriptor),
+      (HolonType)-[OwnedBy]->(HolonSpace.HolonType),
+      (HolonType)-[AffordsCommand]->(CommandType.HolonType),
+      (HolonType)-[Predecessor]->(HolonType),
+      (HolonType)-[AffordsDance]->(DanceType.HolonType)
+    ]
+    AffordsCommand -> [
+      CloneHolon.CommandType,
+      Summarize.CommandType,
+      GetHolonId.CommandType,
+      GetPredecessor.CommandType,
+      GetKey.CommandType,
+      GetVersionedKey.CommandType,
+      GetPropertyValue.CommandType,
+      GetRelatedHolons.CommandType,
+      WithPropertyValue.CommandType,
+      RemovePropertyValue.CommandType,
+      AddRelatedHolons.CommandType,
+      RemoveRelatedHolons.CommandType,
+      WithDescriptor.CommandType
+    ]
   }
 }
 
 
 abstract holon PropertyType {
   keyrule ExtendedTypeRule.KeyRuleType
-  extends MetaPropertyType
+  extends TypeDescriptor
   header {
-    description: "PropertyType is an abstract type descriptor.  It serves as an anchor for concrete property relationships."
+    description: "Abstract root for descriptor types that define scalar or structured property members."
     display_name: "Abstract Property Type"
     display_plural: "Abstract Property Types"
     plural: "PropertyTypes"
@@ -52,9 +68,9 @@ abstract holon PropertyType {
 
 abstract holon DeclaredRelationshipType {
   keyrule RelationshipRule.KeyRuleType
-  extends MetaDeclaredRelationshipType
+  extends TypeDescriptor
   header {
-    description: "Describes explicitly declared relationship types between holons."
+    description: "Abstract root for explicitly declared relationship descriptor types."
     display_name: "Declared Relationship Type"
     display_plural: "Declared Relationship Types"
     plural: "DeclaredRelationshipTypes"
@@ -64,9 +80,9 @@ abstract holon DeclaredRelationshipType {
 
 abstract holon InverseRelationshipType {
   keyrule RelationshipRule.KeyRuleType
-  extends MetaInverseRelationshipType
+  extends TypeDescriptor
   header {
-    description: "Describes inverse relationship types derived from declared ones."
+    description: "Abstract root for inverse relationship descriptor types derived from declared relationships."
     display_name: "Inverse Relationship Type"
     display_plural: "Inverse Relationship Types"
     plural: "InverseRelationshipTypes"
@@ -77,210 +93,228 @@ abstract holon InverseRelationshipType {
 abstract holon MetaTypeDescriptor {
   keyrule TypeNameRule.KeyRuleType
   header {
-    description: "Specifies the properties and relationships that all TypeDescriptors populate."
+    description: "Root of the meta-type hierarchy. It defines the common self-conformance contract shared by type-descriptor holons."
     display_name: "Meta Type Descriptor"
     display_plural: "Meta Type Descriptors"
     plural: "MetaTypeDescriptors"
   }
-  properties {
-    TypeName.PropertyType
-    TypeNamePlural.PropertyType
-    DisplayName.PropertyType
-    DisplayNamePlural.PropertyType
-    Description.PropertyType
-    IsAbstractType.PropertyType
-    TypeKind.PropertyType
-    SchemaName.PropertyType
-  }
   relationships {
-    (TypeDescriptor.HolonType)-[ComponentOf]->(Schema.HolonType)
-    (TypeDescriptor.HolonType)-[Extends]->(TypeDescriptor.HolonType)
-    (TypeDescriptor.HolonType)-[UsesKeyRule]->(KeyRuleType)
+    InstanceProperties -> [
+      TypeName.PropertyType,
+      TypeNamePlural.PropertyType,
+      DisplayName.PropertyType,
+      DisplayNamePlural.PropertyType,
+      Description.PropertyType,
+      IsAbstractType.PropertyType,
+      TypeKind.PropertyType,
+      SchemaName.PropertyType
+    ]
+    InstanceRelationships -> [
+      (TypeDescriptor)-[ComponentOf]->(Schema),
+      (TypeDescriptor)-[Extends]->(TypeDescriptor),
+      (TypeDescriptor)-[UsesKeyRule]->(KeyRuleType)
+    ]
   }
 }
 
+InstanceRelationships -> [
+  (HolonType)-[DescribedBy]->(TypeDescriptor),
+  (HolonType)-[OwnedBy]->(HolonSpace.HolonType),
+  (HolonType)-[AffordsCommand]->(CommandType.HolonType),
+  (TypeDescriptor)-[InstanceProperties]->(PropertyType),
+  (MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType),
+  (HolonType)-[Predecessor]->(HolonType),
+  (HolonType)-[AffordsDance]->(DanceType.HolonType)
+]
 
-abstract holon MetaHolonType {
+
+holon MetaPropertyType {
   extends MetaTypeDescriptor
   header {
-    description: "Describes types whose instances are holons."
-    display_name: "Meta Holon Type"
-    display_plural: "Meta Holon Types"
-    plural: "MetaHolonTypes"
-  }
-  properties {
-    AllowsAdditionalProperties.PropertyType
-    AllowsAdditionalRelationships.PropertyType
-  }
-  relationships {
-    (HolonType)-[DescribedBy]->(TypeDescriptor.HolonType)
-    (HolonType)-[OwnedBy]->(HolonSpace.HolonType)
-    (HolonType)-[Properties]->(PropertyType)
-    (HolonType)-[AffordsCommand]->(CommandType.HolonType)
-    (TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)
-    (MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType)
-    (HolonType)-[Predecessor]->(HolonType)
-    (HolonType)-[AffordsDance]->(DanceType.HolonType)
-  }
-}
-
-
-abstract holon MetaPropertyType {
-  extends MetaTypeDescriptor
-  header {
-    description: "Describes PropertyTypes used to define scalar properties of holons."
+    description: "Meta-type describing property-type descriptor holons."
     display_name: "Meta Property Type"
     display_plural: "Meta Property Types"
     plural: "MetaPropertyTypes"
   }
-  properties {
-    IsRequired.PropertyType
-  }
   relationships {
-    (PropertyType)-[ValueType]->(ValueType)
+    InstanceProperties -> [
+      IsValueRequired.PropertyType,
+      DefaultValue.PropertyType,
+      InheritanceMode.PropertyType
+    ]
+    InstanceRelationships -> [
+      (PropertyType)-[ValueType]->(ValueType)
+    ]
   }
 }
 
 
-abstract holon MetaRelationshipType {
+holon MetaRelationshipType {
   extends MetaTypeDescriptor
   header {
-    description: "Describes relationship types between holons."
+    description: "Meta-type describing relationship descriptor holons."
     display_name: "Meta Relationship Type"
     display_plural: "Meta Relationship Types"
     plural: "MetaRelationshipTypes"
   }
-  properties {
-    IsDefinitional.PropertyType
-    IsOrdered.PropertyType
-    AllowsDuplicates.PropertyType
-    MinCardinality.PropertyType
-    MaxCardinality.PropertyType
-  }
   relationships {
-    (MetaRelationshipType)-[SourceType]->(TypeDescriptor.HolonType)
-    (MetaRelationshipType)-[TargetType]->(TypeDescriptor.HolonType)
+    InstanceProperties -> [
+      IsDefinitional.PropertyType,
+      IsOrdered.PropertyType,
+      AllowsDuplicates.PropertyType,
+      MinCardinality.PropertyType,
+      MaxCardinality.PropertyType,
+      DeletionSemantic.PropertyType,
+      InheritanceMode.PropertyType
+    ]
+    InstanceRelationships -> [
+      (MetaRelationshipType)-[SourceType]->(TypeDescriptor),
+      (MetaRelationshipType)-[TargetType]->(TypeDescriptor)
+    ]
   }
 }
 
 
-abstract holon MetaDeclaredRelationshipType {
+holon MetaDeclaredRelationshipType {
   extends MetaRelationshipType
   header {
-    description: "Describes explicitly declared relationship types between holons."
+    description: "Meta-type describing explicitly declared relationship descriptor holons."
     display_name: "Meta Declared Relationship Type"
     display_plural: "Meta Declared Relationship Types"
     plural: "MetaDeclaredRelationshipTypes"
   }
-  properties {
-    DeletionSemantic.PropertyType
-  }
   relationships {
-    (DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)
+    InstanceRelationships -> [
+      (DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)
+    ]
   }
 }
 
-
-abstract holon MetaInverseRelationshipType {
+holon MetaInverseRelationshipType {
   extends MetaRelationshipType
   header {
-    description: "Describes inverse relationship types derived from declared ones."
+    description: "Meta-type describing inverse relationship descriptor holons."
     display_name: "Meta Inverse Relationship Type"
     display_plural: "Meta Inverse Relationship Types"
     plural: "MetaInverseRelationshipTypes"
   }
+  relationships {
+    InstanceProperties -> [
+      InheritanceMode.PropertyType
+    ]
+  }
 }
-
 
 holon Schema {
   keyrule SchemaNameRule.KeyRuleType
+  extends HolonType
   header {
-    description: "Describes schema holons - holons that anchor a cohesive schema. Includes the ability to define inter-schema dependencies."
+    description: "Describes schema holons that anchor a cohesive schema and declare inter-schema dependencies."
     display_name: "Schema"
     display_plural: "Schemas"
     plural: "Schemas"
   }
-  properties {
-    Description.PropertyType
-    SchemaName.PropertyType
-  }
   relationships {
-    (Schema.HolonType)-[DependsOn]->(Schema.HolonType)
+    InstanceProperties -> [
+      Description.PropertyType,
+      SchemaName.PropertyType
+    ]
+    InstanceRelationships -> [
+      (Schema.HolonType)-[DependsOn]->(Schema.HolonType)
+    ]
   }
 }
 
 
 holon HolonSpace {
-  properties {
-    type_name: "HolonSpace"
-    type_name_plural: "HolonSpaces"
+  extends HolonType
+  header {
+    description: "Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope."
     display_name: "Holon Space"
-    display_name_plural: "Holon Spaces"
-    description: "Describes HolonSpace holons. A HolonSpace is a holon that, itself, is a container for holons. It maps 1:1 with a DHT. It also proxies inbound and outbound calls to other HolonSpaces of holons that represent a cohesive schema. Includes the ability to define inter-schema dependencies. With minimal InstanceProperties and no InstanceRelationships, a HolonSpace is very stable = i.e., owned holons and space proxies can be added to a space without requiring a new version of the HolonSpace."
-    instance_type_kind: "TypeKind.Holon"
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_plural: "Holon Spaces"
+    plural: "HolonSpaces"
   }
   relationships {
-    AffordsCommand -> "BeginTransaction.CommandType"
-    AffordsDance -> "QueryDance.DanceType"
-    AffordsTransactionModel -> "Transaction.HolonType"
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "HolonType"
-    InstanceRelationships -> "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)"
+    InstanceRelationships -> [
+      (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)
+    ]
+    AffordsCommand -> BeginTransaction.CommandType
+    AffordsDance -> QueryDance.DanceType
+    AffordsTransactionModel -> Transaction.HolonType
   }
 }
 
 
 holon HolonError {
+  extends HolonType
   header {
     description: "Describes the structure of error holons."
     display_name: "Holon Error"
     display_plural: "Holon Errors"
     plural: "HolonErrors"
   }
-  properties {
-    ErrorType.PropertyType
-    ErrorMessage.PropertyType
+  relationships {
+    InstanceProperties -> [
+      ErrorType.PropertyType,
+      ErrorMessage.PropertyType
+    ]
   }
 }
 
 
 holon Transaction {
-  properties {
-    type_name: "Transaction"
-    type_name_plural: "Transactions"
+  extends HolonType
+  header {
+    description: "Descriptor for the MAP transaction model: the command-scope holon surface available while a transaction is active."
     display_name: "Transaction"
-    display_name_plural: "Transactions"
-    description: "TransactionType is the descriptor for the MAP transaction model — the command-scope API surface that becomes available when a transaction is active. A HolonSpaceType affords exactly one TransactionType through the AffordsTransactionModel relationship. TransactionType does not model persistent transaction records, audit history, or runtime execution state."
-    instance_type_kind: "TypeKind.Holon"
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_plural: "Transactions"
+    plural: "Transactions"
   }
   relationships {
-    AffordsCommand -> ["Commit.CommandType", "UndoLast.CommandType", "RedoLast.CommandType", "UndoToMarker.CommandType", "RedoToMarker.CommandType", "LoadHolons.CommandType", "Dance.CommandType", "GetAllHolons.CommandType", "GetStagedHolonByBaseKey.CommandType", "GetStagedHolonsByBaseKey.CommandType", "GetStagedHolonByVersionedKey.CommandType", "GetTransientHolonByBaseKey.CommandType", "GetTransientHolonByVersionedKey.CommandType", "GetStagedCount.CommandType", "GetTransientCount.CommandType", "NewHolon.CommandType", "StageNewHolon.CommandType", "StageNewFromClone.CommandType", "StageNewVersion.CommandType", "StageNewVersionFromId.CommandType", "DeleteHolon.CommandType"]
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "HolonType"
+    AffordsCommand -> [
+      Commit.CommandType,
+      UndoLast.CommandType,
+      RedoLast.CommandType,
+      UndoToMarker.CommandType,
+      RedoToMarker.CommandType,
+      LoadHolons.CommandType,
+      Dance.CommandType,
+      GetAllHolons.CommandType,
+      GetStagedHolonByBaseKey.CommandType,
+      GetStagedHolonsByBaseKey.CommandType,
+      GetStagedHolonByVersionedKey.CommandType,
+      GetTransientHolonByBaseKey.CommandType,
+      GetTransientHolonByVersionedKey.CommandType,
+      GetStagedCount.CommandType,
+      GetTransientCount.CommandType,
+      NewHolon.CommandType,
+      StageNewHolon.CommandType,
+      StageNewFromClone.CommandType,
+      StageNewVersion.CommandType,
+      StageNewVersionFromId.CommandType,
+      DeleteHolon.CommandType
+    ]
   }
 }
 
 
 holon HolonCollection {
+  extends HolonType
   header {
     description: "Concrete collection type descriptor for persisted collection holons."
     display_name: "Holon Collection"
     display_plural: "Holon Collections"
     plural: "HolonCollections"
   }
-  properties {
-    CollectionType.PropertyType
-    IsOrdered.PropertyType
-    AllowsDuplicates.PropertyType
-  }
   relationships {
-    (HolonCollection.HolonType)-[CollectionMembers]->(HolonType)
-    (HolonCollection.HolonType)-[ElementType]->(HolonType)
+    InstanceProperties -> [
+      CollectionType.PropertyType,
+      IsOrdered.PropertyType,
+      AllowsDuplicates.PropertyType
+    ]
+    InstanceRelationships -> [
+      (HolonCollection.HolonType)-[CollectionMembers]->(HolonType),
+      (HolonCollection.HolonType)-[ElementType]->(HolonType)
+    ]
   }
 }
