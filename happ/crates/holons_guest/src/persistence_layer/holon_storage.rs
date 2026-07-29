@@ -29,7 +29,7 @@ use core_types::{
 use hdk::prelude::*;
 use holons_guest_integrity::{type_conversions::*, HolonNode};
 use holons_integrity::{EntryTypes, LinkTypes};
-use integrity_core_types::{HolonNodeModel, LocalId};
+use integrity_core_types::{short_hex, HolonNodeModel, LocalId};
 
 // ---------------------------------------------------------------------------
 // Read: exact-version retrieval
@@ -130,7 +130,7 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
             let version_metadata = VersionMetadata::root(local_id_from_action_hash(action_hash));
             debug!(
                 "persist_holon: PublishRoot -> create_entry, version_id={}",
-                version_metadata.version_id
+                short_hex(&version_metadata.version_id, 8)
             );
 
             Ok(StoredHolonNode::new(holon_node, version_metadata))
@@ -154,7 +154,7 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
                 "persist_holon: PublishVersion -> update_entry rooted at {}, {} predecessor(s), version_id={}",
                 lineage_id,
                 predecessor_ids.len(),
-                version_metadata.version_id
+                short_hex(&version_metadata.version_id, 8)
             );
 
             Ok(StoredHolonNode::new(holon_node, version_metadata))
@@ -176,7 +176,7 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
 pub(crate) fn decode_stored_holon_node(record: &Record) -> Result<StoredHolonNode, HolonError> {
     let holon_node = try_holon_node_from_record(record)?.ok_or_else(|| {
         HolonError::RecordConversion(format!(
-            "HolonNode entry is missing or malformed at {}",
+            "HolonNode entry is missing or malformed at {:?}",
             local_id_from_action_hash(record.action_address().clone())
         ))
     })?;
@@ -195,7 +195,7 @@ fn version_metadata_from_record(record: &Record) -> Result<VersionMetadata, Holo
             LineageId(local_id_from_action_hash(update.original_action_address.clone())),
         )),
         other => Err(HolonError::RecordConversion(format!(
-            "Unsupported action kind for HolonNode at {}: {:?}",
+            "Unsupported action kind for HolonNode at {:?}: {:?}",
             version_id,
             other.action_type()
         ))),
@@ -230,7 +230,7 @@ fn resolve_lineage_root_for_predecessors(
         .map(|(local_id, slot)| {
             slot.map(|stored| stored.version_metadata).ok_or_else(|| {
                 HolonError::HolonNotFound(format!(
-                    "Predecessor {} is not persisted, so no lineage can be resolved for it",
+                    "Predecessor {:?} is not persisted, so no lineage can be resolved for it",
                     local_id
                 ))
             })

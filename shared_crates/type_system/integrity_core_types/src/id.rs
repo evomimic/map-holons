@@ -63,6 +63,20 @@ pub fn short_hash(hash: &LocalId, length: usize) -> Result<String, FromUtf8Error
     Ok(format!("…{}", &string[start..]))
 }
 
+/// Returns the trailing `length` hex characters of a `LocalId`, for log diagnostics.
+///
+/// Prefer this over [`short_hash`] for anything holding a real hash: a `LocalId` wraps raw
+/// binary hash bytes, which are not valid UTF-8, so `short_hash` fails for every genuine
+/// ActionHash and its callers render `<invalid utf-8>` instead of an identifier.
+///
+/// Truncated and hex-encoded, so it is for human reading only — never for identity, lookup
+/// keys, or hashing.
+pub fn short_hex(hash: &LocalId, length: usize) -> String {
+    let encoded = hex::encode(&hash.0);
+    let start = encoded.len().saturating_sub(length);
+    format!("…{}", &encoded[start..])
+}
+
 /// A Holochain-agnostic identifier that wraps the raw 39-byte representation
 /// of a Holochain `AgentPubKey`.
 ///

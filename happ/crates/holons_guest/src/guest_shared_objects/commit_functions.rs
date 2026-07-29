@@ -21,7 +21,7 @@ use holons_core::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle,
 };
 use holons_core::reference_layer::TransientReference;
-use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
+use integrity_core_types::{short_hex, LocalId, PropertyMap, RelationshipName};
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
 pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
 pub use type_names::{
@@ -173,6 +173,12 @@ pub fn commit(
         return Ok(response_reference);
     }
 
+    // Outcome tallies, kept beyond the Pass 1 scope so the commit response can be summarized at
+    // every exit — including the incomplete early return, which is the case most worth seeing.
+    let mut saved_ids: Vec<LocalId> = Vec::new();
+    let mut abandoned_count = 0_usize;
+    let mut failed_count = 0_usize;
+
     // === FIRST PASS: Commit Staged Holons ===
     {
         info!("\n\nStarting FIRST PASS... commit staged holons...");
@@ -192,6 +198,7 @@ pub fn commit(
                     let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
                         HolonError::HolonNotFound("Committed holon has no key".into())
                     })?;
+                    saved_ids.push(holon_id.local_id().clone());
                     let saved_reference = HolonReference::smart_with_key(
                         transaction_handle.clone(),
                         holon_id,
@@ -200,6 +207,7 @@ pub fn commit(
                     saved_holons.push(saved_reference);
                 }
                 Ok(CommitOutcome::Abandoned) => {
+                    abandoned_count += 1;
                     // StagedReference → HolonReference via From<&StagedReference>
                     abandoned_holons.push(staged_reference.into());
                 }
@@ -208,6 +216,10 @@ pub fn commit(
                 }
                 Err(error) => {
                     response_reference.with_property_value(CommitRequestStatus, "Incomplete")?;
+                    // A failed holon joins the abandoned collection, so it is counted there to
+                    // keep the log summary consistent with the response holon's shape.
+                    abandoned_count += 1;
+                    failed_count += 1;
                     abandoned_holons.push(staged_reference.into());
                     warn!("Commit failed for {:?}: {:?}", staged_reference.temporary_id(), error);
                 }
@@ -224,6 +236,13 @@ pub fn commit(
         let status_string: String = (&status_value).into();
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
+            log_commit_response(
+                &status_string,
+                stage_count,
+                &saved_ids,
+                abandoned_count,
+                failed_count,
+            );
             return Ok(response_reference);
         }
     }
@@ -343,12 +362,44 @@ pub fn commit(
         }
     }
 
-    //info!("\n\n VVVVVVVVVVV   SAVED HOLONS AFTER COMMIT VVVVVVVVV\n");
-    // Optionally dump here if you have a helper like `as_json` for references/ids.
+    // Pass 2 can downgrade the status, so read it back rather than assuming "Complete".
+    let final_status = match response_reference.property_value(CommitRequestStatus)? {
+        Some(status_value) => (&status_value).into(),
+        None => "Unknown".to_string(),
+    };
 
     info!("Commit completed: all staged holons processed and commit response constructed.");
+    log_commit_response(&final_status, stage_count, &saved_ids, abandoned_count, failed_count);
+
     // Done — return the CommitResponse holon reference
     Ok(response_reference)
+}
+
+/// Logs a one-line summary of the commit response, plus the saved ids behind `debug!`.
+///
+/// Emitted at every exit from `commit`, so an incomplete commit is never reported more thinly
+/// than a successful one. Only ids, counts, and statuses are logged: a commit response can carry
+/// user content, and property values have no place in a log.
+fn log_commit_response(
+    status: &str,
+    attempted: i64,
+    saved_ids: &[LocalId],
+    abandoned_count: usize,
+    failed_count: usize,
+) {
+    info!(
+        "Commit response: status={} attempted={} saved={} abandoned={} (of which failed={})",
+        status,
+        attempted,
+        saved_ids.len(),
+        abandoned_count,
+        failed_count
+    );
+
+    if !saved_ids.is_empty() {
+        let rendered: Vec<String> = saved_ids.iter().map(|id| short_hex(id, 8)).collect();
+        debug!("Commit response saved holons: [{}]", rendered.join(", "));
+    }
 }
 
 /// Attempts to persist the holon referenced by the given [`StagedReference`].
@@ -390,15 +441,24 @@ fn commit_holon(
                     holon_node: staged_holon.into_node_model(),
                 })?;
 
+                info!(
+                    "Committed root (Create): version_id={} lineage=self",
+                    short_hex(&stored.version_metadata.version_id, 8)
+                );
+
                 staged_holon.to_committed(stored.version_metadata.version_id)?;
                 Ok(CommitOutcome::Saved)
             }
 
             // === GRAPH-ONLY UPDATE ==========================================================
             StagedState::ForUpdateGraphOnly => {
-                trace!("StagedState::ForUpdateGraphOnly — reusing existing source anchor");
                 let source_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_touched_relationship_commit_scope()?;
+
+                info!(
+                    "Committed graph-only edit (no action): reusing source anchor {}",
+                    short_hex(&source_id, 8)
+                );
 
                 staged_holon.to_committed(source_id)?;
                 Ok(CommitOutcome::Saved)
@@ -416,6 +476,17 @@ fn commit_holon(
                     holon_node: staged_holon.into_node_model(),
                     predecessor_ids: vec![predecessor_id.clone()],
                 })?;
+
+                // The lineage is logged alongside the predecessor precisely because they differ
+                // once a lineage is more than one version deep: the new version is rooted at the
+                // lineage, not at the holon it supersedes.
+                info!(
+                    "Committed version (Update): version_id={} lineage_id={} predecessor={}",
+                    short_hex(&stored.version_metadata.version_id, 8),
+                    stored.version_metadata.lineage_root(),
+                    short_hex(&predecessor_id, 8)
+                );
+
                 let new_local_id = stored.version_metadata.version_id;
 
                 if let Err(error) =

@@ -1,5 +1,5 @@
 use crate::{HolonError, HolonNodeModel, LocalId};
-use integrity_core_types::short_hash;
+use integrity_core_types::short_hex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -37,10 +37,10 @@ impl From<LineageId> for LocalId {
 
 impl fmt::Display for LineageId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match short_hash(&self.0, 6) {
-            Ok(s) => write!(f, "{}", s),
-            Err(_) => write!(f, "<invalid utf-8>"),
-        }
+        // Hex rather than `LocalId`'s own Display: a lineage id holds real hash bytes, which
+        // are never valid UTF-8, so the UTF-8 short form would render a placeholder instead of
+        // an identifier. Diagnostics only — truncated, so not an identity.
+        write!(f, "{}", short_hex(&self.0, 8))
     }
 }
 
