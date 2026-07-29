@@ -28,5 +28,8 @@ path = "../../../shared_crates/type_system/integrity_core_types"
 [dependencies.shared_validation]
 path = "../../../shared_crates/shared_validation"
 
+[dev-dependencies]
+mockall = "0.13"
+
 [dev-dependencies.base_types]
 path = "../../../shared_crates/type_system/base_types"

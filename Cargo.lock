@@ -3471,6 +3471,7 @@ dependencies = [
  "hdi",
  "holochain_serialized_bytes",
  "integrity_core_types",
+ "mockall",
  "serde",
  "shared_validation",
 ]
@@ -3483,6 +3484,7 @@ dependencies = [
  "holochain_serialized_bytes",
  "holons_guest_integrity",
  "integrity_core_types",
+ "mockall",
  "serde",
  "shared_validation",
 ]

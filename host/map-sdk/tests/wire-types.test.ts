@@ -88,9 +88,37 @@ describe('PVL wire type guards', () => {
           max_bytes: 256,
         },
       },
+      {
+        InvalidUpdateTarget: {
+          expected_target_kind: 'Create',
+          actual_target_kind: 'Update',
+        },
+      },
+      {
+        ImmutableNativeFieldChanged: {
+          field_name: 'original_id',
+        },
+      },
+      {
+        InvalidDeleteTarget: {
+          expected_target_kind: 'CreateOrUpdate',
+          actual_target_kind: 'Delete',
+        },
+      },
     ];
 
     expect(violations.every(isPvlViolationWire)).toBe(true);
+  });
+
+  it('rejects the obsolete update-target field names', () => {
+    expect(
+      isPvlViolationWire({
+        InvalidUpdateTarget: {
+          expected_entry_kind: 'HolonNode',
+          actual_entry_kind: 'Other',
+        },
+      }),
+    ).toBe(false);
   });
 
   it('accepts the exhaustive malformed-reason forms', () => {

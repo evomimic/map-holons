@@ -188,9 +188,14 @@ pub enum PvlViolation {
         endpoint_kind: String,
     },
     InvalidUpdateTarget {
-        expected_entry_kind: String,
-        actual_entry_kind: String,
+        expected_target_kind: String,
+        actual_target_kind: String,
     },
+    /// Reserved for `MAP-PVL-1302` and intentionally never constructed.
+    ///
+    /// Storage SL2 removes `original_id`, the last native field that could carry a
+    /// cross-version immutability invariant. The variant remains reserved so its
+    /// consensus-visible code cannot be reassigned to a different rule.
     ImmutableNativeFieldChanged {
         field_name: String,
     },
@@ -413,8 +418,8 @@ mod tests {
                 endpoint_kind: "AgentPubKey".into(),
             },
             PvlViolation::InvalidUpdateTarget {
-                expected_entry_kind: "HolonNode".into(),
-                actual_entry_kind: "Other".into(),
+                expected_target_kind: "Create".into(),
+                actual_target_kind: "Update".into(),
             },
             PvlViolation::ImmutableNativeFieldChanged { field_name: "id".into() },
             PvlViolation::InvalidDeleteTarget {
@@ -588,6 +593,24 @@ mod tests {
                     max_bytes: 256,
                 },
                 json!({"IdentifierTooLong":{"field_name":"local_id","identifier_kind":"LocalId","actual_bytes":300,"max_bytes":256}}),
+            ),
+            (
+                PvlViolation::InvalidUpdateTarget {
+                    expected_target_kind: "Create".into(),
+                    actual_target_kind: "Update".into(),
+                },
+                json!({"InvalidUpdateTarget":{"expected_target_kind":"Create","actual_target_kind":"Update"}}),
+            ),
+            (
+                PvlViolation::ImmutableNativeFieldChanged { field_name: "original_id".into() },
+                json!({"ImmutableNativeFieldChanged":{"field_name":"original_id"}}),
+            ),
+            (
+                PvlViolation::InvalidDeleteTarget {
+                    expected_target_kind: "CreateOrUpdate".into(),
+                    actual_target_kind: "Delete".into(),
+                },
+                json!({"InvalidDeleteTarget":{"expected_target_kind":"CreateOrUpdate","actual_target_kind":"Delete"}}),
             ),
         ];
 

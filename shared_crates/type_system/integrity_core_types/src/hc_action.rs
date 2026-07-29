@@ -57,19 +57,6 @@ pub struct PersistenceUpdate {
 }
 
 #[derive(new, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-// pub struct PersistenceDelete<W = RateWeight> {
-pub struct PersistenceDelete {
-    pub author: PersistenceAgentId,
-    pub timestamp: PersistenceTimestamp,
-    pub action_seq: u32,
-    pub prev_action: LocalId,
-    // pub deletes_address: HoloHash<Action>,
-    // pub deletes_entry_address: HoloHash<Entry>,
-
-    // pub weight: W,
-}
-
-#[derive(new, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PersistenceCreateLink {
     // pub struct CreateLink<W = RateWeight> {
     pub author: PersistenceAgentId,

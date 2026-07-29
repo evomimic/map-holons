@@ -56,6 +56,38 @@ pub fn validate_agent_joining(
     Ok(ValidateCallbackResult::Valid)
 }
 
+/// Maps a completed lifecycle verdict onto the Integrity callback contract.
+///
+/// Host and dependency-resolution failures are propagated before this helper is
+/// called. Only deterministic PVL violations become consensus-visible
+/// `Invalid` results.
+fn lifecycle_callback_result(result: Result<(), PvlViolation>) -> ValidateCallbackResult {
+    match result {
+        Ok(()) => ValidateCallbackResult::Valid,
+        Err(violation) => ValidateCallbackResult::Invalid(violation.to_string()),
+    }
+}
+
+/// Validates one flattened `HolonNode` update through the shared adapter path.
+///
+/// All three update op arms delegate here so target extraction, scoped
+/// app-entry classification, and violation mapping cannot drift independently.
+fn validate_holon_node_update_arm(
+    original_action_hash: &ActionHash,
+    update: &Update,
+) -> ExternResult<ValidateCallbackResult> {
+    let EntryType::App(new_entry_def) = &update.entry_type else {
+        return Err(wasm_error!(WasmErrorInner::Guest(
+            "flattened app-entry update did not carry an App entry type".into()
+        )));
+    };
+
+    Ok(lifecycle_callback_result(validate_holon_node_update_target(
+        original_action_hash,
+        new_entry_def,
+    )?))
+}
+
 #[hdk_extern]
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
     match prepare_holon_node_envelope(&op)? {
@@ -72,8 +104,11 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             OpEntry::CreateEntry { app_entry, .. } => match app_entry {
                 EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
             },
-            OpEntry::UpdateEntry { app_entry, .. } => match app_entry {
-                EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
+            OpEntry::UpdateEntry { app_entry, original_action_hash, action, .. } => match app_entry
+            {
+                EntryTypes::HolonNode(_) => {
+                    validate_holon_node_update_arm(&original_action_hash, &action)
+                }
             },
             _ => Ok(ValidateCallbackResult::Valid),
         },
@@ -81,8 +116,10 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             // Storage SL2 will activate this path when version-producing writes become native,
             // root-addressed updates targeting the lineage-root Create. That transition also
             // removes original_id from the entry shape and requires parity-fixture review.
-            OpUpdate::Entry { app_entry, .. } => match app_entry {
-                EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
+            OpUpdate::Entry { app_entry, action } => match app_entry {
+                EntryTypes::HolonNode(_) => {
+                    validate_holon_node_update_arm(&action.original_action_address, &action)
+                }
                 _ => Ok(ValidateCallbackResult::Invalid(
                     "Original and updated entry types must be the same".to_string(),
                 )),
@@ -90,15 +127,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             _ => Ok(ValidateCallbackResult::Valid),
         },
         FlatOp::RegisterDelete(delete_entry) => match delete_entry {
-            OpDelete { action } => {
-                let persistence_delete = PersistenceDelete::new(
-                    persistence_agent_id_from_agent_pub_key(action.author),
-                    PersistenceTimestamp(action.timestamp.0),
-                    action.action_seq,
-                    local_id_from_action_hash(action.prev_action),
-                );
-                validate_delete_holon_node(persistence_delete)
-            }
+            OpDelete { action } => Ok(lifecycle_callback_result(
+                validate_holon_node_delete_target(&action.deletes_address)?,
+            )),
         },
         FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, action } => {
             match link_type {
@@ -251,90 +282,16 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             },
             // MAP writes currently emit Creates. Storage SL2 will exercise this path with native
             // updates targeting the lineage-root Create; envelope preparation has already run.
-            OpRecord::UpdateEntry { original_action_hash, app_entry, .. } => {
-                let original_record = must_get_valid_record(original_action_hash)?;
-                if !matches!(original_record.action(), Action::Create(_) | Action::Update(_)) {
-                    return Ok(ValidateCallbackResult::Invalid(
-                        "Original action for an update must be a Create or Update action"
-                            .to_string(),
-                    ));
-                }
+            OpRecord::UpdateEntry { original_action_hash, app_entry, action, .. } => {
                 match app_entry {
                     EntryTypes::HolonNode(_) => {
-                        let original_holon_node: Option<HolonNode> =
-                            original_record.entry().to_app_option().map_err(|e| wasm_error!(e))?;
-                        if original_holon_node.is_none() {
-                            return Ok(ValidateCallbackResult::Invalid(
-                                "The updated entry type must be the same as the original entry type"
-                                    .to_string(),
-                            ));
-                        }
-
-                        Ok(ValidateCallbackResult::Valid)
+                        validate_holon_node_update_arm(&original_action_hash, &action)
                     }
                 }
             }
-            OpRecord::DeleteEntry { original_action_hash, action, .. } => {
-                let original_record = must_get_valid_record(original_action_hash)?;
-                let original_action = original_record.action();
-                let original_entry_type = match original_action {
-                    Action::Create(create) => &create.entry_type,
-                    Action::Update(update) => &update.entry_type,
-                    _ => {
-                        return Ok(ValidateCallbackResult::Invalid(
-                            "Original action for a delete must be a Create or Update action"
-                                .to_string(),
-                        ));
-                    }
-                };
-                let app_entry_type = match original_entry_type {
-                    EntryType::App(app_entry_type) => app_entry_type,
-                    _ => {
-                        return Ok(ValidateCallbackResult::Valid);
-                    }
-                };
-                let entry = match original_record.entry().as_option() {
-                    Some(entry) => entry,
-                    None => {
-                        return if original_entry_type.visibility().is_public() {
-                            Ok(
-                                    ValidateCallbackResult::Invalid(
-                                        "Original record for a delete of a public entry must contain an entry"
-                                            .to_string(),
-                                    ),
-                                )
-                        } else {
-                            Ok(ValidateCallbackResult::Valid)
-                        };
-                    }
-                };
-                let original_app_entry = match EntryTypes::deserialize_from_type(
-                    app_entry_type.zome_index.clone(),
-                    app_entry_type.entry_index.clone(),
-                    &entry,
-                )? {
-                    Some(app_entry) => app_entry,
-                    None => {
-                        return Ok(
-                                ValidateCallbackResult::Invalid(
-                                    "Original app entry must be one of the defined entry types for this zome"
-                                        .to_string(),
-                                ),
-                            );
-                    }
-                };
-                match original_app_entry {
-                    EntryTypes::HolonNode(_original_holon_node) => {
-                        let persistence_delete = PersistenceDelete::new(
-                            persistence_agent_id_from_agent_pub_key(action.author),
-                            PersistenceTimestamp(action.timestamp.0),
-                            action.action_seq,
-                            local_id_from_action_hash(action.prev_action),
-                        );
-                        validate_delete_holon_node(persistence_delete)
-                    }
-                }
-            }
+            OpRecord::DeleteEntry { action, .. } => Ok(lifecycle_callback_result(
+                validate_holon_node_delete_target(&action.deletes_address)?,
+            )),
             OpRecord::CreateLink { base_address, target_address, tag, link_type, action } => {
                 match link_type {
                     LinkTypes::HolonNodeUpdates => validate_create_link_holon_node_updates(

@@ -1,4 +1,5 @@
 pub mod holon_node_envelope;
+pub mod holon_node_lifecycle;
 pub mod holon_node_properties;
 pub mod identifier_validation;
 // Public module, part of the crate's public API
@@ -7,6 +8,7 @@ pub mod validation_helpers;
 
 // Re-exporting key functions/types for ease of use
 pub use holon_node_envelope::*;
+pub use holon_node_lifecycle::*;
 pub use holon_node_properties::*;
 pub use identifier_validation::*;
 pub use validation_helpers::*;
