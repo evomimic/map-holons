@@ -43,13 +43,12 @@ pub fn validate_property_count(count: usize) -> Result<(), PvlViolation> {
 
 /// Applies pure decoded-model rules in consensus order.
 ///
-/// Validation proceeds through canonical encoding, property count, properties
-/// in `BTreeMap` order, and finally identifier byte shape. The first violation
-/// is returned, so appending identifier validation preserves the precedence of
-/// all previously established envelope and property rules.
+/// Validation proceeds through canonical encoding, property count, and finally properties in
+/// `BTreeMap` order. The first violation is returned, so the precedence between envelope and
+/// property rules is fixed.
 ///
-/// Exact Holochain hash parsing is intentionally absent from this function and
-/// runs afterward in the substrate adapter.
+/// There is no identifier stage: a holon node entry carries semantic content only, and version
+/// identity is derived from the record by the storage layer rather than validated here.
 pub fn validate_holon_node_decoded(
     raw: &[u8],
     canonical: &[u8],
@@ -58,15 +57,14 @@ pub fn validate_holon_node_decoded(
     // Check encoding first: decoding can collapse duplicate map keys and hide the malformed input.
     validate_holon_node_encoding(raw, canonical)?;
     validate_property_count(model.property_map.len())?;
-    crate::holon_node_properties::validate_holon_node_properties(&model.property_map)?;
 
-    crate::identifier_validation::validate_holon_node_identifiers(model)
+    crate::holon_node_properties::validate_holon_node_properties(&model.property_map)
 }
 
 #[cfg(test)]
 mod tests {
     use base_types::{BaseValue, MapString};
-    use integrity_core_types::{LocalId, PropertyMap, PropertyName};
+    use integrity_core_types::{PropertyMap, PropertyName};
 
     use super::*;
 
@@ -79,7 +77,7 @@ mod tests {
                 )
             })
             .collect();
-        HolonNodeModel::new(None, property_map)
+        HolonNodeModel::new(property_map)
     }
 
     #[test]
@@ -149,7 +147,7 @@ mod tests {
             PropertyName(MapString(String::new())),
             BaseValue::StringValue(MapString("value".to_string())),
         );
-        let model = HolonNodeModel::new(None, property_map);
+        let model = HolonNodeModel::new(property_map);
 
         assert_eq!(
             validate_holon_node_decoded(&[1, 2, 3], &[1, 2, 3], &model),
@@ -172,50 +170,9 @@ mod tests {
     }
 
     #[test]
-    fn decoded_rules_accept_an_absent_original_id() {
-        let model = HolonNodeModel::new(None, PropertyMap::new());
+    fn decoded_rules_accept_a_content_only_node() {
+        let model = HolonNodeModel::new(PropertyMap::new());
 
         assert_eq!(validate_holon_node_decoded(&[1], &[1], &model), Ok(()));
-    }
-
-    #[test]
-    fn decoded_rules_apply_identifier_validation_after_existing_rules() {
-        let invalid_identifier = Some(LocalId(Vec::new()));
-        let expected_identifier_violation = PvlViolation::InvalidIdentifier {
-            field_name: "original_id".into(),
-            identifier_kind: "ActionHash-shaped LocalId".into(),
-            reason: "incorrect byte length".into(),
-        };
-
-        let empty_properties = HolonNodeModel::new(invalid_identifier.clone(), PropertyMap::new());
-        assert_eq!(
-            validate_holon_node_decoded(&[1], &[2], &empty_properties),
-            Err(PvlViolation::MalformedHolonNode {
-                reason: PvlMalformedReason::NonCanonicalEncoding,
-            })
-        );
-        assert_eq!(
-            validate_holon_node_decoded(&[1], &[1], &empty_properties),
-            Err(expected_identifier_violation.clone())
-        );
-
-        let mut too_many_properties = model_with_property_count(MAX_PROPERTY_COUNT + 1);
-        too_many_properties.original_id = invalid_identifier.clone();
-        assert_eq!(
-            validate_holon_node_decoded(&[1], &[1], &too_many_properties),
-            Err(PvlViolation::TooManyProperties { actual_count: 257, max_count: 256 })
-        );
-
-        let invalid_property = HolonNodeModel::new(
-            invalid_identifier,
-            PropertyMap::from([(
-                PropertyName(MapString(String::new())),
-                BaseValue::StringValue(MapString("value".into())),
-            )]),
-        );
-        assert_eq!(
-            validate_holon_node_decoded(&[1], &[1], &invalid_property),
-            Err(PvlViolation::EmptyPropertyName)
-        );
     }
 }

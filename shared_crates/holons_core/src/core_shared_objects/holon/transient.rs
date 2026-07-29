@@ -188,7 +188,7 @@ impl ReadableHolonState for TransientHolon {
     }
 
     fn into_node_model(&self) -> HolonNodeModel {
-        HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
+        HolonNodeModel::new(self.property_map.clone())
     }
 
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {

@@ -130,8 +130,9 @@ export type ValidationState =
   | "Validated"
   | "Invalid";
 
+/// The persisted entry shape: semantic content only. Version and lineage identity are
+/// facts about the record that persists the entry, not fields of the entry body.
 export interface HolonNodeModel {
-  original_id?: LocalId | null;
   property_map: PropertyMap;
 }
 

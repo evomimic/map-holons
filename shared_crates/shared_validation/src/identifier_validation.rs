@@ -8,9 +8,14 @@
 //! Keeping those responsibilities separate makes these helpers reusable by
 //! coordinator preflight while preserving `shared_validation` as a WASM-safe,
 //! substrate-independent crate.
+//!
+//! No persisted HolonNode field currently uses these rules: the entry body carries semantic
+//! content only, and version identity is derived from the record. They remain because the role
+//! and its diagnostic contract (`MAP-PVL-1201`) are stable, and any future Integrity-visible
+//! hash-shaped field should classify failures the same way rather than inventing a second one.
 
 use core_types::HOLOCHAIN_ACTION_HASH_BYTES;
-use integrity_core_types::{HolonNodeModel, LocalId, PvlViolation};
+use integrity_core_types::{LocalId, PvlViolation};
 
 /// Fixed structured-diagnostic token for an ActionHash-shaped `LocalId`.
 ///
@@ -46,46 +51,25 @@ pub fn validate_action_hash_local_id(
     Ok(())
 }
 
-/// Validates identifier fields currently persisted in a [`HolonNodeModel`].
-///
-/// The current entry model permits an absent `original_id`. When present, the
-/// field is an ActionHash-shaped `LocalId` and must pass the pure byte-shape
-/// rule. Storage SL2 must revisit this orchestration when `original_id` leaves
-/// the persisted entry shape.
-pub fn validate_holon_node_identifiers(model: &HolonNodeModel) -> Result<(), PvlViolation> {
-    if let Some(original_id) = &model.original_id {
-        validate_action_hash_local_id("original_id", original_id)?;
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use integrity_core_types::PropertyMap;
-
     use super::*;
 
-    fn expected_invalid_original_id() -> PvlViolation {
+    const FIELD_NAME: &str = "lineage_id";
+
+    fn expected_invalid_identifier() -> PvlViolation {
         PvlViolation::InvalidIdentifier {
-            field_name: "original_id".into(),
+            field_name: FIELD_NAME.into(),
             identifier_kind: "ActionHash-shaped LocalId".into(),
             reason: "incorrect byte length".into(),
         }
     }
 
     #[test]
-    fn absent_original_id_is_valid() {
-        let model = HolonNodeModel::new(None, PropertyMap::new());
-
-        assert_eq!(validate_holon_node_identifiers(&model), Ok(()));
-    }
-
-    #[test]
     fn exact_action_hash_width_is_accepted_without_interpreting_the_bytes() {
         let local_id = LocalId(vec![0; HOLOCHAIN_ACTION_HASH_BYTES]);
 
-        assert_eq!(validate_action_hash_local_id("original_id", &local_id), Ok(()));
+        assert_eq!(validate_action_hash_local_id(FIELD_NAME, &local_id), Ok(()));
     }
 
     #[test]
@@ -94,8 +78,8 @@ mod tests {
             let local_id = LocalId(vec![0; length]);
 
             assert_eq!(
-                validate_action_hash_local_id("original_id", &local_id),
-                Err(expected_invalid_original_id()),
+                validate_action_hash_local_id(FIELD_NAME, &local_id),
+                Err(expected_invalid_identifier()),
                 "unexpected classification for {length} bytes"
             );
         }
@@ -103,7 +87,7 @@ mod tests {
 
     #[test]
     fn invalid_identifier_uses_the_stable_consensus_code_and_message() {
-        let violation = validate_action_hash_local_id("original_id", &LocalId(Vec::new()))
+        let violation = validate_action_hash_local_id(FIELD_NAME, &LocalId(Vec::new()))
             .expect_err("an empty ActionHash-shaped LocalId must be rejected");
 
         assert_eq!(violation.code(), "MAP-PVL-1201");

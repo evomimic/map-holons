@@ -1,4 +1,4 @@
-use crate::{LocalId, PropertyMap};
+use crate::PropertyMap;
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
@@ -10,11 +10,15 @@ use serde::{Deserialize, Serialize};
 /// It is the responsibility of Holochain guest code to convert between
 /// this model and the Holochain-annotated `HolonNode` struct.
 ///
+/// # Contents
+/// A holon node entry carries semantic content only. Version and lineage facts are
+/// properties of the record that persists the entry, not of the entry body, and are
+/// surfaced by the storage layer as `VersionMetadata`.
+///
 /// # Conversion
 /// Implement `From<HolonNode>` for `HolonNodeModel` in the guest crate
 /// to bridge between guest entries and validation logic.
 #[derive(new, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HolonNodeModel {
-    pub original_id: Option<LocalId>,
     pub property_map: PropertyMap,
 }

@@ -23,7 +23,6 @@ use std::collections::BTreeMap;
 /// so this test needs no dependency on the (hdi-based) integrity crate.
 #[derive(Serialize, Debug)]
 struct HolonNodeInput {
-    original_id: Option<LocalId>,
     property_map: PropertyMap,
 }
 
@@ -63,7 +62,7 @@ async fn new_endpoint(backend: &holons_test::MockConductorConfig) -> LocalId {
         .call(
             &backend.cell.zome(ZOME),
             "create_holon_node",
-            HolonNodeInput { original_id: None, property_map: PropertyMap::new() },
+            HolonNodeInput { property_map: PropertyMap::new() },
         )
         .await;
     LocalId(record.action_address().get_raw_39().to_vec())

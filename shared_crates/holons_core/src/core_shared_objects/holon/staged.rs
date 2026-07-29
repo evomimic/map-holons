@@ -433,10 +433,7 @@ impl ReadableHolonState for StagedHolon {
     }
 
     fn into_node_model(&self) -> HolonNodeModel {
-        HolonNodeModel {
-            original_id: self.original_id.clone(),
-            property_map: self.property_map.clone(),
-        }
+        HolonNodeModel::new(self.property_map.clone())
     }
 
     /// Retrieves the Holon's primary key, if defined in its `property_map`.

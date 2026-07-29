@@ -29,7 +29,7 @@ async fn rejects_holon_node_with_257_properties_using_exact_pvl_message() {
     // HolonNodeModel has the same serialized field layout as the guest HolonNode.
     // Passing it directly keeps this test independent of guest-only Rust types while
     // exercising the coordinator's real create_entry authoring path.
-    let holon_node = HolonNodeModel::new(None, property_map);
+    let holon_node = HolonNodeModel::new(property_map);
     let result = backend
         .conductor
         .call_fallible::<_, Record>(&backend.cell.zome("holons"), "create_holon_node", holon_node)
@@ -45,7 +45,7 @@ async fn rejects_empty_property_name_using_exact_pvl_message() {
     let property_map = [("".to_property_name(), MapString("value".to_string()).to_base_value())]
         .into_iter()
         .collect();
-    let holon_node = HolonNodeModel::new(None, property_map);
+    let holon_node = HolonNodeModel::new(property_map);
     let result = backend
         .conductor
         .call_fallible::<_, Record>(&backend.cell.zome("holons"), "create_holon_node", holon_node)

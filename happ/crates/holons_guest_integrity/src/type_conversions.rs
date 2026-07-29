@@ -37,19 +37,13 @@ pub fn try_action_hash_from_persistence_agent_id(
 /// Converts a guest-side HolonNode entry into the shared model.
 impl From<HolonNode> for HolonNodeModel {
     fn from(entry: HolonNode) -> Self {
-        HolonNodeModel {
-            original_id: entry.original_id.map(Into::into),
-            property_map: entry.property_map,
-        }
+        HolonNodeModel { property_map: entry.property_map }
     }
 }
 
 /// Converts the shared model into a guest-side HolonNode entry.
 impl From<HolonNodeModel> for HolonNode {
     fn from(entry: HolonNodeModel) -> Self {
-        HolonNode {
-            original_id: entry.original_id.map(Into::into),
-            property_map: entry.property_map,
-        }
+        HolonNode { property_map: entry.property_map }
     }
 }

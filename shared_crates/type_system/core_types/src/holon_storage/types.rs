@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn holon_write_request_exposes_its_content_for_either_variant() {
-        let node = HolonNodeModel::new(None, PropertyMap::new());
+        let node = HolonNodeModel::new(PropertyMap::new());
 
         let root = HolonWriteRequest::PublishRoot { holon_node: node.clone() };
         let version = HolonWriteRequest::PublishVersion {
@@ -276,8 +276,7 @@ mod tests {
 
     #[test]
     fn stored_holon_node_reports_its_exact_version_id() {
-        let stored =
-            StoredHolonNode::new(HolonNodeModel::new(None, PropertyMap::new()), root_version(7));
+        let stored = StoredHolonNode::new(HolonNodeModel::new(PropertyMap::new()), root_version(7));
 
         assert_eq!(stored.version_id(), &local_id(7));
     }

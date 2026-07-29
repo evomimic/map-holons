@@ -137,7 +137,7 @@ fn signed_action(action: Action) -> SignedActionHashed {
 }
 
 fn holon_entry() -> Entry {
-    let node = HolonNode::new(None, PropertyMap::new());
+    let node = HolonNode::new(PropertyMap::new());
     let raw = encode(&node).expect("test HolonNode must encode canonically");
     Entry::App(AppEntryBytes(SerializedBytes::from(UnsafeBytes::from(raw))))
 }

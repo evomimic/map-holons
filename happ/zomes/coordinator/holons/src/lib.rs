@@ -3,6 +3,7 @@ pub mod guest {
     pub use holons_guest::*;
 }
 use hdk::prelude::*;
+use holons_guest::persistence_layer::try_version_metadata_for_action;
 use holons_guest_integrity::local_id_from_action_hash;
 use holons_integrity::*;
 use integrity_core_types::{LocalId, PersistenceTimestamp};
@@ -103,27 +104,30 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
             Ok(())
         }
         Action::Update(update) => {
-            if let Ok(Some(EntryTypes::HolonNode(holon))) = get_entry_for_action(&action_hash) {
-                // affected_holon = permanent lineage id; previous_holon = the superseded record.
-                let affected_holon = holon.original_id.clone().unwrap_or_else(|| action_id.clone());
-                let previous_holon =
-                    local_id_from_action_hash(update.original_action_address.clone());
+            if let Ok(Some(EntryTypes::HolonNode(_))) = get_entry_for_action(&action_hash) {
+                // Every version is written as an update addressed at its lineage root, so the
+                // record this update supersedes *is* the lineage: affected_holon and
+                // previous_holon coincide. Immediate-predecessor ordering is carried by
+                // Predecessor SmartLinks, not signals, and the new version's own identity is
+                // already on the signal as action_id.
+                let lineage = local_id_from_action_hash(update.original_action_address.clone());
                 emit_signal(Signal::HolonUpdated {
                     action_id,
-                    affected_holon,
-                    previous_holon,
+                    affected_holon: lineage.clone(),
+                    previous_holon: lineage,
                     timestamp,
                 })?;
             }
             Ok(())
         }
         Action::Delete(delete) => {
-            if let Ok(Some(EntryTypes::HolonNode(original_holon))) =
-                get_entry_for_action(&delete.deletes_address)
+            // Lineage is read from the deleted record, not from its entry content. `None` here
+            // means the delete did not target a holon node, so no holon signal is due.
+            if let Ok(Some(version_metadata)) =
+                try_version_metadata_for_action(&delete.deletes_address)
             {
                 let previous_holon = local_id_from_action_hash(delete.deletes_address.clone());
-                let affected_holon =
-                    original_holon.original_id.clone().unwrap_or_else(|| previous_holon.clone());
+                let affected_holon = version_metadata.lineage_root().into_local_id();
                 emit_signal(Signal::HolonDeleted {
                     action_id,
                     affected_holon,

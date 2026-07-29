@@ -40,12 +40,17 @@ pub trait ReadableHolonState {
     /// - Not all Holons have keys; `None` may be returned.
     fn key(&self) -> Option<MapString>;
 
-    /// Retrieves the `original_id` of the Holon, representing its predecessor.
+    /// Retrieves the `original_id` of the Holon.
     ///
     /// # Semantics
-    /// - **`TransientHolons`** may have an `original_id` if cloned from a `SavedHolon`.  
-    /// - **`StagedHolons`** may have an `original_id` if cloned as part of a `ForUpdate` cycle.  
-    /// - **`SavedHolons`** may have an `original_id` if they are a version of a prior Holon.  
+    /// This means one of two different things depending on the variant, because an unsaved
+    /// holon has no lineage to belong to yet:
+    /// - **`TransientHolons`** and **`StagedHolons`** — clone-source tracking: the holon this
+    ///   one was cloned from, if any. It records provenance in memory and has no effect on what
+    ///   gets persisted.
+    /// - **`SavedHolons`** — the lineage root, derived from the record that persists the holon.
+    ///   `None` means this holon *is* the root of its lineage; `Some(root)` means it is a version
+    ///   that supersedes one. It is not entry content and cannot be set by a caller.
     /// - New Holons created without cloning will have `None` as their `original_id`.
     fn original_id(&self) -> Option<LocalId>;
 

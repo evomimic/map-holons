@@ -151,7 +151,7 @@ impl ReadableHolonState for SavedHolon {
     /// Extracts HolonNode data.
     /// Converts 'original_id' and 'property_map' fields into a HolonNode object.
     fn into_node_model(&self) -> HolonNodeModel {
-        HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
+        HolonNodeModel::new(self.property_map.clone())
     }
 
     /// Enforces access control rules for `SavedHolon`.
