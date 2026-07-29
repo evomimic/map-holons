@@ -83,6 +83,13 @@ pub fn get_all_deletes_for_holon_node(
     }
 }
 
+/// Enumerates revisions reachable through `HolonNodeUpdates` links.
+///
+/// Scaffolded, and currently reports only the record it was given: MAP authors versions as native
+/// root-addressed updates and deliberately does not maintain a parallel `HolonNodeUpdates` link
+/// index, so there are no links for this to follow. Revision-history traversal is later storage
+/// work, which will decide whether to build on Holochain's own update graph (`get_details`) or on
+/// the link index — it should not harden both.
 #[hdk_extern]
 pub fn get_all_revisions_for_holon_node(
     original_holon_node_hash: ActionHash,
@@ -130,6 +137,11 @@ pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record
     get(latest_holon_node_hash, GetOptions::default())
 }
 
+/// Raw scaffolded read of one exact action, returning its `Record`.
+///
+/// The name is misleading and retained only for the scaffolded surface: this does not walk a
+/// lineage to find an original. New code uses `holon_storage::get_holon`, which is
+/// version-addressed by name and returns record-derived `VersionMetadata` instead of a `Record`.
 #[hdk_extern]
 pub fn get_original_holon_node(
     original_holon_node_hash: ActionHash,
@@ -137,6 +149,13 @@ pub fn get_original_holon_node(
     get(original_holon_node_hash, GetOptions::default())
 }
 
+/// Selects the newest revision reachable through `HolonNodeUpdates` links.
+///
+/// Scaffolded, and currently equivalent to `get_original_holon_node`: MAP authors no
+/// `HolonNodeUpdates` links (see `get_all_revisions_for_holon_node`), so this always falls through
+/// to the hash it was given. Note that hash is now a lineage *root* rather than the only version
+/// of a holon, so this returns the root's content, not the lineage head. Head selection is later
+/// storage work.
 #[hdk_extern]
 pub fn get_latest_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
     let links_query =
