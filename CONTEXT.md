@@ -76,6 +76,50 @@ _Avoid_: Compatibility resurrection, replacement query command seam
 A coherent design-update session that batches fine-grained decisions before applying one version bump per affected source spec.
 _Avoid_: Per-decision spec version bumps
 
+**Relationship Endpoint Type**:
+The `HolonType` descriptor that classifies holons permitted at the source or target of a declared relationship.
+_Avoid_: Arbitrary `TypeDescriptor` endpoint, property or relationship descriptor endpoint
+
+**Holon Ownership**:
+The required, infrastructure-managed `OwnedBy` relationship from each holon to exactly one current `HolonSpace`.
+_Avoid_: Optional ownership, multiple owning spaces, explicitly authored ownership
+
+**Directional Deletion Semantic**:
+The deletion behavior explicitly authored on each declared or inverse relationship descriptor for deletion of that descriptor's source holon.
+_Avoid_: Deriving an inverse descriptor's deletion behavior from its declared partner
+
+**Abstract Relationship Endpoint**:
+An abstract type used as a polymorphic relationship constraint; each actual endpoint is a holon whose effective descriptor equals or transitively extends the declared endpoint type.
+_Avoid_: Directly instantiating the abstract endpoint, rejecting abstract endpoint constraints
+
+**Uniform Endpoint Compatibility**:
+The rule that every relationship endpoint is validated as a holon through its effective semantic type and transitive `Extends`.
+_Avoid_: Using meta-types as descriptor-to-descriptor endpoint categories
+
+**EffectiveEndpointType**:
+The semantic type used for endpoint validation: the holon itself when it is a type descriptor, otherwise its `DescribedBy` type.
+_Avoid_: Meta-type substitution for descriptor endpoint classification, separate endpoint validators
+
+**Meta-Type Holon Classification**:
+The classification established by `MetaTypeDescriptor Extends HolonType`, making every concrete meta-type transitively substitutable for `HolonType`.
+_Avoid_: A separate meta-type `Extends` hierarchy, special descriptor-holon endpoint rules
+
+**Descriptor Endpoint Category**:
+An abstract descriptor type such as `PropertyType`, `ValueType`, or `DeclaredRelationshipType` used to classify descriptor holons participating in descriptor-to-descriptor relationships.
+_Avoid_: The meta-type that governs those descriptor holons' conformance
+
+**RelationshipType**:
+The abstract descriptor-classification root shared by `DeclaredRelationshipType` and `InverseRelationshipType`, and the polymorphic source constraint for `SourceType` and `TargetType`.
+_Avoid_: `MetaRelationshipType` as a descriptor-to-descriptor endpoint, duplicated relationship key rules on declared and inverse roots
+
+**MetaValueType**:
+The concrete meta-type that describes value-type descriptor holons and extends `MetaTypeDescriptor`.
+_Avoid_: Abstract describing meta-type, `ValueType Extends MetaValueType`
+
+**Abstract Descriptor Completeness**:
+The rule that an abstract descriptor may omit conformance-contract members with positive minimum cardinality, while all supplied values and universal structural invariants remain valid.
+_Avoid_: Generic placeholder targets solely to satisfy abstract roots, exempting concrete descriptors
+
 **PlanNode**:
 A holon-backed structural node in an ExecutionPlan that organizes one or more plan steps.
 _Avoid_: Result node, graph node
@@ -160,6 +204,25 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - Without a future **ProjectStep**, navigation results should remain holon-native and selected by the **Output Binding**.
 - **Old-World Relationship Traversal Types** may remain for compatibility, but **New-World Query Contract** design must not depend on them.
 - A **Spec Revision Session** closes when the team produces a stable artifact for one coherent design slice, such as a revised issue body.
+- `SourceType` and `TargetType` target **Relationship Endpoint Types** rooted at `HolonType`, because MAP relationships connect holons rather than arbitrary descriptor kinds.
+- **Holon Ownership** has cardinality `1..1`; its `Owns` inverse remains `0..32767`.
+- `MetaRelationshipType` supplies `DeletionSemantic` to both declared and inverse relationship descriptor contracts; each direction explicitly supplies its own **Directional Deletion Semantic**.
+- An **Abstract Relationship Endpoint** constrains actual endpoint holons through their effective descriptors and transitive `Extends`.
+- **Meta-Type Holon Classification** permits meta-type descriptors to participate in the generalized `(HolonType)-[DescribedBy]->(TypeDescriptor)` relationship and its `(TypeDescriptor)-[Instances]->(HolonType)` inverse.
+- **Uniform Endpoint Compatibility** applies because all descriptors are holons: endpoint conformance always resolves through the endpoint holon's effective semantic type.
+- Endpoint validation applies one rule: `EffectiveEndpointType(H) Extends* requiredType`.
+- Meta-types declare what descriptor holons must contain through `InstanceProperties` and `InstanceRelationships`; **Descriptor Endpoint Categories** define which semantic descriptor categories may participate as relationship endpoints.
+- **RelationshipType** extends `TypeDescriptor`, supplies the shared relationship key rule, and is extended by both declared and inverse relationship descriptor roots.
+- Core inverse relationships use explicit `Block` deletion semantics to preserve references and contracts, except `MemberOfCollection`, which uses `Allow` for non-owning collection membership.
+- `InstanceProperties` and `InstanceRelationships` use `TypeDescriptor` as their semantic source endpoint; meta-types attach those authoritative relationship keys through their instance contracts.
+- Every enum-variant descriptor has exactly one `VariantOf` owner; the inverse `Variants` relationship remains `0..32767`.
+- `MetaValueType` is concrete because value-type descriptor holons are its direct instances; value descriptor classification separately follows `ValueType Extends TypeDescriptor`.
+- `AffordsOperator` uses `InheritanceMode Additive`, allowing operators populated on abstract value categories to accumulate on concrete value-type descendants.
+- `EnumVariantValueType` is described by concrete `MetaValueType` and extends `ValueType`; its variant declaration kind does not infer a separate meta-type.
+- Relationships such as `AffordsOperator`, `Constraints`, `Variants`, and `ElementValueType` describe value descriptor holons; their permissions belong to value meta-type contracts rather than to the instance contracts passed to non-holon values.
+- `MetaValueArrayValueType` extends `MetaValueType` and describes array value-type descriptors, keeping required `ElementValueType` and array-specific `Constraints` out of the common value-descriptor contract.
+- `MetaStringValueType`, `MetaIntegerValueType`, `MetaBytesValueType`, `MetaEnumValueType`, and `MetaValueArrayValueType` provide kind-specific value-descriptor contracts without TypeKind inference or ambiguous `Constraints` members.
+- **Abstract Descriptor Completeness** allows `PropertyType`, `EnumValueType`, and `ValueArrayValueType` roots to omit required concrete descriptor state such as `ValueType`, `Variants`, and `ElementValueType`.
 
 ## Example dialogue
 

@@ -3,11 +3,12 @@ schema MAP Core Schema-v0.0.7 {
   depends_on MAP Dance Schema-v0.0.4
   depends_on MAP Query Schema-v0.0.1
   header {
-    description: "Schema containing the root descriptor-type and meta-type definitions for the MAP Type System."
+    description: "Schema containing the root descriptor types, meta-types, and foundational holon types for the MAP type system."
   }
 }
 
 abstract holon TypeDescriptor {
+  type MetaHolonType
   keyrule TypeNameRule.KeyRuleType
   header {
     description: "Abstract root of the descriptor-type hierarchy. It classifies descriptor types and serves as a polymorphic target for schema components and other descriptor-oriented relationships. It is not the generic describing type for descriptor holons."
@@ -17,8 +18,8 @@ abstract holon TypeDescriptor {
   }
 }
 
-
 abstract holon HolonType {
+  type MetaHolonType
   keyrule ExtendedTypeRule.KeyRuleType
   extends TypeDescriptor
   header {
@@ -30,7 +31,7 @@ abstract holon HolonType {
   relationships {
     InstanceRelationships -> [
       (HolonType)-[DescribedBy]->(TypeDescriptor),
-      (HolonType)-[OwnedBy]->(HolonSpace.HolonType),
+      (HolonType)-[OwnedBy]->(HolonSpace),
       (HolonType)-[AffordsCommand]->(CommandType.HolonType),
       (HolonType)-[Predecessor]->(HolonType),
       (HolonType)-[AffordsDance]->(DanceType.HolonType)
@@ -53,8 +54,8 @@ abstract holon HolonType {
   }
 }
 
-
 abstract holon PropertyType {
+  type MetaPropertyType
   keyrule ExtendedTypeRule.KeyRuleType
   extends TypeDescriptor
   header {
@@ -65,10 +66,21 @@ abstract holon PropertyType {
   }
 }
 
-
-abstract holon DeclaredRelationshipType {
+abstract holon RelationshipType {
+  type MetaHolonType
   keyrule RelationshipRule.KeyRuleType
   extends TypeDescriptor
+  header {
+    description: "Abstract common classification root for declared and inverse relationship descriptor types."
+    display_name: "Relationship Type"
+    display_plural: "Relationship Types"
+    plural: "RelationshipTypes"
+  }
+}
+
+abstract holon DeclaredRelationshipType {
+  type MetaDeclaredRelationshipType
+  extends RelationshipType
   header {
     description: "Abstract root for explicitly declared relationship descriptor types."
     display_name: "Declared Relationship Type"
@@ -77,10 +89,9 @@ abstract holon DeclaredRelationshipType {
   }
 }
 
-
 abstract holon InverseRelationshipType {
-  keyrule RelationshipRule.KeyRuleType
-  extends TypeDescriptor
+  type MetaInverseRelationshipType
+  extends RelationshipType
   header {
     description: "Abstract root for inverse relationship descriptor types derived from declared relationships."
     display_name: "Inverse Relationship Type"
@@ -89,11 +100,12 @@ abstract holon InverseRelationshipType {
   }
 }
 
-
 abstract holon MetaTypeDescriptor {
+  type MetaHolonType
   keyrule TypeNameRule.KeyRuleType
+  extends HolonType
   header {
-    description: "Root of the meta-type hierarchy. It defines the common self-conformance contract shared by type-descriptor holons."
+    description: "Root of the meta-type hierarchy. It defines the common self-conformance contract shared by type-descriptor holons and classifies every meta-type as a holon type."
     display_name: "Meta Type Descriptor"
     display_plural: "Meta Type Descriptors"
     plural: "MetaTypeDescriptors"
@@ -117,18 +129,29 @@ abstract holon MetaTypeDescriptor {
   }
 }
 
-InstanceRelationships -> [
-  (HolonType)-[DescribedBy]->(TypeDescriptor),
-  (HolonType)-[OwnedBy]->(HolonSpace.HolonType),
-  (HolonType)-[AffordsCommand]->(CommandType.HolonType),
-  (TypeDescriptor)-[InstanceProperties]->(PropertyType),
-  (MetaHolonType)-[InstanceRelationships]->(DeclaredRelationshipType),
-  (HolonType)-[Predecessor]->(HolonType),
-  (HolonType)-[AffordsDance]->(DanceType.HolonType)
-]
-
+holon MetaHolonType {
+  type MetaHolonType
+  extends MetaTypeDescriptor
+  header {
+    description: "Meta-type describing holon-type descriptor holons. It governs the populated descriptor state required on holon type descriptors themselves, distinct from the contracts those descriptors pass on to described instances."
+    display_name: "Meta Holon Type"
+    display_plural: "Meta Holon Types"
+    plural: "MetaHolonTypes"
+  }
+  relationships {
+    InstanceProperties -> [
+      AllowsAdditionalProperties.PropertyType,
+      AllowsAdditionalRelationships.PropertyType
+    ]
+    InstanceRelationships -> [
+      (TypeDescriptor)-[InstanceProperties]->(PropertyType),
+      (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType)
+    ]
+  }
+}
 
 holon MetaPropertyType {
+  type MetaHolonType
   extends MetaTypeDescriptor
   header {
     description: "Meta-type describing property-type descriptor holons."
@@ -148,11 +171,11 @@ holon MetaPropertyType {
   }
 }
 
-
-holon MetaRelationshipType {
+abstract holon MetaRelationshipType {
+  type MetaHolonType
   extends MetaTypeDescriptor
   header {
-    description: "Meta-type describing relationship descriptor holons."
+    description: "Abstract meta-type defining the common descriptor contract shared by declared and inverse relationship descriptor holons."
     display_name: "Meta Relationship Type"
     display_plural: "Meta Relationship Types"
     plural: "MetaRelationshipTypes"
@@ -168,14 +191,14 @@ holon MetaRelationshipType {
       InheritanceMode.PropertyType
     ]
     InstanceRelationships -> [
-      (MetaRelationshipType)-[SourceType]->(TypeDescriptor),
-      (MetaRelationshipType)-[TargetType]->(TypeDescriptor)
+      (RelationshipType)-[SourceType]->(HolonType),
+      (RelationshipType)-[TargetType]->(HolonType)
     ]
   }
 }
 
-
 holon MetaDeclaredRelationshipType {
+  type MetaHolonType
   extends MetaRelationshipType
   header {
     description: "Meta-type describing explicitly declared relationship descriptor holons."
@@ -191,6 +214,7 @@ holon MetaDeclaredRelationshipType {
 }
 
 holon MetaInverseRelationshipType {
+  type MetaHolonType
   extends MetaRelationshipType
   header {
     description: "Meta-type describing inverse relationship descriptor holons."
@@ -198,14 +222,10 @@ holon MetaInverseRelationshipType {
     display_plural: "Meta Inverse Relationship Types"
     plural: "MetaInverseRelationshipTypes"
   }
-  relationships {
-    InstanceProperties -> [
-      InheritanceMode.PropertyType
-    ]
-  }
 }
 
 holon Schema {
+  type MetaHolonType
   keyrule SchemaNameRule.KeyRuleType
   extends HolonType
   header {
@@ -220,13 +240,13 @@ holon Schema {
       SchemaName.PropertyType
     ]
     InstanceRelationships -> [
-      (Schema.HolonType)-[DependsOn]->(Schema.HolonType)
+      (Schema)-[DependsOn]->(Schema)
     ]
   }
 }
 
-
 holon HolonSpace {
+  type MetaHolonType
   extends HolonType
   header {
     description: "Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope."
@@ -236,16 +256,16 @@ holon HolonSpace {
   }
   relationships {
     InstanceRelationships -> [
-      (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)
+      (HolonSpace)-[AffordsTransactionModel]->(Transaction)
     ]
     AffordsCommand -> BeginTransaction.CommandType
     AffordsDance -> QueryDance.DanceType
-    AffordsTransactionModel -> Transaction.HolonType
+    AffordsTransactionModel -> Transaction
   }
 }
 
-
 holon HolonError {
+  type MetaHolonType
   extends HolonType
   header {
     description: "Describes the structure of error holons."
@@ -261,8 +281,8 @@ holon HolonError {
   }
 }
 
-
 holon Transaction {
+  type MetaHolonType
   extends HolonType
   header {
     description: "Descriptor for the MAP transaction model: the command-scope holon surface available while a transaction is active."
@@ -297,8 +317,8 @@ holon Transaction {
   }
 }
 
-
 holon HolonCollection {
+  type MetaHolonType
   extends HolonType
   header {
     description: "Concrete collection type descriptor for persisted collection holons."
@@ -313,8 +333,8 @@ holon HolonCollection {
       AllowsDuplicates.PropertyType
     ]
     InstanceRelationships -> [
-      (HolonCollection.HolonType)-[CollectionMembers]->(HolonType),
-      (HolonCollection.HolonType)-[ElementType]->(HolonType)
+      (HolonCollection)-[CollectionMembers]->(HolonType),
+      (HolonCollection)-[ElementType]->(HolonType)
     ]
   }
 }

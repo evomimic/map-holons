@@ -1,11 +1,13 @@
 schema MAP Core Schema-v0.0.7 {
   depends_on MAP Key Rule Schema
 }
-def relationship ComponentOf {
-  source TypeDescriptor.HolonType
-  target Schema.HolonType
-  inverse Components
-  cardinality 0..32767
+
+def relationship (TypeDescriptor)-[ComponentOf]->(Schema) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source TypeDescriptor
+  target Schema
+  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Links a type descriptor to the schema that contains it."
@@ -15,317 +17,306 @@ def relationship ComponentOf {
   }
 }
 
-
-inverse relationship Components {
-  source Schema.HolonType
-  target TypeDescriptor.HolonType
+inverse relationship (Schema)-[Components]->(TypeDescriptor) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source Schema
+  target TypeDescriptor
+  inverse (TypeDescriptor)-[ComponentOf]->(Schema)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of ComponentOf, from SchemaType to TypeDescriptor."
+    description: "Inverse of ComponentOf, from a schema to its type descriptors."
     display_name: "Components"
     display_plural: "Components Relationships"
     plural: "ComponentsRelationships"
   }
 }
 
-
-def relationship InstanceProperties {
-  source TypeDescriptor.HolonType
+def relationship (TypeDescriptor)-[InstanceProperties]->(PropertyType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source TypeDescriptor
   target PropertyType
-  inverse InstancePropertyFor
   cardinality 0..32767
-  deletion_semantic Allow
+  deletion_semantic Block
   header {
-    description: "Connects a type descriptor to its expected property types."
+    description: "Connects a type descriptor to the property descriptors in its instance contract."
     display_name: "InstanceProperties"
     display_plural: "InstanceProperties Relationships"
     plural: "InstancePropertiesRelationships"
   }
 }
 
-
-inverse relationship InstancePropertyFor {
+inverse relationship (PropertyType)-[InstancePropertyFor]->(TypeDescriptor) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source PropertyType
-  target TypeDescriptor.HolonType
+  target TypeDescriptor
+  inverse (TypeDescriptor)-[InstanceProperties]->(PropertyType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of InstanceProperties, from PropertyType to TypeDescriptor."
+    description: "Inverse of InstanceProperties, from a property descriptor to the type descriptors whose instance contracts include it."
     display_name: "InstancePropertyFor"
     display_plural: "InstancePropertyFor Relationships"
     plural: "InstancePropertyForRelationships"
   }
 }
 
-
-def relationship InstanceRelationships {
+def relationship (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source TypeDescriptor
+  target DeclaredRelationshipType
   cardinality 0..32767
   deletion_semantic Block
-  properties {
-    type_name: "InstanceRelationships"
-    type_name_plural: "InstanceRelationships"
+  header {
+    description: "Connects a type descriptor to the declared relationship descriptors in its instance contract."
     display_name: "Instance Relationships"
-    display_name_plural: "Instance Relationships"
-    description: "Connects a type descriptor to its expected relationship types."
-    instance_type_kind: "TypeKind.Relationship"
-    is_abstract_type: false
-    deletion_semantic: "Block"
-    is_definitional: true
-    is_ordered: false
-    allows_duplicates: false
-    min_cardinality: 0
-    max_cardinality: 32767
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "DeclaredRelationshipType"
-    HasInverse -> "(DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor.HolonType)"
-    SourceType -> "MetaHolonType"
-    TargetType -> "DeclaredRelationshipType"
+    display_plural: "Instance Relationships"
+    plural: "InstanceRelationships"
   }
 }
 
-
-inverse relationship InstanceRelationshipFor {
+inverse relationship (DeclaredRelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source DeclaredRelationshipType
-  target TypeDescriptor.HolonType
+  target TypeDescriptor
+  inverse (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of InstanceRelationships, from DeclaredRelationshipType to TypeDescriptor."
+    description: "Inverse of InstanceRelationships, from a declared relationship descriptor to the type descriptors whose instance contracts include it."
     display_name: "InstanceRelationshipFor"
     display_plural: "InstanceRelationshipFor Relationships"
     plural: "InstanceRelationshipForRelationships"
   }
 }
 
-
-def relationship DescribedBy {
+def relationship (HolonType)-[DescribedBy]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source HolonType
-  target TypeDescriptor.HolonType
-  inverse Instances
-  cardinality 0..1
+  target TypeDescriptor
+  cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Links a holon to the type descriptor that describes it."
+    description: "Links every holon, including a descriptor holon, to the concrete type descriptor that describes it."
     display_name: "DescribedBy"
     display_plural: "DescribedBy Relationships"
     plural: "DescribedByRelationships"
   }
 }
 
-
-inverse relationship Instances {
-  source TypeDescriptor.HolonType
+inverse relationship (TypeDescriptor)-[Instances]->(HolonType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source TypeDescriptor
   target HolonType
+  inverse (HolonType)-[DescribedBy]->(TypeDescriptor)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of DescribedBy, from TypeDescriptor to an instance of that type."
+    description: "Inverse of DescribedBy, from a type descriptor to the holons it directly describes."
     display_name: "Instances"
     display_plural: "Instances Relationships"
     plural: "InstancesRelationships"
   }
 }
 
-
-relationship OwnedBy {
+relationship (HolonType)-[OwnedBy]->(HolonSpace) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source HolonType
-  target HolonSpace.HolonType
-  inverse Owns
-  cardinality 0..32767
+  target HolonSpace
+  cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Indicates which holon space owns the given holon."
+    description: "Identifies the current holon space that owns a holon; infrastructure supplies this relationship."
     display_name: "OwnedBy"
     display_plural: "OwnedBy Relationships"
     plural: "OwnedByRelationships"
   }
 }
 
-
-inverse relationship Owns {
-  source HolonSpace.HolonType
+inverse relationship (HolonSpace)-[Owns]->(HolonType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source HolonSpace
   target HolonType
+  inverse (HolonType)-[OwnedBy]->(HolonSpace)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of OwnedBy, from HolonSpace to Holon."
+    description: "Inverse of OwnedBy, from a holon space to the holons it owns."
     display_name: "Owns"
     display_plural: "Owns Relationships"
     plural: "OwnsRelationships"
   }
 }
 
-
-relationship Properties {
-  source HolonType
-  target PropertyType
-  inverse PropertyOf
-  cardinality 0..32767
-  deletion_semantic Block
-  header {
-    description: "Links a holon to its properties."
-    display_name: "Properties"
-    display_plural: "Properties Relationships"
-    plural: "PropertiesRelationships"
-  }
-}
-
-
-inverse relationship PropertyOf {
-  source PropertyType
-  target HolonType
-  cardinality 0..32767
-  header {
-    description: "Inverse of Properties, from PropertyType to HolonType."
-    display_name: "PropertyOf"
-    display_plural: "PropertyOf Relationships"
-    plural: "PropertyOfRelationships"
-  }
-}
-
-
-def relationship ValueType {
+def relationship (PropertyType)-[ValueType]->(ValueType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source PropertyType
   target ValueType
-  inverse ValueTypeFor
-  cardinality 0..32767
+  cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Specifies the value type constraint for a property."
+    description: "Specifies the single value-type descriptor governing values of a property descriptor."
     display_name: "ValueType"
     display_plural: "ValueType Relationships"
     plural: "ValueTypeRelationships"
   }
 }
 
-
-inverse relationship ValueTypeFor {
+inverse relationship (ValueType)-[ValueTypeFor]->(PropertyType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source ValueType
   target PropertyType
+  inverse (PropertyType)-[ValueType]->(ValueType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of ValueType, from ValueType to PropertyType."
+    description: "Inverse of ValueType, from a value-type descriptor to the property descriptors it governs."
     display_name: "ValueTypeFor"
     display_plural: "ValueTypeFor Relationships"
     plural: "ValueTypeForRelationships"
   }
 }
 
-
-def relationship SourceType {
-  source MetaRelationshipType
-  target TypeDescriptor.HolonType
-  inverse SourceOf
+def relationship (RelationshipType)-[SourceType]->(HolonType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source RelationshipType
+  target HolonType
   cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Defines the source holon type for a relationship type."
+    description: "Specifies the holon-type constraint for sources of a relationship descriptor."
     display_name: "SourceType"
     display_plural: "SourceType Relationships"
     plural: "SourceTypeRelationships"
   }
 }
 
-
-inverse relationship SourceOf {
-  source TypeDescriptor.HolonType
-  target MetaRelationshipType
+inverse relationship (HolonType)-[SourceOf]->(RelationshipType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source HolonType
+  target RelationshipType
+  inverse (RelationshipType)-[SourceType]->(HolonType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of SourceType, from holon to relationship type."
+    description: "Inverse of SourceType, from a holon-type descriptor to relationship descriptors that use it as their source constraint."
     display_name: "SourceOf"
     display_plural: "SourceOf Relationships"
     plural: "SourceOfRelationships"
   }
 }
 
-
-def relationship TargetType {
-  source MetaRelationshipType
-  target TypeDescriptor.HolonType
-  inverse TargetOf
+def relationship (RelationshipType)-[TargetType]->(HolonType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source RelationshipType
+  target HolonType
   cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Defines the target holon type for a meta relationship type."
+    description: "Specifies the holon-type constraint for targets of a relationship descriptor."
     display_name: "TargetType"
     display_plural: "TargetType Relationships"
     plural: "TargetTypeRelationships"
   }
 }
 
-
-inverse relationship TargetOf {
-  source TypeDescriptor.HolonType
-  target MetaRelationshipType
+inverse relationship (HolonType)-[TargetOf]->(RelationshipType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source HolonType
+  target RelationshipType
+  inverse (RelationshipType)-[TargetType]->(HolonType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of TargetType, from HolonType to MetaRelationshipType."
+    description: "Inverse of TargetType, from a holon-type descriptor to relationship descriptors that use it as their target constraint."
     display_name: "TargetOf"
     display_plural: "TargetOf Relationships"
     plural: "TargetOfRelationships"
   }
 }
 
-
-def relationship HasInverse {
+def relationship (DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source DeclaredRelationshipType
   target InverseRelationshipType
-  inverse InverseOf
   cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Inverse of InverseOf, from DeclaredRelationshipType to InverseRelationshipType."
+    description: "Pairs each declared relationship descriptor with its authoritative inverse relationship descriptor."
     display_name: "HasInverse"
     display_plural: "HasInverse Relationships"
     plural: "HasInverseRelationships"
   }
 }
 
-
-inverse relationship InverseOf {
+inverse relationship (InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source InverseRelationshipType
   target DeclaredRelationshipType
+  inverse (DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)
   cardinality 1..1
+  deletion_semantic Block
   header {
-    description: "Links an inverse relationship type to the declared relationship it reverses."
+    description: "Links an inverse relationship descriptor to its authoritative declared relationship descriptor."
     display_name: "InverseOf"
     display_plural: "InverseOf Relationships"
     plural: "InverseOfRelationships"
   }
 }
 
-
-def relationship Variants {
+def relationship (EnumValueType)-[Variants]->(EnumVariantValueType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source EnumValueType
   target EnumVariantValueType
-  inverse VariantOf
   cardinality 0..32767
   deletion_semantic Block
   header {
-    description: "Declares the allowed symbolic variants of an enum value type."
+    description: "Declares the allowed symbolic variant descriptors of an enum value type."
     display_name: "Variants"
     display_plural: "Variants Relationships"
     plural: "VariantsRelationships"
   }
 }
 
-
-inverse relationship VariantOf {
+inverse relationship (EnumVariantValueType)-[VariantOf]->(EnumValueType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source EnumVariantValueType
   target EnumValueType
-  cardinality 0..32767
+  inverse (EnumValueType)-[Variants]->(EnumVariantValueType)
+  cardinality 1..1
+  deletion_semantic Block
   header {
-    description: "Inverse of Variants, from EnumVariantType to EnumValueType."
+    description: "Inverse of Variants, from an enum variant descriptor to its owning enum value-type descriptor."
     display_name: "VariantOf"
     display_plural: "VariantOf Relationships"
     plural: "VariantOfRelationships"
   }
 }
 
-
-def relationship DependsOn {
-  source Schema.HolonType
-  target Schema.HolonType
-  inverse Dependents
+def relationship (Schema)-[DependsOn]->(Schema) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source Schema
+  target Schema
   cardinality 0..32767
   deletion_semantic Block
   header {
@@ -336,212 +327,236 @@ def relationship DependsOn {
   }
 }
 
-
-inverse relationship Dependents {
-  source Schema.HolonType
-  target Schema.HolonType
+inverse relationship (Schema)-[Dependents]->(Schema) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source Schema
+  target Schema
+  inverse (Schema)-[DependsOn]->(Schema)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of DependsOn, indicating which schemas depend on this one."
+    description: "Inverse of DependsOn, indicating which schemas depend on this schema."
     display_name: "Dependents"
     display_plural: "Dependents Relationships"
     plural: "DependentsRelationships"
   }
 }
 
-
-def relationship ElementValueType {
+def relationship (ValueArrayValueType)-[ElementValueType]->(ValueType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source ValueArrayValueType
   target ValueType
-  inverse ElementValueTypeFor
   cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Specifies the element value type of a value array."
+    description: "Specifies the value-type descriptor governing elements of a value-array type."
     display_name: "ElementValueType"
     display_plural: "ElementValueType Relationships"
     plural: "ElementValueTypeRelationships"
   }
 }
 
-
-inverse relationship ElementValueTypeFor {
+inverse relationship (ValueType)-[ElementValueTypeFor]->(ValueArrayValueType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source ValueType
   target ValueArrayValueType
+  inverse (ValueArrayValueType)-[ElementValueType]->(ValueType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of ElementValueType, from ValueType to ValueArrayType."
+    description: "Inverse of ElementValueType, from a value-type descriptor to value-array descriptors that use it as their element type."
     display_name: "ElementValueTypeFor"
     display_plural: "ElementValueTypeFor Relationships"
     plural: "ElementValueTypeForRelationships"
   }
 }
 
-
-def relationship Extends {
-  source TypeDescriptor.HolonType
-  target TypeDescriptor.HolonType
-  inverse ExtendedBy
-  cardinality 1..1
+def relationship (TypeDescriptor)-[Extends]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source TypeDescriptor
+  target TypeDescriptor
+  cardinality 0..1
   deletion_semantic Block
   header {
-    description: "Inheritance link, this TypeDescriptor extends another TypeDescriptor (single parent)."
+    description: "Establishes optional single-parent descriptor specialization."
     display_name: "Extends"
     display_plural: "Extends Relationships"
     plural: "ExtendsRelationships"
   }
 }
 
-
-inverse relationship ExtendedBy {
-  source TypeDescriptor.HolonType
-  target TypeDescriptor.HolonType
+inverse relationship (TypeDescriptor)-[ExtendedBy]->(TypeDescriptor) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source TypeDescriptor
+  target TypeDescriptor
+  inverse (TypeDescriptor)-[Extends]->(TypeDescriptor)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of Extends, the parent TypeDescriptor is extended by zero or more children."
+    description: "Inverse of Extends, from a parent descriptor to its direct subtype descriptors."
     display_name: "ExtendedBy"
     display_plural: "ExtendedBy Relationships"
     plural: "ExtendedByRelationships"
   }
 }
 
-
-def relationship TemplateParameters {
+def relationship (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source FormatRule.KeyRuleType
   target PropertyType
-  inverse TemplateParameterFor
   cardinality 1..32767
   ordered
   deletion_semantic Block
   header {
-    description: "Ordered list of PropertyTypes used as positional parameters for template_string ($0, $1, ...)."
+    description: "Supplies the ordered property descriptors used as positional parameters in a format key rule template."
     display_name: "TemplateParameters Relationship"
     display_plural: "TemplateParameters Relationships"
     plural: "TemplateParametersRelationships"
   }
 }
 
-
-inverse relationship TemplateParameterFor {
+inverse relationship (PropertyType)-[TemplateParameterFor]->(FormatRule.KeyRuleType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source PropertyType
   target FormatRule.KeyRuleType
+  inverse (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of TemplateParameters, indicates that this PropertyType is used as a positional parameter in one or more Format.KeyRuleType instances."
+    description: "Inverse of TemplateParameters, from a property descriptor to format key rules that use it as a positional parameter."
     display_name: "TemplateParameterFor Relationship"
     display_plural: "TemplateParameterFor Relationships"
     plural: "TemplateParameterForRelationships"
   }
 }
 
-
-def relationship AffordsTransactionModel {
-  source HolonSpace.HolonType
-  target Transaction.HolonType
-  inverse TransactionModelAffordedBy
+def relationship (HolonSpace)-[AffordsTransactionModel]->(Transaction) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source HolonSpace
+  target Transaction
   cardinality 1..1
   deletion_semantic Allow
   header {
-    description: "Declares that a HolonSpaceType affords exactly one TransactionType, anchoring the transaction command-scope API surface discoverable from the space descriptor."
+    description: "Declares the transaction model afforded by a holon space."
     display_name: "AffordsTransactionModel Relationship"
     display_plural: "AffordsTransactionModel Relationships"
     plural: "AffordsTransactionModelRelationships"
   }
 }
 
-
-inverse relationship TransactionModelAffordedBy {
-  source Transaction.HolonType
-  target HolonSpace.HolonType
+inverse relationship (Transaction)-[TransactionModelAffordedBy]->(HolonSpace) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
+  source Transaction
+  target HolonSpace
+  inverse (HolonSpace)-[AffordsTransactionModel]->(Transaction)
   cardinality 1..1
+  deletion_semantic Block
   header {
-    description: "Inverse of AffordsTransactionModel, from TransactionType back to the HolonSpaceType that affords it."
+    description: "Inverse of AffordsTransactionModel, from a transaction model to the holon space that affords it."
     display_name: "TransactionModelAffordedBy Relationship"
     display_plural: "TransactionModelAffordedBy Relationships"
     plural: "TransactionModelAffordedByRelationships"
   }
 }
 
-
-relationship CollectionMembers {
-  source HolonCollection.HolonType
+relationship (HolonCollection)-[CollectionMembers]->(HolonType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source HolonCollection
   target HolonType
-  inverse MemberOfCollection
   cardinality 0..32767
   ordered
   duplicates
   deletion_semantic Allow
   header {
-    description: "Declared relationship from a persisted collection holon to the holons contained by the collection."
+    description: "Contains the holons carried by a persisted collection holon."
     display_name: "CollectionMembers"
     display_plural: "CollectionMembers Relationships"
     plural: "CollectionMembersRelationships"
   }
 }
 
-
-inverse relationship MemberOfCollection {
+inverse relationship (HolonType)-[MemberOfCollection]->(HolonCollection) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source HolonType
-  target HolonCollection.HolonType
+  target HolonCollection
+  inverse (HolonCollection)-[CollectionMembers]->(HolonType)
   cardinality 0..32767
+  deletion_semantic Allow
   header {
-    description: "Inverse of CollectionMembers. Links a holon to a persisted collection holon that contains it."
+    description: "Inverse of CollectionMembers, from a member holon to persisted collections containing it."
     display_name: "MemberOfCollection"
     display_plural: "MemberOfCollection Relationships"
     plural: "MemberOfCollectionRelationships"
   }
 }
 
-
-def relationship ElementType {
-  source HolonCollection.HolonType
+def relationship (HolonCollection)-[ElementType]->(HolonType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
+  source HolonCollection
   target HolonType
-  inverse ElementTypeFor
   cardinality 1..1
-  deletion_semantic Allow
+  deletion_semantic Block
   header {
-    description: "Declares the holon type carried by a persisted collection holon."
+    description: "Declares the holon-type descriptor accepted as the element type of a persisted collection."
     display_name: "Element Type"
     display_plural: "Element Types"
     plural: "ElementTypes"
   }
 }
 
-
-inverse relationship ElementTypeFor {
+inverse relationship (HolonType)-[ElementTypeFor]->(HolonCollection) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source HolonType
-  target HolonCollection.HolonType
+  target HolonCollection
+  inverse (HolonCollection)-[ElementType]->(HolonType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of ElementType. Links a holon type to persisted collection types that declare it as their element type."
+    description: "Inverse of ElementType, from a holon-type descriptor to persisted collection types that use it as their element constraint."
     display_name: "ElementTypeFor"
     display_plural: "ElementTypeFor Relationships"
     plural: "ElementTypeForRelationships"
   }
 }
 
-
-def relationship Predecessor {
+def relationship (HolonType)-[Predecessor]->(HolonType) {
+  type MetaDeclaredRelationshipType
+  extends DeclaredRelationshipType
   source HolonType
   target HolonType
-  inverse Successor
   cardinality 0..1
   deletion_semantic Block
   header {
-    description: "Links a holon version to the immediately preceding version in its lineage."
+    description: "Links a holon version to the immediately preceding version in its lineage; infrastructure supplies this relationship."
     display_name: "Predecessor"
     display_plural: "Predecessor Relationships"
     plural: "PredecessorRelationships"
   }
 }
 
-
-inverse relationship Successor {
+inverse relationship (HolonType)-[Successor]->(HolonType) {
+  type MetaInverseRelationshipType
+  extends InverseRelationshipType
   source HolonType
   target HolonType
+  inverse (HolonType)-[Predecessor]->(HolonType)
   cardinality 0..32767
+  deletion_semantic Block
   header {
-    description: "Inverse of Predecessor, from a holon version to later versions derived from it."
+    description: "Inverse of Predecessor, from a holon version to later versions derived directly from it."
     display_name: "Successor"
     display_plural: "Successor Relationships"
     plural: "SuccessorRelationships"
