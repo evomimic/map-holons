@@ -392,6 +392,12 @@ export type PvlViolationWire =
       };
     }
   | {
+      InvalidLinkDeleteTarget: {
+        expected_target_kind: string;
+        actual_target_kind: string;
+      };
+    }
+  | {
       InvalidUpdateTarget: {
         expected_target_kind: string;
         actual_target_kind: string;
@@ -824,6 +830,16 @@ function isPropertyByteLimitPayload(
   );
 }
 
+function isTargetKindPayload(
+  value: unknown,
+): value is { expected_target_kind: string; actual_target_kind: string } {
+  return (
+    isRecord(value) &&
+    isString(value['expected_target_kind']) &&
+    isString(value['actual_target_kind'])
+  );
+}
+
 export function isPvlViolationWire(value: unknown): value is PvlViolationWire {
   return (
     value === 'EmptyPropertyName' ||
@@ -1001,38 +1017,15 @@ export function isPvlViolationWire(value: unknown): value is PvlViolationWire {
         isString(candidate['endpoint']) &&
         isString(candidate['endpoint_kind']),
     ) ||
-    isTaggedValue(
-      value,
-      'InvalidUpdateTarget',
-      (
-        candidate,
-      ): candidate is {
-        expected_target_kind: string;
-        actual_target_kind: string;
-      } =>
-        isRecord(candidate) &&
-        isString(candidate['expected_target_kind']) &&
-        isString(candidate['actual_target_kind']),
-    ) ||
+    isTaggedValue(value, 'InvalidLinkDeleteTarget', isTargetKindPayload) ||
+    isTaggedValue(value, 'InvalidUpdateTarget', isTargetKindPayload) ||
     isTaggedValue(
       value,
       'ImmutableNativeFieldChanged',
       (candidate): candidate is { field_name: string } =>
         isRecord(candidate) && isString(candidate['field_name']),
     ) ||
-    isTaggedValue(
-      value,
-      'InvalidDeleteTarget',
-      (
-        candidate,
-      ): candidate is {
-        expected_target_kind: string;
-        actual_target_kind: string;
-      } =>
-        isRecord(candidate) &&
-        isString(candidate['expected_target_kind']) &&
-        isString(candidate['actual_target_kind']),
-    )
+    isTaggedValue(value, 'InvalidDeleteTarget', isTargetKindPayload)
   );
 }
 

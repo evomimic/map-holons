@@ -1,4 +1,4 @@
-//! Descriptor-independent property rules for persisted HolonNode entries.
+//! Descriptor-independent rules for native property maps.
 
 use integrity_core_types::{PropertyMap, PropertyName, PropertyValue, PvlViolation};
 
@@ -84,8 +84,12 @@ pub fn validate_property_value(
     Ok(())
 }
 
-/// Validates every property in deterministic map order.
-pub fn validate_holon_node_properties(property_map: &PropertyMap) -> Result<(), PvlViolation> {
+/// Validates any native property map in deterministic key order.
+///
+/// This validator applies only property-name and scalar-value rules. It is
+/// substrate-independent and deliberately applies no HolonNode envelope limits
+/// such as serialized size or total property count.
+pub fn validate_property_map(property_map: &PropertyMap) -> Result<(), PvlViolation> {
     for (property_name, value) in property_map {
         validate_property_name(property_name)?;
         validate_property_value(property_name, value)?;
@@ -287,10 +291,7 @@ mod tests {
         let mut property_map = PropertyMap::new();
         property_map.insert(invalid_name, BaseValue::StringValue(MapString("a".repeat(16_385))));
 
-        assert_eq!(
-            validate_holon_node_properties(&property_map),
-            Err(PvlViolation::EmptyPropertyName)
-        );
+        assert_eq!(validate_property_map(&property_map), Err(PvlViolation::EmptyPropertyName));
     }
 
     #[test]
@@ -305,7 +306,7 @@ mod tests {
         );
 
         assert_eq!(
-            validate_holon_node_properties(&property_map),
+            validate_property_map(&property_map),
             Err(PvlViolation::EmptyEnumValue { property_name: first_name })
         );
     }
