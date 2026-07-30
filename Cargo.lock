@@ -3532,6 +3532,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "type_names",
+ "url2",
  "uuid 1.21.0",
 ]
 
@@ -5808,8 +5809,6 @@ checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 [[package]]
 name = "portmapper"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b575f975dcf03e258b0c7ab3f81497d7124f508884c37da66a7314aa2a8d467"
 dependencies = [
  "base64",
  "bytes",
