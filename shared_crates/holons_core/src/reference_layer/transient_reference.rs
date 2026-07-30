@@ -55,6 +55,10 @@ impl TransientReference {
         TransientReference::new(context_handle, id.clone())
     }
 
+    /// Clears the inherited lineage, so this holon begins one of its own when committed.
+    ///
+    /// Used when a clone is a genuinely new holon rather than a new version of the holon it was
+    /// copied from — the copy carries content forward, but not identity.
     pub fn reset_original_id(&self) -> Result<(), HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let mut borrow = rc_holon.write().map_err(|e| {

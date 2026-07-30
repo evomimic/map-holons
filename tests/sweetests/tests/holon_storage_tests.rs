@@ -11,11 +11,14 @@
 //! while rejecting the topology it refuses to produce.
 
 use base_types::{BaseValue, MapString};
-use core_types::{HolonWriteRequest, LineageId, StoredHolonNode};
-use holochain::prelude::ActionHash;
+use core_types::{
+    CanonicalKey, HolonId, HolonWriteRequest, LineageId, PreparedSmartLink, PutSmartLinkOutcome,
+    StoredHolonNode,
+};
+use holochain::prelude::{Action, ActionHash, Record};
 use holons_test::harness::helpers::{assert_commit_rejected_with_pvl, setup_test_conductor};
 use holons_test::MockConductorConfig;
-use integrity_core_types::{HolonNodeModel, LocalId, PropertyName};
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, RelationshipName};
 use std::collections::BTreeMap;
 
 const ZOME: &str = "holons";
@@ -77,6 +80,48 @@ async fn get_holons(
 /// correct by construction: a wrong prefix would fail hash conversion and test the wrong thing.
 fn unpersisted_id() -> LocalId {
     LocalId(ActionHash::from_raw_36(vec![0x5a; 36]).get_raw_39().to_vec())
+}
+
+/// Reads the raw persisted `Record` for an id, bypassing this feature's own decoding.
+///
+/// Assertions about which substrate action was authored must not be made through
+/// `holon_storage_get`, because that would only prove the decoder agrees with itself. This routes
+/// through the pre-existing scaffolded extern instead, so the `Action` under assertion is the one
+/// Holochain actually stored.
+async fn raw_record(backend: &MockConductorConfig, id: &LocalId) -> Record {
+    let hash = ActionHash::try_from_raw_39(id.0.clone()).expect("id must be a valid action hash");
+    let record: Option<Record> =
+        backend.conductor.call(&backend.cell.zome(ZOME), "get_original_holon_node", hash).await;
+    record.expect("expected a persisted record for the supplied id")
+}
+
+/// Persists a real `CreateLink` action and returns its id — a well-formed, persisted action that
+/// is not a holon node.
+async fn persisted_non_holon_node_id(backend: &MockConductorConfig) -> LocalId {
+    let source = publish_root(backend, "link-source").await.version_metadata.version_id;
+    let target = publish_root(backend, "link-target").await.version_metadata.version_id;
+
+    let outcome: PutSmartLinkOutcome = backend
+        .conductor
+        .call(
+            &backend.cell.zome(ZOME),
+            "smartlink_put",
+            PreparedSmartLink {
+                source_id: source,
+                target_id: HolonId::Local(target),
+                relationship_name: RelationshipName(MapString("Likes".to_string())),
+                canonical_key: CanonicalKey::new("target-key").unwrap(),
+                occurrence_id: None,
+                relationship_property_values: PropertyMap::new(),
+                target_property_cache_candidates: Vec::new(),
+            },
+        )
+        .await;
+
+    match outcome {
+        PutSmartLinkOutcome::Inserted(smartlink_id) => smartlink_id.0,
+        other => panic!("expected the smartlink to be inserted, got {other:?}"),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +186,46 @@ async fn publish_version_is_rooted_at_the_create_and_round_trips() {
         get_holon(&backend, &root_id).await.expect("the lineage root must remain readable");
     assert_eq!(title_of(&fetched_root), "original");
     assert!(fetched_root.version_metadata.is_lineage_root());
+}
+
+/// Asserts the authored **substrate actions**, read back raw, rather than the metadata this
+/// feature derives from them.
+///
+/// The other tests read through `holon_storage_get`, which would still pass if the decoder and
+/// the writer shared a mistake. This one inspects the stored `Action` directly: the root must be
+/// a `Create`, each version must be an `Update`, and every `Update.original_action_address` must
+/// be the root — including the third generation, which must not point at its predecessor. That
+/// is the storage-owned action selection the issue is actually about.
+#[tokio::test(flavor = "multi_thread")]
+async fn authored_actions_are_a_create_and_updates_rooted_at_it() {
+    let backend = setup_test_conductor().await;
+    let root_id = publish_root(&backend, "v1").await.version_metadata.version_id;
+    let second_id =
+        publish_version(&backend, "v2", vec![root_id.clone()]).await.version_metadata.version_id;
+    // Third generation descends from v2, so a naive implementation would root it at v2.
+    let third_id =
+        publish_version(&backend, "v3", vec![second_id.clone()]).await.version_metadata.version_id;
+
+    let root_hash =
+        ActionHash::try_from_raw_39(root_id.0.clone()).expect("root id must be an action hash");
+
+    match raw_record(&backend, &root_id).await.action() {
+        Action::Create(_) => {}
+        other => panic!("PublishRoot must author a Create, got {:?}", other.action_type()),
+    }
+
+    for (label, version_id) in [("second", &second_id), ("third", &third_id)] {
+        match raw_record(&backend, version_id).await.action() {
+            Action::Update(update) => assert_eq!(
+                update.original_action_address, root_hash,
+                "the {label} generation's Update must target the lineage-root Create"
+            ),
+            other => panic!(
+                "PublishVersion must author an Update, got {:?} for the {label} generation",
+                other.action_type()
+            ),
+        }
+    }
 }
 
 /// A version of a version must stay rooted at the original `Create`, never at its immediate
@@ -261,6 +346,90 @@ async fn get_holons_accepts_an_empty_request() {
     let backend = setup_test_conductor().await;
 
     assert_eq!(get_holons(&backend, Vec::new()).await, Vec::new());
+}
+
+/// One unreadable id fails the whole batch. A partially-successful vector would leave the caller
+/// unable to tell a genuine gap from a record it could not decode, which is precisely the
+/// confusion positional reads exist to avoid.
+#[tokio::test(flavor = "multi_thread")]
+async fn get_holons_fails_the_whole_batch_when_any_id_is_not_a_holon_node() {
+    let backend = setup_test_conductor().await;
+    let good_id = publish_root(&backend, "readable").await.version_metadata.version_id;
+    let link_id = persisted_non_holon_node_id(&backend).await;
+
+    // Sanity: the good id on its own reads cleanly, so the failure below is attributable.
+    assert!(get_holon(&backend, &good_id).await.is_some());
+
+    let result = backend
+        .conductor
+        .call_fallible::<_, Vec<Option<StoredHolonNode>>>(
+            &backend.cell.zome(ZOME),
+            "holon_storage_get_many",
+            vec![good_id.clone(), link_id.clone()],
+        )
+        .await;
+
+    let error = format!("{:?}", result.expect_err("a batch containing a bad id must fail"));
+    assert!(
+        error.contains("Unsupported action kind"),
+        "expected an unsupported-action failure, got {error}"
+    );
+}
+
+/// A persisted action that is not a holon node is reported as an unsupported *action*, not as
+/// malformed content.
+///
+/// The distinction matters for debugging: a `CreateLink` carries no entry, so checking the entry
+/// first would blame missing content for what is really the wrong kind of record.
+#[tokio::test(flavor = "multi_thread")]
+async fn get_holon_reports_a_non_holon_action_as_unsupported_rather_than_malformed() {
+    let backend = setup_test_conductor().await;
+    let link_id = persisted_non_holon_node_id(&backend).await;
+
+    let result = backend
+        .conductor
+        .call_fallible::<_, Option<StoredHolonNode>>(
+            &backend.cell.zome(ZOME),
+            "holon_storage_get",
+            link_id,
+        )
+        .await;
+
+    let error = format!("{:?}", result.expect_err("a non-holon action must not read as a holon"));
+    assert!(
+        error.contains("Unsupported action kind"),
+        "expected an unsupported-action failure, got {error}"
+    );
+    assert!(
+        !error.contains("missing or malformed"),
+        "a wrong-kind record must not be reported as malformed content: {error}"
+    );
+}
+
+/// A lineage cannot be resolved from a predecessor that is not a holon node either — the write is
+/// refused at the storage boundary rather than reaching Integrity.
+#[tokio::test(flavor = "multi_thread")]
+async fn publish_version_rejects_a_predecessor_that_is_not_a_holon_node() {
+    let backend = setup_test_conductor().await;
+    let link_id = persisted_non_holon_node_id(&backend).await;
+
+    let result = backend
+        .conductor
+        .call_fallible::<_, StoredHolonNode>(
+            &backend.cell.zome(ZOME),
+            "holon_storage_persist",
+            HolonWriteRequest::PublishVersion {
+                holon_node: node("misrooted"),
+                predecessor_ids: vec![link_id],
+            },
+        )
+        .await;
+
+    let error = format!("{:?}", result.expect_err("a non-holon predecessor must be rejected"));
+    assert!(
+        error.contains("Unsupported action kind"),
+        "expected an unsupported-action failure, got {error}"
+    );
 }
 
 /// An id that is not a well-formed action hash is a defect, not an absence.

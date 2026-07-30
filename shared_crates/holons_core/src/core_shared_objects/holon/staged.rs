@@ -33,9 +33,14 @@ pub struct StagedHolon {
     validation_state: ValidationState,
     property_map: PropertyMap, // Self-describing property data
     staged_relationships: StagedRelationshipMap,
-    // Holochain lineage root for the node model. This is distinct from MAP version lineage.
+    /// The lineage inherited from the holon this was cloned from, if any. Carried through staging
+    /// as provenance only — storage derives a committed holon's lineage from the record it
+    /// authors, never from this field.
     original_id: Option<LocalId>,
-    // Current persisted node being staged for update; graph-only commits anchor relationships here.
+    /// The persisted version being staged for update, and the immediate predecessor of any new
+    /// version produced from it. Graph-only commits anchor relationships here rather than
+    /// authoring a node. Distinct from `original_id`: this is the exact version superseded, that
+    /// is the lineage it belongs to, and the two diverge past the first version.
     versioned_source_id: Option<LocalId>,
     // Relationship collections mutated during this staged transaction.
     touched_relationship_names: BTreeSet<RelationshipName>,

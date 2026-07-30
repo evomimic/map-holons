@@ -4,6 +4,8 @@ pub mod all_holon_nodes;
 pub mod holon_node;
 pub mod holon_storage;
 pub mod holon_storage_externs;
+/// Test-only authoring seams — see the module header before adding anything here.
+pub mod holon_storage_test_probes;
 pub mod saved_holon_node;
 pub mod smartlink;
 pub mod smartlink_externs;
@@ -12,6 +14,7 @@ pub use all_holon_nodes::*;
 pub use holon_node::*;
 pub use holon_storage::*;
 pub use holon_storage_externs::*;
+pub use holon_storage_test_probes::*;
 pub use saved_holon_node::*;
 pub use smartlink::*;
 pub use smartlink_externs::*;

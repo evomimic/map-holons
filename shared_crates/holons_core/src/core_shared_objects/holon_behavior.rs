@@ -21,16 +21,18 @@ pub trait ReadableHolonState {
     /// Converts a Holon into a HolonCloneModel.
     ///
     ///  # Semantics
-    ///  -Extracts version, original_id, properties, and relationships
+    ///  -Extracts version, lineage/clone source (see [`Self::original_id`]), properties, and
+    ///   relationships
     fn holon_clone_model(&self) -> HolonCloneModel;
 
     /// Only applies for StagedHolons in StagedState::Committed, otherwise throws an error.
     fn holon_id(&self) -> Result<HolonId, HolonError>;
 
-    /// Converts a Holon into a HolonNode.
+    /// Converts a Holon into a HolonNode: the persistable entry content.
     ///
     ///  # Semantics
-    ///  -Extracts original_id and property_map
+    ///  -Extracts property_map only. Version and lineage identity are properties of the record
+    ///   that persists the entry, not of the entry body, and are never written into it.
     fn into_node_model(&self) -> HolonNodeModel;
 
     /// Retrieves the Holon's primary key value (if present).

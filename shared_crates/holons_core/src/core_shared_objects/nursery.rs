@@ -208,7 +208,7 @@ impl HolonStagingBehavior for Nursery {
         let key_prop = CorePropertyTypeName::Key.as_property_name();
         cloned_transient.with_property_value(key_prop, BaseValue::StringValue(new_key))?;
 
-        // Reset original_id (this is a new clone, not a new version)
+        // Clear the inherited lineage: this is a new holon, not a new version of the source.
         cloned_transient.reset_original_id()?;
 
         // Stage the cloned holon

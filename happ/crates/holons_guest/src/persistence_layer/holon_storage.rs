@@ -82,12 +82,13 @@ pub fn get_holons(local_ids: &[LocalId]) -> Result<Vec<Option<StoredHolonNode>>,
         .collect()
 }
 
-/// Returns version metadata for `action_hash`, or `None` when the record is absent or does not
-/// carry a holon node.
+/// Returns version metadata for `action_hash`, or `None` when the record is absent or is not a
+/// holon node.
 ///
-/// Post-commit signalling needs to ask "is this a holon node, and if so what lineage is it in?"
-/// about an arbitrary action, and must stay silent rather than error for actions that are not
-/// holon nodes.
+/// Post-commit signalling asks "is this a holon node, and if so what lineage is it in?" about an
+/// arbitrary action, so it must stay quiet for the many actions that are not holon nodes. It stays
+/// quiet only for those: a record that *claims* to be a holon node and will not decode still
+/// fails, because silently emitting no signal would turn corruption into a missing event.
 pub fn try_version_metadata_for_action(
     action_hash: &ActionHash,
 ) -> Result<Option<VersionMetadata>, HolonError> {
@@ -97,11 +98,10 @@ pub fn try_version_metadata_for_action(
         return Ok(None);
     };
 
-    if try_holon_node_from_record(&record)?.is_none() {
-        return Ok(None);
+    match classify_record(&record)? {
+        RecordClassification::NotAHolonNode => Ok(None),
+        RecordClassification::HolonNode(_) => Ok(Some(version_metadata_from_record(&record)?)),
     }
-
-    Ok(Some(version_metadata_from_record(&record)?))
 }
 
 // ---------------------------------------------------------------------------
@@ -166,22 +166,44 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/// What a persisted record turns out to be, from this layer's point of view.
+///
+/// The distinction that matters is *not a holon node* versus *a holon node that will not decode*.
+/// The first is an ordinary answer — plenty of records are links or deletes. The second is
+/// corruption, and must never be reported as the first.
+enum RecordClassification {
+    /// Carries a decodable holon node entry.
+    HolonNode(HolonNodeModel),
+    /// A well-formed record that simply is not a holon node: it carries no entry, or carries an
+    /// entry belonging to another type.
+    NotAHolonNode,
+}
+
 /// Projects a persisted record into the storage-boundary form.
 ///
-/// A `Create` is a lineage root: it is its own version and carries no lineage pointer. An
-/// `Update` is a version of the lineage named by its target. Every other action kind, and any
-/// record whose entry is absent or is not a decodable holon node, fails explicitly — a record
-/// that cannot be classified is a defect, not an absence, and silently reporting it as missing
-/// would hide the defect behind a plausible answer.
+/// Fails explicitly on anything that is not an intact holon node version, and distinguishes the
+/// three ways that can happen:
+///
+/// - the action is not one MAP authors for a holon node (`Create` begins a lineage, `Update`
+///   extends one; anything else is unsupported)
+/// - the record carries no holon node entry at all
+/// - the record claims a holon node entry that will not decode — corruption
+///
+/// The action is classified *first*, so a record that carries no entry because of its action kind
+/// — a link or a delete — is reported as an unsupported action rather than as malformed content.
+/// Reporting the wrong one sends whoever is debugging to the wrong place.
 pub(crate) fn decode_stored_holon_node(record: &Record) -> Result<StoredHolonNode, HolonError> {
-    let holon_node = try_holon_node_from_record(record)?.ok_or_else(|| {
-        HolonError::RecordConversion(format!(
-            "HolonNode entry is missing or malformed at {:?}",
-            local_id_from_action_hash(record.action_address().clone())
-        ))
-    })?;
+    let version_metadata = version_metadata_from_record(record)?;
 
-    Ok(StoredHolonNode::new(holon_node, version_metadata_from_record(record)?))
+    match classify_record(record)? {
+        RecordClassification::HolonNode(holon_node) => {
+            Ok(StoredHolonNode::new(holon_node, version_metadata))
+        }
+        RecordClassification::NotAHolonNode => Err(HolonError::RecordConversion(format!(
+            "Record {:?} does not carry a HolonNode entry",
+            version_metadata.version_id
+        ))),
+    }
 }
 
 /// Derives version metadata from a record's action, independent of its entry content.
@@ -202,16 +224,39 @@ fn version_metadata_from_record(record: &Record) -> Result<VersionMetadata, Holo
     }
 }
 
-/// Decodes a record's entry as a holon node, or reports that it does not carry one.
+/// Classifies a record's entry, failing only when it claims to be a holon node but will not decode.
 ///
-/// `Ok(None)` distinguishes "this record is not a holon node" from "this record is a corrupt
-/// holon node", which is the difference between staying silent and failing loudly.
-fn try_holon_node_from_record(record: &Record) -> Result<Option<HolonNodeModel>, HolonError> {
-    let RecordEntry::Present(entry) = record.entry() else {
-        return Ok(None);
+/// The scoped entry type is consulted before decoding, so "this entry belongs to another type" is
+/// answered without guessing from a failed deserialization. That is what lets a decode failure
+/// mean corruption and nothing else.
+fn classify_record(record: &Record) -> Result<RecordClassification, HolonError> {
+    let Some(entry) = record.entry().as_option() else {
+        return Ok(RecordClassification::NotAHolonNode);
     };
 
-    Ok(HolonNode::try_from(entry.clone()).ok().map(HolonNodeModel::from))
+    let Some(EntryType::App(AppEntryDef { zome_index, entry_index, .. })) =
+        record.action().entry_type()
+    else {
+        return Ok(RecordClassification::NotAHolonNode);
+    };
+
+    // A decode failure here is corruption, not a type mismatch: the scoped indices already say
+    // this entry belongs to this zome's entry definitions.
+    let decoded = EntryTypes::deserialize_from_type(zome_index.clone(), entry_index.clone(), entry)
+        .map_err(|error| {
+            HolonError::RecordConversion(format!(
+                "HolonNode entry at {:?} could not be decoded: {}",
+                local_id_from_action_hash(record.action_address().clone()),
+                error
+            ))
+        })?;
+
+    Ok(match decoded {
+        Some(EntryTypes::HolonNode(holon_node)) => {
+            RecordClassification::HolonNode(HolonNodeModel::from(holon_node))
+        }
+        None => RecordClassification::NotAHolonNode,
+    })
 }
 
 /// Loads each predecessor and returns the single lineage root they share.

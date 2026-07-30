@@ -1,3 +1,15 @@
+//! Scaffolded HolonNode externs, retained from the Holochain scaffolding tool.
+//!
+//! Version-aware persistence lives in `holon_storage`; this module holds the raw externs that
+//! predate it and are kept for API stability and for later storage work.
+//!
+//! # Naming
+//!
+//! The `original_holon_node_hash` parameters here predate version-aware storage and are not
+//! renamed, because they are part of an existing extern surface. Read them as **lineage root**:
+//! a holon is now addressed by the `Create` that began its lineage, and subsequent versions are
+//! updates rooted at it. See `core_types::holon_storage` for the intended vocabulary.
+
 use hdk::prelude::*;
 use holons_guest_integrity::{type_conversions::try_action_hash_from_local_id, HolonNode};
 use holons_integrity::*;
