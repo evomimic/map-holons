@@ -129,6 +129,20 @@ fn signed_delete(action: Delete) -> SignedHashed<Delete> {
     )
 }
 
+fn signed_create_link(action: CreateLink) -> SignedHashed<CreateLink> {
+    SignedHashed::with_presigned(
+        HoloHashed::with_pre_hashed(action, action_hash(14)),
+        Signature([0; SIGNATURE_BYTES]),
+    )
+}
+
+fn signed_delete_link(action: DeleteLink) -> SignedHashed<DeleteLink> {
+    SignedHashed::with_presigned(
+        HoloHashed::with_pre_hashed(action, action_hash(15)),
+        Signature([0; SIGNATURE_BYTES]),
+    )
+}
+
 fn signed_action(action: Action) -> SignedActionHashed {
     SignedHashed::with_presigned(
         HoloHashed::with_pre_hashed(action, action_hash(13)),
@@ -183,7 +197,12 @@ fn zome_info() -> ZomeInfo {
         Vec::new(),
         ScopedZomeTypesSet {
             entries: ScopedZomeTypes(vec![(HOLON_ZOME_INDEX, vec![HOLON_ENTRY_DEF_INDEX])]),
-            links: ScopedZomeTypes(Vec::new()),
+            // LinkTypes::from_type performs scoped resolution during both op
+            // flattening and StoreRecord delete dispatch.
+            links: ScopedZomeTypes(vec![(
+                HOLON_ZOME_INDEX,
+                vec![LinkType(0), LinkType(1), LinkType(2), LinkType(3)],
+            )]),
         },
     )
 }
@@ -296,4 +315,141 @@ fn oversized_store_record_update_is_rejected_before_dependency_lookup() {
             panic!("expected the raw-size PVL rejection before dependency lookup, got {other:?}")
         }
     }
+}
+
+fn create_link(link_type: LinkType, tag: LinkTag) -> CreateLink {
+    CreateLink {
+        author: AgentPubKey::from_raw_36(vec![0; 36]),
+        timestamp: Timestamp::from_micros(4),
+        action_seq: 4,
+        prev_action: action_hash(7),
+        base_address: action_hash(20).into(),
+        target_address: action_hash(21).into(),
+        zome_index: HOLON_ZOME_INDEX,
+        link_type,
+        tag,
+        weight: RateWeight::default(),
+    }
+}
+
+fn delete_link() -> DeleteLink {
+    DeleteLink {
+        author: AgentPubKey::from_raw_36(vec![0; 36]),
+        timestamp: Timestamp::from_micros(5),
+        action_seq: 5,
+        prev_action: action_hash(22),
+        base_address: action_hash(20).into(),
+        link_add_address: action_hash(23),
+    }
+}
+
+fn valid_smartlink_tag() -> LinkTag {
+    LinkTag::new(
+        [[0xE2, 0x82, 0xB7].as_slice(), b"RelatedTo\0key\0".as_slice(), [1, 0].as_slice()].concat(),
+    )
+}
+
+fn install_link_zome_info_without_dependencies() {
+    let mut mock = MockHdi::new();
+    mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
+    mock.expect_must_get_action().times(0);
+    mock.expect_must_get_valid_record().times(0);
+    set_hdi(mock);
+}
+
+#[test]
+fn both_smartlink_create_forms_return_the_same_deterministic_rejection() {
+    let malformed = LinkTag::new(vec![0; 3]);
+    let create = create_link(LinkType(3), malformed);
+    let operations = [
+        Op::RegisterCreateLink(RegisterCreateLink {
+            create_link: signed_create_link(create.clone()),
+        }),
+        Op::StoreRecord(StoreRecord {
+            record: Record::new(signed_action(Action::CreateLink(create)), None),
+        }),
+    ];
+
+    for operation in operations {
+        install_link_zome_info_without_dependencies();
+        assert_eq!(
+            validate(operation),
+            Ok(ValidateCallbackResult::Invalid(
+                "MAP-PVL-2001: malformed SmartLink (invalid discriminant at TagHeader)".into()
+            ))
+        );
+    }
+}
+
+#[test]
+fn register_smartlink_delete_is_valid_without_dependency_lookup() {
+    let create = create_link(LinkType(3), valid_smartlink_tag());
+    let delete = delete_link();
+    install_link_zome_info_without_dependencies();
+
+    assert_eq!(
+        validate(Op::RegisterDeleteLink(RegisterDeleteLink {
+            delete_link: signed_delete_link(delete),
+            create_link: create,
+        })),
+        Ok(ValidateCallbackResult::Valid)
+    );
+}
+
+#[test]
+fn store_record_smartlink_delete_resolves_once_and_dispatches() {
+    let create = create_link(LinkType(3), valid_smartlink_tag());
+    let mut mock = MockHdi::new();
+    mock.expect_must_get_action()
+        .withf(|input| input.0 == action_hash(23))
+        .times(1)
+        .return_once(move |_| Ok(signed_action(Action::CreateLink(create))));
+    mock.expect_must_get_valid_record().times(0);
+    mock.expect_zome_info().times(1).return_once(|_| Ok(zome_info()));
+    set_hdi(mock);
+
+    assert_eq!(
+        validate(Op::StoreRecord(StoreRecord {
+            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
+        })),
+        Ok(ValidateCallbackResult::Valid)
+    );
+}
+
+#[test]
+fn store_record_link_delete_rejects_a_non_create_target_with_map_pvl_2004() {
+    let original_delete = delete_link();
+    let mut mock = MockHdi::new();
+    mock.expect_must_get_action()
+        .times(1)
+        .return_once(move |_| Ok(signed_action(Action::DeleteLink(original_delete))));
+    mock.expect_must_get_valid_record().times(0);
+    mock.expect_zome_info().times(0);
+    set_hdi(mock);
+
+    assert_eq!(
+        validate(Op::StoreRecord(StoreRecord {
+            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
+        })),
+        Ok(ValidateCallbackResult::Invalid("MAP-PVL-2004: link delete target is invalid".into()))
+    );
+}
+
+#[test]
+fn store_record_delete_dispatches_a_different_scoped_link_type() {
+    let create = create_link(LinkType(0), valid_smartlink_tag());
+    let mut mock = MockHdi::new();
+    mock.expect_must_get_action()
+        .times(1)
+        .return_once(move |_| Ok(signed_action(Action::CreateLink(create))));
+    mock.expect_must_get_valid_record().times(0);
+    mock.expect_zome_info().times(1).return_once(|_| Ok(zome_info()));
+    set_hdi(mock);
+
+    assert_eq!(
+        validate(Op::StoreRecord(StoreRecord {
+            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
+        })),
+        Ok(ValidateCallbackResult::Invalid("AllHolonNodes links cannot be deleted".into()))
+    );
 }

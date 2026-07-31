@@ -1145,6 +1145,116 @@ mod tests {
         );
     }
 
+    #[test]
+    fn decoder_reports_every_reachable_unexpected_end_position() {
+        let prefix =
+            smartlink_exact_key_prefix(&relationship("Rel"), &CanonicalKey::new("key").unwrap())
+                .unwrap();
+        let mut flags = prefix.clone();
+        flags.push(SMARTLINK_TAG_VERSION_V1);
+        let mut outbound_proxy = flags.clone();
+        outbound_proxy.push(EXTERNAL_TARGET_FLAG);
+        outbound_proxy.extend_from_slice(&[0; HOLOCHAIN_ACTION_HASH_BYTES - 1]);
+        let mut occurrence = flags.clone();
+        occurrence.push(OCCURRENCE_ID_FLAG);
+        occurrence.extend_from_slice(&[0; 15]);
+        let mut property_section = encode_smartlink_tag(&local_input()).unwrap();
+        property_section.extend_from_slice(&[RELATIONSHIP_PROPERTIES_SECTION, 0]);
+
+        let cases = [
+            (
+                SMARTLINK_HEADER_BYTES[..SMARTLINK_HEADER_BYTES.len() - 1].to_vec(),
+                SmartLinkReadPosition::TagHeader,
+            ),
+            (prefix, SmartLinkReadPosition::PayloadVersion),
+            (flags, SmartLinkReadPosition::PayloadFlags),
+            (outbound_proxy, SmartLinkReadPosition::OutboundProxyId),
+            (occurrence, SmartLinkReadPosition::OccurrenceId),
+            (property_section, SmartLinkReadPosition::PropertySection),
+        ];
+
+        for (bytes, position) in cases {
+            assert_eq!(
+                decode_smartlink_tag(&bytes, hash(1)),
+                Err(SmartLinkTagDecodeError::UnexpectedEnd(position))
+            );
+        }
+    }
+
+    #[test]
+    fn decoder_reports_invalid_utf8_at_every_text_position() {
+        let invalid_relationship = [SMARTLINK_HEADER_BYTES.as_slice(), &[0xff, 0]].concat();
+        let invalid_canonical_key =
+            [SMARTLINK_HEADER_BYTES.as_slice(), b"Rel\0", &[0xff, 0]].concat();
+        let base = encode_smartlink_tag(&local_input()).unwrap();
+
+        let property_tag = |value_type: u8, name: &[u8], value: &[u8]| {
+            let mut entry = Vec::new();
+            append_u16(&mut entry, name.len(), SmartLinkLengthField::PropertyName).unwrap();
+            entry.extend_from_slice(name);
+            entry.push(value_type);
+            append_u16(&mut entry, value.len(), SmartLinkLengthField::PropertyValue).unwrap();
+            entry.extend_from_slice(value);
+            let mut tag = base.clone();
+            append_raw_section(&mut tag, RELATIONSHIP_PROPERTIES_SECTION, &entry);
+            tag
+        };
+
+        let cases = [
+            (invalid_relationship, SmartLinkUtf8Field::RelationshipName),
+            (invalid_canonical_key, SmartLinkUtf8Field::CanonicalKey),
+            (property_tag(STRING_VALUE_TYPE, &[0xff], b"value"), SmartLinkUtf8Field::PropertyName),
+            (
+                property_tag(STRING_VALUE_TYPE, b"name", &[0xff]),
+                SmartLinkUtf8Field::StringPropertyValue,
+            ),
+            (
+                property_tag(ENUM_VALUE_TYPE, b"name", &[0xff]),
+                SmartLinkUtf8Field::EnumPropertyValue,
+            ),
+        ];
+
+        for (bytes, field) in cases {
+            assert_eq!(
+                decode_smartlink_tag(&bytes, hash(1)),
+                Err(SmartLinkTagDecodeError::InvalidUtf8(field))
+            );
+        }
+    }
+
+    #[test]
+    fn section_overruns_are_normalized_at_tag_and_entry_boundaries() {
+        let base = encode_smartlink_tag(&local_input()).unwrap();
+
+        let mut tag_level = base.clone();
+        tag_level.extend_from_slice(&[RELATIONSHIP_PROPERTIES_SECTION, 0, 4, 0]);
+        assert_eq!(
+            decode_smartlink_tag(&tag_level, hash(1)),
+            Err(SmartLinkTagDecodeError::SectionBoundaryCrossing)
+        );
+
+        let mut entry_level = base;
+        entry_level.extend_from_slice(&[
+            RELATIONSHIP_PROPERTIES_SECTION,
+            0,
+            4,
+            0,
+            10,
+            b'a',
+            STRING_VALUE_TYPE,
+        ]);
+        assert_eq!(
+            decode_smartlink_tag(&entry_level, hash(1)),
+            Err(SmartLinkTagDecodeError::SectionBoundaryCrossing)
+        );
+    }
+
+    #[test]
+    fn decoded_canonical_key_construction_has_no_encode_error_channel() {
+        let key: CanonicalKey = CanonicalKey::from_delimited_segment("decoded-key".into());
+        assert_eq!(key.as_str(), "decoded-key");
+    }
+
     fn append_raw_section(target: &mut Vec<u8>, section_type: u8, payload: &[u8]) {
         target.push(section_type);
         append_u16(target, payload.len(), SmartLinkLengthField::PropertySection).unwrap();

@@ -18,10 +18,8 @@ use holons_guest_integrity::*;
 use integrity_core_types::*;
 
 pub mod holon_node;
-pub mod smartlink;
 
 pub use holon_node::*;
-pub use smartlink::*;
 
 #[cfg(test)]
 mod tests;

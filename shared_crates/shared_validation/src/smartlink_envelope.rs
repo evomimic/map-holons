@@ -319,9 +319,35 @@ mod tests {
             value: BaseValue::StringValue(MapString("encodable".into())),
         });
 
+        // Prove the competing target-cache violation survives codec packing;
+        // otherwise this precedence assertion could pass with no second map.
+        let tag = encode_smartlink_tag(&input).unwrap();
+        let decoded = decode_smartlink_tag(&tag, local_id(2)).unwrap();
+        assert!(decoded
+            .target_property_values
+            .contains_key(&PropertyName(MapString(String::new()))));
+
+        assert_eq!(
+            validate_smartlink_envelope(&local_id(1), &local_id(2), &tag),
+            Err(PvlViolation::EmptyEnumValue { property_name: relationship_property_name })
+        );
+    }
+
+    #[test]
+    fn decoded_property_maps_report_the_first_key_in_canonical_order() {
+        let mut input = input("RelatedTo", "");
+        for name in ["Zulu", "Alpha"] {
+            input.relationship_property_values.insert(
+                PropertyName(MapString(name.into())),
+                BaseValue::EnumValue(MapEnumValue(MapString(String::new()))),
+            );
+        }
+
         assert_eq!(
             validate(&input),
-            Err(PvlViolation::EmptyEnumValue { property_name: relationship_property_name })
+            Err(PvlViolation::EmptyEnumValue {
+                property_name: PropertyName(MapString("Alpha".into())),
+            })
         );
     }
 
