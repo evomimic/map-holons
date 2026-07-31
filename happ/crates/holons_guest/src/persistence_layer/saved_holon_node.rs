@@ -1,48 +1,30 @@
-use hdi::prelude::{Record, RecordEntry};
+use hdi::prelude::Record;
 
 use base_types::MapInteger;
-use core_types::HolonError;
+use core_types::{HolonError, LineageId, StoredHolonNode};
 use holons_core::core_shared_objects::SavedHolon;
-use holons_guest_integrity::HolonNode;
-use integrity_core_types::LocalId;
 
-// #[derive(new, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-// pub struct HolonRecord {
-//     record: Record,
-// }
+use crate::persistence_layer::holon_storage::decode_stored_holon_node;
 
-// impl HolonRecord {
-//     /// Retrieves the `LocalId` from the underlying `Record`.
-//     pub fn get_local_id(&self) -> LocalId {
-//             LocalId(self.record.action_address().clone())
-//     }
-
-// }
-// ****
-
-/// Constructs a `SavedHolon` from a `HolonNode`.
+/// Projects a persisted holon node into the shared-objects `SavedHolon` form.
 ///
-/// This method is called during deserialization from persisted records.
-pub fn try_from_record(record: Record) -> Result<SavedHolon, HolonError> {
-    let holon_node = get_holon_node_from_record(record.clone())?;
-
-    let saved_holon = SavedHolon::new(
-        LocalId::from_bytes(record.action_address().clone().into_inner()),
-        holon_node.property_map,
-        holon_node.original_id,
+/// `original_id` carries the record-derived lineage root: `None` when this holon begins its own
+/// lineage, `Some(root)` when it supersedes one. Lineage is a fact about the record, not a field
+/// the entry body is trusted to remember.
+pub fn saved_holon_from_stored(stored: StoredHolonNode) -> SavedHolon {
+    SavedHolon::new(
+        stored.version_metadata.version_id,
+        stored.holon_node.property_map,
+        stored.version_metadata.lineage_id.map(LineageId::into_local_id),
         MapInteger(1),
-    );
-
-    Ok(saved_holon)
+    )
 }
 
-/// Inflates a 'HolonNode' from the underlying saved 'Record'.
+/// Constructs a `SavedHolon` from a persisted record.
 ///
-/// Private helper called by try_from_record.
-fn get_holon_node_from_record(record: Record) -> Result<HolonNode, HolonError> {
-    match record.entry() {
-        RecordEntry::Present(entry) => HolonNode::try_from(entry.clone())
-            .or(Err(HolonError::RecordConversion("HolonNode".to_string()))),
-        _ => Err(HolonError::RecordConversion("Record does not have an entry".to_string())),
-    }
+/// Retained for the path-anchored lookup in `get_holon_by_path`, which still receives a `Record`
+/// from the scaffolded path externs. Id-addressed reads go through
+/// `holon_storage::get_holon` instead, which never surfaces a record at all.
+pub fn try_from_record(record: Record) -> Result<SavedHolon, HolonError> {
+    Ok(saved_holon_from_stored(decode_stored_holon_node(&record)?))
 }

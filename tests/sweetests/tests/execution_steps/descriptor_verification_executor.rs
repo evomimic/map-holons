@@ -693,26 +693,41 @@ pub async fn execute_verify_book_person_instance_links(state: &mut TestExecution
 /// - version-producing mutation: Book --AuthoredBy--> Person is anchored to the
 ///   new Book version, and lineage is persisted bidirectionally through
 ///   Predecessor/Successor.
+///
+/// A version-producing commit publishes a version of the Book lineage rather than a
+/// second Book, so get-all surfaces the lineage root only (Storage SL2, issue #607).
+/// The new version is therefore reached by traversing `Successor` from the root, which
+/// also proves the lineage is navigable rather than merely present.
 pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_relationship_anchoring").await;
 
     let books = find_holons_by_key(&holons, BOOK_KEY);
     assert_eq!(
         books.len(),
-        2,
-        "expected graph-only commit plus one version-producing commit to leave exactly two persisted Book nodes"
+        1,
+        "expected the Book lineage to surface exactly one node in get-all, since a \
+         version-producing commit adds a version rather than a new holon"
     );
 
-    let original_book = books
-        .iter()
-        .find(|book| string_property(book, "Title").as_deref() == Some(BOOK_KEY))
-        .unwrap_or_else(|| panic!("expected original Book version with Title={BOOK_KEY:?}"))
-        .clone();
-    let new_book = books
-        .iter()
-        .find(|book| string_property(book, "Title").as_deref() == Some("Changed"))
-        .unwrap_or_else(|| panic!("expected new Book version with changed title"))
-        .clone();
+    let original_book = books[0].clone();
+    assert_eq!(
+        string_property(&original_book, "Title").as_deref(),
+        Some(BOOK_KEY),
+        "expected the enumerated Book node to be the lineage root, with its original title"
+    );
+
+    let successors = related_holon_members(&original_book, "Successor");
+    assert_eq!(
+        successors.len(),
+        1,
+        "expected exactly one Successor from the Book lineage root, got {successors:?}"
+    );
+    let new_book = successors[0].clone();
+    assert_eq!(
+        string_property(&new_book, "Title").as_deref(),
+        Some("Changed"),
+        "expected the Successor to be the new Book version, carrying the changed title"
+    );
 
     let original_book_id = local_id(&original_book);
     let new_book_id = local_id(&new_book);
@@ -893,6 +908,19 @@ fn related_holon_keys(holon: &HolonReference, relationship_name: &str) -> Vec<St
                 .0
         })
         .collect()
+}
+
+/// Returns the related holons themselves, for assertions that need to traverse onward
+/// from a target rather than just check that its id is present.
+fn related_holon_members(holon: &HolonReference, relationship_name: &str) -> Vec<HolonReference> {
+    let members_handle = holon
+        .related_holons(RelationshipName(MapString::from(relationship_name)))
+        .unwrap_or_else(|error| panic!("related_holons({relationship_name}) failed: {error:?}"));
+    let members = members_handle.read().unwrap_or_else(|error| {
+        panic!("related_holons({relationship_name}) lock failed: {error:?}")
+    });
+
+    members.get_members().to_vec()
 }
 
 fn related_holon_ids(holon: &HolonReference, relationship_name: &str) -> Vec<LocalId> {

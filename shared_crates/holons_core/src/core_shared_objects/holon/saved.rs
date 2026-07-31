@@ -23,9 +23,15 @@ pub struct SavedHolon {
     saved_id: LocalId,                 // Links to persisted Holon data
     version: MapInteger,
     saved_state: SavedState,
-    // HolonNode data:
-    property_map: PropertyMap,    // Self-describing property data
-    original_id: Option<LocalId>, // Tracks predecessor, if applicable
+    property_map: PropertyMap, // Self-describing property data
+    /// The lineage this holon belongs to, derived from the record that persists it: `None` when
+    /// this holon begins its own lineage, `Some(root)` when it is a version that supersedes one.
+    ///
+    /// This is *not* the immediate predecessor — that is carried by the `Predecessor` /
+    /// `Successor` SmartLinks, and the two differ as soon as a lineage is more than one version
+    /// deep. The field name is retained only to keep the serialized wire shape stable; it is
+    /// slated to be renamed `lineage_id`.
+    original_id: Option<LocalId>,
 }
 
 // ================================
@@ -107,7 +113,7 @@ impl ReadableHolonState for SavedHolon {
         }
     }
 
-    /// Retrieves the `original_id`, if present.
+    /// Retrieves the lineage root this holon descends from, or `None` if it is itself a root.
     fn original_id(&self) -> Option<LocalId> {
         self.original_id.clone()
     }
@@ -148,10 +154,12 @@ impl ReadableHolonState for SavedHolon {
         Ok(MapString(key.0 + &self.version.0.to_string()))
     }
 
-    /// Extracts HolonNode data.
-    /// Converts 'original_id' and 'property_map' fields into a HolonNode object.
+    /// Extracts the persistable entry content: property data only.
+    ///
+    /// Version and lineage identity are deliberately absent — they belong to the record that
+    /// persists the entry, not to the entry body.
     fn into_node_model(&self) -> HolonNodeModel {
-        HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
+        HolonNodeModel::new(self.property_map.clone())
     }
 
     /// Enforces access control rules for `SavedHolon`.

@@ -21,16 +21,18 @@ pub trait ReadableHolonState {
     /// Converts a Holon into a HolonCloneModel.
     ///
     ///  # Semantics
-    ///  -Extracts version, original_id, properties, and relationships
+    ///  -Extracts version, lineage/clone source (see [`Self::original_id`]), properties, and
+    ///   relationships
     fn holon_clone_model(&self) -> HolonCloneModel;
 
     /// Only applies for StagedHolons in StagedState::Committed, otherwise throws an error.
     fn holon_id(&self) -> Result<HolonId, HolonError>;
 
-    /// Converts a Holon into a HolonNode.
+    /// Converts a Holon into a HolonNode: the persistable entry content.
     ///
     ///  # Semantics
-    ///  -Extracts original_id and property_map
+    ///  -Extracts property_map only. Version and lineage identity are properties of the record
+    ///   that persists the entry, not of the entry body, and are never written into it.
     fn into_node_model(&self) -> HolonNodeModel;
 
     /// Retrieves the Holon's primary key value (if present).
@@ -40,12 +42,17 @@ pub trait ReadableHolonState {
     /// - Not all Holons have keys; `None` may be returned.
     fn key(&self) -> Option<MapString>;
 
-    /// Retrieves the `original_id` of the Holon, representing its predecessor.
+    /// Retrieves the `original_id` of the Holon.
     ///
     /// # Semantics
-    /// - **`TransientHolons`** may have an `original_id` if cloned from a `SavedHolon`.  
-    /// - **`StagedHolons`** may have an `original_id` if cloned as part of a `ForUpdate` cycle.  
-    /// - **`SavedHolons`** may have an `original_id` if they are a version of a prior Holon.  
+    /// This means one of two different things depending on the variant, because an unsaved
+    /// holon has no lineage to belong to yet:
+    /// - **`TransientHolons`** and **`StagedHolons`** — clone-source tracking: the holon this
+    ///   one was cloned from, if any. It records provenance in memory and has no effect on what
+    ///   gets persisted.
+    /// - **`SavedHolons`** — the lineage root, derived from the record that persists the holon.
+    ///   `None` means this holon *is* the root of its lineage; `Some(root)` means it is a version
+    ///   that supersedes one. It is not entry content and cannot be set by a caller.
     /// - New Holons created without cloning will have `None` as their `original_id`.
     fn original_id(&self) -> Option<LocalId>;
 

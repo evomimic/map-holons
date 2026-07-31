@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt, string::FromUtf8Error};
+use std::fmt;
 
 /// A Holochain-agnostic identifier that wraps the raw 39-byte representation
 /// of a Holochain `ActionHash`.
@@ -38,13 +38,10 @@ impl LocalId {
 
 impl fmt::Display for LocalId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Display is for human-readable diagnostics only. Do not use it for
-        // identity, lookup keys, or hashing: non-UTF-8 IDs collapse to the
-        // same "<invalid utf-8>" placeholder.
-        match short_hash(self, 6) {
-            Ok(s) => write!(f, "{}", s),
-            Err(_) => write!(f, "<invalid utf-8>"),
-        }
+        // Display is for human-readable diagnostics only. Hex rather than UTF-8: a LocalId holds
+        // raw hash bytes, which are never valid UTF-8. Truncated, so never an identity — do not
+        // use for lookup keys or hashing. Use `Debug` when the full value is wanted.
+        write!(f, "{}", short_hex(self, 8))
     }
 }
 
@@ -56,11 +53,17 @@ impl fmt::Debug for LocalId {
     }
 }
 
-/// Helper for truncating a LocalId for display.
-pub fn short_hash(hash: &LocalId, length: usize) -> Result<String, FromUtf8Error> {
-    let string = String::from_utf8(hash.0.clone())?; // try from inner bytes
-    let start = string.len().saturating_sub(length);
-    Ok(format!("…{}", &string[start..]))
+/// Returns the trailing `length` hex characters of a `LocalId`, for log diagnostics.
+///
+/// Hex rather than UTF-8: a `LocalId` wraps raw binary hash bytes, which are not valid UTF-8,
+/// so any UTF-8 rendering fails for every genuine ActionHash. Cannot fail.
+///
+/// Truncated and hex-encoded, so it is for human reading only — never for identity, lookup
+/// keys, or hashing.
+pub fn short_hex(hash: &LocalId, length: usize) -> String {
+    let encoded = hex::encode(&hash.0);
+    let start = encoded.len().saturating_sub(length);
+    format!("…{}", &encoded[start..])
 }
 
 /// A Holochain-agnostic identifier that wraps the raw 39-byte representation
@@ -93,5 +96,43 @@ impl PersistenceAgentId {
     /// Returns the raw bytes of the ID.
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A LocalId shaped like a real ActionHash: a 3-byte multihash prefix followed by 36 bytes of
+    /// binary payload. Deliberately not valid UTF-8 — that is the normal case for a real hash.
+    fn action_hash_shaped_local_id() -> LocalId {
+        let mut bytes = vec![0x84, 0x29, 0x24];
+        bytes.extend((0u8..36).map(|i| 0x80u8.wrapping_add(i)));
+        assert_eq!(bytes.len(), 39, "fixture must be a canonical 39-byte hash");
+        assert!(String::from_utf8(bytes.clone()).is_err(), "fixture must not be valid UTF-8");
+        LocalId(bytes)
+    }
+
+    #[test]
+    fn display_renders_hex_not_a_utf8_placeholder() {
+        let rendered = action_hash_shaped_local_id().to_string();
+
+        assert!(!rendered.contains("invalid utf-8"), "Display collapsed to a placeholder");
+        let digits: String = rendered.chars().filter(|c| c.is_ascii_hexdigit()).collect();
+        assert_eq!(digits.len(), 8, "expected 8 hex chars, got {rendered:?}");
+    }
+
+    #[test]
+    fn display_matches_trailing_hex_of_the_bytes() {
+        let id = action_hash_shaped_local_id();
+        let full_hex = hex::encode(id.as_bytes());
+
+        assert_eq!(id.to_string(), format!("…{}", &full_hex[full_hex.len() - 8..]));
+    }
+
+    #[test]
+    fn short_hex_tolerates_ids_shorter_than_the_requested_width() {
+        // saturating_sub keeps this from panicking on a stub id used in tests.
+        assert_eq!(short_hex(&LocalId(vec![0xab]), 8), "…ab");
     }
 }

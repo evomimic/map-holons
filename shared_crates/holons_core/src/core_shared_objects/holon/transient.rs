@@ -33,7 +33,11 @@ pub struct TransientHolon {
     validation_state: ValidationState,
     property_map: PropertyMap, // Self-describing property data
     transient_relationships: TransientRelationshipMap, // Tracks ephemeral relationships
-    original_id: Option<LocalId>, // Tracks the predecessor, if cloned from a SavedHolon
+    /// The lineage inherited from the holon this was cloned from, if any. An unsaved holon
+    /// belongs to no lineage of its own, so this is clone provenance and has no effect on what
+    /// is persisted. Not an immediate predecessor: that relationship is only established at
+    /// commit, as a `Predecessor` SmartLink.
+    original_id: Option<LocalId>,
 }
 
 // ==================================
@@ -188,7 +192,7 @@ impl ReadableHolonState for TransientHolon {
     }
 
     fn into_node_model(&self) -> HolonNodeModel {
-        HolonNodeModel::new(self.original_id.clone(), self.property_map.clone())
+        HolonNodeModel::new(self.property_map.clone())
     }
 
     fn is_accessible(&self, access_type: AccessType) -> Result<(), HolonError> {

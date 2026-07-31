@@ -3,7 +3,16 @@ use hdk::prelude::*;
 use holons_integrity::*;
 //TODO: move this function to holon_node.rs and delete the file
 
-/// Get all the HolonNodes from the HolonSpace. In a case where a Holon has more than one version, only return the latest version.
+/// Get all the HolonNodes from the HolonSpace, one per lineage.
+///
+/// The `AllHolonNodes` index holds one entry per lineage: a version-producing write is an update
+/// addressed at its lineage root and deliberately adds no index entry, so a lineage never appears
+/// more than once here.
+///
+/// The stated intent of returning the *latest* version is not met. `get_latest_holon_node` has no
+/// `HolonNodeUpdates` links to follow, so each result is the lineage root — which, once a lineage
+/// has versions, is no longer its current content. Head selection is later storage work; until
+/// then a caller needing the current version traverses `Successor` from the root.
 #[hdk_extern]
 pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
     let path = Path::from("all_holon_nodes");

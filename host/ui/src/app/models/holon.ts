@@ -214,7 +214,8 @@ export class TransientHolonFactory {
       temporary_id: null,
       property_map: model.property_map,
       transient_relationships: { map: {} },
-      original_id: model.original_id || null
+      // A node model carries no lineage: it is entry content only.
+      original_id: null
     };
   }
 

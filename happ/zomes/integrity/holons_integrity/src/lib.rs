@@ -113,9 +113,10 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             _ => Ok(ValidateCallbackResult::Valid),
         },
         FlatOp::RegisterUpdate(update_entry) => match update_entry {
-            // Storage SL2 will activate this path when version-producing writes become native,
-            // root-addressed updates targeting the lineage-root Create. That transition also
-            // removes original_id from the entry shape and requires parity-fixture review.
+            // This path is live: version-producing writes are native updates addressed at the
+            // lineage-root Create. The lineage pointer is the update's own
+            // `original_action_address`, not entry content — which is why the update target,
+            // rather than any persisted field, is what gets validated here.
             OpUpdate::Entry { app_entry, action } => match app_entry {
                 EntryTypes::HolonNode(_) => {
                     validate_holon_node_update_arm(&action.original_action_address, &action)
@@ -280,8 +281,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             OpRecord::CreateEntry { app_entry, .. } => match app_entry {
                 EntryTypes::HolonNode(_) => Ok(ValidateCallbackResult::Valid),
             },
-            // MAP writes currently emit Creates. Storage SL2 will exercise this path with native
-            // updates targeting the lineage-root Create; envelope preparation has already run.
+            // MAP emits a Create to begin a lineage and an update rooted at that Create for
+            // every subsequent version, so both record arms are reachable. Envelope preparation
+            // has already run.
             OpRecord::UpdateEntry { original_action_hash, app_entry, action, .. } => {
                 match app_entry {
                     EntryTypes::HolonNode(_) => {

@@ -22,6 +22,15 @@ pub enum HostSignal {
 /// the link type string. No holon state crosses the wire — `HolonNode`/`HolonNodeModel`
 /// are intentionally absent. This type is adapter-internal; the public boundary is
 /// [`ActionEvent`](crate::ActionEvent).
+///
+/// # Field meanings
+/// - `action_id` — the action that produced the signal; for a new version, the version's own id.
+/// - `affected_holon` — the lineage the signal is about. For `HolonCreated` this is the holon's
+///   own id, because a create begins its lineage.
+/// - `previous_holon` — the record superseded or deleted. Note that for `HolonUpdated` this
+///   currently equals `affected_holon`: MAP writes every version as an update addressed at its
+///   lineage root, so the superseded record *is* the lineage. Immediate-predecessor ordering is
+///   carried by `Predecessor`/`Successor` SmartLinks, not by signals.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum HolonsZomeSignal {

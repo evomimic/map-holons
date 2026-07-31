@@ -1,6 +1,22 @@
+//! Scaffolded HolonNode externs, retained from the Holochain scaffolding tool.
+//!
+//! Version-aware persistence lives in `holon_storage`; this module holds the raw externs that
+//! predate it and are kept for API stability and for later storage work.
+//!
+//! # Naming
+//!
+//! The `original_holon_node_hash` parameters here predate version-aware storage and are not
+//! renamed, because they are part of an existing extern surface. Read them as **lineage root**:
+//! a holon is now addressed by the `Create` that began its lineage, and subsequent versions are
+//! updates rooted at it. See `core_types::holon_storage` for the intended vocabulary.
+
 use hdk::prelude::*;
-use holons_guest_integrity::HolonNode;
+use holons_guest_integrity::{type_conversions::try_action_hash_from_local_id, HolonNode};
 use holons_integrity::*;
+use integrity_core_types::HolonNodeModel;
+
+use crate::persistence_layer::holon_storage::persist_holon;
+use core_types::HolonWriteRequest;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreatePathInput {
@@ -15,18 +31,26 @@ pub struct GetPathInput {
     pub link_type: LinkTypes,
 }
 
+/// Publishes a HolonNode as the root of a new lineage and returns its record.
+///
+/// Delegates to `persistence_layer::holon_storage::persist_holon` so there is exactly one write
+/// path for holon nodes, and one place that decides which substrate action a write becomes. This
+/// extern remains as a raw authoring probe for tests that need a record back; production code
+/// calls `persist_holon` directly and never handles a `Record`.
 #[hdk_extern]
 pub fn create_holon_node(holon_node: HolonNode) -> ExternResult<Record> {
-    let holon_node_hash = create_entry(&EntryTypes::HolonNode(holon_node.clone()))?;
-    let record = get(holon_node_hash.clone(), GetOptions::default())?.ok_or(wasm_error!(
-        WasmErrorInner::Guest(String::from("Could not find the newly created HolonNode"))
-    ))?;
-    debug!("HolonNode successfully created... adding all_holon_nodes link.");
-    let path = Path::from("all_holon_nodes");
-    // path.ensure()?;
-    create_link(path.path_entry_hash()?, holon_node_hash.clone(), LinkTypes::AllHolonNodes, ())?;
+    let stored = persist_holon(HolonWriteRequest::PublishRoot {
+        holon_node: HolonNodeModel::from(holon_node),
+    })
+    .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
+
+    let holon_node_hash = try_action_hash_from_local_id(&stored.version_metadata.version_id)
+        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
+
     trace!("Returning OK from create_holon_node.");
-    Ok(record)
+    get(holon_node_hash, GetOptions::default())?.ok_or(wasm_error!(WasmErrorInner::Guest(
+        String::from("Could not find the newly created HolonNode")
+    )))
 }
 #[hdk_extern]
 pub fn create_path_to_holon_node(input: CreatePathInput) -> ExternResult<ActionHash> {
@@ -71,6 +95,13 @@ pub fn get_all_deletes_for_holon_node(
     }
 }
 
+/// Enumerates revisions reachable through `HolonNodeUpdates` links.
+///
+/// Scaffolded, and currently reports only the record it was given: MAP authors versions as native
+/// root-addressed updates and deliberately does not maintain a parallel `HolonNodeUpdates` link
+/// index, so there are no links for this to follow. Revision-history traversal is later storage
+/// work, which will decide whether to build on Holochain's own update graph (`get_details`) or on
+/// the link index — it should not harden both.
 #[hdk_extern]
 pub fn get_all_revisions_for_holon_node(
     original_holon_node_hash: ActionHash,
@@ -118,6 +149,11 @@ pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record
     get(latest_holon_node_hash, GetOptions::default())
 }
 
+/// Raw scaffolded read of one exact action, returning its `Record`.
+///
+/// The name is misleading and retained only for the scaffolded surface: this does not walk a
+/// lineage to find an original. New code uses `holon_storage::get_holon`, which is
+/// version-addressed by name and returns record-derived `VersionMetadata` instead of a `Record`.
 #[hdk_extern]
 pub fn get_original_holon_node(
     original_holon_node_hash: ActionHash,
@@ -125,6 +161,13 @@ pub fn get_original_holon_node(
     get(original_holon_node_hash, GetOptions::default())
 }
 
+/// Selects the newest revision reachable through `HolonNodeUpdates` links.
+///
+/// Scaffolded, and currently equivalent to `get_original_holon_node`: MAP authors no
+/// `HolonNodeUpdates` links (see `get_all_revisions_for_holon_node`), so this always falls through
+/// to the hash it was given. Note that hash is now a lineage *root* rather than the only version
+/// of a holon, so this returns the root's content, not the lineage head. Head selection is later
+/// storage work.
 #[hdk_extern]
 pub fn get_latest_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
     let links_query =

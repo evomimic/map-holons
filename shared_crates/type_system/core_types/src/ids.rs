@@ -1,4 +1,4 @@
-use integrity_core_types::{short_hash, HolonError, LocalId};
+use integrity_core_types::{short_hex, HolonError, LocalId};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use uuid::Uuid;
@@ -14,10 +14,9 @@ impl From<LocalId> for OutboundProxyId {
 
 impl fmt::Display for OutboundProxyId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match short_hash(&self.0, 6) {
-            Ok(s) => write!(f, "{}", s),
-            Err(_) => write!(f, "<invalid utf-8>"),
-        }
+        // Hex, for the same reason as `LocalId`'s Display: the wrapped bytes are a raw hash and
+        // are never valid UTF-8. Diagnostics only — truncated, so never an identity.
+        write!(f, "{}", short_hex(&self.0, 8))
     }
 }
 

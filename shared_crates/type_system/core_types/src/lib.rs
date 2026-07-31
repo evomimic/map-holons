@@ -14,11 +14,13 @@
 //! These types define the shape and meaning of data in MAP holons and descriptors,
 //! and are shared across guest and client implementations.
 
+pub mod holon_storage;
 pub mod ids;
 pub mod loader_content;
 pub mod smartlink;
 pub mod type_kinds;
 
+pub use holon_storage::*;
 pub use ids::*;
 pub use loader_content::*;
 pub use smartlink::*;

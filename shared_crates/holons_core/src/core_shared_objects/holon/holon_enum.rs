@@ -30,7 +30,7 @@ pub enum Holon {
 ///
 /// This model:
 /// - Records the `version` to preserve lineage and hashing context.
-/// - Optionally tracks the `original_id` of the holon being cloned, if it
+/// - Optionally tracks the lineage of the holon being cloned (`original_id`), if it
 ///   originated from a persisted (`SavedHolon`) instance.
 /// - Copies over the holon’s `properties`, which form the self-describing
 ///   property data.
