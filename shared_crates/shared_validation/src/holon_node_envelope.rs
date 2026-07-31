@@ -57,8 +57,7 @@ pub fn validate_holon_node_decoded(
     // Check encoding first: decoding can collapse duplicate map keys and hide the malformed input.
     validate_holon_node_encoding(raw, canonical)?;
     validate_property_count(model.property_map.len())?;
-
-    crate::holon_node_properties::validate_holon_node_properties(&model.property_map)
+    crate::holon_node_properties::validate_property_map(&model.property_map)
 }
 
 #[cfg(test)]

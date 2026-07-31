@@ -89,6 +89,12 @@ describe('PVL wire type guards', () => {
         },
       },
       {
+        InvalidLinkDeleteTarget: {
+          expected_target_kind: 'CreateLink',
+          actual_target_kind: 'DeleteLink',
+        },
+      },
+      {
         InvalidUpdateTarget: {
           expected_target_kind: 'Create',
           actual_target_kind: 'Update',

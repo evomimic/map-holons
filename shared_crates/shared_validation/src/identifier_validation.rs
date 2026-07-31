@@ -24,7 +24,13 @@ use integrity_core_types::{LocalId, PvlViolation};
 pub const ACTION_HASH_LOCAL_ID_KIND: &str = "ActionHash-shaped LocalId";
 
 /// Fixed structured-diagnostic reason for a value with the wrong native width.
-const INCORRECT_BYTE_LENGTH: &str = "incorrect byte length";
+pub(crate) const INCORRECT_BYTE_LENGTH: &str = "incorrect byte length";
+
+/// Fixed diagnostic reason for bytes that do not parse as an exact ActionHash.
+///
+/// Adapters intentionally discard substrate parser text and use this stable
+/// token so consensus-visible diagnostics do not depend on dependency versions.
+pub const INVALID_ACTION_HASH_ENCODING: &str = "invalid ActionHash encoding";
 
 /// Validates the native byte shape required of an ActionHash-shaped `LocalId`.
 ///

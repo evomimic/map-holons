@@ -27,39 +27,127 @@ const INTEGER_VALUE_TYPE: u8 = 3;
 const ENUM_VALUE_TYPE: u8 = 4;
 const BYTES_VALUE_TYPE: u8 = 5;
 
-/// Structural or packing failure for the SmartLink Tag v1 byte contract.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum SmartLinkTagError {
-    TagTooLarge { actual: usize, maximum: usize },
-    PackingBudgetTooLarge { budget: usize, maximum: usize },
-    MandatoryContentExceedsBudget { actual: usize, budget: usize },
-    InvalidHeader,
-    MissingDelimiter(&'static str),
-    InvalidUtf8(&'static str),
-    ContainsNul(&'static str),
-    UnsupportedVersion(u8),
-    UnknownFlags(u8),
-    InvalidHashLength { field: &'static str, actual: usize },
-    LengthOverflow(&'static str),
-    UnexpectedEnd(&'static str),
-    UnknownSectionType(u8),
-    DuplicateSection(u8),
-    NonCanonicalSectionOrder,
-    EmptySection(u8),
-    SectionBoundaryCrossing,
-    NonCanonicalPropertyOrder,
-    DuplicateCacheCandidate(String),
-    UnknownValueType(u8),
-    InvalidBooleanValue,
-    InvalidIntegerLength(usize),
+/// NUL-delimited prefix fields decoded from the SmartLink Tag v1 grammar.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SmartLinkDelimitedField {
+    RelationshipName,
+    CanonicalKey,
 }
 
-impl fmt::Display for SmartLinkTagError {
+impl SmartLinkDelimitedField {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::RelationshipName => "relationship name",
+            Self::CanonicalKey => "canonical key",
+        }
+    }
+}
+
+/// UTF-8 fields decoded from the SmartLink Tag v1 grammar.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SmartLinkUtf8Field {
+    RelationshipName,
+    CanonicalKey,
+    PropertyName,
+    StringPropertyValue,
+    EnumPropertyValue,
+}
+
+impl SmartLinkUtf8Field {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::RelationshipName => "relationship name",
+            Self::CanonicalKey => "canonical key",
+            Self::PropertyName => "property name",
+            Self::StringPropertyValue => "string property value",
+            Self::EnumPropertyValue => "enum property value",
+        }
+    }
+}
+
+impl From<SmartLinkDelimitedField> for SmartLinkUtf8Field {
+    fn from(value: SmartLinkDelimitedField) -> Self {
+        match value {
+            SmartLinkDelimitedField::RelationshipName => Self::RelationshipName,
+            SmartLinkDelimitedField::CanonicalKey => Self::CanonicalKey,
+        }
+    }
+}
+
+/// Fixed structural positions at which Tag v1 decoding can exhaust its input.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SmartLinkReadPosition {
+    TagHeader,
+    PayloadVersion,
+    PayloadFlags,
+    OutboundProxyId,
+    OccurrenceId,
+    PropertySectionType,
+    PropertySection,
+}
+
+impl SmartLinkReadPosition {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::TagHeader => "header",
+            Self::PayloadVersion => "payload version",
+            Self::PayloadFlags => "payload flags",
+            Self::OutboundProxyId => "outbound proxy id",
+            Self::OccurrenceId => "occurrence id",
+            Self::PropertySectionType => "section type",
+            Self::PropertySection => "section length",
+        }
+    }
+}
+
+/// Length-prefixed fields emitted by the Tag v1 encoder.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SmartLinkLengthField {
+    PropertyName,
+    PropertyValue,
+    PropertySection,
+}
+
+impl SmartLinkLengthField {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::PropertyName => "property name",
+            Self::PropertyValue => "property value",
+            Self::PropertySection => "section payload",
+        }
+    }
+}
+
+/// Endpoint roles whose byte width is enforced before Tag v1 encoding.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SmartLinkEndpointRole {
+    TargetActionHash,
+    OutboundProxyId,
+}
+
+impl SmartLinkEndpointRole {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::TargetActionHash => "target action hash",
+            Self::OutboundProxyId => "outbound proxy id",
+        }
+    }
+}
+
+/// Writer-input or packing failure for the SmartLink Tag v1 byte contract.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SmartLinkTagEncodeError {
+    PackingBudgetTooLarge { budget: usize, maximum: usize },
+    MandatoryContentExceedsBudget { actual: usize, budget: usize },
+    RelationshipNameContainsNul,
+    InvalidEndpointLength { endpoint: SmartLinkEndpointRole, actual: usize },
+    LengthOverflow(SmartLinkLengthField),
+    DuplicateCacheCandidate(String),
+}
+
+impl fmt::Display for SmartLinkTagEncodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::TagTooLarge { actual, maximum } => {
-                write!(f, "SmartLink tag is {actual} bytes; maximum is {maximum}")
-            }
             Self::PackingBudgetTooLarge { budget, maximum } => {
                 write!(f, "SmartLink packing budget {budget} exceeds maximum {maximum}")
             }
@@ -67,22 +155,74 @@ impl fmt::Display for SmartLinkTagError {
                 f,
                 "mandatory SmartLink content is {actual} bytes; packing budget is {budget}"
             ),
+            Self::RelationshipNameContainsNul => {
+                write!(f, "SmartLink relationship name contains NUL")
+            }
+            Self::InvalidEndpointLength { endpoint, actual } => write!(
+                f,
+                "SmartLink {} must be {HOLOCHAIN_ACTION_HASH_BYTES} bytes, got {actual}",
+                endpoint.as_str()
+            ),
+            Self::LengthOverflow(field) => {
+                write!(f, "SmartLink {} exceeds its u16 length", field.as_str())
+            }
+            Self::DuplicateCacheCandidate(name) => {
+                write!(f, "duplicate SmartLink cache candidate {name}")
+            }
+        }
+    }
+}
+
+impl Error for SmartLinkTagEncodeError {}
+
+/// Peer-byte structural failure reachable while decoding SmartLink Tag v1.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SmartLinkTagDecodeError {
+    TagTooLarge { actual: usize, maximum: usize },
+    InvalidHeader,
+    MissingDelimiter(SmartLinkDelimitedField),
+    InvalidUtf8(SmartLinkUtf8Field),
+    UnsupportedVersion(u8),
+    UnknownFlags(u8),
+    InvalidLinkTargetLength { actual: usize },
+    UnexpectedEnd(SmartLinkReadPosition),
+    UnknownSectionType(u8),
+    DuplicateSection(u8),
+    NonCanonicalSectionOrder,
+    EmptySection(u8),
+    SectionBoundaryCrossing,
+    NonCanonicalPropertyOrder,
+    UnknownValueType(u8),
+    InvalidBooleanValue,
+    InvalidIntegerLength(usize),
+}
+
+impl fmt::Display for SmartLinkTagDecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TagTooLarge { actual, maximum } => {
+                write!(f, "SmartLink tag is {actual} bytes; maximum is {maximum}")
+            }
             Self::InvalidHeader => write!(f, "invalid SmartLink header"),
-            Self::MissingDelimiter(field) => write!(f, "SmartLink {field} delimiter is missing"),
-            Self::InvalidUtf8(field) => write!(f, "SmartLink {field} is not valid UTF-8"),
-            Self::ContainsNul(field) => write!(f, "SmartLink {field} contains NUL"),
+            Self::MissingDelimiter(field) => {
+                write!(f, "SmartLink {} delimiter is missing", field.as_str())
+            }
+            Self::InvalidUtf8(field) => {
+                write!(f, "SmartLink {} is not valid UTF-8", field.as_str())
+            }
             Self::UnsupportedVersion(version) => {
                 write!(f, "unsupported SmartLink payload version {version}")
             }
             Self::UnknownFlags(flags) => {
                 write!(f, "SmartLink flags contain reserved bits: {flags:#04x}")
             }
-            Self::InvalidHashLength { field, actual } => write!(
+            Self::InvalidLinkTargetLength { actual } => write!(
                 f,
-                "SmartLink {field} must be {HOLOCHAIN_ACTION_HASH_BYTES} bytes, got {actual}"
+                "SmartLink link target must be {HOLOCHAIN_ACTION_HASH_BYTES} bytes, got {actual}"
             ),
-            Self::LengthOverflow(field) => write!(f, "SmartLink {field} exceeds its u16 length"),
-            Self::UnexpectedEnd(field) => write!(f, "SmartLink ended while reading {field}"),
+            Self::UnexpectedEnd(position) => {
+                write!(f, "SmartLink ended while reading {}", position.as_str())
+            }
             Self::UnknownSectionType(section) => {
                 write!(f, "unknown SmartLink property section {section}")
             }
@@ -101,9 +241,6 @@ impl fmt::Display for SmartLinkTagError {
             Self::NonCanonicalPropertyOrder => {
                 write!(f, "SmartLink properties are not in canonical order")
             }
-            Self::DuplicateCacheCandidate(name) => {
-                write!(f, "duplicate SmartLink cache candidate {name}")
-            }
             Self::UnknownValueType(value_type) => {
                 write!(f, "unknown SmartLink value type {value_type}")
             }
@@ -115,10 +252,10 @@ impl fmt::Display for SmartLinkTagError {
     }
 }
 
-impl Error for SmartLinkTagError {}
+impl Error for SmartLinkTagDecodeError {}
 
 /// Encodes a SmartLink Tag v1 using the active writer packing budget.
-pub fn encode_smartlink_tag(input: &SmartLinkTagInput) -> Result<Vec<u8>, SmartLinkTagError> {
+pub fn encode_smartlink_tag(input: &SmartLinkTagInput) -> Result<Vec<u8>, SmartLinkTagEncodeError> {
     encode_smartlink_tag_with_budget(input, SMARTLINK_V1_PACKING_BUDGET_BYTES)
 }
 
@@ -129,29 +266,29 @@ pub fn encode_smartlink_tag(input: &SmartLinkTagInput) -> Result<Vec<u8>, SmartL
 pub fn encode_smartlink_tag_with_budget(
     input: &SmartLinkTagInput,
     budget: usize,
-) -> Result<Vec<u8>, SmartLinkTagError> {
+) -> Result<Vec<u8>, SmartLinkTagEncodeError> {
     if budget > MAP_SMARTLINK_V1_MAX_BYTES {
-        return Err(SmartLinkTagError::PackingBudgetTooLarge {
+        return Err(SmartLinkTagEncodeError::PackingBudgetTooLarge {
             budget,
             maximum: MAP_SMARTLINK_V1_MAX_BYTES,
         });
     }
 
     validate_target_hashes(&input.target_id)?;
-    validate_prefix_segment("relationship name", relationship_bytes(&input.relationship_name))?;
+    validate_relationship_name_segment(relationship_bytes(&input.relationship_name))?;
 
     let mut seen_candidates = BTreeSet::new();
     for candidate in &input.target_property_cache_candidates {
         let name = candidate.property_name.0 .0.clone();
         if !seen_candidates.insert(candidate.property_name.clone()) {
-            return Err(SmartLinkTagError::DuplicateCacheCandidate(name));
+            return Err(SmartLinkTagEncodeError::DuplicateCacheCandidate(name));
         }
     }
 
     let mut admitted = PropertyMap::new();
     let mandatory = encode_selected(input, &admitted)?;
     if mandatory.len() > budget {
-        return Err(SmartLinkTagError::MandatoryContentExceedsBudget {
+        return Err(SmartLinkTagEncodeError::MandatoryContentExceedsBudget {
             actual: mandatory.len(),
             budget,
         });
@@ -170,7 +307,7 @@ pub fn encode_smartlink_tag_with_budget(
             Ok(candidate_encoding) if candidate_encoding.len() <= budget => {
                 encoded = candidate_encoding;
             }
-            Ok(_) | Err(SmartLinkTagError::LengthOverflow(_)) => {
+            Ok(_) | Err(SmartLinkTagEncodeError::LengthOverflow(_)) => {
                 admitted.remove(property_name);
             }
             Err(error) => return Err(error),
@@ -184,39 +321,53 @@ pub fn encode_smartlink_tag_with_budget(
 pub fn decode_smartlink_tag(
     bytes: &[u8],
     link_target: LocalId,
-) -> Result<DecodedSmartLinkTag, SmartLinkTagError> {
+) -> Result<DecodedSmartLinkTag, SmartLinkTagDecodeError> {
     if bytes.len() > MAP_SMARTLINK_V1_MAX_BYTES {
-        return Err(SmartLinkTagError::TagTooLarge {
+        return Err(SmartLinkTagDecodeError::TagTooLarge {
             actual: bytes.len(),
             maximum: MAP_SMARTLINK_V1_MAX_BYTES,
         });
     }
-    validate_hash("link target", &link_target)?;
+    if link_target.as_bytes().len() != HOLOCHAIN_ACTION_HASH_BYTES {
+        return Err(SmartLinkTagDecodeError::InvalidLinkTargetLength {
+            actual: link_target.as_bytes().len(),
+        });
+    }
 
     let mut cursor = ByteCursor::new(bytes);
-    if cursor.read_exact(SMARTLINK_HEADER_BYTES.len(), "header")? != SMARTLINK_HEADER_BYTES {
-        return Err(SmartLinkTagError::InvalidHeader);
+    if cursor.read_exact(SMARTLINK_HEADER_BYTES.len(), SmartLinkReadPosition::TagHeader)?
+        != SMARTLINK_HEADER_BYTES
+    {
+        return Err(SmartLinkTagDecodeError::InvalidHeader);
     }
 
-    let relationship_name =
-        RelationshipName(MapString(read_delimited_utf8(&mut cursor, "relationship name")?));
-    // Delimiter scanning excludes NUL from the parsed value; construction keeps
-    // the CanonicalKey invariant explicit at this boundary.
-    let canonical_key = CanonicalKey::new(read_delimited_utf8(&mut cursor, "canonical key")?)
-        .map_err(|_| SmartLinkTagError::ContainsNul("canonical key"))?;
+    let relationship_name = RelationshipName(MapString(read_delimited_utf8(
+        &mut cursor,
+        SmartLinkDelimitedField::RelationshipName,
+    )?));
+    // The delimiter scan has already proved this UTF-8 segment contains no NUL,
+    // so decoding can preserve the CanonicalKey invariant without a fallible
+    // construction path or an encoder-only error.
+    let canonical_key = CanonicalKey::from_delimited_segment(read_delimited_utf8(
+        &mut cursor,
+        SmartLinkDelimitedField::CanonicalKey,
+    )?);
 
-    let version = cursor.read_u8("payload version")?;
+    let version = cursor.read_u8(SmartLinkReadPosition::PayloadVersion)?;
     if version != SMARTLINK_TAG_VERSION_V1 {
-        return Err(SmartLinkTagError::UnsupportedVersion(version));
+        return Err(SmartLinkTagDecodeError::UnsupportedVersion(version));
     }
-    let flags = cursor.read_u8("payload flags")?;
+    let flags = cursor.read_u8(SmartLinkReadPosition::PayloadFlags)?;
     if flags & !KNOWN_FLAGS != 0 {
-        return Err(SmartLinkTagError::UnknownFlags(flags));
+        return Err(SmartLinkTagDecodeError::UnknownFlags(flags));
     }
 
     let target_id = if flags & EXTERNAL_TARGET_FLAG != 0 {
-        let proxy =
-            LocalId(cursor.read_exact(HOLOCHAIN_ACTION_HASH_BYTES, "outbound proxy id")?.to_vec());
+        let proxy = LocalId(
+            cursor
+                .read_exact(HOLOCHAIN_ACTION_HASH_BYTES, SmartLinkReadPosition::OutboundProxyId)?
+                .to_vec(),
+        );
         HolonId::External(ExternalId { space_id: OutboundProxyId(proxy), local_id: link_target })
     } else {
         HolonId::Local(link_target)
@@ -224,7 +375,7 @@ pub fn decode_smartlink_tag(
 
     let occurrence_id = if flags & OCCURRENCE_ID_FLAG != 0 {
         let value: [u8; 16] = cursor
-            .read_exact(16, "occurrence id")?
+            .read_exact(16, SmartLinkReadPosition::OccurrenceId)?
             .try_into()
             .expect("a 16-byte slice converts to a 16-byte array");
         Some(OccurrenceId(value))
@@ -236,25 +387,24 @@ pub fn decode_smartlink_tag(
     let mut target_property_values = PropertyMap::new();
     let mut previous_section = None;
     while !cursor.is_empty() {
-        let section_type = cursor.read_u8("section type")?;
+        let section_type = cursor.read_u8(SmartLinkReadPosition::PropertySectionType)?;
         if !matches!(section_type, RELATIONSHIP_PROPERTIES_SECTION | TARGET_PROPERTIES_SECTION) {
-            return Err(SmartLinkTagError::UnknownSectionType(section_type));
+            return Err(SmartLinkTagDecodeError::UnknownSectionType(section_type));
         }
         if previous_section == Some(section_type) {
-            return Err(SmartLinkTagError::DuplicateSection(section_type));
+            return Err(SmartLinkTagDecodeError::DuplicateSection(section_type));
         }
         if previous_section.is_some_and(|previous| previous > section_type) {
-            return Err(SmartLinkTagError::NonCanonicalSectionOrder);
+            return Err(SmartLinkTagDecodeError::NonCanonicalSectionOrder);
         }
         previous_section = Some(section_type);
 
-        let section_length = cursor.read_u16("section length")? as usize;
+        let section_length = cursor.read_u16(SmartLinkReadPosition::PropertySection)? as usize;
         if section_length == 0 {
-            return Err(SmartLinkTagError::EmptySection(section_type));
+            return Err(SmartLinkTagDecodeError::EmptySection(section_type));
         }
-        let section_bytes = cursor
-            .read_exact(section_length, "section payload")
-            .map_err(|_| SmartLinkTagError::SectionBoundaryCrossing)?;
+        let section_bytes =
+            cursor.take(section_length).ok_or(SmartLinkTagDecodeError::SectionBoundaryCrossing)?;
         let properties = decode_property_section(section_bytes)?;
         match section_type {
             RELATIONSHIP_PROPERTIES_SECTION => relationship_property_values = properties,
@@ -276,9 +426,9 @@ pub fn decode_smartlink_tag(
 /// Constructs the relationship-only query prefix from the Tag v1 grammar.
 pub fn smartlink_relationship_prefix(
     relationship_name: &RelationshipName,
-) -> Result<Vec<u8>, SmartLinkTagError> {
+) -> Result<Vec<u8>, SmartLinkTagEncodeError> {
     let mut bytes = SMARTLINK_HEADER_BYTES.to_vec();
-    append_prefix_segment(&mut bytes, "relationship name", relationship_bytes(relationship_name))?;
+    append_relationship_name_segment(&mut bytes, relationship_bytes(relationship_name))?;
     bytes.push(NUL);
     Ok(bytes)
 }
@@ -287,7 +437,7 @@ pub fn smartlink_relationship_prefix(
 pub fn smartlink_key_prefix(
     relationship_name: &RelationshipName,
     key_prefix: &CanonicalKeyPrefix,
-) -> Result<Vec<u8>, SmartLinkTagError> {
+) -> Result<Vec<u8>, SmartLinkTagEncodeError> {
     let mut bytes = smartlink_relationship_prefix(relationship_name)?;
     bytes.extend_from_slice(key_prefix.as_str().as_bytes());
     Ok(bytes)
@@ -297,7 +447,7 @@ pub fn smartlink_key_prefix(
 pub fn smartlink_exact_key_prefix(
     relationship_name: &RelationshipName,
     canonical_key: &CanonicalKey,
-) -> Result<Vec<u8>, SmartLinkTagError> {
+) -> Result<Vec<u8>, SmartLinkTagEncodeError> {
     let mut bytes = smartlink_relationship_prefix(relationship_name)?;
     bytes.extend_from_slice(canonical_key.as_str().as_bytes());
     bytes.push(NUL);
@@ -307,7 +457,7 @@ pub fn smartlink_exact_key_prefix(
 fn encode_selected(
     input: &SmartLinkTagInput,
     target_properties: &PropertyMap,
-) -> Result<Vec<u8>, SmartLinkTagError> {
+) -> Result<Vec<u8>, SmartLinkTagEncodeError> {
     let mut bytes = smartlink_exact_key_prefix(&input.relationship_name, &input.canonical_key)?;
     bytes.push(SMARTLINK_TAG_VERSION_V1);
 
@@ -340,7 +490,7 @@ fn append_property_section(
     target: &mut Vec<u8>,
     section_type: u8,
     properties: &PropertyMap,
-) -> Result<(), SmartLinkTagError> {
+) -> Result<(), SmartLinkTagEncodeError> {
     if properties.is_empty() {
         return Ok(());
     }
@@ -349,7 +499,7 @@ fn append_property_section(
         payload.extend_from_slice(&encode_property_entry(name, value)?);
     }
     target.push(section_type);
-    append_u16(target, payload.len(), "section payload")?;
+    append_u16(target, payload.len(), SmartLinkLengthField::PropertySection)?;
     target.extend_from_slice(&payload);
     Ok(())
 }
@@ -357,42 +507,39 @@ fn append_property_section(
 fn encode_property_entry(
     name: &PropertyName,
     value: &BaseValue,
-) -> Result<Vec<u8>, SmartLinkTagError> {
+) -> Result<Vec<u8>, SmartLinkTagEncodeError> {
     let mut bytes = Vec::new();
-    append_u16(&mut bytes, name.0 .0.len(), "property name")?;
+    append_u16(&mut bytes, name.0 .0.len(), SmartLinkLengthField::PropertyName)?;
     bytes.extend_from_slice(name.0 .0.as_bytes());
     let (value_type, value_bytes) = encode_value(value);
     bytes.push(value_type);
-    append_u16(&mut bytes, value_bytes.len(), "property value")?;
+    append_u16(&mut bytes, value_bytes.len(), SmartLinkLengthField::PropertyValue)?;
     bytes.extend_from_slice(&value_bytes);
     Ok(bytes)
 }
 
-fn decode_property_section(bytes: &[u8]) -> Result<PropertyMap, SmartLinkTagError> {
+fn decode_property_section(bytes: &[u8]) -> Result<PropertyMap, SmartLinkTagDecodeError> {
     let mut cursor = ByteCursor::new(bytes);
     let mut properties = PropertyMap::new();
     while !cursor.is_empty() {
-        let name_length = cursor
-            .read_u16("property name length")
-            .map_err(|_| SmartLinkTagError::SectionBoundaryCrossing)?
-            as usize;
-        let name_bytes = cursor
-            .read_exact(name_length, "property name")
-            .map_err(|_| SmartLinkTagError::SectionBoundaryCrossing)?;
-        let name = PropertyName(MapString(read_utf8(name_bytes, "property name")?));
+        // Reads within a declared property section intentionally collapse all
+        // truncation into one section-boundary error. Their internal positions
+        // are not externally observable Tag v1 decode positions.
+        let name_length =
+            cursor.take_u16().ok_or(SmartLinkTagDecodeError::SectionBoundaryCrossing)? as usize;
+        let name_bytes =
+            cursor.take(name_length).ok_or(SmartLinkTagDecodeError::SectionBoundaryCrossing)?;
+        let name =
+            PropertyName(MapString(read_utf8(name_bytes, SmartLinkUtf8Field::PropertyName)?));
         if properties.last_key_value().is_some_and(|(previous, _)| previous >= &name) {
-            return Err(SmartLinkTagError::NonCanonicalPropertyOrder);
+            return Err(SmartLinkTagDecodeError::NonCanonicalPropertyOrder);
         }
-        let value_type = cursor
-            .read_u8("property value type")
-            .map_err(|_| SmartLinkTagError::SectionBoundaryCrossing)?;
-        let value_length = cursor
-            .read_u16("property value length")
-            .map_err(|_| SmartLinkTagError::SectionBoundaryCrossing)?
-            as usize;
-        let value_bytes = cursor
-            .read_exact(value_length, "property value")
-            .map_err(|_| SmartLinkTagError::SectionBoundaryCrossing)?;
+        let value_type =
+            cursor.take_u8().ok_or(SmartLinkTagDecodeError::SectionBoundaryCrossing)?;
+        let value_length =
+            cursor.take_u16().ok_or(SmartLinkTagDecodeError::SectionBoundaryCrossing)? as usize;
+        let value_bytes =
+            cursor.take(value_length).ok_or(SmartLinkTagDecodeError::SectionBoundaryCrossing)?;
         properties.insert(name, decode_value(value_type, value_bytes)?);
     }
     Ok(properties)
@@ -408,28 +555,29 @@ fn encode_value(value: &BaseValue) -> (u8, Vec<u8>) {
     }
 }
 
-fn decode_value(value_type: u8, bytes: &[u8]) -> Result<BaseValue, SmartLinkTagError> {
+fn decode_value(value_type: u8, bytes: &[u8]) -> Result<BaseValue, SmartLinkTagDecodeError> {
     match value_type {
-        STRING_VALUE_TYPE => {
-            Ok(BaseValue::StringValue(MapString(read_utf8(bytes, "string property value")?)))
-        }
+        STRING_VALUE_TYPE => Ok(BaseValue::StringValue(MapString(read_utf8(
+            bytes,
+            SmartLinkUtf8Field::StringPropertyValue,
+        )?))),
         BOOLEAN_VALUE_TYPE => match bytes {
             [0] => Ok(BaseValue::BooleanValue(MapBoolean(false))),
             [1] => Ok(BaseValue::BooleanValue(MapBoolean(true))),
-            _ => Err(SmartLinkTagError::InvalidBooleanValue),
+            _ => Err(SmartLinkTagDecodeError::InvalidBooleanValue),
         },
         INTEGER_VALUE_TYPE => {
             let integer: [u8; 8] = bytes
                 .try_into()
-                .map_err(|_| SmartLinkTagError::InvalidIntegerLength(bytes.len()))?;
+                .map_err(|_| SmartLinkTagDecodeError::InvalidIntegerLength(bytes.len()))?;
             Ok(BaseValue::IntegerValue(MapInteger(i64::from_be_bytes(integer))))
         }
         ENUM_VALUE_TYPE => Ok(BaseValue::EnumValue(MapEnumValue(MapString(read_utf8(
             bytes,
-            "enum property value",
+            SmartLinkUtf8Field::EnumPropertyValue,
         )?)))),
         BYTES_VALUE_TYPE => Ok(BaseValue::BytesValue(MapBytes(bytes.to_vec()))),
-        other => Err(SmartLinkTagError::UnknownValueType(other)),
+        other => Err(SmartLinkTagDecodeError::UnknownValueType(other)),
     }
 }
 
@@ -437,34 +585,39 @@ fn relationship_bytes(relationship_name: &RelationshipName) -> &[u8] {
     relationship_name.0 .0.as_bytes()
 }
 
-fn append_prefix_segment(
+fn append_relationship_name_segment(
     target: &mut Vec<u8>,
-    field: &'static str,
     bytes: &[u8],
-) -> Result<(), SmartLinkTagError> {
-    validate_prefix_segment(field, bytes)?;
+) -> Result<(), SmartLinkTagEncodeError> {
+    validate_relationship_name_segment(bytes)?;
     target.extend_from_slice(bytes);
     Ok(())
 }
 
-fn validate_prefix_segment(field: &'static str, bytes: &[u8]) -> Result<(), SmartLinkTagError> {
+fn validate_relationship_name_segment(bytes: &[u8]) -> Result<(), SmartLinkTagEncodeError> {
     if bytes.contains(&NUL) {
-        return Err(SmartLinkTagError::ContainsNul(field));
+        return Err(SmartLinkTagEncodeError::RelationshipNameContainsNul);
     }
     Ok(())
 }
 
-fn validate_target_hashes(target_id: &HolonId) -> Result<(), SmartLinkTagError> {
-    validate_hash("target action hash", target_id.local_id())?;
+fn validate_target_hashes(target_id: &HolonId) -> Result<(), SmartLinkTagEncodeError> {
+    validate_endpoint_hash(SmartLinkEndpointRole::TargetActionHash, target_id.local_id())?;
     if let HolonId::External(external_id) = target_id {
-        validate_hash("outbound proxy id", &external_id.space_id.0)?;
+        validate_endpoint_hash(SmartLinkEndpointRole::OutboundProxyId, &external_id.space_id.0)?;
     }
     Ok(())
 }
 
-fn validate_hash(field: &'static str, value: &LocalId) -> Result<(), SmartLinkTagError> {
+fn validate_endpoint_hash(
+    endpoint: SmartLinkEndpointRole,
+    value: &LocalId,
+) -> Result<(), SmartLinkTagEncodeError> {
     if value.as_bytes().len() != HOLOCHAIN_ACTION_HASH_BYTES {
-        return Err(SmartLinkTagError::InvalidHashLength { field, actual: value.as_bytes().len() });
+        return Err(SmartLinkTagEncodeError::InvalidEndpointLength {
+            endpoint,
+            actual: value.as_bytes().len(),
+        });
     }
     Ok(())
 }
@@ -472,23 +625,23 @@ fn validate_hash(field: &'static str, value: &LocalId) -> Result<(), SmartLinkTa
 fn append_u16(
     target: &mut Vec<u8>,
     value: usize,
-    field: &'static str,
-) -> Result<(), SmartLinkTagError> {
-    let value = u16::try_from(value).map_err(|_| SmartLinkTagError::LengthOverflow(field))?;
+    field: SmartLinkLengthField,
+) -> Result<(), SmartLinkTagEncodeError> {
+    let value = u16::try_from(value).map_err(|_| SmartLinkTagEncodeError::LengthOverflow(field))?;
     target.extend_from_slice(&value.to_be_bytes());
     Ok(())
 }
 
 fn read_delimited_utf8(
     cursor: &mut ByteCursor<'_>,
-    field: &'static str,
-) -> Result<String, SmartLinkTagError> {
-    let bytes = cursor.read_until(NUL).ok_or(SmartLinkTagError::MissingDelimiter(field))?;
-    read_utf8(bytes, field)
+    field: SmartLinkDelimitedField,
+) -> Result<String, SmartLinkTagDecodeError> {
+    let bytes = cursor.read_until(NUL).ok_or(SmartLinkTagDecodeError::MissingDelimiter(field))?;
+    read_utf8(bytes, field.into())
 }
 
-fn read_utf8(bytes: &[u8], field: &'static str) -> Result<String, SmartLinkTagError> {
-    String::from_utf8(bytes.to_vec()).map_err(|_| SmartLinkTagError::InvalidUtf8(field))
+fn read_utf8(bytes: &[u8], field: SmartLinkUtf8Field) -> Result<String, SmartLinkTagDecodeError> {
+    String::from_utf8(bytes.to_vec()).map_err(|_| SmartLinkTagDecodeError::InvalidUtf8(field))
 }
 
 struct ByteCursor<'a> {
@@ -501,13 +654,16 @@ impl<'a> ByteCursor<'a> {
         Self { bytes, offset: 0 }
     }
 
-    fn read_u8(&mut self, field: &'static str) -> Result<u8, SmartLinkTagError> {
-        Ok(self.read_exact(1, field)?[0])
+    fn read_u8(&mut self, position: SmartLinkReadPosition) -> Result<u8, SmartLinkTagDecodeError> {
+        Ok(self.read_exact(1, position)?[0])
     }
 
-    fn read_u16(&mut self, field: &'static str) -> Result<u16, SmartLinkTagError> {
+    fn read_u16(
+        &mut self,
+        position: SmartLinkReadPosition,
+    ) -> Result<u16, SmartLinkTagDecodeError> {
         let bytes: [u8; 2] = self
-            .read_exact(2, field)?
+            .read_exact(2, position)?
             .try_into()
             .expect("a two-byte slice converts to a two-byte array");
         Ok(u16::from_be_bytes(bytes))
@@ -516,13 +672,25 @@ impl<'a> ByteCursor<'a> {
     fn read_exact(
         &mut self,
         length: usize,
-        field: &'static str,
-    ) -> Result<&'a [u8], SmartLinkTagError> {
-        let end = self.offset.checked_add(length).ok_or(SmartLinkTagError::UnexpectedEnd(field))?;
-        let value =
-            self.bytes.get(self.offset..end).ok_or(SmartLinkTagError::UnexpectedEnd(field))?;
+        position: SmartLinkReadPosition,
+    ) -> Result<&'a [u8], SmartLinkTagDecodeError> {
+        self.take(length).ok_or(SmartLinkTagDecodeError::UnexpectedEnd(position))
+    }
+
+    fn take(&mut self, length: usize) -> Option<&'a [u8]> {
+        let end = self.offset.checked_add(length)?;
+        let value = self.bytes.get(self.offset..end)?;
         self.offset = end;
-        Ok(value)
+        Some(value)
+    }
+
+    fn take_u8(&mut self) -> Option<u8> {
+        Some(self.take(1)?[0])
+    }
+
+    fn take_u16(&mut self) -> Option<u16> {
+        let bytes: [u8; 2] = self.take(2)?.try_into().ok()?;
+        Some(u16::from_be_bytes(bytes))
     }
 
     fn read_until(&mut self, delimiter: u8) -> Option<&'a [u8]> {
@@ -665,18 +833,18 @@ mod tests {
         input.relationship_name = relationship("bad\0name");
         assert_eq!(
             encode_smartlink_tag(&input),
-            Err(SmartLinkTagError::ContainsNul("relationship name"))
+            Err(SmartLinkTagEncodeError::RelationshipNameContainsNul)
         );
 
         input.relationship_name = relationship("Valid");
         input.target_id = HolonId::Local(LocalId(vec![0; 38]));
         assert!(matches!(
             encode_smartlink_tag(&input),
-            Err(SmartLinkTagError::InvalidHashLength { .. })
+            Err(SmartLinkTagEncodeError::InvalidEndpointLength { .. })
         ));
         assert!(matches!(
             decode_smartlink_tag(&[0; 8], LocalId(vec![0; 38])),
-            Err(SmartLinkTagError::InvalidHashLength { .. })
+            Err(SmartLinkTagDecodeError::InvalidLinkTargetLength { .. })
         ));
     }
 
@@ -723,7 +891,7 @@ mod tests {
 
         assert_eq!(
             encode_smartlink_tag(&input),
-            Err(SmartLinkTagError::DuplicateCacheCandidate("Same".to_string()))
+            Err(SmartLinkTagEncodeError::DuplicateCacheCandidate("Same".to_string()))
         );
     }
 
@@ -745,14 +913,14 @@ mod tests {
         let mandatory = encode_selected(&input, &PropertyMap::new()).unwrap();
         assert_eq!(
             encode_smartlink_tag_with_budget(&input, mandatory.len() - 1),
-            Err(SmartLinkTagError::MandatoryContentExceedsBudget {
+            Err(SmartLinkTagEncodeError::MandatoryContentExceedsBudget {
                 actual: mandatory.len(),
                 budget: mandatory.len() - 1,
             })
         );
         assert!(matches!(
             encode_smartlink_tag_with_budget(&input, MAP_SMARTLINK_V1_MAX_BYTES + 1),
-            Err(SmartLinkTagError::PackingBudgetTooLarge { .. })
+            Err(SmartLinkTagEncodeError::PackingBudgetTooLarge { .. })
         ));
     }
 
@@ -780,7 +948,7 @@ mod tests {
         oversized.push(0);
         assert!(matches!(
             decode_smartlink_tag(&oversized, hash(1)),
-            Err(SmartLinkTagError::TagTooLarge { .. })
+            Err(SmartLinkTagDecodeError::TagTooLarge { .. })
         ));
     }
 
@@ -792,13 +960,15 @@ mod tests {
         bad_header[0] = 0;
         assert_eq!(
             decode_smartlink_tag(&bad_header, hash(1)),
-            Err(SmartLinkTagError::InvalidHeader)
+            Err(SmartLinkTagDecodeError::InvalidHeader)
         );
 
         let missing_delimiter = [SMARTLINK_HEADER_BYTES.as_slice(), b"Relationship"].concat();
         assert_eq!(
             decode_smartlink_tag(&missing_delimiter, hash(1)),
-            Err(SmartLinkTagError::MissingDelimiter("relationship name"))
+            Err(SmartLinkTagDecodeError::MissingDelimiter(
+                SmartLinkDelimitedField::RelationshipName
+            ))
         );
 
         let payload_offset = smartlink_exact_key_prefix(
@@ -811,13 +981,13 @@ mod tests {
         bad_version[payload_offset] = 2;
         assert_eq!(
             decode_smartlink_tag(&bad_version, hash(1)),
-            Err(SmartLinkTagError::UnsupportedVersion(2))
+            Err(SmartLinkTagDecodeError::UnsupportedVersion(2))
         );
         let mut bad_flags = valid;
         bad_flags[payload_offset + 1] = 0x80;
         assert_eq!(
             decode_smartlink_tag(&bad_flags, hash(1)),
-            Err(SmartLinkTagError::UnknownFlags(0x80))
+            Err(SmartLinkTagDecodeError::UnknownFlags(0x80))
         );
     }
 
@@ -829,12 +999,15 @@ mod tests {
         unknown.extend_from_slice(&[3, 0, 1, 0]);
         assert_eq!(
             decode_smartlink_tag(&unknown, hash(1)),
-            Err(SmartLinkTagError::UnknownSectionType(3))
+            Err(SmartLinkTagDecodeError::UnknownSectionType(3))
         );
 
         let mut empty = base.clone();
         empty.extend_from_slice(&[1, 0, 0]);
-        assert_eq!(decode_smartlink_tag(&empty, hash(1)), Err(SmartLinkTagError::EmptySection(1)));
+        assert_eq!(
+            decode_smartlink_tag(&empty, hash(1)),
+            Err(SmartLinkTagDecodeError::EmptySection(1))
+        );
 
         let entry = encode_property_entry(&property_name("a"), &string("v")).unwrap();
         let mut duplicate = base.clone();
@@ -842,7 +1015,7 @@ mod tests {
         append_raw_section(&mut duplicate, 1, &entry);
         assert_eq!(
             decode_smartlink_tag(&duplicate, hash(1)),
-            Err(SmartLinkTagError::DuplicateSection(1))
+            Err(SmartLinkTagDecodeError::DuplicateSection(1))
         );
 
         let mut reversed = base;
@@ -850,7 +1023,7 @@ mod tests {
         append_raw_section(&mut reversed, 1, &entry);
         assert_eq!(
             decode_smartlink_tag(&reversed, hash(1)),
-            Err(SmartLinkTagError::NonCanonicalSectionOrder)
+            Err(SmartLinkTagDecodeError::NonCanonicalSectionOrder)
         );
     }
 
@@ -863,7 +1036,7 @@ mod tests {
         append_raw_section(&mut unordered, 1, &[beta, alpha].concat());
         assert_eq!(
             decode_smartlink_tag(&unordered, hash(1)),
-            Err(SmartLinkTagError::NonCanonicalPropertyOrder)
+            Err(SmartLinkTagDecodeError::NonCanonicalPropertyOrder)
         );
 
         let duplicate_entry = encode_property_entry(&property_name("Same"), &string("v")).unwrap();
@@ -871,33 +1044,33 @@ mod tests {
         append_raw_section(&mut duplicate, 1, &[duplicate_entry.clone(), duplicate_entry].concat());
         assert_eq!(
             decode_smartlink_tag(&duplicate, hash(1)),
-            Err(SmartLinkTagError::NonCanonicalPropertyOrder)
+            Err(SmartLinkTagDecodeError::NonCanonicalPropertyOrder)
         );
 
         let mut invalid_boolean_entry = Vec::new();
-        append_u16(&mut invalid_boolean_entry, 1, "test").unwrap();
+        append_u16(&mut invalid_boolean_entry, 1, SmartLinkLengthField::PropertyName).unwrap();
         invalid_boolean_entry.extend_from_slice(b"b");
         invalid_boolean_entry.push(BOOLEAN_VALUE_TYPE);
-        append_u16(&mut invalid_boolean_entry, 1, "test").unwrap();
+        append_u16(&mut invalid_boolean_entry, 1, SmartLinkLengthField::PropertyValue).unwrap();
         invalid_boolean_entry.push(2);
         let mut invalid_boolean = base.clone();
         append_raw_section(&mut invalid_boolean, 1, &invalid_boolean_entry);
         assert_eq!(
             decode_smartlink_tag(&invalid_boolean, hash(1)),
-            Err(SmartLinkTagError::InvalidBooleanValue)
+            Err(SmartLinkTagDecodeError::InvalidBooleanValue)
         );
 
         let mut invalid_integer_entry = Vec::new();
-        append_u16(&mut invalid_integer_entry, 1, "test").unwrap();
+        append_u16(&mut invalid_integer_entry, 1, SmartLinkLengthField::PropertyName).unwrap();
         invalid_integer_entry.extend_from_slice(b"i");
         invalid_integer_entry.push(INTEGER_VALUE_TYPE);
-        append_u16(&mut invalid_integer_entry, 1, "test").unwrap();
+        append_u16(&mut invalid_integer_entry, 1, SmartLinkLengthField::PropertyValue).unwrap();
         invalid_integer_entry.push(0);
         let mut invalid_integer = base;
         append_raw_section(&mut invalid_integer, 1, &invalid_integer_entry);
         assert_eq!(
             decode_smartlink_tag(&invalid_integer, hash(1)),
-            Err(SmartLinkTagError::InvalidIntegerLength(1))
+            Err(SmartLinkTagDecodeError::InvalidIntegerLength(1))
         );
     }
 
@@ -907,7 +1080,7 @@ mod tests {
         crossing.extend_from_slice(&[1, 0, 4, 0, 10, b'a', 1]);
         assert_eq!(
             decode_smartlink_tag(&crossing, hash(1)),
-            Err(SmartLinkTagError::SectionBoundaryCrossing)
+            Err(SmartLinkTagDecodeError::SectionBoundaryCrossing)
         );
 
         let legacy = [SMARTLINK_HEADER_BYTES.as_slice(), b"RelatedTo\0L\0"].concat();
@@ -921,7 +1094,7 @@ mod tests {
         trailing.push(0);
         assert_eq!(
             decode_smartlink_tag(&trailing, hash(1)),
-            Err(SmartLinkTagError::UnknownSectionType(0))
+            Err(SmartLinkTagDecodeError::UnknownSectionType(0))
         );
     }
 
@@ -930,25 +1103,25 @@ mod tests {
         let invalid_relationship = [SMARTLINK_HEADER_BYTES.as_slice(), &[0xff, 0]].concat();
         assert_eq!(
             decode_smartlink_tag(&invalid_relationship, hash(1)),
-            Err(SmartLinkTagError::InvalidUtf8("relationship name"))
+            Err(SmartLinkTagDecodeError::InvalidUtf8(SmartLinkUtf8Field::RelationshipName))
         );
 
         let missing_key_delimiter = [SMARTLINK_HEADER_BYTES.as_slice(), b"Rel\0key"].concat();
         assert_eq!(
             decode_smartlink_tag(&missing_key_delimiter, hash(1)),
-            Err(SmartLinkTagError::MissingDelimiter("canonical key"))
+            Err(SmartLinkTagDecodeError::MissingDelimiter(SmartLinkDelimitedField::CanonicalKey))
         );
 
         let mut unknown_value_entry = Vec::new();
-        append_u16(&mut unknown_value_entry, 1, "test").unwrap();
+        append_u16(&mut unknown_value_entry, 1, SmartLinkLengthField::PropertyName).unwrap();
         unknown_value_entry.extend_from_slice(b"x");
         unknown_value_entry.push(99);
-        append_u16(&mut unknown_value_entry, 0, "test").unwrap();
+        append_u16(&mut unknown_value_entry, 0, SmartLinkLengthField::PropertyValue).unwrap();
         let mut unknown_value = encode_smartlink_tag(&local_input()).unwrap();
         append_raw_section(&mut unknown_value, 1, &unknown_value_entry);
         assert_eq!(
             decode_smartlink_tag(&unknown_value, hash(1)),
-            Err(SmartLinkTagError::UnknownValueType(99))
+            Err(SmartLinkTagDecodeError::UnknownValueType(99))
         );
 
         let mut external =
@@ -958,7 +1131,7 @@ mod tests {
         external.extend_from_slice(&[0; HOLOCHAIN_ACTION_HASH_BYTES - 1]);
         assert_eq!(
             decode_smartlink_tag(&external, hash(1)),
-            Err(SmartLinkTagError::UnexpectedEnd("outbound proxy id"))
+            Err(SmartLinkTagDecodeError::UnexpectedEnd(SmartLinkReadPosition::OutboundProxyId))
         );
 
         let mut occurrence =
@@ -968,13 +1141,123 @@ mod tests {
         occurrence.extend_from_slice(&[0; 15]);
         assert_eq!(
             decode_smartlink_tag(&occurrence, hash(1)),
-            Err(SmartLinkTagError::UnexpectedEnd("occurrence id"))
+            Err(SmartLinkTagDecodeError::UnexpectedEnd(SmartLinkReadPosition::OccurrenceId))
         );
+    }
+
+    #[test]
+    fn decoder_reports_every_reachable_unexpected_end_position() {
+        let prefix =
+            smartlink_exact_key_prefix(&relationship("Rel"), &CanonicalKey::new("key").unwrap())
+                .unwrap();
+        let mut flags = prefix.clone();
+        flags.push(SMARTLINK_TAG_VERSION_V1);
+        let mut outbound_proxy = flags.clone();
+        outbound_proxy.push(EXTERNAL_TARGET_FLAG);
+        outbound_proxy.extend_from_slice(&[0; HOLOCHAIN_ACTION_HASH_BYTES - 1]);
+        let mut occurrence = flags.clone();
+        occurrence.push(OCCURRENCE_ID_FLAG);
+        occurrence.extend_from_slice(&[0; 15]);
+        let mut property_section = encode_smartlink_tag(&local_input()).unwrap();
+        property_section.extend_from_slice(&[RELATIONSHIP_PROPERTIES_SECTION, 0]);
+
+        let cases = [
+            (
+                SMARTLINK_HEADER_BYTES[..SMARTLINK_HEADER_BYTES.len() - 1].to_vec(),
+                SmartLinkReadPosition::TagHeader,
+            ),
+            (prefix, SmartLinkReadPosition::PayloadVersion),
+            (flags, SmartLinkReadPosition::PayloadFlags),
+            (outbound_proxy, SmartLinkReadPosition::OutboundProxyId),
+            (occurrence, SmartLinkReadPosition::OccurrenceId),
+            (property_section, SmartLinkReadPosition::PropertySection),
+        ];
+
+        for (bytes, position) in cases {
+            assert_eq!(
+                decode_smartlink_tag(&bytes, hash(1)),
+                Err(SmartLinkTagDecodeError::UnexpectedEnd(position))
+            );
+        }
+    }
+
+    #[test]
+    fn decoder_reports_invalid_utf8_at_every_text_position() {
+        let invalid_relationship = [SMARTLINK_HEADER_BYTES.as_slice(), &[0xff, 0]].concat();
+        let invalid_canonical_key =
+            [SMARTLINK_HEADER_BYTES.as_slice(), b"Rel\0", &[0xff, 0]].concat();
+        let base = encode_smartlink_tag(&local_input()).unwrap();
+
+        let property_tag = |value_type: u8, name: &[u8], value: &[u8]| {
+            let mut entry = Vec::new();
+            append_u16(&mut entry, name.len(), SmartLinkLengthField::PropertyName).unwrap();
+            entry.extend_from_slice(name);
+            entry.push(value_type);
+            append_u16(&mut entry, value.len(), SmartLinkLengthField::PropertyValue).unwrap();
+            entry.extend_from_slice(value);
+            let mut tag = base.clone();
+            append_raw_section(&mut tag, RELATIONSHIP_PROPERTIES_SECTION, &entry);
+            tag
+        };
+
+        let cases = [
+            (invalid_relationship, SmartLinkUtf8Field::RelationshipName),
+            (invalid_canonical_key, SmartLinkUtf8Field::CanonicalKey),
+            (property_tag(STRING_VALUE_TYPE, &[0xff], b"value"), SmartLinkUtf8Field::PropertyName),
+            (
+                property_tag(STRING_VALUE_TYPE, b"name", &[0xff]),
+                SmartLinkUtf8Field::StringPropertyValue,
+            ),
+            (
+                property_tag(ENUM_VALUE_TYPE, b"name", &[0xff]),
+                SmartLinkUtf8Field::EnumPropertyValue,
+            ),
+        ];
+
+        for (bytes, field) in cases {
+            assert_eq!(
+                decode_smartlink_tag(&bytes, hash(1)),
+                Err(SmartLinkTagDecodeError::InvalidUtf8(field))
+            );
+        }
+    }
+
+    #[test]
+    fn section_overruns_are_normalized_at_tag_and_entry_boundaries() {
+        let base = encode_smartlink_tag(&local_input()).unwrap();
+
+        let mut tag_level = base.clone();
+        tag_level.extend_from_slice(&[RELATIONSHIP_PROPERTIES_SECTION, 0, 4, 0]);
+        assert_eq!(
+            decode_smartlink_tag(&tag_level, hash(1)),
+            Err(SmartLinkTagDecodeError::SectionBoundaryCrossing)
+        );
+
+        let mut entry_level = base;
+        entry_level.extend_from_slice(&[
+            RELATIONSHIP_PROPERTIES_SECTION,
+            0,
+            4,
+            0,
+            10,
+            b'a',
+            STRING_VALUE_TYPE,
+        ]);
+        assert_eq!(
+            decode_smartlink_tag(&entry_level, hash(1)),
+            Err(SmartLinkTagDecodeError::SectionBoundaryCrossing)
+        );
+    }
+
+    #[test]
+    fn decoded_canonical_key_construction_has_no_encode_error_channel() {
+        let key: CanonicalKey = CanonicalKey::from_delimited_segment("decoded-key".into());
+        assert_eq!(key.as_str(), "decoded-key");
     }
 
     fn append_raw_section(target: &mut Vec<u8>, section_type: u8, payload: &[u8]) {
         target.push(section_type);
-        append_u16(target, payload.len(), "test section").unwrap();
+        append_u16(target, payload.len(), SmartLinkLengthField::PropertySection).unwrap();
         target.extend_from_slice(payload);
     }
 }

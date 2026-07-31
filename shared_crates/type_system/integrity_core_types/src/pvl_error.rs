@@ -187,6 +187,10 @@ pub enum PvlViolation {
         endpoint: String,
         endpoint_kind: String,
     },
+    InvalidLinkDeleteTarget {
+        expected_target_kind: String,
+        actual_target_kind: String,
+    },
     InvalidUpdateTarget {
         expected_target_kind: String,
         actual_target_kind: String,
@@ -236,6 +240,7 @@ impl PvlViolation {
             Self::MalformedSmartLink { .. } => "MAP-PVL-2001",
             Self::InvalidSmartLinkEndpoint { .. } => "MAP-PVL-2002",
             Self::UnsupportedSmartLinkEndpointKind { .. } => "MAP-PVL-2003",
+            Self::InvalidLinkDeleteTarget { .. } => "MAP-PVL-2004",
             Self::EmptyRelationshipName => "MAP-PVL-2101",
             Self::InvalidRelationshipName { .. } => "MAP-PVL-2102",
             Self::RelationshipNameTooLong { .. } => "MAP-PVL-2103",
@@ -318,6 +323,9 @@ impl fmt::Display for PvlViolation {
             }
             Self::UnsupportedSmartLinkEndpointKind { .. } => {
                 formatter.write_str("SmartLink endpoint kind is unsupported")
+            }
+            Self::InvalidLinkDeleteTarget { .. } => {
+                formatter.write_str("link delete target is invalid")
             }
             Self::InvalidUpdateTarget { .. } => formatter.write_str("update target is invalid"),
             Self::ImmutableNativeFieldChanged { .. } => {
@@ -417,6 +425,10 @@ mod tests {
                 endpoint: "target".into(),
                 endpoint_kind: "AgentPubKey".into(),
             },
+            PvlViolation::InvalidLinkDeleteTarget {
+                expected_target_kind: "CreateLink".into(),
+                actual_target_kind: "DeleteLink".into(),
+            },
             PvlViolation::InvalidUpdateTarget {
                 expected_target_kind: "Create".into(),
                 actual_target_kind: "Update".into(),
@@ -435,7 +447,7 @@ mod tests {
         let codes: Vec<_> = variants.iter().map(exhaustive_code).collect();
         let unique: HashSet<_> = codes.iter().copied().collect();
 
-        assert_eq!(codes.len(), 30);
+        assert_eq!(codes.len(), 31);
         assert_eq!(unique.len(), codes.len());
         assert!(codes.iter().all(|code| {
             code.strip_prefix("MAP-PVL-").is_some_and(|digits| {
@@ -477,6 +489,7 @@ mod tests {
             | PvlViolation::EmptyIdentifier { .. }
             | PvlViolation::InvalidSmartLinkEndpoint { .. }
             | PvlViolation::UnsupportedSmartLinkEndpointKind { .. }
+            | PvlViolation::InvalidLinkDeleteTarget { .. }
             | PvlViolation::InvalidUpdateTarget { .. }
             | PvlViolation::ImmutableNativeFieldChanged { .. }
             | PvlViolation::InvalidDeleteTarget { .. } => violation.code(),
@@ -593,6 +606,13 @@ mod tests {
                     max_bytes: 256,
                 },
                 json!({"IdentifierTooLong":{"field_name":"local_id","identifier_kind":"LocalId","actual_bytes":300,"max_bytes":256}}),
+            ),
+            (
+                PvlViolation::InvalidLinkDeleteTarget {
+                    expected_target_kind: "CreateLink".into(),
+                    actual_target_kind: "DeleteLink".into(),
+                },
+                json!({"InvalidLinkDeleteTarget":{"expected_target_kind":"CreateLink","actual_target_kind":"DeleteLink"}}),
             ),
             (
                 PvlViolation::InvalidUpdateTarget {

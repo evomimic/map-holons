@@ -4,14 +4,13 @@
 //!
 //! Specifically, it:
 //! - Initiates the per-event validation process by responding to Holochain's `validate` extern call.
-//! - Handles all inbound validation requests and dispatches them to holochain-independent validation functions,
-//!   primarily located in the `shared_validations` crate.
-//! - Translates all Holochain-specific types (e.g., `Op`, `Action`, `EntryTypes`, `LinkTypes`) and validation events
-//!   into persistence-layer abstractions used throughout the Memetic Activation Platform.
+//! - Handles inbound validation requests and dispatches them through the Holochain-aware guest adapter.
+//! - Projects Holochain-specific operation data into the substrate-independent models consumed by
+//!   `shared_validation`.
 //!
-//! The purpose of this layer is to isolate Holochain's runtime environment from the domain validation logic,
-//! providing a clean separation of concerns and enabling testing and reuse of validation logic outside of the
-//! Holochain execution context.
+//! The purpose of this layer is to keep callback dispatch and consensus-result mapping separate from
+//! substrate-independent domain validation, enabling that validation to be tested and reused outside
+//! the Holochain execution context.
 
 use hdi::prelude::*;
 
@@ -19,10 +18,8 @@ use holons_guest_integrity::*;
 use integrity_core_types::*;
 
 pub mod holon_node;
-pub mod smartlink;
 
 pub use holon_node::*;
-pub use smartlink::*;
 
 #[cfg(test)]
 mod tests;
@@ -56,12 +53,12 @@ pub fn validate_agent_joining(
     Ok(ValidateCallbackResult::Valid)
 }
 
-/// Maps a completed lifecycle verdict onto the Integrity callback contract.
+/// Maps a completed PVL verdict onto the Integrity callback contract.
 ///
 /// Host and dependency-resolution failures are propagated before this helper is
 /// called. Only deterministic PVL violations become consensus-visible
 /// `Invalid` results.
-fn lifecycle_callback_result(result: Result<(), PvlViolation>) -> ValidateCallbackResult {
+fn pvl_callback_result(result: Result<(), PvlViolation>) -> ValidateCallbackResult {
     match result {
         Ok(()) => ValidateCallbackResult::Valid,
         Err(violation) => ValidateCallbackResult::Invalid(violation.to_string()),
@@ -82,10 +79,7 @@ fn validate_holon_node_update_arm(
         )));
     };
 
-    Ok(lifecycle_callback_result(validate_holon_node_update_target(
-        original_action_hash,
-        new_entry_def,
-    )?))
+    Ok(pvl_callback_result(validate_holon_node_update_target(original_action_hash, new_entry_def)?))
 }
 
 #[hdk_extern]
@@ -128,9 +122,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             _ => Ok(ValidateCallbackResult::Valid),
         },
         FlatOp::RegisterDelete(delete_entry) => match delete_entry {
-            OpDelete { action } => Ok(lifecycle_callback_result(
-                validate_holon_node_delete_target(&action.deletes_address)?,
-            )),
+            OpDelete { action } => {
+                Ok(pvl_callback_result(validate_holon_node_delete_target(&action.deletes_address)?))
+            }
         },
         FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, action } => {
             match link_type {
@@ -140,46 +134,11 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     target_address,
                     tag,
                 ),
-                LinkTypes::SmartLink => {
-                    let persistence_create_link = PersistenceCreateLink::new(
-                        persistence_agent_id_from_agent_pub_key(action.author),
-                        PersistenceTimestamp(action.timestamp.0),
-                        action.action_seq,
-                        local_id_from_action_hash(action.prev_action),
-                        local_id_from_action_hash(action.base_address.into_action_hash().ok_or(
-                            wasm_error!(WasmErrorInner::Guest(String::from(
-                                "No action hash associated with link"
-                            ))),
-                        )?),
-                        local_id_from_action_hash(action.target_address.into_action_hash().ok_or(
-                            wasm_error!(WasmErrorInner::Guest(String::from(
-                                "No action hash associated with link"
-                            ))),
-                        )?),
-                        PersistenceLinkType::SmartLink,
-                        PersistenceLinkTag(action.tag.into_inner()),
-                    );
-
-                    let base_local_id =
-                        local_id_from_action_hash(base_address.into_action_hash().ok_or(
-                            wasm_error!(WasmErrorInner::Guest(String::from(
-                                "No action hash associated with link"
-                            ))),
-                        )?);
-                    let target_local_id =
-                        local_id_from_action_hash(target_address.into_action_hash().ok_or(
-                            wasm_error!(WasmErrorInner::Guest(String::from(
-                                "No action hash associated with link"
-                            ))),
-                        )?);
-
-                    validate_create_smartlink(
-                        persistence_create_link,
-                        base_local_id,
-                        target_local_id,
-                        PersistenceLinkTag(tag.into_inner()),
-                    )
-                }
+                LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
+                    &base_address,
+                    &target_address,
+                    &tag,
+                )?)),
                 LinkTypes::AllHolonNodes => {
                     validate_create_link_all_holon_nodes(action, base_address, target_address, tag)
                 }
@@ -207,59 +166,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 tag,
             ),
             LinkTypes::SmartLink => {
-                let persistence_delete_link = PersistenceDeleteLink::new(
-                    persistence_agent_id_from_agent_pub_key(action.author),
-                    PersistenceTimestamp(action.timestamp.0),
-                    action.action_seq,
-                    local_id_from_action_hash(action.prev_action),
-                    local_id_from_action_hash(action.base_address.into_action_hash().ok_or(
-                        wasm_error!(WasmErrorInner::Guest(String::from(
-                            "No action hash associated with link"
-                        ))),
-                    )?),
-                );
-
-                let base_local_id = local_id_from_action_hash(
-                    base_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(
-                        String::from("No action hash associated with link")
-                    )))?,
-                );
-                let target_local_id = local_id_from_action_hash(
-                    target_address.into_action_hash().ok_or(wasm_error!(WasmErrorInner::Guest(
-                        String::from("No action hash associated with link")
-                    )))?,
-                );
-
-                let persistence_create_link = PersistenceCreateLink::new(
-                    persistence_agent_id_from_agent_pub_key(original_action.author),
-                    PersistenceTimestamp(original_action.timestamp.0),
-                    original_action.action_seq,
-                    local_id_from_action_hash(original_action.prev_action),
-                    local_id_from_action_hash(
-                        original_action.base_address.into_action_hash().ok_or(wasm_error!(
-                            WasmErrorInner::Guest(String::from(
-                                "No action hash associated with link"
-                            ))
-                        ))?,
-                    ),
-                    local_id_from_action_hash(
-                        original_action.target_address.into_action_hash().ok_or(wasm_error!(
-                            WasmErrorInner::Guest(String::from(
-                                "No action hash associated with link"
-                            ))
-                        ))?,
-                    ),
-                    PersistenceLinkType::SmartLink,
-                    PersistenceLinkTag(original_action.tag.into_inner()),
-                );
-
-                validate_delete_smartlink(
-                    persistence_delete_link,
-                    persistence_create_link,
-                    base_local_id,
-                    target_local_id,
-                    PersistenceLinkTag(tag.into_inner()),
-                )
+                Ok(pvl_callback_result(validate_smartlink_delete(&original_action)?))
             }
             LinkTypes::AllHolonNodes => validate_delete_link_all_holon_nodes(
                 action,
@@ -291,9 +198,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     }
                 }
             }
-            OpRecord::DeleteEntry { action, .. } => Ok(lifecycle_callback_result(
-                validate_holon_node_delete_target(&action.deletes_address)?,
-            )),
+            OpRecord::DeleteEntry { action, .. } => {
+                Ok(pvl_callback_result(validate_holon_node_delete_target(&action.deletes_address)?))
+            }
             OpRecord::CreateLink { base_address, target_address, tag, link_type, action } => {
                 match link_type {
                     LinkTypes::HolonNodeUpdates => validate_create_link_holon_node_updates(
@@ -302,50 +209,11 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         target_address,
                         tag,
                     ),
-                    LinkTypes::SmartLink => {
-                        let persistence_create_link = PersistenceCreateLink::new(
-                            persistence_agent_id_from_agent_pub_key(action.author),
-                            PersistenceTimestamp(action.timestamp.0),
-                            action.action_seq,
-                            local_id_from_action_hash(action.prev_action),
-                            local_id_from_action_hash(
-                                action.base_address.into_action_hash().ok_or(wasm_error!(
-                                    WasmErrorInner::Guest(String::from(
-                                        "No action hash associated with link"
-                                    ))
-                                ))?,
-                            ),
-                            local_id_from_action_hash(
-                                action.target_address.into_action_hash().ok_or(wasm_error!(
-                                    WasmErrorInner::Guest(String::from(
-                                        "No action hash associated with link"
-                                    ))
-                                ))?,
-                            ),
-                            PersistenceLinkType::SmartLink,
-                            PersistenceLinkTag(action.tag.into_inner()),
-                        );
-
-                        let base_local_id =
-                            local_id_from_action_hash(base_address.into_action_hash().ok_or(
-                                wasm_error!(WasmErrorInner::Guest(String::from(
-                                    "No action hash associated with link"
-                                ))),
-                            )?);
-                        let target_local_id =
-                            local_id_from_action_hash(target_address.into_action_hash().ok_or(
-                                wasm_error!(WasmErrorInner::Guest(String::from(
-                                    "No action hash associated with link"
-                                ))),
-                            )?);
-
-                        validate_create_smartlink(
-                            persistence_create_link,
-                            base_local_id,
-                            target_local_id,
-                            PersistenceLinkTag(tag.into_inner()),
-                        )
-                    }
+                    LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
+                        &base_address,
+                        &target_address,
+                        &tag,
+                    )?)),
                     LinkTypes::AllHolonNodes => validate_create_link_all_holon_nodes(
                         action,
                         base_address,
@@ -361,23 +229,16 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 }
             }
             OpRecord::DeleteLink { original_action_hash, base_address, action } => {
-                let record = must_get_valid_record(original_action_hash)?;
-                let create_link = match record.action() {
-                    Action::CreateLink(create_link) => create_link.clone(),
-                    _ => {
-                        return Ok(ValidateCallbackResult::Invalid(
-                            "The action that a DeleteLink deletes must be a CreateLink".to_string(),
-                        ));
+                let create_link = match resolve_link_delete_target(original_action_hash)? {
+                    Ok(create_link) => create_link,
+                    Err(violation) => {
+                        return Ok(ValidateCallbackResult::Invalid(violation.to_string()));
                     }
                 };
-                let link_type = match LinkTypes::from_type(
-                    create_link.zome_index.clone(),
-                    create_link.link_type.clone(),
-                )? {
-                    Some(lt) => lt,
-                    None => {
-                        return Ok(ValidateCallbackResult::Valid);
-                    }
+                let Some(link_type) =
+                    LinkTypes::from_type(create_link.zome_index, create_link.link_type)?
+                else {
+                    return Ok(ValidateCallbackResult::Valid);
                 };
                 match link_type {
                     LinkTypes::HolonNodeUpdates => validate_delete_link_holon_node_updates(
@@ -388,54 +249,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         create_link.tag,
                     ),
                     LinkTypes::SmartLink => {
-                        let persistence_delete_link = PersistenceDeleteLink::new(
-                            persistence_agent_id_from_agent_pub_key(action.author),
-                            PersistenceTimestamp(action.timestamp.0),
-                            action.action_seq,
-                            local_id_from_action_hash(action.prev_action),
-                            local_id_from_action_hash(
-                                action.base_address.into_action_hash().ok_or(wasm_error!(
-                                    WasmErrorInner::Guest(String::from(
-                                        "No action hash associated with link"
-                                    ))
-                                ))?,
-                            ),
-                        );
-
-                        let tag = PersistenceLinkTag(create_link.tag.into_inner());
-
-                        let base_local_id =
-                            local_id_from_action_hash(base_address.into_action_hash().ok_or(
-                                wasm_error!(WasmErrorInner::Guest(String::from(
-                                    "No action hash associated with link"
-                                ))),
-                            )?);
-                        let target_local_id = local_id_from_action_hash(
-                            create_link.target_address.into_action_hash().ok_or(wasm_error!(
-                                WasmErrorInner::Guest(String::from(
-                                    "No action hash associated with link"
-                                ))
-                            ))?,
-                        );
-
-                        let persistence_create_link = PersistenceCreateLink::new(
-                            persistence_agent_id_from_agent_pub_key(create_link.author),
-                            PersistenceTimestamp(create_link.timestamp.0),
-                            create_link.action_seq,
-                            local_id_from_action_hash(create_link.prev_action),
-                            base_local_id.clone(),
-                            target_local_id.clone(),
-                            PersistenceLinkType::SmartLink,
-                            tag.clone(),
-                        );
-
-                        validate_delete_smartlink(
-                            persistence_delete_link,
-                            persistence_create_link,
-                            base_local_id,
-                            target_local_id,
-                            tag,
-                        )
+                        Ok(pvl_callback_result(validate_smartlink_delete(&create_link)?))
                     }
                     LinkTypes::AllHolonNodes => validate_delete_link_all_holon_nodes(
                         action,

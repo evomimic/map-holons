@@ -28,6 +28,15 @@ impl From<SmartLinkId> for LocalId {
 pub struct CanonicalKey(String);
 
 impl CanonicalKey {
+    /// Constructs a canonical key from a Tag v1 delimiter-extracted UTF-8 segment.
+    ///
+    /// This is intentionally crate-private: the codec's successful delimiter
+    /// scan proves that the segment contains no NUL, which discharges the
+    /// invariant without repeating fallible validation on peer bytes.
+    pub(crate) fn from_delimited_segment(value: String) -> Self {
+        Self(value)
+    }
+
     pub fn new(value: impl Into<String>) -> Result<Self, HolonError> {
         Self::try_from(value.into())
     }
