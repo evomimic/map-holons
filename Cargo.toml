@@ -92,6 +92,25 @@ tracing = "0.1"
 uuid = { version = "1", features = ["serde"] }
 
 # -------------------------------------------------------------------
+# Local crate patches
+# -------------------------------------------------------------------
+# `portmapper` is vendored with UPnP / PCP / NAT-PMP disabled by default, so sweettests stop
+# emitting SSDP multicast and gateway NAT-discovery probes. iroh hardcodes
+# `portmapper::Client::with_metrics(Default::default(), ..)`, so flipping that default is the
+# only lever; nothing in NetworkConfig, IrohTransportConfig or kitsune2 exposes a knob, and
+# dropping the `transport-iroh` feature does not compile.
+#
+# Scope: this workspace only. The happ zomes compile to wasm and never pull iroh, so the patch
+# reaches nothing but `tests/sweetests`. Deliberately NOT applied to `host/Cargo.toml` — a
+# `[patch]` is unconditional, so it would disable NAT traversal for production conductora
+# builds too, not just dev mode.
+#
+# See patches/README.md for the full rationale and removal criteria.
+# -------------------------------------------------------------------
+[patch.crates-io]
+portmapper = { path = "patches/portmapper" }
+
+# -------------------------------------------------------------------
 # Profiles
 # -------------------------------------------------------------------
 [profile.dev]

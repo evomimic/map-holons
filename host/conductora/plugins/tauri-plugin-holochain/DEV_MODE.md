@@ -39,11 +39,20 @@ When `MAP_START_MODE` is unset or set to `prod`, runtime uses normal mode.
 Conductor network config is forced to local-only placeholders (from `launch/config.rs`):
 
 - `bootstrap_url = http://127.0.0.1:1`
+- `signal_url = wss://127.0.0.1:1`
 - `relay_url = https://127.0.0.1:1`
 - `target_arc_factor = 0`
 - `advanced = None`
 
-This prevents accidental WAN signal/relay usage in dev startup.
+This prevents accidental WAN signal/relay usage in dev startup. All three URLs must be assigned
+explicitly: `NetworkConfig::default()` carries real public servers (`dev-test-bootstrap2.holochain.org`
+for bootstrap and signal, the iroh canary relay for relay), so any field left unset keeps its
+public default.
+
+`signal_url` and `relay_url` use TLS schemes (`wss`/`https`) rather than `ws`/`http` because
+`advanced = None` means neither `signalAllowPlainText` nor `relayAllowPlainText` is set, and both
+transports reject a plaintext URL without the matching flag. With TLS schemes, `advanced = None`
+needs no companion advanced config — re-confirmed against iroh at holochain 0.6.3.
 
 ### Normal mode
 
