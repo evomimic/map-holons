@@ -152,10 +152,6 @@ pub enum PvlViolation {
         actual_bytes: u16,
         max_bytes: u16,
     },
-    ValidationDependencyLimitExceeded {
-        requested: u8,
-        max: u8,
-    },
     EmptyPropertyName,
     InvalidPropertyName {
         reason: String,
@@ -246,7 +242,6 @@ impl PvlViolation {
             Self::RelationshipNameTooLong { .. } => "MAP-PVL-2103",
             Self::SmartLinkTagTooLarge { .. } => "MAP-PVL-2201",
             Self::CanonicalKeyTooLarge { .. } => "MAP-PVL-2202",
-            Self::ValidationDependencyLimitExceeded { .. } => "MAP-PVL-3001",
         }
     }
 }
@@ -303,9 +298,6 @@ impl fmt::Display for PvlViolation {
             }
             Self::IdentifierTooLong { max_bytes, .. } => {
                 write!(formatter, "identifier exceeds {max_bytes}-byte limit")
-            }
-            Self::ValidationDependencyLimitExceeded { max, .. } => {
-                write!(formatter, "validation dependency count exceeds {max}")
             }
             Self::EmptyPropertyName => formatter.write_str("property name is empty"),
             Self::InvalidPropertyName { .. } => formatter.write_str("property name is invalid"),
@@ -397,7 +389,6 @@ mod tests {
                 actual_bytes: 1,
                 max_bytes: 1,
             },
-            PvlViolation::ValidationDependencyLimitExceeded { requested: 1, max: 1 },
             PvlViolation::EmptyPropertyName,
             PvlViolation::InvalidPropertyName { reason: "control character".into() },
             PvlViolation::EmptyRelationshipName,
@@ -447,7 +438,7 @@ mod tests {
         let codes: Vec<_> = variants.iter().map(exhaustive_code).collect();
         let unique: HashSet<_> = codes.iter().copied().collect();
 
-        assert_eq!(codes.len(), 31);
+        assert_eq!(codes.len(), 30);
         assert_eq!(unique.len(), codes.len());
         assert!(codes.iter().all(|code| {
             code.strip_prefix("MAP-PVL-").is_some_and(|digits| {
@@ -479,7 +470,6 @@ mod tests {
             | PvlViolation::SmartLinkTagTooLarge { .. }
             | PvlViolation::RelationshipNameTooLong { .. }
             | PvlViolation::IdentifierTooLong { .. }
-            | PvlViolation::ValidationDependencyLimitExceeded { .. }
             | PvlViolation::EmptyPropertyName
             | PvlViolation::InvalidPropertyName { .. }
             | PvlViolation::EmptyRelationshipName
