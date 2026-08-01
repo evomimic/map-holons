@@ -1,16 +1,4 @@
-//! Deliberately-invalid SmartLink authoring seams, for integrity tests only (Issue #618).
-//!
-//! # This is not part of the storage API
-//!
-//! These probes exist only where typed production APIs cannot construct the operation needed to
-//! exercise a live Integrity rule. They are narrowly fixed to their named link type and must not
-//! become generic raw-link authoring or deletion endpoints.
-//!
-//! # Why it is not feature-gated
-//!
-//! Sweettests run against the DNA produced by `npm run build:happ`, the same artifact the host
-//! ships. Enabling a test feature in that artifact would make the gate decorative, so the probes
-//! remain always present, conspicuously named, and unsupported as production ingress.
+//! SmartLink probe for raw Tag v1 bytes unreachable through the canonical encoder.
 
 use crate::persistence_layer::holon_storage_externs::to_wasm;
 use hdk::prelude::*;

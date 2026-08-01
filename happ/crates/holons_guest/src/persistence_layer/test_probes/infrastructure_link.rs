@@ -1,16 +1,4 @@
-//! Deliberately-invalid infrastructure-link authoring seams, for integrity tests only (Issue #618).
-//!
-//! # This is not part of the storage API
-//!
-//! The production API intentionally exposes no deletion for the authoritative `AllHolonNodes`
-//! index. This module supplies only the fixed operation needed to prove that Integrity policy; it
-//! must not become a generic link deletion endpoint.
-//!
-//! # Why it is not feature-gated
-//!
-//! Sweettests run against the DNA produced by `npm run build:happ`, the same artifact the host
-//! ships. A feature gate enabled in that artifact would be decorative, so this probe remains
-//! always present, conspicuously named, and unsupported as production ingress.
+//! Infrastructure-link probe for the authoritative `AllHolonNodes` delete policy.
 
 use crate::persistence_layer::holon_storage_externs::to_wasm;
 use hdk::prelude::*;

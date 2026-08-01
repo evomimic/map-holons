@@ -8,7 +8,7 @@
 //!
 //! Every extern here delegates to the real storage API and adds no behaviour of its own. The
 //! deliberately-invalid authoring seam needed by one integrity test is kept out of this module —
-//! see `holon_storage_test_probes`.
+//! see `test_probes`.
 
 use crate::persistence_layer::holon_storage::{get_holon, get_holons, persist_holon};
 use core_types::{HolonError, HolonWriteRequest, StoredHolonNode};
