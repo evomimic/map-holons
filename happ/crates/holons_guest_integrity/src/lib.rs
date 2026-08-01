@@ -11,6 +11,7 @@
 //! propagation required to execute that policy inside an Integrity zome.
 
 mod action_target;
+pub mod agent_activity;
 pub mod holon_node;
 pub mod holon_node_envelope;
 pub mod holon_node_lifecycle;
@@ -18,6 +19,7 @@ pub mod infrastructure_links;
 pub mod smartlink_envelope;
 pub mod type_conversions;
 
+pub use agent_activity::{validate_create_agent, AgentActivityRejection};
 pub use holon_node::{
     HolonNode, ALL_HOLON_NODES_PATH, LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME,
     LOCAL_HOLON_SPACE_PATH,

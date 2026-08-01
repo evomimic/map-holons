@@ -1,16 +1,9 @@
-//! # Integrity Zome Validation Logic
+//! Holochain Integrity callback declarations and routing for MAP Holons.
 //!
-//! This file implements the integrity zome interface functions expected by the Holochain Conductor.
-//!
-//! Specifically, it:
-//! - Initiates the per-event validation process by responding to Holochain's `validate` extern call.
-//! - Handles inbound validation requests and dispatches them through the Holochain-aware guest adapter.
-//! - Projects Holochain-specific operation data into the substrate-independent models consumed by
-//!   `shared_validation`.
-//!
-//! The purpose of this layer is to keep callback dispatch and consensus-result mapping separate from
-//! substrate-independent domain validation, enabling that validation to be tested and reused outside
-//! the Holochain execution context.
+//! This zome owns only callback declarations, flattened-operation and scoped-type dispatch, and
+//! projection of completed adapter verdicts into `ValidateCallbackResult`. Holochain dependency
+//! resolution, action classification, entry decoding, and validation policy belong in
+//! `holons_guest_integrity` or its substrate-independent dependencies.
 
 use hdi::prelude::*;
 
@@ -42,13 +35,6 @@ pub fn genesis_self_check(_data: GenesisSelfCheckData) -> ExternResult<ValidateC
     Ok(ValidateCallbackResult::Valid)
 }
 
-pub fn validate_agent_joining(
-    _agent_pub_key: AgentPubKey,
-    _membrane_proof: &Option<MembraneProof>,
-) -> ExternResult<ValidateCallbackResult> {
-    Ok(ValidateCallbackResult::Valid)
-}
-
 /// Maps a completed PVL verdict onto the Integrity callback contract.
 ///
 /// Host and dependency-resolution failures are propagated before this helper is
@@ -61,10 +47,11 @@ fn pvl_callback_result(result: Result<(), PvlViolation>) -> ValidateCallbackResu
     }
 }
 
-/// Projects a completed fixed infrastructure-policy verdict onto the callback contract.
-fn infrastructure_callback_result(
-    result: Result<(), InfrastructureLinkRejection>,
-) -> ValidateCallbackResult {
+/// Projects a completed fixed Holochain-policy verdict onto the callback contract.
+///
+/// Infrastructure and agent-activity rules deliberately use non-PVL rejection types, but both
+/// become consensus-visible `Invalid` results only after dependency resolution has completed.
+fn fixed_callback_result<T: std::fmt::Display>(result: Result<(), T>) -> ValidateCallbackResult {
     match result {
         Ok(()) => ValidateCallbackResult::Valid,
         Err(rejection) => ValidateCallbackResult::Invalid(rejection.to_string()),
@@ -134,7 +121,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
         },
         FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, .. } => {
             match link_type {
-                LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
+                LinkTypes::HolonNodeUpdates => Ok(fixed_callback_result(
                     validate_holon_node_updates_create(&base_address, &target_address, &tag)?,
                 )),
                 LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
@@ -142,27 +129,27 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     &target_address,
                     &tag,
                 )?)),
-                LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
+                LinkTypes::AllHolonNodes => Ok(fixed_callback_result(
                     validate_all_holon_nodes_create(&base_address, &target_address, &tag)?,
                 )),
-                LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
+                LinkTypes::LocalHolonSpace => Ok(fixed_callback_result(
                     validate_local_holon_space_create(&base_address, &target_address, &tag)?,
                 )),
             }
         }
         FlatOp::RegisterDeleteLink { link_type, original_action, .. } => match link_type {
-            LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
-                validate_holon_node_updates_delete(&original_action)?,
-            )),
+            LinkTypes::HolonNodeUpdates => {
+                Ok(fixed_callback_result(validate_holon_node_updates_delete(&original_action)?))
+            }
             LinkTypes::SmartLink => {
                 Ok(pvl_callback_result(validate_smartlink_delete(&original_action)?))
             }
-            LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
-                validate_all_holon_nodes_delete(&original_action)?,
-            )),
-            LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
-                validate_local_holon_space_delete(&original_action)?,
-            )),
+            LinkTypes::AllHolonNodes => {
+                Ok(fixed_callback_result(validate_all_holon_nodes_delete(&original_action)?))
+            }
+            LinkTypes::LocalHolonSpace => {
+                Ok(fixed_callback_result(validate_local_holon_space_delete(&original_action)?))
+            }
         },
         FlatOp::StoreRecord(store_record) => match store_record {
             // HolonNode envelope validation already succeeded in the raw-op guard above.
@@ -184,7 +171,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             }
             OpRecord::CreateLink { base_address, target_address, tag, link_type, .. } => {
                 match link_type {
-                    LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
+                    LinkTypes::HolonNodeUpdates => Ok(fixed_callback_result(
                         validate_holon_node_updates_create(&base_address, &target_address, &tag)?,
                     )),
                     LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
@@ -192,10 +179,10 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         &target_address,
                         &tag,
                     )?)),
-                    LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
+                    LinkTypes::AllHolonNodes => Ok(fixed_callback_result(
                         validate_all_holon_nodes_create(&base_address, &target_address, &tag)?,
                     )),
-                    LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
+                    LinkTypes::LocalHolonSpace => Ok(fixed_callback_result(
                         validate_local_holon_space_create(&base_address, &target_address, &tag)?,
                     )),
                 }
@@ -213,18 +200,18 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     return Ok(ValidateCallbackResult::Valid);
                 };
                 match link_type {
-                    LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
-                        validate_holon_node_updates_delete(&create_link)?,
-                    )),
+                    LinkTypes::HolonNodeUpdates => {
+                        Ok(fixed_callback_result(validate_holon_node_updates_delete(&create_link)?))
+                    }
                     LinkTypes::SmartLink => {
                         Ok(pvl_callback_result(validate_smartlink_delete(&create_link)?))
                     }
-                    LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
-                        validate_all_holon_nodes_delete(&create_link)?,
-                    )),
-                    LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
-                        validate_local_holon_space_delete(&create_link)?,
-                    )),
+                    LinkTypes::AllHolonNodes => {
+                        Ok(fixed_callback_result(validate_all_holon_nodes_delete(&create_link)?))
+                    }
+                    LinkTypes::LocalHolonSpace => {
+                        Ok(fixed_callback_result(validate_local_holon_space_delete(&create_link)?))
+                    }
                 }
             }
             OpRecord::CreatePrivateEntry { .. } => Ok(ValidateCallbackResult::Valid),
@@ -241,20 +228,7 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
         },
         FlatOp::RegisterAgentActivity(agent_activity) => match agent_activity {
             OpActivity::CreateAgent { agent, action } => {
-                let previous_action = must_get_action(action.prev_action)?;
-                match previous_action.action() {
-                        Action::AgentValidationPkg(
-                            AgentValidationPkg { membrane_proof, .. },
-                        ) => validate_agent_joining(agent, membrane_proof),
-                        _ => {
-                            Ok(
-                                ValidateCallbackResult::Invalid(
-                                    "The previous action for a `CreateAgent` action must be an `AgentValidationPkg`"
-                                        .to_string(),
-                                ),
-                            )
-                        }
-                    }
+                Ok(fixed_callback_result(validate_create_agent(agent, &action)?))
             }
             _ => Ok(ValidateCallbackResult::Valid),
         },
