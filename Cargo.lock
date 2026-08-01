@@ -3427,6 +3427,7 @@ dependencies = [
  "core_types",
  "hdi",
  "hdk",
+ "holochain_serialized_bytes",
  "holons_boundary",
  "holons_core",
  "holons_guest_integrity",
@@ -3434,6 +3435,7 @@ dependencies = [
  "holons_loader",
  "integrity_core_types",
  "serde",
+ "shared_validation",
  "tracing",
  "type_names",
 ]

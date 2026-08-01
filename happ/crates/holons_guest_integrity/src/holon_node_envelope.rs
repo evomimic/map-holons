@@ -332,9 +332,10 @@ mod tests {
         }
     }
 
-    // Envelope canonicality validation re-encodes `HolonNodeModel`, so this test
-    // guards the assumption that the model and guest-facing entry type have an
-    // identical serialized representation.
+    // Coordinator preflight measures `HolonNodeModel`, while `create_entry` and
+    // `update_entry` serialize the guest-facing `HolonNode` internally. Guard
+    // their identical representation so preflight cannot silently measure a
+    // different payload from the one eventually authored.
     #[test]
     fn model_encoding_matches_guest_inner_entry_encoding() {
         let empty = HolonNode::new(PropertyMap::new());
@@ -358,9 +359,11 @@ mod tests {
         );
     }
 
-    // The envelope validator reads `AppEntryBytes` directly. Guard that those
-    // stored inner bytes are exactly the bytes produced by guest serialization,
-    // with no additional wrapper encoding introduced by `Entry::app`.
+    // Coordinator preflight cannot supply its measured bytes directly to the
+    // typed Holochain write functions. Guard that the stored inner app-entry
+    // payload is exactly the guest serialization, with no wrapper encoding,
+    // because both coordinator measurement and Integrity raw-byte validation
+    // depend on this parity.
     #[test]
     fn stored_app_entry_payload_matches_guest_encoding() {
         let node = canonical_node(BTreeMap::from([(

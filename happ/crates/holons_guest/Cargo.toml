@@ -14,12 +14,13 @@ guest = []  # This crate supports the `guest` feature
 # General dev-dependencies (platform-agnostic)
 Inflector = "0.11"
 
-serde = { workspace = true}
+serde = { workspace = true }
 tracing = "0.1"
 
 # Holochain Dependencies
 hdk = "0.6"
 hdi = "0.7"
+holochain_serialized_bytes = "*"
 
 # MAP Dependencies
 
@@ -28,6 +29,9 @@ path = "../../../shared_crates/holons_core"
 
 [dependencies.integrity_core_types]
 path = "../../../shared_crates/type_system/integrity_core_types"
+
+[dependencies.shared_validation]
+path = "../../../shared_crates/shared_validation"
 
 [dependencies.core_types]
 path = "../../../shared_crates/type_system/core_types"
