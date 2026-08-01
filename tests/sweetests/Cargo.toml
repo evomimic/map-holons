@@ -23,6 +23,8 @@ holochain_state = "0.6"
 # The preflight assertion downcasts Wasmer's source error to the exact guest error payload.
 # Holochain consumes this same crate/version transitively but does not re-export these types.
 holochain_wasmer_common = "0.0.102"
+# Direct extern inputs include Holochain `Path`; Holochain's native prelude does not re-export it.
+hdi = "0.7"
 
 
 # Workaround: iroh-base-holochain (latest is 0.95.2) still hard-pins

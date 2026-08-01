@@ -3512,6 +3512,7 @@ dependencies = [
  "core_types",
  "derive-new",
  "digest 0.11.0-rc.3",
+ "hdi",
  "holochain",
  "holochain_state",
  "holochain_wasmer_common",

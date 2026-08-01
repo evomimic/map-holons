@@ -16,6 +16,19 @@ pub fn assert_commit_rejected_with_pvl<T: Debug>(
     result: Result<T, ConductorApiError>,
     expected_message: &str,
 ) {
+    assert!(
+        expected_message.starts_with("MAP-PVL-"),
+        "assert_commit_rejected_with_pvl expects a MAP-PVL message; use \
+         assert_commit_rejected_with_message for fixed-policy rejections"
+    );
+    assert_commit_rejected_with_message(result, expected_message);
+}
+
+/// Asserts an exact deterministic Integrity rejection, including non-PVL fixed policies.
+pub fn assert_commit_rejected_with_message<T: Debug>(
+    result: Result<T, ConductorApiError>,
+    expected_message: &str,
+) {
     let reason = match result {
         Err(ConductorApiError::CellError(CellError::WorkflowError(workflow_error))) => {
             match *workflow_error {
