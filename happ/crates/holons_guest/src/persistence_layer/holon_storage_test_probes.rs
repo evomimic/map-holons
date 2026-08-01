@@ -51,3 +51,16 @@ pub fn holon_storage_author_update_for_test(
 
     Ok(local_id_from_action_hash(action_hash))
 }
+
+/// Authors a raw `HolonNode` create without coordinator preflight.
+///
+/// This probe exists only to prove through a live conductor that Integrity independently rejects
+/// a structurally invalid HolonNode after the canonical production boundary begins rejecting the
+/// same model before authoring. It fixes the entry type and exposes no generic raw-entry ingress.
+///
+/// Not a supported write path.
+#[hdk_extern]
+pub fn holon_storage_author_create_for_test(holon_node: HolonNodeModel) -> ExternResult<LocalId> {
+    let action_hash = create_entry(&EntryTypes::HolonNode(HolonNode::from(holon_node)))?;
+    Ok(local_id_from_action_hash(action_hash))
+}

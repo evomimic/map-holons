@@ -5,6 +5,7 @@ use integrity_core_types::PropertyMap;
 // ===============================
 // 📌 Constants
 // ===============================
+pub const ALL_HOLON_NODES_PATH: &str = "all_holon_nodes";
 pub const LOCAL_HOLON_SPACE_PATH: &str = "local_holon_space";
 pub const LOCAL_HOLON_SPACE_NAME: &str = "LocalHolonSpace";
 pub const LOCAL_HOLON_SPACE_DESCRIPTION: &str = "Default Local Holon Space";

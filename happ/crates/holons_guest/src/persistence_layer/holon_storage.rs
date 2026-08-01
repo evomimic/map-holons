@@ -28,7 +28,7 @@ use core_types::{
 };
 use hdk::prelude::*;
 use holochain_serialized_bytes::encode;
-use holons_guest_integrity::{type_conversions::*, HolonNode};
+use holons_guest_integrity::{type_conversions::*, HolonNode, ALL_HOLON_NODES_PATH};
 use holons_integrity::{EntryTypes, LinkTypes};
 use integrity_core_types::{short_hex, HolonNodeModel, LocalId};
 use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
@@ -321,7 +321,7 @@ fn resolve_lineage_root_for_predecessors(
 
 /// Adds the new holon to the space-wide holon index.
 fn index_under_all_holon_nodes(action_hash: &ActionHash) -> Result<(), HolonError> {
-    let path = Path::from("all_holon_nodes");
+    let path = Path::from(ALL_HOLON_NODES_PATH);
     let base = path.path_entry_hash().map_err(holon_error_from_wasm_error)?;
 
     create_link(base, action_hash.clone(), LinkTypes::AllHolonNodes, ())

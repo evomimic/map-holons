@@ -3514,6 +3514,7 @@ dependencies = [
  "digest 0.11.0-rc.3",
  "holochain",
  "holochain_state",
+ "holochain_wasmer_common",
  "holon_dance_builders",
  "holons_boundary",
  "holons_client",

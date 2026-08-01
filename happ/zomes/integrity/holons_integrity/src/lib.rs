@@ -17,10 +17,6 @@ use hdi::prelude::*;
 use holons_guest_integrity::*;
 use integrity_core_types::*;
 
-pub mod holon_node;
-
-pub use holon_node::*;
-
 #[cfg(test)]
 mod tests;
 
@@ -62,6 +58,16 @@ fn pvl_callback_result(result: Result<(), PvlViolation>) -> ValidateCallbackResu
     match result {
         Ok(()) => ValidateCallbackResult::Valid,
         Err(violation) => ValidateCallbackResult::Invalid(violation.to_string()),
+    }
+}
+
+/// Projects a completed fixed infrastructure-policy verdict onto the callback contract.
+fn infrastructure_callback_result(
+    result: Result<(), InfrastructureLinkRejection>,
+) -> ValidateCallbackResult {
+    match result {
+        Ok(()) => ValidateCallbackResult::Valid,
+        Err(rejection) => ValidateCallbackResult::Invalid(rejection.to_string()),
     }
 }
 
@@ -126,62 +132,37 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 Ok(pvl_callback_result(validate_holon_node_delete_target(&action.deletes_address)?))
             }
         },
-        FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, action } => {
+        FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, .. } => {
             match link_type {
-                LinkTypes::HolonNodeUpdates => validate_create_link_holon_node_updates(
-                    action,
-                    base_address,
-                    target_address,
-                    tag,
-                ),
+                LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
+                    validate_holon_node_updates_create(&base_address, &target_address, &tag)?,
+                )),
                 LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
                     &base_address,
                     &target_address,
                     &tag,
                 )?)),
-                LinkTypes::AllHolonNodes => {
-                    validate_create_link_all_holon_nodes(action, base_address, target_address, tag)
-                }
-                LinkTypes::LocalHolonSpace => validate_create_link_local_holon_space(
-                    action,
-                    base_address,
-                    target_address,
-                    tag,
-                ),
+                LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
+                    validate_all_holon_nodes_create(&base_address, &target_address, &tag)?,
+                )),
+                LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
+                    validate_local_holon_space_create(&base_address, &target_address, &tag)?,
+                )),
             }
         }
-        FlatOp::RegisterDeleteLink {
-            link_type,
-            base_address,
-            target_address,
-            tag,
-            original_action,
-            action,
-        } => match link_type {
-            LinkTypes::HolonNodeUpdates => validate_delete_link_holon_node_updates(
-                action,
-                original_action,
-                base_address,
-                target_address,
-                tag,
-            ),
+        FlatOp::RegisterDeleteLink { link_type, original_action, .. } => match link_type {
+            LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
+                validate_holon_node_updates_delete(&original_action)?,
+            )),
             LinkTypes::SmartLink => {
                 Ok(pvl_callback_result(validate_smartlink_delete(&original_action)?))
             }
-            LinkTypes::AllHolonNodes => validate_delete_link_all_holon_nodes(
-                action,
-                original_action,
-                base_address,
-                target_address,
-                tag,
-            ),
-            LinkTypes::LocalHolonSpace => validate_delete_link_local_holon_space(
-                action,
-                original_action,
-                base_address,
-                target_address,
-                tag,
-            ),
+            LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
+                validate_all_holon_nodes_delete(&original_action)?,
+            )),
+            LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
+                validate_local_holon_space_delete(&original_action)?,
+            )),
         },
         FlatOp::StoreRecord(store_record) => match store_record {
             // HolonNode envelope validation already succeeded in the raw-op guard above.
@@ -201,34 +182,25 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             OpRecord::DeleteEntry { action, .. } => {
                 Ok(pvl_callback_result(validate_holon_node_delete_target(&action.deletes_address)?))
             }
-            OpRecord::CreateLink { base_address, target_address, tag, link_type, action } => {
+            OpRecord::CreateLink { base_address, target_address, tag, link_type, .. } => {
                 match link_type {
-                    LinkTypes::HolonNodeUpdates => validate_create_link_holon_node_updates(
-                        action,
-                        base_address,
-                        target_address,
-                        tag,
-                    ),
+                    LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
+                        validate_holon_node_updates_create(&base_address, &target_address, &tag)?,
+                    )),
                     LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
                         &base_address,
                         &target_address,
                         &tag,
                     )?)),
-                    LinkTypes::AllHolonNodes => validate_create_link_all_holon_nodes(
-                        action,
-                        base_address,
-                        target_address,
-                        tag,
-                    ),
-                    LinkTypes::LocalHolonSpace => validate_create_link_local_holon_space(
-                        action,
-                        base_address,
-                        target_address,
-                        tag,
-                    ),
+                    LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
+                        validate_all_holon_nodes_create(&base_address, &target_address, &tag)?,
+                    )),
+                    LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
+                        validate_local_holon_space_create(&base_address, &target_address, &tag)?,
+                    )),
                 }
             }
-            OpRecord::DeleteLink { original_action_hash, base_address, action } => {
+            OpRecord::DeleteLink { original_action_hash, .. } => {
                 let create_link = match resolve_link_delete_target(original_action_hash)? {
                     Ok(create_link) => create_link,
                     Err(violation) => {
@@ -241,30 +213,18 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     return Ok(ValidateCallbackResult::Valid);
                 };
                 match link_type {
-                    LinkTypes::HolonNodeUpdates => validate_delete_link_holon_node_updates(
-                        action,
-                        create_link.clone(),
-                        base_address,
-                        create_link.target_address,
-                        create_link.tag,
-                    ),
+                    LinkTypes::HolonNodeUpdates => Ok(infrastructure_callback_result(
+                        validate_holon_node_updates_delete(&create_link)?,
+                    )),
                     LinkTypes::SmartLink => {
                         Ok(pvl_callback_result(validate_smartlink_delete(&create_link)?))
                     }
-                    LinkTypes::AllHolonNodes => validate_delete_link_all_holon_nodes(
-                        action,
-                        create_link.clone(),
-                        base_address,
-                        create_link.target_address,
-                        create_link.tag,
-                    ),
-                    LinkTypes::LocalHolonSpace => validate_delete_link_local_holon_space(
-                        action,
-                        create_link.clone(),
-                        base_address,
-                        create_link.target_address,
-                        create_link.tag,
-                    ),
+                    LinkTypes::AllHolonNodes => Ok(infrastructure_callback_result(
+                        validate_all_holon_nodes_delete(&create_link)?,
+                    )),
+                    LinkTypes::LocalHolonSpace => Ok(infrastructure_callback_result(
+                        validate_local_holon_space_delete(&create_link)?,
+                    )),
                 }
             }
             OpRecord::CreatePrivateEntry { .. } => Ok(ValidateCallbackResult::Valid),

@@ -12,11 +12,9 @@
 
 use hdi::prelude::*;
 use integrity_core_types::PvlViolation;
-use shared_validation::{
-    validate_delete_target, validate_update_target, LifecycleTarget, TargetActionKind,
-    TargetEntryKind,
-};
+use shared_validation::{validate_delete_target, validate_update_target};
 
+use crate::action_target::classify_target;
 use crate::holon_node_envelope::HOLON_NODE_ENTRY_DEF_INDEX;
 
 /// Resolves and validates the lineage root named by a `HolonNode` update.
@@ -60,38 +58,13 @@ pub fn validate_holon_node_delete_target(
     Ok(validate_delete_target(&target))
 }
 
-/// Projects a resolved Holochain action into the closed pure lifecycle model.
-///
-/// The caller supplies scoped app-entry classification because the update path
-/// derives scope from the new entry while the delete path derives it from
-/// `zome_info`. Keeping resolution outside this helper makes it impossible for
-/// pure validation to trigger additional host calls.
-fn classify_target(
-    action: &Action,
-    is_holon_node: impl FnOnce(&AppEntryDef) -> bool,
-) -> LifecycleTarget {
-    let action_kind = match action {
-        Action::Create(_) => TargetActionKind::Create,
-        Action::Update(_) => TargetActionKind::Update,
-        _ => TargetActionKind::Other,
-    };
-    let entry_kind = match action.entry_type() {
-        Some(EntryType::App(entry_def)) if is_holon_node(entry_def) => TargetEntryKind::HolonNode,
-        Some(EntryType::App(_)) => TargetEntryKind::OtherAppEntry,
-        Some(_) => TargetEntryKind::NonAppEntry,
-        None => TargetEntryKind::Absent,
-    };
-
-    LifecycleTarget { action_kind, entry_kind }
-}
-
 #[cfg(test)]
 mod tests {
     use integrity_core_types::PvlViolation;
     use mockall::mock;
     use shared_validation::{
-        CREATE_ACTION_KIND, CREATE_OR_UPDATE_ACTION_KIND, HOLON_NODE_ENTRY_KIND, OTHER_ACTION_KIND,
-        OTHER_APP_ENTRY_KIND, UPDATE_ACTION_KIND,
+        TargetEntryKind, CREATE_ACTION_KIND, CREATE_OR_UPDATE_ACTION_KIND, HOLON_NODE_ENTRY_KIND,
+        OTHER_ACTION_KIND, OTHER_APP_ENTRY_KIND, UPDATE_ACTION_KIND,
     };
 
     use super::*;

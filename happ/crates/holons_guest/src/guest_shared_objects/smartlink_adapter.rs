@@ -7,7 +7,7 @@
 
 use core_types::{HolonError, HolonId, PreparedSmartLink, PutSmartLinkOutcome};
 use hdk::prelude::*;
-use holons_guest_integrity::type_conversions::*;
+use holons_guest_integrity::{type_conversions::*, ALL_HOLON_NODES_PATH};
 use holons_integrity::LinkTypes;
 use integrity_core_types::{LocalId, RelationshipName};
 
@@ -19,7 +19,7 @@ pub use core_types::SmartLink;
 
 // This link query defaults on all fields; `GetStrategy::default()` performs a network fetch.
 pub fn fetch_links_to_all_holons() -> Result<Vec<HolonId>, HolonError> {
-    let path = Path::from("all_holon_nodes");
+    let path = Path::from(ALL_HOLON_NODES_PATH);
     let base_address = path.path_entry_hash().map_err(holon_error_from_wasm_error)?;
     let links_query = LinkQuery::try_new(base_address, LinkTypes::AllHolonNodes)
         .map_err(holon_error_from_wasm_error)?;
