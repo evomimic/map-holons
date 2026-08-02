@@ -1,4 +1,4 @@
-schema MAP Core Schema-v0.0.7
+schema "MAP Core Schema-v0.0.7"
 property AllowsDuplicates {
   value MapBooleanValueType
   header {

@@ -1,6 +1,6 @@
-schema MAP Query Schema-v0.0.1 {
-  depends_on MAP Core Schema-v0.0.7
-  depends_on MAP Dance Schema-v0.0.4
+schema "MAP Query Schema-v0.0.1" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Dance Schema-v0.0.4"
   header {
     description: "Schema containing the minimal query substrate (QueryDance, request/graph/step, bindings, and execution state) needed for the SeedHolons + Expand QueryDance vertical slice."
   }

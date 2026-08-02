@@ -1,5 +1,5 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Dance Schema-v0.0.4
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Dance Schema-v0.0.4"
 }
 holon LoaderHolon {
   allows_additional_properties

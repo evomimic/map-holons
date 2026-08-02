@@ -1,10 +1,20 @@
-schema MAP Dance Schema-v0.0.4 {
-  depends_on MAP Core Schema-v0.0.7
-  depends_on MAP Key Rule Schema
+schema "MAP Dance Schema-v0.0.4" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Key Rule Schema"
   header {
     description: "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema."
   }
 }
+
+instance ImplementationName.FormatRule {
+  type FormatRule.KeyRuleType
+  TypeName "ImplementationName"
+  TemplateString "{0}"
+  relationships {
+    TemplateParameters -> ImplementationName.PropertyType
+  }
+}
+
 abstract holon DanceType {
   header {
     description: "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type (DanceInput) and a response holon type. Dance input may be any fixed-shape holon type, not only a Projection."
@@ -16,7 +26,7 @@ abstract holon DanceType {
     DanceDescription.PropertyType
   }
   relationships {
-    (DanceType.HolonType)-[DanceInput]->(HolonType)
+    (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)
     (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
   }
 }
@@ -30,7 +40,7 @@ abstract holon DanceResponseType {
     plural: "DanceResponseTypes"
   }
   relationships {
-    (DanceResponseType.HolonType)-[ResponseBody]->(HolonType)
+    (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)
     (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)
   }
 }
@@ -58,14 +68,14 @@ holon DanceInvocation {
   }
   relationships {
     (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)
-    (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType)
-    (DanceInvocation.HolonType)-[Request]->(HolonType)
+    (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)
+    (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)
   }
 }
 
 
 holon DanceImplementation {
-  keyrule ImplementationNameRule.FormatRule
+  instance_keyrule ImplementationName.FormatRule
   header {
     description: "Concrete binding of a DanceType with executable details (engine, module, entrypoint, ABI, version/compat)."
     display_name: "Dance Implementation"
@@ -114,7 +124,7 @@ abstract holon Projection {
 
 
 def relationship AffordsDance {
-  source HolonType
+  source HolonType.TypeDescriptor
   target DanceType.HolonType
   inverse DanceAffordedBy
   cardinality 0..32767
@@ -130,7 +140,7 @@ def relationship AffordsDance {
 
 inverse relationship DanceAffordedBy {
   source DanceType.HolonType
-  target HolonType
+  target HolonType.TypeDescriptor
   cardinality 0..32767
   header {
     description: "Inverse of AffordsDance, from DanceType to HolonType."
@@ -142,7 +152,7 @@ inverse relationship DanceAffordedBy {
 
 
 def relationship ImplementsDance {
-  source TypeDescriptor.HolonType
+  source TypeDescriptor
   target DanceImplementation.HolonType
   inverse ImplementedFor
   cardinality 0..1
@@ -158,7 +168,7 @@ def relationship ImplementsDance {
 
 inverse relationship ImplementedFor {
   source DanceImplementation.HolonType
-  target TypeDescriptor.HolonType
+  target TypeDescriptor
   cardinality 0..1
   header {
     description: "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor."
@@ -199,7 +209,7 @@ inverse relationship HasImplementation {
 
 def relationship DanceInput {
   source DanceType.HolonType
-  target HolonType
+  target HolonType.TypeDescriptor
   inverse DanceInputFor
   cardinality 0..1
   deletion_semantic Block
@@ -213,7 +223,7 @@ def relationship DanceInput {
 
 
 inverse relationship DanceInputFor {
-  source HolonType
+  source HolonType.TypeDescriptor
   target DanceType.HolonType
   cardinality 0..32767
   header {
@@ -255,7 +265,7 @@ inverse relationship ResponseFor {
 
 def relationship ResponseBody {
   source DanceResponseType.HolonType
-  target HolonType
+  target HolonType.TypeDescriptor
   inverse ResponseBodyFor
   cardinality 0..1
   deletion_semantic Block
@@ -269,7 +279,7 @@ def relationship ResponseBody {
 
 
 inverse relationship ResponseBodyFor {
-  source HolonType
+  source HolonType.TypeDescriptor
   target DanceResponseType.HolonType
   cardinality 0..32767
   header {
@@ -311,7 +321,7 @@ inverse relationship InvokedBy {
 
 def relationship AffordingHolon {
   source DanceInvocation.HolonType
-  target HolonType
+  target HolonType.TypeDescriptor
   inverse AffordsDanceInvocation
   cardinality 0..1
   deletion_semantic Block
@@ -325,7 +335,7 @@ def relationship AffordingHolon {
 
 
 inverse relationship AffordsDanceInvocation {
-  source HolonType
+  source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
   cardinality 0..32767
   header {
@@ -339,7 +349,7 @@ inverse relationship AffordsDanceInvocation {
 
 def relationship Request {
   source DanceInvocation.HolonType
-  target HolonType
+  target HolonType.TypeDescriptor
   inverse RequestFor
   cardinality 0..1
   deletion_semantic Block
@@ -353,7 +363,7 @@ def relationship Request {
 
 
 inverse relationship RequestFor {
-  source HolonType
+  source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
   cardinality 0..32767
   header {
@@ -852,7 +862,7 @@ property CommitRequestStatus {
 
 relationship SavedHolons {
   source CommitResponse.Projection
-  target HolonType
+  target HolonType.TypeDescriptor
   inverse SavedByCommit
   cardinality 0..32767
   deletion_semantic Allow
@@ -866,7 +876,7 @@ relationship SavedHolons {
 
 
 inverse relationship SavedByCommit {
-  source HolonType
+  source HolonType.TypeDescriptor
   target CommitResponse.Projection
   cardinality 0..1
   header {
@@ -880,7 +890,7 @@ inverse relationship SavedByCommit {
 
 relationship AbandonedHolons {
   source CommitResponse.Projection
-  target HolonType
+  target HolonType.TypeDescriptor
   inverse AbandonedByCommit
   cardinality 0..32767
   deletion_semantic Allow
@@ -894,7 +904,7 @@ relationship AbandonedHolons {
 
 
 inverse relationship AbandonedByCommit {
-  source HolonType
+  source HolonType.TypeDescriptor
   target CommitResponse.Projection
   cardinality 0..1
   header {

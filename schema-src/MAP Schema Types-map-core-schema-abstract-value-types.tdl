@@ -1,11 +1,10 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Key Rule Schema
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Key Rule Schema"
 }
 
-holon MetaValueType {
-  type MetaHolonType
-  keyrule TypeNameRule.KeyRuleType
-  extends MetaTypeDescriptor
+holon MetaValueType.MetaTypeDescriptor {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaTypeDescriptor.HolonType
   header {
     description: "Common meta-type describing value-type descriptor holons."
     display_name: "Meta Value Type"
@@ -14,14 +13,26 @@ holon MetaValueType {
   }
   relationships {
     InstanceRelationships -> [
-      (ValueType)-[AffordsOperator]->(OperatorType)
+      (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType)
     ]
   }
 }
 
-holon MetaStringValueType {
-  type MetaHolonType
-  extends MetaValueType
+holon MetaEnumVariantValueType.MetaValueType {
+  type MetaHolonType.MetaTypeDescriptor
+  instance_keyrule EnumVariantRule.KeyRuleType
+  extends MetaValueType.MetaTypeDescriptor
+  header {
+    description: "Meta-type describing concrete enum-member descriptor holons and prescribing owner-qualified descriptor keys."
+    display_name: "Meta Enum Variant Value Type"
+    display_plural: "Meta Enum Variant Value Types"
+    plural: "MetaEnumVariantValueTypes"
+  }
+}
+
+holon MetaStringValueType.MetaValueType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaValueType.MetaTypeDescriptor
   header {
     description: "Meta-type describing string value-type descriptor holons."
     display_name: "Meta String Value Type"
@@ -30,14 +41,14 @@ holon MetaStringValueType {
   }
   relationships {
     InstanceRelationships -> [
-      (StringValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)
+      (StringValueType.ValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)
     ]
   }
 }
 
-holon MetaIntegerValueType {
-  type MetaHolonType
-  extends MetaValueType
+holon MetaIntegerValueType.MetaValueType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaValueType.MetaTypeDescriptor
   header {
     description: "Meta-type describing integer value-type descriptor holons."
     display_name: "Meta Integer Value Type"
@@ -46,14 +57,14 @@ holon MetaIntegerValueType {
   }
   relationships {
     InstanceRelationships -> [
-      (IntegerValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)
+      (IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)
     ]
   }
 }
 
-holon MetaBytesValueType {
-  type MetaHolonType
-  extends MetaValueType
+holon MetaBytesValueType.MetaValueType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaValueType.MetaTypeDescriptor
   header {
     description: "Meta-type describing byte-sequence value-type descriptor holons."
     display_name: "Meta Bytes Value Type"
@@ -62,14 +73,14 @@ holon MetaBytesValueType {
   }
   relationships {
     InstanceRelationships -> [
-      (BytesValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)
+      (BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)
     ]
   }
 }
 
-holon MetaEnumValueType {
-  type MetaHolonType
-  extends MetaValueType
+holon MetaEnumValueType.MetaValueType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaValueType.MetaTypeDescriptor
   header {
     description: "Meta-type describing enum value-type descriptor holons."
     display_name: "Meta Enum Value Type"
@@ -78,14 +89,14 @@ holon MetaEnumValueType {
   }
   relationships {
     InstanceRelationships -> [
-      (EnumValueType)-[Variants]->(EnumVariantValueType)
+      (EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)
     ]
   }
 }
 
-holon MetaValueArrayValueType {
-  type MetaHolonType
-  extends MetaValueType
+holon MetaValueArrayValueType.MetaValueType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaValueType.MetaTypeDescriptor
   header {
     description: "Meta-type describing value-array descriptor holons."
     display_name: "Meta Value Array Type"
@@ -94,14 +105,14 @@ holon MetaValueArrayValueType {
   }
   relationships {
     InstanceRelationships -> [
-      (ValueArrayValueType)-[ElementValueType]->(ValueType),
-      (ValueArrayValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)
+      (ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor),
+      (ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)
     ]
   }
 }
 
-abstract value ValueType {
-  type MetaValueType
+abstract value ValueType.TypeDescriptor {
+  type MetaValueType.MetaTypeDescriptor
   extends TypeDescriptor
   header {
     description: "Abstract descriptor category for scalar, enum, variant, and array value types."
@@ -111,9 +122,9 @@ abstract value ValueType {
   }
 }
 
-abstract value StringValueType {
-  type MetaStringValueType
-  extends ValueType
+abstract value StringValueType.ValueType {
+  type MetaStringValueType.MetaValueType
+  extends ValueType.TypeDescriptor
   header {
     description: "Abstract descriptor category for string-based value types."
     display_name: "String Value Type"
@@ -128,9 +139,9 @@ abstract value StringValueType {
   }
 }
 
-abstract value IntegerValueType {
-  type MetaIntegerValueType
-  extends ValueType
+abstract value IntegerValueType.ValueType {
+  type MetaIntegerValueType.MetaValueType
+  extends ValueType.TypeDescriptor
   header {
     description: "Abstract descriptor category for integer-based value types."
     display_name: "Integer Value Type"
@@ -145,9 +156,9 @@ abstract value IntegerValueType {
   }
 }
 
-abstract value BooleanValueType {
-  type MetaValueType
-  extends ValueType
+abstract value BooleanValueType.ValueType {
+  type MetaValueType.MetaTypeDescriptor
+  extends ValueType.TypeDescriptor
   header {
     description: "Abstract descriptor category for Boolean value types."
     display_name: "Boolean Value Type"
@@ -159,9 +170,9 @@ abstract value BooleanValueType {
   }
 }
 
-abstract value BytesValueType {
-  type MetaBytesValueType
-  extends ValueType
+abstract value BytesValueType.ValueType {
+  type MetaBytesValueType.MetaValueType
+  extends ValueType.TypeDescriptor
   header {
     description: "Abstract descriptor category for byte-sequence value types."
     display_name: "Bytes Value Type"
@@ -170,9 +181,9 @@ abstract value BytesValueType {
   }
 }
 
-abstract enum EnumValueType {
-  type MetaEnumValueType
-  extends ValueType
+abstract enum EnumValueType.ValueType {
+  type MetaEnumValueType.MetaValueType
+  extends ValueType.TypeDescriptor
   header {
     description: "Abstract descriptor category for enum value types."
     display_name: "Enum Value Type"
@@ -184,9 +195,9 @@ abstract enum EnumValueType {
   }
 }
 
-abstract variant EnumVariantValueType {
-  type MetaValueType
-  extends ValueType
+abstract variant EnumVariantValueType.ValueType {
+  type MetaValueType.MetaTypeDescriptor
+  extends ValueType.TypeDescriptor
   header {
     description: "Abstract descriptor category for symbolic variants owned by enum value types."
     display_name: "Enum Variant Value Type"
@@ -195,9 +206,9 @@ abstract variant EnumVariantValueType {
   }
 }
 
-abstract value ValueArrayValueType {
-  type MetaValueArrayValueType
-  extends ValueType
+abstract value ValueArrayValueType.ValueType {
+  type MetaValueArrayValueType.MetaValueType
+  extends ValueType.TypeDescriptor
   header {
     description: "Abstract descriptor category for array value types."
     display_name: "Value Array Type"

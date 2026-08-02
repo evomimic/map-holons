@@ -1,8 +1,8 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Key Rule Schema
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Key Rule Schema"
 }
 abstract holon OperatorType {
-  keyrule TypeNameRule.KeyRuleType
+  instance_keyrule TypeNameRule.KeyRuleType
   header {
     description: "Abstract descriptor for operator affordances. OperatorTypes are core-defined operations applicable to ValueTypes, used for validation, query construction, and filter expressions."
     display_name: "Operator Type"
@@ -17,7 +17,7 @@ abstract holon OperatorType {
 
 
 relationship AffordsOperator {
-  source ValueType
+  source ValueType.TypeDescriptor
   target OperatorType.HolonType
   inverse AffordedBy
   cardinality 0..32767
@@ -33,7 +33,7 @@ relationship AffordsOperator {
 
 inverse relationship AffordedBy {
   source OperatorType.HolonType
-  target ValueType
+  target ValueType.TypeDescriptor
   cardinality 1..32767
   header {
     description: "Inverse of AffordsOperator, relationship from OperatorType to ValueType."

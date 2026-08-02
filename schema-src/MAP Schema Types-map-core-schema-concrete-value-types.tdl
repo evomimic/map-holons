@@ -1,9 +1,8 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Key Rule Schema
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Key Rule Schema"
 }
 value MapStringValueType {
-  keyrule TypeNameRule.KeyRuleType
-  extends StringValueType
+  extends StringValueType.ValueType
   header {
     description: "Concrete value type representing strings."
     display_name: "MapStringValueType"
@@ -14,8 +13,7 @@ value MapStringValueType {
 
 
 value MapIntegerValueType {
-  keyrule TypeNameRule.KeyRuleType
-  extends IntegerValueType
+  extends IntegerValueType.ValueType
   header {
     description: "Concrete value type representing integers."
     display_name: "MapIntegerValueType"
@@ -26,8 +24,7 @@ value MapIntegerValueType {
 
 
 value MapBooleanValueType {
-  keyrule TypeNameRule.KeyRuleType
-  extends BooleanValueType
+  extends BooleanValueType.ValueType
   header {
     description: "Concrete value type representing booleans."
     display_name: "MapBooleanValueType"
@@ -38,8 +35,7 @@ value MapBooleanValueType {
 
 
 value MapBytesValueType {
-  keyrule TypeNameRule.KeyRuleType
-  extends BytesValueType
+  extends BytesValueType.ValueType
   header {
     description: "Concrete value type representing byte sequences."
     display_name: "MapBytesValueType"
@@ -50,8 +46,7 @@ value MapBytesValueType {
 
 
 enum MapEnumValueType {
-  keyrule TypeNameRule.KeyRuleType
-  extends EnumValueType
+  extends EnumValueType.ValueType
   header {
     description: "Concrete value type representing enums."
     display_name: "MapEnumValueType"
@@ -62,8 +57,7 @@ enum MapEnumValueType {
 
 
 variant MapEnumVariantValueType {
-  keyrule EnumVariantRule.KeyRuleType
-  extends EnumVariantValueType
+  extends EnumVariantValueType.ValueType
   header {
     description: "Abstract type for variants of enum-based value types."
     display_name: "MapEnumVariant Value Type"
@@ -74,8 +68,7 @@ variant MapEnumVariantValueType {
 
 
 value MapValueArrayType {
-  keyrule TypeNameRule.KeyRuleType
-  extends ValueArrayValueType
+  extends ValueArrayValueType.ValueType
   header {
     description: "Concrete value type representing arrays of values."
     display_name: "MapValueArrayType"

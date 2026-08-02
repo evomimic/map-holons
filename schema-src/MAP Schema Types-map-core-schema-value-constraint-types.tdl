@@ -1,8 +1,8 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Key Rule Schema
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Key Rule Schema"
 }
 abstract holon ValueConstraintType {
-  keyrule ExtendedTypeRule.KeyRuleType
+  instance_keyrule ExtendedTypeRule.KeyRuleType
   header {
     description: "Abstract holon type for constraints that refine the accepted values of a ValueType."
     display_name: "Value Constraint Type"
@@ -13,7 +13,7 @@ abstract holon ValueConstraintType {
 
 
 abstract holon StringValueConstraint {
-  keyrule ExtendedTypeRule.KeyRuleType
+  instance_keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for string value constraints."
@@ -25,7 +25,7 @@ abstract holon StringValueConstraint {
 
 
 abstract holon IntegerValueConstraint {
-  keyrule ExtendedTypeRule.KeyRuleType
+  instance_keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for integer value constraints."
@@ -37,7 +37,7 @@ abstract holon IntegerValueConstraint {
 
 
 abstract holon BytesValueConstraint {
-  keyrule ExtendedTypeRule.KeyRuleType
+  instance_keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for byte sequence value constraints."
@@ -49,7 +49,7 @@ abstract holon BytesValueConstraint {
 
 
 abstract holon ValueArrayConstraint {
-  keyrule ExtendedTypeRule.KeyRuleType
+  instance_keyrule ExtendedTypeRule.KeyRuleType
   extends ValueConstraintType.HolonType
   header {
     description: "Abstract constraint-family anchor for value array constraints."
@@ -216,7 +216,7 @@ property ConstraintEnabled {
 
 
 def relationship Constraints {
-  source StringValueType
+  source StringValueType.ValueType
   target StringValueConstraint.ValueConstraintType
   inverse Constrains
   cardinality 0..32767
@@ -231,7 +231,7 @@ def relationship Constraints {
 
 
 def relationship Constraints {
-  source IntegerValueType
+  source IntegerValueType.ValueType
   target IntegerValueConstraint.ValueConstraintType
   inverse Constrains
   cardinality 0..32767
@@ -246,7 +246,7 @@ def relationship Constraints {
 
 
 def relationship Constraints {
-  source BytesValueType
+  source BytesValueType.ValueType
   target BytesValueConstraint.ValueConstraintType
   inverse Constrains
   cardinality 0..32767
@@ -261,7 +261,7 @@ def relationship Constraints {
 
 
 def relationship Constraints {
-  source ValueArrayValueType
+  source ValueArrayValueType.ValueType
   target ValueArrayConstraint.ValueConstraintType
   inverse Constrains
   cardinality 0..32767
@@ -277,7 +277,7 @@ def relationship Constraints {
 
 inverse relationship Constrains {
   source StringValueConstraint.ValueConstraintType
-  target StringValueType
+  target StringValueType.ValueType
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from a string value constraint to the string value type it constrains."
@@ -290,7 +290,7 @@ inverse relationship Constrains {
 
 inverse relationship Constrains {
   source IntegerValueConstraint.ValueConstraintType
-  target IntegerValueType
+  target IntegerValueType.ValueType
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from an integer value constraint to the integer value type it constrains."
@@ -303,7 +303,7 @@ inverse relationship Constrains {
 
 inverse relationship Constrains {
   source BytesValueConstraint.ValueConstraintType
-  target BytesValueType
+  target BytesValueType.ValueType
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from a bytes value constraint to the bytes value type it constrains."
@@ -316,7 +316,7 @@ inverse relationship Constrains {
 
 inverse relationship Constrains {
   source ValueArrayConstraint.ValueConstraintType
-  target ValueArrayValueType
+  target ValueArrayValueType.ValueType
   cardinality 0..32767
   header {
     description: "Inverse of Constraints, from a value array constraint to the value array type it constrains."
