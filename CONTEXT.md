@@ -76,6 +76,74 @@ _Avoid_: Compatibility resurrection, replacement query command seam
 A coherent design-update session that batches fine-grained decisions before applying one version bump per affected source spec.
 _Avoid_: Per-decision spec version bumps
 
+**Relationship Endpoint Type**:
+The `HolonType` descriptor that classifies holons permitted at the source or target of a declared relationship.
+_Avoid_: Arbitrary `TypeDescriptor` endpoint, property or relationship descriptor endpoint
+
+**Holon Ownership**:
+The required, infrastructure-managed `OwnedBy` relationship from each holon to exactly one current `HolonSpace`.
+_Avoid_: Optional ownership, multiple owning spaces, explicitly authored ownership
+
+**Directional Deletion Semantic**:
+The deletion behavior explicitly authored on each declared or inverse relationship descriptor for deletion of that descriptor's source holon.
+_Avoid_: Deriving an inverse descriptor's deletion behavior from its declared partner
+
+**Abstract Relationship Endpoint**:
+An abstract type used as a polymorphic relationship constraint; each actual endpoint is a holon whose effective descriptor equals or transitively extends the declared endpoint type.
+_Avoid_: Directly instantiating the abstract endpoint, rejecting abstract endpoint constraints
+
+**Uniform Endpoint Compatibility**:
+The rule that every relationship endpoint is validated as a holon through its effective semantic type and transitive `Extends`.
+_Avoid_: Using meta-types as descriptor-to-descriptor endpoint categories
+
+**EffectiveEndpointType**:
+The semantic type used for endpoint validation: the holon itself when it is a type descriptor, otherwise its `DescribedBy` type.
+_Avoid_: Meta-type substitution for descriptor endpoint classification, separate endpoint validators
+
+**Meta-Type Holon Classification**:
+The classification established by `MetaTypeDescriptor Extends HolonType`, making every concrete meta-type transitively substitutable for `HolonType`.
+_Avoid_: A separate meta-type `Extends` hierarchy, special descriptor-holon endpoint rules
+
+**Descriptor Endpoint Category**:
+An abstract descriptor type such as `PropertyType`, `ValueType`, or `DeclaredRelationshipType` used to classify descriptor holons participating in descriptor-to-descriptor relationships.
+_Avoid_: The meta-type that governs those descriptor holons' conformance
+
+**RelationshipType**:
+The abstract descriptor-classification root shared by `DeclaredRelationshipType` and `InverseRelationshipType`, and the polymorphic source constraint for `SourceType` and `TargetType`.
+_Avoid_: `MetaRelationshipType` as a descriptor-to-descriptor endpoint, duplicated relationship key rules on declared and inverse roots
+
+**MetaValueType**:
+The concrete meta-type that describes value-type descriptor holons and extends `MetaTypeDescriptor`.
+_Avoid_: Abstract describing meta-type, `ValueType Extends MetaValueType`
+
+**Abstract Descriptor Completeness**:
+The rule that an abstract descriptor may omit conformance-contract members with positive minimum cardinality, while all supplied values and universal structural invariants remain valid.
+_Avoid_: Generic placeholder targets solely to satisfy abstract roots, exempting concrete descriptors
+
+**Default Descriptor Key Rule**:
+The provisional Schema 2.0 rule that `MetaTypeDescriptor` supplies `ExtendedTypeRule` as the default key rule for type-descriptor holons. A descriptor key combines its local `type_name` with the immediate extended descriptor's `type_name`; the sole descriptor without `Extends` falls back to its local `type_name`.
+_Avoid_: Accumulating ancestor keys, using the parent's composed key, adding a meta-type solely to vary an extension family's descriptor-key suffix
+
+**Holon Instance Key Baseline**:
+The explicit `NoneRule.KeyRuleType` selected by root `HolonType`; instances of extension holon types remain keyless unless their describing type or a nearer ancestor overrides `InstanceKeyRule`.
+_Avoid_: Confusing descriptor-holon keys with described-instance keys, treating an omitted effective key rule as keylessness
+
+**InstanceKeyRule**:
+The required override-inherited relationship from a holon type to the key rule governing holons described by that type. Its inverse is `KeyRuleForInstancesOf`.
+_Avoid_: `UsesKeyRule`, implying that the rule governs the source type descriptor's own key, applying instance key rules to non-holon descriptor categories
+
+**DescribedTypeRule**:
+A key rule for named ordinary holons that composes the holon's local `type_name` with the `type_name` of its `DescribedBy` type.
+_Avoid_: Applying `ExtendedTypeRule` to holons without `Extends`, using an unqualified name when the describing type is part of identity
+
+**TDL Declaration Form**:
+The syntactic form selected by a top-level TDL keyword. Descriptor-oriented forms such as `holon`, `property`, `value`, and `enum` provide type-authoring shorthand, while `instance` is the generic holon form. A declaration form does not infer `TypeKind` or `DescribedBy`; every non-schema declaration supplies an explicit `type` and its authored key must conform to that type's effective instance key rule. The specialized `schema` form establishes compilation scope and lowers to a schema holon.
+_Avoid_: Declaration kind, treating `instance` as a TypeKind, inferring semantic classification from a TDL keyword
+
+**TDL Key Reference**:
+An authored holon key or reference written bare when it contains no whitespace or structural delimiters, and as a quoted string when it does. Quoting is lexical only and does not change key identity.
+_Avoid_: Schema-specific whitespace parsing, treating quoted keys as property-value literals in key/reference positions
+
 **PlanNode**:
 A holon-backed structural node in an ExecutionPlan that organizes one or more plan steps.
 _Avoid_: Result node, graph node
@@ -160,6 +228,38 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - Without a future **ProjectStep**, navigation results should remain holon-native and selected by the **Output Binding**.
 - **Old-World Relationship Traversal Types** may remain for compatibility, but **New-World Query Contract** design must not depend on them.
 - A **Spec Revision Session** closes when the team produces a stable artifact for one coherent design slice, such as a revised issue body.
+- `SourceType` and `TargetType` target **Relationship Endpoint Types** rooted at `HolonType`, because MAP relationships connect holons rather than arbitrary descriptor kinds.
+- **Holon Ownership** has cardinality `1..1`; its `Owns` inverse remains `0..32767`.
+- `MetaRelationshipType` supplies `DeletionSemantic` to both declared and inverse relationship descriptor contracts; each direction explicitly supplies its own **Directional Deletion Semantic**.
+- An **Abstract Relationship Endpoint** constrains actual endpoint holons through their effective descriptors and transitive `Extends`.
+- **Meta-Type Holon Classification** permits meta-type descriptors to participate in the generalized `(HolonType)-[DescribedBy]->(TypeDescriptor)` relationship and its `(TypeDescriptor)-[Instances]->(HolonType)` inverse.
+- **Uniform Endpoint Compatibility** applies because all descriptors are holons: endpoint conformance always resolves through the endpoint holon's effective semantic type.
+- Endpoint validation applies one rule: `EffectiveEndpointType(H) Extends* requiredType`.
+- Meta-types declare what descriptor holons must contain through `InstanceProperties` and `InstanceRelationships`; **Descriptor Endpoint Categories** define which semantic descriptor categories may participate as relationship endpoints.
+- **RelationshipType** extends `TypeDescriptor`, supplies the shared relationship key rule, and is extended by both declared and inverse relationship descriptor roots.
+- Core inverse relationships use explicit `Block` deletion semantics to preserve references and contracts, except `MemberOfCollection`, which uses `Allow` for non-owning collection membership.
+- `InstanceProperties` and `InstanceRelationships` use `TypeDescriptor` as their semantic source endpoint; meta-types attach those authoritative relationship keys through their instance contracts.
+- Every enum-variant descriptor has exactly one `VariantOf` owner; the inverse `Variants` relationship remains `0..32767`.
+- `MetaValueType` is concrete because value-type descriptor holons are its direct instances; value descriptor classification separately follows `ValueType Extends TypeDescriptor`.
+- `AffordsOperator` uses `InheritanceMode Additive`, allowing operators populated on abstract value categories to accumulate on concrete value-type descendants.
+- `EnumVariantValueType` is described by concrete `MetaValueType` and extends `ValueType`; its variant declaration kind does not infer a separate meta-type.
+- Relationships such as `AffordsOperator`, `Constraints`, `Variants`, and `ElementValueType` describe value descriptor holons; their permissions belong to value meta-type contracts rather than to the instance contracts passed to non-holon values.
+- `MetaValueArrayValueType` extends `MetaValueType` and describes array value-type descriptors, keeping required `ElementValueType` and array-specific `Constraints` out of the common value-descriptor contract.
+- `MetaStringValueType`, `MetaIntegerValueType`, `MetaBytesValueType`, `MetaEnumValueType`, and `MetaValueArrayValueType` provide kind-specific value-descriptor contracts without TypeKind inference or ambiguous `Constraints` members.
+- **Abstract Descriptor Completeness** allows `PropertyType`, `EnumValueType`, and `ValueArrayValueType` roots to omit required concrete descriptor state such as `ValueType`, `Variants`, and `ElementValueType`.
+- **Default Descriptor Key Rule** keeps descriptor keys two-part and makes reparenting a descriptor an identity change; a complete reference-impact audit is required before migrating existing authored keys.
+- **Holon Instance Key Baseline** is inherited through **InstanceKeyRule** with `InheritanceMode Override`; a local key rule replaces rather than combines with the nearest inherited rule.
+- Configured format rules are ordinary instances described by `FormatRule.KeyRuleType`; `ImplementationNameRule.FormatRule` is not retained as a descriptor subtype.
+- `ImplementationName.FormatRule` is the configured format-rule instance for `DanceImplementation` keys; it uses template `{0}` with `ImplementationName.PropertyType` as its sole ordered `TemplateParameters` target. It is not an `ImplementationRule` type or descriptor.
+- `FormatRule.KeyRuleType` uses **DescribedTypeRule** for configured instances and declares `TypeName`, `TemplateString`, and ordered `TemplateParameters` as their contract.
+- `FormatRule.KeyRuleType` is concrete because configured format-rule holons use it as their `DescribedBy` target; only the common `KeyRuleType` classification root remains abstract.
+- **InstanceKeyRule** has effective cardinality `1..1` and `InheritanceMode Override`; explicit `NoneRule.KeyRuleType` represents keylessness.
+- Directional deletion permits deleting a holon-type descriptor through `InstanceKeyRule` (`Allow`) but blocks deleting a key rule while `KeyRuleForInstancesOf` references remain (`Block`).
+- `NoneRule.KeyRuleType` is the canonical referenced descriptor key for explicit keylessness; `NoneKeyRule` is not a normative alias.
+- TDL supports `instance` as its generic holon declaration form alongside descriptor-oriented forms; specialized declaration keywords remain shorthand and do not determine semantic `TypeKind`.
+- TDL keys and references containing whitespace or structural delimiters are quoted; delimiter-free keys may remain bare.
+- A complete TDL file uses the specialized `schema` declaration to establish its containing schema and the target of implicit descriptor `ComponentOf`; generic instances receive no implicit `ComponentOf`.
+- `depends_on` is specialized compilation syntax because dependencies establish the resolution closure before ordinary holon validation; it lowers to the schema holon's semantic `DependsOn` relationship.
 
 ## Example dialogue
 

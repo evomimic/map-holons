@@ -1,7 +1,9 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Dance Schema-v0.0.4
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Dance Schema-v0.0.4"
 }
-holon LoaderHolon {
+holon LoaderHolon.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   allows_additional_properties
   allows_additional_relationships
   header {
@@ -10,66 +12,73 @@ holon LoaderHolon {
     display_plural: "Loader Holons"
     plural: "LoaderHolons"
   }
-  properties {
-    Key.PropertyType
-    LoaderHolonKey.PropertyType
-  }
   relationships {
-    (LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)
+    InstanceProperties -> [
+      Key.PropertyType,
+      LoaderHolonKey.PropertyType
+    ]
+    InstanceRelationships -> (LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)
   }
 }
 
 
-holon LoaderRelationshipReference {
+holon LoaderRelationshipReference.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Represents an unresolved relationship reference from a LoaderHolon, including source/target references."
     display_name: "Loader Relationship Reference"
     display_plural: "Loader Relationship References"
     plural: "LoaderRelationshipReferences"
   }
-  properties {
-    RelationshipName.PropertyType
-  }
   relationships {
-    (LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)
-    (LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)
+    InstanceProperties -> RelationshipName.PropertyType
+    InstanceRelationships -> [
+      (LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType),
+      (LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)
+    ]
   }
 }
 
 
-holon LoaderHolonReference {
+holon LoaderHolonReference.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Represents an unresolved reference to a holon, either local (by key or ID) or external (via proxy + key/ID)."
     display_name: "Loader Holon Reference"
     display_plural: "Loader Holon References"
     plural: "LoaderHolonReferences"
   }
-  properties {
-    HolonKey.PropertyType
-    HolonId.PropertyType
-    ProxyKey.PropertyType
-    ProxyId.PropertyType
+  relationships {
+    InstanceProperties -> [
+      HolonKey.PropertyType,
+      HolonId.PropertyType,
+      ProxyKey.PropertyType,
+      ProxyId.PropertyType
+    ]
   }
 }
 
 
-holon HolonLoaderBundle {
+holon HolonLoaderBundle.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Container holon for a collection of LoaderHolons supplied by the loader client."
     display_name: "HolonLoaderBundle"
     display_plural: "HolonLoaderBundles"
     plural: "HolonLoaderBundles"
   }
-  properties {
-    Filename.PropertyType
-  }
   relationships {
-    (HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)
+    InstanceProperties -> Filename.PropertyType
+    InstanceRelationships -> (HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)
   }
 }
 
 
-holon HolonLoadResponse {
+holon HolonLoadResponse.DanceResponseType {
+  type MetaDanceResponseType.MetaHolonType
   extends DanceResponseType.HolonType
   header {
     description: "Message-only holon summarizing the outcome of a holon load operation (not persisted by the loader commit)."
@@ -77,21 +86,38 @@ holon HolonLoadResponse {
     display_plural: "HolonLoadResponses"
     plural: "HolonLoadResponses"
   }
-  properties {
-    HolonsStaged.PropertyType
-    HolonsCommitted.PropertyType
-    ErrorCount.PropertyType
-    DanceSummary.PropertyType
-    LinksCreated.PropertyType
-    LoadCommitStatus.PropertyType
+  relationships {
+    InstanceProperties -> [
+      HolonsStaged.PropertyType,
+      HolonsCommitted.PropertyType,
+      ErrorCount.PropertyType,
+      DanceSummary.PropertyType,
+      LinksCreated.PropertyType,
+      LoadCommitStatus.PropertyType
+    ]
+    InstanceRelationships -> (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)
+  }
+}
+
+holon LoadHolons.DanceType {
+  type MetaDanceType.MetaHolonType
+  extends DanceType.HolonType
+  DanceDescription "Loads a transient HolonLoadSet, stages and commits valid imported holons, and returns a transient HolonLoadResponse."
+  header {
+    description: "Concrete standalone dance type for the holon data loader."
+    display_name: "Load Holons Dance"
+    display_plural: "Load Holons Dances"
+    plural: "LoadHolonsDances"
   }
   relationships {
-    (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)
+    DanceInput -> HolonLoadSet.HolonType
+    Response -> HolonLoadResponse.DanceResponseType
   }
 }
 
 
-holon HolonLoadError {
+holon HolonLoadError.HolonError {
+  type MetaHolonType.MetaTypeDescriptor
   extends HolonError.HolonType
   header {
     description: "Represents a single error in the Holon Loader process."
@@ -99,17 +125,21 @@ holon HolonLoadError {
     display_plural: "Holon Load Errors"
     plural: "HolonLoadErrors"
   }
-  properties {
-    Filename.PropertyType
-    StartUtf8ByteOffset.PropertyType
-    LoaderHolonKey.PropertyType
-    ErrorType.PropertyType
-    ErrorMessage.PropertyType
+  relationships {
+    InstanceProperties -> [
+      Filename.PropertyType,
+      StartUtf8ByteOffset.PropertyType,
+      LoaderHolonKey.PropertyType,
+      ErrorType.PropertyType,
+      ErrorMessage.PropertyType
+    ]
   }
 }
 
 
-holon HolonLoadSet {
+holon HolonLoadSet.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Container holon for a set of HolonLoaderBundles supplied by the loader client."
     display_name: "HolonLoadSet"
@@ -117,16 +147,17 @@ holon HolonLoadSet {
     plural: "HolonLoadSets"
   }
   relationships {
-    (HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)
+    InstanceRelationships -> (HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)
   }
 }
 
 
-relationship HasRelationshipReference {
+relationship (LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source LoaderHolon.HolonType
   target LoaderRelationshipReference.HolonType
-  inverse RelationshipReferenceOf
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Allow
   header {
@@ -138,10 +169,14 @@ relationship HasRelationshipReference {
 }
 
 
-inverse relationship RelationshipReferenceOf {
+inverse relationship (LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source LoaderRelationshipReference.HolonType
   target LoaderHolon.HolonType
+  inverse (LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon."
     display_name: "RelationshipReferenceOf"
@@ -151,10 +186,11 @@ inverse relationship RelationshipReferenceOf {
 }
 
 
-def relationship ReferenceSource {
+def relationship (LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source LoaderRelationshipReference.HolonType
   target LoaderHolonReference.HolonType
-  inverse ReferenceSourceOf
   cardinality 1..1
   deletion_semantic Allow
   header {
@@ -166,10 +202,14 @@ def relationship ReferenceSource {
 }
 
 
-inverse relationship ReferenceSourceOf {
+inverse relationship (LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  cardinality 0..32767
+  inverse (LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source."
     display_name: "ReferenceSourceOf"
@@ -179,11 +219,12 @@ inverse relationship ReferenceSourceOf {
 }
 
 
-def relationship ReferenceTarget {
+def relationship (LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source LoaderRelationshipReference.HolonType
   target LoaderHolonReference.HolonType
-  inverse ReferenceTargetOf
-  cardinality 1..32767
+  cardinality 1..*
   ordered
   deletion_semantic Allow
   header {
@@ -195,10 +236,14 @@ def relationship ReferenceTarget {
 }
 
 
-inverse relationship ReferenceTargetOf {
+inverse relationship (LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  cardinality 0..32767
+  inverse (LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target."
     display_name: "ReferenceTargetOf"
@@ -208,11 +253,12 @@ inverse relationship ReferenceTargetOf {
 }
 
 
-relationship BundleMembers {
+relationship (HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source HolonLoaderBundle.HolonType
   target LoaderHolon.HolonType
-  inverse BundleMemberOf
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains."
@@ -223,10 +269,14 @@ relationship BundleMembers {
 }
 
 
-inverse relationship BundleMemberOf {
+inverse relationship (LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source LoaderHolon.HolonType
   target HolonLoaderBundle.HolonType
+  inverse (HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle."
     display_name: "BundleMemberOf"
@@ -236,11 +286,12 @@ inverse relationship BundleMemberOf {
 }
 
 
-relationship HasLoadError {
+relationship (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source HolonLoadResponse.DanceResponseType
   target HolonLoadError.HolonError
-  inverse LoadErrorOf
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoadResponse to one or more HolonError holons."
@@ -251,10 +302,14 @@ relationship HasLoadError {
 }
 
 
-inverse relationship LoadErrorOf {
+inverse relationship (HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source HolonLoadError.HolonError
   target HolonLoadResponse.DanceResponseType
+  inverse (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of HasLoadError. Points from HolonError back to the response that reported it."
     display_name: "LoadErrorOf"
@@ -264,11 +319,12 @@ inverse relationship LoadErrorOf {
 }
 
 
-relationship Contains {
+relationship (HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source HolonLoadSet.HolonType
   target HolonLoaderBundle.HolonType
-  inverse ContainedIn
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoadSet to each HolonLoaderBundle it contains."
@@ -279,12 +335,16 @@ relationship Contains {
 }
 
 
-inverse relationship ContainedIn {
+inverse relationship (HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source HolonLoaderBundle.HolonType
   target HolonLoadSet.HolonType
+  inverse (HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)
   cardinality 0..1
+  deletion_semantic Block
   header {
-    description: "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle."
+    description: "Inverse of Contains. Points from a HolonLoaderBundle back to its containing HolonLoadSet."
     display_name: "ContainedIn"
     display_plural: "ContainedIn Relationships"
     plural: "ContainedIns"
@@ -292,8 +352,9 @@ inverse relationship ContainedIn {
 }
 
 
-enum LoadCommitStatus {
-  extends MapEnumValueType
+enum LoadCommitStatus.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "An enum representing the commit outcome of a holon load."
     display_name: "LoadCommitStatus"
@@ -302,18 +363,24 @@ enum LoadCommitStatus {
   }
   variants {
     variant Complete {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "An enum variant indicating a complete commit."
         display_name: "Complete"
       }
     }
     variant Incomplete {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "An enum variant indicating an incomplete commit."
         display_name: "Incomplete"
       }
     }
     variant Skipped {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "An enum variant indicating that commit was skipped."
         display_name: "Skipped"
@@ -323,8 +390,11 @@ enum LoadCommitStatus {
 }
 
 
-property RelationshipName {
-  value MapStringValueType
+property RelationshipName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "Name of the relationship as declared in the JSON input."
     display_name: "relationship_name"
@@ -334,8 +404,10 @@ property RelationshipName {
 }
 
 
-property HolonKey {
-  value MapStringValueType
+property HolonKey.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Local key for the referenced holon."
     display_name: "holon_key"
@@ -345,8 +417,10 @@ property HolonKey {
 }
 
 
-property ProxyKey {
-  value MapStringValueType
+property ProxyKey.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Key of the ProxySpace through which this external reference is routed."
     display_name: "proxy_key"
@@ -356,8 +430,10 @@ property ProxyKey {
 }
 
 
-property ProxyId {
-  value MapBytesValueType
+property ProxyId.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapBytesValueType.BytesValueType
   header {
     description: "ActionHash of the ProxySpace holon, used to route external references."
     display_name: "proxy_id"
@@ -367,8 +443,11 @@ property ProxyId {
 }
 
 
-property HolonsStaged {
-  value MapIntegerValueType
+property HolonsStaged.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
   header {
     description: "Number of holons staged during the load operation."
     display_name: "holons_staged"
@@ -378,8 +457,11 @@ property HolonsStaged {
 }
 
 
-property HolonsCommitted {
-  value MapIntegerValueType
+property HolonsCommitted.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
   header {
     description: "Number of holons successfully committed."
     display_name: "holons_committed"
@@ -389,8 +471,11 @@ property HolonsCommitted {
 }
 
 
-property LinksCreated {
-  value MapIntegerValueType
+property LinksCreated.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
   header {
     description: "Number of links successfully created."
     display_name: "links_created"
@@ -400,8 +485,11 @@ property LinksCreated {
 }
 
 
-property Filename {
-  value MapStringValueType
+property Filename.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "The name of a file."
     display_name: "filename"
@@ -411,8 +499,10 @@ property Filename {
 }
 
 
-property LoaderHolonKey {
-  value MapStringValueType
+property LoaderHolonKey.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Key to reference a loader holon within a load set."
     display_name: "loader_holon_key"
@@ -422,8 +512,10 @@ property LoaderHolonKey {
 }
 
 
-property StartUtf8ByteOffset {
-  value MapIntegerValueType
+property StartUtf8ByteOffset.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Byte offset that signifies the start of a segment of a source file."
     display_name: "start_utf8_byte_offset"
@@ -433,8 +525,11 @@ property StartUtf8ByteOffset {
 }
 
 
-property LoadCommitStatus {
-  value LoadCommitStatus
+property LoadCommitStatus.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value LoadCommitStatus.MapEnumValueType
+  IsValueRequired true
   header {
     description: "Represents the commit status for a holon loading operation."
     display_name: "load_commit_status"

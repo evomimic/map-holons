@@ -1,42 +1,46 @@
 schema BookAuthorInverseSchema {
+  depends_on "MAP Core Schema-v0.0.7"
   header {
     description: "Minimal test schema with an inverse relationship and extending the core schema."
   }
 }
-holon Book {
+
+holon Book.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "A book."
     display_name: "Book"
     display_plural: "Books"
     plural: "Books"
   }
-  properties {
-    Title.PropertyType
-  }
   relationships {
-    (Book.HolonType)-[AuthoredBy]->(Person.HolonType)
+    InstanceProperties -> Title.PropertyType
+    InstanceRelationships -> (Book.HolonType)-[AuthoredBy]->(Person.HolonType)
   }
 }
 
-
-holon Person {
+holon Person.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "A person."
     display_name: "Person"
     display_plural: "People"
     plural: "Persons"
   }
-  properties {
-    Name.PropertyType
+  relationships {
+    InstanceProperties -> Name.PropertyType
   }
 }
 
-
-def relationship AuthoredBy {
+def relationship (Book.HolonType)-[AuthoredBy]->(Person.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source Book.HolonType
   target Person.HolonType
-  inverse Authors
-  cardinality 0..32767
+  cardinality 0..*
+  deletion_semantic Allow
   header {
     description: "Defines the author of a book."
     display_name: "AuthoredBy"
@@ -45,22 +49,26 @@ def relationship AuthoredBy {
   }
 }
 
-
-inverse relationship Authors {
+inverse relationship (Person.HolonType)-[Authors]->(Book.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source Person.HolonType
   target Book.HolonType
-  cardinality 0..32767
+  inverse (Book.HolonType)-[AuthoredBy]->(Person.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
-    description: "Specifies a book that a Person has authored.  Inverse of AuthoredBy."
+    description: "Specifies a book that a Person has authored. Inverse of AuthoredBy."
     display_name: "Authors"
     display_plural: "Authors Relationships"
     plural: "AuthorsRelationships"
   }
 }
 
-
-property Name {
-  value MapStringValueType
+property Name.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Proper name."
     display_name: "Name"
@@ -69,9 +77,10 @@ property Name {
   }
 }
 
-
-property Title {
-  value MapStringValueType
+property Title.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "A title."
     display_name: "Title"

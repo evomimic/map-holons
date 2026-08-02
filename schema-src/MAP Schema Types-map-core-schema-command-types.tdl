@@ -1,20 +1,37 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Dance Schema-v0.0.4
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Dance Schema-v0.0.4"
 }
-abstract holon CommandType {
+
+holon MetaCommandType.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "Meta-type describing command-type descriptor holons and their optional payload-type metadata."
+    display_name: "Meta Command Type"
+    display_plural: "Meta Command Types"
+    plural: "MetaCommandTypes"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (CommandType.HolonType)-[CommandPayloadType]->(HolonType.TypeDescriptor)
+    ]
+  }
+}
+
+abstract holon CommandType.HolonType {
+  type MetaCommandType.MetaHolonType
+  extends HolonType.TypeDescriptor
   header {
     description: "Abstract descriptor type for core MAP command affordances discoverable through descriptor-local command lookup."
     display_name: "Command Type"
     display_plural: "Command Types"
     plural: "CommandTypes"
   }
-  relationships {
-    (CommandType.HolonType)-[CommandPayloadType]->(HolonType)
-  }
 }
 
 
-holon BeginTransaction {
+holon BeginTransaction.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Opens a new transaction for a holon space."
@@ -25,7 +42,8 @@ holon BeginTransaction {
 }
 
 
-holon CloneHolon {
+holon CloneHolon.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Creates a transient clone of the target holon."
@@ -36,7 +54,8 @@ holon CloneHolon {
 }
 
 
-holon Summarize {
+holon Summarize.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns a concise string summary of the target holon."
@@ -47,7 +66,8 @@ holon Summarize {
 }
 
 
-holon GetHolonId {
+holon GetHolonId.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the target holon's saved holon identifier."
@@ -58,7 +78,8 @@ holon GetHolonId {
 }
 
 
-holon GetPredecessor {
+holon GetPredecessor.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the target holon's predecessor reference, if present."
@@ -69,7 +90,8 @@ holon GetPredecessor {
 }
 
 
-holon GetKey {
+holon GetKey.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the target holon's primary key value, if present."
@@ -80,7 +102,8 @@ holon GetKey {
 }
 
 
-holon GetVersionedKey {
+holon GetVersionedKey.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the target holon's versioned key."
@@ -91,7 +114,8 @@ holon GetVersionedKey {
 }
 
 
-holon GetPropertyValue {
+holon GetPropertyValue.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the value of a named property on the target holon, if present."
@@ -102,7 +126,8 @@ holon GetPropertyValue {
 }
 
 
-holon GetRelatedHolons {
+holon GetRelatedHolons.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns holons related to the target holon through a named relationship."
@@ -113,7 +138,8 @@ holon GetRelatedHolons {
 }
 
 
-holon WithPropertyValue {
+holon WithPropertyValue.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Sets or updates a named property value on the target holon."
@@ -124,7 +150,8 @@ holon WithPropertyValue {
 }
 
 
-holon RemovePropertyValue {
+holon RemovePropertyValue.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Removes a named property value from the target holon."
@@ -135,7 +162,8 @@ holon RemovePropertyValue {
 }
 
 
-holon AddRelatedHolons {
+holon AddRelatedHolons.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Adds one or more related holons under a named relationship on the target holon."
@@ -146,7 +174,8 @@ holon AddRelatedHolons {
 }
 
 
-holon RemoveRelatedHolons {
+holon RemoveRelatedHolons.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Removes one or more related holons from a named relationship on the target holon."
@@ -157,7 +186,8 @@ holon RemoveRelatedHolons {
 }
 
 
-holon WithDescriptor {
+holon WithDescriptor.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Attaches a type descriptor holon to the target holon."
@@ -168,7 +198,8 @@ holon WithDescriptor {
 }
 
 
-holon Commit {
+holon Commit.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Commits the active transaction."
@@ -179,7 +210,8 @@ holon Commit {
 }
 
 
-holon UndoLast {
+holon UndoLast.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Undoes the last mutation in the active transaction."
@@ -190,7 +222,8 @@ holon UndoLast {
 }
 
 
-holon RedoLast {
+holon RedoLast.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Redoes the last undone mutation in the active transaction."
@@ -201,7 +234,8 @@ holon RedoLast {
 }
 
 
-holon UndoToMarker {
+holon UndoToMarker.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Undoes mutations in the active transaction up to a specified marker."
@@ -212,7 +246,8 @@ holon UndoToMarker {
 }
 
 
-holon RedoToMarker {
+holon RedoToMarker.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Redoes mutations in the active transaction up to a specified marker."
@@ -223,7 +258,8 @@ holon RedoToMarker {
 }
 
 
-holon LoadHolons {
+holon LoadHolons.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Loads holons from uploaded or imported file content into the active transaction."
@@ -234,27 +270,23 @@ holon LoadHolons {
 }
 
 
-holon Dance {
-  properties {
-    type_name: "Dance"
-    type_name_plural: "DanceCommands"
-    display_name: "Dance Command"
-    display_name_plural: "Dance Commands"
+holon Dance.CommandType {
+  type MetaCommandType.MetaHolonType
+  extends CommandType.HolonType
+  header {
     description: "Executes a dance request within the active transaction."
-    instance_type_kind: "TypeKind.Holon"
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_name: "Dance Command"
+    display_plural: "Dance Commands"
+    plural: "DanceCommands"
   }
   relationships {
-    CommandPayloadType -> "DanceInvocation.HolonType"
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "CommandType.HolonType"
+    CommandPayloadType -> DanceInvocation.HolonType
   }
 }
 
 
-holon GetAllHolons {
+holon GetAllHolons.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns all holons visible in the active transaction."
@@ -265,7 +297,8 @@ holon GetAllHolons {
 }
 
 
-holon GetStagedHolonByBaseKey {
+holon GetStagedHolonByBaseKey.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the staged holon matching a specified base key."
@@ -276,7 +309,8 @@ holon GetStagedHolonByBaseKey {
 }
 
 
-holon GetStagedHolonsByBaseKey {
+holon GetStagedHolonsByBaseKey.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns all staged holons matching a specified base key."
@@ -287,7 +321,8 @@ holon GetStagedHolonsByBaseKey {
 }
 
 
-holon GetStagedHolonByVersionedKey {
+holon GetStagedHolonByVersionedKey.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the staged holon matching a specified versioned key."
@@ -298,7 +333,8 @@ holon GetStagedHolonByVersionedKey {
 }
 
 
-holon GetTransientHolonByBaseKey {
+holon GetTransientHolonByBaseKey.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the transient holon matching a specified base key."
@@ -309,7 +345,8 @@ holon GetTransientHolonByBaseKey {
 }
 
 
-holon GetTransientHolonByVersionedKey {
+holon GetTransientHolonByVersionedKey.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the transient holon matching a specified versioned key."
@@ -320,7 +357,8 @@ holon GetTransientHolonByVersionedKey {
 }
 
 
-holon GetStagedCount {
+holon GetStagedCount.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the number of staged holons in the active transaction."
@@ -331,7 +369,8 @@ holon GetStagedCount {
 }
 
 
-holon GetTransientCount {
+holon GetTransientCount.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Returns the number of transient holons in the active transaction."
@@ -342,7 +381,8 @@ holon GetTransientCount {
 }
 
 
-holon NewHolon {
+holon NewHolon.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Creates a new transient holon, optionally with a key."
@@ -353,7 +393,8 @@ holon NewHolon {
 }
 
 
-holon StageNewHolon {
+holon StageNewHolon.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Stages a transient holon as a new holon in the active transaction."
@@ -364,7 +405,8 @@ holon StageNewHolon {
 }
 
 
-holon StageNewFromClone {
+holon StageNewFromClone.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Stages a new holon cloned from an existing holon reference with a new key."
@@ -375,7 +417,8 @@ holon StageNewFromClone {
 }
 
 
-holon StageNewVersion {
+holon StageNewVersion.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Stages a new version of an existing smart reference."
@@ -386,7 +429,8 @@ holon StageNewVersion {
 }
 
 
-holon StageNewVersionFromId {
+holon StageNewVersionFromId.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Stages a new version of an existing holon identified by holon ID."
@@ -397,7 +441,8 @@ holon StageNewVersionFromId {
 }
 
 
-holon DeleteHolon {
+holon DeleteHolon.CommandType {
+  type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
     description: "Deletes a holon identified by ID from the active transaction."
@@ -408,11 +453,13 @@ holon DeleteHolon {
 }
 
 
-def relationship AffordsCommand {
-  source HolonType
+def relationship (HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target CommandType.HolonType
-  inverse CommandAffordedBy
-  cardinality 0..32767
+  InheritanceMode Additive
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup."
@@ -423,10 +470,14 @@ def relationship AffordsCommand {
 }
 
 
-inverse relationship CommandAffordedBy {
+inverse relationship (CommandType.HolonType)-[CommandAffordedBy]->(HolonType.TypeDescriptor) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source CommandType.HolonType
-  target HolonType
-  cardinality 0..32767
+  target HolonType.TypeDescriptor
+  inverse (HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of AffordsCommand, relationship from CommandType to HolonType."
     display_name: "CommandAffordedBy Relationship"
@@ -436,10 +487,11 @@ inverse relationship CommandAffordedBy {
 }
 
 
-def relationship CommandPayloadType {
+def relationship (CommandType.HolonType)-[CommandPayloadType]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source CommandType.HolonType
-  target HolonType
-  inverse CommandPayloadTypeFor
+  target HolonType.TypeDescriptor
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -451,10 +503,14 @@ def relationship CommandPayloadType {
 }
 
 
-inverse relationship CommandPayloadTypeFor {
-  source HolonType
+inverse relationship (HolonType.TypeDescriptor)-[CommandPayloadTypeFor]->(CommandType.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target CommandType.HolonType
-  cardinality 0..32767
+  inverse (CommandType.HolonType)-[CommandPayloadType]->(HolonType.TypeDescriptor)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of CommandPayloadType, from HolonType to CommandType."
     display_name: "CommandPayloadTypeFor Relationship"

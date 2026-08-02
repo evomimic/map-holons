@@ -1,28 +1,69 @@
-schema MAP Dance Schema-v0.0.4 {
-  depends_on MAP Core Schema-v0.0.7
-  depends_on MAP Key Rule Schema
+schema "MAP Dance Schema-v0.0.4" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Key Rule Schema"
   header {
     description: "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema."
   }
 }
-abstract holon DanceType {
+
+instance ImplementationName.FormatRule {
+  type FormatRule.KeyRuleType
+  TypeName "ImplementationName"
+  TemplateString "{0}"
+  relationships {
+    TemplateParameters -> ImplementationName.PropertyType
+  }
+}
+
+holon MetaDanceType.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "Meta-type describing dance-type descriptor holons and their descriptor-local input, response, and descriptive metadata."
+    display_name: "Meta Dance Type"
+    display_plural: "Meta Dance Types"
+    plural: "MetaDanceTypes"
+  }
+  relationships {
+    InstanceProperties -> DanceDescription.PropertyType
+    InstanceRelationships -> [
+      (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor),
+      (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
+    ]
+  }
+}
+
+holon MetaDanceResponseType.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "Meta-type describing dance-response-type descriptor holons and their optional structured response-body type metadata."
+    display_name: "Meta Dance Response Type"
+    display_plural: "Meta Dance Response Types"
+    plural: "MetaDanceResponseTypes"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)
+    ]
+  }
+}
+
+abstract holon DanceType.HolonType {
+  type MetaDanceType.MetaHolonType
+  extends HolonType.TypeDescriptor
   header {
     description: "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type (DanceInput) and a response holon type. Dance input may be any fixed-shape holon type, not only a Projection."
     display_name: "Dance Type"
     display_plural: "Dance Types"
     plural: "DanceTypes"
   }
-  properties {
-    DanceDescription.PropertyType
-  }
-  relationships {
-    (DanceType.HolonType)-[DanceInput]->(HolonType)
-    (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
-  }
 }
 
 
-abstract holon DanceResponseType {
+abstract holon DanceResponseType.HolonType {
+  type MetaDanceResponseType.MetaHolonType
+  extends HolonType.TypeDescriptor
   header {
     description: "Abstract holon type for successful response holons returned from dances. Response bodies and diagnostics are ordinary holons."
     display_name: "Dance Response Type"
@@ -30,13 +71,14 @@ abstract holon DanceResponseType {
     plural: "DanceResponseTypes"
   }
   relationships {
-    (DanceResponseType.HolonType)-[ResponseBody]->(HolonType)
-    (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)
+    InstanceRelationships -> (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)
   }
 }
 
 
-abstract holon ResponseBodyType {
+abstract holon ResponseBodyType.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Deprecated old-world abstract holon type for structured response bodies returned from dances. New-world response bodies are ordinary concrete holon types."
     display_name: "Response Body Type"
@@ -46,64 +88,74 @@ abstract holon ResponseBodyType {
 }
 
 
-holon DanceInvocation {
+holon DanceInvocation.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Concrete holon type for invocation records capturing the dance invoked, the holon affording the dance, the request holon, and ingress context. The related holon is the subject affording the dance, not merely a target object."
     display_name: "Dance Invocation"
     display_plural: "Dance Invocations"
     plural: "DanceInvocations"
   }
-  properties {
-    Context.PropertyType
-  }
   relationships {
-    (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)
-    (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType)
-    (DanceInvocation.HolonType)-[Request]->(HolonType)
+    InstanceProperties -> Context.PropertyType
+    InstanceRelationships -> [
+      (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType),
+      (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor),
+      (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)
+    ]
   }
 }
 
 
-holon DanceImplementation {
-  keyrule ImplementationNameRule.FormatRule
+holon DanceImplementation.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  instance_keyrule ImplementationName.FormatRule
+  extends HolonType.TypeDescriptor
   header {
     description: "Concrete binding of a DanceType with executable details (engine, module, entrypoint, ABI, version/compat)."
     display_name: "Dance Implementation"
     display_plural: "Dance Implementations"
     plural: "DanceImplementations"
   }
-  properties {
-    Engine.PropertyType
-    ModuleRef.PropertyType
-    Entrypoint.PropertyType
-    AbiId.PropertyType
-    Version.PropertyType
-    Compat.PropertyType
-    DanceSummary.PropertyType
-    ImplementationName.PropertyType
-  }
   relationships {
-    (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)
+    InstanceProperties -> [
+      Engine.PropertyType,
+      ModuleRef.PropertyType,
+      Entrypoint.PropertyType,
+      AbiId.PropertyType,
+      Version.PropertyType,
+      Compat.PropertyType,
+      DanceSummary.PropertyType,
+      ImplementationName.PropertyType
+    ]
+    InstanceRelationships -> (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)
   }
 }
 
 
-holon DanceDiagnostic {
+holon DanceDiagnostic.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Concrete holon type for non-fatal diagnostic notes attached to successful dance responses."
     display_name: "Dance Diagnostic"
     display_plural: "Dance Diagnostics"
     plural: "DanceDiagnostics"
   }
-  properties {
-    DanceDiagnosticSeverity.PropertyType
-    DiagnosticCode.PropertyType
-    DiagnosticMessage.PropertyType
+  relationships {
+    InstanceProperties -> [
+      DanceDiagnosticSeverity.PropertyType,
+      DiagnosticCode.PropertyType,
+      DiagnosticMessage.PropertyType
+    ]
   }
 }
 
 
-abstract holon Projection {
+abstract holon Projection.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Abstract base type for value-shaped property-map holons used as request, parameter, response-body, or projected-result shapes."
     display_name: "Projection"
@@ -113,11 +165,13 @@ abstract holon Projection {
 }
 
 
-def relationship AffordsDance {
-  source HolonType
+def relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target DanceType.HolonType
-  inverse DanceAffordedBy
-  cardinality 0..32767
+  InheritanceMode Additive
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type)."
@@ -128,10 +182,14 @@ def relationship AffordsDance {
 }
 
 
-inverse relationship DanceAffordedBy {
+inverse relationship (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
-  target HolonType
-  cardinality 0..32767
+  target HolonType.TypeDescriptor
+  inverse (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of AffordsDance, from DanceType to HolonType."
     display_name: "DanceAffordedBy Relationship"
@@ -141,10 +199,11 @@ inverse relationship DanceAffordedBy {
 }
 
 
-def relationship ImplementsDance {
-  source TypeDescriptor.HolonType
+def relationship (TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source TypeDescriptor
   target DanceImplementation.HolonType
-  inverse ImplementedFor
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -156,10 +215,14 @@ def relationship ImplementsDance {
 }
 
 
-inverse relationship ImplementedFor {
+inverse relationship (DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source DanceImplementation.HolonType
-  target TypeDescriptor.HolonType
+  target TypeDescriptor
+  inverse (TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor."
     display_name: "ImplementedFor Relationship"
@@ -169,10 +232,11 @@ inverse relationship ImplementedFor {
 }
 
 
-def relationship ForDance {
+def relationship (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceImplementation.HolonType
   target DanceType.HolonType
-  inverse HasImplementation
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -184,10 +248,14 @@ def relationship ForDance {
 }
 
 
-inverse relationship HasImplementation {
+inverse relationship (DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceImplementation.HolonType
-  cardinality 0..32767
+  inverse (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of ForDance, from DanceType to DanceImplementation."
     display_name: "HasImplementation Relationship"
@@ -197,10 +265,11 @@ inverse relationship HasImplementation {
 }
 
 
-def relationship DanceInput {
+def relationship (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
-  target HolonType
-  inverse DanceInputFor
+  target HolonType.TypeDescriptor
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -212,10 +281,14 @@ def relationship DanceInput {
 }
 
 
-inverse relationship DanceInputFor {
-  source HolonType
+inverse relationship (HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target DanceType.HolonType
-  cardinality 0..32767
+  inverse (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of DanceInput, from HolonType to DanceType."
     display_name: "DanceInputFor Relationship"
@@ -225,10 +298,11 @@ inverse relationship DanceInputFor {
 }
 
 
-def relationship Response {
+def relationship (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceResponseType.HolonType
-  inverse ResponseFor
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -240,10 +314,14 @@ def relationship Response {
 }
 
 
-inverse relationship ResponseFor {
+inverse relationship (DanceResponseType.HolonType)-[ResponseFor]->(DanceType.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target DanceType.HolonType
-  cardinality 1..32767
+  inverse (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
+  cardinality 1..*
+  deletion_semantic Block
   header {
     description: "Inverse of Response, from DanceResponseType to DanceType."
     display_name: "ResponseFor Relationship"
@@ -253,10 +331,11 @@ inverse relationship ResponseFor {
 }
 
 
-def relationship ResponseBody {
+def relationship (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceResponseType.HolonType
-  target HolonType
-  inverse ResponseBodyFor
+  target HolonType.TypeDescriptor
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -268,10 +347,14 @@ def relationship ResponseBody {
 }
 
 
-inverse relationship ResponseBodyFor {
-  source HolonType
+inverse relationship (HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceResponseType.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target DanceResponseType.HolonType
-  cardinality 0..32767
+  inverse (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of ResponseBody, from HolonType to DanceResponseType."
     display_name: "ResponseBodyFor Relationship"
@@ -281,10 +364,11 @@ inverse relationship ResponseBodyFor {
 }
 
 
-def relationship InvokesDance {
+def relationship (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
   target DanceType.HolonType
-  inverse InvokedBy
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -296,10 +380,14 @@ def relationship InvokesDance {
 }
 
 
-inverse relationship InvokedBy {
+inverse relationship (DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceInvocation.HolonType
-  cardinality 0..32767
+  inverse (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of InvokesDance, from DanceType to DanceInvocation."
     display_name: "InvokedBy Relationship"
@@ -309,10 +397,11 @@ inverse relationship InvokedBy {
 }
 
 
-def relationship AffordingHolon {
+def relationship (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
-  target HolonType
-  inverse AffordsDanceInvocation
+  target HolonType.TypeDescriptor
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -324,10 +413,14 @@ def relationship AffordingHolon {
 }
 
 
-inverse relationship AffordsDanceInvocation {
-  source HolonType
+inverse relationship (HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(DanceInvocation.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  cardinality 0..32767
+  inverse (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of AffordingHolon, from HolonType to DanceInvocation."
     display_name: "AffordsDanceInvocation Relationship"
@@ -337,10 +430,11 @@ inverse relationship AffordsDanceInvocation {
 }
 
 
-def relationship Request {
+def relationship (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
-  target HolonType
-  inverse RequestFor
+  target HolonType.TypeDescriptor
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -352,10 +446,14 @@ def relationship Request {
 }
 
 
-inverse relationship RequestFor {
-  source HolonType
+inverse relationship (HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  cardinality 0..32767
+  inverse (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of Request, from HolonType to DanceInvocation."
     display_name: "RequestFor Relationship"
@@ -365,11 +463,12 @@ inverse relationship RequestFor {
 }
 
 
-def relationship Diagnostics {
+def relationship (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target DanceDiagnostic.HolonType
-  inverse DiagnosticFor
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes."
@@ -380,10 +479,14 @@ def relationship Diagnostics {
 }
 
 
-inverse relationship DiagnosticFor {
+inverse relationship (DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source DanceDiagnostic.HolonType
   target DanceResponseType.HolonType
-  cardinality 0..32767
+  inverse (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType."
     display_name: "DiagnosticFor Relationship"
@@ -393,8 +496,11 @@ inverse relationship DiagnosticFor {
 }
 
 
-property DanceName {
-  value MapStringValueType
+property DanceName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "Unique string identifier for a DanceType descriptor, used in dispatch tables."
     display_name: "dance_name"
@@ -404,8 +510,10 @@ property DanceName {
 }
 
 
-property DanceDescription {
-  value MapStringValueType
+property DanceDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable explanation of what the dance does or when it should be invoked."
     display_name: "dance_description"
@@ -415,8 +523,11 @@ property DanceDescription {
 }
 
 
-property Context {
-  value InvocationSource
+property Context.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value InvocationSource.MapEnumValueType
+  IsValueRequired true
   header {
     description: "Ingress context for a DanceInvocation, recorded as an InvocationSource enum value."
     display_name: "context"
@@ -426,8 +537,10 @@ property Context {
 }
 
 
-property DanceDiagnosticSeverity {
-  value DanceDiagnosticSeverity
+property DanceDiagnosticSeverity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value DanceDiagnosticSeverity.MapEnumValueType
   header {
     description: "Severity classification for a DanceDiagnostic holon."
     display_name: "dance_diagnostic_severity"
@@ -437,8 +550,10 @@ property DanceDiagnosticSeverity {
 }
 
 
-property DiagnosticCode {
-  value MapStringValueType
+property DiagnosticCode.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Stable machine-readable code for a DanceDiagnostic holon."
     display_name: "diagnostic_code"
@@ -448,8 +563,10 @@ property DiagnosticCode {
 }
 
 
-property DiagnosticMessage {
-  value MapStringValueType
+property DiagnosticMessage.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable message for a DanceDiagnostic holon."
     display_name: "diagnostic_message"
@@ -459,8 +576,10 @@ property DiagnosticMessage {
 }
 
 
-property ResponseStatusCode {
-  value ResponseStatusCode
+property ResponseStatusCode.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value ResponseStatusCode.MapEnumValueType
   header {
     description: "Machine-readable status code indicating the result of the dance."
     display_name: "response_status_code"
@@ -470,8 +589,10 @@ property ResponseStatusCode {
 }
 
 
-property Engine {
-  value DanceEngine
+property Engine.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value DanceEngine.MapEnumValueType
   header {
     description: "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin)."
     display_name: "engine"
@@ -481,8 +602,10 @@ property Engine {
 }
 
 
-property ModuleRef {
-  value MapStringValueType
+property ModuleRef.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Content-address or locator of the executable module (e.g., hash/URL/capability address)."
     display_name: "module_ref"
@@ -492,8 +615,10 @@ property ModuleRef {
 }
 
 
-property Entrypoint {
-  value MapStringValueType
+property Entrypoint.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Function/export name to invoke inside the module."
     display_name: "entrypoint"
@@ -503,8 +628,10 @@ property Entrypoint {
 }
 
 
-property AbiId {
-  value MapStringValueType
+property AbiId.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Identifier of the stable smart contract ABI expected by the module/entrypoint."
     display_name: "abi_id"
@@ -514,8 +641,10 @@ property AbiId {
 }
 
 
-property Version {
-  value MapStringValueType
+property Version.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Semantic version or content hash pin of the implementation."
     display_name: "version"
@@ -525,8 +654,10 @@ property Version {
 }
 
 
-property Compat {
-  value MapStringValueType
+property Compat.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Compatibility range or constraints (e.g., ABI or schema versions)."
     display_name: "compat"
@@ -536,8 +667,10 @@ property Compat {
 }
 
 
-property DanceSummary {
-  value MapStringValueType
+property DanceSummary.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable summary of a dance outcome."
     display_name: "dance_summary"
@@ -547,8 +680,11 @@ property DanceSummary {
 }
 
 
-property ImplementationName {
-  value MapStringValueType
+property ImplementationName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "Unique name of a DanceImplementation instance."
     display_name: "implementation_name"
@@ -558,8 +694,9 @@ property ImplementationName {
 }
 
 
-enum InvocationSource {
-  extends MapEnumValueType
+enum InvocationSource.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type that records how a DanceInvocation entered the runtime."
     display_name: "Invocation Source"
@@ -568,6 +705,8 @@ enum InvocationSource {
   }
   variants {
     variant ClientCommand {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Invocation entered the runtime through a client command ingress path."
         display_name: "Client Command"
@@ -576,6 +715,8 @@ enum InvocationSource {
       }
     }
     variant TrustChannel {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Invocation entered the runtime through a trust-channel ingress path."
         display_name: "Trust Channel"
@@ -584,6 +725,8 @@ enum InvocationSource {
       }
     }
     variant Internal {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Invocation originated from trusted internal runtime code."
         display_name: "Internal"
@@ -595,8 +738,9 @@ enum InvocationSource {
 }
 
 
-enum DanceDiagnosticSeverity {
-  extends MapEnumValueType
+enum DanceDiagnosticSeverity.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for the severity of a DanceDiagnostic holon."
     display_name: "Dance Diagnostic Severity"
@@ -605,6 +749,8 @@ enum DanceDiagnosticSeverity {
   }
   variants {
     variant Info {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Informational non-fatal diagnostic note."
         display_name: "Info"
@@ -613,6 +759,8 @@ enum DanceDiagnosticSeverity {
       }
     }
     variant Warning {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Warning-level non-fatal diagnostic note."
         display_name: "Warning"
@@ -624,8 +772,9 @@ enum DanceDiagnosticSeverity {
 }
 
 
-enum ResponseStatusCode {
-  extends MapEnumValueType
+enum ResponseStatusCode.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Deprecated old-world enum value type for dance status codes. New-world success and failure are expressed by the outer Result contract."
     display_name: "Response Status Code"
@@ -634,6 +783,8 @@ enum ResponseStatusCode {
   }
   variants {
     variant OK {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "200 — Request succeeded."
         display_name: "OK"
@@ -642,6 +793,8 @@ enum ResponseStatusCode {
       }
     }
     variant Accepted {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "202 — Request accepted but not yet processed."
         display_name: "Accepted"
@@ -650,6 +803,8 @@ enum ResponseStatusCode {
       }
     }
     variant BadRequest {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "400 — The request was malformed or invalid."
         display_name: "Bad Request"
@@ -658,6 +813,8 @@ enum ResponseStatusCode {
       }
     }
     variant Unauthorized {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "401 — The requester is not authenticated."
         display_name: "Unauthorized"
@@ -666,6 +823,8 @@ enum ResponseStatusCode {
       }
     }
     variant Forbidden {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "403 — The requester lacks permission."
         display_name: "Forbidden"
@@ -674,6 +833,8 @@ enum ResponseStatusCode {
       }
     }
     variant NotFound {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "404 — The target resource was not found."
         display_name: "Not Found"
@@ -682,6 +843,8 @@ enum ResponseStatusCode {
       }
     }
     variant Conflict {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "409 — Conflict with the current state of the resource."
         display_name: "Conflict"
@@ -690,6 +853,8 @@ enum ResponseStatusCode {
       }
     }
     variant UnprocessableEntity {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "422 — Semantic validation failed."
         display_name: "Unprocessable Entity"
@@ -698,6 +863,8 @@ enum ResponseStatusCode {
       }
     }
     variant ServerError {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "500 — Unexpected internal error."
         display_name: "Server Error"
@@ -706,6 +873,8 @@ enum ResponseStatusCode {
       }
     }
     variant NotImplemented {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "501 — Functionality required to fulfill the request is not supported."
         display_name: "Not Implemented"
@@ -714,6 +883,8 @@ enum ResponseStatusCode {
       }
     }
     variant ServiceUnavailable {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "503 — The server is currently unable to handle the request (overload/maintenance)."
         display_name: "Service Unavailable"
@@ -725,8 +896,9 @@ enum ResponseStatusCode {
 }
 
 
-enum DanceEngine {
-  extends MapEnumValueType
+enum DanceEngine.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for execution engines used by DanceImplementations."
     display_name: "Dance Engine"
@@ -735,6 +907,8 @@ enum DanceEngine {
   }
   variants {
     variant WasmWasi {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Execute a WASM module under WASI (preferred)."
         display_name: "WasmWasi"
@@ -743,6 +917,8 @@ enum DanceEngine {
       }
     }
     variant Process {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Spawn a separate OS process with protocol pipes."
         display_name: "Process"
@@ -751,6 +927,8 @@ enum DanceEngine {
       }
     }
     variant RustDylib {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Dynamically load a Rust dylib via FFI (platform-coupled)."
         display_name: "RustDylib"
@@ -759,6 +937,8 @@ enum DanceEngine {
       }
     }
     variant Builtin {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Call a registered host builtin function."
         display_name: "Builtin"
@@ -770,7 +950,8 @@ enum DanceEngine {
 }
 
 
-holon HolonId {
+holon HolonId.Projection {
+  type MetaHolonType.MetaTypeDescriptor
   extends Projection.HolonType
   header {
     description: "Concrete projection holon type containing exactly one holon_id property."
@@ -778,13 +959,14 @@ holon HolonId {
     display_plural: "HolonId Projections"
     plural: "HolonIdProjections"
   }
-  properties {
-    HolonId.PropertyType
+  relationships {
+    InstanceProperties -> HolonId.PropertyType
   }
 }
 
 
-holon CommitResponse {
+holon CommitResponse.Projection {
+  type MetaHolonType.MetaTypeDescriptor
   extends Projection.HolonType
   header {
     description: "Concrete commit response-body holon type retained under its existing key during parallel buildout. Instances are projection-shaped response holons."
@@ -792,15 +974,23 @@ holon CommitResponse {
     display_plural: "Commit Responses"
     plural: "CommitResponses"
   }
-  properties {
-    CommitsAttempted.PropertyType
-    CommitRequestStatus.PropertyType
+  relationships {
+    InstanceProperties -> [
+      CommitsAttempted.PropertyType,
+      CommitRequestStatus.PropertyType
+    ]
+    InstanceRelationships -> [
+      (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor),
+      (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)
+    ]
   }
 }
 
 
-property CommitsAttempted {
-  value MapIntegerValueType
+property CommitsAttempted.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Number of holons the commit operation attempted to save."
     display_name: "commits_attempted"
@@ -810,8 +1000,9 @@ property CommitsAttempted {
 }
 
 
-enum CommitRequestStatus {
-  extends MapEnumValueType
+enum CommitRequestStatus.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for commit request outcomes (Complete, Incomplete)."
     display_name: "CommitRequestStatus"
@@ -820,6 +1011,8 @@ enum CommitRequestStatus {
   }
   variants {
     variant Complete {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "All staged holons committed; no staged holons remain."
         display_name: "Complete"
@@ -828,6 +1021,8 @@ enum CommitRequestStatus {
       }
     }
     variant Incomplete {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution."
         display_name: "Incomplete"
@@ -839,8 +1034,10 @@ enum CommitRequestStatus {
 }
 
 
-property CommitRequestStatus {
-  value CommitRequestStatus
+property CommitRequestStatus.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value CommitRequestStatus.MapEnumValueType
   header {
     description: "Overall status of the commit request (Complete or Incomplete)."
     display_name: "commit_request_status"
@@ -850,11 +1047,12 @@ property CommitRequestStatus {
 }
 
 
-relationship SavedHolons {
+relationship (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source CommitResponse.Projection
-  target HolonType
-  inverse SavedByCommit
-  cardinality 0..32767
+  target HolonType.TypeDescriptor
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a CommitResponse to each holon successfully saved by this commit."
@@ -865,10 +1063,14 @@ relationship SavedHolons {
 }
 
 
-inverse relationship SavedByCommit {
-  source HolonType
+inverse relationship (HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target CommitResponse.Projection
+  inverse (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it."
     display_name: "SavedByCommit Relationship"
@@ -878,11 +1080,12 @@ inverse relationship SavedByCommit {
 }
 
 
-relationship AbandonedHolons {
+relationship (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source CommitResponse.Projection
-  target HolonType
-  inverse AbandonedByCommit
-  cardinality 0..32767
+  target HolonType.TypeDescriptor
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors."
@@ -893,10 +1096,14 @@ relationship AbandonedHolons {
 }
 
 
-inverse relationship AbandonedByCommit {
-  source HolonType
+inverse relationship (HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
   target CommitResponse.Projection
+  inverse (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it."
     display_name: "AbandonedByCommit Relationship"

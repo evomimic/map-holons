@@ -1,76 +1,101 @@
-schema MAP Core Schema-v0.0.7 {
-  depends_on MAP Key Rule Schema
+schema "MAP Core Schema-v0.0.7" {
+  depends_on "MAP Key Rule Schema"
 }
-abstract holon OperatorType {
-  keyrule TypeNameRule.KeyRuleType
+
+holon MetaOperatorType.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
   header {
-    description: "Abstract descriptor for operator affordances. OperatorTypes are core-defined operations applicable to ValueTypes, used for validation, query construction, and filter expressions."
+    description: "Meta-type describing operator-type descriptor holons. Operator metadata belongs to the descriptor holons because operators are discovered and invoked through their descriptors rather than through runtime operator instances."
+    display_name: "Meta Operator Type"
+    display_plural: "Meta Operator Types"
+    plural: "MetaOperatorTypes"
+  }
+  relationships {
+    InstanceProperties -> [
+      Arity.PropertyType,
+      OperatorCategory.PropertyType
+    ]
+  }
+}
+
+abstract holon OperatorType.HolonType {
+  type MetaOperatorType.MetaHolonType
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Abstract descriptor anchor for core-defined operators applicable to ValueTypes. Concrete operator descriptors carry the metadata used for validation, query construction, and filter expressions."
     display_name: "Operator Type"
     display_plural: "Operator Types"
     plural: "OperatorTypes"
   }
-  properties {
-    Arity.PropertyType
-    OperatorCategory.PropertyType
-  }
 }
 
-
-relationship AffordsOperator {
-  source ValueType
+def relationship (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
+  source ValueType.TypeDescriptor
   target OperatorType.HolonType
-  inverse AffordedBy
-  cardinality 0..32767
+  InheritanceMode Additive
+  cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Links a ValueType to the OperatorTypes available for that value type, supporting validation and query construction."
+    description: "Links a ValueType descriptor to the concrete operator descriptors available for that value type, supporting validation and query construction."
     display_name: "AffordsOperator Relationship"
     display_plural: "AffordsOperator Relationships"
     plural: "AffordsOperatorRelationships"
   }
 }
 
-
-inverse relationship AffordedBy {
+inverse relationship (OperatorType.HolonType)-[AffordedBy]->(ValueType.TypeDescriptor) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source OperatorType.HolonType
-  target ValueType
-  cardinality 1..32767
+  target ValueType.TypeDescriptor
+  inverse (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType)
+  cardinality 1..*
+  deletion_semantic Block
   header {
-    description: "Inverse of AffordsOperator, relationship from OperatorType to ValueType."
+    description: "Inverse of AffordsOperator, from a concrete operator descriptor to the value type descriptors that afford it."
     display_name: "AffordedBy Relationship"
     display_plural: "AffordedBy Relationships"
     plural: "AffordedByRelationships"
   }
 }
 
-
-enum OperatorCategory {
-  extends MapEnumValueType
+enum OperatorCategory.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
-    description: "Enum value type categorizing operators (e.g., Comparison, StringMatch)."
-    display_name: "OperatorCategory"
-    display_plural: "OperatorCategories"
+    description: "Enum value type categorizing operators by semantic behavior."
+    display_name: "Operator Category"
+    display_plural: "Operator Categories"
     plural: "OperatorCategories"
   }
   variants {
     variant Equality {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Operators that test whether two values of the same type are equal or unequal. Applicable to all scalar value types."
         display_name: "Equality"
       }
     }
     variant Ordering {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
-        description: "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order (e.g., integer, string)."
+        description: "Operators that compare the relative order of two values of the same type. Applicable only to value types with a defined total order."
         display_name: "Ordering"
       }
     }
   }
 }
 
-
-property Arity {
-  value MapIntegerValueType
+property Arity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
   header {
     description: "Number of operands the operator accepts (1 = unary, 2 = binary)."
     display_name: "arity"
@@ -79,55 +104,41 @@ property Arity {
   }
 }
 
-
-property OperatorCategory {
-  value OperatorCategory
+property OperatorCategory.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value OperatorCategory.MapEnumValueType
+  IsValueRequired true
   header {
-    description: "Categorical grouping of an operator (e.g., Comparison, StringMatch)."
+    description: "Categorical grouping of an operator by semantic behavior."
     display_name: "operator_category"
     display_plural: "operator_categories"
     plural: "OperatorCategories"
   }
 }
 
-
-holon EqualsOperator {
-  properties {
-    type_name: "EqualsOperator"
-    type_name_plural: "EqualsOperators"
-    display_name: "Equals"
-    display_name_plural: "Equals Operators"
+holon EqualsOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Equality
+  header {
     description: "Returns true iff lhs and rhs are equal under the value type's equality semantics."
-    instance_type_kind: "TypeKind.Holon"
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
-    arity: 2
-    operator_category: "OperatorCategory.Equality"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "OperatorType.HolonType"
+    display_name: "Equals"
+    display_plural: "Equals Operators"
+    plural: "EqualsOperators"
   }
 }
 
-
-holon LessThanOperator {
-  properties {
-    type_name: "LessThanOperator"
-    type_name_plural: "LessThanOperator"
+holon LessThanOperator.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 2
+  OperatorCategory Ordering
+  header {
+    description: "Returns true iff lhs is ordered before rhs under the value type's ordering semantics."
     display_name: "Less Than"
-    display_name_plural: "Less Than Operators"
-    description: "Returns true iff lhs < rhs."
-    instance_type_kind: "TypeKind.Holon"
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
-    arity: 2
-    operator_category: "OperatorCategory.Ordering"
-  }
-  relationships {
-    ComponentOf -> "MAP Core Schema-v0.0.7"
-    Extends -> "OperatorType.HolonType"
+    display_plural: "Less Than Operators"
+    plural: "LessThanOperators"
   }
 }

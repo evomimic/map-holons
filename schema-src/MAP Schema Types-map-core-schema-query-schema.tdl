@@ -1,11 +1,13 @@
-schema MAP Query Schema-v0.0.1 {
-  depends_on MAP Core Schema-v0.0.7
-  depends_on MAP Dance Schema-v0.0.4
+schema "MAP Query Schema-v0.0.1" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Dance Schema-v0.0.4"
   header {
     description: "Schema containing the minimal query substrate (QueryDance, request/graph/step, bindings, and execution state) needed for the SeedHolons + Expand QueryDance vertical slice."
   }
 }
-holon QueryDanceRequest {
+holon QueryDanceRequest.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Fixed-shape request holon supplied to a QueryDance. Names the symbolic plan to execute and the caller-supplied initial runtime bindings."
     display_name: "Query Dance Request"
@@ -13,101 +15,124 @@ holon QueryDanceRequest {
     plural: "QueryDanceRequests"
   }
   relationships {
-    (QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType)
-    (QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)
+    InstanceRelationships -> [
+      (QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType),
+      (QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)
+    ]
   }
 }
 
 
-holon QueryDanceResponse {
-  properties {
-    type_name: "QueryDanceResponse"
-    type_name_plural: "QueryDanceResponses"
-    display_name: "Query Dance Response"
-    display_name_plural: "Query Dance Responses"
-    instance_type_kind: "TypeKind.Holon"
+holon QueryDanceResponse.DanceResponseType {
+  type MetaDanceResponseType.MetaHolonType
+  extends DanceResponseType.HolonType
+  header {
     description: "Concrete dance response type for query execution. Its response body is a HolonCollection; diagnostics and status live at the dance-response layer."
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_name: "Query Dance Response"
+    display_plural: "Query Dance Responses"
+    plural: "QueryDanceResponses"
   }
   relationships {
-    ComponentOf -> "MAP Query Schema-v0.0.1"
-    Extends -> "DanceResponseType.HolonType"
-    ResponseBody -> "HolonCollection.HolonType"
+    ResponseBody -> HolonCollection.HolonType
   }
 }
 
 
-holon QueryGraph {
+holon QueryGraph.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Symbolic query plan: a reusable, saveable artifact describing what a query means. Owns its steps, its declared input bindings, and its single declared result binding. Carries no runtime execution state."
     display_name: "Query Graph"
     display_plural: "Query Graphs"
     plural: "QueryGraphs"
   }
-  properties {
-    QueryName.PropertyType
-    QueryDescription.PropertyType
-  }
   relationships {
-    (QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType)
-    (QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType)
-    (QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)
+    InstanceProperties -> [
+      QueryName.PropertyType,
+      QueryDescription.PropertyType
+    ]
+    InstanceRelationships -> [
+      (QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType),
+      (QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType),
+      (QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)
+    ]
   }
 }
 
 
-holon QueryStep {
+holon QueryStep.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "An operation node in a QueryGraph. Names its operation kind, optional parameters, predecessor steps, an optional request-supplied initial binding (root steps only), and an optional symbolic output binding."
     display_name: "Query Step"
     display_plural: "Query Steps"
     plural: "QuerySteps"
   }
-  properties {
-    StepOrdinal.PropertyType
-    StepLabel.PropertyType
-  }
   relationships {
-    (QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType)
-    (QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType)
-    (QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType)
-    (QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType)
-    (QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)
+    InstanceProperties -> [
+      StepOrdinal.PropertyType,
+      StepLabel.PropertyType
+    ]
+    InstanceRelationships -> [
+      (QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType),
+      (QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType),
+      (QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType),
+      (QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType),
+      (QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)
+    ]
   }
 }
 
+holon MetaQueryStepKind.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "Meta-type describing query-step-kind descriptor holons and their input, result, and parameter type metadata."
+    display_name: "Meta Query Step Kind"
+    display_plural: "Meta Query Step Kinds"
+    plural: "MetaQueryStepKinds"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType),
+      (QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType),
+      (QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)
+    ]
+  }
+}
 
-abstract holon QueryStepKind {
+abstract holon QueryStepKind.HolonType {
+  type MetaQueryStepKind.MetaHolonType
+  extends HolonType.TypeDescriptor
   header {
     description: "Abstract holon type describing a family of query-step operations. Its small semantic contract is an optional input collection type, a result collection type, and an optional parameter projection type."
     display_name: "Query Step Kind"
     display_plural: "Query Step Kinds"
     plural: "QueryStepKinds"
   }
-  relationships {
-    (QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType)
-    (QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType)
-    (QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)
-  }
 }
 
 
-holon QueryBinding {
+holon QueryBinding.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Symbolic-only binding: the variable name used by a query plan. It does not carry a runtime collection; that association is made by ExecutionBinding."
     display_name: "Query Binding"
     display_plural: "Query Bindings"
     plural: "QueryBindings"
   }
-  properties {
-    BindingName.PropertyType
+  relationships {
+    InstanceProperties -> BindingName.PropertyType
   }
 }
 
 
-holon ExecutionBinding {
+holon ExecutionBinding.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "Runtime binding associating a symbolic QueryBinding with a concrete HolonCollection. Supplied as an initial binding on a request and tracked on an ExecutionInstance during a run."
     display_name: "Execution Binding"
@@ -115,31 +140,36 @@ holon ExecutionBinding {
     plural: "ExecutionBindings"
   }
   relationships {
-    (ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType)
-    (ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)
+    InstanceRelationships -> [
+      (ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType),
+      (ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)
+    ]
   }
 }
 
 
-holon ExecutionInstance {
+holon ExecutionInstance.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
   header {
     description: "One ephemeral runtime execution of one QueryDanceRequest. Owns the request it executes, the live runtime bindings, execution status, and the final result collection."
     display_name: "Execution Instance"
     display_plural: "Execution Instances"
     plural: "ExecutionInstances"
   }
-  properties {
-    ExecutionStatus.PropertyType
-  }
   relationships {
-    (ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType)
-    (ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType)
-    (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)
+    InstanceProperties -> ExecutionStatus.PropertyType
+    InstanceRelationships -> [
+      (ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType),
+      (ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType),
+      (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)
+    ]
   }
 }
 
 
-holon ExpandParameters {
+holon ExpandParameters.Projection {
+  type MetaHolonType.MetaTypeDescriptor
   extends Projection.HolonType
   header {
     description: "Parameter projection for an Expand step. Carries the name of the MAP relationship channel to traverse."
@@ -147,78 +177,66 @@ holon ExpandParameters {
     display_plural: "Expand Parameters"
     plural: "ExpandParameters"
   }
-  properties {
-    RelationshipName.PropertyType
+  relationships {
+    InstanceProperties -> RelationshipName.PropertyType
   }
 }
 
 
-holon QueryDance {
-  properties {
-    type_name: "QueryDance"
-    type_name_plural: "QueryDances"
-    display_name: "Query Dance"
-    display_name_plural: "Query Dances"
-    instance_type_kind: "TypeKind.Holon"
+holon QueryDance.DanceType {
+  type MetaDanceType.MetaHolonType
+  extends DanceType.HolonType
+  DanceDescription "Executes a symbolic QueryGraph against an affording holon, producing a HolonCollection result."
+  header {
     description: "Concrete dance type for graph query execution. Its dance input is a QueryDanceRequest and its response is a QueryDanceResponse. Ordinarily afforded by HolonSpace."
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
-    dance_description: "Executes a symbolic QueryGraph against an affording holon, producing a HolonCollection result."
+    display_name: "Query Dance"
+    display_plural: "Query Dances"
+    plural: "QueryDances"
   }
   relationships {
-    ComponentOf -> "MAP Query Schema-v0.0.1"
-    DanceInput -> "QueryDanceRequest.HolonType"
-    Extends -> "DanceType.HolonType"
-    Response -> "QueryDanceResponse.DanceResponseType"
+    DanceInput -> QueryDanceRequest.HolonType
+    Response -> QueryDanceResponse.DanceResponseType
   }
 }
 
 
-holon SeedHolonsQueryStepType {
-  properties {
-    type_name: "SeedHolonsQueryStepType"
-    type_name_plural: "SeedHolonsQueryStepTypes"
-    display_name: "Seed Holons Query Step Type"
-    display_name_plural: "Seed Holons Query Step Types"
-    instance_type_kind: "TypeKind.Holon"
+holon SeedHolonsQueryStepType.QueryStepKind {
+  type MetaQueryStepKind.MetaHolonType
+  extends QueryStepKind.HolonType
+  header {
     description: "Concrete query step kind that seeds an execution with a starting HolonCollection. Takes no input collection; produces a HolonCollection."
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_name: "Seed Holons Query Step Type"
+    display_plural: "Seed Holons Query Step Types"
+    plural: "SeedHolonsQueryStepTypes"
   }
   relationships {
-    ComponentOf -> "MAP Query Schema-v0.0.1"
-    Extends -> "QueryStepKind.HolonType"
-    StepResultType -> "HolonCollection.HolonType"
+    StepResultType -> HolonCollection.HolonType
   }
 }
 
 
-holon ExpandQueryStepType {
-  properties {
-    type_name: "ExpandQueryStepType"
-    type_name_plural: "ExpandQueryStepTypes"
-    display_name: "Expand Query Step Type"
-    display_name_plural: "Expand Query Step Types"
-    instance_type_kind: "TypeKind.Holon"
+holon ExpandQueryStepType.QueryStepKind {
+  type MetaQueryStepKind.MetaHolonType
+  extends QueryStepKind.HolonType
+  header {
     description: "Concrete query step kind that follows a named MAP relationship channel. Consumes a HolonCollection, takes ExpandParameters, and produces a HolonCollection."
-    is_abstract_type: false
-    allows_additional_properties: false
-    allows_additional_relationships: false
+    display_name: "Expand Query Step Type"
+    display_plural: "Expand Query Step Types"
+    plural: "ExpandQueryStepTypes"
   }
   relationships {
-    ComponentOf -> "MAP Query Schema-v0.0.1"
-    Extends -> "QueryStepKind.HolonType"
-    StepInputType -> "HolonCollection.HolonType"
-    StepResultType -> "HolonCollection.HolonType"
-    StepParameterType -> "ExpandParameters.Projection"
+    StepInputType -> HolonCollection.HolonType
+    StepResultType -> HolonCollection.HolonType
+    StepParameterType -> ExpandParameters.Projection
   }
 }
 
 
-property QueryName {
-  value MapStringValueType
+property QueryName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "Human-facing name of a QueryGraph."
     display_name: "Query Name"
@@ -228,8 +246,10 @@ property QueryName {
 }
 
 
-property QueryDescription {
-  value MapStringValueType
+property QueryDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable description of what a QueryGraph means."
     display_name: "Query Description"
@@ -239,8 +259,10 @@ property QueryDescription {
 }
 
 
-property BindingName {
-  value MapStringValueType
+property BindingName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Symbolic variable name carried by a QueryBinding."
     display_name: "Binding Name"
@@ -250,8 +272,11 @@ property BindingName {
 }
 
 
-property StepOrdinal {
-  value MapIntegerValueType
+property StepOrdinal.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
   header {
     description: "Ordinal position of a QueryStep within its QueryGraph."
     display_name: "Step Ordinal"
@@ -261,8 +286,10 @@ property StepOrdinal {
 }
 
 
-property StepLabel {
-  value MapStringValueType
+property StepLabel.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
   header {
     description: "Optional human-readable label for a QueryStep."
     display_name: "Step Label"
@@ -272,8 +299,10 @@ property StepLabel {
 }
 
 
-property ExecutionStatus {
-  value ExecutionStatus
+property ExecutionStatus.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value ExecutionStatus.MapEnumValueType
   header {
     description: "Status of an ExecutionInstance, recorded as an ExecutionStatus enum value."
     display_name: "Execution Status"
@@ -283,8 +312,9 @@ property ExecutionStatus {
 }
 
 
-enum ExecutionStatus {
-  extends MapEnumValueType
+enum ExecutionStatus.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for the lifecycle status of an ExecutionInstance."
     display_name: "Execution Status"
@@ -293,6 +323,8 @@ enum ExecutionStatus {
   }
   variants {
     variant Pending {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Execution has been created but not yet started."
         display_name: "Pending"
@@ -301,6 +333,8 @@ enum ExecutionStatus {
       }
     }
     variant Running {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Execution is in progress."
         display_name: "Running"
@@ -309,6 +343,8 @@ enum ExecutionStatus {
       }
     }
     variant Complete {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Execution finished successfully."
         display_name: "Complete"
@@ -317,6 +353,8 @@ enum ExecutionStatus {
       }
     }
     variant Failed {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Execution terminated with a failure."
         display_name: "Failed"
@@ -328,10 +366,11 @@ enum ExecutionStatus {
 }
 
 
-def relationship QueryGraph {
+def relationship (QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target QueryGraph.HolonType
-  inverse GraphForQueryDanceRequest
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -343,10 +382,14 @@ def relationship QueryGraph {
 }
 
 
-inverse relationship GraphForQueryDanceRequest {
+inverse relationship (QueryGraph.HolonType)-[GraphForQueryDanceRequest]->(QueryDanceRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryDanceRequest.HolonType
-  cardinality 0..32767
+  inverse (QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of QueryGraph, from QueryGraph to QueryDanceRequest."
     display_name: "GraphForQueryDanceRequest Relationship"
@@ -356,11 +399,12 @@ inverse relationship GraphForQueryDanceRequest {
 }
 
 
-def relationship InitialBindings {
+def relationship (QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target ExecutionBinding.HolonType
-  inverse InitialBindingForQueryDanceRequest
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -372,10 +416,14 @@ def relationship InitialBindings {
 }
 
 
-inverse relationship InitialBindingForQueryDanceRequest {
+inverse relationship (ExecutionBinding.HolonType)-[InitialBindingForQueryDanceRequest]->(QueryDanceRequest.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target QueryDanceRequest.HolonType
-  cardinality 0..32767
+  inverse (QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of InitialBindings, from ExecutionBinding to QueryDanceRequest."
     display_name: "InitialBindingForQueryDanceRequest Relationship"
@@ -385,11 +433,12 @@ inverse relationship InitialBindingForQueryDanceRequest {
 }
 
 
-def relationship QuerySteps {
+def relationship (QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryStep.HolonType
-  inverse StepInQueryGraph
-  cardinality 1..32767
+  cardinality 1..*
   ordered
   deletion_semantic Block
   header {
@@ -401,10 +450,14 @@ def relationship QuerySteps {
 }
 
 
-inverse relationship StepInQueryGraph {
+inverse relationship (QueryStep.HolonType)-[StepInQueryGraph]->(QueryGraph.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryGraph.HolonType
+  inverse (QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType)
   cardinality 1..1
+  deletion_semantic Block
   header {
     description: "Inverse of QuerySteps, from QueryStep to QueryGraph."
     display_name: "StepInQueryGraph Relationship"
@@ -414,11 +467,12 @@ inverse relationship StepInQueryGraph {
 }
 
 
-def relationship DeclaredInputBindings {
+def relationship (QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryBinding.HolonType
-  inverse InputBindingForQueryGraph
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -430,10 +484,14 @@ def relationship DeclaredInputBindings {
 }
 
 
-inverse relationship InputBindingForQueryGraph {
+inverse relationship (QueryBinding.HolonType)-[InputBindingForQueryGraph]->(QueryGraph.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryGraph.HolonType
-  cardinality 0..32767
+  inverse (QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of DeclaredInputBindings, from QueryBinding to QueryGraph."
     display_name: "InputBindingForQueryGraph Relationship"
@@ -443,10 +501,11 @@ inverse relationship InputBindingForQueryGraph {
 }
 
 
-def relationship DeclaredResultBinding {
+def relationship (QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryBinding.HolonType
-  inverse ResultBindingForQueryGraph
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -458,10 +517,14 @@ def relationship DeclaredResultBinding {
 }
 
 
-inverse relationship ResultBindingForQueryGraph {
+inverse relationship (QueryBinding.HolonType)-[ResultBindingForQueryGraph]->(QueryGraph.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryGraph.HolonType
+  inverse (QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of DeclaredResultBinding, from QueryBinding to QueryGraph."
     display_name: "ResultBindingForQueryGraph Relationship"
@@ -471,10 +534,11 @@ inverse relationship ResultBindingForQueryGraph {
 }
 
 
-def relationship StepKind {
+def relationship (QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryStepKind.HolonType
-  inverse StepKindFor
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -486,10 +550,14 @@ def relationship StepKind {
 }
 
 
-inverse relationship StepKindFor {
+inverse relationship (QueryStepKind.HolonType)-[StepKindFor]->(QueryStep.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  inverse (QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of StepKind, from QueryStepKind to QueryStep."
     display_name: "StepKindFor Relationship"
@@ -499,10 +567,11 @@ inverse relationship StepKindFor {
 }
 
 
-def relationship UsesInitialBinding {
+def relationship (QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryBinding.HolonType
-  inverse InitialBindingUsedByStep
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -514,10 +583,14 @@ def relationship UsesInitialBinding {
 }
 
 
-inverse relationship InitialBindingUsedByStep {
+inverse relationship (QueryBinding.HolonType)-[InitialBindingUsedByStep]->(QueryStep.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  inverse (QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of UsesInitialBinding, from QueryBinding to QueryStep."
     display_name: "InitialBindingUsedByStep Relationship"
@@ -527,10 +600,11 @@ inverse relationship InitialBindingUsedByStep {
 }
 
 
-def relationship StepOutputBinding {
+def relationship (QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryBinding.HolonType
-  inverse OutputBindingForStep
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -542,10 +616,14 @@ def relationship StepOutputBinding {
 }
 
 
-inverse relationship OutputBindingForStep {
+inverse relationship (QueryBinding.HolonType)-[OutputBindingForStep]->(QueryStep.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryStep.HolonType
+  inverse (QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of StepOutputBinding, from QueryBinding to QueryStep."
     display_name: "OutputBindingForStep Relationship"
@@ -555,10 +633,11 @@ inverse relationship OutputBindingForStep {
 }
 
 
-def relationship StepParameters {
+def relationship (QueryStep.HolonType)-[StepParameters]->(Projection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target Projection.HolonType
-  inverse ParametersForStep
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -570,10 +649,14 @@ def relationship StepParameters {
 }
 
 
-inverse relationship ParametersForStep {
+inverse relationship (Projection.HolonType)-[ParametersForStep]->(QueryStep.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source Projection.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  inverse (QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of StepParameters, from Projection to QueryStep."
     display_name: "ParametersForStep Relationship"
@@ -583,11 +666,12 @@ inverse relationship ParametersForStep {
 }
 
 
-def relationship StepDependsOn {
+def relationship (QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryStep.HolonType
-  inverse StepDependedOnBy
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -599,10 +683,14 @@ def relationship StepDependsOn {
 }
 
 
-inverse relationship StepDependedOnBy {
+inverse relationship (QueryStep.HolonType)-[StepDependedOnBy]->(QueryStep.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  inverse (QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of StepDependsOn, from a QueryStep to the successor QuerySteps that depend on it."
     display_name: "StepDependedOnBy Relationship"
@@ -612,10 +700,11 @@ inverse relationship StepDependedOnBy {
 }
 
 
-def relationship StepInputType {
+def relationship (QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target HolonCollection.HolonType
-  inverse InputTypeForStepKind
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -627,10 +716,14 @@ def relationship StepInputType {
 }
 
 
-inverse relationship InputTypeForStepKind {
+inverse relationship (HolonCollection.HolonType)-[InputTypeForStepKind]->(QueryStepKind.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target QueryStepKind.HolonType
-  cardinality 0..32767
+  inverse (QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of StepInputType, from HolonCollection to QueryStepKind."
     display_name: "InputTypeForStepKind Relationship"
@@ -640,10 +733,11 @@ inverse relationship InputTypeForStepKind {
 }
 
 
-def relationship StepResultType {
+def relationship (QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target HolonCollection.HolonType
-  inverse ResultTypeForStepKind
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -655,10 +749,14 @@ def relationship StepResultType {
 }
 
 
-inverse relationship ResultTypeForStepKind {
+inverse relationship (HolonCollection.HolonType)-[ResultTypeForStepKind]->(QueryStepKind.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target QueryStepKind.HolonType
-  cardinality 0..32767
+  inverse (QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of StepResultType, from HolonCollection to QueryStepKind."
     display_name: "ResultTypeForStepKind Relationship"
@@ -668,10 +766,11 @@ inverse relationship ResultTypeForStepKind {
 }
 
 
-def relationship StepParameterType {
+def relationship (QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target Projection.HolonType
-  inverse ParameterTypeForStepKind
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -683,10 +782,14 @@ def relationship StepParameterType {
 }
 
 
-inverse relationship ParameterTypeForStepKind {
+inverse relationship (Projection.HolonType)-[ParameterTypeForStepKind]->(QueryStepKind.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source Projection.HolonType
   target QueryStepKind.HolonType
-  cardinality 0..32767
+  inverse (QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of StepParameterType, from Projection to QueryStepKind."
     display_name: "ParameterTypeForStepKind Relationship"
@@ -696,10 +799,11 @@ inverse relationship ParameterTypeForStepKind {
 }
 
 
-def relationship ExecutesRequest {
+def relationship (ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target QueryDanceRequest.HolonType
-  inverse ExecutedBy
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -711,10 +815,14 @@ def relationship ExecutesRequest {
 }
 
 
-inverse relationship ExecutedBy {
+inverse relationship (QueryDanceRequest.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target ExecutionInstance.HolonType
-  cardinality 0..32767
+  inverse (ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of ExecutesRequest, from QueryDanceRequest to ExecutionInstance."
     display_name: "ExecutedBy Relationship"
@@ -724,11 +832,12 @@ inverse relationship ExecutedBy {
 }
 
 
-def relationship ExecutionBindings {
+def relationship (ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target ExecutionBinding.HolonType
-  inverse BindingForExecutionInstance
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Links an ExecutionInstance to its live runtime ExecutionBindings."
@@ -739,10 +848,14 @@ def relationship ExecutionBindings {
 }
 
 
-inverse relationship BindingForExecutionInstance {
+inverse relationship (ExecutionBinding.HolonType)-[BindingForExecutionInstance]->(ExecutionInstance.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target ExecutionInstance.HolonType
+  inverse (ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType)
   cardinality 0..1
+  deletion_semantic Block
   header {
     description: "Inverse of ExecutionBindings, from ExecutionBinding to ExecutionInstance."
     display_name: "BindingForExecutionInstance Relationship"
@@ -752,10 +865,11 @@ inverse relationship BindingForExecutionInstance {
 }
 
 
-def relationship BindsQueryVariable {
+def relationship (ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target QueryBinding.HolonType
-  inverse ExecutionVariableBinding
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -767,10 +881,14 @@ def relationship BindsQueryVariable {
 }
 
 
-inverse relationship ExecutionVariableBinding {
+inverse relationship (QueryBinding.HolonType)-[ExecutionVariableBinding]->(ExecutionBinding.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target ExecutionBinding.HolonType
-  cardinality 0..32767
+  inverse (ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of BindsQueryVariable, from QueryBinding to ExecutionBinding."
     display_name: "ExecutionVariableBinding Relationship"
@@ -780,10 +898,11 @@ inverse relationship ExecutionVariableBinding {
 }
 
 
-def relationship BoundCollection {
+def relationship (ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target HolonCollection.HolonType
-  inverse CollectionBoundIn
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -795,10 +914,14 @@ def relationship BoundCollection {
 }
 
 
-inverse relationship CollectionBoundIn {
+inverse relationship (HolonCollection.HolonType)-[CollectionBoundIn]->(ExecutionBinding.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target ExecutionBinding.HolonType
-  cardinality 0..32767
+  inverse (ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of BoundCollection, from HolonCollection to ExecutionBinding."
     display_name: "CollectionBoundIn Relationship"
@@ -808,10 +931,11 @@ inverse relationship CollectionBoundIn {
 }
 
 
-relationship ExecutionResult {
+relationship (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target HolonCollection.HolonType
-  inverse ResultOfExecution
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -823,10 +947,14 @@ relationship ExecutionResult {
 }
 
 
-inverse relationship ResultOfExecution {
+inverse relationship (HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target ExecutionInstance.HolonType
-  cardinality 0..32767
+  inverse (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)
+  cardinality 0..*
+  deletion_semantic Block
   header {
     description: "Inverse of ExecutionResult, from HolonCollection to ExecutionInstance."
     display_name: "ResultOfExecution Relationship"
