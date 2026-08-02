@@ -120,7 +120,8 @@ abstract holon MetaTypeDescriptor.HolonType {
     ]
     InstanceRelationships -> [
       (TypeDescriptor)-[ComponentOf]->(Schema.HolonType),
-      (TypeDescriptor)-[Extends]->(TypeDescriptor)
+      (TypeDescriptor)-[Extends]->(TypeDescriptor),
+      (TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)
     ]
   }
 }
