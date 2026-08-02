@@ -218,7 +218,7 @@ holon ExpandQueryStepType {
 
 
 property QueryName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Human-facing name of a QueryGraph."
     display_name: "Query Name"
@@ -229,7 +229,7 @@ property QueryName {
 
 
 property QueryDescription {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable description of what a QueryGraph means."
     display_name: "Query Description"
@@ -240,7 +240,7 @@ property QueryDescription {
 
 
 property BindingName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Symbolic variable name carried by a QueryBinding."
     display_name: "Binding Name"
@@ -251,7 +251,7 @@ property BindingName {
 
 
 property StepOrdinal {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Ordinal position of a QueryStep within its QueryGraph."
     display_name: "Step Ordinal"
@@ -262,7 +262,7 @@ property StepOrdinal {
 
 
 property StepLabel {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Optional human-readable label for a QueryStep."
     display_name: "Step Label"
@@ -284,7 +284,7 @@ property ExecutionStatus {
 
 
 enum ExecutionStatus {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for the lifecycle status of an ExecutionInstance."
     display_name: "Execution Status"

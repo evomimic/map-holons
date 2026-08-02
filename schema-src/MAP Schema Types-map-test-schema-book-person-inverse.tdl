@@ -60,7 +60,7 @@ inverse relationship Authors {
 
 
 property Name {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Proper name."
     display_name: "Name"
@@ -71,7 +71,7 @@ property Name {
 
 
 property Title {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "A title."
     display_name: "Title"

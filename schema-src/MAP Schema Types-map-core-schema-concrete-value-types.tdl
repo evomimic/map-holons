@@ -1,7 +1,9 @@
 schema "MAP Core Schema-v0.0.7" {
   depends_on "MAP Key Rule Schema"
 }
-value MapStringValueType {
+
+value MapStringValueType.StringValueType {
+  type MetaStringValueType.MetaValueType
   extends StringValueType.ValueType
   header {
     description: "Concrete value type representing strings."
@@ -11,8 +13,8 @@ value MapStringValueType {
   }
 }
 
-
-value MapIntegerValueType {
+value MapIntegerValueType.IntegerValueType {
+  type MetaIntegerValueType.MetaValueType
   extends IntegerValueType.ValueType
   header {
     description: "Concrete value type representing integers."
@@ -22,8 +24,8 @@ value MapIntegerValueType {
   }
 }
 
-
-value MapBooleanValueType {
+value MapBooleanValueType.BooleanValueType {
+  type MetaValueType.MetaTypeDescriptor
   extends BooleanValueType.ValueType
   header {
     description: "Concrete value type representing booleans."
@@ -33,8 +35,8 @@ value MapBooleanValueType {
   }
 }
 
-
-value MapBytesValueType {
+value MapBytesValueType.BytesValueType {
+  type MetaBytesValueType.MetaValueType
   extends BytesValueType.ValueType
   header {
     description: "Concrete value type representing byte sequences."
@@ -44,42 +46,9 @@ value MapBytesValueType {
   }
 }
 
-
-enum MapEnumValueType {
-  extends EnumValueType.ValueType
-  header {
-    description: "Concrete value type representing enums."
-    display_name: "MapEnumValueType"
-    display_plural: "MapEnumValueTypes"
-    plural: "MapEnumValueTypes"
-  }
-}
-
-
-variant MapEnumVariantValueType {
-  extends EnumVariantValueType.ValueType
-  header {
-    description: "Abstract type for variants of enum-based value types."
-    display_name: "MapEnumVariant Value Type"
-    display_plural: "MapEnumVariant Value Types"
-    plural: "MapEnumVariantValueTypes"
-  }
-}
-
-
-value MapValueArrayType {
-  extends ValueArrayValueType.ValueType
-  header {
-    description: "Concrete value type representing arrays of values."
-    display_name: "MapValueArrayType"
-    display_plural: "MapValueArrayTypes"
-    plural: "MapValueArrayTypes"
-  }
-}
-
-
-enum DeletionSemantic {
-  extends MapEnumValueType
+enum DeletionSemantic.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for deletion semantics."
     display_name: "DeletionSemantic"
@@ -88,18 +57,24 @@ enum DeletionSemantic {
   }
   variants {
     variant Allow {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Allow the source holon to be deleted regardless of any related target holons; deleting the source has no effect on the targets."
         display_name: "Allow"
       }
     }
     variant Block {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Prevent deletion of the source holon if any target holons are related through this relationship."
         display_name: "Block"
       }
     }
     variant Cascade {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "If the source holon is deleted, also delete any related target holons."
         display_name: "Cascade"
@@ -108,9 +83,9 @@ enum DeletionSemantic {
   }
 }
 
-
-enum TypeKind {
-  extends MapEnumValueType
+enum TypeKind.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for distinguishing kinds of types (e.g., Holon, Property, Relationship)."
     display_name: "TypeKind"
@@ -119,72 +94,96 @@ enum TypeKind {
   }
   variants {
     variant Property {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Represents a property type. Variant of the TypeKind enum."
         display_name: "Property"
       }
     }
     variant Relationship {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Represents a relationship type. Variant of the TypeKind enum."
         display_name: "Relationship"
       }
     }
     variant EnumVariant {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Represents an enum variant type. Variant of the TypeKind enum."
         display_name: "EnumVariant"
       }
     }
     variant Holon {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
-        description: "Represents a holon type.  Variant of the TypeKind enum."
+        description: "Represents a holon type. Variant of the TypeKind enum."
         display_name: "Holon"
       }
     }
     variant Collection {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Represents a collection type. Variant of the TypeKind enum."
         display_name: "Collection"
       }
     }
     variant Dance {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Represents a dance service type. Variant of the TypeKind enum."
         display_name: "Dance"
       }
     }
     variant Value.String {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Value type wrapping base type representing strings."
         display_name: "Value.String"
       }
     }
     variant Value.Array {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Value type wrapping an array of base type items."
         display_name: "Value.Array"
       }
     }
     variant Value.Integer {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Value type wrapping base type representing integers."
         display_name: "Value.Integer"
       }
     }
     variant Value.Boolean {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Value type wrapping base type representing booleans."
         display_name: "Value.Boolean"
       }
     }
     variant Value.Enum {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Value type wrapping base type representing enumerations."
         display_name: "Value.Enum"
       }
     }
     variant Value.Bytes {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Value type wrapping base type representing byte sequences."
         display_name: "Value.Bytes"
@@ -193,9 +192,9 @@ enum TypeKind {
   }
 }
 
-
-enum CollectionType {
-  extends MapEnumValueType
+enum CollectionType.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for selecting the runtime wrapper used to inflate a persisted collection holon."
     display_name: "Collection Type"
@@ -204,6 +203,8 @@ enum CollectionType {
   }
   variants {
     variant HolonArray {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
       header {
         description: "Collection wrapper variant for ordered or index-addressable array-style holon collections."
         display_name: "Holon Array"
@@ -214,9 +215,9 @@ enum CollectionType {
   }
 }
 
-
-value HolonIdValueType {
-  extends MapBytesValueType
+value HolonIdValueType.MapBytesValueType {
+  type MetaBytesValueType.MetaValueType
+  extends MapBytesValueType.BytesValueType
   header {
     description: "Concrete bytes value type representing the canonical serialized form of a HolonId."
     display_name: "HolonIdValueType"

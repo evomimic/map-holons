@@ -45,7 +45,7 @@ inverse relationship AffordedBy {
 
 
 enum OperatorCategory {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type categorizing operators (e.g., Comparison, StringMatch)."
     display_name: "OperatorCategory"
@@ -70,7 +70,7 @@ enum OperatorCategory {
 
 
 property Arity {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Number of operands the operator accepts (1 = unary, 2 = binary)."
     display_name: "arity"

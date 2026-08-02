@@ -1,6 +1,6 @@
 schema "MAP Core Schema-v0.0.7"
 property AllowsDuplicates {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set."
     display_name: "allows_duplicates"
@@ -11,7 +11,7 @@ property AllowsDuplicates {
 
 
 property AllowsAdditionalProperties {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "If true, instances may include properties not explicitly listed by the descriptor."
     display_name: "allows_additional_properties"
@@ -22,7 +22,7 @@ property AllowsAdditionalProperties {
 
 
 property AllowsAdditionalRelationships {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "If true, instances may include relationships not explicitly listed by the descriptor."
     display_name: "allows_additional_relationships"
@@ -33,7 +33,7 @@ property AllowsAdditionalRelationships {
 
 
 property DeletionSemantic {
-  value DeletionSemantic
+  value DeletionSemantic.MapEnumValueType
   header {
     description: "Specifies behavior for how to handle requests to delete the source holon from this relationship."
     display_name: "deletion_semantic"
@@ -44,7 +44,7 @@ property DeletionSemantic {
 
 
 property Description {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "A human-readable explanation of the purpose or role of this type."
     display_name: "description"
@@ -55,7 +55,7 @@ property Description {
 
 
 property DisplayName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "The human-readable label used for this property"
     display_name: "displayName"
@@ -66,7 +66,7 @@ property DisplayName {
 
 
 property DisplayNamePlural {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "The plural form of the label for use in lists or summaries."
     display_name: "displayNamePlural"
@@ -77,7 +77,7 @@ property DisplayNamePlural {
 
 
 property IsAbstractType {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "Indicates whether the type is abstract (cannot be instantiated)."
     display_name: "isAbstractType"
@@ -88,7 +88,7 @@ property IsAbstractType {
 
 
 property IsDefinitional {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "Indicates whether the relationship contributes to the identity of the target holon."
     display_name: "isDefinitional"
@@ -99,7 +99,7 @@ property IsDefinitional {
 
 
 property IsOrdered {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "True if the order of related holons is significant."
     display_name: "isOrdered"
@@ -110,7 +110,7 @@ property IsOrdered {
 
 
 property IsRequired {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "True if a value for this property type is required for the holon having this property."
     display_name: "IsRequired"
@@ -121,7 +121,7 @@ property IsRequired {
 
 
 property MapBoolean {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "Boolean scalar value (true/false)."
     display_name: "mapBoolean"
@@ -132,7 +132,7 @@ property MapBoolean {
 
 
 property MapBytes {
-  value MapBytesValueType
+  value MapBytesValueType.BytesValueType
   header {
     description: "Binary data (blob of bytes)."
     display_name: "mapBytes"
@@ -143,7 +143,7 @@ property MapBytes {
 
 
 property MapInteger {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Integer scalar value."
     display_name: "mapInteger"
@@ -154,7 +154,7 @@ property MapInteger {
 
 
 property MapString {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Textual scalar value."
     display_name: "mapString"
@@ -165,7 +165,7 @@ property MapString {
 
 
 property MaxCardinality {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Maximum number of target holons allowed for the relationship."
     display_name: "max_cardinality"
@@ -176,7 +176,7 @@ property MaxCardinality {
 
 
 property MinCardinality {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Minimum number of target holons allowed for the relationship."
     display_name: "min_cardinality"
@@ -187,7 +187,7 @@ property MinCardinality {
 
 
 property TypeKind {
-  value TypeKind
+  value TypeKind.MapEnumValueType
   header {
     description: "Specifies the kind of type this descriptor represents."
     display_name: "type_kind"
@@ -198,7 +198,7 @@ property TypeKind {
 
 
 property TypeName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "The unique identifier for a type, typically in ClassCase."
     display_name: "typeName"
@@ -209,7 +209,7 @@ property TypeName {
 
 
 property SchemaName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "The name of a type schema.  Defines a collection of type descriptor holons."
     display_name: "schemaName"
@@ -220,7 +220,7 @@ property SchemaName {
 
 
 property TypeNamePlural {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "The plural form of the type's identifier used for display or grouping."
     display_name: "typeNamePlural"
@@ -231,7 +231,7 @@ property TypeNamePlural {
 
 
 property ErrorType {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Indicates the type of error."
     display_name: "error_type"
@@ -242,7 +242,7 @@ property ErrorType {
 
 
 property ErrorMessage {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "A descriptive message explaining an error."
     display_name: "error_message"
@@ -253,7 +253,7 @@ property ErrorMessage {
 
 
 property ErrorCount {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Number of errors encountered."
     display_name: "error_count"
@@ -264,7 +264,7 @@ property ErrorCount {
 
 
 property TemplateString {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings."
     display_name: "template_string"
@@ -275,7 +275,7 @@ property TemplateString {
 
 
 property CollectionType {
-  value CollectionType
+  value CollectionType.MapEnumValueType
   header {
     description: "Selects the runtime wrapper used to inflate a persisted collection holon."
     display_name: "collection_type"
@@ -286,7 +286,7 @@ property CollectionType {
 
 
 property Key {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Identifying key of a holon instance."
     display_name: "key"
@@ -297,7 +297,7 @@ property Key {
 
 
 property HolonId {
-  value HolonIdValueType
+  value HolonIdValueType.MapBytesValueType
   header {
     description: "ActionHash identifier of a referenced holon."
     display_name: "holon_id"

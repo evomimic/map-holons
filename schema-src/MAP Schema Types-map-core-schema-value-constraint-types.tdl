@@ -161,7 +161,7 @@ holon UniqueItems {
 
 
 property ConstraintLength {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Limit of allowed character count for a string value."
     display_name: "Constraint Length"
@@ -172,7 +172,7 @@ property ConstraintLength {
 
 
 property ConstraintIntegerValue {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Limit of an integer value."
     display_name: "Constraint Integer Value"
@@ -183,7 +183,7 @@ property ConstraintIntegerValue {
 
 
 property ConstraintItemCount {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Limit on the number of items in an array."
     display_name: "Constraint Item Count"
@@ -194,7 +194,7 @@ property ConstraintItemCount {
 
 
 property ConstraintIsInclusive {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "If the limit value included in the allowed range."
     display_name: "Constraint Is Inclusive"
@@ -205,7 +205,7 @@ property ConstraintIsInclusive {
 
 
 property ConstraintEnabled {
-  value MapBooleanValueType
+  value MapBooleanValueType.BooleanValueType
   header {
     description: "Boolean parameter indicating whether a boolean-style constraint rule is active."
     display_name: "Constraint Enabled"

@@ -293,7 +293,7 @@ inverse relationship ContainedIn {
 
 
 enum LoadCommitStatus {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "An enum representing the commit outcome of a holon load."
     display_name: "LoadCommitStatus"
@@ -324,7 +324,7 @@ enum LoadCommitStatus {
 
 
 property RelationshipName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Name of the relationship as declared in the JSON input."
     display_name: "relationship_name"
@@ -335,7 +335,7 @@ property RelationshipName {
 
 
 property HolonKey {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Local key for the referenced holon."
     display_name: "holon_key"
@@ -346,7 +346,7 @@ property HolonKey {
 
 
 property ProxyKey {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Key of the ProxySpace through which this external reference is routed."
     display_name: "proxy_key"
@@ -357,7 +357,7 @@ property ProxyKey {
 
 
 property ProxyId {
-  value MapBytesValueType
+  value MapBytesValueType.BytesValueType
   header {
     description: "ActionHash of the ProxySpace holon, used to route external references."
     display_name: "proxy_id"
@@ -368,7 +368,7 @@ property ProxyId {
 
 
 property HolonsStaged {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Number of holons staged during the load operation."
     display_name: "holons_staged"
@@ -379,7 +379,7 @@ property HolonsStaged {
 
 
 property HolonsCommitted {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Number of holons successfully committed."
     display_name: "holons_committed"
@@ -390,7 +390,7 @@ property HolonsCommitted {
 
 
 property LinksCreated {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Number of links successfully created."
     display_name: "links_created"
@@ -401,7 +401,7 @@ property LinksCreated {
 
 
 property Filename {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "The name of a file."
     display_name: "filename"
@@ -412,7 +412,7 @@ property Filename {
 
 
 property LoaderHolonKey {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Key to reference a loader holon within a load set."
     display_name: "loader_holon_key"
@@ -423,7 +423,7 @@ property LoaderHolonKey {
 
 
 property StartUtf8ByteOffset {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Byte offset that signifies the start of a segment of a source file."
     display_name: "start_utf8_byte_offset"

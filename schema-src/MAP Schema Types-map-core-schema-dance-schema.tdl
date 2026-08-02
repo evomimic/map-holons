@@ -404,7 +404,7 @@ inverse relationship DiagnosticFor {
 
 
 property DanceName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Unique string identifier for a DanceType descriptor, used in dispatch tables."
     display_name: "dance_name"
@@ -415,7 +415,7 @@ property DanceName {
 
 
 property DanceDescription {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable explanation of what the dance does or when it should be invoked."
     display_name: "dance_description"
@@ -448,7 +448,7 @@ property DanceDiagnosticSeverity {
 
 
 property DiagnosticCode {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Stable machine-readable code for a DanceDiagnostic holon."
     display_name: "diagnostic_code"
@@ -459,7 +459,7 @@ property DiagnosticCode {
 
 
 property DiagnosticMessage {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable message for a DanceDiagnostic holon."
     display_name: "diagnostic_message"
@@ -492,7 +492,7 @@ property Engine {
 
 
 property ModuleRef {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Content-address or locator of the executable module (e.g., hash/URL/capability address)."
     display_name: "module_ref"
@@ -503,7 +503,7 @@ property ModuleRef {
 
 
 property Entrypoint {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Function/export name to invoke inside the module."
     display_name: "entrypoint"
@@ -514,7 +514,7 @@ property Entrypoint {
 
 
 property AbiId {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Identifier of the stable smart contract ABI expected by the module/entrypoint."
     display_name: "abi_id"
@@ -525,7 +525,7 @@ property AbiId {
 
 
 property Version {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Semantic version or content hash pin of the implementation."
     display_name: "version"
@@ -536,7 +536,7 @@ property Version {
 
 
 property Compat {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Compatibility range or constraints (e.g., ABI or schema versions)."
     display_name: "compat"
@@ -547,7 +547,7 @@ property Compat {
 
 
 property DanceSummary {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Human-readable summary of a dance outcome."
     display_name: "dance_summary"
@@ -558,7 +558,7 @@ property DanceSummary {
 
 
 property ImplementationName {
-  value MapStringValueType
+  value MapStringValueType.StringValueType
   header {
     description: "Unique name of a DanceImplementation instance."
     display_name: "implementation_name"
@@ -569,7 +569,7 @@ property ImplementationName {
 
 
 enum InvocationSource {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type that records how a DanceInvocation entered the runtime."
     display_name: "Invocation Source"
@@ -606,7 +606,7 @@ enum InvocationSource {
 
 
 enum DanceDiagnosticSeverity {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for the severity of a DanceDiagnostic holon."
     display_name: "Dance Diagnostic Severity"
@@ -635,7 +635,7 @@ enum DanceDiagnosticSeverity {
 
 
 enum ResponseStatusCode {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Deprecated old-world enum value type for dance status codes. New-world success and failure are expressed by the outer Result contract."
     display_name: "Response Status Code"
@@ -736,7 +736,7 @@ enum ResponseStatusCode {
 
 
 enum DanceEngine {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for execution engines used by DanceImplementations."
     display_name: "Dance Engine"
@@ -810,7 +810,7 @@ holon CommitResponse {
 
 
 property CommitsAttempted {
-  value MapIntegerValueType
+  value MapIntegerValueType.IntegerValueType
   header {
     description: "Number of holons the commit operation attempted to save."
     display_name: "commits_attempted"
@@ -821,7 +821,7 @@ property CommitsAttempted {
 
 
 enum CommitRequestStatus {
-  extends MapEnumValueType
+  extends MapEnumValueType.EnumValueType
   header {
     description: "Enum value type for commit request outcomes (Complete, Incomplete)."
     display_name: "CommitRequestStatus"

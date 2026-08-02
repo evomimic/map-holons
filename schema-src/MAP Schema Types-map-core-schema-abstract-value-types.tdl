@@ -195,6 +195,17 @@ abstract enum EnumValueType.ValueType {
   }
 }
 
+abstract enum MapEnumValueType.EnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends EnumValueType.ValueType
+  header {
+    description: "Abstract base for concrete enum value-type descriptors."
+    display_name: "MapEnumValueType"
+    display_plural: "MapEnumValueTypes"
+    plural: "MapEnumValueTypes"
+  }
+}
+
 abstract variant EnumVariantValueType.ValueType {
   type MetaValueType.MetaTypeDescriptor
   extends ValueType.TypeDescriptor
@@ -206,6 +217,17 @@ abstract variant EnumVariantValueType.ValueType {
   }
 }
 
+abstract variant MapEnumVariantValueType.EnumVariantValueType {
+  type MetaValueType.MetaTypeDescriptor
+  extends EnumVariantValueType.ValueType
+  header {
+    description: "Abstract base for concrete variants of enum-based value types."
+    display_name: "MapEnumVariant Value Type"
+    display_plural: "MapEnumVariant Value Types"
+    plural: "MapEnumVariantValueTypes"
+  }
+}
+
 abstract value ValueArrayValueType.ValueType {
   type MetaValueArrayValueType.MetaValueType
   extends ValueType.TypeDescriptor
@@ -214,5 +236,16 @@ abstract value ValueArrayValueType.ValueType {
     display_name: "Value Array Type"
     display_plural: "Value Array Types"
     plural: "ValueArrayValueTypes"
+  }
+}
+
+abstract value MapValueArrayType.ValueArrayValueType {
+  type MetaValueArrayValueType.MetaValueType
+  extends ValueArrayValueType.ValueType
+  header {
+    description: "Abstract base for concrete array value-type descriptors, which supply their element value type."
+    display_name: "MapValueArrayType"
+    display_plural: "MapValueArrayTypes"
+    plural: "MapValueArrayTypes"
   }
 }
