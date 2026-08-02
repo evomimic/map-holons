@@ -127,7 +127,7 @@ def relationship AffordsDance {
   source HolonType.TypeDescriptor
   target DanceType.HolonType
   inverse DanceAffordedBy
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type)."
@@ -141,7 +141,7 @@ def relationship AffordsDance {
 inverse relationship DanceAffordedBy {
   source DanceType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of AffordsDance, from DanceType to HolonType."
     display_name: "DanceAffordedBy Relationship"
@@ -197,7 +197,7 @@ def relationship ForDance {
 inverse relationship HasImplementation {
   source DanceType.HolonType
   target DanceImplementation.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of ForDance, from DanceType to DanceImplementation."
     display_name: "HasImplementation Relationship"
@@ -225,7 +225,7 @@ def relationship DanceInput {
 inverse relationship DanceInputFor {
   source HolonType.TypeDescriptor
   target DanceType.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of DanceInput, from HolonType to DanceType."
     display_name: "DanceInputFor Relationship"
@@ -253,7 +253,7 @@ def relationship Response {
 inverse relationship ResponseFor {
   source DanceResponseType.HolonType
   target DanceType.HolonType
-  cardinality 1..32767
+  cardinality 1..*
   header {
     description: "Inverse of Response, from DanceResponseType to DanceType."
     display_name: "ResponseFor Relationship"
@@ -281,7 +281,7 @@ def relationship ResponseBody {
 inverse relationship ResponseBodyFor {
   source HolonType.TypeDescriptor
   target DanceResponseType.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of ResponseBody, from HolonType to DanceResponseType."
     display_name: "ResponseBodyFor Relationship"
@@ -309,7 +309,7 @@ def relationship InvokesDance {
 inverse relationship InvokedBy {
   source DanceType.HolonType
   target DanceInvocation.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of InvokesDance, from DanceType to DanceInvocation."
     display_name: "InvokedBy Relationship"
@@ -337,7 +337,7 @@ def relationship AffordingHolon {
 inverse relationship AffordsDanceInvocation {
   source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of AffordingHolon, from HolonType to DanceInvocation."
     display_name: "AffordsDanceInvocation Relationship"
@@ -365,7 +365,7 @@ def relationship Request {
 inverse relationship RequestFor {
   source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of Request, from HolonType to DanceInvocation."
     display_name: "RequestFor Relationship"
@@ -379,7 +379,7 @@ def relationship Diagnostics {
   source DanceResponseType.HolonType
   target DanceDiagnostic.HolonType
   inverse DiagnosticFor
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes."
@@ -393,7 +393,7 @@ def relationship Diagnostics {
 inverse relationship DiagnosticFor {
   source DanceDiagnostic.HolonType
   target DanceResponseType.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType."
     display_name: "DiagnosticFor Relationship"
@@ -864,7 +864,7 @@ relationship SavedHolons {
   source CommitResponse.Projection
   target HolonType.TypeDescriptor
   inverse SavedByCommit
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a CommitResponse to each holon successfully saved by this commit."
@@ -892,7 +892,7 @@ relationship AbandonedHolons {
   source CommitResponse.Projection
   target HolonType.TypeDescriptor
   inverse AbandonedByCommit
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors."

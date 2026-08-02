@@ -412,7 +412,7 @@ def relationship AffordsCommand {
   source HolonType.TypeDescriptor
   target CommandType.HolonType
   inverse CommandAffordedBy
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup."
@@ -426,7 +426,7 @@ def relationship AffordsCommand {
 inverse relationship CommandAffordedBy {
   source CommandType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of AffordsCommand, relationship from CommandType to HolonType."
     display_name: "CommandAffordedBy Relationship"
@@ -454,7 +454,7 @@ def relationship CommandPayloadType {
 inverse relationship CommandPayloadTypeFor {
   source HolonType.TypeDescriptor
   target CommandType.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of CommandPayloadType, from HolonType to CommandType."
     display_name: "CommandPayloadTypeFor Relationship"

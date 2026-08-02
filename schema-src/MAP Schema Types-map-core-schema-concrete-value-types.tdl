@@ -46,6 +46,17 @@ value MapBytesValueType.BytesValueType {
   }
 }
 
+value BaseValueValueType.ValueType {
+  type MetaValueType.MetaTypeDescriptor
+  extends ValueType.TypeDescriptor
+  header {
+    description: "Concrete value type accepting any runtime BaseValue representation. DefaultValue uses this broad representation type and is further constrained by the owning property descriptor's selected ValueType."
+    display_name: "Base Value Type"
+    display_plural: "Base Value Types"
+    plural: "BaseValueValueTypes"
+  }
+}
+
 enum DeletionSemantic.MapEnumValueType {
   type MetaEnumValueType.MetaValueType
   extends MapEnumValueType.EnumValueType
@@ -210,6 +221,43 @@ enum CollectionType.MapEnumValueType {
         display_name: "Holon Array"
         display_plural: "Holon Array"
         plural: "HolonArrays"
+      }
+    }
+  }
+}
+
+enum InheritanceMode.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Enum value type controlling inheritance of populated descriptor members across Extends."
+    display_name: "Inheritance Mode"
+    display_plural: "Inheritance Modes"
+    plural: "InheritanceModes"
+  }
+  variants {
+    variant None {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Only locally populated values contribute to effective descriptor semantics."
+        display_name: "None"
+      }
+    }
+    variant Additive {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Distinct inherited and local values accumulate by set union."
+        display_name: "Additive"
+      }
+    }
+    variant Override {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "The nearest non-empty local value set replaces values from more distant ancestors."
+        display_name: "Override"
       }
     }
   }

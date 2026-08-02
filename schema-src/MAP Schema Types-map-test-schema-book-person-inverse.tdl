@@ -36,7 +36,7 @@ def relationship AuthoredBy {
   source Book.HolonType
   target Person.HolonType
   inverse Authors
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Defines the author of a book."
     display_name: "AuthoredBy"
@@ -49,7 +49,7 @@ def relationship AuthoredBy {
 inverse relationship Authors {
   source Person.HolonType
   target Book.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Specifies a book that a Person has authored.  Inverse of AuthoredBy."
     display_name: "Authors"

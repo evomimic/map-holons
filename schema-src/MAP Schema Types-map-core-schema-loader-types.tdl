@@ -126,7 +126,7 @@ relationship HasRelationshipReference {
   source LoaderHolon.HolonType
   target LoaderRelationshipReference.HolonType
   inverse RelationshipReferenceOf
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Allow
   header {
@@ -169,7 +169,7 @@ def relationship ReferenceSource {
 inverse relationship ReferenceSourceOf {
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source."
     display_name: "ReferenceSourceOf"
@@ -183,7 +183,7 @@ def relationship ReferenceTarget {
   source LoaderRelationshipReference.HolonType
   target LoaderHolonReference.HolonType
   inverse ReferenceTargetOf
-  cardinality 1..32767
+  cardinality 1..*
   ordered
   deletion_semantic Allow
   header {
@@ -198,7 +198,7 @@ def relationship ReferenceTarget {
 inverse relationship ReferenceTargetOf {
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target."
     display_name: "ReferenceTargetOf"
@@ -212,7 +212,7 @@ relationship BundleMembers {
   source HolonLoaderBundle.HolonType
   target LoaderHolon.HolonType
   inverse BundleMemberOf
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains."
@@ -240,7 +240,7 @@ relationship HasLoadError {
   source HolonLoadResponse.DanceResponseType
   target HolonLoadError.HolonError
   inverse LoadErrorOf
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoadResponse to one or more HolonError holons."
@@ -268,7 +268,7 @@ relationship Contains {
   source HolonLoadSet.HolonType
   target HolonLoaderBundle.HolonType
   inverse ContainedIn
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoadSet to each HolonLoaderBundle it contains."

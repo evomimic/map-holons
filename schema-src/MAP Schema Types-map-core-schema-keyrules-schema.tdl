@@ -147,7 +147,7 @@ inverse relationship (KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType
   source KeyRuleType.HolonType
   target HolonType.TypeDescriptor
   inverse (HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of InstanceKeyRule, from a key rule to the holon types whose described instances use it."

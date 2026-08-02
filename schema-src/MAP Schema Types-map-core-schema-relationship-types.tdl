@@ -23,7 +23,7 @@ inverse relationship (Schema.HolonType)-[Components]->(TypeDescriptor) {
   source Schema.HolonType
   target TypeDescriptor
   inverse (TypeDescriptor)-[ComponentOf]->(Schema.HolonType)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of ComponentOf, from a schema to its type descriptors."
@@ -38,7 +38,7 @@ def relationship (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescri
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target PropertyType.TypeDescriptor
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Connects a type descriptor to the property descriptors in its instance contract."
@@ -54,7 +54,7 @@ inverse relationship (PropertyType.TypeDescriptor)-[InstancePropertyFor]->(TypeD
   source PropertyType.TypeDescriptor
   target TypeDescriptor
   inverse (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of InstanceProperties, from a property descriptor to the type descriptors whose instance contracts include it."
@@ -69,7 +69,7 @@ def relationship (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationship
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target DeclaredRelationshipType.RelationshipType
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Connects a type descriptor to the declared relationship descriptors in its instance contract."
@@ -85,7 +85,7 @@ inverse relationship (DeclaredRelationshipType.RelationshipType)-[InstanceRelati
   source DeclaredRelationshipType.RelationshipType
   target TypeDescriptor
   inverse (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of InstanceRelationships, from a declared relationship descriptor to the type descriptors whose instance contracts include it."
@@ -116,7 +116,7 @@ inverse relationship (TypeDescriptor)-[Instances]->(HolonType.TypeDescriptor) {
   source TypeDescriptor
   target HolonType.TypeDescriptor
   inverse (HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of DescribedBy, from a type descriptor to the holons it directly describes."
@@ -147,7 +147,7 @@ inverse relationship (HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor) {
   source HolonSpace.HolonType
   target HolonType.TypeDescriptor
   inverse (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of OwnedBy, from a holon space to the holons it owns."
@@ -178,7 +178,7 @@ inverse relationship (ValueType.TypeDescriptor)-[ValueTypeFor]->(PropertyType.Ty
   source ValueType.TypeDescriptor
   target PropertyType.TypeDescriptor
   inverse (PropertyType.TypeDescriptor)-[ValueType]->(ValueType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of ValueType, from a value-type descriptor to the property descriptors it governs."
@@ -209,7 +209,7 @@ inverse relationship (HolonType.TypeDescriptor)-[SourceOf]->(RelationshipType.Ty
   source HolonType.TypeDescriptor
   target RelationshipType.TypeDescriptor
   inverse (RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of SourceType, from a holon-type descriptor to relationship descriptors that use it as their source constraint."
@@ -240,7 +240,7 @@ inverse relationship (HolonType.TypeDescriptor)-[TargetOf]->(RelationshipType.Ty
   source HolonType.TypeDescriptor
   target RelationshipType.TypeDescriptor
   inverse (RelationshipType.TypeDescriptor)-[TargetType]->(HolonType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of TargetType, from a holon-type descriptor to relationship descriptors that use it as their target constraint."
@@ -286,7 +286,7 @@ def relationship (EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.Val
   extends DeclaredRelationshipType.RelationshipType
   source EnumValueType.ValueType
   target EnumVariantValueType.ValueType
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Declares the allowed symbolic variant descriptors of an enum value type."
@@ -317,7 +317,7 @@ def relationship (Schema.HolonType)-[DependsOn]->(Schema.HolonType) {
   extends DeclaredRelationshipType.RelationshipType
   source Schema.HolonType
   target Schema.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Indicates that one schema holon depends on another."
@@ -333,7 +333,7 @@ inverse relationship (Schema.HolonType)-[Dependents]->(Schema.HolonType) {
   source Schema.HolonType
   target Schema.HolonType
   inverse (Schema.HolonType)-[DependsOn]->(Schema.HolonType)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of DependsOn, indicating which schemas depend on this schema."
@@ -364,7 +364,7 @@ inverse relationship (ValueType.TypeDescriptor)-[ElementValueTypeFor]->(ValueArr
   source ValueType.TypeDescriptor
   target ValueArrayValueType.ValueType
   inverse (ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of ElementValueType, from a value-type descriptor to value-array descriptors that use it as their element type."
@@ -395,7 +395,7 @@ inverse relationship (TypeDescriptor)-[ExtendedBy]->(TypeDescriptor) {
   source TypeDescriptor
   target TypeDescriptor
   inverse (TypeDescriptor)-[Extends]->(TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of Extends, from a parent descriptor to its direct subtype descriptors."
@@ -410,7 +410,7 @@ def relationship (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.Ty
   extends DeclaredRelationshipType.RelationshipType
   source FormatRule.KeyRuleType
   target PropertyType.TypeDescriptor
-  cardinality 1..32767
+  cardinality 1..*
   ordered
   deletion_semantic Block
   header {
@@ -427,7 +427,7 @@ inverse relationship (PropertyType.TypeDescriptor)-[TemplateParameterFor]->(Form
   source PropertyType.TypeDescriptor
   target FormatRule.KeyRuleType
   inverse (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of TemplateParameters, from a property descriptor to format key rules that use it as a positional parameter."
@@ -473,7 +473,7 @@ relationship (HolonCollection.HolonType)-[CollectionMembers]->(HolonType.TypeDes
   extends DeclaredRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   duplicates
   deletion_semantic Allow
@@ -491,7 +491,7 @@ inverse relationship (HolonType.TypeDescriptor)-[MemberOfCollection]->(HolonColl
   source HolonType.TypeDescriptor
   target HolonCollection.HolonType
   inverse (HolonCollection.HolonType)-[CollectionMembers]->(HolonType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Inverse of CollectionMembers, from a member holon to persisted collections containing it."
@@ -522,7 +522,7 @@ inverse relationship (HolonType.TypeDescriptor)-[ElementTypeFor]->(HolonCollecti
   source HolonType.TypeDescriptor
   target HolonCollection.HolonType
   inverse (HolonCollection.HolonType)-[ElementType]->(HolonType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of ElementType, from a holon-type descriptor to persisted collection types that use it as their element constraint."
@@ -553,7 +553,7 @@ inverse relationship (HolonType.TypeDescriptor)-[Successor]->(HolonType.TypeDesc
   source HolonType.TypeDescriptor
   target HolonType.TypeDescriptor
   inverse (HolonType.TypeDescriptor)-[Predecessor]->(HolonType.TypeDescriptor)
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Inverse of Predecessor, from a holon version to later versions derived directly from it."

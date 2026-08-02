@@ -346,7 +346,7 @@ def relationship QueryGraph {
 inverse relationship GraphForQueryDanceRequest {
   source QueryGraph.HolonType
   target QueryDanceRequest.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of QueryGraph, from QueryGraph to QueryDanceRequest."
     display_name: "GraphForQueryDanceRequest Relationship"
@@ -360,7 +360,7 @@ def relationship InitialBindings {
   source QueryDanceRequest.HolonType
   target ExecutionBinding.HolonType
   inverse InitialBindingForQueryDanceRequest
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -375,7 +375,7 @@ def relationship InitialBindings {
 inverse relationship InitialBindingForQueryDanceRequest {
   source ExecutionBinding.HolonType
   target QueryDanceRequest.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of InitialBindings, from ExecutionBinding to QueryDanceRequest."
     display_name: "InitialBindingForQueryDanceRequest Relationship"
@@ -389,7 +389,7 @@ def relationship QuerySteps {
   source QueryGraph.HolonType
   target QueryStep.HolonType
   inverse StepInQueryGraph
-  cardinality 1..32767
+  cardinality 1..*
   ordered
   deletion_semantic Block
   header {
@@ -418,7 +418,7 @@ def relationship DeclaredInputBindings {
   source QueryGraph.HolonType
   target QueryBinding.HolonType
   inverse InputBindingForQueryGraph
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -433,7 +433,7 @@ def relationship DeclaredInputBindings {
 inverse relationship InputBindingForQueryGraph {
   source QueryBinding.HolonType
   target QueryGraph.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of DeclaredInputBindings, from QueryBinding to QueryGraph."
     display_name: "InputBindingForQueryGraph Relationship"
@@ -489,7 +489,7 @@ def relationship StepKind {
 inverse relationship StepKindFor {
   source QueryStepKind.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of StepKind, from QueryStepKind to QueryStep."
     display_name: "StepKindFor Relationship"
@@ -517,7 +517,7 @@ def relationship UsesInitialBinding {
 inverse relationship InitialBindingUsedByStep {
   source QueryBinding.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of UsesInitialBinding, from QueryBinding to QueryStep."
     display_name: "InitialBindingUsedByStep Relationship"
@@ -573,7 +573,7 @@ def relationship StepParameters {
 inverse relationship ParametersForStep {
   source Projection.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of StepParameters, from Projection to QueryStep."
     display_name: "ParametersForStep Relationship"
@@ -587,7 +587,7 @@ def relationship StepDependsOn {
   source QueryStep.HolonType
   target QueryStep.HolonType
   inverse StepDependedOnBy
-  cardinality 0..32767
+  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -602,7 +602,7 @@ def relationship StepDependsOn {
 inverse relationship StepDependedOnBy {
   source QueryStep.HolonType
   target QueryStep.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of StepDependsOn, from a QueryStep to the successor QuerySteps that depend on it."
     display_name: "StepDependedOnBy Relationship"
@@ -630,7 +630,7 @@ def relationship StepInputType {
 inverse relationship InputTypeForStepKind {
   source HolonCollection.HolonType
   target QueryStepKind.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of StepInputType, from HolonCollection to QueryStepKind."
     display_name: "InputTypeForStepKind Relationship"
@@ -658,7 +658,7 @@ def relationship StepResultType {
 inverse relationship ResultTypeForStepKind {
   source HolonCollection.HolonType
   target QueryStepKind.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of StepResultType, from HolonCollection to QueryStepKind."
     display_name: "ResultTypeForStepKind Relationship"
@@ -686,7 +686,7 @@ def relationship StepParameterType {
 inverse relationship ParameterTypeForStepKind {
   source Projection.HolonType
   target QueryStepKind.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of StepParameterType, from Projection to QueryStepKind."
     display_name: "ParameterTypeForStepKind Relationship"
@@ -714,7 +714,7 @@ def relationship ExecutesRequest {
 inverse relationship ExecutedBy {
   source QueryDanceRequest.HolonType
   target ExecutionInstance.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of ExecutesRequest, from QueryDanceRequest to ExecutionInstance."
     display_name: "ExecutedBy Relationship"
@@ -728,7 +728,7 @@ def relationship ExecutionBindings {
   source ExecutionInstance.HolonType
   target ExecutionBinding.HolonType
   inverse BindingForExecutionInstance
-  cardinality 0..32767
+  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Links an ExecutionInstance to its live runtime ExecutionBindings."
@@ -770,7 +770,7 @@ def relationship BindsQueryVariable {
 inverse relationship ExecutionVariableBinding {
   source QueryBinding.HolonType
   target ExecutionBinding.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of BindsQueryVariable, from QueryBinding to ExecutionBinding."
     display_name: "ExecutionVariableBinding Relationship"
@@ -798,7 +798,7 @@ def relationship BoundCollection {
 inverse relationship CollectionBoundIn {
   source HolonCollection.HolonType
   target ExecutionBinding.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of BoundCollection, from HolonCollection to ExecutionBinding."
     display_name: "CollectionBoundIn Relationship"
@@ -826,7 +826,7 @@ relationship ExecutionResult {
 inverse relationship ResultOfExecution {
   source HolonCollection.HolonType
   target ExecutionInstance.HolonType
-  cardinality 0..32767
+  cardinality 0..*
   header {
     description: "Inverse of ExecutionResult, from HolonCollection to ExecutionInstance."
     display_name: "ResultOfExecution Relationship"

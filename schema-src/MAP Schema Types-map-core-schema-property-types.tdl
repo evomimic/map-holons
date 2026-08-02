@@ -1,6 +1,10 @@
 schema "MAP Core Schema-v0.0.7"
-property AllowsDuplicates {
+property AllowsDuplicates.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue false
   header {
     description: "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set."
     display_name: "allows_duplicates"
@@ -10,8 +14,12 @@ property AllowsDuplicates {
 }
 
 
-property AllowsAdditionalProperties {
+property AllowsAdditionalProperties.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue false
   header {
     description: "If true, instances may include properties not explicitly listed by the descriptor."
     display_name: "allows_additional_properties"
@@ -21,8 +29,12 @@ property AllowsAdditionalProperties {
 }
 
 
-property AllowsAdditionalRelationships {
+property AllowsAdditionalRelationships.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue false
   header {
     description: "If true, instances may include relationships not explicitly listed by the descriptor."
     display_name: "allows_additional_relationships"
@@ -32,8 +44,11 @@ property AllowsAdditionalRelationships {
 }
 
 
-property DeletionSemantic {
+property DeletionSemantic.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value DeletionSemantic.MapEnumValueType
+  IsValueRequired true
   header {
     description: "Specifies behavior for how to handle requests to delete the source holon from this relationship."
     display_name: "deletion_semantic"
@@ -43,8 +58,11 @@ property DeletionSemantic {
 }
 
 
-property Description {
+property Description.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "A human-readable explanation of the purpose or role of this type."
     display_name: "description"
@@ -54,8 +72,11 @@ property Description {
 }
 
 
-property DisplayName {
+property DisplayName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "The human-readable label used for this property"
     display_name: "displayName"
@@ -65,7 +86,9 @@ property DisplayName {
 }
 
 
-property DisplayNamePlural {
+property DisplayNamePlural.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
   header {
     description: "The plural form of the label for use in lists or summaries."
@@ -76,8 +99,12 @@ property DisplayNamePlural {
 }
 
 
-property IsAbstractType {
+property IsAbstractType.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue false
   header {
     description: "Indicates whether the type is abstract (cannot be instantiated)."
     display_name: "isAbstractType"
@@ -87,8 +114,12 @@ property IsAbstractType {
 }
 
 
-property IsDefinitional {
+property IsDefinitional.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue false
   header {
     description: "Indicates whether the relationship contributes to the identity of the target holon."
     display_name: "isDefinitional"
@@ -98,8 +129,12 @@ property IsDefinitional {
 }
 
 
-property IsOrdered {
+property IsOrdered.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue false
   header {
     description: "True if the order of related holons is significant."
     display_name: "isOrdered"
@@ -109,18 +144,54 @@ property IsOrdered {
 }
 
 
-property IsRequired {
+property IsValueRequired.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue false
+  InheritanceMode None
   header {
     description: "True if a value for this property type is required for the holon having this property."
-    display_name: "IsRequired"
-    display_plural: "IsRequired"
-    plural: "IsRequired"
+    display_name: "IsValueRequired"
+    display_plural: "IsValueRequired"
+    plural: "IsValueRequired"
+  }
+}
+
+property DefaultValue.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value BaseValueValueType.ValueType
+  IsValueRequired false
+  InheritanceMode None
+  header {
+    description: "Value materialized when a required property is omitted during creation. The value must conform to the ValueType selected by the property descriptor carrying the default."
+    display_name: "Default Value"
+    display_plural: "Default Values"
+    plural: "DefaultValues"
+  }
+}
+
+property InheritanceMode.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value InheritanceMode.MapEnumValueType
+  IsValueRequired true
+  DefaultValue None
+  InheritanceMode None
+  header {
+    description: "Controls whether populated descriptor values remain local, accumulate additively, or override inherited values across Extends."
+    display_name: "Inheritance Mode"
+    display_plural: "Inheritance Modes"
+    plural: "InheritanceModes"
   }
 }
 
 
-property MapBoolean {
+property MapBoolean.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBooleanValueType.BooleanValueType
   header {
     description: "Boolean scalar value (true/false)."
@@ -131,7 +202,9 @@ property MapBoolean {
 }
 
 
-property MapBytes {
+property MapBytes.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapBytesValueType.BytesValueType
   header {
     description: "Binary data (blob of bytes)."
@@ -142,7 +215,9 @@ property MapBytes {
 }
 
 
-property MapInteger {
+property MapInteger.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapIntegerValueType.IntegerValueType
   header {
     description: "Integer scalar value."
@@ -153,7 +228,9 @@ property MapInteger {
 }
 
 
-property MapString {
+property MapString.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
   header {
     description: "Textual scalar value."
@@ -164,10 +241,12 @@ property MapString {
 }
 
 
-property MaxCardinality {
+property MaxCardinality.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapIntegerValueType.IntegerValueType
   header {
-    description: "Maximum number of target holons allowed for the relationship."
+    description: "Maximum number of target holons allowed for the relationship. Absence means the relationship is unbounded."
     display_name: "max_cardinality"
     display_plural: "max_cardinalities"
     plural: "MaxCardinalities"
@@ -175,8 +254,11 @@ property MaxCardinality {
 }
 
 
-property MinCardinality {
+property MinCardinality.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
   header {
     description: "Minimum number of target holons allowed for the relationship."
     display_name: "min_cardinality"
@@ -186,8 +268,11 @@ property MinCardinality {
 }
 
 
-property TypeKind {
+property TypeKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value TypeKind.MapEnumValueType
+  IsValueRequired true
   header {
     description: "Specifies the kind of type this descriptor represents."
     display_name: "type_kind"
@@ -197,8 +282,11 @@ property TypeKind {
 }
 
 
-property TypeName {
+property TypeName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "The unique identifier for a type, typically in ClassCase."
     display_name: "typeName"
@@ -208,8 +296,11 @@ property TypeName {
 }
 
 
-property SchemaName {
+property SchemaName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "The name of a type schema.  Defines a collection of type descriptor holons."
     display_name: "schemaName"
@@ -219,7 +310,9 @@ property SchemaName {
 }
 
 
-property TypeNamePlural {
+property TypeNamePlural.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
   header {
     description: "The plural form of the type's identifier used for display or grouping."
@@ -230,8 +323,11 @@ property TypeNamePlural {
 }
 
 
-property ErrorType {
+property ErrorType.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "Indicates the type of error."
     display_name: "error_type"
@@ -241,8 +337,11 @@ property ErrorType {
 }
 
 
-property ErrorMessage {
+property ErrorMessage.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "A descriptive message explaining an error."
     display_name: "error_message"
@@ -252,8 +351,11 @@ property ErrorMessage {
 }
 
 
-property ErrorCount {
+property ErrorCount.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapIntegerValueType.IntegerValueType
+  IsValueRequired true
   header {
     description: "Number of errors encountered."
     display_name: "error_count"
@@ -263,8 +365,11 @@ property ErrorCount {
 }
 
 
-property TemplateString {
+property TemplateString.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings."
     display_name: "template_string"
@@ -274,8 +379,11 @@ property TemplateString {
 }
 
 
-property CollectionType {
+property CollectionType.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value CollectionType.MapEnumValueType
+  IsValueRequired true
   header {
     description: "Selects the runtime wrapper used to inflate a persisted collection holon."
     display_name: "collection_type"
@@ -285,7 +393,9 @@ property CollectionType {
 }
 
 
-property Key {
+property Key.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
   header {
     description: "Identifying key of a holon instance."
@@ -296,7 +406,9 @@ property Key {
 }
 
 
-property HolonId {
+property HolonId.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
   value HolonIdValueType.MapBytesValueType
   header {
     description: "ActionHash identifier of a referenced holon."
