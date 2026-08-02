@@ -13,7 +13,7 @@ holon MetaValueType.MetaTypeDescriptor {
   }
   relationships {
     InstanceRelationships -> [
-      (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType)
+      (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType)
     ]
   }
 }
@@ -133,8 +133,8 @@ abstract value StringValueType.ValueType {
   }
   relationships {
     AffordsOperator -> [
-      EqualsOperator,
-      LessThanOperator
+      EqualsOperator.OperatorType,
+      LessThanOperator.OperatorType
     ]
   }
 }
@@ -150,8 +150,8 @@ abstract value IntegerValueType.ValueType {
   }
   relationships {
     AffordsOperator -> [
-      EqualsOperator,
-      LessThanOperator
+      EqualsOperator.OperatorType,
+      LessThanOperator.OperatorType
     ]
   }
 }
@@ -166,7 +166,7 @@ abstract value BooleanValueType.ValueType {
     plural: "BooleanValueTypes"
   }
   relationships {
-    AffordsOperator -> EqualsOperator
+    AffordsOperator -> EqualsOperator.OperatorType
   }
 }
 
@@ -191,7 +191,7 @@ abstract enum EnumValueType.ValueType {
     plural: "EnumValueTypes"
   }
   relationships {
-    AffordsOperator -> EqualsOperator
+    AffordsOperator -> EqualsOperator.OperatorType
   }
 }
 
