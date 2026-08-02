@@ -11,7 +11,9 @@
 //! updates rooted at it. See `core_types::holon_storage` for the intended vocabulary.
 
 use hdk::prelude::*;
-use holons_guest_integrity::{type_conversions::try_action_hash_from_local_id, HolonNode};
+use holons_guest_integrity::{
+    type_conversions::try_action_hash_from_local_id, HolonNode, LOCAL_HOLON_SPACE_PATH,
+};
 use holons_integrity::*;
 use integrity_core_types::HolonNodeModel;
 
@@ -66,7 +68,7 @@ pub fn create_path_to_holon_node(input: CreatePathInput) -> ExternResult<ActionH
 #[hdk_extern]
 pub fn delete_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<ActionHash> {
     // delete links to Local Holon Space
-    let local_space_path = Path::from("local_holon_space");
+    let local_space_path = Path::from(LOCAL_HOLON_SPACE_PATH);
     let base_address = local_space_path.path_entry_hash()?;
     let links_query = LinkQuery::try_new(base_address, LinkTypes::LocalHolonSpace)?;
     let links = get_links(links_query, GetStrategy::default())?;

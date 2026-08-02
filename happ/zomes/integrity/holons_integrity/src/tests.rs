@@ -5,6 +5,10 @@ use shared_validation::pvl_limits_v1::MAX_HOLON_NODE_BYTES;
 
 const HOLON_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
 const HOLON_ZOME_INDEX: ZomeIndex = ZomeIndex(0);
+const ALL_HOLON_NODES_LINK_TYPE: LinkType = LinkType(LinkTypes::AllHolonNodes as u8);
+const HOLON_NODE_UPDATES_LINK_TYPE: LinkType = LinkType(LinkTypes::HolonNodeUpdates as u8);
+const LOCAL_HOLON_SPACE_LINK_TYPE: LinkType = LinkType(LinkTypes::LocalHolonSpace as u8);
+const SMARTLINK_LINK_TYPE: LinkType = LinkType(LinkTypes::SmartLink as u8);
 
 // HDI 0.7.1 exposes mockall behind its `mock` feature but does not generate
 // the documented `MockHdiT` type. Keep this callback-level test double local
@@ -55,6 +59,18 @@ enum UpdateOpForm {
 #[derive(Clone, Copy, Debug)]
 enum DeleteOpForm {
     RegisterDelete,
+    StoreRecord,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum CreateLinkOpForm {
+    RegisterCreateLink,
+    StoreRecord,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum DeleteLinkOpForm {
+    RegisterDeleteLink,
     StoreRecord,
 }
 
@@ -150,6 +166,33 @@ fn signed_action(action: Action) -> SignedActionHashed {
     )
 }
 
+fn agent_validation_package() -> Action {
+    Action::AgentValidationPkg(AgentValidationPkg {
+        author: AgentPubKey::from_raw_36(vec![0; 36]),
+        timestamp: Timestamp::from_micros(0),
+        action_seq: 0,
+        prev_action: action_hash(30),
+        membrane_proof: None,
+    })
+}
+
+fn create_agent_activity_op() -> Op {
+    let agent = AgentPubKey::from_raw_36(vec![31; 36]);
+    let create = Create {
+        author: agent.clone(),
+        timestamp: Timestamp::from_micros(1),
+        action_seq: 1,
+        prev_action: action_hash(32),
+        entry_type: EntryType::AgentPubKey,
+        entry_hash: EntryHash::from(agent.clone()),
+        weight: EntryRateWeight::default(),
+    };
+    Op::RegisterAgentActivity(RegisterAgentActivity {
+        action: signed_action(Action::Create(create)),
+        cached_entry: Some(Entry::Agent(agent)),
+    })
+}
+
 fn holon_entry() -> Entry {
     let node = HolonNode::new(PropertyMap::new());
     let raw = encode(&node).expect("test HolonNode must encode canonically");
@@ -188,6 +231,21 @@ fn delete_op(form: DeleteOpForm) -> Op {
     }
 }
 
+fn create_entry_op(store_record: bool) -> Op {
+    let action = create_action();
+    let entry = holon_entry();
+    if store_record {
+        Op::StoreRecord(StoreRecord {
+            record: Record::new(signed_action(Action::Create(action)), Some(entry)),
+        })
+    } else {
+        Op::StoreEntry(StoreEntry {
+            action: signed_entry_creation_action(EntryCreationAction::Create(action)),
+            entry,
+        })
+    }
+}
+
 fn zome_info() -> ZomeInfo {
     ZomeInfo::new(
         "holons_integrity".into(),
@@ -201,7 +259,12 @@ fn zome_info() -> ZomeInfo {
             // flattening and StoreRecord delete dispatch.
             links: ScopedZomeTypes(vec![(
                 HOLON_ZOME_INDEX,
-                vec![LinkType(0), LinkType(1), LinkType(2), LinkType(3)],
+                vec![
+                    ALL_HOLON_NODES_LINK_TYPE,
+                    HOLON_NODE_UPDATES_LINK_TYPE,
+                    LOCAL_HOLON_SPACE_LINK_TYPE,
+                    SMARTLINK_LINK_TYPE,
+                ],
             )]),
         },
     )
@@ -213,8 +276,9 @@ fn install_update_target(target_action: Action) {
     mock_hdi
         .expect_must_get_valid_record()
         .withf(|input| input.0 == action_hash(4))
-        .times(0..=1)
+        .times(1)
         .return_once(move |_| Ok(target_record));
+    mock_hdi.expect_must_get_action().times(0);
     // Op flattening resolves this zome's generated EntryTypes before the
     // lifecycle adapter runs. The update adapter itself makes no zome-info call.
     mock_hdi.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
@@ -227,10 +291,38 @@ fn install_delete_target(target_action: Action) {
     mock_hdi
         .expect_must_get_action()
         .withf(|input| input.0 == action_hash(8))
-        .times(0..=1)
+        .times(1)
         .return_once(move |_| Ok(target_action));
+    mock_hdi.expect_must_get_valid_record().times(0);
     mock_hdi.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
     set_hdi(mock_hdi);
+}
+
+#[test]
+fn both_holon_node_create_forms_use_no_dependencies() {
+    for store_record in [false, true] {
+        let mut mock = MockHdi::new();
+        mock.expect_must_get_action().times(0);
+        mock.expect_must_get_valid_record().times(0);
+        mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
+        set_hdi(mock);
+
+        assert_eq!(validate(create_entry_op(store_record)), Ok(ValidateCallbackResult::Valid));
+    }
+}
+
+#[test]
+fn create_agent_routes_through_exactly_one_action_dependency() {
+    let predecessor = signed_action(agent_validation_package());
+    let mut mock = MockHdi::new();
+    mock.expect_must_get_action()
+        .withf(|input| input.0 == action_hash(32))
+        .times(1)
+        .return_once(move |_| Ok(predecessor));
+    mock.expect_must_get_valid_record().times(0);
+    set_hdi(mock);
+
+    assert_eq!(validate(create_agent_activity_op()), Ok(ValidateCallbackResult::Valid));
 }
 
 #[test]
@@ -332,6 +424,43 @@ fn create_link(link_type: LinkType, tag: LinkTag) -> CreateLink {
     }
 }
 
+fn infrastructure_create_link(link_type: LinkType) -> CreateLink {
+    let path = if link_type == ALL_HOLON_NODES_LINK_TYPE {
+        ALL_HOLON_NODES_PATH
+    } else if link_type == LOCAL_HOLON_SPACE_LINK_TYPE {
+        LOCAL_HOLON_SPACE_PATH
+    } else {
+        assert_eq!(link_type, HOLON_NODE_UPDATES_LINK_TYPE);
+        "obsolete_holon_node_updates_has_no_canonical_base"
+    };
+    let mut create = create_link(link_type, LinkTag::new(Vec::new()));
+    create.base_address = Path::from(path).path_entry_hash().expect("path hashing is local").into();
+    create
+}
+
+fn create_link_op(form: CreateLinkOpForm, create: CreateLink) -> Op {
+    match form {
+        CreateLinkOpForm::RegisterCreateLink => {
+            Op::RegisterCreateLink(RegisterCreateLink { create_link: signed_create_link(create) })
+        }
+        CreateLinkOpForm::StoreRecord => Op::StoreRecord(StoreRecord {
+            record: Record::new(signed_action(Action::CreateLink(create)), None),
+        }),
+    }
+}
+
+fn delete_link_op(form: DeleteLinkOpForm, create: CreateLink) -> Op {
+    match form {
+        DeleteLinkOpForm::RegisterDeleteLink => Op::RegisterDeleteLink(RegisterDeleteLink {
+            delete_link: signed_delete_link(delete_link()),
+            create_link: create,
+        }),
+        DeleteLinkOpForm::StoreRecord => Op::StoreRecord(StoreRecord {
+            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
+        }),
+    }
+}
+
 fn delete_link() -> DeleteLink {
     DeleteLink {
         author: AgentPubKey::from_raw_36(vec![0; 36]),
@@ -357,10 +486,131 @@ fn install_link_zome_info_without_dependencies() {
     set_hdi(mock);
 }
 
+fn install_infrastructure_create_target(expected_record_dependencies: usize) {
+    let target = Record::new(signed_action(Action::Create(create_action())), None);
+    let mut mock = MockHdi::new();
+    mock.expect_must_get_action().times(0);
+    mock.expect_must_get_valid_record()
+        .times(expected_record_dependencies)
+        .return_once(move |_| Ok(target));
+    // Flattening and active-index target classification both need scoped type information. These
+    // local metadata calls are not DHT dependencies and are deliberately outside the bound.
+    mock.expect_zome_info().times(0..=2).returning(|_| Ok(zome_info()));
+    set_hdi(mock);
+}
+
+#[test]
+fn both_smartlink_create_forms_use_no_dependencies() {
+    for form in [CreateLinkOpForm::RegisterCreateLink, CreateLinkOpForm::StoreRecord] {
+        install_link_zome_info_without_dependencies();
+        assert_eq!(
+            validate(
+                create_link_op(form, create_link(SMARTLINK_LINK_TYPE, valid_smartlink_tag()),)
+            ),
+            Ok(ValidateCallbackResult::Valid),
+            "{form:?} bypassed SmartLink create validation"
+        );
+    }
+}
+
+#[test]
+fn infrastructure_create_forms_pin_their_structural_dependency_counts() {
+    for form in [CreateLinkOpForm::RegisterCreateLink, CreateLinkOpForm::StoreRecord] {
+        install_infrastructure_create_target(0);
+        assert_eq!(
+            validate(create_link_op(
+                form,
+                infrastructure_create_link(HOLON_NODE_UPDATES_LINK_TYPE),
+            )),
+            Ok(ValidateCallbackResult::Invalid(
+                "HolonNodeUpdates links are obsolete and cannot be created".into()
+            )),
+            "{form:?} bypassed HolonNodeUpdates create rejection"
+        );
+
+        for link_type in [ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE] {
+            install_infrastructure_create_target(1);
+            assert_eq!(
+                validate(create_link_op(form, infrastructure_create_link(link_type))),
+                Ok(ValidateCallbackResult::Valid),
+                "{form:?} did not route the active infrastructure create"
+            );
+        }
+    }
+}
+
+#[test]
+fn every_register_delete_link_form_uses_no_dependencies() {
+    for link_type in [
+        ALL_HOLON_NODES_LINK_TYPE,
+        HOLON_NODE_UPDATES_LINK_TYPE,
+        LOCAL_HOLON_SPACE_LINK_TYPE,
+        SMARTLINK_LINK_TYPE,
+    ] {
+        let mut mock = MockHdi::new();
+        mock.expect_must_get_action().times(0);
+        mock.expect_must_get_valid_record().times(0);
+        mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
+        set_hdi(mock);
+
+        let result = validate(delete_link_op(
+            DeleteLinkOpForm::RegisterDeleteLink,
+            if link_type == SMARTLINK_LINK_TYPE {
+                create_link(link_type, valid_smartlink_tag())
+            } else {
+                infrastructure_create_link(link_type)
+            },
+        ));
+        let expected = if link_type == ALL_HOLON_NODES_LINK_TYPE {
+            ValidateCallbackResult::Invalid("AllHolonNodes links cannot be deleted".into())
+        } else {
+            ValidateCallbackResult::Valid
+        };
+        assert_eq!(result, Ok(expected), "RegisterDeleteLink did not dispatch type {link_type:?}");
+    }
+}
+
+#[test]
+fn every_store_record_delete_link_form_uses_one_action_dependency() {
+    for link_type in [
+        ALL_HOLON_NODES_LINK_TYPE,
+        HOLON_NODE_UPDATES_LINK_TYPE,
+        LOCAL_HOLON_SPACE_LINK_TYPE,
+        SMARTLINK_LINK_TYPE,
+    ] {
+        let create = if link_type == SMARTLINK_LINK_TYPE {
+            create_link(link_type, valid_smartlink_tag())
+        } else {
+            infrastructure_create_link(link_type)
+        };
+        let resolved = signed_action(Action::CreateLink(create.clone()));
+        let mut mock = MockHdi::new();
+        mock.expect_must_get_action()
+            .withf(|input| input.0 == action_hash(23))
+            .times(1)
+            .return_once(move |_| Ok(resolved));
+        mock.expect_must_get_valid_record().times(0);
+        mock.expect_zome_info().times(1).return_once(|_| Ok(zome_info()));
+        set_hdi(mock);
+
+        let result = validate(delete_link_op(DeleteLinkOpForm::StoreRecord, create));
+        let expected = if link_type == ALL_HOLON_NODES_LINK_TYPE {
+            ValidateCallbackResult::Invalid("AllHolonNodes links cannot be deleted".into())
+        } else {
+            ValidateCallbackResult::Valid
+        };
+        assert_eq!(
+            result,
+            Ok(expected),
+            "StoreRecord DeleteLink did not dispatch type {link_type:?}"
+        );
+    }
+}
+
 #[test]
 fn both_smartlink_create_forms_return_the_same_deterministic_rejection() {
     let malformed = LinkTag::new(vec![0; 3]);
-    let create = create_link(LinkType(3), malformed);
+    let create = create_link(SMARTLINK_LINK_TYPE, malformed);
     let operations = [
         Op::RegisterCreateLink(RegisterCreateLink {
             create_link: signed_create_link(create.clone()),
@@ -383,7 +633,7 @@ fn both_smartlink_create_forms_return_the_same_deterministic_rejection() {
 
 #[test]
 fn register_smartlink_delete_is_valid_without_dependency_lookup() {
-    let create = create_link(LinkType(3), valid_smartlink_tag());
+    let create = create_link(SMARTLINK_LINK_TYPE, valid_smartlink_tag());
     let delete = delete_link();
     install_link_zome_info_without_dependencies();
 
@@ -398,7 +648,7 @@ fn register_smartlink_delete_is_valid_without_dependency_lookup() {
 
 #[test]
 fn store_record_smartlink_delete_resolves_once_and_dispatches() {
-    let create = create_link(LinkType(3), valid_smartlink_tag());
+    let create = create_link(SMARTLINK_LINK_TYPE, valid_smartlink_tag());
     let mut mock = MockHdi::new();
     mock.expect_must_get_action()
         .withf(|input| input.0 == action_hash(23))
@@ -437,7 +687,7 @@ fn store_record_link_delete_rejects_a_non_create_target_with_map_pvl_2004() {
 
 #[test]
 fn store_record_delete_dispatches_a_different_scoped_link_type() {
-    let create = create_link(LinkType(0), valid_smartlink_tag());
+    let create = create_link(ALL_HOLON_NODES_LINK_TYPE, valid_smartlink_tag());
     let mut mock = MockHdi::new();
     mock.expect_must_get_action()
         .times(1)
@@ -451,5 +701,84 @@ fn store_record_delete_dispatches_a_different_scoped_link_type() {
             record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
         })),
         Ok(ValidateCallbackResult::Invalid("AllHolonNodes links cannot be deleted".into()))
+    );
+}
+
+fn assert_dependency_failure_stays_outer(operation: Op, marker: &str) {
+    let error = validate(operation)
+        .expect_err("dependency unavailability must not become a completed validation verdict");
+    let message = error.to_string();
+    assert!(message.contains(marker), "outer error lost dependency context: {message}");
+    assert!(
+        !message.contains("MAP-PVL"),
+        "dependency failure was incorrectly represented as a PVL violation: {message}"
+    );
+}
+
+#[test]
+fn dependency_failures_remain_outer_across_callback_adapter_routes() {
+    let mut update_mock = MockHdi::new();
+    update_mock.expect_must_get_action().times(0);
+    update_mock.expect_must_get_valid_record().times(1).return_once(|_| {
+        Err(wasm_error!(WasmErrorInner::Guest("update dependency unavailable".into())))
+    });
+    update_mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
+    set_hdi(update_mock);
+    assert_dependency_failure_stays_outer(
+        update_op(UpdateOpForm::StoreRecord),
+        "update dependency unavailable",
+    );
+
+    let mut delete_mock = MockHdi::new();
+    delete_mock.expect_must_get_action().times(1).return_once(|_| {
+        Err(wasm_error!(WasmErrorInner::Guest("delete dependency unavailable".into())))
+    });
+    delete_mock.expect_must_get_valid_record().times(0);
+    delete_mock.expect_zome_info().times(0..=1).return_once(|_| Ok(zome_info()));
+    set_hdi(delete_mock);
+    assert_dependency_failure_stays_outer(
+        delete_op(DeleteOpForm::RegisterDelete),
+        "delete dependency unavailable",
+    );
+
+    let mut infrastructure_mock = MockHdi::new();
+    infrastructure_mock.expect_must_get_action().times(0);
+    infrastructure_mock.expect_must_get_valid_record().times(1).return_once(|_| {
+        Err(wasm_error!(WasmErrorInner::Guest("infrastructure dependency unavailable".into())))
+    });
+    infrastructure_mock.expect_zome_info().times(0..=2).returning(|_| Ok(zome_info()));
+    set_hdi(infrastructure_mock);
+    assert_dependency_failure_stays_outer(
+        create_link_op(
+            CreateLinkOpForm::RegisterCreateLink,
+            infrastructure_create_link(ALL_HOLON_NODES_LINK_TYPE),
+        ),
+        "infrastructure dependency unavailable",
+    );
+
+    let mut link_delete_mock = MockHdi::new();
+    link_delete_mock.expect_must_get_action().times(1).return_once(|_| {
+        Err(wasm_error!(WasmErrorInner::Guest("link delete dependency unavailable".into())))
+    });
+    link_delete_mock.expect_must_get_valid_record().times(0);
+    link_delete_mock.expect_zome_info().times(0);
+    set_hdi(link_delete_mock);
+    assert_dependency_failure_stays_outer(
+        delete_link_op(
+            DeleteLinkOpForm::StoreRecord,
+            create_link(SMARTLINK_LINK_TYPE, valid_smartlink_tag()),
+        ),
+        "link delete dependency unavailable",
+    );
+
+    let mut agent_mock = MockHdi::new();
+    agent_mock.expect_must_get_action().times(1).return_once(|_| {
+        Err(wasm_error!(WasmErrorInner::Guest("agent dependency unavailable".into())))
+    });
+    agent_mock.expect_must_get_valid_record().times(0);
+    set_hdi(agent_mock);
+    assert_dependency_failure_stays_outer(
+        create_agent_activity_op(),
+        "agent dependency unavailable",
     );
 }

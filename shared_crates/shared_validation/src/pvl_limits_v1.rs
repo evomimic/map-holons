@@ -27,8 +27,6 @@ pub const MAX_VALUE_NESTING_DEPTH: usize = 2;
 pub const MAX_RELATIONSHIP_NAME_BYTES: usize = 128;
 /// Maximum serialized byte length of a remote object identifier.
 pub const MAX_REMOTE_OBJECT_ID_BYTES: usize = 256;
-/// Maximum deterministic validation dependencies requested for one operation.
-pub const MAX_VALIDATION_DEPENDENCIES_PER_OP: usize = 8;
 
 /// Codec-owned MAP SmartLink Tag v1 wire-validity ceiling.
 pub use core_types::MAP_SMARTLINK_V1_MAX_BYTES;
@@ -83,7 +81,6 @@ mod tests {
         assert_eq!(MAX_VALUE_NESTING_DEPTH, 2);
         assert_eq!(MAX_RELATIONSHIP_NAME_BYTES, 128);
         assert_eq!(MAX_REMOTE_OBJECT_ID_BYTES, 256);
-        assert_eq!(MAX_VALIDATION_DEPENDENCIES_PER_OP, 8);
         assert_eq!(MAP_SMARTLINK_V1_MAX_BYTES, 512);
     }
 

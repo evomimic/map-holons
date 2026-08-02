@@ -14,6 +14,7 @@ use hdk::prelude::*;
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use integrity_core_types::{LocalId, RelationshipName};
+use shared_validation::validate_smartlink_envelope;
 
 // ---------------------------------------------------------------------------
 // Read: expansion
@@ -81,6 +82,10 @@ pub fn expand_from_source_by_key(
 
 /// Idempotently persists `prepared`, detecting semantic conflicts.
 ///
+/// Intrinsically invalid input is rejected by PVL preflight before any DHT read, so the
+/// outcomes below apply only to input that already passed validation. Preflight therefore
+/// outranks lookup failures, malformed stored candidates, `AlreadyPresent`, and `Conflict`.
+///
 /// Insertion identity is `source + target + relationship + occurrence`. The decision
 /// compares decoded candidate fields (never raw tag bytes):
 /// - no live link shares the identity            -> create link, `Inserted`
@@ -89,6 +94,9 @@ pub fn expand_from_source_by_key(
 ///
 /// Never creates a second live link with an identity that already exists.
 pub fn put_smartlink(prepared: PreparedSmartLink) -> Result<PutSmartLinkOutcome, HolonError> {
+    // Deliberately ahead of identity resolution; see the precedence note above.
+    let validated_tag = prepare_validated_smartlink_tag(&prepared)?;
+
     // Candidates are filtered by relationship only — key is not part of identity, so
     // filtering by key would hide conflicts on a differing key.
     let candidates = expand_from_source(&prepared.source_id, &prepared.relationship_name)?;
@@ -107,11 +115,11 @@ pub fn put_smartlink(prepared: PreparedSmartLink) -> Result<PutSmartLinkOutcome,
         return Ok(PutSmartLinkOutcome::Conflict(existing.smartlink_id.clone()));
     }
 
-    let tag = LinkTag(encode_smartlink_tag(&prepared.to_tag_input()).map_err(tag_error)?);
     let source_hash = try_action_hash_from_local_id(&prepared.source_id)?;
     let target_hash = try_action_hash_from_local_id(prepared.target_id.local_id())?;
-    let create_hash = create_link(source_hash, target_hash, LinkTypes::SmartLink, tag)
-        .map_err(holon_error_from_wasm_error)?;
+    let create_hash =
+        create_link(source_hash, target_hash, LinkTypes::SmartLink, LinkTag(validated_tag))
+            .map_err(holon_error_from_wasm_error)?;
     Ok(PutSmartLinkOutcome::Inserted(SmartLinkId(local_id_from_action_hash(create_hash))))
 }
 
@@ -163,6 +171,25 @@ pub fn delete_smartlink(smartlink_id: &SmartLinkId) -> Result<DeleteSmartLinkOut
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/// Encodes and validates the exact Tag v1 bytes intended for `create_link`.
+///
+/// Coordinator preflight applies the shared pure PVL rules to canonical typed input. Integrity
+/// still validates arbitrary peer bytes and Holochain operation facts, so passing this check does
+/// not guarantee conductor acceptance. Unlike typed entry authoring, `create_link` accepts the
+/// already encoded tag; returning the validated bytes ensures there is no re-encoding seam where
+/// the submitted representation could drift.
+///
+/// Codec-only writer failures remain storage errors because they have no peer-visible PVL
+/// equivalent. PVL validation begins only after the canonical storage encoder succeeds.
+fn prepare_validated_smartlink_tag(prepared: &PreparedSmartLink) -> Result<Vec<u8>, HolonError> {
+    let encoded = encode_smartlink_tag(&prepared.to_tag_input()).map_err(tag_error)?;
+
+    validate_smartlink_envelope(&prepared.source_id, prepared.target_id.local_id(), &encoded)
+        .map_err(HolonError::PvlViolation)?;
+
+    Ok(encoded)
+}
+
 /// Runs a prepared `LinkQuery` and decodes every live match into a `SmartLink`.
 fn decode_query(source_id: &LocalId, query: LinkQuery) -> Result<Vec<SmartLink>, HolonError> {
     let links = get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
@@ -203,5 +230,56 @@ fn tag_error(error: impl std::fmt::Display) -> HolonError {
     HolonError::InvalidWireFormat {
         wire_type: "SmartLinkTagV1".to_string(),
         reason: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base_types::MapString;
+    use core_types::{CanonicalKey, HolonId, PropertyMap, HOLOCHAIN_ACTION_HASH_BYTES};
+    use integrity_core_types::PvlViolation;
+
+    fn local_id(seed: u8) -> LocalId {
+        LocalId(vec![seed; HOLOCHAIN_ACTION_HASH_BYTES])
+    }
+
+    fn prepared(relationship_name: impl Into<String>) -> PreparedSmartLink {
+        PreparedSmartLink {
+            source_id: local_id(1),
+            target_id: HolonId::Local(local_id(2)),
+            relationship_name: RelationshipName(MapString(relationship_name.into())),
+            canonical_key: CanonicalKey::new("").unwrap(),
+            occurrence_id: None,
+            relationship_property_values: PropertyMap::new(),
+            target_property_cache_candidates: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn prepared_tag_maps_structural_failure_to_the_stable_pvl_error() {
+        // An empty relationship name is encodable Tag v1 data, which proves this failure comes
+        // from shared PVL validation rather than from the storage encoder.
+        let error = prepare_validated_smartlink_tag(&prepared("")).unwrap_err();
+
+        assert_eq!(error, HolonError::PvlViolation(PvlViolation::EmptyRelationshipName));
+        assert_eq!(error.to_string(), "MAP-PVL-2101: relationship name is empty");
+    }
+
+    #[test]
+    fn prepared_tag_keeps_packing_failure_as_a_storage_error() {
+        let error = prepare_validated_smartlink_tag(&prepared("r".repeat(600))).unwrap_err();
+
+        match error {
+            HolonError::InvalidWireFormat { wire_type, reason } => {
+                assert_eq!(wire_type, "SmartLinkTagV1");
+                assert!(
+                    reason.contains("mandatory SmartLink content")
+                        && reason.contains("packing budget"),
+                    "unexpected packing error: {reason}"
+                );
+            }
+            other => panic!("packing failure must remain a storage error, got {other:?}"),
+        }
     }
 }

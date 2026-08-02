@@ -363,7 +363,6 @@ export type PvlViolationWire =
         max_bytes: number;
       };
     }
-  | { ValidationDependencyLimitExceeded: { requested: number; max: number } }
   | 'EmptyPropertyName'
   | { InvalidPropertyName: { reason: string } }
   | 'EmptyRelationshipName'
@@ -940,14 +939,6 @@ export function isPvlViolationWire(value: unknown): value is PvlViolationWire {
         isString(candidate['identifier_kind']) &&
         isNumber(candidate['actual_bytes']) &&
         isNumber(candidate['max_bytes']),
-    ) ||
-    isTaggedValue(
-      value,
-      'ValidationDependencyLimitExceeded',
-      (candidate): candidate is { requested: number; max: number } =>
-        isRecord(candidate) &&
-        isNumber(candidate['requested']) &&
-        isNumber(candidate['max']),
     ) ||
     isTaggedValue(
       value,

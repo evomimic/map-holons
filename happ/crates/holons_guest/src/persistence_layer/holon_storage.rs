@@ -27,9 +27,11 @@ use core_types::{
     VersionMetadata,
 };
 use hdk::prelude::*;
-use holons_guest_integrity::{type_conversions::*, HolonNode};
+use holochain_serialized_bytes::encode;
+use holons_guest_integrity::{type_conversions::*, HolonNode, ALL_HOLON_NODES_PATH};
 use holons_integrity::{EntryTypes, LinkTypes};
 use integrity_core_types::{short_hex, HolonNodeModel, LocalId};
+use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
 
 // ---------------------------------------------------------------------------
 // Read: exact-version retrieval
@@ -121,6 +123,8 @@ pub fn try_version_metadata_for_action(
 pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, HolonError> {
     match request {
         HolonWriteRequest::PublishRoot { holon_node } => {
+            preflight_holon_node(&holon_node)?;
+
             let action_hash =
                 create_entry(&EntryTypes::HolonNode(HolonNode::from(holon_node.clone())))
                     .map_err(holon_error_from_wasm_error)?;
@@ -137,6 +141,8 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
         }
 
         HolonWriteRequest::PublishVersion { holon_node, predecessor_ids } => {
+            preflight_holon_node(&holon_node)?;
+
             let lineage_id = resolve_lineage_root_for_predecessors(&predecessor_ids)?;
             let root_hash = try_action_hash_from_local_id(lineage_id.as_local_id())?;
 
@@ -165,6 +171,32 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/// Applies descriptor-independent PVL to the canonical HolonNode value intended for authoring.
+///
+/// The raw and canonical byte slices are identical by construction, so the canonicality
+/// comparison inside `validate_holon_node_decoded` is intentionally vacuous at this typed
+/// coordinator boundary. Reusing that function is still important because it owns the
+/// established property-count and property-value validation pipeline.
+///
+/// This preflight is not Integrity-adapter parity. Integrity starts with arbitrary peer-supplied
+/// bytes and additionally classifies flattened operations, checks substrate action facts, and
+/// resolves dependencies whose availability can produce `UnresolvedDependencies`. Passing this
+/// check therefore does not guarantee conductor acceptance.
+///
+/// `create_entry` and `update_entry` serialize their typed values internally, so this function
+/// cannot submit the bytes it measured. The encoding-parity tests in `holon_node_envelope` pin
+/// the required equivalence among `HolonNodeModel`, the guest `HolonNode`, and stored app-entry
+/// payload bytes.
+fn preflight_holon_node(model: &HolonNodeModel) -> Result<(), HolonError> {
+    let serialized = encode(model).map_err(|error| HolonError::InvalidWireFormat {
+        wire_type: "HolonNodeModel".into(),
+        reason: format!("canonical serialization failed: {error}"),
+    })?;
+
+    validate_holon_node_size(serialized.len()).map_err(HolonError::PvlViolation)?;
+    validate_holon_node_decoded(&serialized, &serialized, model).map_err(HolonError::PvlViolation)
+}
 
 /// What a persisted record turns out to be, from this layer's point of view.
 ///
@@ -289,11 +321,59 @@ fn resolve_lineage_root_for_predecessors(
 
 /// Adds the new holon to the space-wide holon index.
 fn index_under_all_holon_nodes(action_hash: &ActionHash) -> Result<(), HolonError> {
-    let path = Path::from("all_holon_nodes");
+    let path = Path::from(ALL_HOLON_NODES_PATH);
     let base = path.path_entry_hash().map_err(holon_error_from_wasm_error)?;
 
     create_link(base, action_hash.clone(), LinkTypes::AllHolonNodes, ())
         .map_err(holon_error_from_wasm_error)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base_types::{BaseValue, MapBoolean, MapString};
+    use integrity_core_types::{PropertyMap, PropertyName, PvlViolation};
+
+    fn property_name(value: impl Into<String>) -> PropertyName {
+        PropertyName(MapString(value.into()))
+    }
+
+    #[test]
+    fn preflight_rejects_257_properties_with_the_stable_pvl_error() {
+        let property_map = (0..257)
+            .map(|index| {
+                (
+                    property_name(format!("property-{index}")),
+                    BaseValue::BooleanValue(MapBoolean(true)),
+                )
+            })
+            .collect::<PropertyMap>();
+        let model = HolonNodeModel::new(property_map);
+
+        let error = preflight_holon_node(&model).unwrap_err();
+
+        assert_eq!(
+            error,
+            HolonError::PvlViolation(PvlViolation::TooManyProperties {
+                actual_count: 257,
+                max_count: 256,
+            })
+        );
+        assert_eq!(error.to_string(), "MAP-PVL-1101: property count exceeds 256");
+    }
+
+    #[test]
+    fn preflight_rejects_an_empty_property_name_with_the_stable_pvl_error() {
+        let model = HolonNodeModel::new(PropertyMap::from([(
+            property_name(""),
+            BaseValue::BooleanValue(MapBoolean(true)),
+        )]));
+
+        let error = preflight_holon_node(&model).unwrap_err();
+
+        assert_eq!(error, HolonError::PvlViolation(PvlViolation::EmptyPropertyName));
+        assert_eq!(error.to_string(), "MAP-PVL-1102: property name is empty");
+    }
 }

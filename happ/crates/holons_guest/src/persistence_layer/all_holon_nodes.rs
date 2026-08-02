@@ -1,5 +1,6 @@
 use crate::persistence_layer::holon_node::get_latest_holon_node;
 use hdk::prelude::*;
+use holons_guest_integrity::ALL_HOLON_NODES_PATH;
 use holons_integrity::*;
 //TODO: move this function to holon_node.rs and delete the file
 
@@ -15,7 +16,7 @@ use holons_integrity::*;
 /// then a caller needing the current version traverses `Successor` from the root.
 #[hdk_extern]
 pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
-    let path = Path::from("all_holon_nodes");
+    let path = Path::from(ALL_HOLON_NODES_PATH);
     let base_address = path.path_entry_hash()?;
     let links_query = LinkQuery::try_new(base_address, LinkTypes::AllHolonNodes)?;
     let links = get_links(links_query, GetStrategy::default())?;

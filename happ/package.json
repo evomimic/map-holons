@@ -12,7 +12,8 @@
     "clean:rust": "cargo clean",
     "clean:rust:deep": "npx rimraf target && cargo clean",
 
-    "test:unit:no-run": "cargo test --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown --no-run"
+    "test:unit:no-run": "cargo test --manifest-path Cargo.toml --workspace --target wasm32-unknown-unknown --no-run",
+    "test:unit": "cargo test --manifest-path Cargo.toml --workspace"
   },
   "devDependencies": {
     "rimraf": "^6.0.1"
