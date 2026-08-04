@@ -15,10 +15,17 @@
 //! rules are wired into peer validation. The rejection is the assertion; a negative-purpose probe
 //! whose call succeeds has failed its purpose.
 //!
-//! Probe-dependent tests first install the unchanged production DNA, then append only this zome to
-//! an isolated conductor. Keeping this crate independent of `holons_guest` is essential: HDK extern
-//! symbols from an rlib dependency survive WASM linking and would otherwise reproduce the entire
-//! production coordinator surface in this test artifact.
+//! # Artifact exclusion and isolated augmentation
+//!
+//! Production builds package only `holons`; this zome is a distinct loose WASM and is absent from
+//! every production DNA and hApp manifest by construction. Probe-dependent tests first install and
+//! inspect the unchanged production DNA, then append only this zome to an isolated conductor and
+//! verify that DNA identity, Integrity definitions, and the active production coordinator remain
+//! unchanged.
+//!
+//! Keeping this crate independent of `holons_guest` is essential: HDK extern symbols from an rlib
+//! dependency survive WASM linking and would otherwise reproduce the entire production coordinator
+//! surface in this test artifact.
 
 use hdk::prelude::*;
 use holons_guest_integrity::{local_id_from_action_hash, try_action_hash_from_local_id, HolonNode};
