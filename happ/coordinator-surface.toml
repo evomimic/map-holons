@@ -7,6 +7,8 @@
 # A later phase moves those functions to `holons_test_probes` and makes their presence in the
 # packaged `holons` coordinator an audit failure.
 
+production_coordinator_zomes = ["holons"]
+
 [[export]]
 zome = "holons"
 symbol = "dance"

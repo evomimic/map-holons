@@ -2,6 +2,23 @@
 
 Standalone developer and CI utilities live under this directory.
 
+## `happ-artifact-audit`
+
+`tools/happ-artifact-audit` verifies that packed production DNAs and hApps contain exactly the
+approved coordinator zomes and that each packaged coordinator WASM exactly matches
+`happ/coordinator-surface.toml`. It reads the WASM from the bundle being shipped, rather than from
+a presumed Cargo target directory, so packaging drift cannot be hidden by a correct loose build.
+
+Repo-local usage supplies every artifact path explicitly:
+
+```sh
+npm run check:happ-artifacts
+```
+
+The optional `--probe-wasm` input audits a loose test-probe WASM once that artifact exists. The
+`--deny-production-test-only` switch is implemented but intentionally not enabled until the
+test-only externs have been removed from the production coordinator.
+
 ## `map-schema`
 
 `tools/map-schema` provides the MAP schema authoring CLI. It is already a Rust
