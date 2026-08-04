@@ -6,6 +6,22 @@
 # Production and loose test artifacts share one exact inventory so review can prove both sides of
 # the boundary: packaged coordinators contain no test-only calls, while the probe WASM contains no
 # production application ingress.
+#
+# Update this manifest whenever a coordinator export is added, removed, or renamed. This includes
+# intentional `#[hdk_extern]` and callback changes, newly packaged coordinator zomes, and less
+# obvious exports introduced by dependency linkage or a Holochain/toolchain change. Add or remove
+# the exact `{ zome, symbol }` row, classify its exposure and role, and give reviewers a rationale
+# for why that surface belongs in the artifact. Production application functions belong under a
+# packaged zome with `classification = "supported"` or `"legacy_ingress"`; test-only functions
+# belong only under the loose probe zome and are prohibited from production artifacts.
+#
+# Verify a change against freshly built inputs with:
+#   npm run build:happ
+#   npm run build:probes -w map-happ
+#   npm run check:happ-artifacts
+# The audit compares both directions, so it reports newly unclassified exports as well as stale
+# manifest rows for exports that were removed. `npm run sweetest` performs this build-and-audit
+# sequence automatically before running conductor tests.
 
 production_coordinator_zomes = ["holons"]
 
