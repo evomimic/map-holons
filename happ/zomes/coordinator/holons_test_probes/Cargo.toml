@@ -1,0 +1,21 @@
+[package]
+name = "holons_test_probes"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "holons_test_probes"
+
+[dependencies]
+hdk = "0.6"
+serde = { workspace = true }
+
+[dependencies.holons_guest_integrity]
+path = "../../../crates/holons_guest_integrity"
+
+[dependencies.holons_integrity]
+path = "../../integrity/holons_integrity"
+
+[dependencies.integrity_core_types]
+path = "../../../../shared_crates/type_system/integrity_core_types"

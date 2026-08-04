@@ -3,9 +3,9 @@
 # exact accounting prevents generated, callback, and application-callable symbols from being
 # mistaken for one another during artifact review.
 #
-# Phase 1 intentionally describes the current production artifact, including test-only functions.
-# A later phase moves those functions to `holons_test_probes` and makes their presence in the
-# packaged `holons` coordinator an audit failure.
+# Production and loose test artifacts share one exact inventory so review can prove both sides of
+# the boundary: packaged coordinators contain no test-only calls, while the probe WASM contains no
+# production application ingress.
 
 production_coordinator_zomes = ["holons"]
 
@@ -150,39 +150,32 @@ classification = "legacy_ingress"
 rationale = "Scaffolded lookup selecting the oldest raw deletion action."
 
 [[export]]
-zome = "holons"
+zome = "holons_test_probes"
 symbol = "smartlink_author_raw_tag_for_test"
 exposure_kind = "zome_call"
 classification = "test_only"
 rationale = "Test probe that authors arbitrary SmartLink tag bytes and ActionHash endpoints outside canonical SmartLink coordinator behavior."
 
 [[export]]
-zome = "holons"
+zome = "holons_test_probes"
 symbol = "holon_storage_author_update_for_test"
 exposure_kind = "zome_call"
 classification = "test_only"
 rationale = "Test probe that authors a HolonNode Update against an exact action hash without canonical lineage resolution."
 
 [[export]]
-zome = "holons"
+zome = "holons_test_probes"
 symbol = "holon_storage_author_create_for_test"
 exposure_kind = "zome_call"
 classification = "test_only"
 rationale = "Test probe that authors a HolonNode Create without canonical coordinator preflight."
 
 [[export]]
-zome = "holons"
+zome = "holons_test_probes"
 symbol = "all_holon_nodes_delete_for_test"
 exposure_kind = "zome_call"
 classification = "test_only"
 rationale = "Test probe that re-resolves and deletes an AllHolonNodes CreateLink to exercise Integrity validation."
-
-[[export]]
-zome = "holons"
-symbol = "create_holon_node"
-exposure_kind = "zome_call"
-classification = "test_only"
-rationale = "Test-oriented Record-returning wrapper around canonical HolonNode persistence; it adds no Integrity-only capability and is scheduled for deletion."
 
 [[export]]
 zome = "holons"
@@ -274,3 +267,83 @@ symbol = "__heap_base"
 exposure_kind = "global"
 classification = "abi"
 rationale = "Linker-generated global marking the start of allocatable guest memory."
+
+# The loose probe artifact links the integrity rlib for its entry and link types. Its resulting
+# callback and ABI exports are classified independently because it is never packaged with `holons`.
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "validate"
+exposure_kind = "integrity_callback"
+classification = "callback"
+rationale = "Integrity validation callback linked from the integrity rlib; inert as probe application ingress but still part of the WASM export table."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "entry_defs"
+exposure_kind = "integrity_callback"
+classification = "callback"
+rationale = "Integrity entry-definition callback linked from the integrity rlib and present in the loose probe export table."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "genesis_self_check_2"
+exposure_kind = "integrity_callback"
+classification = "callback"
+rationale = "Integrity genesis self-check callback linked from the integrity rlib and present in the loose probe export table."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "__num_entry_types"
+exposure_kind = "integrity_callback"
+classification = "callback"
+rationale = "Generated integrity metadata callback reporting the number of entry types in the probe-linked integrity definitions."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "__num_link_types"
+exposure_kind = "integrity_callback"
+classification = "callback"
+rationale = "Generated integrity metadata callback reporting the number of link types in the probe-linked integrity definitions."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "__hc__allocate_1"
+exposure_kind = "abi"
+classification = "abi"
+rationale = "Generated Holochain guest-memory allocation support required by the probe WASM ABI."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "__hc__deallocate_1"
+exposure_kind = "abi"
+classification = "abi"
+rationale = "Generated Holochain guest-memory deallocation support required by the probe WASM ABI."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "__getrandom_v03_custom"
+exposure_kind = "abi"
+classification = "abi"
+rationale = "Generated custom randomness hook linked for the probe WASM guest environment."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "memory"
+exposure_kind = "memory"
+classification = "abi"
+rationale = "Exported linear memory required by the probe WASM guest ABI."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "__data_end"
+exposure_kind = "global"
+classification = "abi"
+rationale = "Linker-generated global marking the end of the probe WASM's statically initialized data."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "__heap_base"
+exposure_kind = "global"
+classification = "abi"
+rationale = "Linker-generated global marking the start of allocatable probe guest memory."

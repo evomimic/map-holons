@@ -799,6 +799,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "holons_test_probes"
+version = "0.0.1"
+dependencies = [
+ "hdk",
+ "holons_guest_integrity",
+ "holons_integrity",
+ "integrity_core_types",
+ "serde",
+]
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,5 +1,10 @@
 use async_trait::async_trait;
+use holochain::conductor::api::error::ConductorApiError;
 use holochain::prelude::AgentPubKey;
+use holochain::prelude::{
+    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, Record, WasmHash, ZomeError,
+    ZomeName,
+};
 use holochain::sweettest::{
     SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
 };
@@ -7,10 +12,18 @@ use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
 use holons_core::dances::DanceInitiator;
 use holons_core::HolonError;
 use holons_trust_channel::{DanceEnvelopeTransport, TrustChannel};
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use tracing::info;
 
 const DNA_FILEPATH: &str = "../../happ/workdir/map_holons.dna";
+pub const PROBE_WASM_FILEPATH: &str =
+    "../../happ/target/wasm32-unknown-unknown/release/holons_test_probes.wasm";
+const PRODUCTION_COORDINATOR_ZOME: &str = "holons";
+const PROBE_COORDINATOR_ZOME: &str = "holons_test_probes";
+const INTEGRITY_ZOME: &str = "holons_integrity";
+const PROBE_DISPATCH_FUNCTION: &str = "holon_storage_author_create_for_test";
 
 #[derive(Debug)]
 pub struct MockConductorConfig {
@@ -116,6 +129,161 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
     let agent = AgentPubKey::from_raw_39(agent_hash);
 
     Arc::new(MockConductorConfig { conductor, agent, cell })
+}
+
+/// Installs the production DNA and then appends the loose test-probe coordinator in an isolated
+/// conductor while proving that the production coordinator and Integrity boundary are unchanged.
+///
+/// Coordinator updates mutate the DNA registered within a conductor. A backend returned by this
+/// helper must therefore never be pooled with, or reused by, production-only assertions. Each
+/// probe-dependent test must create its own backend through this helper.
+///
+/// The probe WASM is loaded from [`PROBE_WASM_FILEPATH`] rather than inferred from a Cargo target
+/// directory. The `sweetest` build ordering is responsible for freshly producing that exact loose
+/// artifact before any test calls this helper.
+///
+/// # Panics
+///
+/// Panics if the production DNA or probe WASM cannot be read, conductor installation or the
+/// coordinator update fails, the probe is callable before augmentation, or any coordinator/DNA
+/// invariance assertion fails.
+pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
+    info!("Current working directory: {:?}", std::env::current_dir().unwrap());
+
+    let dna = SweetDnaFile::from_bundle(std::path::Path::new(DNA_FILEPATH)).await.unwrap();
+    let mut conductor = SweetConductor::from_config(local_only_config()).await;
+    let holochain_agent = SweetAgents::one(conductor.keystore()).await;
+    let app = conductor
+        .setup_app_for_agent("probe-enabled-app", holochain_agent.clone(), &[dna])
+        .await
+        .unwrap();
+
+    let cell = app.into_cells()[0].clone();
+    let cell_id = cell.cell_id().clone();
+    let installed_dna_hash = cell.dna_hash().clone();
+
+    assert_probe_zome_unavailable(&conductor, &cell).await;
+
+    let before = conductor
+        .get_dna_def(&cell_id)
+        .expect("the installed production cell must have an active DNA definition");
+    let before_coordinator_names = coordinator_names(&before);
+    assert_eq!(
+        before_coordinator_names,
+        BTreeSet::from([PRODUCTION_COORDINATOR_ZOME.to_string()]),
+        "the installed production DNA must start with exactly the holons coordinator"
+    );
+    let production_wasm_hash_before = coordinator_wasm_hash(&before, PRODUCTION_COORDINATOR_ZOME);
+    let integrity_zomes_before = before.integrity_zomes.clone();
+
+    let probe_wasm_bytes = std::fs::read(PROBE_WASM_FILEPATH).unwrap_or_else(|error| {
+        panic!("failed to read loose probe WASM at {PROBE_WASM_FILEPATH}: {error}")
+    });
+    let probe_wasm = DnaWasm::from(probe_wasm_bytes);
+    let probe_wasm_hash = WasmHash::with_data(&probe_wasm).await;
+    let mut probe_definition = CoordinatorZomeDef::from_hash(probe_wasm_hash.clone());
+    // This dependency is enforced by DnaFile::update_coordinators and keeps the probe bound to
+    // the production Integrity zome it is intended to exercise.
+    probe_definition.set_dependency(INTEGRITY_ZOME);
+
+    // Supplying only the new name is essential: including a second `holons` definition would
+    // replace the active production coordinator instead of merely augmenting the test conductor.
+    let coordinator_update: CoordinatorZomes =
+        vec![(PROBE_COORDINATOR_ZOME.into(), probe_definition)];
+    conductor
+        .update_coordinators(cell_id.clone(), coordinator_update, vec![probe_wasm])
+        .await
+        .expect("the isolated conductor must accept the probe-only coordinator update");
+
+    let after = conductor
+        .get_dna_def(&cell_id)
+        .expect("the updated cell must retain an active DNA definition");
+    assert_eq!(
+        coordinator_names(&after),
+        BTreeSet::from([
+            PRODUCTION_COORDINATOR_ZOME.to_string(),
+            PROBE_COORDINATOR_ZOME.to_string(),
+        ]),
+        "the update must append only holons_test_probes"
+    );
+    assert_eq!(
+        coordinator_wasm_hash(&after, PRODUCTION_COORDINATOR_ZOME),
+        production_wasm_hash_before,
+        "the probe update must not replace the active production coordinator"
+    );
+    assert_eq!(
+        coordinator_wasm_hash(&after, PROBE_COORDINATOR_ZOME),
+        probe_wasm_hash,
+        "the active probe definition must reference the freshly read loose WASM"
+    );
+    assert_eq!(
+        after.integrity_zomes, integrity_zomes_before,
+        "coordinator augmentation must not change Integrity definitions"
+    );
+    assert_eq!(
+        DnaHash::with_data_sync(&after),
+        installed_dna_hash,
+        "rehashing the effective updated DNA definition must preserve production DNA identity"
+    );
+
+    let _: Vec<Record> = conductor
+        .call_fallible(&cell.zome(PRODUCTION_COORDINATOR_ZOME), "get_all_holon_nodes", ())
+        .await
+        .expect("the production holons coordinator must remain callable after augmentation");
+
+    let agent_hash = holochain_agent.into_inner();
+    let agent = AgentPubKey::from_raw_39(agent_hash);
+    Arc::new(MockConductorConfig { conductor, agent, cell })
+}
+
+/// Proves dispatch rejects the probe at zome resolution when only the production DNA is installed.
+pub async fn assert_probe_zome_unavailable(conductor: &SweetConductor, cell: &SweetCell) {
+    let result = conductor
+        .call_fallible::<_, LocalId>(
+            &cell.zome(PROBE_COORDINATOR_ZOME),
+            PROBE_DISPATCH_FUNCTION,
+            valid_probe_holon_node(),
+        )
+        .await;
+
+    assert!(
+        matches!(result, Err(ConductorApiError::ZomeError(ZomeError::ZomeNotFound(_)))),
+        "a production-only cell must reject the unregistered probe zome, got {result:?}"
+    );
+}
+
+/// Proves dispatch executes a registered probe function after administrative augmentation.
+pub async fn assert_probe_zome_dispatchable(conductor: &SweetConductor, cell: &SweetCell) {
+    let _: LocalId = conductor
+        .call_fallible(
+            &cell.zome(PROBE_COORDINATOR_ZOME),
+            PROBE_DISPATCH_FUNCTION,
+            valid_probe_holon_node(),
+        )
+        .await
+        .expect("the augmented cell must execute the registered probe function");
+}
+
+fn coordinator_names(dna_def: &DnaDef) -> BTreeSet<String> {
+    dna_def.coordinator_zomes.iter().map(|(name, _)| name.to_string()).collect()
+}
+
+fn coordinator_wasm_hash(dna_def: &DnaDef, name: &str) -> WasmHash {
+    let zome_name = ZomeName::from(name);
+    let definition = dna_def
+        .coordinator_zomes
+        .iter()
+        .find_map(|(candidate, definition)| (candidate == &zome_name).then_some(definition))
+        .unwrap_or_else(|| panic!("coordinator {name} is absent from the active DNA definition"));
+    definition
+        .wasm_hash(&zome_name)
+        .unwrap_or_else(|error| panic!("coordinator {name} is not backed by WASM: {error}"))
+}
+
+fn valid_probe_holon_node() -> HolonNodeModel {
+    // An empty property map is valid under current PVL rules and keeps this assertion focused on
+    // coordinator dispatch rather than on any domain value chosen solely for the harness.
+    HolonNodeModel::new(PropertyMap::new())
 }
 
 /// Constructs a test [`DanceInitiator`] implementation backed by a mock Holochain conductor.

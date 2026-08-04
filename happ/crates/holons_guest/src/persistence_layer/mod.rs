@@ -7,8 +7,6 @@ pub mod holon_storage_externs;
 pub mod saved_holon_node;
 pub mod smartlink;
 pub mod smartlink_externs;
-/// Unsupported production-compiled authoring seams for live Integrity tests.
-pub mod test_probes;
 
 pub use all_holon_nodes::*;
 pub use holon_node::*;
@@ -17,4 +15,3 @@ pub use holon_storage_externs::*;
 pub use saved_holon_node::*;
 pub use smartlink::*;
 pub use smartlink_externs::*;
-pub use test_probes::*;
