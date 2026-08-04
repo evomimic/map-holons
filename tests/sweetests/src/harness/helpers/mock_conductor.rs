@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 use holochain::conductor::api::error::ConductorApiError;
+use holochain::conductor::CellError;
+use holochain::core::ribosome::error::RibosomeError;
 use holochain::prelude::AgentPubKey;
 use holochain::prelude::{
     CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, Record, WasmHash, ZomeError,
@@ -195,6 +197,13 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
         .await
         .expect("the isolated conductor must accept the probe-only coordinator update");
 
+    // Holochain 0.6.3 mutates the cached DnaFile during an update but does not rebuild the
+    // RealRibosome's derived zome-dependency index. Reloading through SweetConductor's updated DNA
+    // cache makes the appended zome's enforced integrity dependency available to HDK host calls.
+    // This is also the upstream coordinator-update test's persistence path.
+    conductor.shutdown().await;
+    conductor.startup(true).await;
+
     let after = conductor
         .get_dna_def(&cell_id)
         .expect("the updated cell must retain an active DNA definition");
@@ -246,8 +255,15 @@ pub async fn assert_probe_zome_unavailable(conductor: &SweetConductor, cell: &Sw
         )
         .await;
 
+    // SweetConductor dispatch crosses the cell and ribosome boundaries before zome-name
+    // resolution, so preserve those stable wrappers while requiring the precise inner cause.
     assert!(
-        matches!(result, Err(ConductorApiError::ZomeError(ZomeError::ZomeNotFound(_)))),
+        matches!(
+            result,
+            Err(ConductorApiError::CellError(CellError::RibosomeError(
+                RibosomeError::ConductorApiError(ref inner)
+            ))) if matches!(inner.as_ref(), ConductorApiError::ZomeError(ZomeError::ZomeNotFound(_)))
+        ),
         "a production-only cell must reject the unregistered probe zome, got {result:?}"
     );
 }

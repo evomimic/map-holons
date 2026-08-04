@@ -16,12 +16,15 @@ use core_types::{
     StoredHolonNode,
 };
 use holochain::prelude::{Action, ActionHash, Record};
-use holons_test::harness::helpers::{assert_commit_rejected_with_pvl, setup_test_conductor};
+use holons_test::harness::helpers::{
+    assert_commit_rejected_with_pvl, setup_probe_enabled_conductor, setup_test_conductor,
+};
 use holons_test::MockConductorConfig;
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, PropertyName, RelationshipName};
 use std::collections::BTreeMap;
 
 const ZOME: &str = "holons";
+const PROBE_ZOME: &str = "holons_test_probes";
 
 /// The Integrity rejection for an update that does not target a lineage-root `Create`.
 const EXPECTED_UPDATE_TARGET_REJECTION: &str = "MAP-PVL-1301: update target is invalid";
@@ -545,14 +548,14 @@ async fn publish_version_rejects_an_unpersisted_predecessor() {
 /// intended.
 #[tokio::test(flavor = "multi_thread")]
 async fn integrity_rejects_an_update_targeting_an_update() {
-    let backend = setup_test_conductor().await;
+    let backend = setup_probe_enabled_conductor().await;
     let root_id = publish_root(&backend, "v1").await.version_metadata.version_id;
     let second = publish_version(&backend, "v2", vec![root_id]).await;
 
     let result = backend
         .conductor
         .call_fallible::<_, LocalId>(
-            &backend.cell.zome(ZOME),
+            &backend.cell.zome(PROBE_ZOME),
             "holon_storage_author_update_for_test",
             (second.version_metadata.version_id.clone(), node("v3")),
         )
@@ -565,13 +568,13 @@ async fn integrity_rejects_an_update_targeting_an_update() {
 /// must be accepted — proving the rejection above is about topology, not about the probe itself.
 #[tokio::test(flavor = "multi_thread")]
 async fn integrity_accepts_an_update_targeting_a_lineage_root() {
-    let backend = setup_test_conductor().await;
+    let backend = setup_probe_enabled_conductor().await;
     let root_id = publish_root(&backend, "v1").await.version_metadata.version_id;
 
     let authored: LocalId = backend
         .conductor
         .call(
-            &backend.cell.zome(ZOME),
+            &backend.cell.zome(PROBE_ZOME),
             "holon_storage_author_update_for_test",
             (root_id.clone(), node("v2")),
         )

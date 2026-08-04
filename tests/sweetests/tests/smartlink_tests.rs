@@ -5,26 +5,18 @@
 //! (`Inserted` / `AlreadyPresent` / `Conflict` / `Deleted` / `AlreadyAbsent`, plus the
 //! `StartsWith("")` guard) that the pure comparator unit tests cannot exercise.
 //!
-//! Endpoints are real committed holon nodes (created via the `create_holon_node` extern),
+//! Endpoints are real committed holon nodes published through canonical `holon_storage_persist`,
 //! because SmartLink integrity validation requires 39-byte action-hash source/target ids.
 
 use base_types::{BaseValue, MapString};
 use core_types::{
-    CanonicalKey, CanonicalKeyPrefix, DeleteSmartLinkOutcome, HolonId, KeyMatch, PreparedSmartLink,
-    PropertyName, PutSmartLinkOutcome, SmartLink, TargetPropertyCacheCandidate,
+    CanonicalKey, CanonicalKeyPrefix, DeleteSmartLinkOutcome, HolonId, HolonWriteRequest, KeyMatch,
+    PreparedSmartLink, PropertyName, PutSmartLinkOutcome, SmartLink, StoredHolonNode,
+    TargetPropertyCacheCandidate,
 };
-use holochain::prelude::Record;
 use holons_test::setup_test_conductor;
-use integrity_core_types::{LocalId, PropertyMap, RelationshipName};
-use serde::Serialize;
+use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap, RelationshipName};
 use std::collections::BTreeMap;
-
-/// Mirrors `holons_guest_integrity::HolonNode` for the `create_holon_node` extern input,
-/// so this test needs no dependency on the (hdi-based) integrity crate.
-#[derive(Serialize, Debug)]
-struct HolonNodeInput {
-    property_map: PropertyMap,
-}
 
 const ZOME: &str = "holons";
 
@@ -57,15 +49,15 @@ fn prepared(source: &LocalId, target: &LocalId, relationship: &str, k: &str) -> 
 
 /// Commits an empty holon node and returns its physical id (a valid 39-byte action hash).
 async fn new_endpoint(backend: &holons_test::MockConductorConfig) -> LocalId {
-    let record: Record = backend
+    let stored: StoredHolonNode = backend
         .conductor
         .call(
             &backend.cell.zome(ZOME),
-            "create_holon_node",
-            HolonNodeInput { property_map: PropertyMap::new() },
+            "holon_storage_persist",
+            HolonWriteRequest::PublishRoot { holon_node: HolonNodeModel::new(PropertyMap::new()) },
         )
         .await;
-    LocalId(record.action_address().get_raw_39().to_vec())
+    stored.version_id().clone()
 }
 
 #[tokio::test(flavor = "multi_thread")]
