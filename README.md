@@ -58,6 +58,10 @@ It will also bring up the Holochain Playground for advanced introspection of the
 npm test
 ```
 
+This runs unit checks and Sweettests. The Sweettest script builds the production hApp, builds the
+loose `holons_test_probes` WASM, audits the packaged coordinator surface, and then runs the
+conductor tests.
+
 ## MAP Schema CLI
 
 The MAP schema authoring tool lives in `tools/map-schema` and is available through a repo-local npm wrapper:

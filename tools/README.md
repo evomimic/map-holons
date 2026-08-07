@@ -15,9 +15,9 @@ Repo-local usage supplies every artifact path explicitly:
 npm run check:happ-artifacts
 ```
 
-The optional `--probe-wasm` input audits a loose test-probe WASM once that artifact exists. The
-`--deny-production-test-only` switch is implemented but intentionally not enabled until the
-test-only externs have been removed from the production coordinator.
+The root `check:happ-artifacts` script supplies `--probe-wasm` for the loose
+`holons_test_probes` test artifact and enables `--deny-production-test-only`, so CI rejects any
+test-only zome-call export that appears in the packaged production coordinator surface.
 
 ## `map-schema`
 
