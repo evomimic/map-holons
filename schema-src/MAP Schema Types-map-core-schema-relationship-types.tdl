@@ -40,6 +40,7 @@ def relationship (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescri
   target PropertyType.TypeDescriptor
   cardinality 0..*
   deletion_semantic Block
+  inheritance_mode Additive
   header {
     description: "Connects a type descriptor to the property descriptors in its instance contract."
     display_name: "InstanceProperties"
@@ -71,6 +72,7 @@ def relationship (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationship
   target DeclaredRelationshipType.RelationshipType
   cardinality 0..*
   deletion_semantic Block
+  inheritance_mode Additive
   header {
     description: "Connects a type descriptor to the declared relationship descriptors in its instance contract."
     display_name: "Instance Relationships"
