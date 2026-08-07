@@ -51,6 +51,12 @@ jobs:
         run: |
           nix develop --command bash -c "npm test"
 
+      # Keep the production-surface policy visible as its own CI gate. `npm test` builds the
+      # production bundles and loose probe WASM before reaching this deterministic re-audit.
+      - name: Check packaged coordinator surfaces
+        run: |
+          nix develop --command bash -c "npm run check:happ-artifacts"
+
   fmt:
     runs-on: ubuntu-latest
     steps:

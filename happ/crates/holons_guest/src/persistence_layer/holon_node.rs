@@ -11,14 +11,8 @@
 //! updates rooted at it. See `core_types::holon_storage` for the intended vocabulary.
 
 use hdk::prelude::*;
-use holons_guest_integrity::{
-    type_conversions::try_action_hash_from_local_id, HolonNode, LOCAL_HOLON_SPACE_PATH,
-};
+use holons_guest_integrity::LOCAL_HOLON_SPACE_PATH;
 use holons_integrity::*;
-use integrity_core_types::HolonNodeModel;
-
-use crate::persistence_layer::holon_storage::persist_holon;
-use core_types::HolonWriteRequest;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreatePathInput {
@@ -33,27 +27,6 @@ pub struct GetPathInput {
     pub link_type: LinkTypes,
 }
 
-/// Publishes a HolonNode as the root of a new lineage and returns its record.
-///
-/// Delegates to `persistence_layer::holon_storage::persist_holon` so there is exactly one write
-/// path for holon nodes, and one place that decides which substrate action a write becomes. This
-/// extern remains as a raw authoring probe for tests that need a record back; production code
-/// calls `persist_holon` directly and never handles a `Record`.
-#[hdk_extern]
-pub fn create_holon_node(holon_node: HolonNode) -> ExternResult<Record> {
-    let stored = persist_holon(HolonWriteRequest::PublishRoot {
-        holon_node: HolonNodeModel::from(holon_node),
-    })
-    .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
-
-    let holon_node_hash = try_action_hash_from_local_id(&stored.version_metadata.version_id)
-        .map_err(|e| wasm_error!(WasmErrorInner::Guest(e.to_string())))?;
-
-    trace!("Returning OK from create_holon_node.");
-    get(holon_node_hash, GetOptions::default())?.ok_or(wasm_error!(WasmErrorInner::Guest(
-        String::from("Could not find the newly created HolonNode")
-    )))
-}
 #[hdk_extern]
 pub fn create_path_to_holon_node(input: CreatePathInput) -> ExternResult<ActionHash> {
     let result = create_link(

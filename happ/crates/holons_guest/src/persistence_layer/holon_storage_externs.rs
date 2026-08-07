@@ -6,9 +6,9 @@
 //! `ExternResult` returns, `HolonError` folded into `WasmError` at the boundary, and
 //! multi-argument calls taking a tuple so no shared transport DTO has to be invented.
 //!
-//! Every extern here delegates to the real storage API and adds no behaviour of its own. The
-//! deliberately-invalid authoring seam needed by one integrity test is kept out of this module —
-//! see `test_probes`.
+//! Every extern here delegates to the real storage API and adds no behaviour of its own.
+//! Deliberately-invalid authoring seams live in the separately built `holons_test_probes` zome so
+//! they cannot become part of the packaged production coordinator surface.
 
 use crate::persistence_layer::holon_storage::{get_holon, get_holons, persist_holon};
 use core_types::{HolonError, HolonWriteRequest, StoredHolonNode};

@@ -40,6 +40,12 @@ There is no “mixed” execution context. Boundaries are strict by design.
 **Important:**  
 The root workspace is *never* a build target. Builds must always be run from `happ/` or `host/`.
 
+The hApp workspace has two coordinator build targets with deliberately different artifact
+boundaries: `holons` is packaged into the production DNA and hApp, while
+`holons_test_probes` is built only as a loose Sweettest artifact. The authoritative rules for
+classifying coordinator exports and adding test probes live in the
+[Coordinator Surface Policy](https://memetic-activation-platform.github.io/map-dev-docs/core/guest/coordinator-surface-policy/).
+
 ---
 
 ## 4. The Three Crate Classes
@@ -218,8 +224,14 @@ To preserve isolation and reproducibility:
 2. Builds must be executed from workspace roots (`happ/` or `host/`)
 3. Never run `cargo build` or `cargo test` from the repository root
 4. `Cargo.lock` files are workspace-local and intentional
+5. Build production coordinators and test probes through their distinct scripts; only the
+   production coordinator may be packed into the production DNA or hApp
 
 Violating these rules will lead to non-reproducible builds and subtle dependency errors.
+
+The [Coordinator Surface Policy](https://memetic-activation-platform.github.io/map-dev-docs/core/guest/coordinator-surface-policy/)
+is authoritative for the packaged coordinator boundary; this repository enforces it through the
+source-controlled surface manifest and artifact audit rather than restating it here.
 
 ---
 

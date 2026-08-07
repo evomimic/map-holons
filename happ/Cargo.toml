@@ -4,6 +4,7 @@
 resolver = "2"
 members = [
     "zomes/coordinator/holons",
+    "zomes/coordinator/holons_test_probes",
     "zomes/integrity/holons_integrity",
     "crates/holons_guest",
     "crates/holons_guest_integrity",

@@ -11,17 +11,18 @@ use core_types::{
     PutSmartLinkOutcome, StoredHolonNode,
 };
 use hdi::prelude::Path;
-use holochain::prelude::{Action, ActionHash, Record};
+use holochain::prelude::ActionHash;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     assert_commit_rejected_with_message, assert_commit_rejected_with_pvl,
-    assert_preflight_rejected_with_pvl, setup_test_conductor,
+    assert_preflight_rejected_with_pvl, setup_probe_enabled_conductor, setup_test_conductor,
 };
 use holons_test::MockConductorConfig;
 use integrity_core_types::{HolonNodeModel, LocalId, RelationshipName};
 use serde::Serialize;
 
 const ZOME: &str = "holons";
+const PROBE_ZOME: &str = "holons_test_probes";
 const EXPECTED_PROPERTY_COUNT_REJECTION: &str = "MAP-PVL-1101: property count exceeds 256";
 const EXPECTED_EMPTY_PROPERTY_NAME_REJECTION: &str = "MAP-PVL-1102: property name is empty";
 const EXPECTED_EMPTY_RELATIONSHIP_REJECTION: &str = "MAP-PVL-2101: relationship name is empty";
@@ -132,12 +133,14 @@ async fn rejects_holon_node_with_257_properties_using_exact_pvl_message() {
         })
         .collect();
 
-    // HolonNodeModel has the same serialized field layout as the guest HolonNode. Passing it
-    // directly exercises the canonical coordinator boundary without depending on guest types.
     let holon_node = HolonNodeModel::new(property_map);
     let result = backend
         .conductor
-        .call_fallible::<_, Record>(&backend.cell.zome("holons"), "create_holon_node", holon_node)
+        .call_fallible::<_, StoredHolonNode>(
+            &backend.cell.zome(ZOME),
+            "holon_storage_persist",
+            HolonWriteRequest::PublishRoot { holon_node },
+        )
         .await;
 
     assert_preflight_rejected_with_pvl(result, EXPECTED_PROPERTY_COUNT_REJECTION);
@@ -153,7 +156,11 @@ async fn rejects_empty_property_name_using_exact_pvl_message() {
     let holon_node = HolonNodeModel::new(property_map);
     let result = backend
         .conductor
-        .call_fallible::<_, Record>(&backend.cell.zome("holons"), "create_holon_node", holon_node)
+        .call_fallible::<_, StoredHolonNode>(
+            &backend.cell.zome(ZOME),
+            "holon_storage_persist",
+            HolonWriteRequest::PublishRoot { holon_node },
+        )
         .await;
 
     assert_preflight_rejected_with_pvl(result, EXPECTED_EMPTY_PROPERTY_NAME_REJECTION);
@@ -163,7 +170,7 @@ async fn rejects_empty_property_name_using_exact_pvl_message() {
 /// that operation unreachable through production persistence APIs.
 #[tokio::test(flavor = "multi_thread")]
 async fn integrity_rejects_holon_node_with_257_properties_using_exact_pvl_message() {
-    let backend = setup_test_conductor().await;
+    let backend = setup_probe_enabled_conductor().await;
     let property_map = (0..257)
         .map(|index| {
             (
@@ -177,7 +184,7 @@ async fn integrity_rejects_holon_node_with_257_properties_using_exact_pvl_messag
     let result = backend
         .conductor
         .call_fallible::<_, LocalId>(
-            &backend.cell.zome("holons"),
+            &backend.cell.zome(PROBE_ZOME),
             "holon_storage_author_create_for_test",
             holon_node,
         )
@@ -207,13 +214,13 @@ async fn smartlink_preflight_rejects_empty_relationship_using_exact_pvl_message(
 /// Proves Integrity independently rejects malformed peer-authored Tag v1 bytes.
 #[tokio::test(flavor = "multi_thread")]
 async fn integrity_rejects_malformed_smartlink_tag_using_exact_pvl_message() {
-    let backend = setup_test_conductor().await;
+    let backend = setup_probe_enabled_conductor().await;
     let source = publish_root(&backend, "source").await;
     let target = publish_root(&backend, "target").await;
     let result = backend
         .conductor
         .call_fallible::<_, LocalId>(
-            &backend.cell.zome(ZOME),
+            &backend.cell.zome(PROBE_ZOME),
             "smartlink_author_raw_tag_for_test",
             (source.version_id().clone(), target.version_id().clone(), vec![0; 3]),
         )
@@ -225,16 +232,6 @@ async fn integrity_rejects_malformed_smartlink_tag_using_exact_pvl_message() {
 #[tokio::test(flavor = "multi_thread")]
 async fn valid_root_version_and_smartlink_create_delete_are_accepted() {
     let backend = setup_test_conductor().await;
-    let legacy_root: Record = backend
-        .conductor
-        .call(
-            &backend.cell.zome(ZOME),
-            "create_holon_node",
-            HolonNodeModel::new(PropertyMap::new()),
-        )
-        .await;
-    assert!(matches!(legacy_root.action(), Action::Create(_)));
-
     let root = publish_root(&backend, "root").await;
     let version = publish_version(&backend, "version", root.version_id().clone()).await;
     assert_eq!(
@@ -326,7 +323,7 @@ async fn infrastructure_root_indexes_reject_update_targets_at_the_public_ingress
 
 #[tokio::test(flavor = "multi_thread")]
 async fn obsolete_updates_create_and_all_holon_nodes_delete_are_rejected() {
-    let backend = setup_test_conductor().await;
+    let backend = setup_probe_enabled_conductor().await;
     let target = publish_root(&backend, "target").await;
     let updates = create_path(
         &backend,
@@ -347,7 +344,7 @@ async fn obsolete_updates_create_and_all_holon_nodes_delete_are_rejected() {
     let result = backend
         .conductor
         .call_fallible::<_, LocalId>(
-            &backend.cell.zome(ZOME),
+            &backend.cell.zome(PROBE_ZOME),
             "all_holon_nodes_delete_for_test",
             LocalId(all_link.get_raw_39().to_vec()),
         )

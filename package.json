@@ -31,10 +31,11 @@
     "test:unit": "npm run test:unit:shared && npm run test:unit -w map-host && npm run test:unit:no-run -w map-happ && npm run test:unit -w map-happ && npm run web:typecheck && npm run web:test && npm run typecheck -w map-sdk && npm run test -w map-sdk",
     "test:unit:shared": "cargo test --manifest-path shared_crates/type_system/base_types/Cargo.toml && cargo test --manifest-path shared_crates/type_system/core_types/Cargo.toml && cargo test --manifest-path shared_crates/type_system/integrity_core_types/Cargo.toml && cargo test --manifest-path shared_crates/type_system/type_names/Cargo.toml && cargo test --manifest-path shared_crates/shared_validation/Cargo.toml && cargo test --manifest-path shared_crates/holons_core/Cargo.toml && cargo test --manifest-path shared_crates/holons_boundary/Cargo.toml && cargo test --manifest-path shared_crates/holons_prelude/Cargo.toml && cargo test --manifest-path shared_crates/holon_dance_builders/Cargo.toml && cargo test --manifest-path shared_crates/holons_trust_channel/Cargo.toml && cargo test --manifest-path shared_crates/json_schema_validation/Cargo.toml",
 
-    "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test",
-    "sweetest:nocapture": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run sweet:test:nocapture",
+    "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && npm run sweet:test",
+    "sweetest:nocapture": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && npm run sweet:test:nocapture",
     "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
     "sweet:test:nocapture": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
+    "check:happ-artifacts": "cargo run --manifest-path tools/happ-artifact-audit/Cargo.toml -- --manifest happ/coordinator-surface.toml --dna happ/workdir/map_holons.dna --happ happ/workdir/map-holons.happ --probe-wasm happ/target/wasm32-unknown-unknown/release/holons_test_probes.wasm --deny-production-test-only",
     "map-schema": "cargo run --manifest-path tools/map-schema/Cargo.toml --",
     "map-schema:decompile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile",
     "map-schema:decompile:coreschema": "npm run map-schema:decompile -- host/import_files/map-schema/core-schema --out-dir schema-src",
