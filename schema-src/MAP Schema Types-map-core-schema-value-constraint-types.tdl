@@ -228,6 +228,9 @@ property ConstraintEnabled.PropertyType {
 
 def relationship (StringValueType.ValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Constrains
+  }
   extends DeclaredRelationshipType.RelationshipType
   source StringValueType.ValueType
   target StringValueConstraint.ValueConstraintType
@@ -244,6 +247,9 @@ def relationship (StringValueType.ValueType)-[Constraints]->(StringValueConstrai
 
 def relationship (IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Constrains
+  }
   extends DeclaredRelationshipType.RelationshipType
   source IntegerValueType.ValueType
   target IntegerValueConstraint.ValueConstraintType
@@ -260,6 +266,9 @@ def relationship (IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstr
 
 def relationship (BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Constrains
+  }
   extends DeclaredRelationshipType.RelationshipType
   source BytesValueType.ValueType
   target BytesValueConstraint.ValueConstraintType
@@ -276,6 +285,9 @@ def relationship (BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint
 
 def relationship (ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Constrains
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ValueArrayValueType.ValueType
   target ValueArrayConstraint.ValueConstraintType
@@ -295,7 +307,6 @@ inverse relationship (StringValueConstraint.ValueConstraintType)-[Constrains]->(
   extends InverseRelationshipType.RelationshipType
   source StringValueConstraint.ValueConstraintType
   target StringValueType.ValueType
-  inverse (StringValueType.ValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -311,7 +322,6 @@ inverse relationship (IntegerValueConstraint.ValueConstraintType)-[Constrains]->
   extends InverseRelationshipType.RelationshipType
   source IntegerValueConstraint.ValueConstraintType
   target IntegerValueType.ValueType
-  inverse (IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -327,7 +337,6 @@ inverse relationship (BytesValueConstraint.ValueConstraintType)-[Constrains]->(B
   extends InverseRelationshipType.RelationshipType
   source BytesValueConstraint.ValueConstraintType
   target BytesValueType.ValueType
-  inverse (BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -343,7 +352,6 @@ inverse relationship (ValueArrayConstraint.ValueConstraintType)-[Constrains]->(V
   extends InverseRelationshipType.RelationshipType
   source ValueArrayConstraint.ValueConstraintType
   target ValueArrayValueType.ValueType
-  inverse (ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)
   cardinality 0..*
   deletion_semantic Block
   header {

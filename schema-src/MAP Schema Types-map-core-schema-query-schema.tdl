@@ -368,6 +368,9 @@ enum ExecutionStatus.MapEnumValueType {
 
 def relationship (QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> GraphForQueryDanceRequest
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target QueryGraph.HolonType
@@ -387,7 +390,6 @@ inverse relationship (QueryGraph.HolonType)-[GraphForQueryDanceRequest]->(QueryD
   extends InverseRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryDanceRequest.HolonType
-  inverse (QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -401,6 +403,9 @@ inverse relationship (QueryGraph.HolonType)-[GraphForQueryDanceRequest]->(QueryD
 
 def relationship (QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InitialBindingForQueryDanceRequest
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target ExecutionBinding.HolonType
@@ -421,7 +426,6 @@ inverse relationship (ExecutionBinding.HolonType)-[InitialBindingForQueryDanceRe
   extends InverseRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target QueryDanceRequest.HolonType
-  inverse (QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -435,6 +439,9 @@ inverse relationship (ExecutionBinding.HolonType)-[InitialBindingForQueryDanceRe
 
 def relationship (QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> StepInQueryGraph
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryStep.HolonType
@@ -455,7 +462,6 @@ inverse relationship (QueryStep.HolonType)-[StepInQueryGraph]->(QueryGraph.Holon
   extends InverseRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryGraph.HolonType
-  inverse (QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType)
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -469,6 +475,9 @@ inverse relationship (QueryStep.HolonType)-[StepInQueryGraph]->(QueryGraph.Holon
 
 def relationship (QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InputBindingForQueryGraph
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryBinding.HolonType
@@ -489,7 +498,6 @@ inverse relationship (QueryBinding.HolonType)-[InputBindingForQueryGraph]->(Quer
   extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryGraph.HolonType
-  inverse (QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -503,6 +511,9 @@ inverse relationship (QueryBinding.HolonType)-[InputBindingForQueryGraph]->(Quer
 
 def relationship (QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ResultBindingForQueryGraph
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryGraph.HolonType
   target QueryBinding.HolonType
@@ -522,7 +533,6 @@ inverse relationship (QueryBinding.HolonType)-[ResultBindingForQueryGraph]->(Que
   extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryGraph.HolonType
-  inverse (QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -536,6 +546,9 @@ inverse relationship (QueryBinding.HolonType)-[ResultBindingForQueryGraph]->(Que
 
 def relationship (QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> StepKindFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryStepKind.HolonType
@@ -555,7 +568,6 @@ inverse relationship (QueryStepKind.HolonType)-[StepKindFor]->(QueryStep.HolonTy
   extends InverseRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target QueryStep.HolonType
-  inverse (QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -569,6 +581,9 @@ inverse relationship (QueryStepKind.HolonType)-[StepKindFor]->(QueryStep.HolonTy
 
 def relationship (QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InitialBindingUsedByStep
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryBinding.HolonType
@@ -588,7 +603,6 @@ inverse relationship (QueryBinding.HolonType)-[InitialBindingUsedByStep]->(Query
   extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryStep.HolonType
-  inverse (QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -602,6 +616,9 @@ inverse relationship (QueryBinding.HolonType)-[InitialBindingUsedByStep]->(Query
 
 def relationship (QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> OutputBindingForStep
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryBinding.HolonType
@@ -621,7 +638,6 @@ inverse relationship (QueryBinding.HolonType)-[OutputBindingForStep]->(QueryStep
   extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target QueryStep.HolonType
-  inverse (QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType)
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -635,6 +651,9 @@ inverse relationship (QueryBinding.HolonType)-[OutputBindingForStep]->(QueryStep
 
 def relationship (QueryStep.HolonType)-[StepParameters]->(Projection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ParametersForStep
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target Projection.HolonType
@@ -654,7 +673,6 @@ inverse relationship (Projection.HolonType)-[ParametersForStep]->(QueryStep.Holo
   extends InverseRelationshipType.RelationshipType
   source Projection.HolonType
   target QueryStep.HolonType
-  inverse (QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -668,6 +686,9 @@ inverse relationship (Projection.HolonType)-[ParametersForStep]->(QueryStep.Holo
 
 def relationship (QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> StepDependedOnBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryStep.HolonType
@@ -688,7 +709,6 @@ inverse relationship (QueryStep.HolonType)-[StepDependedOnBy]->(QueryStep.HolonT
   extends InverseRelationshipType.RelationshipType
   source QueryStep.HolonType
   target QueryStep.HolonType
-  inverse (QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -702,6 +722,9 @@ inverse relationship (QueryStep.HolonType)-[StepDependedOnBy]->(QueryStep.HolonT
 
 def relationship (QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InputTypeForStepKind
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target HolonCollection.HolonType
@@ -721,7 +744,6 @@ inverse relationship (HolonCollection.HolonType)-[InputTypeForStepKind]->(QueryS
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target QueryStepKind.HolonType
-  inverse (QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -735,6 +757,9 @@ inverse relationship (HolonCollection.HolonType)-[InputTypeForStepKind]->(QueryS
 
 def relationship (QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ResultTypeForStepKind
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target HolonCollection.HolonType
@@ -754,7 +779,6 @@ inverse relationship (HolonCollection.HolonType)-[ResultTypeForStepKind]->(Query
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target QueryStepKind.HolonType
-  inverse (QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -768,6 +792,9 @@ inverse relationship (HolonCollection.HolonType)-[ResultTypeForStepKind]->(Query
 
 def relationship (QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ParameterTypeForStepKind
+  }
   extends DeclaredRelationshipType.RelationshipType
   source QueryStepKind.HolonType
   target Projection.HolonType
@@ -787,7 +814,6 @@ inverse relationship (Projection.HolonType)-[ParameterTypeForStepKind]->(QuerySt
   extends InverseRelationshipType.RelationshipType
   source Projection.HolonType
   target QueryStepKind.HolonType
-  inverse (QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -801,6 +827,9 @@ inverse relationship (Projection.HolonType)-[ParameterTypeForStepKind]->(QuerySt
 
 def relationship (ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ExecutedBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target QueryDanceRequest.HolonType
@@ -820,7 +849,6 @@ inverse relationship (QueryDanceRequest.HolonType)-[ExecutedBy]->(ExecutionInsta
   extends InverseRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target ExecutionInstance.HolonType
-  inverse (ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -834,6 +862,9 @@ inverse relationship (QueryDanceRequest.HolonType)-[ExecutedBy]->(ExecutionInsta
 
 def relationship (ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> BindingForExecutionInstance
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target ExecutionBinding.HolonType
@@ -853,7 +884,6 @@ inverse relationship (ExecutionBinding.HolonType)-[BindingForExecutionInstance]-
   extends InverseRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target ExecutionInstance.HolonType
-  inverse (ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType)
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -867,6 +897,9 @@ inverse relationship (ExecutionBinding.HolonType)-[BindingForExecutionInstance]-
 
 def relationship (ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ExecutionVariableBinding
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target QueryBinding.HolonType
@@ -886,7 +919,6 @@ inverse relationship (QueryBinding.HolonType)-[ExecutionVariableBinding]->(Execu
   extends InverseRelationshipType.RelationshipType
   source QueryBinding.HolonType
   target ExecutionBinding.HolonType
-  inverse (ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -900,6 +932,9 @@ inverse relationship (QueryBinding.HolonType)-[ExecutionVariableBinding]->(Execu
 
 def relationship (ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> CollectionBoundIn
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionBinding.HolonType
   target HolonCollection.HolonType
@@ -919,7 +954,6 @@ inverse relationship (HolonCollection.HolonType)-[CollectionBoundIn]->(Execution
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target ExecutionBinding.HolonType
-  inverse (ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -933,6 +967,9 @@ inverse relationship (HolonCollection.HolonType)-[CollectionBoundIn]->(Execution
 
 relationship (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ResultOfExecution
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target HolonCollection.HolonType
@@ -952,7 +989,6 @@ inverse relationship (HolonCollection.HolonType)-[ResultOfExecution]->(Execution
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target ExecutionInstance.HolonType
-  inverse (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {

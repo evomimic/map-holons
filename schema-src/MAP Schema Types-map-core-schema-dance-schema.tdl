@@ -52,6 +52,7 @@ holon MetaDanceResponseType.MetaHolonType {
 abstract holon DanceType.HolonType {
   type MetaDanceType.MetaHolonType
   extends HolonType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type (DanceInput) and a response holon type. Dance input may be any fixed-shape holon type, not only a Projection."
     display_name: "Dance Type"
@@ -64,6 +65,7 @@ abstract holon DanceType.HolonType {
 abstract holon DanceResponseType.HolonType {
   type MetaDanceResponseType.MetaHolonType
   extends HolonType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract holon type for successful response holons returned from dances. Response bodies and diagnostics are ordinary holons."
     display_name: "Dance Response Type"
@@ -167,6 +169,9 @@ abstract holon Projection.HolonType {
 
 def relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> DanceAffordedBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceType.HolonType
@@ -187,7 +192,6 @@ inverse relationship (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDes
   extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
   target HolonType.TypeDescriptor
-  inverse (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -201,6 +205,9 @@ inverse relationship (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDes
 
 def relationship (TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ImplementedFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target DanceImplementation.HolonType
@@ -220,7 +227,6 @@ inverse relationship (DanceImplementation.HolonType)-[ImplementedFor]->(TypeDesc
   extends InverseRelationshipType.RelationshipType
   source DanceImplementation.HolonType
   target TypeDescriptor
-  inverse (TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -234,6 +240,9 @@ inverse relationship (DanceImplementation.HolonType)-[ImplementedFor]->(TypeDesc
 
 def relationship (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> HasImplementation
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceImplementation.HolonType
   target DanceType.HolonType
@@ -253,7 +262,6 @@ inverse relationship (DanceType.HolonType)-[HasImplementation]->(DanceImplementa
   extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceImplementation.HolonType
-  inverse (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -267,6 +275,9 @@ inverse relationship (DanceType.HolonType)-[HasImplementation]->(DanceImplementa
 
 def relationship (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> DanceInputFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
   target HolonType.TypeDescriptor
@@ -286,7 +297,6 @@ inverse relationship (HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.Holo
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceType.HolonType
-  inverse (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -300,6 +310,9 @@ inverse relationship (HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.Holo
 
 def relationship (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ResponseFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceResponseType.HolonType
@@ -319,7 +332,6 @@ inverse relationship (DanceResponseType.HolonType)-[ResponseFor]->(DanceType.Hol
   extends InverseRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target DanceType.HolonType
-  inverse (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
   cardinality 1..*
   deletion_semantic Block
   header {
@@ -333,6 +345,9 @@ inverse relationship (DanceResponseType.HolonType)-[ResponseFor]->(DanceType.Hol
 
 def relationship (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ResponseBodyFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target HolonType.TypeDescriptor
@@ -352,7 +367,6 @@ inverse relationship (HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceRespons
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceResponseType.HolonType
-  inverse (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -366,6 +380,9 @@ inverse relationship (HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceRespons
 
 def relationship (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InvokedBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
   target DanceType.HolonType
@@ -385,7 +402,6 @@ inverse relationship (DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonTy
   extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceInvocation.HolonType
-  inverse (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -399,6 +415,9 @@ inverse relationship (DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonTy
 
 def relationship (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> AffordsDanceInvocation
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
   target HolonType.TypeDescriptor
@@ -418,7 +437,6 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(Dance
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  inverse (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -432,6 +450,9 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(Dance
 
 def relationship (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> RequestFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
   target HolonType.TypeDescriptor
@@ -451,7 +472,6 @@ inverse relationship (HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.H
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  inverse (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -465,6 +485,9 @@ inverse relationship (HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.H
 
 def relationship (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> DiagnosticFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target DanceDiagnostic.HolonType
@@ -484,7 +507,6 @@ inverse relationship (DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponse
   extends InverseRelationshipType.RelationshipType
   source DanceDiagnostic.HolonType
   target DanceResponseType.HolonType
-  inverse (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -1049,6 +1071,9 @@ property CommitRequestStatus.PropertyType {
 
 relationship (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> SavedByCommit
+  }
   extends DeclaredRelationshipType.RelationshipType
   source CommitResponse.Projection
   target HolonType.TypeDescriptor
@@ -1068,7 +1093,6 @@ inverse relationship (HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommitResponse.Projection
-  inverse (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor)
   cardinality 0..1
   deletion_semantic Block
   header {
@@ -1082,6 +1106,9 @@ inverse relationship (HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse
 
 relationship (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> AbandonedByCommit
+  }
   extends DeclaredRelationshipType.RelationshipType
   source CommitResponse.Projection
   target HolonType.TypeDescriptor
@@ -1101,7 +1128,6 @@ inverse relationship (HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResp
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommitResponse.Projection
-  inverse (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)
   cardinality 0..1
   deletion_semantic Block
   header {

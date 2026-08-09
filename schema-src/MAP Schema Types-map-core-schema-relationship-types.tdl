@@ -4,6 +4,9 @@ schema "MAP Core Schema-v0.0.7" {
 
 def relationship (TypeDescriptor)-[ComponentOf]->(Schema.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Components
+  }
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target Schema.HolonType
@@ -22,7 +25,6 @@ inverse relationship (Schema.HolonType)-[Components]->(TypeDescriptor) {
   extends InverseRelationshipType.RelationshipType
   source Schema.HolonType
   target TypeDescriptor
-  inverse (TypeDescriptor)-[ComponentOf]->(Schema.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -35,6 +37,9 @@ inverse relationship (Schema.HolonType)-[Components]->(TypeDescriptor) {
 
 def relationship (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InstancePropertyFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target PropertyType.TypeDescriptor
@@ -54,7 +59,6 @@ inverse relationship (PropertyType.TypeDescriptor)-[InstancePropertyFor]->(TypeD
   extends InverseRelationshipType.RelationshipType
   source PropertyType.TypeDescriptor
   target TypeDescriptor
-  inverse (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -67,6 +71,9 @@ inverse relationship (PropertyType.TypeDescriptor)-[InstancePropertyFor]->(TypeD
 
 def relationship (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InstanceRelationshipFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target DeclaredRelationshipType.RelationshipType
@@ -86,7 +93,6 @@ inverse relationship (DeclaredRelationshipType.RelationshipType)-[InstanceRelati
   extends InverseRelationshipType.RelationshipType
   source DeclaredRelationshipType.RelationshipType
   target TypeDescriptor
-  inverse (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -99,6 +105,9 @@ inverse relationship (DeclaredRelationshipType.RelationshipType)-[InstanceRelati
 
 def relationship (HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Instances
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target TypeDescriptor
@@ -117,7 +126,6 @@ inverse relationship (TypeDescriptor)-[Instances]->(HolonType.TypeDescriptor) {
   extends InverseRelationshipType.RelationshipType
   source TypeDescriptor
   target HolonType.TypeDescriptor
-  inverse (HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -130,6 +138,9 @@ inverse relationship (TypeDescriptor)-[Instances]->(HolonType.TypeDescriptor) {
 
 relationship (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Owns
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target HolonSpace.HolonType
@@ -148,7 +159,6 @@ inverse relationship (HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor) {
   extends InverseRelationshipType.RelationshipType
   source HolonSpace.HolonType
   target HolonType.TypeDescriptor
-  inverse (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -161,6 +171,9 @@ inverse relationship (HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor) {
 
 def relationship (PropertyType.TypeDescriptor)-[ValueType]->(ValueType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ValueTypeFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source PropertyType.TypeDescriptor
   target ValueType.TypeDescriptor
@@ -179,7 +192,6 @@ inverse relationship (ValueType.TypeDescriptor)-[ValueTypeFor]->(PropertyType.Ty
   extends InverseRelationshipType.RelationshipType
   source ValueType.TypeDescriptor
   target PropertyType.TypeDescriptor
-  inverse (PropertyType.TypeDescriptor)-[ValueType]->(ValueType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -192,6 +204,9 @@ inverse relationship (ValueType.TypeDescriptor)-[ValueTypeFor]->(PropertyType.Ty
 
 def relationship (RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> SourceOf
+  }
   extends DeclaredRelationshipType.RelationshipType
   source RelationshipType.TypeDescriptor
   target HolonType.TypeDescriptor
@@ -210,7 +225,6 @@ inverse relationship (HolonType.TypeDescriptor)-[SourceOf]->(RelationshipType.Ty
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target RelationshipType.TypeDescriptor
-  inverse (RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -223,6 +237,9 @@ inverse relationship (HolonType.TypeDescriptor)-[SourceOf]->(RelationshipType.Ty
 
 def relationship (RelationshipType.TypeDescriptor)-[TargetType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> TargetOf
+  }
   extends DeclaredRelationshipType.RelationshipType
   source RelationshipType.TypeDescriptor
   target HolonType.TypeDescriptor
@@ -241,7 +258,6 @@ inverse relationship (HolonType.TypeDescriptor)-[TargetOf]->(RelationshipType.Ty
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target RelationshipType.TypeDescriptor
-  inverse (RelationshipType.TypeDescriptor)-[TargetType]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -254,6 +270,9 @@ inverse relationship (HolonType.TypeDescriptor)-[TargetOf]->(RelationshipType.Ty
 
 def relationship (DeclaredRelationshipType.RelationshipType)-[HasInverse]->(InverseRelationshipType.RelationshipType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InverseOf
+  }
   extends DeclaredRelationshipType.RelationshipType
   source DeclaredRelationshipType.RelationshipType
   target InverseRelationshipType.RelationshipType
@@ -272,7 +291,6 @@ inverse relationship (InverseRelationshipType.RelationshipType)-[InverseOf]->(De
   extends InverseRelationshipType.RelationshipType
   source InverseRelationshipType.RelationshipType
   target DeclaredRelationshipType.RelationshipType
-  inverse (DeclaredRelationshipType.RelationshipType)-[HasInverse]->(InverseRelationshipType.RelationshipType)
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -285,6 +303,9 @@ inverse relationship (InverseRelationshipType.RelationshipType)-[InverseOf]->(De
 
 def relationship (EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> VariantOf
+  }
   extends DeclaredRelationshipType.RelationshipType
   source EnumValueType.ValueType
   target EnumVariantValueType.ValueType
@@ -303,7 +324,6 @@ inverse relationship (EnumVariantValueType.ValueType)-[VariantOf]->(EnumValueTyp
   extends InverseRelationshipType.RelationshipType
   source EnumVariantValueType.ValueType
   target EnumValueType.ValueType
-  inverse (EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -316,6 +336,9 @@ inverse relationship (EnumVariantValueType.ValueType)-[VariantOf]->(EnumValueTyp
 
 def relationship (Schema.HolonType)-[DependsOn]->(Schema.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Dependents
+  }
   extends DeclaredRelationshipType.RelationshipType
   source Schema.HolonType
   target Schema.HolonType
@@ -334,7 +357,6 @@ inverse relationship (Schema.HolonType)-[Dependents]->(Schema.HolonType) {
   extends InverseRelationshipType.RelationshipType
   source Schema.HolonType
   target Schema.HolonType
-  inverse (Schema.HolonType)-[DependsOn]->(Schema.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -347,6 +369,9 @@ inverse relationship (Schema.HolonType)-[Dependents]->(Schema.HolonType) {
 
 def relationship (ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ElementValueTypeFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ValueArrayValueType.ValueType
   target ValueType.TypeDescriptor
@@ -365,7 +390,6 @@ inverse relationship (ValueType.TypeDescriptor)-[ElementValueTypeFor]->(ValueArr
   extends InverseRelationshipType.RelationshipType
   source ValueType.TypeDescriptor
   target ValueArrayValueType.ValueType
-  inverse (ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -378,6 +402,9 @@ inverse relationship (ValueType.TypeDescriptor)-[ElementValueTypeFor]->(ValueArr
 
 def relationship (TypeDescriptor)-[Extends]->(TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ExtendedBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target TypeDescriptor
@@ -396,7 +423,6 @@ inverse relationship (TypeDescriptor)-[ExtendedBy]->(TypeDescriptor) {
   extends InverseRelationshipType.RelationshipType
   source TypeDescriptor
   target TypeDescriptor
-  inverse (TypeDescriptor)-[Extends]->(TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -409,6 +435,9 @@ inverse relationship (TypeDescriptor)-[ExtendedBy]->(TypeDescriptor) {
 
 def relationship (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> TemplateParameterFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source FormatRule.KeyRuleType
   target PropertyType.TypeDescriptor
@@ -428,7 +457,6 @@ inverse relationship (PropertyType.TypeDescriptor)-[TemplateParameterFor]->(Form
   extends InverseRelationshipType.RelationshipType
   source PropertyType.TypeDescriptor
   target FormatRule.KeyRuleType
-  inverse (FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -441,6 +469,9 @@ inverse relationship (PropertyType.TypeDescriptor)-[TemplateParameterFor]->(Form
 
 def relationship (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> TransactionModelAffordedBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonSpace.HolonType
   target Transaction.HolonType
@@ -459,7 +490,6 @@ inverse relationship (Transaction.HolonType)-[TransactionModelAffordedBy]->(Holo
   extends InverseRelationshipType.RelationshipType
   source Transaction.HolonType
   target HolonSpace.HolonType
-  inverse (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)
   cardinality 1..1
   deletion_semantic Block
   header {
@@ -472,6 +502,9 @@ inverse relationship (Transaction.HolonType)-[TransactionModelAffordedBy]->(Holo
 
 relationship (HolonCollection.HolonType)-[CollectionMembers]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> MemberOfCollection
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target HolonType.TypeDescriptor
@@ -492,7 +525,6 @@ inverse relationship (HolonType.TypeDescriptor)-[MemberOfCollection]->(HolonColl
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target HolonCollection.HolonType
-  inverse (HolonCollection.HolonType)-[CollectionMembers]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Allow
   header {
@@ -505,6 +537,9 @@ inverse relationship (HolonType.TypeDescriptor)-[MemberOfCollection]->(HolonColl
 
 def relationship (HolonCollection.HolonType)-[ElementType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ElementTypeFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target HolonType.TypeDescriptor
@@ -523,7 +558,6 @@ inverse relationship (HolonType.TypeDescriptor)-[ElementTypeFor]->(HolonCollecti
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target HolonCollection.HolonType
-  inverse (HolonCollection.HolonType)-[ElementType]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -536,6 +570,9 @@ inverse relationship (HolonType.TypeDescriptor)-[ElementTypeFor]->(HolonCollecti
 
 def relationship (HolonType.TypeDescriptor)-[Predecessor]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Successor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target HolonType.TypeDescriptor
@@ -554,7 +591,6 @@ inverse relationship (HolonType.TypeDescriptor)-[Successor]->(HolonType.TypeDesc
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target HolonType.TypeDescriptor
-  inverse (HolonType.TypeDescriptor)-[Predecessor]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {

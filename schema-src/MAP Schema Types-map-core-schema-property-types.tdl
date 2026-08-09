@@ -268,16 +268,18 @@ property MinCardinality.PropertyType {
 }
 
 
-property TypeKind.PropertyType {
+property DefinesInstanceTypeKind.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
-  value TypeKind.MapEnumValueType
+  value MapBooleanValueType.BooleanValueType
   IsValueRequired true
+  DefaultValue false
+  InheritanceMode None
   header {
-    description: "Specifies the kind of type this descriptor represents."
-    display_name: "type_kind"
-    display_plural: "type_kinds"
-    plural: "TypeKinds"
+    description: "Marks an abstract descriptor as the local anchor for the representation kind of the instances described by it and its descendants."
+    display_name: "Defines Instance TypeKind"
+    display_plural: "Defines Instance TypeKinds"
+    plural: "DefinesInstanceTypeKinds"
   }
 }
 
