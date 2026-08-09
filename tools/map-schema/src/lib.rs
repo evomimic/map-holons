@@ -6,6 +6,8 @@
 //! The decompile path intentionally works over a corpus rather than isolated files
 //! so schema dependencies and cross-file references can be resolved consistently.
 
+#![allow(dead_code)]
+
 use anyhow::{anyhow, Context, Result};
 /// Diagnostic formatting and source-oriented validation messages.
 pub mod diagnostics;
@@ -45,7 +47,7 @@ use crate::{
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -123,17 +125,17 @@ enum JsonDescriptorKind {
 /// replacing each `.json` extension with `.tdl`. The returned paths are the TDL
 /// files written during this run.
 pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>> {
-    let lowered = lower_inputs_to_schema_ir(inputs)?;
+    let project = parse_json_inputs_to_loader_fact_project(inputs)?;
     let mut written = Vec::new();
 
-    for file in &lowered.files {
-        let output = out_dir.join(file.parsed.relative_path.with_extension("tdl"));
+    for file in &project.files {
+        let output = out_dir.join(file.relative_path.with_extension("tdl"));
         if let Some(parent) = output.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("creating output directory {}", parent.display()))?;
         }
 
-        let contents = render_lowered_file(file)?;
+        let contents = render_loader_fact_file(file)?;
         fs::write(&output, contents)
             .with_context(|| format!("writing decompiled TDL to {}", output.display()))?;
         written.push(output);
@@ -151,13 +153,40 @@ pub fn decompile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBu
 pub fn decompile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
     let source_name = source_name.into();
     let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
-    let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
-    let file = lowered
+    let project = loader_fact_project_from_parsed(vec![parsed])?;
+    let file = project
         .files
         .into_iter()
         .next()
-        .ok_or_else(|| anyhow!("no JSON import document was lowered"))?;
-    render_lowered_file(&file)
+        .ok_or_else(|| anyhow!("no JSON import document was projected"))?;
+    render_loader_fact_file(&file)
+}
+
+#[derive(Debug, Clone)]
+pub struct RoundTripReport {
+    pub decompiled_files: Vec<PathBuf>,
+    pub compiled_files: Vec<PathBuf>,
+}
+
+pub fn roundtrip_json_inputs(
+    inputs: &[PathBuf],
+    tdl_out_dir: &Path,
+    json_out_dir: &Path,
+) -> Result<RoundTripReport> {
+    let before = loader_fact_signature_for_inputs(inputs)?;
+    let decompiled_files = decompile_inputs(inputs, tdl_out_dir)?;
+    let compiled_files =
+        crate::tdl_compiler::compile_inputs(&[tdl_out_dir.to_path_buf()], json_out_dir)?;
+    let after = loader_fact_signature_for_inputs(&[json_out_dir.to_path_buf()])?;
+
+    if before != after {
+        return Err(anyhow!(
+            "round-trip LoaderRefRep signatures differ\n{}",
+            loader_fact_signature_diff(&before, &after)
+        ));
+    }
+
+    Ok(RoundTripReport { decompiled_files, compiled_files })
 }
 
 /// Builds the derived semantic symbol table for JSON import inputs and returns a text dump.
@@ -247,6 +276,526 @@ fn parse_import_file_contents(
     let schema_name = infer_schema_name(&import)
         .with_context(|| format!("inferring schema name for {}", source_path.display()))?;
     Ok(ParsedFile { relative_path, schema_name, import })
+}
+
+#[derive(Debug, Clone)]
+struct LoaderFactProject {
+    files: Vec<LoaderFactFile>,
+}
+
+#[derive(Debug, Clone)]
+struct LoaderFactFile {
+    relative_path: PathBuf,
+    schema_key: String,
+    schema_holon: Option<LoaderFactHolon>,
+    emits_schema_holon: bool,
+    holons: Vec<LoaderFactHolon>,
+}
+
+#[derive(Debug, Clone)]
+struct LoaderFactHolon {
+    key: String,
+    descriptor_type: String,
+    properties: BTreeMap<String, Value>,
+    relationships: BTreeMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct LoaderFactSignature {
+    files: Vec<LoaderFactFileSignature>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct LoaderFactFileSignature {
+    relative_path: String,
+    holons: Vec<LoaderFactHolonSignature>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct LoaderFactHolonSignature {
+    key: String,
+    descriptor_type: String,
+    properties: Vec<(String, String)>,
+    relationships: Vec<(String, Vec<String>)>,
+}
+
+fn parse_json_inputs_to_loader_fact_project(inputs: &[PathBuf]) -> Result<LoaderFactProject> {
+    let files = collect_input_files(inputs)?;
+    let parsed = parse_files(&files)?;
+    loader_fact_project_from_parsed(parsed)
+}
+
+fn loader_fact_project_from_parsed(parsed: Vec<ParsedFile>) -> Result<LoaderFactProject> {
+    let schema_owner_paths = json_schema_owner_paths(&parsed);
+    let mut files = Vec::with_capacity(parsed.len());
+
+    for parsed_file in parsed {
+        let schema_key = parsed_file.schema_name.clone();
+        let emits_schema_holon = schema_owner_paths
+            .get(&schema_key)
+            .map(|owner_path| owner_path == &parsed_file.relative_path)
+            .unwrap_or(true);
+        let mut schema_holon = None;
+        let mut holons = Vec::new();
+
+        for holon in parsed_file.import.holons {
+            let projected = loader_fact_holon_from_record(holon);
+            if projected.descriptor_type == "Schema.HolonType" {
+                schema_holon = Some(projected);
+            } else {
+                holons.push(projected);
+            }
+        }
+
+        files.push(LoaderFactFile {
+            relative_path: parsed_file.relative_path,
+            schema_key,
+            schema_holon,
+            emits_schema_holon,
+            holons,
+        });
+    }
+
+    Ok(LoaderFactProject { files })
+}
+
+fn json_schema_owner_paths(parsed: &[ParsedFile]) -> HashMap<String, PathBuf> {
+    let mut owner_paths = HashMap::<String, PathBuf>::new();
+    for file in parsed {
+        let schema_name = file.schema_name.clone();
+        let has_schema_holon =
+            file.import.holons.iter().any(|holon| holon.descriptor_type == "Schema.HolonType");
+        if !has_schema_holon {
+            continue;
+        }
+        let existing_owner = owner_paths.get(&schema_name);
+        let should_replace = existing_owner
+            .map(|path| is_preferred_json_schema_owner(&file.relative_path, path))
+            .unwrap_or(true);
+        if should_replace {
+            owner_paths.insert(schema_name, file.relative_path.clone());
+        }
+    }
+    owner_paths
+}
+
+fn is_preferred_json_schema_owner(candidate: &Path, current: &Path) -> bool {
+    let candidate_name = candidate.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default();
+    let current_name = current.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default();
+    candidate_name.contains("root") && !current_name.contains("root")
+}
+
+fn loader_fact_holon_from_record(holon: HolonRecord) -> LoaderFactHolon {
+    let mut relationships = BTreeMap::<String, Vec<String>>::new();
+    for relationship in holon.relationships {
+        relationships
+            .entry(relationship.name)
+            .or_default()
+            .extend(target_strings(&relationship.target));
+    }
+
+    LoaderFactHolon {
+        key: holon.key,
+        descriptor_type: holon.descriptor_type,
+        properties: holon
+            .properties
+            .into_iter()
+            .map(|(name, value)| (canonical_loader_fact_property_name(&name), value))
+            .collect(),
+        relationships,
+    }
+}
+
+fn canonical_loader_fact_property_name(name: &str) -> String {
+    match name {
+        "schema_name" => "SchemaName",
+        "type_name" => "TypeName",
+        "type_name_plural" => "TypeNamePlural",
+        "display_name" => "DisplayName",
+        "display_name_plural" => "DisplayNamePlural",
+        "description" => "Description",
+        "is_abstract_type" => "IsAbstractType",
+        "allows_additional_properties" => "AllowsAdditionalProperties",
+        "allows_additional_relationships" => "AllowsAdditionalRelationships",
+        "is_definitional" => "IsDefinitional",
+        "is_ordered" => "IsOrdered",
+        "allows_duplicates" => "AllowsDuplicates",
+        "min_cardinality" => "MinCardinality",
+        "max_cardinality" => "MaxCardinality",
+        "deletion_semantic" => "DeletionSemantic",
+        other => other,
+    }
+    .to_string()
+}
+
+fn loader_fact_signature_for_inputs(inputs: &[PathBuf]) -> Result<LoaderFactSignature> {
+    let project = parse_json_inputs_to_loader_fact_project(inputs)?;
+    Ok(loader_fact_signature(&project))
+}
+
+fn loader_fact_signature(project: &LoaderFactProject) -> LoaderFactSignature {
+    let files = project
+        .files
+        .iter()
+        .map(|file| {
+            let mut holons = Vec::new();
+            if file.emits_schema_holon {
+                if let Some(schema_holon) = &file.schema_holon {
+                    holons.push(loader_fact_holon_signature(schema_holon));
+                }
+            }
+            holons.extend(file.holons.iter().map(loader_fact_holon_signature));
+            LoaderFactFileSignature {
+                relative_path: normalize_relative_path(&file.relative_path),
+                holons,
+            }
+        })
+        .collect();
+    LoaderFactSignature { files }
+}
+
+fn loader_fact_holon_signature(holon: &LoaderFactHolon) -> LoaderFactHolonSignature {
+    LoaderFactHolonSignature {
+        key: holon.key.clone(),
+        descriptor_type: holon.descriptor_type.clone(),
+        properties: ordered_loader_fact_properties(&holon.properties)
+            .into_iter()
+            .map(|(name, value)| (name, canonical_value_string(&value)))
+            .collect(),
+        relationships: ordered_loader_fact_relationships(&holon.relationships),
+    }
+}
+
+fn canonical_value_string(value: &Value) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| value.to_string())
+}
+
+fn loader_fact_signature_diff(
+    expected: &LoaderFactSignature,
+    actual: &LoaderFactSignature,
+) -> String {
+    let expected_text = format!("{expected:#?}");
+    let actual_text = format!("{actual:#?}");
+    format!("expected:\n{expected_text}\nactual:\n{actual_text}")
+}
+
+fn render_loader_fact_file(file: &LoaderFactFile) -> Result<String> {
+    let mut out = String::new();
+    let variant_targets = loader_fact_variant_targets(file);
+    render_loader_fact_schema_decl(&mut out, file)?;
+
+    for holon in &file.holons {
+        out.push('\n');
+        render_loader_fact_holon(&mut out, holon, &variant_targets)?;
+    }
+
+    while out.ends_with('\n') {
+        out.pop();
+    }
+    out.push('\n');
+    Ok(out)
+}
+
+fn loader_fact_variant_targets(file: &LoaderFactFile) -> HashSet<String> {
+    file.holons
+        .iter()
+        .filter_map(|holon| holon.relationships.get("Variants"))
+        .flatten()
+        .cloned()
+        .collect()
+}
+
+fn render_loader_fact_schema_decl(out: &mut String, file: &LoaderFactFile) -> Result<()> {
+    let Some(schema_holon) = file.schema_holon.as_ref().filter(|_| file.emits_schema_holon) else {
+        out.push_str(&format!("schema {}\n", render_reference_token(&file.schema_key)));
+        return Ok(());
+    };
+
+    let depends_on = schema_holon.relationships.get("DependsOn").cloned().unwrap_or_default();
+    let header_lines = header_lines_from_properties(&schema_holon.properties);
+    let literal_properties = schema_literal_properties(&schema_holon.properties);
+    let literal_relationships = schema_literal_relationships(&schema_holon.relationships);
+    let has_body = !depends_on.is_empty()
+        || !header_lines.is_empty()
+        || !literal_properties.is_empty()
+        || !literal_relationships.is_empty();
+
+    if !has_body {
+        out.push_str(&format!("schema {}\n", render_reference_token(&file.schema_key)));
+        return Ok(());
+    }
+
+    out.push_str(&format!("schema {} {{\n", render_reference_token(&file.schema_key)));
+    for dependency in depends_on {
+        out.push_str(&format!("{}depends_on {}\n", INDENT, render_reference_token(&dependency)));
+    }
+    render_header_lines(out, 1, &header_lines);
+    render_properties_block(out, 1, &literal_properties);
+    render_relationships_block(out, 1, &literal_relationships);
+    out.push_str("}\n");
+    Ok(())
+}
+
+fn render_loader_fact_holon(
+    out: &mut String,
+    holon: &LoaderFactHolon,
+    variant_targets: &HashSet<String>,
+) -> Result<()> {
+    let component_of_targets = holon.relationships.get("ComponentOf").cloned().unwrap_or_default();
+    let type_name = holon.properties.get("TypeName").and_then(Value::as_str);
+    let is_relationship_key = relationship_label_from_key(&holon.key).is_some();
+    let use_variant_form = variant_targets.contains(&holon.key)
+        && component_of_targets.len() == 1
+        && !is_relationship_key
+        && type_name
+            .map(|value| value == local_loader_fact_variant_name(&holon.key))
+            .unwrap_or(true);
+    let type_name_matches_holon_form = type_name
+        .map(|type_name| type_name == local_loader_fact_type_name(&holon.key))
+        .unwrap_or(true);
+    let use_holon_form = !use_variant_form
+        && !is_relationship_key
+        && component_of_targets.len() == 1
+        && type_name_matches_holon_form;
+    let declaration = if use_variant_form {
+        "variant"
+    } else if use_holon_form {
+        "holon"
+    } else {
+        "instance"
+    };
+    let use_descriptor_form = use_variant_form || use_holon_form;
+
+    out.push_str(&format!("{} {} {{\n", declaration, render_reference_token(&holon.key)));
+    out.push_str(&format!("{}type {}\n", INDENT, render_reference_token(&holon.descriptor_type)));
+    if use_descriptor_form {
+        if let Some(extends) = single_relationship_target(&holon.relationships, "Extends") {
+            out.push_str(&format!("{}extends {}\n", INDENT, render_reference_token(&extends)));
+        }
+        if let Some(value_type) = single_relationship_target(&holon.relationships, "ValueType") {
+            out.push_str(&format!("{}value {}\n", INDENT, render_reference_token(&value_type)));
+        }
+        if let Some(key_rule) = single_relationship_target(&holon.relationships, "InstanceKeyRule")
+        {
+            out.push_str(&format!(
+                "{}instance_keyrule {}\n",
+                INDENT,
+                render_reference_token(&key_rule)
+            ));
+        }
+    }
+    let properties = ordered_loader_fact_properties(&holon.properties)
+        .into_iter()
+        .filter(|(name, _)| !(use_descriptor_form && name == "TypeName"))
+        .collect::<Vec<_>>();
+    let relationships = ordered_loader_fact_relationships(&holon.relationships)
+        .into_iter()
+        .filter_map(|(name, targets)| {
+            if use_descriptor_form && name == "Extends" && targets.len() == 1 {
+                return None;
+            }
+            if use_descriptor_form && name == "ValueType" && targets.len() == 1 {
+                return None;
+            }
+            if use_descriptor_form && name == "InstanceKeyRule" && targets.len() == 1 {
+                return None;
+            }
+            if use_descriptor_form && name == "ComponentOf" && targets == component_of_targets {
+                return None;
+            }
+            Some((name, targets))
+        })
+        .collect::<Vec<_>>();
+    render_properties_block(out, 1, &properties);
+    render_relationships_block(out, 1, &relationships);
+    out.push_str("}\n");
+    Ok(())
+}
+
+fn single_relationship_target(
+    relationships: &BTreeMap<String, Vec<String>>,
+    name: &str,
+) -> Option<String> {
+    let targets = relationships.get(name)?;
+    if targets.len() == 1 {
+        Some(targets[0].clone())
+    } else {
+        None
+    }
+}
+
+fn local_loader_fact_type_name(key: &str) -> &str {
+    if let Some(name) = relationship_label_from_key(key) {
+        return name;
+    }
+    key.split('.').next().unwrap_or(key)
+}
+
+fn local_loader_fact_variant_name(key: &str) -> &str {
+    key.rsplit_once('.').map(|(_, local)| local).unwrap_or(key)
+}
+
+fn relationship_label_from_key(key: &str) -> Option<&str> {
+    let (_, rest) = key.split_once(")-[")?;
+    let (name, _) = rest.split_once("]->(")?;
+    Some(name)
+}
+
+fn header_lines_from_properties(
+    properties: &BTreeMap<String, Value>,
+) -> Vec<(&'static str, String)> {
+    [
+        ("description", "Description"),
+        ("display_name", "DisplayName"),
+        ("display_plural", "DisplayNamePlural"),
+        ("plural", "TypeNamePlural"),
+    ]
+    .into_iter()
+    .filter_map(|(header_name, property_name)| {
+        properties
+            .get(property_name)
+            .and_then(Value::as_str)
+            .map(|value| (header_name, value.to_string()))
+    })
+    .collect()
+}
+
+fn schema_literal_properties(properties: &BTreeMap<String, Value>) -> Vec<(String, Value)> {
+    ordered_loader_fact_properties(properties)
+        .into_iter()
+        .filter(|(name, _)| {
+            !matches!(
+                name.as_str(),
+                "SchemaName"
+                    | "Description"
+                    | "DisplayName"
+                    | "DisplayNamePlural"
+                    | "TypeNamePlural"
+            )
+        })
+        .collect()
+}
+
+fn schema_literal_relationships(
+    relationships: &BTreeMap<String, Vec<String>>,
+) -> Vec<(String, Vec<String>)> {
+    ordered_loader_fact_relationships(relationships)
+        .into_iter()
+        .filter(|(name, _)| name != "DependsOn")
+        .collect()
+}
+
+fn render_header_lines(out: &mut String, indent: usize, lines: &[(&'static str, String)]) {
+    if lines.is_empty() {
+        return;
+    }
+    out.push_str(&format!("{}header {{\n", INDENT.repeat(indent)));
+    for (name, value) in lines {
+        out.push_str(&format!("{}{}: {}\n", INDENT.repeat(indent + 1), name, json_literal(value)));
+    }
+    out.push_str(&format!("{}}}\n", INDENT.repeat(indent)));
+}
+
+fn render_properties_block(out: &mut String, indent: usize, properties: &[(String, Value)]) {
+    if properties.is_empty() {
+        return;
+    }
+    out.push_str(&format!("{}properties {{\n", INDENT.repeat(indent)));
+    for (name, value) in properties {
+        out.push_str(&format!(
+            "{}{}: {}\n",
+            INDENT.repeat(indent + 1),
+            name,
+            canonical_value_string(value)
+        ));
+    }
+    out.push_str(&format!("{}}}\n", INDENT.repeat(indent)));
+}
+
+fn render_relationships_block(
+    out: &mut String,
+    indent: usize,
+    relationships: &[(String, Vec<String>)],
+) {
+    if relationships.is_empty() {
+        return;
+    }
+    out.push_str(&format!("{}relationships {{\n", INDENT.repeat(indent)));
+    for (name, targets) in relationships {
+        out.push_str(&format!(
+            "{}{} -> {}\n",
+            INDENT.repeat(indent + 1),
+            name,
+            render_relationship_targets(targets)
+        ));
+    }
+    out.push_str(&format!("{}}}\n", INDENT.repeat(indent)));
+}
+
+fn ordered_loader_fact_properties(properties: &BTreeMap<String, Value>) -> Vec<(String, Value)> {
+    let preferred = [
+        "SchemaName",
+        "TypeName",
+        "TypeNamePlural",
+        "DisplayName",
+        "DisplayNamePlural",
+        "Description",
+        "IsAbstractType",
+        "DefinesInstanceTypeKind",
+        "IsDefinitional",
+        "IsOrdered",
+        "AllowsDuplicates",
+        "MinCardinality",
+        "MaxCardinality",
+        "DeletionSemantic",
+        "InheritanceMode",
+        "IsValueRequired",
+        "DefaultValue",
+        "AllowsAdditionalProperties",
+        "AllowsAdditionalRelationships",
+    ];
+    order_loader_fact_entries(properties, &preferred)
+}
+
+fn ordered_loader_fact_relationships(
+    relationships: &BTreeMap<String, Vec<String>>,
+) -> Vec<(String, Vec<String>)> {
+    let preferred = [
+        "Extends",
+        "ComponentOf",
+        "DependsOn",
+        "SourceType",
+        "TargetType",
+        "ValueType",
+        "InstanceKeyRule",
+        "HasInverse",
+        "Variants",
+        "InstanceProperties",
+        "InstanceRelationships",
+        "AffordsCommand",
+        "AffordsDance",
+        "AffordsOperator",
+    ];
+    order_loader_fact_entries(relationships, &preferred)
+}
+
+fn order_loader_fact_entries<T: Clone>(
+    values: &BTreeMap<String, T>,
+    preferred: &[&str],
+) -> Vec<(String, T)> {
+    let mut remaining = values.clone();
+    let mut ordered = Vec::with_capacity(remaining.len());
+    for name in preferred {
+        if let Some(value) = remaining.remove(*name) {
+            ordered.push(((*name).to_string(), value));
+        }
+    }
+    ordered.extend(remaining);
+    ordered
+}
+
+fn render_reference_token(value: &str) -> String {
+    json_literal(value)
 }
 
 fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredJsonProject> {
@@ -347,7 +896,9 @@ fn infer_schema_name(import: &ImportFile) -> Option<String> {
 }
 
 fn schema_name_from_holon(holon: &HolonRecord) -> Option<String> {
-    string_property(&holon.properties, "schema_name").or_else(|| component_of_schema_name(holon))
+    string_property(&holon.properties, "SchemaName")
+        .or_else(|| string_property(&holon.properties, "schema_name"))
+        .or_else(|| component_of_schema_name(holon))
 }
 
 fn component_of_schema_name(holon: &HolonRecord) -> Option<String> {
@@ -1407,6 +1958,14 @@ mod tests {
             .join("core-schema")
     }
 
+    fn generated_fixture_dir() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("generated")
+            .join("json-imports")
+    }
+
     fn sweettests_import_fixture_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
@@ -1501,17 +2060,18 @@ mod tests {
             out_dir.join("MAP Schema Types-map-test-schema-book-person-inverse.tdl"),
         )?;
 
-        assert!(
-            tdl.contains("schema BookAuthorInverseSchema {\n  depends_on MAP Core Schema-v0.0.7")
-        );
+        assert!(tdl.contains(
+            "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.7\""
+        ));
 
         Ok(())
     }
 
     #[test]
-    fn legacy_decompile_output_waits_for_r7_before_r6_recompile() -> Result<()> {
-        let source_dir = source_fixture_dir();
+    fn roundtrip_json_preserves_generated_core_schema_loader_fact_signature() -> Result<()> {
+        let source_dir = generated_fixture_dir();
         let decompiled_tdl_dir = temp_roundtrip_tdl_dir();
+        let roundtrip_json_dir = temp_roundtrip_json_dir();
         let expected_json_file_count = discovered_json_file_count(&source_dir)?;
 
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_tdl_dir)?;
@@ -1521,32 +2081,32 @@ mod tests {
             "decompile should emit one TDL file per discovered JSON input"
         );
 
-        let error = compile_inputs(&[decompiled_tdl_dir.clone()], &temp_roundtrip_json_dir())
-            .expect_err("legacy decompile output should not be R6-compilable before R7");
-        assert!(
-            error.to_string().contains("missing required type clause"),
-            "expected R7 decompiler fidelity gap, got: {error}"
+        let roundtrip_files = compile_inputs(&[decompiled_tdl_dir], &roundtrip_json_dir)?;
+        assert_eq!(roundtrip_files.len(), expected_json_file_count);
+        assert_eq!(
+            loader_fact_signature_for_inputs(&[source_dir])?,
+            loader_fact_signature_for_inputs(&[roundtrip_json_dir])?
         );
 
         Ok(())
     }
 
     #[test]
-    fn decompiler_prefers_concise_relationship_tdl_when_inverse_is_lossless() -> Result<()> {
+    fn decompiler_preserves_relationship_pair_facts_as_literal_instances() -> Result<()> {
         let out_dir = temp_out_dir();
-        decompile_inputs(&[source_fixture_dir()], &out_dir)?;
+        decompile_inputs(&[generated_fixture_dir()], &out_dir)?;
 
         let relationship_types = std::fs::read_to_string(
             out_dir.join("MAP Schema Types-map-core-schema-relationship-types.tdl"),
         )?;
-        let operator_types = std::fs::read_to_string(
-            out_dir.join("MAP Schema Types-map-core-schema-operator-types.tdl"),
-        )?;
 
-        assert!(relationship_types.contains("def relationship ComponentOf {\n  source TypeDescriptor.HolonType\n  target Schema.HolonType\n  inverse Components"));
-        assert!(operator_types.contains("relationship AffordsOperator {\n  source ValueType\n  target OperatorType.HolonType\n  inverse AffordedBy"));
-        assert!(relationship_types.contains("inverse relationship InstanceRelationshipFor {\n  source DeclaredRelationshipType\n  target TypeDescriptor.HolonType\n  cardinality 0..32767"));
-        assert!(!relationship_types.contains("inverse relationship InstanceRelationshipFor {\n  source DeclaredRelationshipType\n  target TypeDescriptor.HolonType\n  inverse InstanceRelationships"));
+        assert!(relationship_types
+            .contains("instance \"(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)\""));
+        assert!(relationship_types.contains(
+            "HasInverse -> [\"(Schema.HolonType)-[Components]->(TypeDescriptor)\", \"Components\"]"
+        ));
+        assert!(relationship_types.contains("SourceType -> \"TypeDescriptor\""));
+        assert!(relationship_types.contains("TargetType -> \"Schema.HolonType\""));
 
         Ok(())
     }
@@ -1597,7 +2157,7 @@ mod tests {
     ) -> Result<()> {
         let source_dir = temp_domain_json_dir();
         let copied_input_dir = source_dir.join("domain/core-schema");
-        copy_directory_tree(&source_fixture_dir(), &copied_input_dir)?;
+        copy_directory_tree(&generated_fixture_dir(), &copied_input_dir)?;
         let expected_file_count = discovered_json_file_count(&source_dir)?;
 
         let lowered = lower_inputs_to_schema_ir(&[source_dir.clone()])?;
@@ -1615,11 +2175,12 @@ mod tests {
                 .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-dance-schema.tdl")
         }));
 
-        let error = compile_inputs(&[decompiled_dir.clone()], &temp_roundtrip_json_dir())
-            .expect_err("legacy decompile output should not be R6-compilable before R7");
-        assert!(
-            error.to_string().contains("missing required type clause"),
-            "expected R7 decompiler fidelity gap, got: {error}"
+        let roundtrip_json_dir = temp_roundtrip_json_dir();
+        let roundtrip_files = compile_inputs(&[decompiled_dir], &roundtrip_json_dir)?;
+        assert_eq!(roundtrip_files.len(), expected_file_count);
+        assert_eq!(
+            loader_fact_signature_for_inputs(&[source_dir])?,
+            loader_fact_signature_for_inputs(&[roundtrip_json_dir])?
         );
 
         Ok(())

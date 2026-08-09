@@ -46,6 +46,7 @@
     "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out-dir generated/json-imports",
     "map-schema:check": "cargo run --manifest-path tools/map-schema/Cargo.toml -- check",
     "map-schema:check:coreschema": "npm run map-schema:check -- schema-src",
+    "map-schema:roundtrip:coreschema": "npm run map-schema -- roundtrip-json generated/json-imports --tdl-out generated/tdl-decompiled --json-out generated/json-roundtrip",
 
     "regen:sdk-fixtures": "npm run regen:sdk-fixtures -w map-host",
     "hooks:install": "bash ./scripts/install-git-hooks.sh",

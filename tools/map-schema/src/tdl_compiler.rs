@@ -484,7 +484,7 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
         ));
     }
     for relationship in &descriptor.literal_relationships {
-        if relationship.name == "ComponentOf" {
+        if !descriptor.is_generic_instance && relationship.name == "ComponentOf" {
             return Err(anyhow!(
                 "descriptor `{}` must not explicitly author ComponentOf in a schema file",
                 descriptor.name
@@ -1683,6 +1683,10 @@ fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) ->
 }
 
 fn apply_literal_relationships_to_tdl_descriptor(descriptor: &mut TdlDescriptor) {
+    if descriptor.is_generic_instance {
+        return;
+    }
+
     for relationship in &descriptor.literal_relationships {
         match relationship.name.as_str() {
             "Extends" if descriptor.extends.is_none() => {
@@ -2658,10 +2662,10 @@ abstract property MetaPropertyType
             out_dir.join("MAP Schema Types-map-core-schema-abstract-value-types.tdl"),
         )?;
 
-        assert!(root.contains("abstract holon MetaPropertyType {"));
-        assert!(!root.contains("abstract property MetaPropertyType {"));
-        assert!(abstract_values.contains("abstract holon MetaValueType {"));
-        assert!(!abstract_values.contains("abstract value MetaValueType {"));
+        assert!(root.contains("holon \"MetaPropertyType\" {"));
+        assert!(!root.contains("property \"MetaPropertyType\" {"));
+        assert!(abstract_values.contains("holon \"MetaValueType\" {"));
+        assert!(!abstract_values.contains("value \"MetaValueType\" {"));
 
         Ok(())
     }
