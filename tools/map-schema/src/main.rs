@@ -1,8 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
-    decompile_input_string, decompile_inputs, dump_symbols, dump_symbols_from_string,
-    roundtrip_json_inputs,
+    decompile_input_string, decompile_inputs, roundtrip_json_inputs,
     tdl_compiler::{
         check_input_string, check_inputs, compile_input_string, compile_inputs, render_check_output,
     },
@@ -32,12 +31,6 @@ enum Commands {
         /// Output directory for generated .tdl files.
         #[arg(short = 'o', long = "out-dir", visible_alias = "out")]
         out_dir: Option<PathBuf>,
-    },
-
-    /// Print the derived semantic symbol table for JSON import files.
-    Symbols {
-        /// Input JSON files or directories containing JSON files.
-        inputs: Vec<PathBuf>,
     },
 
     /// Compile TDL source files into JSON import files.
@@ -87,14 +80,6 @@ fn main() -> Result<()> {
                 println!("wrote {} TDL files to {}", written.len(), out_dir.display());
             } else {
                 print!("{}", decompile_input_string(&read_single_input(&inputs)?, &inputs[0])?);
-            }
-        }
-        Commands::Symbols { inputs } => {
-            if inputs.is_empty() {
-                let stdin = read_stdin()?;
-                print!("{}", dump_symbols_from_string(&stdin, "stdin.json")?);
-            } else {
-                print!("{}", dump_symbols(&inputs)?);
             }
         }
         Commands::Compile { inputs, out_dir } => {
@@ -159,9 +144,6 @@ Commands:
 
   check [TDL_FILE_OR_DIR ...]
       Validate TDL syntax and semantic references without writing JSON.
-
-  symbols [JSON_FILE_OR_DIR ...]
-      Print the semantic symbol table derived from JSON imports.
 
   roundtrip-json [JSON_FILE_OR_DIR ...] --tdl-out <DIR> --json-out <DIR>
       Decompile JSON to scratch TDL, recompile that TDL to canonical JSON,

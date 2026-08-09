@@ -1,3 +1,10 @@
-//! Backward-compatible re-export of the shared semantic diagnostics module.
+//! Diagnostic formatting for active map-schema source tooling.
 
-pub use map_schema_semantic::diagnostics::*;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Diagnostic {
+    pub message: String,
+}
+
+pub fn format_diagnostics(diagnostics: &[Diagnostic]) -> String {
+    diagnostics.iter().map(|diagnostic| diagnostic.message.as_str()).collect::<Vec<_>>().join("\n")
+}
