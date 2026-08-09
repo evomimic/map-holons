@@ -962,6 +962,9 @@ impl<'a> Parser<'a> {
     fn parse_descriptor_decl(&mut self, variant_of: Option<String>) -> Result<TdlDescriptor> {
         let line = self.consume_trimmed().unwrap();
         let parsed = parse_descriptor_header(&line)?;
+        let declaration_name = parsed.name.clone();
+        let mut clauses = DescriptorClauseTracker::default();
+        clauses.mark_if_present("extends", &declaration_name, parsed.extends.is_some())?;
         let mut descriptor = TdlDescriptor {
             kind: parsed.kind,
             name: parsed.name,
@@ -1002,34 +1005,41 @@ impl<'a> Parser<'a> {
                 }
                 match current.as_str() {
                     s if s.starts_with("header") => {
+                        clauses.mark("header", &declaration_name)?;
                         descriptor.header = Some(self.parse_header_block()?);
                     }
                     s if s.starts_with("extends ") => {
+                        clauses.mark("extends", &declaration_name)?;
                         descriptor.extends =
                             Some(parse_reference_token(s["extends ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("type ") => {
+                        clauses.mark("type", &declaration_name)?;
                         descriptor.descriptor_type =
                             Some(parse_reference_token(s["type ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("value ") => {
+                        clauses.mark("value", &declaration_name)?;
                         descriptor.value_type =
                             Some(parse_reference_token(s["value ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("source ") => {
+                        clauses.mark("source", &declaration_name)?;
                         descriptor.source_type =
                             Some(parse_reference_token(s["source ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("target ") => {
+                        clauses.mark("target", &declaration_name)?;
                         descriptor.target_type =
                             Some(parse_reference_token(s["target ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("inverse ") => {
+                        clauses.mark("inverse", &declaration_name)?;
                         let inverse_name = s["inverse ".len()..].trim().to_string();
                         if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
                             descriptor.inverse_of = Some(inverse_name);
@@ -1039,16 +1049,19 @@ impl<'a> Parser<'a> {
                         self.consume_trimmed();
                     }
                     s if s.starts_with("instance_keyrule ") => {
+                        clauses.mark("keyrule", &declaration_name)?;
                         descriptor.key_rule =
                             Some(parse_reference_token(s["instance_keyrule ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("keyrule ") => {
+                        clauses.mark("keyrule", &declaration_name)?;
                         descriptor.key_rule =
                             Some(parse_reference_token(s["keyrule ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("cardinality ") => {
+                        clauses.mark("cardinality", &declaration_name)?;
                         let range = s["cardinality ".len()..].trim();
                         let (min, max) = range
                             .split_once("..")
@@ -1059,22 +1072,27 @@ impl<'a> Parser<'a> {
                         self.consume_trimmed();
                     }
                     "ordered" => {
+                        clauses.mark("ordered", &declaration_name)?;
                         descriptor.is_ordered = true;
                         self.consume_trimmed();
                     }
                     "duplicates" => {
+                        clauses.mark("duplicates", &declaration_name)?;
                         descriptor.allows_duplicates = true;
                         self.consume_trimmed();
                     }
                     "allows_additional_properties" => {
+                        clauses.mark("allows_additional_properties", &declaration_name)?;
                         descriptor.allows_additional_properties = true;
                         self.consume_trimmed();
                     }
                     "allows_additional_relationships" => {
+                        clauses.mark("allows_additional_relationships", &declaration_name)?;
                         descriptor.allows_additional_relationships = true;
                         self.consume_trimmed();
                     }
                     s if s.starts_with("deletion_semantic ") => {
+                        clauses.mark("deletion_semantic", &declaration_name)?;
                         descriptor.deletion_semantic =
                             Some(s["deletion_semantic ".len()..].trim().to_string());
                         self.consume_trimmed();
@@ -1135,6 +1153,9 @@ impl<'a> Parser<'a> {
         if parsed.kind != DescriptorKind::EnumVariant {
             return Err(anyhow!("expected variant declaration, found {}", line));
         }
+        let declaration_name = parsed.name.clone();
+        let mut clauses = DescriptorClauseTracker::default();
+        clauses.mark_if_present("extends", &declaration_name, parsed.extends.is_some())?;
         let mut descriptor = TdlDescriptor {
             kind: DescriptorKind::EnumVariant,
             name: parsed.name,
@@ -1174,6 +1195,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 if current.starts_with("header") {
+                    clauses.mark("header", &declaration_name)?;
                     descriptor.header = Some(self.parse_header_block()?);
                 } else if current == "properties {" {
                     self.consume_trimmed();
@@ -1187,10 +1209,12 @@ impl<'a> Parser<'a> {
                     self.consume_trimmed();
                     descriptor.literal_relationships.extend(self.parse_relationship_map()?);
                 } else if current.starts_with("type ") {
+                    clauses.mark("type", &declaration_name)?;
                     descriptor.descriptor_type =
                         Some(parse_reference_token(current["type ".len()..].trim())?);
                     self.consume_trimmed();
                 } else if current.starts_with("extends ") {
+                    clauses.mark("extends", &declaration_name)?;
                     descriptor.extends =
                         Some(parse_reference_token(current["extends ".len()..].trim())?);
                     self.consume_trimmed();
@@ -1416,6 +1440,63 @@ struct InlineHeader {
     name: String,
     header: Option<DescriptorHeader>,
     has_block: bool,
+}
+
+#[derive(Debug, Default)]
+struct DescriptorClauseTracker {
+    header: bool,
+    extends: bool,
+    descriptor_type: bool,
+    value_type: bool,
+    source_type: bool,
+    target_type: bool,
+    inverse_pair: bool,
+    key_rule: bool,
+    cardinality: bool,
+    ordered: bool,
+    duplicates: bool,
+    allows_additional_properties: bool,
+    allows_additional_relationships: bool,
+    deletion_semantic: bool,
+}
+
+impl DescriptorClauseTracker {
+    fn mark(&mut self, clause: &'static str, declaration_name: &str) -> Result<()> {
+        let slot = match clause {
+            "header" => &mut self.header,
+            "extends" => &mut self.extends,
+            "type" => &mut self.descriptor_type,
+            "value" => &mut self.value_type,
+            "source" => &mut self.source_type,
+            "target" => &mut self.target_type,
+            "inverse" => &mut self.inverse_pair,
+            "keyrule" => &mut self.key_rule,
+            "cardinality" => &mut self.cardinality,
+            "ordered" => &mut self.ordered,
+            "duplicates" => &mut self.duplicates,
+            "allows_additional_properties" => &mut self.allows_additional_properties,
+            "allows_additional_relationships" => &mut self.allows_additional_relationships,
+            "deletion_semantic" => &mut self.deletion_semantic,
+            _ => unreachable!("untracked TDL singleton clause"),
+        };
+        if *slot {
+            return Err(anyhow!("duplicate `{clause}` clause in declaration `{declaration_name}`"));
+        }
+        *slot = true;
+        Ok(())
+    }
+
+    fn mark_if_present(
+        &mut self,
+        clause: &'static str,
+        declaration_name: &str,
+        present: bool,
+    ) -> Result<()> {
+        if present {
+            self.mark(clause, declaration_name)?;
+        }
+        Ok(())
+    }
 }
 
 fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
@@ -1807,6 +1888,151 @@ mod tests {
 
     fn discovered_tdl_file_count(root: &Path) -> Result<usize> {
         Ok(collect_tdl_files(&[root.to_path_buf()])?.len())
+    }
+
+    fn assert_check_rejects_duplicate_clause(clause: &str, declaration: &str, expected_name: &str) {
+        let error = check_input_string(declaration, "duplicate-clause.tdl")
+            .expect_err("duplicate singleton clause should be rejected");
+        let message = error.to_string();
+        assert!(
+            message.contains(&format!("duplicate `{clause}` clause")),
+            "expected duplicate `{clause}` error, got: {message}"
+        );
+        assert!(
+            message.contains(&format!("declaration `{expected_name}`")),
+            "expected declaration name `{expected_name}` in error, got: {message}"
+        );
+    }
+
+    #[test]
+    fn check_rejects_duplicate_descriptor_singleton_clauses() {
+        let cases = [
+            (
+                "type",
+                "Person.HolonType",
+                r#"schema Example Schema-v0.0.1
+
+holon Person.HolonType {
+  type A.Type
+  type B.Type
+}
+"#,
+            ),
+            (
+                "extends",
+                "Person.HolonType",
+                r#"schema Example Schema-v0.0.1
+
+holon Person.HolonType {
+  type A.Type
+  extends BaseA.HolonType
+  extends BaseB.HolonType
+}
+"#,
+            ),
+            (
+                "value",
+                "Name.PropertyType",
+                r#"schema Example Schema-v0.0.1
+
+property Name.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  value String.ValueType
+  value Text.ValueType
+}
+"#,
+            ),
+            (
+                "source",
+                "Knows",
+                r#"schema Example Schema-v0.0.1
+
+relationship Knows {
+  type MetaRelationshipType.MetaTypeDescriptor
+  source Person.HolonType
+  source Agent.HolonType
+  target Person.HolonType
+}
+"#,
+            ),
+            (
+                "target",
+                "Knows",
+                r#"schema Example Schema-v0.0.1
+
+relationship Knows {
+  type MetaRelationshipType.MetaTypeDescriptor
+  source Person.HolonType
+  target Person.HolonType
+  target Agent.HolonType
+}
+"#,
+            ),
+            (
+                "cardinality",
+                "Knows",
+                r#"schema Example Schema-v0.0.1
+
+relationship Knows {
+  type MetaRelationshipType.MetaTypeDescriptor
+  source Person.HolonType
+  target Person.HolonType
+  cardinality 0..*
+  cardinality 1..1
+}
+"#,
+            ),
+            (
+                "inverse",
+                "Knows",
+                r#"schema Example Schema-v0.0.1
+
+relationship Knows {
+  type MetaRelationshipType.MetaTypeDescriptor
+  source Person.HolonType
+  target Person.HolonType
+  inverse KnownBy
+  inverse KnownAlsoBy
+}
+"#,
+            ),
+            (
+                "keyrule",
+                "Person.HolonType",
+                r#"schema Example Schema-v0.0.1
+
+holon Person.HolonType {
+  type A.Type
+  instance_keyrule RuleA.KeyRuleType
+  keyrule RuleB.KeyRuleType
+}
+"#,
+            ),
+        ];
+
+        for (clause, expected_name, declaration) in cases {
+            assert_check_rejects_duplicate_clause(clause, declaration, expected_name);
+        }
+    }
+
+    #[test]
+    fn check_rejects_duplicate_variant_singleton_clauses() {
+        assert_check_rejects_duplicate_clause(
+            "type",
+            r#"schema Example Schema-v0.0.1
+
+enum Color.EnumType {
+  type MetaEnumType.MetaTypeDescriptor
+  variants {
+    variant Red {
+      type A.Type
+      type B.Type
+    }
+  }
+}
+"#,
+            "Red",
+        );
     }
 
     #[test]
