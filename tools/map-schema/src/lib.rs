@@ -1469,12 +1469,24 @@ mod tests {
     }
 
     #[test]
-    fn decompiles_core_schema_corpus() -> Result<()> {
+    fn decompiled_core_schema_corpus_differs_from_schema_2_source_until_tdl_v09_migration(
+    ) -> Result<()> {
         let source_dir = source_fixture_dir();
         let out_dir = temp_out_dir();
         let files = decompile_inputs(&[source_dir.clone()], &out_dir)?;
         assert_eq!(files.len(), discovered_json_file_count(&source_dir)?);
-        crate::test_support::assert_dir_tree_eq(&schema_src_dir(), &out_dir);
+
+        let root = fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-root.tdl"))?;
+        let schema_2_root =
+            fs::read_to_string(schema_src_dir().join("MAP Schema Types-map-core-schema-root.tdl"))?;
+        assert_ne!(
+            root, schema_2_root,
+            "legacy JSON decompilation should not claim to reproduce the stacked Schema 2.0 source corpus before the TDL v0.9 migration"
+        );
+        assert!(
+            schema_2_root.contains("type MetaHolonType.MetaTypeDescriptor"),
+            "stacked Schema 2.0 source should retain explicit descriptor type clauses"
+        );
         Ok(())
     }
 

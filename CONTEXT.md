@@ -144,6 +144,14 @@ _Avoid_: Declaration kind, treating `instance` as a TypeKind, inferring semantic
 An authored holon key or reference written bare when it contains no whitespace or structural delimiters, and as a quoted string when it does. Quoting is lexical only and does not change key identity.
 _Avoid_: Schema-specific whitespace parsing, treating quoted keys as property-value literals in key/reference positions
 
+**TDL Corpus Protection Baseline**:
+A transitional baseline that protects known corpus invariants while the current source tooling cannot yet semantically accept the full Schema 2.0 TDL corpus.
+_Avoid_: Semantic acceptance milestone, full parser conformance
+
+**Transitional Corpus Scanner**:
+A test-private helper that recognizes only the TDL declaration blocks and clauses needed to guard the corpus before the real source tooling can parse the full Schema 2.0 corpus.
+_Avoid_: TDL parser, semantic scanner, production source model
+
 **PlanNode**:
 A holon-backed structural node in an ExecutionPlan that organizes one or more plan steps.
 _Avoid_: Result node, graph node
@@ -260,6 +268,12 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - TDL keys and references containing whitespace or structural delimiters are quoted; delimiter-free keys may remain bare.
 - A complete TDL file uses the specialized `schema` declaration to establish its containing schema and the target of implicit descriptor `ComponentOf`; generic instances receive no implicit `ComponentOf`.
 - `depends_on` is specialized compilation syntax because dependencies establish the resolution closure before ordinary holon validation; it lowers to the schema holon's semantic `DependsOn` relationship.
+- A **TDL Corpus Protection Baseline** may use focused source-level guards for known corpus invariants, but it does not claim full TDL parser acceptance or descriptor-semantic validation.
+- A **Transitional Corpus Scanner** may exist only in tests and may recognize just enough TDL block shape to protect R0 invariants before R6 replaces it with real source tooling.
+- `map-schema:check:coreschema` remains the honest current-tooling acceptance check for the full corpus; R0 does not make that command pass by downgrading known parser failures.
+- R0 corpus guards cover declared-side inverse-pair orientation, selected additive inheritance anchors, the `InstanceKeyRule` cardinality and override anchors, and the current explicit-`type` parser blocker.
+- R0 corpus guards do not validate schema dependency DAGs, cross-schema reference coverage, descriptor conformance, abstract descriptor completeness, endpoint compatibility, default validity, enum semantics, or `TypeKind` migration policy.
+- R0 corpus guard tests live near existing `tools/map-schema` corpus tests and isolate their **Transitional Corpus Scanner** in a clearly removable test module.
 
 ## Example dialogue
 
@@ -290,3 +304,11 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - Pipeline ordering is relationship order in PRO3. Resolved: ordered **Pipeline Steps** use `HolonCollection` member order rather than per-step index properties or linked-list relationships.
 - Minimal plan shape is holon-native in PRO3. Resolved: **ExecutionPlan** has **Output Binding** and **RootNode**; a pipeline **PlanNode** has ordered **Pipeline Steps**; step kind is conveyed by step subtype descriptor/facade rather than a `PlanStepKind` property.
 - **Step Parameters** follow MAP holon modeling. Resolved: scalar parameters are properties; holon-reference-valued parameters are relationships.
+- "Executable baseline" was ambiguous for TDL R0. Resolved: use **TDL Corpus Protection Baseline** for the R0 posture until the source tooling can parse and lower the Schema 2.0 corpus through the intended representation.
+- R0 corpus guards should not be implemented as a second source parser. Resolved: use a test-private **Transitional Corpus Scanner** with deliberately narrow scope, then delete or replace it when R6 parsing/lowering takes over.
+- `map-schema:check:coreschema` should not be softened into a transitional guard command. Resolved: leave it failing until real parser support lands; R0 protection runs through focused tests.
+- R0 guard scope was at risk of absorbing descriptor-kernel validation. Resolved: R0 guards only source-visible corpus anchors; graph and semantic validations wait for R6/R4 infrastructure.
+- The 625 branch is stacked on 624 as a temporary integration strategy, not a durable architecture decision. Resolved: record this in the implementation plan/PR notes rather than creating an ADR.
+- R0 test placement should not scatter transitional helpers. Resolved: keep the tests in `tools/map-schema/src/tdl_compiler.rs` near existing corpus tests, isolated in a removable nested module.
+- Existing green core-corpus tests conflict with the current explicit-`type` parser blocker. Resolved: convert them to precise expected-failure tests instead of deleting or broadly ignoring them.
+- R0 inventory should stay shallow and actionable. Resolved: group migration surfaces by owner, current role, R6 disposition, and blockers rather than auditing every call site.
