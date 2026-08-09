@@ -7,24 +7,34 @@ use crate::{
         DescriptorHeader, DescriptorKind, LiteralRelationship, Origin, ReferenceRole,
         RelationshipFlavor, Schema, SemanticModel, SemanticReference, SourceKind, TypeDescriptor,
     },
-    schema_to_loader_ir::{
-        build_emitted_key_lookup, emit_loader_document_json, lower_schema_model_to_loader_ir,
-    },
+    schema_to_loader_ir::{build_emitted_key_lookup, lower_schema_model_to_loader_ir},
 };
 use anyhow::{anyhow, Context, Result};
+use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
+use serde::Deserialize;
+use serde_json::{json, Value};
 use std::{
+    collections::{BTreeMap, HashMap},
     fs,
     path::{Path, PathBuf},
 };
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
+#[allow(dead_code)]
 const GENERATOR_NAME: &str = "MAP Schema Compiler";
+#[allow(dead_code)]
 const DEFAULT_VALUE_EXTENDS: &str = "ValueType";
+#[allow(dead_code)]
 const DEFAULT_ENUM_EXTENDS: &str = "MapEnumValueType";
+#[allow(dead_code)]
 const DEFAULT_ENUM_VARIANT_EXTENDS: &str = "MapEnumVariantValueType";
+#[allow(dead_code)]
 const DEFAULT_PROPERTY_EXTENDS: &str = "PropertyType";
+#[allow(dead_code)]
 const DEFAULT_DECLARED_RELATIONSHIP_EXTENDS: &str = "DeclaredRelationshipType";
+#[allow(dead_code)]
 const DEFAULT_INVERSE_RELATIONSHIP_EXTENDS: &str = "InverseRelationshipType";
+#[allow(dead_code)]
 const DEFAULT_VARIANT_EXTENDS: &str = "ValueType";
 
 #[derive(Debug, Clone)]
@@ -43,6 +53,7 @@ struct ParsedTdlFile {
 #[derive(Debug, Clone)]
 struct TdlSchema {
     name: String,
+    #[allow(dead_code)]
     origin: Origin,
     dependencies: Vec<String>,
     literal_properties: map_schema_semantic::LiteralObject,
@@ -56,10 +67,13 @@ struct TdlSchema {
 struct TdlDescriptor {
     kind: DescriptorKind,
     name: String,
+    #[allow(dead_code)]
     origin: Origin,
     header: Option<DescriptorHeader>,
+    is_generic_instance: bool,
     is_abstract: bool,
     relationship_flavor: Option<RelationshipFlavor>,
+    descriptor_type: Option<String>,
     extends: Option<String>,
     value_type: Option<String>,
     source_type: Option<String>,
@@ -84,11 +98,7 @@ struct TdlDescriptor {
 }
 
 pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>> {
-    let lowered = lower_inputs_to_schema_ir(inputs)?;
-    let compilation = build_compilation(lowered)?;
-    if !compilation.diagnostics.is_empty() {
-        return Err(anyhow!(format_diagnostics(&compilation.diagnostics)));
-    }
+    let compilation = build_r6_compilation(parse_inputs(inputs)?)?;
 
     let mut written = Vec::new();
     for file in &compilation.files {
@@ -98,7 +108,7 @@ pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>
                 .with_context(|| format!("creating output directory {}", parent.display()))?;
         }
 
-        let contents = emit_loader_document_json(&file.document)?;
+        let contents = file.contents.clone();
         fs::write(&output, contents)
             .with_context(|| format!("writing compiled JSON to {}", output.display()))?;
         written.push(output);
@@ -111,21 +121,18 @@ pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>
 pub fn compile_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<String> {
     let source_name = source_name.into();
     let parsed = parse_tdl_file(raw, &source_name)?;
-    let lowered = lower_parsed_files_to_schema_ir(vec![parsed])?;
-    let compilation = build_compilation(lowered)?;
-    if !compilation.diagnostics.is_empty() {
-        return Err(anyhow!(format_diagnostics(&compilation.diagnostics)));
-    }
+    let compilation = build_r6_compilation(vec![parsed])?;
     let file = compilation
         .files
         .into_iter()
         .next()
         .ok_or_else(|| anyhow!("no TDL document was compiled"))?;
-    emit_loader_document_json(&file.document)
+    Ok(file.contents)
 }
 
 pub fn check_inputs(inputs: &[PathBuf]) -> Result<Vec<Diagnostic>> {
-    Ok(lower_inputs_to_schema_ir(inputs)?.diagnostics)
+    build_r6_compilation(parse_inputs(inputs)?)?;
+    Ok(Vec::new())
 }
 
 /// Renders the CLI output for `map-schema:check`.
@@ -146,18 +153,576 @@ pub fn render_check_output(diagnostics: &[Diagnostic]) -> String {
 pub fn check_input_string(raw: &str, source_name: impl Into<PathBuf>) -> Result<Vec<Diagnostic>> {
     let source_name = source_name.into();
     let parsed = parse_tdl_file(raw, &source_name)?;
-    Ok(lower_parsed_files_to_schema_ir(vec![parsed])?.diagnostics)
+    build_r6_compilation(vec![parsed])?;
+    Ok(Vec::new())
 }
 
+#[allow(dead_code)]
 struct Compilation {
     files: Vec<CompiledLoaderFile>,
     diagnostics: Vec<Diagnostic>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct CompiledLoaderFile {
     relative_path: PathBuf,
     document: LoaderDocument,
+}
+
+#[derive(Debug, Clone)]
+struct R6Compilation {
+    files: Vec<R6CompiledFile>,
+}
+
+#[derive(Debug, Clone)]
+struct R6CompiledFile {
+    relative_path: PathBuf,
+    contents: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct R6ImportFile {
+    holons: Vec<R6ImportHolon>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct R6ImportHolon {
+    key: String,
+    #[serde(rename = "type")]
+    descriptor_type: String,
+    #[allow(dead_code)]
+    properties: serde_json::Map<String, Value>,
+    #[serde(default)]
+    relationships: Vec<R6ImportRelationship>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct R6ImportRelationship {
+    name: String,
+    target: Vec<R6ImportReference>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct R6ImportReference {
+    #[serde(rename = "$ref")]
+    ref_key: String,
+}
+
+fn build_r6_compilation(parsed_files: Vec<ParsedTdlFile>) -> Result<R6Compilation> {
+    let mut seen_keys = HashMap::<String, PathBuf>::new();
+    let schema_owner_paths = schema_owner_paths(&parsed_files);
+    let mut files = Vec::with_capacity(parsed_files.len());
+
+    for parsed in parsed_files {
+        let emits_schema_holon = schema_owner_paths
+            .get(&parsed.schema.name)
+            .map(|owner_path| owner_path == &parsed.relative_path)
+            .unwrap_or(true);
+        let import_json =
+            lower_r6_file_to_import_json(&parsed, emits_schema_holon, &mut seen_keys)?;
+        let contents = serde_json::to_string_pretty(&import_json)?;
+        validate_r6_import_json(&contents).with_context(|| {
+            format!("validating generated JSON for {}", parsed.relative_path.display())
+        })?;
+        files.push(R6CompiledFile { relative_path: parsed.relative_path, contents });
+    }
+
+    Ok(R6Compilation { files })
+}
+
+fn schema_owner_paths(parsed_files: &[ParsedTdlFile]) -> HashMap<String, PathBuf> {
+    let mut owner_paths = HashMap::<String, PathBuf>::new();
+    for file in parsed_files {
+        let schema_name = file.schema.name.clone();
+        let existing_owner = owner_paths.get(&schema_name);
+        let should_replace = existing_owner
+            .map(|path| is_preferred_schema_owner(&file.relative_path, path))
+            .unwrap_or(true);
+        if should_replace {
+            owner_paths.insert(schema_name, file.relative_path.clone());
+        }
+    }
+    owner_paths
+}
+
+fn is_preferred_schema_owner(candidate: &Path, current: &Path) -> bool {
+    let candidate_name = candidate.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default();
+    let current_name = current.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default();
+
+    candidate_name.contains("root") && !current_name.contains("root")
+}
+
+fn validate_r6_import_json(raw_json: &str) -> Result<()> {
+    const BOOTSTRAP_SCHEMA: &str =
+        include_str!("../../../host/import_files/map-schema/bootstrap-import.schema.json");
+    validate_json_str_against_schema_str(BOOTSTRAP_SCHEMA, raw_json)?;
+    let parsed: R6ImportFile = serde_json::from_str(raw_json)?;
+    for holon in parsed.holons {
+        if holon.key.trim().is_empty() {
+            return Err(anyhow!("loader holon key cannot be empty"));
+        }
+        if holon.descriptor_type.trim().is_empty() {
+            return Err(anyhow!("loader holon '{}' type cannot be empty", holon.key));
+        }
+        for relationship in holon.relationships {
+            if relationship.name.trim().is_empty() {
+                return Err(anyhow!("loader holon '{}' has empty relationship name", holon.key));
+            }
+            if relationship.target.is_empty() {
+                return Err(anyhow!(
+                    "loader holon '{}' relationship '{}' has no targets",
+                    holon.key,
+                    relationship.name
+                ));
+            }
+            for target in relationship.target {
+                if target.ref_key.trim().is_empty() {
+                    return Err(anyhow!(
+                        "loader holon '{}' relationship '{}' has empty target",
+                        holon.key,
+                        relationship.name
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn lower_r6_file_to_import_json(
+    file: &ParsedTdlFile,
+    emits_schema_holon: bool,
+    seen_keys: &mut HashMap<String, PathBuf>,
+) -> Result<Value> {
+    let mut holons = Vec::new();
+    if emits_schema_holon {
+        let schema_holon = lower_r6_schema_holon(&file.schema)?;
+        record_r6_key(&schema_holon.key, &file.relative_path, seen_keys)?;
+        holons.push(schema_holon.into_json());
+    }
+
+    for descriptor in &file.descriptors {
+        let holon = lower_r6_descriptor_holon(descriptor, &file.schema.name)?;
+        record_r6_key(&holon.key, &file.relative_path, seen_keys)?;
+        holons.push(holon.into_json());
+    }
+
+    let mut root = serde_json::Map::new();
+    root.insert("holons".to_string(), Value::Array(holons));
+    Ok(Value::Object(root))
+}
+
+fn record_r6_key(key: &str, path: &Path, seen_keys: &mut HashMap<String, PathBuf>) -> Result<()> {
+    if let Some(existing) = seen_keys.insert(key.to_string(), path.to_path_buf()) {
+        return Err(anyhow!(
+            "duplicate authored holon key `{key}` in {} and {}",
+            existing.display(),
+            path.display()
+        ));
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct R6Holon {
+    key: String,
+    descriptor_type: String,
+    properties: BTreeMap<String, Value>,
+    relationships: BTreeMap<String, Vec<String>>,
+}
+
+impl R6Holon {
+    fn new(key: String, descriptor_type: String) -> Self {
+        Self { key, descriptor_type, properties: BTreeMap::new(), relationships: BTreeMap::new() }
+    }
+
+    fn property(&mut self, name: impl Into<String>, value: Value) -> Result<()> {
+        let name = name.into();
+        if self.properties.insert(name.clone(), value).is_some() {
+            return Err(anyhow!("duplicate property `{name}` on `{}`", self.key));
+        }
+        Ok(())
+    }
+
+    fn relationship(&mut self, name: impl Into<String>, target: impl Into<String>) {
+        self.relationships.entry(name.into()).or_default().push(target.into());
+    }
+
+    fn relationship_targets(
+        &mut self,
+        name: impl Into<String>,
+        targets: impl IntoIterator<Item = String>,
+    ) {
+        self.relationships.entry(name.into()).or_default().extend(targets);
+    }
+
+    fn into_json(self) -> Value {
+        let mut object = serde_json::Map::new();
+        object.insert("key".to_string(), json!(self.key));
+        object.insert("type".to_string(), json!(self.descriptor_type));
+        object.insert("properties".to_string(), Value::Object(ordered_properties(self.properties)));
+        if !self.relationships.is_empty() {
+            object.insert(
+                "relationships".to_string(),
+                Value::Array(ordered_relationships(self.relationships)),
+            );
+        }
+        Value::Object(object)
+    }
+}
+
+fn lower_r6_schema_holon(schema: &TdlSchema) -> Result<R6Holon> {
+    let mut holon = R6Holon::new(schema.name.clone(), "Schema.HolonType".to_string());
+    holon.property("SchemaName", json!(schema.name.clone()))?;
+    apply_r6_header(&mut holon, schema.header.as_ref())?;
+    for (name, value) in schema.literal_properties.iter() {
+        holon.property(name.clone(), literal_to_json(value))?;
+    }
+    if schema.allows_additional_properties {
+        holon.property("AllowsAdditionalProperties", json!(true))?;
+    }
+    if schema.allows_additional_relationships {
+        holon.property("AllowsAdditionalRelationships", json!(true))?;
+    }
+    for dependency in &schema.dependencies {
+        holon.relationship("DependsOn", dependency.clone());
+    }
+    for relationship in &schema.literal_relationships {
+        holon.relationship_targets(relationship.name.clone(), relationship.targets.clone());
+    }
+    Ok(holon)
+}
+
+fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> Result<R6Holon> {
+    let key = descriptor_key_r6(descriptor)?;
+    let descriptor_type = descriptor.descriptor_type.clone().ok_or_else(|| {
+        anyhow!("declaration `{}` is missing required type clause", descriptor.name)
+    })?;
+    let mut holon = R6Holon::new(key.clone(), descriptor_type);
+
+    if !descriptor.is_generic_instance {
+        holon.property("TypeName", json!(local_type_name(descriptor, &key)))?;
+    }
+    if descriptor.is_abstract {
+        holon.property("IsAbstractType", json!(true))?;
+    }
+    if descriptor.is_definitional {
+        holon.property("IsDefinitional", json!(true))?;
+    }
+    if descriptor.is_ordered {
+        holon.property("IsOrdered", json!(true))?;
+    }
+    if descriptor.allows_duplicates {
+        holon.property("AllowsDuplicates", json!(true))?;
+    }
+    if descriptor.allows_additional_properties {
+        holon.property("AllowsAdditionalProperties", json!(true))?;
+    }
+    if descriptor.allows_additional_relationships {
+        holon.property("AllowsAdditionalRelationships", json!(true))?;
+    }
+    if let Some(min) = descriptor.min_cardinality {
+        holon.property("MinCardinality", json!(min))?;
+    }
+    if let Some(max) = descriptor.max_cardinality {
+        holon.property("MaxCardinality", json!(max))?;
+    }
+    if let Some(deletion_semantic) = &descriptor.deletion_semantic {
+        holon.property("DeletionSemantic", json!(deletion_semantic))?;
+    }
+    apply_r6_header(&mut holon, descriptor.header.as_ref())?;
+    for (name, value) in descriptor.literal_properties.iter() {
+        holon.property(canonical_property_name(name), literal_to_json(value))?;
+    }
+
+    if descriptor.is_generic_instance
+        && (descriptor.extends.is_some()
+            || descriptor.value_type.is_some()
+            || descriptor.source_type.is_some()
+            || descriptor.target_type.is_some()
+            || descriptor.key_rule.is_some()
+            || descriptor.min_cardinality.is_some()
+            || descriptor.max_cardinality.is_some()
+            || descriptor.deletion_semantic.is_some()
+            || descriptor.is_abstract
+            || descriptor.is_definitional
+            || descriptor.is_ordered
+            || descriptor.allows_duplicates)
+    {
+        return Err(anyhow!(
+            "generic instance `{}` must not use descriptor-only shorthand",
+            descriptor.name
+        ));
+    }
+
+    if let Some(extends) = &descriptor.extends {
+        holon.relationship("Extends", extends.clone());
+    }
+    if !descriptor.is_generic_instance {
+        holon.relationship("ComponentOf", schema_name.to_string());
+    }
+    if let Some(value_type) = &descriptor.value_type {
+        holon.relationship("ValueType", value_type.clone());
+    }
+    if let Some(source_type) = &descriptor.source_type {
+        holon.relationship("SourceType", source_type.clone());
+    }
+    if let Some(target_type) = &descriptor.target_type {
+        holon.relationship("TargetType", target_type.clone());
+    }
+    if let Some(key_rule) = &descriptor.key_rule {
+        holon.relationship("InstanceKeyRule", key_rule.clone());
+    }
+    if let Some(has_inverse) = &descriptor.has_inverse {
+        holon.relationship("HasInverse", has_inverse.clone());
+    }
+    if descriptor.inverse_of.is_some() {
+        return Err(anyhow!(
+            "inverse relationship `{}` must not author inverse-side pair metadata",
+            descriptor.name
+        ));
+    }
+    for relationship in &descriptor.literal_relationships {
+        if relationship.name == "ComponentOf" {
+            return Err(anyhow!(
+                "descriptor `{}` must not explicitly author ComponentOf in a schema file",
+                descriptor.name
+            ));
+        }
+        if relationship.name == "DescribedBy" {
+            return Err(anyhow!(
+                "descriptor `{}` must not author both type and DescribedBy",
+                descriptor.name
+            ));
+        }
+        if relationship.name == "Extends" && descriptor.extends.is_some() {
+            return Err(anyhow!(
+                "descriptor `{}` must not author both extends and Extends",
+                descriptor.name
+            ));
+        }
+        holon.relationship_targets(relationship.name.clone(), relationship.targets.clone());
+    }
+    if descriptor.kind == DescriptorKind::Enum && !descriptor.variants.is_empty() {
+        holon.relationship_targets("Variants", descriptor.variants.clone());
+    }
+
+    assert_relationship_key_consistency(descriptor)?;
+    Ok(holon)
+}
+
+fn apply_r6_header(holon: &mut R6Holon, header: Option<&DescriptorHeader>) -> Result<()> {
+    let Some(header) = header else {
+        return Ok(());
+    };
+    if let Some(description) = &header.description {
+        holon.property("Description", json!(description))?;
+    }
+    if let Some(display_name) = &header.display_name {
+        holon.property("DisplayName", json!(display_name))?;
+    }
+    if let Some(display_name_plural) = &header.display_name_plural {
+        holon.property("DisplayNamePlural", json!(display_name_plural))?;
+    }
+    if let Some(type_name_plural) = &header.type_name_plural {
+        holon.property("TypeNamePlural", json!(type_name_plural))?;
+    }
+    Ok(())
+}
+
+fn descriptor_key_r6(descriptor: &TdlDescriptor) -> Result<String> {
+    match descriptor.kind {
+        DescriptorKind::EnumVariant => Ok(descriptor
+            .variant_of
+            .as_ref()
+            .map(|parent| variant_key(parent, &descriptor.name))
+            .unwrap_or_else(|| descriptor.name.clone())),
+        DescriptorKind::RelationshipType => {
+            if descriptor.name.starts_with('(') {
+                Ok(descriptor.name.clone())
+            } else {
+                let source = descriptor.source_type.clone().ok_or_else(|| {
+                    anyhow!("relationship `{}` is missing source", descriptor.name)
+                })?;
+                let target = descriptor.target_type.clone().ok_or_else(|| {
+                    anyhow!("relationship `{}` is missing target", descriptor.name)
+                })?;
+                Ok(format!("({source})-[{}]->({target})", descriptor.name))
+            }
+        }
+        _ => Ok(descriptor.name.clone()),
+    }
+}
+
+fn local_type_name(descriptor: &TdlDescriptor, key: &str) -> String {
+    if descriptor.kind == DescriptorKind::RelationshipType {
+        return relationship_name_from_key(key).unwrap_or(key).to_string();
+    }
+    if descriptor.kind == DescriptorKind::EnumVariant {
+        return key.rsplit_once('.').map(|(_, local)| local).unwrap_or(key).to_string();
+    }
+    key.split('.').next().unwrap_or(key).to_string()
+}
+
+fn relationship_name_from_key(key: &str) -> Option<&str> {
+    let (_, rest) = key.split_once(")-[")?;
+    let (name, _) = rest.split_once("]->(")?;
+    Some(name)
+}
+
+fn relationship_source_target_from_key(key: &str) -> Option<(&str, &str)> {
+    let source = key.strip_prefix('(')?.split_once(")-[")?.0;
+    let (_, target_with_close) = key.split_once("]->(")?;
+    let target = target_with_close.strip_suffix(')')?;
+    Some((source, target))
+}
+
+fn assert_relationship_key_consistency(descriptor: &TdlDescriptor) -> Result<()> {
+    if descriptor.kind != DescriptorKind::RelationshipType || !descriptor.name.starts_with('(') {
+        return Ok(());
+    }
+    let Some((key_source, key_target)) = relationship_source_target_from_key(&descriptor.name)
+    else {
+        return Err(anyhow!("invalid relationship key `{}`", descriptor.name));
+    };
+    if descriptor.source_type.as_deref() != Some(key_source) {
+        return Err(anyhow!(
+            "relationship `{}` source clause does not match key source `{key_source}`",
+            descriptor.name
+        ));
+    }
+    if descriptor.target_type.as_deref() != Some(key_target) {
+        return Err(anyhow!(
+            "relationship `{}` target clause does not match key target `{key_target}`",
+            descriptor.name
+        ));
+    }
+    Ok(())
+}
+
+fn literal_to_json(value: &map_schema_semantic::LiteralValue) -> Value {
+    match value {
+        map_schema_semantic::LiteralValue::Null => Value::Null,
+        map_schema_semantic::LiteralValue::Boolean(value) => json!(value),
+        map_schema_semantic::LiteralValue::Integer(value) => json!(value),
+        map_schema_semantic::LiteralValue::Number(value) => {
+            serde_json::from_str(value).unwrap_or_else(|_| json!(value))
+        }
+        map_schema_semantic::LiteralValue::String(value) => json!(value),
+        map_schema_semantic::LiteralValue::Array(values) => {
+            Value::Array(values.iter().map(literal_to_json).collect())
+        }
+        map_schema_semantic::LiteralValue::Object(object) => {
+            let mut map = serde_json::Map::new();
+            for (name, value) in object.iter() {
+                map.insert(name.clone(), literal_to_json(value));
+            }
+            Value::Object(map)
+        }
+    }
+}
+
+fn canonical_property_name(name: &str) -> String {
+    match name {
+        "type_name" => "TypeName",
+        "type_name_plural" => "TypeNamePlural",
+        "display_name" => "DisplayName",
+        "display_name_plural" => "DisplayNamePlural",
+        "description" => "Description",
+        "is_abstract_type" => "IsAbstractType",
+        "allows_additional_properties" => "AllowsAdditionalProperties",
+        "allows_additional_relationships" => "AllowsAdditionalRelationships",
+        "is_definitional" => "IsDefinitional",
+        "is_ordered" => "IsOrdered",
+        "allows_duplicates" => "AllowsDuplicates",
+        "min_cardinality" => "MinCardinality",
+        "max_cardinality" => "MaxCardinality",
+        "deletion_semantic" => "DeletionSemantic",
+        other => other,
+    }
+    .to_string()
+}
+
+fn ordered_properties(properties: BTreeMap<String, Value>) -> serde_json::Map<String, Value> {
+    let preferred = [
+        "SchemaName",
+        "TypeName",
+        "TypeNamePlural",
+        "DisplayName",
+        "DisplayNamePlural",
+        "Description",
+        "IsAbstractType",
+        "DefinesInstanceTypeKind",
+        "IsDefinitional",
+        "IsOrdered",
+        "AllowsDuplicates",
+        "MinCardinality",
+        "MaxCardinality",
+        "DeletionSemantic",
+        "InheritanceMode",
+        "IsValueRequired",
+        "DefaultValue",
+        "AllowsAdditionalProperties",
+        "AllowsAdditionalRelationships",
+    ];
+    order_map(properties, &preferred)
+}
+
+fn ordered_relationships(relationships: BTreeMap<String, Vec<String>>) -> Vec<Value> {
+    let preferred = [
+        "Extends",
+        "ComponentOf",
+        "DependsOn",
+        "SourceType",
+        "TargetType",
+        "ValueType",
+        "InstanceKeyRule",
+        "HasInverse",
+        "Variants",
+        "InstanceProperties",
+        "InstanceRelationships",
+        "AffordsCommand",
+        "AffordsDance",
+        "AffordsOperator",
+    ];
+    let ordered = order_entries(relationships, &preferred);
+    ordered
+        .into_iter()
+        .map(|(name, targets)| {
+            json!({
+                "name": name,
+                "target": targets.into_iter().map(|target| json!({ "$ref": target })).collect::<Vec<_>>()
+            })
+        })
+        .collect()
+}
+
+fn order_map(
+    mut values: BTreeMap<String, Value>,
+    preferred: &[&str],
+) -> serde_json::Map<String, Value> {
+    let mut out = serde_json::Map::new();
+    for key in preferred {
+        if let Some(value) = values.remove(*key) {
+            out.insert((*key).to_string(), value);
+        }
+    }
+    for (key, value) in values {
+        out.insert(key, value);
+    }
+    out
+}
+
+fn order_entries<T>(mut values: BTreeMap<String, T>, preferred: &[&str]) -> Vec<(String, T)> {
+    let mut out = Vec::new();
+    for key in preferred {
+        if let Some(value) = values.remove(*key) {
+            out.push(((*key).to_string(), value));
+        }
+    }
+    out.extend(values);
+    out
 }
 
 #[derive(Debug, Clone)]
@@ -327,7 +892,8 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 if current.starts_with("depends_on ") {
-                    dependencies.push(current["depends_on ".len()..].trim().to_string());
+                    dependencies
+                        .push(parse_reference_token(current["depends_on ".len()..].trim())?);
                     self.consume_trimmed();
                 } else if current == "properties {" {
                     self.consume_trimmed();
@@ -382,8 +948,10 @@ impl<'a> Parser<'a> {
                 column: Some(1),
             },
             header: None,
+            is_generic_instance: parsed.is_generic_instance,
             is_abstract: parsed.is_abstract,
             relationship_flavor: parsed.relationship_flavor,
+            descriptor_type: None,
             extends: parsed.extends,
             value_type: None,
             source_type: None,
@@ -419,19 +987,28 @@ impl<'a> Parser<'a> {
                         descriptor.header = Some(self.parse_header_block()?);
                     }
                     s if s.starts_with("extends ") => {
-                        descriptor.extends = Some(s["extends ".len()..].trim().to_string());
+                        descriptor.extends =
+                            Some(parse_reference_token(s["extends ".len()..].trim())?);
+                        self.consume_trimmed();
+                    }
+                    s if s.starts_with("type ") => {
+                        descriptor.descriptor_type =
+                            Some(parse_reference_token(s["type ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("value ") => {
-                        descriptor.value_type = Some(s["value ".len()..].trim().to_string());
+                        descriptor.value_type =
+                            Some(parse_reference_token(s["value ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("source ") => {
-                        descriptor.source_type = Some(s["source ".len()..].trim().to_string());
+                        descriptor.source_type =
+                            Some(parse_reference_token(s["source ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("target ") => {
-                        descriptor.target_type = Some(s["target ".len()..].trim().to_string());
+                        descriptor.target_type =
+                            Some(parse_reference_token(s["target ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("inverse ") => {
@@ -443,8 +1020,14 @@ impl<'a> Parser<'a> {
                         }
                         self.consume_trimmed();
                     }
+                    s if s.starts_with("instance_keyrule ") => {
+                        descriptor.key_rule =
+                            Some(parse_reference_token(s["instance_keyrule ".len()..].trim())?);
+                        self.consume_trimmed();
+                    }
                     s if s.starts_with("keyrule ") => {
-                        descriptor.key_rule = Some(s["keyrule ".len()..].trim().to_string());
+                        descriptor.key_rule =
+                            Some(parse_reference_token(s["keyrule ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("cardinality ") => {
@@ -453,7 +1036,8 @@ impl<'a> Parser<'a> {
                             .split_once("..")
                             .ok_or_else(|| anyhow!("invalid cardinality '{}'", range))?;
                         descriptor.min_cardinality = Some(min.trim().parse()?);
-                        descriptor.max_cardinality = Some(max.trim().parse()?);
+                        descriptor.max_cardinality =
+                            if max.trim() == "*" { None } else { Some(max.trim().parse()?) };
                         self.consume_trimmed();
                     }
                     "ordered" => {
@@ -490,13 +1074,7 @@ impl<'a> Parser<'a> {
                     }
                     "relationships {" => {
                         self.consume_trimmed();
-                        for line in self.parse_reference_block()? {
-                            if let Some(relationship) = parse_literal_relationship_line(&line)? {
-                                descriptor.literal_relationships.push(relationship);
-                            } else {
-                                descriptor.instance_relationships.push(line);
-                            }
-                        }
+                        descriptor.literal_relationships.extend(self.parse_relationship_map()?);
                     }
                     "variants {" if descriptor.kind == DescriptorKind::Enum => {
                         self.consume_trimmed();
@@ -516,7 +1094,11 @@ impl<'a> Parser<'a> {
                             self.pending_descriptors.push(variant);
                             descriptor.variants.push(variant_key);
                         } else {
-                            return Err(anyhow!("unexpected descriptor clause: {}", other));
+                            let Some((name, value)) = parse_fixed_property_clause(other)? else {
+                                return Err(anyhow!("unexpected descriptor clause: {}", other));
+                            };
+                            descriptor.literal_properties.insert(name, value);
+                            self.consume_trimmed();
                         }
                     }
                 }
@@ -545,8 +1127,10 @@ impl<'a> Parser<'a> {
                 column: Some(1),
             },
             header: None,
+            is_generic_instance: parsed.is_generic_instance,
             is_abstract: parsed.is_abstract,
             relationship_flavor: parsed.relationship_flavor,
+            descriptor_type: None,
             extends: parsed.extends,
             value_type: None,
             source_type: None,
@@ -589,15 +1173,14 @@ impl<'a> Parser<'a> {
                     descriptor.instance_properties.extend(instance_properties);
                 } else if current == "relationships {" {
                     self.consume_trimmed();
-                    for line in self.parse_reference_block()? {
-                        if let Some(relationship) = parse_literal_relationship_line(&line)? {
-                            descriptor.literal_relationships.push(relationship);
-                        } else {
-                            descriptor.instance_relationships.push(line);
-                        }
-                    }
+                    descriptor.literal_relationships.extend(self.parse_relationship_map()?);
+                } else if current.starts_with("type ") {
+                    descriptor.descriptor_type =
+                        Some(parse_reference_token(current["type ".len()..].trim())?);
+                    self.consume_trimmed();
                 } else if current.starts_with("extends ") {
-                    descriptor.extends = Some(current["extends ".len()..].trim().to_string());
+                    descriptor.extends =
+                        Some(parse_reference_token(current["extends ".len()..].trim())?);
                     self.consume_trimmed();
                 } else {
                     return Err(anyhow!("unexpected variant clause: {}", current));
@@ -676,6 +1259,49 @@ impl<'a> Parser<'a> {
             self.consume_trimmed();
         }
         Ok(refs)
+    }
+
+    fn parse_relationship_map(&mut self) -> Result<Vec<LiteralRelationship>> {
+        let mut relationships = Vec::new();
+        while self.skip_blank_lines() {
+            let current = self.peek_trimmed().unwrap().trim_end_matches(',').trim().to_string();
+            if current == "}" {
+                self.consume_trimmed();
+                break;
+            }
+
+            let (name, raw_targets) = current
+                .split_once("->")
+                .ok_or_else(|| anyhow!("invalid relationship map entry '{}'", current))?;
+            let name = name.trim().to_string();
+            let raw_targets = raw_targets.trim();
+            self.consume_trimmed();
+
+            let targets = if raw_targets == "[" {
+                self.parse_relationship_target_list()?
+            } else if raw_targets.starts_with('[') {
+                parse_inline_target_list(raw_targets)?
+            } else {
+                vec![parse_reference_token(raw_targets)?]
+            };
+
+            relationships.push(LiteralRelationship { name, targets });
+        }
+        Ok(relationships)
+    }
+
+    fn parse_relationship_target_list(&mut self) -> Result<Vec<String>> {
+        let mut targets = Vec::new();
+        while self.skip_blank_lines() {
+            let current = self.peek_trimmed().unwrap().trim().to_string();
+            if current == "]" || current == "]," {
+                self.consume_trimmed();
+                break;
+            }
+            targets.push(parse_reference_token(&current)?);
+            self.consume_trimmed();
+        }
+        Ok(targets)
     }
 
     fn parse_properties_block(
@@ -758,6 +1384,7 @@ struct ParsedHead {
     name: String,
     is_abstract: bool,
     is_definitional: bool,
+    is_generic_instance: bool,
     relationship_flavor: Option<RelationshipFlavor>,
     extends: Option<String>,
     has_block: bool,
@@ -776,7 +1403,7 @@ fn parse_inline_header(line: &str, keyword: &str) -> Result<InlineHeader> {
     if remainder.is_empty() {
         return Err(anyhow!("missing {} name", keyword));
     }
-    Ok(InlineHeader { name: remainder.to_string(), header: None, has_block })
+    Ok(InlineHeader { name: parse_reference_token(remainder)?, header: None, has_block })
 }
 
 struct InlineHeader {
@@ -791,6 +1418,7 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
     let head = if has_block { trimmed.trim_end_matches('{').trim() } else { trimmed };
     let mut is_abstract = false;
     let mut is_definitional = false;
+    let mut is_generic_instance = false;
     let mut extends = None;
 
     let mut remainder = head;
@@ -817,6 +1445,9 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
             (DescriptorKind::PropertyType, tail)
         } else if let Some(tail) = remainder.strip_prefix("relationship ") {
             (DescriptorKind::RelationshipType, tail)
+        } else if let Some(tail) = remainder.strip_prefix("instance ") {
+            is_generic_instance = true;
+            (DescriptorKind::HolonType, tail)
         } else if let Some(tail) = remainder.strip_prefix("variant ") {
             (DescriptorKind::EnumVariant, tail)
         } else {
@@ -828,7 +1459,7 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
     if after_kind.is_empty() {
         return Err(anyhow!("missing declaration name in '{}'", line));
     }
-    let name = after_kind.trim_end_matches('{').trim().to_string();
+    let name = parse_reference_token(after_kind.trim_end_matches('{').trim())?;
     if kind == DescriptorKind::RelationshipType {
         if let Some((_, remainder)) = name.split_once(" extends ") {
             extends = Some(remainder.trim().to_string());
@@ -850,6 +1481,7 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
         name,
         is_abstract,
         is_definitional,
+        is_generic_instance,
         relationship_flavor,
         extends,
         has_block,
@@ -865,6 +1497,7 @@ fn is_descriptor_line(line: &str) -> bool {
         || line.starts_with("enum ")
         || line.starts_with("property ")
         || line.starts_with("relationship ")
+        || line.starts_with("instance ")
         || line.starts_with("variant ")
 }
 
@@ -874,6 +1507,51 @@ fn parse_string_literal(raw: &str) -> Result<String> {
     } else {
         Ok(raw.to_string())
     }
+}
+
+fn parse_reference_token(raw: &str) -> Result<String> {
+    let token = raw.trim().trim_end_matches(',').trim();
+    if token.starts_with('"') {
+        Ok(serde_json::from_str(token)?)
+    } else {
+        Ok(token.strip_prefix('#').unwrap_or(token).to_string())
+    }
+}
+
+fn parse_inline_target_list(raw: &str) -> Result<Vec<String>> {
+    let trimmed = raw.trim().trim_end_matches(',').trim();
+    let Some(inner) = trimmed.strip_prefix('[').and_then(|value| value.strip_suffix(']')) else {
+        return Err(anyhow!("invalid inline target list '{}'", raw));
+    };
+    inner
+        .split(',')
+        .map(str::trim)
+        .filter(|target| !target.is_empty())
+        .map(parse_reference_token)
+        .collect()
+}
+
+fn parse_fixed_property_clause(
+    line: &str,
+) -> Result<Option<(String, map_schema_semantic::LiteralValue)>> {
+    let Some((name, raw_value)) = line.split_once(char::is_whitespace) else {
+        return Ok(None);
+    };
+    let name = name.trim();
+    let raw_value = raw_value.trim();
+    if name.is_empty() || raw_value.is_empty() || name == "variant" {
+        return Ok(None);
+    }
+    let value = if raw_value.starts_with('"') {
+        serde_json::from_str::<Value>(raw_value)?
+    } else if raw_value == "true" || raw_value == "false" {
+        json!(raw_value == "true")
+    } else if let Ok(integer) = raw_value.parse::<i64>() {
+        json!(integer)
+    } else {
+        json!(parse_reference_token(raw_value)?)
+    };
+    Ok(Some((name.to_string(), json_value_to_literal(&value))))
 }
 
 fn parse_literal_relationship_line(line: &str) -> Result<Option<LiteralRelationship>> {
@@ -1078,10 +1756,12 @@ fn normalize_relationship_pair_targets(descriptor: &mut TdlDescriptor) {
     }
 }
 
+#[allow(dead_code)]
 fn lower_inputs_to_schema_ir(inputs: &[PathBuf]) -> Result<LoweredTdlProject> {
     lower_parsed_files_to_schema_ir(parse_inputs(inputs)?)
 }
 
+#[allow(dead_code)]
 fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<LoweredTdlProject> {
     let mut files = Vec::new();
     let mut global_model = SemanticModel::new();
@@ -1105,6 +1785,7 @@ fn lower_parsed_files_to_schema_ir(parsed: Vec<ParsedTdlFile>) -> Result<Lowered
     Ok(LoweredTdlProject { files, global_model, symbols, diagnostics })
 }
 
+#[allow(dead_code)]
 fn build_compilation(lowered: LoweredTdlProject) -> Result<Compilation> {
     let LoweredTdlProject { files, global_model: _global_model, symbols, diagnostics } = lowered;
     let schema_models = files.iter().map(|file| &file.schema_model).collect::<Vec<_>>();
@@ -1140,10 +1821,12 @@ fn build_compilation(lowered: LoweredTdlProject) -> Result<Compilation> {
     Ok(Compilation { files: compiled_files, diagnostics })
 }
 
+#[allow(dead_code)]
 fn current_timestamp_rfc3339() -> Result<String> {
     Ok(OffsetDateTime::now_utc().format(&Rfc3339)?)
 }
 
+#[allow(dead_code)]
 fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
     let mut model = SemanticModel::new();
     model.push_schema(Schema {
@@ -1171,6 +1854,7 @@ fn lower_file_to_schema_ir(file: &ParsedTdlFile) -> Result<SemanticModel> {
     Ok(model)
 }
 
+#[allow(dead_code)]
 fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<TypeDescriptor> {
     let mut lowered = TypeDescriptor::new(
         descriptor_key(descriptor, schema_name),
@@ -1318,6 +2002,7 @@ fn lower_descriptor(descriptor: &TdlDescriptor, schema_name: &str) -> Result<Typ
     Ok(lowered)
 }
 
+#[allow(dead_code)]
 fn reference_role_for_relationship_name(name: &str) -> Option<ReferenceRole> {
     match name {
         "ComponentOf" => Some(ReferenceRole::ComponentOf),
@@ -1336,6 +2021,7 @@ fn reference_role_for_relationship_name(name: &str) -> Option<ReferenceRole> {
     }
 }
 
+#[allow(dead_code)]
 fn push_reference_if_missing(descriptor: &mut TypeDescriptor, reference: SemanticReference) {
     let already_present = descriptor
         .references()
@@ -1346,6 +2032,7 @@ fn push_reference_if_missing(descriptor: &mut TypeDescriptor, reference: Semanti
     }
 }
 
+#[allow(dead_code)]
 fn default_extends(descriptor: &TdlDescriptor) -> Option<String> {
     match descriptor.kind {
         DescriptorKind::RelationshipType => {
@@ -1381,10 +2068,12 @@ fn default_extends(descriptor: &TdlDescriptor) -> Option<String> {
     }
 }
 
+#[allow(dead_code)]
 fn resolved_extends(descriptor: &TdlDescriptor) -> Option<String> {
     descriptor.extends.clone().or_else(|| default_extends(descriptor))
 }
 
+#[allow(dead_code)]
 fn holon_key_for_emit(descriptor: &TdlDescriptor) -> String {
     let Some(parent) = resolved_extends(descriptor) else {
         if descriptor.is_abstract && descriptor.name.starts_with("Meta") {
@@ -1415,6 +2104,7 @@ fn holon_key_for_emit(descriptor: &TdlDescriptor) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn descriptor_key(descriptor: &TdlDescriptor, schema_name: &str) -> String {
     match descriptor.kind {
         DescriptorKind::Schema => schema_name.to_string(),
@@ -1438,6 +2128,7 @@ fn descriptor_key(descriptor: &TdlDescriptor, schema_name: &str) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn relationship_key(descriptor: &TdlDescriptor) -> String {
     let source = descriptor.source_type.clone().unwrap_or_else(|| descriptor.name.clone());
     let target = descriptor.target_type.clone().unwrap_or_else(|| descriptor.name.clone());
@@ -1448,6 +2139,7 @@ fn variant_key(enum_name: &str, variant_name: &str) -> String {
     format!("{enum_name}.{variant_name}")
 }
 
+#[allow(dead_code)]
 fn merge_schema(model: &mut SemanticModel, schema: Schema) {
     let Some(existing) = model.schemas.iter_mut().find(|candidate| candidate.key == schema.key)
     else {
@@ -1472,6 +2164,7 @@ fn merge_schema(model: &mut SemanticModel, schema: Schema) {
     existing.allows_additional_relationships |= schema.allows_additional_relationships;
 }
 
+#[allow(dead_code)]
 fn collect_file_dependencies(
     model: &SemanticModel,
     symbols: &SymbolIndex,
@@ -1559,67 +2252,114 @@ mod tests {
         Ok(collect_tdl_files(&[root.to_path_buf()])?.len())
     }
 
-    fn assert_core_schema_explicit_type_failure<T>(result: Result<T>) {
-        let error = match result {
-            Ok(_) => panic!("core schema corpus unexpectedly passed current TDL parser"),
-            Err(error) => error,
-        };
-        let message = error.to_string();
-        assert!(
-            message.contains("unexpected descriptor clause"),
-            "expected explicit type parser failure, got: {message}"
-        );
-        assert!(
-            message.contains("type MetaHolonType.MetaTypeDescriptor"),
-            "expected MetaHolonType explicit type blocker, got: {message}"
-        );
-    }
-
     #[test]
-    fn core_schema_check_currently_fails_on_explicit_type_clause() -> Result<()> {
-        assert_core_schema_explicit_type_failure(check_inputs(&[fixture_dir()]));
-        Ok(())
-    }
-
-    #[test]
-    fn core_schema_check_output_baseline_waits_for_parser_migration() -> Result<()> {
-        assert_core_schema_explicit_type_failure(check_inputs(&[fixture_dir()]));
-        Ok(())
-    }
-
-    #[test]
-    fn core_schema_schema_ir_lowering_waits_for_explicit_type_parser_support() -> Result<()> {
+    fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
         assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
-        assert_core_schema_explicit_type_failure(lower_inputs_to_schema_ir(&[fixture_root]));
 
+        let diagnostics = check_inputs(&[fixture_root])?;
+
+        assert!(diagnostics.is_empty());
         Ok(())
     }
 
     #[test]
-    fn core_schema_loader_ir_lowering_waits_for_explicit_type_parser_support() -> Result<()> {
+    fn core_schema_check_output_reports_no_diagnostics() -> Result<()> {
+        let diagnostics = check_inputs(&[fixture_dir()])?;
+
+        assert_eq!(render_check_output(&diagnostics), "no diagnostics\n");
+        Ok(())
+    }
+
+    #[test]
+    fn core_schema_r6_compilation_builds_one_file_per_source_file() -> Result<()> {
         let fixture_root = fixture_dir();
+        let parsed = parse_inputs(&[fixture_root.clone()])?;
+        let compilation = build_r6_compilation(parsed)?;
+
         assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
-        assert_core_schema_explicit_type_failure(
-            lower_inputs_to_schema_ir(&[fixture_root]).and_then(build_compilation),
-        );
+        assert_eq!(compilation.files.len(), 13);
+        assert!(compilation.files.iter().any(|file| {
+            file.relative_path == PathBuf::from("MAP Schema Types-map-core-schema-root.tdl")
+        }));
 
         Ok(())
     }
 
     #[test]
-    fn core_schema_json_compilation_waits_for_explicit_type_parser_support() -> Result<()> {
+    fn core_schema_json_compilation_emits_canonical_schema_20_import_shape() -> Result<()> {
         let fixture_root = fixture_dir();
         let out_dir = temp_out_dir();
+        let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
+
         assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
-        assert_core_schema_explicit_type_failure(compile_inputs(&[fixture_root], &out_dir));
+        assert_eq!(compiled_files.len(), 13);
+
+        let root_json =
+            fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-root.json"))?;
+        assert!(root_json.contains(r#""TypeName""#));
+        assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.7""#));
+        assert!(!root_json.contains(r#""type_name""#));
+        assert!(!root_json.contains(r#""InstanceTypeKind""#));
+        assert!(!root_json.contains(r#""meta""#));
+
         Ok(())
     }
 
     #[test]
-    fn core_schema_internal_ref_check_waits_for_explicit_type_parser_support() -> Result<()> {
+    fn core_schema_json_compilation_emits_each_schema_holon_once() -> Result<()> {
         let out_dir = temp_out_dir();
-        assert_core_schema_explicit_type_failure(compile_inputs(&[fixture_dir()], &out_dir));
+        let compiled_files = compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        let mut map_core_schema_files = Vec::new();
+        for path in compiled_files {
+            let value: Value = serde_json::from_str(&fs::read_to_string(&path)?)?;
+            let has_map_core_schema = value["holons"]
+                .as_array()
+                .map(|holons| holons.iter().any(|holon| holon["key"] == "MAP Core Schema-v0.0.7"))
+                .unwrap_or(false);
+            if has_map_core_schema {
+                map_core_schema_files.push(path);
+            }
+        }
+
+        assert_eq!(map_core_schema_files.len(), 1);
+        assert!(map_core_schema_files[0]
+            .to_string_lossy()
+            .ends_with("MAP Schema Types-map-core-schema-root.json"));
+        Ok(())
+    }
+
+    #[test]
+    fn core_schema_generated_relationship_targets_use_canonical_ref_arrays() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        let relationship_json = fs::read_to_string(
+            out_dir.join("MAP Schema Types-map-core-schema-relationship-types.json"),
+        )?;
+        let relationship_value: Value = serde_json::from_str(&relationship_json)?;
+        let component_of = relationship_value["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| {
+                    holon["key"].as_str()
+                        == Some("(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)")
+                })
+            })
+            .expect("ComponentOf relationship holon");
+        let target = &component_of["relationships"]
+            .as_array()
+            .and_then(|relationships| {
+                relationships
+                    .iter()
+                    .find(|relationship| relationship["name"].as_str() == Some("TargetType"))
+            })
+            .expect("TargetType relationship")["target"];
+        assert!(target.is_array());
+        assert_eq!(target[0]["$ref"], "Schema.HolonType");
+        assert!(!relationship_json.contains(r##""$ref": "#TypeDescriptor.HolonType""##));
+
         Ok(())
     }
 

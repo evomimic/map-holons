@@ -152,6 +152,14 @@ _Avoid_: Semantic acceptance milestone, full parser conformance
 A test-private helper that recognizes only the TDL declaration blocks and clauses needed to guard the corpus before the real source tooling can parse the full Schema 2.0 corpus.
 _Avoid_: TDL parser, semantic scanner, production source model
 
+**LoaderRefRep**:
+The existing schema-backed loader reference representation rooted at HolonLoadSet and composed of loader holons, loader relationship references, and loader holon references.
+_Avoid_: New type system, semantic IR, tool-local loader IR
+
+**MAP Source Syntax**:
+An authoring syntax for expressing holons, including type descriptor holons, as LoaderRefRep-compatible facts; JSON and TDL are alternate concrete syntaxes for the same authored holon content.
+_Avoid_: Treating generated JSON as an arbitrary compiler backend, giving TDL-only semantics to shared holon facts
+
 **PlanNode**:
 A holon-backed structural node in an ExecutionPlan that organizes one or more plan steps.
 _Avoid_: Result node, graph node
@@ -274,6 +282,36 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - R0 corpus guards cover declared-side inverse-pair orientation, selected additive inheritance anchors, the `InstanceKeyRule` cardinality and override anchors, and the current explicit-`type` parser blocker.
 - R0 corpus guards do not validate schema dependency DAGs, cross-schema reference coverage, descriptor conformance, abstract descriptor completeness, endpoint compatibility, default validity, enum semantics, or `TypeKind` migration policy.
 - R0 corpus guard tests live near existing `tools/map-schema` corpus tests and isolate their **Transitional Corpus Scanner** in a clearly removable test module.
+- R6 source tooling compiles file-to-file while remaining isomorphic to **LoaderRefRep** construction: `map-schema compile` renders loader import JSON, and the existing Holon Loader client/runtime path constructs the actual transient loader holon graph.
+- R6 host diagnostics are limited to TDL syntax, source-to-loader-JSON lowering shape, and package-visible duplicate authored keys. Authored relationship targets are preserved as keys; dependency-closure reference resolution belongs to the existing loader reference resolver and later descriptor validation.
+- R6 specialized TDL declaration forms are authoring notation only. Except for `schema` scope behavior, they lower like generic `instance` declarations and must not infer descriptor category, `type`, `Extends`, `DefinesInstanceTypeKind`, legacy `InstanceTypeKind`, or `TypeKind`.
+- R6 preserves implicit `ComponentOf` as schema packaging syntax for descriptor-oriented declaration forms only. Generic `instance` declarations receive no implicit `ComponentOf`, and an explicit descriptor-authored `ComponentOf` in the same TDL file is rejected as ambiguous package ownership.
+- R6 treats `extends` as shorthand for exactly one `Extends` relationship target. Omitted `extends` means no local `Extends`; a declaration that combines `extends` with an authored `Extends` relationship is rejected as duplicate structural authorship.
+- R6 lowers TDL `type` to the loader JSON top-level `type` field so the existing loader client constructs `DescribedBy`. For fidelity, this is the same LoaderRefRep fact as `DescribedBy`; explicitly authoring both `type` and `DescribedBy` is rejected as duplicate describing authorship.
+- R6 canonicalizes repeated ordinary relationship-map entries into one loader JSON relationship per relationship name while preserving authored target order. Duplicate ordinary names accumulate; duplicate shorthand authorship for `type`, `extends`, or implicit `ComponentOf` remains an error.
+- R6 renders generated loader JSON relationship targets as canonical `$ref` objects. Local authored keys are preserved inside `$ref` without host-side resolution, leaving room for future saved or external reference forms without changing the relationship target shape.
+- R6 does not change the existing loader behavior that treats leading `#` as non-semantic local-reference syntax. Generated JSON should omit the leading `#`; exact source spelling, when needed, belongs in provenance rather than key identity.
+- R6 provenance is a source-agnostic, bounded sidecar keyed to loader facts so errors discovered anywhere in the chain can anchor back to the offending source span for highlighting. R6 keeps this sidecar internal/in-memory for diagnostics and tests; it does not add a persisted provenance artifact unless a later consumer requires one.
+- R6 lowers presence-based Boolean shorthand only when authored, producing explicit `true` values. Absence remains omission; R6 does not emit `false` defaults or materialize descriptor-defined defaults.
+- R6 accepts only full cardinality ranges of the form `min..max` or `min..*`. It lowers finite maxima to `MaxCardinality`, lowers `*` by omitting `MaxCardinality`, and never emits finite sentinel values for unbounded cardinality.
+- R6 lowering must not depend on resolving a referenced descriptor and inspecting its contract. Supported syntax lowers mechanically to loader facts; descriptor binding, contract lookup, and semantic validation happen later in the loader and validator pipeline.
+- R6-generated loader JSON uses Schema 2.0 authored member names such as `TypeName`, `IsAbstractType`, `MinCardinality`, and `DeletionSemantic`; it does not emit legacy snake_case adapter names or legacy `InstanceTypeKind`/`TypeKind` projections.
+- JSON and TDL are alternate **MAP Source Syntax** forms for the same authored holon content. TDL may offer shorthand notation and rely on loader/default materialization, but generated JSON should not introduce an arbitrary dialect or representation differences unrelated to those shorthand choices.
+- R6 should choose canonical JSON shapes that support R7 round-trip idempotency. After one normalization pass, `TDL -> JSON -> TDL` should produce the same canonical TDL and `JSON -> TDL -> JSON` should produce the same canonical JSON, backed by LoaderRefRep signature equality rather than original formatting or shorthand preservation.
+- R6 canonical JSON renders every relationship target as an ordered array of `$ref` objects, including singleton relationships. The loader may continue accepting scalar targets and string refs as input compatibility, but generated/canonical JSON uses one uniform target shape.
+- R6 canonical JSON preserves authored omissions. Presence-based Boolean shorthand emits explicit `true` only when authored; omitted booleans/defaultable values are not generated as `false`.
+- R6 canonical JSON omits volatile generated metadata such as timestamps. Schema dependencies lower to the schema holon's `DependsOn` relationship; import orchestration metadata such as `load_with` is not the canonical source representation of Schema 2.0 dependency semantics.
+- R6 canonical JSON uses explicit ordering tables for common properties and relationships with alphabetical fallback. Declaration/holon order follows deterministic source discovery and declaration order; relationship target order preserves authored order exactly.
+- R6 rejects syntactic self-contradictions inside a relationship descriptor, such as a qualified relationship key whose source/name/target segments disagree with authored `source` or `target` clauses. This is exact source consistency, not endpoint substitutability or semantic compatibility validation.
+- R6 requires exactly one `source` and one `target` clause on declared and inverse relationship declaration forms. Generic `instance` declarations do not admit relationship-descriptor shorthand.
+- R6 inline enum variants lower to independent variant descriptor holons plus an enum-side `Variants` relationship on the enclosing enum. Canonical JSON does not author inverse-side `VariantOf`; the `tdl-spec.md` sentence saying inline variants lower to `VariantOf` is stale relative to the current corpus and declared-side authoring rule.
+- Branch 625 should not directly edit `map-dev-docs` while the docs PR is under review; record spec inconsistencies as implementation notes or follow-ups unless a paired docs branch is explicitly requested.
+- R6 acceptance means generated JSON passes the bootstrap import JSON schema and existing loader-client structural parsing into LoaderRefRep. Guest-side descriptor-default materialization, descriptor validation, and validated commit may remain downstream R3/R4/R5 work.
+- R6 vertically replaces the TDL compile/check path so it no longer routes through `SemanticModel`. Existing decompile and legacy comparison paths may remain temporarily until R7/R8, but production TDL compile/check should use the R6 loader-JSON lowering path.
+- After R6, `map-schema check` performs parse/lower/structural validation only: TDL parsing, canonical loader JSON lowering, bootstrap import JSON-schema validation, and any transaction-free parse-only loader JSON shape pass. It must not construct loader holons, create transactions, resolve references, stage holons, materialize defaults, invoke loader dances, or commit.
+- R6 should prefer a transaction-free parse-only API owned by `holons_loader_client` for loader JSON shape validation, consumed by `tools/map-schema`, rather than duplicating the loader JSON parser in source tooling.
+- R6 may add parse-only JSON validation primitives needed for structural acceptance, but JSON-to-TDL rendering, decompilation, and LoaderRefRep fidelity signatures remain R7 work.
+- R6 converts the R0 expected parser-failure tests into green corpus acceptance tests. R0 source-visible guards remain until equivalent assertions can run against real R6 parsed/lowered facts, at which point the test-private Transitional Corpus Scanner should be deleted.
 
 ## Example dialogue
 

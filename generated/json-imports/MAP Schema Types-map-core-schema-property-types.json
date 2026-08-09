@@ -1,939 +1,1146 @@
 {
-  "meta": {
-    "generator": "MAP Schema Compiler",
-    "generated_at": "2026-07-21T21:23:50.91597Z",
-    "export_mode": "by-file",
-    "source_files": [
-      "MAP Schema Types-map-core-schema-property-types.tdl"
-    ],
-    "load_with": [
-      "MAP Schema Types-map-core-schema-abstract-value-types.json",
-      "MAP Schema Types-map-core-schema-concrete-value-types.json",
-      "MAP Schema Types-map-core-schema-root.json"
-    ]
-  },
   "holons": [
     {
       "key": "AllowsDuplicates.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "AllowsDuplicates",
-        "type_name_plural": "AllowsDuplicates",
-        "display_name": "allows_duplicates",
-        "display_name_plural": "allows_duplicates",
-        "description": "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "AllowsDuplicates",
+        "TypeNamePlural": "AllowsDuplicates",
+        "DisplayName": "allows_duplicates",
+        "DisplayNamePlural": "allows_duplicates",
+        "Description": "True if duplicate keys are allowed in the collection of target holons are permitted. If 'false' and is_ordered is also 'false' then the target holons collection is a Set.",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "AllowsAdditionalProperties.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "AllowsAdditionalProperties",
-        "type_name_plural": "AllowsAdditionalProperties",
-        "display_name": "allows_additional_properties",
-        "display_name_plural": "allows_additional_properties",
-        "description": "If true, instances may include properties not explicitly listed by the descriptor.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "AllowsAdditionalProperties",
+        "TypeNamePlural": "AllowsAdditionalProperties",
+        "DisplayName": "allows_additional_properties",
+        "DisplayNamePlural": "allows_additional_properties",
+        "Description": "If true, instances may include properties not explicitly listed by the descriptor.",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "AllowsAdditionalRelationships.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "AllowsAdditionalRelationships",
-        "type_name_plural": "AllowsAdditionalRelationships",
-        "display_name": "allows_additional_relationships",
-        "display_name_plural": "allows_additional_relationships",
-        "description": "If true, instances may include relationships not explicitly listed by the descriptor.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "AllowsAdditionalRelationships",
+        "TypeNamePlural": "AllowsAdditionalRelationships",
+        "DisplayName": "allows_additional_relationships",
+        "DisplayNamePlural": "allows_additional_relationships",
+        "Description": "If true, instances may include relationships not explicitly listed by the descriptor.",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "DeletionSemantic.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "DeletionSemantic",
-        "type_name_plural": "DeletionSemantics",
-        "display_name": "deletion_semantic",
-        "display_name_plural": "deletion_semantics",
-        "description": "Specifies behavior for how to handle requests to delete the source holon from this relationship.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "DeletionSemantic",
+        "TypeNamePlural": "DeletionSemantics",
+        "DisplayName": "deletion_semantic",
+        "DisplayNamePlural": "deletion_semantics",
+        "Description": "Specifies behavior for how to handle requests to delete the source holon from this relationship.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "DeletionSemantic"
-          }
+          "target": [
+            {
+              "$ref": "DeletionSemantic.MapEnumValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "Description.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "Description",
-        "type_name_plural": "Descriptions",
-        "display_name": "description",
-        "display_name_plural": "descriptions",
-        "description": "A human-readable explanation of the purpose or role of this type.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "Description",
+        "TypeNamePlural": "Descriptions",
+        "DisplayName": "description",
+        "DisplayNamePlural": "descriptions",
+        "Description": "A human-readable explanation of the purpose or role of this type.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "DisplayName.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "DisplayName",
-        "type_name_plural": "DisplayNames",
-        "display_name": "displayName",
-        "display_name_plural": "displayNames",
-        "description": "The human-readable label used for this property",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "DisplayName",
+        "TypeNamePlural": "DisplayNames",
+        "DisplayName": "displayName",
+        "DisplayNamePlural": "displayNames",
+        "Description": "The human-readable label used for this property",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "DisplayNamePlural.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "DisplayNamePlural",
-        "type_name_plural": "DisplayNamePlurals",
-        "display_name": "displayNamePlural",
-        "display_name_plural": "displayNamePlurals",
-        "description": "The plural form of the label for use in lists or summaries.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "DisplayNamePlural",
+        "TypeNamePlural": "DisplayNamePlurals",
+        "DisplayName": "displayNamePlural",
+        "DisplayNamePlural": "displayNamePlurals",
+        "Description": "The plural form of the label for use in lists or summaries."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "IsAbstractType.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "IsAbstractType",
-        "type_name_plural": "IsAbstractTypes",
-        "display_name": "isAbstractType",
-        "display_name_plural": "isAbstractTypes",
-        "description": "Indicates whether the type is abstract (cannot be instantiated).",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "IsAbstractType",
+        "TypeNamePlural": "IsAbstractTypes",
+        "DisplayName": "isAbstractType",
+        "DisplayNamePlural": "isAbstractTypes",
+        "Description": "Indicates whether the type is abstract (cannot be instantiated).",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "IsDefinitional.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "IsDefinitional",
-        "type_name_plural": "IsDefinitional",
-        "display_name": "isDefinitional",
-        "display_name_plural": "isDefinitional",
-        "description": "Indicates whether the relationship contributes to the identity of the target holon.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "IsDefinitional",
+        "TypeNamePlural": "IsDefinitional",
+        "DisplayName": "isDefinitional",
+        "DisplayNamePlural": "isDefinitional",
+        "Description": "Indicates whether the relationship contributes to the identity of the target holon.",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "IsOrdered.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "IsOrdered",
-        "type_name_plural": "IsOrdered",
-        "display_name": "isOrdered",
-        "display_name_plural": "isOrdered",
-        "description": "True if the order of related holons is significant.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "IsOrdered",
+        "TypeNamePlural": "IsOrdered",
+        "DisplayName": "isOrdered",
+        "DisplayNamePlural": "isOrdered",
+        "Description": "True if the order of related holons is significant.",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
-      "key": "IsRequired.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "key": "IsValueRequired.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "IsRequired",
-        "type_name_plural": "IsRequired",
-        "display_name": "IsRequired",
-        "display_name_plural": "IsRequired",
-        "description": "True if a value for this property type is required for the holon having this property.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "IsValueRequired",
+        "TypeNamePlural": "IsValueRequired",
+        "DisplayName": "IsValueRequired",
+        "DisplayNamePlural": "IsValueRequired",
+        "Description": "True if a value for this property type is required for the holon having this property.",
+        "InheritanceMode": "None",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DefaultValue.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DefaultValue",
+        "TypeNamePlural": "DefaultValues",
+        "DisplayName": "Default Value",
+        "DisplayNamePlural": "Default Values",
+        "Description": "Value materialized when a required property is omitted during creation. The value must conform to the ValueType selected by the property descriptor carrying the default.",
+        "InheritanceMode": "None",
+        "IsValueRequired": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "BaseValueValueType.ValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InheritanceMode.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "InheritanceMode",
+        "TypeNamePlural": "InheritanceModes",
+        "DisplayName": "Inheritance Mode",
+        "DisplayNamePlural": "Inheritance Modes",
+        "Description": "Controls whether populated descriptor values remain local, accumulate additively, or override inherited values across Extends.",
+        "InheritanceMode": "None",
+        "IsValueRequired": true,
+        "DefaultValue": "None"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "InheritanceMode.MapEnumValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "MapBoolean.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "MapBoolean",
-        "type_name_plural": "MapBooleans",
-        "display_name": "mapBoolean",
-        "display_name_plural": "mapBooleans",
-        "description": "Boolean scalar value (true/false).",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "MapBoolean",
+        "TypeNamePlural": "MapBooleans",
+        "DisplayName": "mapBoolean",
+        "DisplayNamePlural": "mapBooleans",
+        "Description": "Boolean scalar value (true/false)."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBooleanValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "MapBytes.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "MapBytes",
-        "type_name_plural": "MapBytes",
-        "display_name": "mapBytes",
-        "display_name_plural": "mapBytes",
-        "description": "Binary data (blob of bytes).",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "MapBytes",
+        "TypeNamePlural": "MapBytes",
+        "DisplayName": "mapBytes",
+        "DisplayNamePlural": "mapBytes",
+        "Description": "Binary data (blob of bytes)."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapBytesValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapBytesValueType.BytesValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "MapInteger.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "MapInteger",
-        "type_name_plural": "MapIntegers",
-        "display_name": "mapInteger",
-        "display_name_plural": "mapIntegers",
-        "description": "Integer scalar value.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "MapInteger",
+        "TypeNamePlural": "MapIntegers",
+        "DisplayName": "mapInteger",
+        "DisplayNamePlural": "mapIntegers",
+        "Description": "Integer scalar value."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapIntegerValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "MapString.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "MapString",
-        "type_name_plural": "MapStrings",
-        "display_name": "mapString",
-        "display_name_plural": "mapStrings",
-        "description": "Textual scalar value.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "MapString",
+        "TypeNamePlural": "MapStrings",
+        "DisplayName": "mapString",
+        "DisplayNamePlural": "mapStrings",
+        "Description": "Textual scalar value."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "MaxCardinality.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "MaxCardinality",
-        "type_name_plural": "MaxCardinalities",
-        "display_name": "max_cardinality",
-        "display_name_plural": "max_cardinalities",
-        "description": "Maximum number of target holons allowed for the relationship.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "MaxCardinality",
+        "TypeNamePlural": "MaxCardinalities",
+        "DisplayName": "max_cardinality",
+        "DisplayNamePlural": "max_cardinalities",
+        "Description": "Maximum number of target holons allowed for the relationship. Absence means the relationship is unbounded."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapIntegerValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "MinCardinality.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "MinCardinality",
-        "type_name_plural": "MinCardinalities",
-        "display_name": "min_cardinality",
-        "display_name_plural": "min_cardinalities",
-        "description": "Minimum number of target holons allowed for the relationship.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "MinCardinality",
+        "TypeNamePlural": "MinCardinalities",
+        "DisplayName": "min_cardinality",
+        "DisplayNamePlural": "min_cardinalities",
+        "Description": "Minimum number of target holons allowed for the relationship.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapIntegerValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
         }
       ]
     },
     {
-      "key": "TypeKind.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "key": "DefinesInstanceTypeKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "TypeKind",
-        "type_name_plural": "TypeKinds",
-        "display_name": "type_kind",
-        "display_name_plural": "type_kinds",
-        "description": "Specifies the kind of type this descriptor represents.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "DefinesInstanceTypeKind",
+        "TypeNamePlural": "DefinesInstanceTypeKinds",
+        "DisplayName": "Defines Instance TypeKind",
+        "DisplayNamePlural": "Defines Instance TypeKinds",
+        "Description": "Marks an abstract descriptor as the local anchor for the representation kind of the instances described by it and its descendants.",
+        "InheritanceMode": "None",
+        "IsValueRequired": true,
+        "DefaultValue": false
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "TypeKind"
-          }
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "TypeName.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "TypeName",
-        "type_name_plural": "TypeNames",
-        "display_name": "typeName",
-        "display_name_plural": "typeNames",
-        "description": "The unique identifier for a type, typically in ClassCase.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "TypeName",
+        "TypeNamePlural": "TypeNames",
+        "DisplayName": "typeName",
+        "DisplayNamePlural": "typeNames",
+        "Description": "The unique identifier for a type, typically in ClassCase.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "SchemaName.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "SchemaName",
-        "type_name_plural": "SchemaNames",
-        "display_name": "schemaName",
-        "display_name_plural": "schemaNames",
-        "description": "The name of a type schema.  Defines a collection of type descriptor holons.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "SchemaName",
+        "TypeNamePlural": "SchemaNames",
+        "DisplayName": "schemaName",
+        "DisplayNamePlural": "schemaNames",
+        "Description": "The name of a type schema.  Defines a collection of type descriptor holons.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "TypeNamePlural.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "TypeNamePlural",
-        "type_name_plural": "TypeNamePlurals",
-        "display_name": "typeNamePlural",
-        "display_name_plural": "typeNamePlurals",
-        "description": "The plural form of the type's identifier used for display or grouping.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "TypeNamePlural",
+        "TypeNamePlural": "TypeNamePlurals",
+        "DisplayName": "typeNamePlural",
+        "DisplayNamePlural": "typeNamePlurals",
+        "Description": "The plural form of the type's identifier used for display or grouping."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "ErrorType.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "ErrorType",
-        "type_name_plural": "ErrorTypes",
-        "display_name": "error_type",
-        "display_name_plural": "error_types",
-        "description": "Indicates the type of error.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "ErrorType",
+        "TypeNamePlural": "ErrorTypes",
+        "DisplayName": "error_type",
+        "DisplayNamePlural": "error_types",
+        "Description": "Indicates the type of error.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "ErrorMessage.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "ErrorMessage",
-        "type_name_plural": "ErrorMessages",
-        "display_name": "error_message",
-        "display_name_plural": "error_messages",
-        "description": "A descriptive message explaining an error.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "ErrorMessage",
+        "TypeNamePlural": "ErrorMessages",
+        "DisplayName": "error_message",
+        "DisplayNamePlural": "error_messages",
+        "Description": "A descriptive message explaining an error.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "ErrorCount.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "ErrorCount",
-        "type_name_plural": "ErrorCounts",
-        "display_name": "error_count",
-        "display_name_plural": "error_counts",
-        "description": "Number of errors encountered.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "ErrorCount",
+        "TypeNamePlural": "ErrorCounts",
+        "DisplayName": "error_count",
+        "DisplayNamePlural": "error_counts",
+        "Description": "Number of errors encountered.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapIntegerValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "TemplateString.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "TemplateString",
-        "type_name_plural": "TemplateStrings",
-        "display_name": "template_string",
-        "display_name_plural": "template_strings",
-        "description": "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "TemplateString",
+        "TypeNamePlural": "TemplateStrings",
+        "DisplayName": "template_string",
+        "DisplayNamePlural": "template_strings",
+        "Description": "A format string that defines how a value should be constructed from one or more properties. It uses positional placeholders ($0, $1, $2, …) that are substituted in order with values from a related list of parameters. This pattern can be applied to derive identifiers, labels, paths, or other structured strings.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "CollectionType.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "CollectionType",
-        "type_name_plural": "CollectionTypes",
-        "display_name": "collection_type",
-        "display_name_plural": "collection_types",
-        "description": "Selects the runtime wrapper used to inflate a persisted collection holon.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "CollectionType",
+        "TypeNamePlural": "CollectionTypes",
+        "DisplayName": "collection_type",
+        "DisplayNamePlural": "collection_types",
+        "Description": "Selects the runtime wrapper used to inflate a persisted collection holon.",
+        "IsValueRequired": true
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "CollectionType"
-          }
+          "target": [
+            {
+              "$ref": "CollectionType.MapEnumValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "Key.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "Key",
-        "type_name_plural": "Keys",
-        "display_name": "key",
-        "display_name_plural": "keys",
-        "description": "Identifying key of a holon instance.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "Key",
+        "TypeNamePlural": "Keys",
+        "DisplayName": "key",
+        "DisplayNamePlural": "keys",
+        "Description": "Identifying key of a holon instance."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "MapStringValueType"
-          }
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
         }
       ]
     },
     {
       "key": "HolonId.PropertyType",
-      "type": "TypeDescriptor.HolonType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "type_name": "HolonId",
-        "type_name_plural": "HolonIds",
-        "display_name": "holon_id",
-        "display_name_plural": "holon_ids",
-        "description": "ActionHash identifier of a referenced holon.",
-        "instance_type_kind": "TypeKind.Property",
-        "is_abstract_type": false
+        "TypeName": "HolonId",
+        "TypeNamePlural": "HolonIds",
+        "DisplayName": "holon_id",
+        "DisplayNamePlural": "holon_ids",
+        "Description": "ActionHash identifier of a referenced holon."
       },
       "relationships": [
         {
-          "name": "ComponentOf",
-          "target": {
-            "$ref": "MAP Core Schema-v0.0.7"
-          }
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
         },
         {
-          "name": "Extends",
-          "target": {
-            "$ref": "PropertyType"
-          }
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
         },
         {
           "name": "ValueType",
-          "target": {
-            "$ref": "HolonIdValueType"
-          }
+          "target": [
+            {
+              "$ref": "HolonIdValueType.MapBytesValueType"
+            }
+          ]
         }
       ]
     }

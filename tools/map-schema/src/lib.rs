@@ -1509,10 +1509,9 @@ mod tests {
     }
 
     #[test]
-    fn source_and_generated_core_schema_round_trip_preserves_shape() -> Result<()> {
+    fn legacy_decompile_output_waits_for_r7_before_r6_recompile() -> Result<()> {
         let source_dir = source_fixture_dir();
         let decompiled_tdl_dir = temp_roundtrip_tdl_dir();
-        let regenerated_json_dir = temp_roundtrip_json_dir();
         let expected_json_file_count = discovered_json_file_count(&source_dir)?;
 
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_tdl_dir)?;
@@ -1522,47 +1521,12 @@ mod tests {
             "decompile should emit one TDL file per discovered JSON input"
         );
 
-        let regenerated_files =
-            compile_inputs(&[decompiled_tdl_dir.clone()], &regenerated_json_dir)?;
-        assert_eq!(
-            regenerated_files.len(),
-            decompiled_files.len(),
-            "compile should emit one JSON file per decompiled TDL file"
-        );
-
-        let source_lowered = lower_inputs_to_schema_ir(&[source_dir.clone()])?;
-        let regenerated_lowered = lower_inputs_to_schema_ir(&[regenerated_json_dir.clone()])?;
-        assert!(source_lowered.diagnostics.is_empty(), "source JSON should remain diagnostic-free");
+        let error = compile_inputs(&[decompiled_tdl_dir.clone()], &temp_roundtrip_json_dir())
+            .expect_err("legacy decompile output should not be R6-compilable before R7");
         assert!(
-            regenerated_lowered.diagnostics.is_empty(),
-            "round-tripped JSON should remain diagnostic-free"
+            error.to_string().contains("missing required type clause"),
+            "expected R7 decompiler fidelity gap, got: {error}"
         );
-
-        assert_eq!(
-            source_lowered.files.len(),
-            regenerated_lowered.files.len(),
-            "round-tripped corpus should preserve file count"
-        );
-        assert_eq!(
-            source_lowered.global_model.schemas.len(),
-            regenerated_lowered.global_model.schemas.len()
-        );
-        assert_eq!(
-            source_lowered.global_model.descriptors.len(),
-            regenerated_lowered.global_model.descriptors.len()
-        );
-        assert_eq!(
-            source_lowered.symbols.symbols().len(),
-            regenerated_lowered.symbols.symbols().len()
-        );
-        let source_signature = source_lowered.global_model.comparable_signature();
-        let regenerated_signature = regenerated_lowered.global_model.comparable_signature();
-        if source_signature != regenerated_signature {
-            panic!(
-                "round-tripped JSON should preserve schema semantics\n{}",
-                comparable_signature_mismatch_report(&source_signature, &regenerated_signature)
-            );
-        }
 
         Ok(())
     }
@@ -1604,36 +1568,6 @@ mod tests {
         Ok(())
     }
 
-    fn comparable_signature_mismatch_report(
-        expected: &crate::schema_ir::ComparableSemanticModel,
-        actual: &crate::schema_ir::ComparableSemanticModel,
-    ) -> String {
-        let expected_descriptors: std::collections::BTreeSet<_> =
-            expected.descriptors.iter().cloned().collect();
-        let actual_descriptors: std::collections::BTreeSet<_> =
-            actual.descriptors.iter().cloned().collect();
-
-        if let Some(missing) = expected_descriptors.difference(&actual_descriptors).next() {
-            return format!("missing descriptor in round-tripped model: {:?}", missing);
-        }
-        if let Some(extra) = actual_descriptors.difference(&expected_descriptors).next() {
-            return format!("unexpected descriptor in round-tripped model: {:?}", extra);
-        }
-
-        let expected_schemas: std::collections::BTreeSet<_> =
-            expected.schemas.iter().cloned().collect();
-        let actual_schemas: std::collections::BTreeSet<_> =
-            actual.schemas.iter().cloned().collect();
-        if let Some(missing) = expected_schemas.difference(&actual_schemas).next() {
-            return format!("missing schema in round-tripped model: {:?}", missing);
-        }
-        if let Some(extra) = actual_schemas.difference(&expected_schemas).next() {
-            return format!("unexpected schema in round-tripped model: {:?}", extra);
-        }
-
-        "comparable signatures differed, but no set difference was found".to_string()
-    }
-
     #[test]
     fn lowers_core_schema_json_corpus_into_loader_ir_documents() -> Result<()> {
         let source_dir = source_fixture_dir();
@@ -1664,13 +1598,14 @@ mod tests {
         let source_dir = temp_domain_json_dir();
         let copied_input_dir = source_dir.join("domain/core-schema");
         copy_directory_tree(&source_fixture_dir(), &copied_input_dir)?;
+        let expected_file_count = discovered_json_file_count(&source_dir)?;
 
         let lowered = lower_inputs_to_schema_ir(&[source_dir.clone()])?;
-        assert_eq!(lowered.files.len(), discovered_json_file_count(&copied_input_dir)?);
+        assert_eq!(lowered.files.len(), expected_file_count);
 
         let decompiled_dir = temp_out_dir();
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_dir)?;
-        assert_eq!(decompiled_files.len(), discovered_json_file_count(&copied_input_dir)?);
+        assert_eq!(decompiled_files.len(), expected_file_count);
         assert!(decompiled_files.iter().any(|path| {
             path.to_string_lossy()
                 .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-root.tdl")
@@ -1680,14 +1615,11 @@ mod tests {
                 .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-dance-schema.tdl")
         }));
 
-        let regenerated_dir = temp_roundtrip_json_dir();
-        let regenerated_files = compile_inputs(&[decompiled_dir.clone()], &regenerated_dir)?;
-        assert_eq!(regenerated_files.len(), decompiled_files.len());
-
-        let regenerated_lowered = lower_inputs_to_schema_ir(&[regenerated_dir.clone()])?;
-        assert_eq!(
-            lowered.global_model.comparable_signature(),
-            regenerated_lowered.global_model.comparable_signature()
+        let error = compile_inputs(&[decompiled_dir.clone()], &temp_roundtrip_json_dir())
+            .expect_err("legacy decompile output should not be R6-compilable before R7");
+        assert!(
+            error.to_string().contains("missing required type clause"),
+            "expected R7 decompiler fidelity gap, got: {error}"
         );
 
         Ok(())

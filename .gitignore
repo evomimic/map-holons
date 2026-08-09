@@ -10,6 +10,7 @@ target/
 *.webhapp
 *.dna
 *.zip
+generated/tdl-decompiled/
 
 # Workspace-specific targets (for multi-package isolation)
 workspaces/*/target/

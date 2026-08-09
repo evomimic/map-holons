@@ -7,7 +7,7 @@ use map_schema_tool::{
     },
 };
 use std::{
-    io::{self, Read},
+    io::{self, IsTerminal, Read},
     path::PathBuf,
 };
 
@@ -95,7 +95,13 @@ fn main() -> Result<()> {
         }
         Commands::Check { inputs } => {
             let diagnostics = if inputs.is_empty() {
+                if io::stdin().is_terminal() {
+                    return Err(missing_check_input_error());
+                }
                 let stdin = read_stdin()?;
+                if stdin.trim().is_empty() {
+                    return Err(missing_check_input_error());
+                }
                 check_input_string(&stdin, "stdin.tdl")?
             } else {
                 check_inputs(&inputs)?
@@ -157,6 +163,12 @@ fn read_stdin() -> Result<String> {
     let mut raw = String::new();
     io::stdin().read_to_string(&mut raw)?;
     Ok(raw)
+}
+
+fn missing_check_input_error() -> anyhow::Error {
+    anyhow!(
+        "map-schema check needs TDL input; use `npm run map-schema:check:coreschema`, `npm run map-schema:check -- schema-src`, or pipe one TDL document on stdin"
+    )
 }
 
 fn read_single_input(inputs: &[PathBuf]) -> Result<String> {
