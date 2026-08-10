@@ -84,6 +84,7 @@ struct DiscoveredFile {
 #[derive(Debug, Clone)]
 struct ParsedTdlFile {
     relative_path: PathBuf,
+    meta: TdlLiteralObject,
     schema: TdlSchema,
     descriptors: Vec<TdlDescriptor>,
 }
@@ -330,6 +331,9 @@ fn lower_r6_file_to_import_json(
     }
 
     let mut root = serde_json::Map::new();
+    if !file.meta.is_empty() {
+        root.insert("meta".to_string(), literal_to_json(&TdlLiteralValue::Object(file.meta.clone())));
+    }
     root.insert("holons".to_string(), Value::Array(holons));
     Ok(Value::Object(root))
 }
@@ -870,11 +874,17 @@ impl<'a> Parser<'a> {
     fn parse_file(&mut self) -> Result<ParsedTdlFile> {
         let file_path = self.relative_path.clone();
         let mut schema: Option<TdlSchema> = None;
+        let mut meta = TdlLiteralObject::new();
         let mut descriptors = Vec::new();
 
         while self.skip_blank_lines() {
             let line = self.peek_trimmed().unwrap().to_string();
-            if line.starts_with("schema ") {
+            if line == "meta {" {
+                self.consume_trimmed();
+                let (properties, references) = self.parse_properties_block()?;
+                if !meta.is_empty() || !references.is_empty() { return Err(anyhow!("invalid meta declaration in {}", file_path.display())); }
+                meta = properties;
+            } else if line.starts_with("schema ") {
                 if schema.is_some() {
                     return Err(anyhow!("multiple schema declarations in {}", file_path.display()));
                 }
@@ -895,7 +905,7 @@ impl<'a> Parser<'a> {
 
         let schema = schema
             .ok_or_else(|| anyhow!("missing schema declaration in {}", file_path.display()))?;
-        Ok(ParsedTdlFile { relative_path: file_path, schema, descriptors })
+        Ok(ParsedTdlFile { relative_path: file_path, meta, schema, descriptors })
     }
 
     fn parse_schema_decl(&mut self) -> Result<TdlSchema> {
@@ -2084,7 +2094,8 @@ enum Color.EnumType {
         assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.7""#));
         assert!(!root_json.contains(r#""type_name""#));
         assert!(!root_json.contains(r#""InstanceTypeKind""#));
-        assert!(!root_json.contains(r#""meta""#));
+        assert!(root_json.contains(r#""meta""#));
+        assert!(root_json.contains(r#""load_with""#));
 
         Ok(())
     }

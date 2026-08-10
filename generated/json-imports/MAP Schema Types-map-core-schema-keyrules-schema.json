@@ -1,23 +1,19 @@
 {
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
+      "MAP Schema Types-map-core-schema-property-types.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json"
+    ],
+    "source_files": [
+      "MAP Schema Types-map-core-schema-keyrules-schema.csv"
+    ]
+  },
   "holons": [
-    {
-      "key": "MAP Key Rule Schema",
-      "type": "Schema.HolonType",
-      "properties": {
-        "SchemaName": "MAP Key Rule Schema",
-        "Description": "Groups all type descriptors related to holon key derivation strategies in MAP."
-      },
-      "relationships": [
-        {
-          "name": "DependsOn",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        }
-      ]
-    },
     {
       "key": "KeyRuleType.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
@@ -42,7 +38,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -71,7 +67,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -127,7 +123,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -156,7 +152,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -185,7 +181,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -214,7 +210,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -243,7 +239,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -272,7 +268,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -301,7 +297,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -335,7 +331,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -393,7 +389,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Key Rule Schema"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },

@@ -1,26 +1,19 @@
 {
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "MAP Schema Types-map-core-schema-root.json",
+      "MAP Schema Types-map-core-schema-concrete-value-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-property-types.json"
+    ],
+    "source_files": [
+      "MAP Schema Types-map-core-schema-dance-schema.csv"
+    ]
+  },
   "holons": [
-    {
-      "key": "MAP Dance Schema-v0.0.4",
-      "type": "Schema.HolonType",
-      "properties": {
-        "SchemaName": "MAP Dance Schema-v0.0.4",
-        "Description": "Schema containing all the abstract and core type definitions comprising the MAP Core Dance Schema."
-      },
-      "relationships": [
-        {
-          "name": "DependsOn",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            },
-            {
-              "$ref": "MAP Key Rule Schema"
-            }
-          ]
-        }
-      ]
-    },
     {
       "key": "ImplementationName.FormatRule",
       "type": "FormatRule.KeyRuleType",
@@ -62,7 +55,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -110,7 +103,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -149,7 +142,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -180,7 +173,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -218,7 +211,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -247,7 +240,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -298,7 +291,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -372,7 +365,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -416,7 +409,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -449,7 +442,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -507,7 +500,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -556,7 +549,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -615,7 +608,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -664,7 +657,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -722,7 +715,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -771,7 +764,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -829,7 +822,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -878,7 +871,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -936,7 +929,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -985,7 +978,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1043,7 +1036,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1092,7 +1085,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1150,7 +1143,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1199,7 +1192,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1257,7 +1250,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1306,7 +1299,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1364,7 +1357,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1412,7 +1405,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1470,7 +1463,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1516,7 +1509,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1553,7 +1546,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1591,7 +1584,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1628,7 +1621,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1665,7 +1658,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1702,7 +1695,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1739,7 +1732,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1776,7 +1769,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1813,7 +1806,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1850,7 +1843,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1887,7 +1880,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1924,7 +1917,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1961,7 +1954,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -1998,7 +1991,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2036,7 +2029,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2073,7 +2066,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2116,7 +2109,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2145,7 +2138,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2174,7 +2167,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2203,7 +2196,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2243,7 +2236,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2272,7 +2265,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2301,7 +2294,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2368,7 +2361,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2397,7 +2390,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2426,7 +2419,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2455,7 +2448,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2484,7 +2477,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2513,7 +2506,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2542,7 +2535,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2571,7 +2564,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2600,7 +2593,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2629,7 +2622,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2658,7 +2651,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2687,7 +2680,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2733,7 +2726,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2762,7 +2755,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2791,7 +2784,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2820,7 +2813,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -2849,7 +2842,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2886,7 +2879,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2937,7 +2930,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -2974,7 +2967,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -3014,7 +3007,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -3043,7 +3036,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         }
@@ -3072,7 +3065,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -3111,7 +3104,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -3170,7 +3163,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -3217,7 +3210,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },
@@ -3276,7 +3269,7 @@
           "name": "ComponentOf",
           "target": [
             {
-              "$ref": "MAP Dance Schema-v0.0.4"
+              "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
         },

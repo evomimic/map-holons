@@ -23,6 +23,8 @@ const INDENT: &str = "  ";
 
 #[derive(Debug, Clone, Deserialize)]
 struct ImportFile {
+    #[serde(default)]
+    meta: serde_json::Map<String, Value>,
     holons: Vec<HolonRecord>,
 }
 
@@ -196,6 +198,7 @@ struct LoaderFactProject {
 #[derive(Debug, Clone)]
 struct LoaderFactFile {
     relative_path: PathBuf,
+    meta: serde_json::Map<String, Value>,
     schema_key: String,
     schema_holon: Option<LoaderFactHolon>,
     emits_schema_holon: bool,
@@ -218,6 +221,7 @@ struct LoaderFactSignature {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct LoaderFactFileSignature {
     relative_path: String,
+    meta: String,
     holons: Vec<LoaderFactHolonSignature>,
 }
 
@@ -259,6 +263,7 @@ fn loader_fact_project_from_parsed(parsed: Vec<ParsedFile>) -> Result<LoaderFact
 
         files.push(LoaderFactFile {
             relative_path: parsed_file.relative_path,
+            meta: parsed_file.import.meta.clone(),
             schema_key,
             schema_holon,
             emits_schema_holon,
@@ -357,6 +362,7 @@ fn loader_fact_signature(project: &LoaderFactProject) -> LoaderFactSignature {
             holons.extend(file.holons.iter().map(loader_fact_holon_signature));
             LoaderFactFileSignature {
                 relative_path: normalize_relative_path(&file.relative_path),
+                meta: canonical_value_string(&Value::Object(file.meta.clone())),
                 holons,
             }
         })
@@ -392,6 +398,13 @@ fn loader_fact_signature_diff(
 fn render_loader_fact_file(file: &LoaderFactFile) -> Result<String> {
     let mut out = String::new();
     let variant_targets = loader_fact_variant_targets(file);
+    if !file.meta.is_empty() {
+        out.push_str("meta {\n");
+        for (name, value) in &file.meta {
+            out.push_str(&format!("{}{}: {}\n", INDENT, name, canonical_value_string(value)));
+        }
+        out.push_str("}\n\n");
+    }
     render_loader_fact_schema_decl(&mut out, file)?;
 
     for holon in &file.holons {
@@ -736,7 +749,7 @@ fn infer_schema_name(import: &ImportFile) -> Option<String> {
         .iter()
         .find(|holon| holon.descriptor_type == "Schema.HolonType")
         .and_then(schema_name_from_holon)
-        .or_else(|| import.holons.first().and_then(component_of_schema_name))
+        .or_else(|| import.holons.iter().find_map(component_of_schema_name))
 }
 
 fn schema_name_from_holon(holon: &HolonRecord) -> Option<String> {
