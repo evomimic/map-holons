@@ -36,6 +36,9 @@ holon Person.HolonType {
 
 def relationship (Book.HolonType)-[AuthoredBy]->(Person.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> AuthorOf
+  }
   extends DeclaredRelationshipType.RelationshipType
   source Book.HolonType
   target Person.HolonType
@@ -49,19 +52,18 @@ def relationship (Book.HolonType)-[AuthoredBy]->(Person.HolonType) {
   }
 }
 
-inverse relationship (Person.HolonType)-[Authors]->(Book.HolonType) {
+inverse relationship (Person.HolonType)-[AuthorOf]->(Book.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source Person.HolonType
   target Book.HolonType
-  inverse (Book.HolonType)-[AuthoredBy]->(Person.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
     description: "Specifies a book that a Person has authored. Inverse of AuthoredBy."
-    display_name: "Authors"
-    display_plural: "Authors Relationships"
-    plural: "AuthorsRelationships"
+    display_name: "AuthorOf"
+    display_plural: "AuthorOf Relationships"
+    plural: "AuthorOfRelationships"
   }
 }
 

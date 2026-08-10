@@ -10,6 +10,8 @@ target/
 *.webhapp
 *.dna
 *.zip
+generated/tdl-decompiled/
+generated/json-roundtrip/
 
 # Workspace-specific targets (for multi-package isolation)
 workspaces/*/target/

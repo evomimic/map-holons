@@ -21,6 +21,7 @@ abstract holon HolonType.TypeDescriptor {
   type MetaHolonType.MetaTypeDescriptor
   instance_keyrule NoneRule.KeyRuleType
   extends TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract root for descriptor types whose described instances are holons. Concrete holon type descriptors extend this type to classify their instances and inherit the baseline holon instance contract."
     display_name: "Abstract Holon Type"
@@ -56,6 +57,7 @@ abstract holon HolonType.TypeDescriptor {
 abstract holon PropertyType.TypeDescriptor {
   type MetaPropertyType.MetaTypeDescriptor
   extends TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract root for descriptor types that define scalar or structured property members."
     display_name: "Abstract Property Type"
@@ -67,6 +69,7 @@ abstract holon PropertyType.TypeDescriptor {
 abstract holon RelationshipType.TypeDescriptor {
   type MetaHolonType.MetaTypeDescriptor
   extends TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract common classification root for declared and inverse relationship descriptor types."
     display_name: "Relationship Type"
@@ -76,8 +79,9 @@ abstract holon RelationshipType.TypeDescriptor {
 }
 
 abstract holon DeclaredRelationshipType.RelationshipType {
-  type MetaHolonType.MetaTypeDescriptor
+  type MetaDeclaredRelationshipType.MetaRelationshipType
   extends RelationshipType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract root for explicitly declared relationship descriptor types."
     display_name: "Declared Relationship Type"
@@ -87,8 +91,9 @@ abstract holon DeclaredRelationshipType.RelationshipType {
 }
 
 abstract holon InverseRelationshipType.RelationshipType {
-  type MetaHolonType.MetaTypeDescriptor
+  type MetaInverseRelationshipType.MetaRelationshipType
   extends RelationshipType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract root for inverse relationship descriptor types derived from declared relationships."
     display_name: "Inverse Relationship Type"
@@ -114,8 +119,8 @@ abstract holon MetaTypeDescriptor.HolonType {
       DisplayName.PropertyType,
       DisplayNamePlural.PropertyType,
       Description.PropertyType,
+      DefinesInstanceTypeKind.PropertyType,
       IsAbstractType.PropertyType,
-      TypeKind.PropertyType,
       SchemaName.PropertyType
     ]
     InstanceRelationships -> [

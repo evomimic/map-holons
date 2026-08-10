@@ -41,7 +41,7 @@ holon EnumVariantRule.KeyRuleType {
   type MetaHolonType.MetaTypeDescriptor
   extends KeyRuleType.HolonType
   header {
-    description: "For enum-variant descriptors, derives keys as {EnumName}.{VariantName}, for example DeletionSemantic.Allow or TypeKind.Holon."
+    description: "For enum-variant descriptors, derives keys as {EnumName}.{VariantName}, for example DeletionSemantic.Allow."
     display_name: "Enum Variant Rule"
     display_plural: "Enum Variant Rules"
     plural: "EnumVariantRules"
@@ -56,17 +56,6 @@ holon TypeNameRule.KeyRuleType {
     display_name: "Type Name Rule"
     display_plural: "Type Name Rules"
     plural: "TypeNameRules"
-  }
-}
-
-holon TypeKindRule.KeyRuleType {
-  type MetaHolonType.MetaTypeDescriptor
-  extends KeyRuleType.HolonType
-  header {
-    description: "Derives a key from the holon's type_name and type_kind properties."
-    display_name: "Type Kind Rule"
-    display_plural: "Type Kind Rules"
-    plural: "TypeKindRules"
   }
 }
 
@@ -127,6 +116,9 @@ holon SchemaNameRule.KeyRuleType {
 
 def relationship (HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> KeyRuleForInstancesOf
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target KeyRuleType.HolonType
@@ -146,7 +138,6 @@ inverse relationship (KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType
   extends InverseRelationshipType.RelationshipType
   source KeyRuleType.HolonType
   target HolonType.TypeDescriptor
-  inverse (HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {

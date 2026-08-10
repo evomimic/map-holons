@@ -1,13 +1,13 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
-    decompile_input_string, decompile_inputs, dump_symbols, dump_symbols_from_string,
+    decompile_input_string, decompile_inputs, roundtrip_json_inputs,
     tdl_compiler::{
         check_input_string, check_inputs, compile_input_string, compile_inputs, render_check_output,
     },
 };
 use std::{
-    io::{self, Read},
+    io::{self, IsTerminal, Read},
     path::PathBuf,
 };
 
@@ -33,12 +33,6 @@ enum Commands {
         out_dir: Option<PathBuf>,
     },
 
-    /// Print the derived semantic symbol table for JSON import files.
-    Symbols {
-        /// Input JSON files or directories containing JSON files.
-        inputs: Vec<PathBuf>,
-    },
-
     /// Compile TDL source files into JSON import files.
     Compile {
         /// Input TDL files or directories containing TDL files.
@@ -53,6 +47,20 @@ enum Commands {
     Check {
         /// Input TDL files or directories containing TDL files.
         inputs: Vec<PathBuf>,
+    },
+
+    /// Decompile JSON to scratch TDL, recompile it, and compare loader-fact signatures.
+    RoundtripJson {
+        /// Input JSON files or directories containing JSON files.
+        inputs: Vec<PathBuf>,
+
+        /// Output directory for scratch decompiled TDL files.
+        #[arg(long = "tdl-out")]
+        tdl_out: PathBuf,
+
+        /// Output directory for scratch recompiled JSON files.
+        #[arg(long = "json-out")]
+        json_out: PathBuf,
     },
 }
 
@@ -74,14 +82,6 @@ fn main() -> Result<()> {
                 print!("{}", decompile_input_string(&read_single_input(&inputs)?, &inputs[0])?);
             }
         }
-        Commands::Symbols { inputs } => {
-            if inputs.is_empty() {
-                let stdin = read_stdin()?;
-                print!("{}", dump_symbols_from_string(&stdin, "stdin.json")?);
-            } else {
-                print!("{}", dump_symbols(&inputs)?);
-            }
-        }
         Commands::Compile { inputs, out_dir } => {
             if inputs.is_empty() {
                 let stdin = read_stdin()?;
@@ -95,12 +95,31 @@ fn main() -> Result<()> {
         }
         Commands::Check { inputs } => {
             let diagnostics = if inputs.is_empty() {
+                if io::stdin().is_terminal() {
+                    return Err(missing_check_input_error());
+                }
                 let stdin = read_stdin()?;
+                if stdin.trim().is_empty() {
+                    return Err(missing_check_input_error());
+                }
                 check_input_string(&stdin, "stdin.tdl")?
             } else {
                 check_inputs(&inputs)?
             };
             print!("{}", render_check_output(&diagnostics));
+        }
+        Commands::RoundtripJson { inputs, tdl_out, json_out } => {
+            if inputs.is_empty() {
+                return Err(anyhow!("roundtrip-json requires at least one JSON input"));
+            }
+            let report = roundtrip_json_inputs(&inputs, &tdl_out, &json_out)?;
+            println!(
+                "roundtrip ok: wrote {} TDL files to {} and {} JSON files to {}",
+                report.decompiled_files.len(),
+                tdl_out.display(),
+                report.compiled_files.len(),
+                json_out.display()
+            );
         }
     }
 
@@ -126,18 +145,21 @@ Commands:
   check [TDL_FILE_OR_DIR ...]
       Validate TDL syntax and semantic references without writing JSON.
 
-  symbols [JSON_FILE_OR_DIR ...]
-      Print the semantic symbol table derived from JSON imports.
+  roundtrip-json [JSON_FILE_OR_DIR ...] --tdl-out <DIR> --json-out <DIR>
+      Decompile JSON to scratch TDL, recompile that TDL to canonical JSON,
+      and compare deterministic loader-fact signatures.
 
 Common workflows:
   npm run map-schema:decompile:coreschema
   npm run map-schema:check:coreschema
   npm run map-schema:compile:coreschema
+  npm run map-schema:roundtrip:coreschema
 
 Direct examples:
   cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile host/import_files/map-schema/core-schema --out-dir schema-src
   cargo run --manifest-path tools/map-schema/Cargo.toml -- check schema-src
   cargo run --manifest-path tools/map-schema/Cargo.toml -- compile schema-src --out-dir generated/json-imports
+  cargo run --manifest-path tools/map-schema/Cargo.toml -- roundtrip-json generated/json-imports --tdl-out generated/tdl-decompiled --json-out generated/json-roundtrip
 
 Single-file stdin/stdout mode:
   map-schema decompile < input.json > output.tdl
@@ -157,6 +179,12 @@ fn read_stdin() -> Result<String> {
     let mut raw = String::new();
     io::stdin().read_to_string(&mut raw)?;
     Ok(raw)
+}
+
+fn missing_check_input_error() -> anyhow::Error {
+    anyhow!(
+        "map-schema check needs TDL input; use `npm run map-schema:check:coreschema`, `npm run map-schema:check -- schema-src`, or pipe one TDL document on stdin"
+    )
 }
 
 fn read_single_input(inputs: &[PathBuf]) -> Result<String> {

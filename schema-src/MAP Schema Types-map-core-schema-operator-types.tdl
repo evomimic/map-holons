@@ -22,6 +22,7 @@ holon MetaOperatorType.MetaHolonType {
 abstract holon OperatorType.HolonType {
   type MetaOperatorType.MetaHolonType
   extends HolonType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor anchor for core-defined operators applicable to ValueTypes. Concrete operator descriptors carry the metadata used for validation, query construction, and filter expressions."
     display_name: "Operator Type"
@@ -32,6 +33,9 @@ abstract holon OperatorType.HolonType {
 
 def relationship (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> AffordedBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source ValueType.TypeDescriptor
   target OperatorType.HolonType
@@ -51,7 +55,6 @@ inverse relationship (OperatorType.HolonType)-[AffordedBy]->(ValueType.TypeDescr
   extends InverseRelationshipType.RelationshipType
   source OperatorType.HolonType
   target ValueType.TypeDescriptor
-  inverse (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType)
   cardinality 1..*
   deletion_semantic Block
   header {

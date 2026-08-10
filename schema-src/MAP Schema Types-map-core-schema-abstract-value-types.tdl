@@ -114,6 +114,7 @@ holon MetaValueArrayValueType.MetaValueType {
 abstract value ValueType.TypeDescriptor {
   type MetaValueType.MetaTypeDescriptor
   extends TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor category for scalar, enum, variant, and array value types."
     display_name: "Value Type"

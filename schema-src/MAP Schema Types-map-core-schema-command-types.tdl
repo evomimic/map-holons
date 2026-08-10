@@ -21,6 +21,7 @@ holon MetaCommandType.MetaHolonType {
 abstract holon CommandType.HolonType {
   type MetaCommandType.MetaHolonType
   extends HolonType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor type for core MAP command affordances discoverable through descriptor-local command lookup."
     display_name: "Command Type"
@@ -455,6 +456,9 @@ holon DeleteHolon.CommandType {
 
 def relationship (HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> CommandAffordedBy
+  }
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommandType.HolonType
@@ -475,7 +479,6 @@ inverse relationship (CommandType.HolonType)-[CommandAffordedBy]->(HolonType.Typ
   extends InverseRelationshipType.RelationshipType
   source CommandType.HolonType
   target HolonType.TypeDescriptor
-  inverse (HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -489,6 +492,9 @@ inverse relationship (CommandType.HolonType)-[CommandAffordedBy]->(HolonType.Typ
 
 def relationship (CommandType.HolonType)-[CommandPayloadType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> CommandPayloadTypeFor
+  }
   extends DeclaredRelationshipType.RelationshipType
   source CommandType.HolonType
   target HolonType.TypeDescriptor
@@ -508,7 +514,6 @@ inverse relationship (HolonType.TypeDescriptor)-[CommandPayloadTypeFor]->(Comman
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommandType.HolonType
-  inverse (CommandType.HolonType)-[CommandPayloadType]->(HolonType.TypeDescriptor)
   cardinality 0..*
   deletion_semantic Block
   header {
