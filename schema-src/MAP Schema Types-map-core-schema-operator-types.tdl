@@ -43,7 +43,7 @@ def relationship (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.Hol
   cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Links a ValueType descriptor to the concrete operator descriptors available for that value type, supporting validation and query construction."
+    description: "Links a ValueType descriptor to the concrete operator descriptors available for that value type, supporting validation and query construction. Core operator targets may be populated on an abstract value-family anchor so that every specialization inherits them through Additive relationship semantics. A specialization retains those inherited affordances and may add distinct operators, but cannot replace or remove the core targets."
     display_name: "AffordsOperator Relationship"
     display_plural: "AffordsOperator Relationships"
     plural: "AffordsOperatorRelationships"
