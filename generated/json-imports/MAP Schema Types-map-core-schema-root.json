@@ -1,4 +1,20 @@
 {
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "MAP Schema Types-map-core-schema-command-types.json",
+      "MAP Schema Types-map-core-schema-property-types.json",
+      "MAP Schema Types-map-core-schema-relationship-types.json",
+      "MAP Schema Types-map-core-schema-keyrules-schema.json",
+      "MAP Schema Types-map-core-schema-dance-schema.json",
+      "MAP Schema Types-map-core-schema-query-schema.json"
+    ],
+    "source_files": [
+      "MAP Schema Types-map-core-schema-root.csv"
+    ]
+  },
   "holons": [
     {
       "key": "MAP Core Schema-v0.0.7",
@@ -6,23 +22,7 @@
       "properties": {
         "SchemaName": "MAP Core Schema-v0.0.7",
         "Description": "Schema containing the root descriptor types, meta-types, and foundational holon types for the MAP type system."
-      },
-      "relationships": [
-        {
-          "name": "DependsOn",
-          "target": [
-            {
-              "$ref": "MAP Key Rule Schema"
-            },
-            {
-              "$ref": "MAP Dance Schema-v0.0.4"
-            },
-            {
-              "$ref": "MAP Query Schema-v0.0.1"
-            }
-          ]
-        }
-      ]
+      }
     },
     {
       "key": "TypeDescriptor",
