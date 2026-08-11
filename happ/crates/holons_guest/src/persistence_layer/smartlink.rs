@@ -1,8 +1,12 @@
-//! Storage-layer SmartLink persistence API (Storage SL1 Part 2, Issue #594).
+//! Storage-layer SmartLink persistence API (Storage SL1 Part 2, Issue #594; occurrence
+//! semantics activated by Storage SL3).
 //!
 //! Descriptor-unaware read/write/delete over `LinkTypes::SmartLink`. Callers supply
 //! fully-prepared inputs; this layer never resolves relationship descriptors, computes
-//! canonical keys, pairs occurrence ids, or selects target-property cache candidates.
+//! canonical keys, or selects target-property cache candidates. A supplied `occurrence_id`
+//! is honored as part of insertion identity and round-tripped verbatim, but never
+//! generated, defaulted, validated against `AllowsDuplicates`, or paired across the
+//! declared and inverse directions — all of that stays above storage.
 //! It reuses the Tag v1 codec (`core_types::smartlink`) for all encode/decode/prefix work.
 
 use core_types::{

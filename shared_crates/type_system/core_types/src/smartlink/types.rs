@@ -155,7 +155,9 @@ pub struct DecodedSmartLinkTag {
 /// Fully-prepared, descriptor-unaware input to `put_smartlink`.
 ///
 /// Coordination supplies every field; the storage layer never infers or derives
-/// a missing one. `occurrence_id` is always `None` in SL1 Part 2.
+/// a missing one. `occurrence_id` may be `Some(_)` — storage accepts it without any
+/// descriptor-policy gate — and `None` and `Some(id)` are *different* insertion
+/// identities, so a set-style link and an occurrence-bearing one coexist.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PreparedSmartLink {
     pub source_id: LocalId,
@@ -184,8 +186,8 @@ impl PreparedSmartLink {
 /// One decoded, unhydrated SmartLink returned by the storage expansion APIs.
 ///
 /// Preserves the physical `SmartLinkId`, keeps the relationship-property and
-/// target-property caches as separate maps, and round-trips the optional
-/// `OccurrenceId` (always absent in SL1 Part 2).
+/// target-property caches as separate maps, and carries the optional `OccurrenceId`
+/// verbatim from the persisted Tag v1 bytes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SmartLink {
     pub smartlink_id: SmartLinkId,
@@ -411,6 +413,44 @@ mod tests {
         assert!(!live.is_already_present(&p)); // -> Conflict
     }
 
+    fn occ(seed: u8) -> OccurrenceId {
+        OccurrenceId([seed; 16])
+    }
+
+    #[test]
+    fn same_identity_distinguishes_none_from_some() {
+        let p = prepared(); // occurrence_id: None
+        let mut live = live_from(&p, 9);
+        live.occurrence_id = Some(occ(1));
+        // A set-style link and an occurrence-bearing one are separate identities, so
+        // both can be inserted rather than one conflicting with the other.
+        assert!(!live.same_identity(&p));
+    }
+
+    #[test]
+    fn same_identity_distinguishes_distinct_occurrences() {
+        let mut p = prepared();
+        p.occurrence_id = Some(occ(1));
+        let mut live = live_from(&p, 9);
+        live.occurrence_id = Some(occ(2));
+        assert!(!live.same_identity(&p));
+    }
+
+    #[test]
+    fn same_identity_matches_on_equal_occurrence() {
+        let mut p = prepared();
+        p.occurrence_id = Some(occ(1));
+        let live = live_from(&p, 9);
+        assert!(live.same_identity(&p));
+        assert!(live.is_already_present(&p));
+
+        // The conflict path stays reachable *within* one occurrence.
+        let mut conflicting = live_from(&p, 9);
+        conflicting.canonical_key = CanonicalKey::new("other-key").unwrap();
+        assert!(conflicting.same_identity(&p));
+        assert!(!conflicting.is_already_present(&p)); // -> Conflict
+    }
+
     /// 39-byte action-hash-shaped id, required by the codec's hash validation.
     fn hash39(seed: u8) -> LocalId {
         let mut bytes = vec![seed; 39];
@@ -435,6 +475,25 @@ mod tests {
         assert_eq!(sl.source_id, hash39(1));
         assert_eq!(sl.target_id, HolonId::Local(hash39(2)));
         assert_eq!(sl.relationship_name, rel("Likes"));
+        assert_eq!(sl.canonical_key, CanonicalKey::new("apple").unwrap());
+        assert_eq!(sl.occurrence_id, None);
+    }
+
+    #[test]
+    fn decode_smartlink_round_trips_occurrence() {
+        let input = SmartLinkTagInput {
+            target_id: HolonId::Local(hash39(2)),
+            relationship_name: rel("Likes"),
+            canonical_key: CanonicalKey::new("apple").unwrap(),
+            occurrence_id: Some(occ(7)),
+            relationship_property_values: PropertyMap::new(),
+            target_property_cache_candidates: Vec::new(),
+        };
+        let bytes = super::super::encode_smartlink_tag(&input).unwrap();
+
+        let sl = decode_smartlink(SmartLinkId(hash39(9)), hash39(1), hash39(2), &bytes).unwrap();
+        // The occurrence survives encode -> persist -> decode verbatim.
+        assert_eq!(sl.occurrence_id, Some(occ(7)));
         assert_eq!(sl.canonical_key, CanonicalKey::new("apple").unwrap());
     }
 

@@ -793,6 +793,24 @@ mod tests {
         assert_eq!(decoded.occurrence_id, input.occurrence_id);
     }
 
+    /// The external-target test above sets the occurrence flag only alongside the
+    /// proxy flag. This pins the local-target layout, where the 16 occurrence bytes
+    /// follow the flags byte directly with no proxy in between.
+    #[test]
+    fn round_trips_local_target_with_occurrence() {
+        let mut input = local_input();
+        input.occurrence_id = Some(OccurrenceId([7; 16]));
+        input.relationship_property_values = all_values();
+
+        let encoded = encode_smartlink_tag(&input).unwrap();
+        let decoded = decode_smartlink_tag(&encoded, hash(1)).unwrap();
+
+        assert_eq!(decoded.target_id, input.target_id);
+        assert_eq!(decoded.occurrence_id, Some(OccurrenceId([7; 16])));
+        assert_eq!(decoded.canonical_key, input.canonical_key);
+        assert_eq!(decoded.relationship_property_values, all_values());
+    }
+
     #[test]
     fn round_trips_empty_canonical_key() {
         let mut input = local_input();
