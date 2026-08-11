@@ -155,9 +155,11 @@ pub struct DecodedSmartLinkTag {
 /// Fully-prepared, descriptor-unaware input to `put_smartlink`.
 ///
 /// Coordination supplies every field; the storage layer never infers or derives
-/// a missing one. `occurrence_id` may be `Some(_)` — storage accepts it without any
-/// descriptor-policy gate — and `None` and `Some(id)` are *different* insertion
-/// identities, so a set-style link and an occurrence-bearing one coexist.
+/// a missing one. `occurrence_id` may be `Some(_)`: the persistence layer resolves no
+/// relationship descriptor, so whether a relationship *may* carry duplicates is decided
+/// above storage (`DuplicatePolicy` in the reference layer), never here. `None` and
+/// `Some(id)` are *different* insertion identities, so a set-style link and an
+/// occurrence-bearing one coexist.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PreparedSmartLink {
     pub source_id: LocalId,

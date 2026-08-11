@@ -2,11 +2,15 @@
 //! semantics activated by Storage SL3).
 //!
 //! Descriptor-unaware read/write/delete over `LinkTypes::SmartLink`. Callers supply
-//! fully-prepared inputs; this layer never resolves relationship descriptors, computes
-//! canonical keys, or selects target-property cache candidates. A supplied `occurrence_id`
-//! is honored as part of insertion identity and round-tripped verbatim, but never
-//! generated, defaulted, validated against `AllowsDuplicates`, or paired across the
-//! declared and inverse directions — all of that stays above storage.
+//! fully-prepared inputs; this layer computes no canonical keys and selects no
+//! target-property cache candidates. Descriptor-unawareness here is structural, not a
+//! convention: no descriptor type is reachable from this module, so whether a relationship
+//! may carry duplicates is necessarily decided upstream — see `DuplicatePolicy` in
+//! `holons_core::reference_layer`, which is where `AllowsDuplicates` is actually enforced.
+//!
+//! A supplied `occurrence_id` is honored as part of insertion identity and round-tripped
+//! verbatim. Generating one, defaulting it, and pairing it across the declared and inverse
+//! directions all stay above storage.
 //! It reuses the Tag v1 codec (`core_types::smartlink`) for all encode/decode/prefix work.
 
 use core_types::{
