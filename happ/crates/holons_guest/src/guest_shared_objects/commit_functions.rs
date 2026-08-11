@@ -644,6 +644,11 @@ fn save_smartlinks_for_collection(
     for (target_index, resolved_target) in resolved_targets.iter().enumerate() {
         // Persist both directions from one resolved endpoint pair so the forward
         // and inverse SmartLinks stay anchored to the same committed source.
+        //
+        // Both directions pass `occurrence_id: None` because commit processing only
+        // emits set-style links today. That is a coordinator choice, not a storage
+        // limitation: storage persists supplied occurrences as distinct identities
+        // (Storage SL3). Assigning and pairing them is deferred coordinator work.
         let forward_smartlink = PreparedSmartLink {
             source_id: source_id.clone(),
             target_id: HolonId::Local(resolved_target.target_local_id.clone()),
