@@ -163,6 +163,17 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_load_generated_core_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Load generated Schema 2.0 core JSON".to_string());
+        self.steps.push(DanceTestStep::LoadGeneratedCoreSchema { description });
+        Ok(())
+    }
+
     pub fn add_load_book_person_inverse_test_schema_step(
         &mut self,
         description: Option<String>,

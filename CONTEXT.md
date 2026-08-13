@@ -93,16 +93,40 @@ An abstract type used as a polymorphic relationship constraint; each actual endp
 _Avoid_: Directly instantiating the abstract endpoint, rejecting abstract endpoint constraints
 
 **Uniform Endpoint Compatibility**:
-The rule that every relationship endpoint is validated as a holon through its effective semantic type and transitive `Extends`.
-_Avoid_: Using meta-types as descriptor-to-descriptor endpoint categories
+The rule that a required endpoint type must occur in either the endpoint holon's own `Extends` lineage or its describing type's lineage: `requiredType ∈ L(D(H)) or requiredType ∈ L(H)`.
+_Avoid_: Descriptor-only endpoint algorithms, `IsDescriptor` branches, meta-type substitution for descriptor endpoint classification
 
-**EffectiveEndpointType**:
-The semantic type used for endpoint validation: the holon itself when it is a type descriptor, otherwise its `DescribedBy` type.
-_Avoid_: Meta-type substitution for descriptor endpoint classification, separate endpoint validators
+**Endpoint Compatibility**:
+The uniform classification-substitutability predicate over an endpoint's own and describing-type lineages; it does not select the contract to which the endpoint conforms.
+_Avoid_: EffectiveEndpointType as a separate type-selection algorithm, descriptor-only endpoint validation
+
+**Effective Instance Contract**:
+The policy-aware interpretation of `EffectiveValues(T, InstanceProperties)` and `EffectiveValues(T, InstanceRelationships)` across `L(T)`, using each member descriptor's authored `InheritanceMode`. A holon's conformance contract is `EffectiveInstanceContract(D(H))`; a descriptor's own lineage defines the contract it imposes on instances, not the properties it itself may carry.
+_Avoid_: Treating an `Extends` lineage as an always-additive property list, using `L(H)` as an ordinary holon's conformance contract
+
+**Available Properties**:
+The property portion of `EffectiveInstanceContract(D(H))`, exposed through `ReadableHolon` so clients can discover all properties available to a holon whether or not they are populated. A property name binds to exactly one descriptor in that effective contract.
+_Avoid_: Local-property-only discovery, direct `InstanceProperties` flattening that bypasses `InheritanceMode`, treating property availability as a lifecycle-filtered classification
+
+**Default Completion Resolution**:
+For property name `p` on holon `H`, first resolve `D(H)` and compute `EffectiveInstanceContract(D(H))` over `L(D(H))` to bind `p` to property descriptor `P`; then compute `EffectiveMemberDefinition(P)` over the independent lineage `L(P)` to read its effective `IsValueRequired`, `DefaultValue`, and `ValueType`. A default applies only when the effective property is required.
+_Avoid_: Using `L(D(H))` to inherit a property descriptor's definition, reading defaults only from the local property descriptor, treating defaults as read-time fallbacks
+
+**Conditional Default Materialization**:
+`PropertyDescriptor::populate_default_if_required_and_absent` is a crate-private staged-holon completion operation. It preserves an authored value; otherwise it populates the effective default only when the effective property is required; otherwise it leaves the property absent. `WritableHolon::populate_defaults` applies that operation across the receiver's available properties. Both return only success or a resolution/write error, never a validation result.
+_Avoid_: `ensure_default` naming that suggests replacement, overwriting authored values, completion outcomes used as validation states
+
+**Default Population Error Scope**:
+Loader orchestration invokes `populate_defaults` across every property of every nursery-staged holon, aggregates independent resolution/write failures with existing source provenance, and skips commit when any occur. Successful uncommitted writes remain available for diagnostics.
+_Avoid_: Fail-fast population that hides independent errors, commit after a population error, individual rollback as a persistence guarantee
 
 **Meta-Type Holon Classification**:
 The classification established by `MetaTypeDescriptor Extends HolonType`, making every concrete meta-type transitively substitutable for `HolonType`.
 _Avoid_: A separate meta-type `Extends` hierarchy, special descriptor-holon endpoint rules
+
+**Descriptor Classification**:
+The intrinsic classification of a holon whose self-first `Extends` lineage contains `TypeDescriptor`; `DescribedBy` governs descriptor self-conformance but does not determine descriptor status.
+_Avoid_: `TypeKind`, `InstanceTypeKind`, declaration form, describing-meta-type inference
 
 **Descriptor Endpoint Category**:
 An abstract descriptor type such as `PropertyType`, `ValueType`, or `DeclaredRelationshipType` used to classify descriptor holons participating in descriptor-to-descriptor relationships.
@@ -155,6 +179,18 @@ _Avoid_: TDL parser, semantic scanner, production source model
 **LoaderRefRep**:
 The existing schema-backed loader reference representation rooted at HolonLoadSet and composed of loader holons, loader relationship references, and loader holon references.
 _Avoid_: New type system, semantic IR, tool-local loader IR
+
+**Holon Loader**:
+The single production pipeline that constructs, resolves, materializes, and commits any authored holon graph; schema descriptors and validation definitions are holons, not separate loader categories.
+_Avoid_: Type loader, bootstrap loader, package-specific production ingress
+
+**Loader Default Materialization**:
+The guest-loader stage that iterates exactly the transaction nursery's staged holons and applies resolvable authored `DefaultValue` facts to each holon's available properties before commit, without judging semantic conformance or expanding its mutation scope through relationships.
+_Avoid_: Descriptor-aware validation, source-time default emission, commit-owned default application, relationship-traversal materialization
+
+**Transaction Validation Unit**:
+The complete resolved and materialized staged graph that descriptor-aware validation will validate as a whole before any of its holons commit; until that validator is delivered, bootstrap imports rely on their reviewed source and fixture evidence rather than a special bypass mode.
+_Avoid_: Committing a partially valid bootstrap graph for a later transaction to complete, treating package sequencing as validation, a bootstrap validation bypass
 
 **MAP Source Syntax**:
 An authoring syntax for expressing holons, including type descriptor holons, as LoaderRefRep-compatible facts; JSON and TDL are alternate concrete syntaxes for the same authored holon content.
@@ -249,8 +285,7 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 - `MetaRelationshipType` supplies `DeletionSemantic` to both declared and inverse relationship descriptor contracts; each direction explicitly supplies its own **Directional Deletion Semantic**.
 - An **Abstract Relationship Endpoint** constrains actual endpoint holons through their effective descriptors and transitive `Extends`.
 - **Meta-Type Holon Classification** permits meta-type descriptors to participate in the generalized `(HolonType)-[DescribedBy]->(TypeDescriptor)` relationship and its `(TypeDescriptor)-[Instances]->(HolonType)` inverse.
-- **Uniform Endpoint Compatibility** applies because all descriptors are holons: endpoint conformance always resolves through the endpoint holon's effective semantic type.
-- Endpoint validation applies one rule: `EffectiveEndpointType(H) Extends* requiredType`.
+- **Uniform Endpoint Compatibility** applies because all descriptors are holons: `requiredType ∈ L(D(H)) or requiredType ∈ L(H)`.
 - Meta-types declare what descriptor holons must contain through `InstanceProperties` and `InstanceRelationships`; **Descriptor Endpoint Categories** define which semantic descriptor categories may participate as relationship endpoints.
 - **RelationshipType** extends `TypeDescriptor`, supplies the shared relationship key rule, and is extended by both declared and inverse relationship descriptor roots.
 - Core inverse relationships use explicit `Block` deletion semantics to preserve references and contracts, except `MemberOfCollection`, which uses `Allow` for non-owning collection membership.

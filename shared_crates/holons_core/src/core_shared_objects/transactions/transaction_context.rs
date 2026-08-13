@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
-use crate::reference_layer::ReadableHolon;
+use crate::reference_layer::{ReadableHolon, StagedReference};
 use base_types::BaseValue;
 use core_types::{HolonError, HolonId};
 use type_names::CorePropertyTypeName;
@@ -571,6 +571,11 @@ impl TransactionContext {
 
     pub fn import_staged_holons(&self, staged_holons: HolonPool) -> Result<(), HolonError> {
         self.nursery.import_staged_holons(staged_holons)
+    }
+
+    /// Returns the exact nursery-staged set that `commit` will process.
+    pub fn staged_references(&self) -> Result<Vec<StagedReference>, HolonError> {
+        self.nursery.get_staged_references()
     }
 
     pub fn export_transient_holons(&self) -> Result<HolonPool, HolonError> {

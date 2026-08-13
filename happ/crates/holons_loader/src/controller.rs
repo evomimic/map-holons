@@ -315,6 +315,43 @@ impl HolonLoaderController {
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // DEFAULT POPULATION: complete only the exact nursery-staged set.
+        // ─────────────────────────────────────────────────────────────────────
+        let mut population_errors = Vec::new();
+        for mut staged_holon in context.staged_references()? {
+            let source_loader_key = staged_holon.key()?;
+            if let Err(error) = staged_holon.populate_defaults() {
+                population_errors.push(ErrorWithContext { error, source_loader_key });
+            }
+        }
+
+        if !population_errors.is_empty() {
+            let population_error_count = population_errors.len() as i64;
+            let error_holons = make_error_holons_best_effort(
+                context,
+                &population_errors,
+                Some(&provenance_index),
+            )?;
+            let response_reference = self.build_response(
+                context,
+                run_id,
+                total_holons_staged,
+                0,
+                links_created,
+                population_error_count,
+                total_bundles,
+                total_loader_holons,
+                LoadCommitStatus::Skipped,
+                format!(
+                    "Default population reported {} error(s). Commit was skipped. {} holons staged; 0 committed; {} links attempted.",
+                    population_error_count, total_holons_staged, links_created
+                ),
+                error_holons,
+            )?;
+            return Ok(response_reference);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // COMMIT: persist all staged holons (only if both phases succeeded)
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_set - commit");

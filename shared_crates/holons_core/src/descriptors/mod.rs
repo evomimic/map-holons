@@ -4,6 +4,7 @@ pub mod dance_descriptor;
 pub mod dance_response_descriptor;
 pub mod declared_relationship_descriptor;
 pub mod descriptor;
+pub(crate) mod effective_properties;
 pub mod effective_relationships;
 pub mod holon_descriptor;
 pub mod holon_space_descriptor;
