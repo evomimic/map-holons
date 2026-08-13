@@ -16,14 +16,14 @@ use holons_guest_integrity::{
     LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
 };
 
-use super::{fetch_links_to_all_holons, get_all_relationship_links};
-use crate::guest_shared_objects::{commit_functions, get_relationship_links};
+use crate::guest_shared_objects::commit_functions;
 use crate::persistence_layer::{
-    delete_holon_node, get_holon, persist_holon, saved_holon_from_stored,
+    delete_holon_node, expand_all_from_source, expand_from_source, get_all_holon_ids, get_holon,
+    persist_holon, saved_holon_from_stored,
 };
 use crate::{create_local_path, get_holon_by_path};
 use base_types::MapString;
-use core_types::{HolonError, HolonId, HolonWriteRequest};
+use core_types::{HolonError, HolonId, HolonWriteRequest, SmartLink};
 use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
     core_shared_objects::{transactions::TransactionContext, Holon, HolonCollection},
@@ -128,7 +128,7 @@ impl GuestHolonService {
         Ok(HolonReference::Smart(SmartReference::new_from_id(handle, HolonId::Local(local_id))))
     }
 
-    fn mint_smart_reference_from_pointer(
+    fn mint_smart_reference(
         &self,
         context: &Arc<TransactionContext>,
         holon_id: HolonId,
@@ -142,6 +142,27 @@ impl GuestHolonService {
         };
 
         Ok(HolonReference::Smart(smart))
+    }
+
+    /// Mints the runtime reference for one decoded SmartLink, paired with its optional key.
+    ///
+    /// Reads the canonical Tag v1 fields directly. Tag v1 encodes "keyless" as the empty
+    /// canonical key and "no cached target properties" as an empty property map; both
+    /// surface as `None` here.
+    fn reference_from_smartlink(
+        &self,
+        context: &Arc<TransactionContext>,
+        smartlink: &SmartLink,
+    ) -> Result<(Option<MapString>, HolonReference), HolonError> {
+        let key = (!smartlink.canonical_key.as_str().is_empty())
+            .then(|| MapString(smartlink.canonical_key.as_str().to_string()));
+        let smart_property_values = (!smartlink.target_property_values.is_empty())
+            .then(|| smartlink.target_property_values.clone());
+
+        let reference =
+            self.mint_smart_reference(context, smartlink.target_id.clone(), smart_property_values)?;
+
+        Ok((key, reference))
     }
 }
 
@@ -190,14 +211,11 @@ impl HolonServiceApi for GuestHolonService {
         let mut reference_map: HashMap<RelationshipName, Vec<(Option<MapString>, HolonReference)>> =
             HashMap::new();
 
-        let smartlinks = get_all_relationship_links(source_id.local_id())?;
+        let smartlinks = expand_all_from_source(source_id.local_id())?;
         debug!("Retrieved {:?} smartlinks", smartlinks.len());
 
         for smartlink in smartlinks {
-            let canonical_key = smartlink.key()?;
-            let (holon_id, smart_props) = smartlink.to_pointer();
-            let reference =
-                self.mint_smart_reference_from_pointer(context, holon_id, smart_props)?;
+            let (canonical_key, reference) = self.reference_from_smartlink(context, &smartlink)?;
 
             // The following:
             // 1) adds an entry for relationship name if not already present (via `entry` API)
@@ -256,15 +274,13 @@ impl HolonServiceApi for GuestHolonService {
         let mut collection = HolonCollection::new_existing();
 
         // fetch the smartlinks for this relationship (if any)
-        let smartlinks =
-            get_relationship_links(try_action_hash_from_local_id(&local_id)?, relationship_name)?;
+        let smartlinks = expand_from_source(&local_id, relationship_name)?;
         debug!("Got {:?} smartlinks: {:#?}", smartlinks.len(), smartlinks);
 
         for smartlink in smartlinks {
-            let (holon_id, smart_props) = smartlink.to_pointer();
-            let holon_reference =
-                self.mint_smart_reference_from_pointer(context, holon_id, smart_props)?;
-            collection.add_reference_with_key(smartlink.key()?.as_ref(), &holon_reference)?;
+            let (canonical_key, holon_reference) =
+                self.reference_from_smartlink(context, &smartlink)?;
+            collection.add_reference_with_key(canonical_key.as_ref(), &holon_reference)?;
         }
         Ok(collection)
     }
@@ -274,10 +290,10 @@ impl HolonServiceApi for GuestHolonService {
         context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
-        let holon_ids = fetch_links_to_all_holons()?;
+        let holon_ids = get_all_holon_ids()?;
         let mut holon_references = Vec::new();
         for id in holon_ids {
-            holon_references.push(self.mint_smart_reference_from_pointer(context, id, None)?);
+            holon_references.push(self.mint_smart_reference(context, id, None)?);
         }
         collection.add_references(holon_references)?;
 

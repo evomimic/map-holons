@@ -1,5 +1,5 @@
 use crate::{HolonError, HolonId, LocalId, PropertyMap, PropertyName, RelationshipName};
-use base_types::{BaseValue, MapString};
+use base_types::BaseValue;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -203,21 +203,6 @@ pub struct SmartLink {
 }
 
 impl SmartLink {
-    /// Returns the tag's canonical key as a `MapString`, or `None` when keyless.
-    pub fn key(&self) -> Result<Option<MapString>, HolonError> {
-        Ok((!self.canonical_key.as_str().is_empty())
-            .then(|| MapString(self.canonical_key.as_str().to_string())))
-    }
-
-    /// Returns the persisted target identity and any cached smart properties.
-    /// This is context-free and does not mint runtime references.
-    pub fn to_pointer(&self) -> (HolonId, Option<PropertyMap>) {
-        (
-            self.target_id.clone(),
-            (!self.target_property_values.is_empty()).then(|| self.target_property_values.clone()),
-        )
-    }
-
     /// True when this live link shares `prepared`'s insertion identity:
     /// source + target + relationship + occurrence. Canonical key and property
     /// caches are deliberately excluded.
@@ -305,6 +290,7 @@ fn validate_nul_free(wire_type: &str, value: &str) -> Result<(), HolonError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base_types::MapString;
 
     #[test]
     fn canonical_key_accepts_empty_and_rejects_nul() {

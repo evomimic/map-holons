@@ -1,9 +1,8 @@
 use hdk::prelude::*;
 use std::sync::{Arc, RwLock};
 
-use crate::guest_shared_objects::save_smartlink;
-use crate::persistence_layer::persist_holon;
-use core_types::{HolonWriteRequest, PreparedSmartLink};
+use crate::persistence_layer::{persist_holon, put_smartlink};
+use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
 
 use holons_core::{
     core_shared_objects::{
@@ -663,7 +662,7 @@ fn save_smartlinks_for_collection(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, name.0 .0, source_id, forward_smartlink.target_id
         );
-        save_smartlink(forward_smartlink)?;
+        persist_smartlink(forward_smartlink)?;
 
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
@@ -679,10 +678,34 @@ fn save_smartlinks_for_collection(
             "saving inverse smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, inverse_name.0 .0, resolved_target.target_local_id, source_id
         );
-        save_smartlink(inverse_smartlink)?;
+        persist_smartlink(inverse_smartlink)?;
     }
 
     Ok(())
+}
+
+/// Persists one SmartLink through the storage API and applies commit's outcome policy.
+///
+/// `Inserted` and `AlreadyPresent` are both success: the requested link is live either
+/// way, and commit needs no identity back from it. A `Conflict` is surfaced as a **hard
+/// error**: a live link already shares this insertion identity but differs in canonical
+/// key or authoritative relationship properties, so the requested SmartLink was *not*
+/// persisted. Treating it as success would let commit Pass 2 continue as if it had been —
+/// and legacy DHT rows (the old dedup matched only exact tag bytes) can genuinely be in
+/// that state.
+fn persist_smartlink(prepared: PreparedSmartLink) -> Result<(), HolonError> {
+    let source_id = prepared.source_id.clone();
+    let target_id = prepared.target_id.clone();
+    let relationship_name = prepared.relationship_name.clone();
+
+    match put_smartlink(prepared)? {
+        PutSmartLinkOutcome::Inserted(_) | PutSmartLinkOutcome::AlreadyPresent(_) => Ok(()),
+        PutSmartLinkOutcome::Conflict(existing) => Err(HolonError::CommitFailure(format!(
+            "SmartLink conflict: a live link {existing:?} already shares the insertion identity \
+             (source={source_id:?}, target={target_id:?}, relationship={relationship_name:?}) \
+             but differs in canonical key or relationship properties; requested link not persisted"
+        ))),
+    }
 }
 
 /// Requires relationship targets to be local before SmartLink persistence.
