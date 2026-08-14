@@ -687,12 +687,23 @@ fn save_smartlinks_for_collection(
 /// Persists one SmartLink through the storage API and applies commit's outcome policy.
 ///
 /// `Inserted` and `AlreadyPresent` are both success: the requested link is live either
-/// way, and commit needs no identity back from it. A `Conflict` is surfaced as a **hard
-/// error**: a live link already shares this insertion identity but differs in canonical
-/// key or authoritative relationship properties, so the requested SmartLink was *not*
-/// persisted. Treating it as success would let commit Pass 2 continue as if it had been —
-/// and legacy DHT rows (the old dedup matched only exact tag bytes) can genuinely be in
-/// that state.
+/// way, and commit needs no identity back from it. A `Conflict` is an error: a live link
+/// already shares this insertion identity but differs in canonical key or authoritative
+/// relationship properties, so the requested SmartLink was *not* persisted. Pass 2 turns
+/// that error into an `Incomplete` commit response rather than a failed commit — the
+/// holon itself is already persisted by then. Reporting success instead would claim a
+/// relationship was committed when it was not.
+///
+/// This is deliberately defensive, and the window is narrow. Staging hydrates a holon's
+/// persisted relationships, and `add_related_holons` treats an entry whose reference
+/// identity already exists as an idempotent no-op, so a link that is live *before*
+/// staging never reaches this function at all. A conflict therefore requires the
+/// colliding link to appear between staging and commit — a concurrent writer, or a
+/// legacy DHT row surfacing under the old dedup, which matched only exact tag bytes.
+///
+/// Note that no write happens either way: `put_smartlink` declines before authoring. The
+/// entire observable effect of this arm is the reported outcome, which is why
+/// `commit_conflict_tests.rs` asserts the response status rather than the DHT state.
 fn persist_smartlink(prepared: PreparedSmartLink) -> Result<(), HolonError> {
     let source_id = prepared.source_id.clone();
     let target_id = prepared.target_id.clone();
