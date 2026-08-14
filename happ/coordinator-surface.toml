@@ -125,13 +125,6 @@ rationale = "Scaffolded enumeration ingress over the AllHolonNodes infrastructur
 
 [[export]]
 zome = "holons"
-symbol = "get_latest_holon_node"
-exposure_kind = "zome_call"
-classification = "legacy_ingress"
-rationale = "Scaffolded revision lookup whose legacy link-based semantics predate version-aware storage."
-
-[[export]]
-zome = "holons"
 symbol = "get_original_holon_node"
 exposure_kind = "zome_call"
 classification = "legacy_ingress"
@@ -143,13 +136,6 @@ symbol = "get_original_holon_node_with_details"
 exposure_kind = "zome_call"
 classification = "legacy_ingress"
 rationale = "Scaffolded exact-action details lookup retained for the legacy coordinator surface."
-
-[[export]]
-zome = "holons"
-symbol = "get_all_revisions_for_holon_node"
-exposure_kind = "zome_call"
-classification = "legacy_ingress"
-rationale = "Scaffolded revision traversal retained despite MAP not maintaining its legacy HolonNodeUpdates index."
 
 [[export]]
 zome = "holons"

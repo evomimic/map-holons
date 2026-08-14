@@ -25,7 +25,6 @@ pub enum EntryTypes {
 #[hdk_link_types]
 pub enum LinkTypes {
     AllHolonNodes,
-    HolonNodeUpdates,
     LocalHolonSpace,
     SmartLink,
 }
@@ -121,9 +120,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
         },
         FlatOp::RegisterCreateLink { link_type, base_address, target_address, tag, .. } => {
             match link_type {
-                LinkTypes::HolonNodeUpdates => Ok(fixed_callback_result(
-                    validate_holon_node_updates_create(&base_address, &target_address, &tag)?,
-                )),
                 LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
                     &base_address,
                     &target_address,
@@ -138,9 +134,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             }
         }
         FlatOp::RegisterDeleteLink { link_type, original_action, .. } => match link_type {
-            LinkTypes::HolonNodeUpdates => {
-                Ok(fixed_callback_result(validate_holon_node_updates_delete(&original_action)?))
-            }
             LinkTypes::SmartLink => {
                 Ok(pvl_callback_result(validate_smartlink_delete(&original_action)?))
             }
@@ -171,9 +164,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             }
             OpRecord::CreateLink { base_address, target_address, tag, link_type, .. } => {
                 match link_type {
-                    LinkTypes::HolonNodeUpdates => Ok(fixed_callback_result(
-                        validate_holon_node_updates_create(&base_address, &target_address, &tag)?,
-                    )),
                     LinkTypes::SmartLink => Ok(pvl_callback_result(validate_smartlink_create(
                         &base_address,
                         &target_address,
@@ -200,9 +190,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     return Ok(ValidateCallbackResult::Valid);
                 };
                 match link_type {
-                    LinkTypes::HolonNodeUpdates => {
-                        Ok(fixed_callback_result(validate_holon_node_updates_delete(&create_link)?))
-                    }
                     LinkTypes::SmartLink => {
                         Ok(pvl_callback_result(validate_smartlink_delete(&create_link)?))
                     }

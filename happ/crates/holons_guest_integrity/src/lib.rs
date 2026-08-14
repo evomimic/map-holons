@@ -30,7 +30,6 @@ pub use holon_node_lifecycle::{
 };
 pub use infrastructure_links::{
     validate_all_holon_nodes_create, validate_all_holon_nodes_delete,
-    validate_holon_node_updates_create, validate_holon_node_updates_delete,
     validate_local_holon_space_create, validate_local_holon_space_delete,
     InfrastructureLinkRejection,
 };

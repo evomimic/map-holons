@@ -20,7 +20,6 @@ use crate::holon_node_envelope::HOLON_NODE_ENTRY_DEF_INDEX;
 /// policy and are outside descriptor-independent PVL.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InfrastructureLinkRejection {
-    HolonNodeUpdatesCreate,
     NonCanonicalBase { link_name: &'static str, expected_path: &'static str },
     NonEmptyTag { link_name: &'static str },
     NonActionTarget { link_name: &'static str },
@@ -31,9 +30,6 @@ pub enum InfrastructureLinkRejection {
 impl fmt::Display for InfrastructureLinkRejection {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::HolonNodeUpdatesCreate => {
-                formatter.write_str("HolonNodeUpdates links are obsolete and cannot be created")
-            }
             Self::NonCanonicalBase { link_name, expected_path } => write!(
                 formatter,
                 "{link_name} links must use the canonical `{expected_path}` path base"
@@ -53,22 +49,6 @@ impl fmt::Display for InfrastructureLinkRejection {
             }
         }
     }
-}
-
-/// Rejects the obsolete revision index without inspecting either endpoint.
-pub fn validate_holon_node_updates_create(
-    _base_address: &AnyLinkableHash,
-    _target_address: &AnyLinkableHash,
-    _tag: &LinkTag,
-) -> ExternResult<Result<(), InfrastructureLinkRejection>> {
-    Ok(Err(InfrastructureLinkRejection::HolonNodeUpdatesCreate))
-}
-
-/// Allows removal of obsolete revision-index links until Storage SL5 retires the link type.
-pub fn validate_holon_node_updates_delete(
-    _original_action: &CreateLink,
-) -> ExternResult<Result<(), InfrastructureLinkRejection>> {
-    Ok(Ok(()))
 }
 
 /// Validates a whole-space index link to one `HolonNode` lineage root.
@@ -310,17 +290,6 @@ mod tests {
     }
 
     #[test]
-    fn holon_node_updates_create_rejects_without_dependencies_or_endpoint_inspection() {
-        set_hdi(no_dependency_mock());
-        let arbitrary: AnyLinkableHash = ExternalHash::from_raw_36(vec![8; 36]).into();
-
-        assert_eq!(
-            validate_holon_node_updates_create(&arbitrary, &arbitrary, &LinkTag::new(vec![1])),
-            Ok(Err(InfrastructureLinkRejection::HolonNodeUpdatesCreate))
-        );
-    }
-
-    #[test]
     fn active_indexes_accept_canonical_empty_tagged_create_targets_with_one_dependency() {
         for (_, path, validate) in active_indexes() {
             install_target(create_action(EntryType::App(holon_entry_def())));
@@ -445,8 +414,6 @@ mod tests {
     fn fixed_delete_policies_use_no_dependencies() {
         let original = original_create_link();
 
-        set_hdi(no_dependency_mock());
-        assert_eq!(validate_holon_node_updates_delete(&original), Ok(Ok(())));
         set_hdi(no_dependency_mock());
         assert_eq!(validate_local_holon_space_delete(&original), Ok(Ok(())));
         set_hdi(no_dependency_mock());
