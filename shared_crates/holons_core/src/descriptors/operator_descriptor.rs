@@ -1,4 +1,4 @@
-use crate::descriptors::inheritance::flatten_related_members;
+use crate::descriptors::inheritance::effective_relationship_members;
 use crate::descriptors::{
     accessor_helpers, Descriptor, OperatorCategory, TypeHeader, ValueDescriptor,
 };
@@ -65,9 +65,9 @@ impl OperatorDescriptor {
 
     /// Returns value descriptors that declare this operator as afforded.
     pub fn afforded_by(&self) -> Result<Vec<ValueDescriptor>, HolonError> {
-        Ok(flatten_related_members(&self.holon, CoreRelationshipTypeName::AffordedBy)?
+        Ok(effective_relationship_members(&self.holon, CoreRelationshipTypeName::AffordedBy)?
             .into_iter()
-            .map(ValueDescriptor::from_holon)
+            .map(|member| ValueDescriptor::from_holon(member.member))
             .collect())
     }
 }

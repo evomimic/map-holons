@@ -2,6 +2,7 @@ use holons_prelude::prelude::*;
 
 use holons_test::harness::helpers::{
     build_core_schema_content_set, build_generated_core_schema_content_set, CORE_SCHEMA_METRICS,
+    GENERATED_CORE_SCHEMA_METRICS,
 };
 use holons_test::TestExecutionState;
 
@@ -35,13 +36,13 @@ pub async fn execute_load_generated_core_schema(test_state: &mut TestExecutionSt
     execute_load_holons_client(
         test_state,
         content_set,
-        MapInteger(379),
-        MapInteger(379),
-        MapInteger(0),
-        MapInteger(0),
-        MapInteger(12),
-        MapInteger(379),
-        holons_test::ExpectedLoadStatus::Complete,
+        MapInteger(GENERATED_CORE_SCHEMA_METRICS.staged),
+        MapInteger(GENERATED_CORE_SCHEMA_METRICS.committed),
+        MapInteger(GENERATED_CORE_SCHEMA_METRICS.links_created),
+        MapInteger(GENERATED_CORE_SCHEMA_METRICS.errors),
+        MapInteger(GENERATED_CORE_SCHEMA_METRICS.total_bundles),
+        MapInteger(GENERATED_CORE_SCHEMA_METRICS.total_loader_holons),
+        GENERATED_CORE_SCHEMA_METRICS.commit_status,
     )
     .await;
 }

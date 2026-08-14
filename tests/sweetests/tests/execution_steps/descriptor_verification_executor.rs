@@ -361,8 +361,8 @@ async fn assert_loaded_schema_backed_dance_discovery(
     assert_eq!(
         dance_type_names(child_descriptor.afforded_dances()),
         vec![
-            DanceName(MapString("Inspect".to_string())),
             DanceName(MapString("Query".to_string())),
+            DanceName(MapString("Inspect".to_string())),
         ]
     );
     assert_eq!(

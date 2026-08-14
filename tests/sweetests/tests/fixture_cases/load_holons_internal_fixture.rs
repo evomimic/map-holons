@@ -5,18 +5,17 @@
 //! bundles and assertions as steps. This keeps setup lean and mirrors real usage.
 //!
 //! Scope: loader-controller behavior only — empty bundles, nodes-only loads,
-//! untyped-relationship rejection, duplicate-key failure, response metrics,
-//! error holons, and `LoadCommitStatus`. Typed/inverse relationship **success**
-//! coverage requires the full committed core schema (strict commit Pass 2
-//! resolves every relationship against the source holon's effective schema
-//! surface and materializes inverses), so it lives in the schema-backed
-//! loader-client fixture (`load_book_person_inverse_schema_fixture`), not here.
+//! descriptor-independent relationship staging, duplicate-key failure, response
+//! metrics, error holons, and `LoadCommitStatus`. Commit-triggered descriptor-aware
+//! validation is deferred to later work. Until then, an undeclared relationship can
+//! be staged, but relationship persistence makes the current two-pass commit
+//! incomplete after its holons have been saved.
 //!
 //! ## Fixture Progression (combined)
 //!
 //! 1. **Empty bundle** → `UnprocessableEntity`; database remains baseline (only Space holon)
 //! 2. **Nodes-only bundle** (no relationships) → `OK`; LinksCreated = 0
-//! 3. **Untyped declared relationship bundle** → pass-2 error; commit skipped
+//! 3. **Undeclared relationship bundle** → relationship staged; current two-pass commit is incomplete
 //! 4. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; DB unchanged
 //!
 //! ### Why a single fixture?
@@ -28,8 +27,9 @@
 //!
 //! - `context.mutation().new_holon(Some(key: String | MapString))` **sets the holon `Key` property automatically**,
 //!   so we simply pass the *intended instance key string* when creating LoaderHolons.
-//! - Arbitrary relationship names now require a resolvable type graph; an untyped relationship is
-//!   intentionally covered as an error case.
+//! - Loader relationship resolution binds named endpoints independently of descriptor-aware
+//!   validation. Once implemented, commit-triggered semantic validation must reject an invalid
+//!   transaction before any of its staged data is persisted.
 //! - Pass-2 resolves `LoaderRelationshipReference` endpoints by `LoaderHolonReference.holon_key`
 //!   (in-bundle first, then previously committed as your resolver specifies).
 //!
@@ -182,7 +182,7 @@ fn build_single_loader_with_offset_bundle(
 /// Combined loader-controller fixture:
 ///  1) Empty bundle → UnprocessableEntity; DB remains 1 (space holon)
 ///  2) Nodes-only bundle (3 nodes) → OK; LinksCreated=0; DB becomes 1 + 3
-///  3) Untyped declared link bundle → pass-2 error; DB remains 1 + 3
+///  3) Undeclared link bundle → relationship staged; current commit saves its 2 holons but is incomplete
 ///  4) Multi-bundle duplicate-key set (same LoaderHolon key in two files) → UnprocessableEntity; DB unchanged
 ///
 /// Notes:
@@ -200,8 +200,8 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
             loader short-circuits cleanly (no holons staged/committed, DB unchanged),\n\
          3) Load a nodes-only HolonLoadSet (Book/Person/Publisher LoaderHolons, no relationships)\n\
             and assert holons are staged + committed, LinksCreated = 0,\n\
-         4) Load an untyped declared-relationship HolonLoadSet and assert the resolver rejects\n\
-            it without committing staged holons,\n\
+         4) Load an undeclared-relationship HolonLoadSet and assert the loader stages the link,\n\
+            while the current two-pass commit saves its holons and reports Incomplete,\n\
          5) Load a multi-bundle HolonLoadSet where two different bundles each contain a\n\
             LoaderHolon with the same Key but different filenames and byte offsets, and assert\n\
             the loader reports a duplicate-key error, skips commit (HolonsCommitted = 0),\n\
@@ -255,8 +255,10 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Begin new transaction before declared-link load".to_string()),
     )?;
 
-    // D) Untyped arbitrary relationships are now rejected because the guest resolver
-    // requires a provable relationship type descriptor.
+    // D) Named relationships are resolved and staged independently of descriptor-aware
+    // validation. The current two-pass commit saves the holons before relationship
+    // persistence fails, so it reports Incomplete. Once commit-triggered semantic
+    // validation is implemented, it must reject the transaction before persistence.
     let (declared_bundle, node_count, _links_created) = build_declared_links_bundle(
         &fixture_context,
         "Bundle.DeclaredLink.1",
@@ -272,14 +274,15 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_holons_internal_step(
         declared_set,
         MapInteger(node_count as i64), // holons_staged
-        MapInteger(0),                 // commit skipped
-        MapInteger(0),                 // relationship could not be resolved
-        MapInteger(1),                 // one pass-2 invalid-type error
+        MapInteger(node_count as i64), // holons_committed
+        MapInteger(1),                 // relationship resolved and staged
+        MapInteger(0),                 // errors_encountered
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
-        ExpectedLoadStatus::Skipped,
+        ExpectedLoadStatus::Incomplete,
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
+    let committed_holons = n_nodes as i64 + node_count as i64;
+    test_case.add_ensure_database_count_step(MapInteger(1 + committed_holons), None)?;
     test_case.add_begin_transaction_step(
         None,
         Some("Begin new transaction before duplicate-key load".to_string()),
@@ -335,7 +338,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // DB must remain unchanged after duplicate-key failure.
-    test_case.add_ensure_database_count_step(MapInteger(1 + n_nodes as i64), None)?;
+    test_case.add_ensure_database_count_step(MapInteger(1 + committed_holons), None)?;
 
     // Finalize
     test_case.finalize(&fixture_context, &fixture_holons)?;

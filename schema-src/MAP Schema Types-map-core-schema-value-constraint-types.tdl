@@ -240,11 +240,10 @@ def relationship (StringValueType.ValueType)-[Constraints]->(StringValueConstrai
   extends DeclaredRelationshipType.RelationshipType
   source StringValueType.ValueType
   target StringValueConstraint.ValueConstraintType
-  InheritanceMode Override
   cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Attaches string-specific value constraints to a string value type. A local constraint set replaces the nearest inherited set."
+    description: "Attaches string-specific value constraints to a string value type. Inherited and local constraint declarations accumulate."
     display_name: "Constraints Relationship"
     display_plural: "Constraints Relationships"
     plural: "Constraints"
@@ -259,11 +258,10 @@ def relationship (IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstr
   extends DeclaredRelationshipType.RelationshipType
   source IntegerValueType.ValueType
   target IntegerValueConstraint.ValueConstraintType
-  InheritanceMode Override
   cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Attaches integer-specific value constraints to an integer value type. A local constraint set replaces the nearest inherited set."
+    description: "Attaches integer-specific value constraints to an integer value type. Inherited and local constraint declarations accumulate."
     display_name: "Constraints Relationship"
     display_plural: "Constraints Relationships"
     plural: "Constraints"
@@ -278,11 +276,10 @@ def relationship (BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint
   extends DeclaredRelationshipType.RelationshipType
   source BytesValueType.ValueType
   target BytesValueConstraint.ValueConstraintType
-  InheritanceMode Override
   cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Attaches bytes-specific value constraints to a bytes value type. A local constraint set replaces the nearest inherited set."
+    description: "Attaches bytes-specific value constraints to a bytes value type. Inherited and local constraint declarations accumulate."
     display_name: "Constraints Relationship"
     display_plural: "Constraints Relationships"
     plural: "Constraints"
@@ -297,11 +294,10 @@ def relationship (ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConst
   extends DeclaredRelationshipType.RelationshipType
   source ValueArrayValueType.ValueType
   target ValueArrayConstraint.ValueConstraintType
-  InheritanceMode Override
   cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Attaches value-array-specific constraints to a value array type. A local constraint set replaces the nearest inherited set."
+    description: "Attaches value-array-specific constraints to a value array type. Inherited and local constraint declarations accumulate."
     display_name: "Constraints Relationship"
     display_plural: "Constraints Relationships"
     plural: "Constraints"

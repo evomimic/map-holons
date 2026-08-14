@@ -671,7 +671,6 @@ fn ordered_loader_fact_properties(properties: &BTreeMap<String, Value>) -> Vec<(
         "MinCardinality",
         "MaxCardinality",
         "DeletionSemantic",
-        "InheritanceMode",
         "IsValueRequired",
         "DefaultValue",
         "AllowsAdditionalProperties",
@@ -919,7 +918,7 @@ mod tests {
     }
 
     #[test]
-    fn decompiler_preserves_relationship_pair_facts_as_literal_instances() -> Result<()> {
+    fn decompiler_preserves_normalized_relationship_pair_facts() -> Result<()> {
         let out_dir = temp_out_dir();
         decompile_inputs(&[generated_fixture_dir()], &out_dir)?;
 
@@ -929,7 +928,9 @@ mod tests {
 
         assert!(relationship_types
             .contains("instance \"(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)\""));
-        assert!(relationship_types.contains(
+        assert!(relationship_types
+            .contains("HasInverse -> \"(Schema.HolonType)-[Components]->(TypeDescriptor)\""));
+        assert!(!relationship_types.contains(
             "HasInverse -> [\"(Schema.HolonType)-[Components]->(TypeDescriptor)\", \"Components\"]"
         ));
         assert!(relationship_types.contains("SourceType -> \"TypeDescriptor\""));

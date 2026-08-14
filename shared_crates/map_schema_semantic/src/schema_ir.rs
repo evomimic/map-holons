@@ -140,7 +140,7 @@ impl fmt::Display for ReferenceRole {
         match self {
             Self::ComponentOf => write!(f, "ComponentOf"),
             Self::Extends => write!(f, "Extends"),
-            Self::KeyRule => write!(f, "UsesKeyRule"),
+            Self::KeyRule => write!(f, "InstanceKeyRule"),
             Self::SourceType => write!(f, "SourceType"),
             Self::TargetType => write!(f, "TargetType"),
             Self::InverseOf => write!(f, "InverseOf"),

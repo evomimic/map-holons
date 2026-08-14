@@ -446,9 +446,6 @@
           "target": [
             {
               "$ref": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)"
-            },
-            {
-              "$ref": "RelationshipReferenceOf"
             }
           ]
         }
@@ -554,9 +551,6 @@
           "target": [
             {
               "$ref": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)"
-            },
-            {
-              "$ref": "ReferenceSourceOf"
             }
           ]
         }
@@ -661,9 +655,6 @@
           "target": [
             {
               "$ref": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)"
-            },
-            {
-              "$ref": "ReferenceTargetOf"
             }
           ]
         }
@@ -766,9 +757,6 @@
           "target": [
             {
               "$ref": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)"
-            },
-            {
-              "$ref": "BundleMemberOf"
             }
           ]
         }
@@ -872,9 +860,6 @@
           "target": [
             {
               "$ref": "(HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)"
-            },
-            {
-              "$ref": "LoadErrorOf"
             }
           ]
         }
@@ -978,9 +963,6 @@
           "target": [
             {
               "$ref": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)"
-            },
-            {
-              "$ref": "ContainedIn"
             }
           ]
         }

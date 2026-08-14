@@ -65,9 +65,6 @@
           "target": [
             {
               "$ref": "(Schema.HolonType)-[Components]->(TypeDescriptor)"
-            },
-            {
-              "$ref": "Components"
             }
           ]
         }
@@ -121,7 +118,7 @@
       ]
     },
     {
-      "key": "(TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)",
+      "key": "(HolonType.TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "InstanceProperties",
@@ -131,8 +128,7 @@
         "Description": "Connects a type descriptor to the property descriptors in its instance contract.",
         "IsDefinitional": true,
         "MinCardinality": 0,
-        "DeletionSemantic": "Block",
-        "inheritance_mode": "Additive"
+        "DeletionSemantic": "Block"
       },
       "relationships": [
         {
@@ -155,7 +151,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "TypeDescriptor"
+              "$ref": "HolonType.TypeDescriptor"
             }
           ]
         },
@@ -171,17 +167,14 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(TypeDescriptor)"
-            },
-            {
-              "$ref": "InstancePropertyFor"
+              "$ref": "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor)"
             }
           ]
         }
       ]
     },
     {
-      "key": "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(TypeDescriptor)",
+      "key": "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "InstancePropertyFor",
@@ -221,14 +214,14 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "TypeDescriptor"
+              "$ref": "HolonType.TypeDescriptor"
             }
           ]
         }
       ]
     },
     {
-      "key": "(TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)",
+      "key": "(HolonType.TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "InstanceRelationships",
@@ -238,8 +231,7 @@
         "Description": "Connects a type descriptor to the declared relationship descriptors in its instance contract.",
         "IsDefinitional": true,
         "MinCardinality": 0,
-        "DeletionSemantic": "Block",
-        "inheritance_mode": "Additive"
+        "DeletionSemantic": "Block"
       },
       "relationships": [
         {
@@ -262,7 +254,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "TypeDescriptor"
+              "$ref": "HolonType.TypeDescriptor"
             }
           ]
         },
@@ -278,17 +270,14 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(DeclaredRelationshipType.RelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor)"
-            },
-            {
-              "$ref": "InstanceRelationshipFor"
+              "$ref": "(DeclaredRelationshipType.RelationshipType)-[InstanceRelationshipFor]->(HolonType.TypeDescriptor)"
             }
           ]
         }
       ]
     },
     {
-      "key": "(DeclaredRelationshipType.RelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor)",
+      "key": "(DeclaredRelationshipType.RelationshipType)-[InstanceRelationshipFor]->(HolonType.TypeDescriptor)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "InstanceRelationshipFor",
@@ -328,7 +317,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "TypeDescriptor"
+              "$ref": "HolonType.TypeDescriptor"
             }
           ]
         }
@@ -386,9 +375,6 @@
           "target": [
             {
               "$ref": "(TypeDescriptor)-[Instances]->(HolonType.TypeDescriptor)"
-            },
-            {
-              "$ref": "Instances"
             }
           ]
         }
@@ -492,9 +478,6 @@
           "target": [
             {
               "$ref": "(HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor)"
-            },
-            {
-              "$ref": "Owns"
             }
           ]
         }
@@ -599,9 +582,6 @@
           "target": [
             {
               "$ref": "(ValueType.TypeDescriptor)-[ValueTypeFor]->(PropertyType.TypeDescriptor)"
-            },
-            {
-              "$ref": "ValueTypeFor"
             }
           ]
         }
@@ -706,9 +686,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[SourceOf]->(RelationshipType.TypeDescriptor)"
-            },
-            {
-              "$ref": "SourceOf"
             }
           ]
         }
@@ -813,9 +790,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[TargetOf]->(RelationshipType.TypeDescriptor)"
-            },
-            {
-              "$ref": "TargetOf"
             }
           ]
         }
@@ -920,9 +894,6 @@
           "target": [
             {
               "$ref": "(InverseRelationshipType.RelationshipType)-[InverseOf]->(DeclaredRelationshipType.RelationshipType)"
-            },
-            {
-              "$ref": "InverseOf"
             }
           ]
         }
@@ -1027,9 +998,6 @@
           "target": [
             {
               "$ref": "(EnumVariantValueType.ValueType)-[VariantOf]->(EnumValueType.ValueType)"
-            },
-            {
-              "$ref": "VariantOf"
             }
           ]
         }
@@ -1134,9 +1102,6 @@
           "target": [
             {
               "$ref": "(Schema.HolonType)-[Dependents]->(Schema.HolonType)"
-            },
-            {
-              "$ref": "Dependents"
             }
           ]
         }
@@ -1241,9 +1206,6 @@
           "target": [
             {
               "$ref": "(ValueType.TypeDescriptor)-[ElementValueTypeFor]->(ValueArrayValueType.ValueType)"
-            },
-            {
-              "$ref": "ElementValueTypeFor"
             }
           ]
         }
@@ -1348,9 +1310,6 @@
           "target": [
             {
               "$ref": "(TypeDescriptor)-[ExtendedBy]->(TypeDescriptor)"
-            },
-            {
-              "$ref": "ExtendedBy"
             }
           ]
         }
@@ -1455,9 +1414,6 @@
           "target": [
             {
               "$ref": "(PropertyType.TypeDescriptor)-[TemplateParameterFor]->(FormatRule.KeyRuleType)"
-            },
-            {
-              "$ref": "TemplateParameterFor"
             }
           ]
         }
@@ -1562,9 +1518,6 @@
           "target": [
             {
               "$ref": "(Transaction.HolonType)-[TransactionModelAffordedBy]->(HolonSpace.HolonType)"
-            },
-            {
-              "$ref": "TransactionModelAffordedBy"
             }
           ]
         }
@@ -1670,9 +1623,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[MemberOfCollection]->(HolonCollection.HolonType)"
-            },
-            {
-              "$ref": "MemberOfCollection"
             }
           ]
         }
@@ -1777,9 +1727,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[ElementTypeFor]->(HolonCollection.HolonType)"
-            },
-            {
-              "$ref": "ElementTypeFor"
             }
           ]
         }
@@ -1884,9 +1831,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[Successor]->(HolonType.TypeDescriptor)"
-            },
-            {
-              "$ref": "Successor"
             }
           ]
         }

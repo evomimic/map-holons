@@ -1,5 +1,5 @@
 use crate::descriptors::accessor_helpers::{descriptor_label, require_bool, require_integer};
-use crate::descriptors::inheritance::{flatten_related_members, walk_extends_chain};
+use crate::descriptors::inheritance::{effective_relationship_members, walk_extends_chain};
 use crate::descriptors::TypeHeader;
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, SchemaInvalidityKind};
@@ -164,8 +164,9 @@ pub(crate) fn resolve_integer_constraints(
     // Constraint discovery: value descriptors inherit constraint relationships
     // through the same flattened Extends traversal used by other descriptors.
     for constraint_holon in
-        flatten_related_members(value_type, CoreRelationshipTypeName::Constraints)?
+        effective_relationship_members(value_type, CoreRelationshipTypeName::Constraints)?
     {
+        let constraint_holon = constraint_holon.member;
         let classification = classify_constraint(&constraint_holon)?;
         require_family(
             value_type,
@@ -210,8 +211,9 @@ pub(crate) fn resolve_string_constraints(
     // Constraint discovery: local and inherited constraint holons are resolved
     // into a family-specific runtime shape before validation executes.
     for constraint_holon in
-        flatten_related_members(value_type, CoreRelationshipTypeName::Constraints)?
+        effective_relationship_members(value_type, CoreRelationshipTypeName::Constraints)?
     {
+        let constraint_holon = constraint_holon.member;
         let classification = classify_constraint(&constraint_holon)?;
         require_family(
             value_type,

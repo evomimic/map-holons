@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, inheritance::flatten_related_members, CommandDescriptor, Descriptor,
+    accessor_helpers, inheritance::effective_relationship_members, CommandDescriptor, Descriptor,
     TypeHeader,
 };
 use crate::reference_layer::HolonReference;
@@ -29,8 +29,14 @@ impl TransactionDescriptor {
 
     /// Returns effective command descriptors across this descriptor's inheritance chain.
     pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
-        flatten_related_members(&self.holon, CoreRelationshipTypeName::AffordsCommand)
-            .map(|members| members.into_iter().map(CommandDescriptor::from_holon).collect())
+        effective_relationship_members(&self.holon, CoreRelationshipTypeName::AffordsCommand).map(
+            |members| {
+                members
+                    .into_iter()
+                    .map(|member| CommandDescriptor::from_holon(member.member))
+                    .collect()
+            },
+        )
     }
 
     /// Finds an effective transaction command affordance by command descriptor type name.

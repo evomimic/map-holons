@@ -151,8 +151,8 @@ holon MetaHolonType.MetaTypeDescriptor {
     ]
     InstanceRelationships -> [
       (HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType),
-      (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor),
-      (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)
+      (HolonType.TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor),
+      (HolonType.TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)
     ]
   }
 }
@@ -170,7 +170,6 @@ holon MetaPropertyType.MetaTypeDescriptor {
     InstanceProperties -> [
       IsValueRequired.PropertyType,
       DefaultValue.PropertyType,
-      InheritanceMode.PropertyType
     ]
     InstanceRelationships -> [
       (PropertyType.TypeDescriptor)-[ValueType]->(ValueType.TypeDescriptor)
@@ -196,7 +195,6 @@ abstract holon MetaRelationshipType.MetaTypeDescriptor {
       MinCardinality.PropertyType,
       MaxCardinality.PropertyType,
       DeletionSemantic.PropertyType,
-      InheritanceMode.PropertyType
     ]
     InstanceRelationships -> [
       (RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor),

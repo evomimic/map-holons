@@ -406,7 +406,6 @@
         "DisplayName": "IsValueRequired",
         "DisplayNamePlural": "IsValueRequired",
         "Description": "True if a value for this property type is required for the holon having this property.",
-        "InheritanceMode": "None",
         "IsValueRequired": true,
         "DefaultValue": false
       },
@@ -446,7 +445,6 @@
         "DisplayName": "Default Value",
         "DisplayNamePlural": "Default Values",
         "Description": "Value materialized when a required property is omitted during creation. The value must conform to the ValueType selected by the property descriptor carrying the default.",
-        "InheritanceMode": "None",
         "IsValueRequired": false
       },
       "relationships": [
@@ -471,46 +469,6 @@
           "target": [
             {
               "$ref": "BaseValueValueType.ValueType"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "InheritanceMode.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor",
-      "properties": {
-        "TypeName": "InheritanceMode",
-        "TypeNamePlural": "InheritanceModes",
-        "DisplayName": "Inheritance Mode",
-        "DisplayNamePlural": "Inheritance Modes",
-        "Description": "Controls whether populated descriptor values remain local, accumulate additively, or override inherited values across Extends.",
-        "InheritanceMode": "None",
-        "IsValueRequired": true,
-        "DefaultValue": "None"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "PropertyType.TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "ValueType",
-          "target": [
-            {
-              "$ref": "InheritanceMode.MapEnumValueType"
             }
           ]
         }
@@ -748,7 +706,6 @@
         "DisplayName": "Defines Instance TypeKind",
         "DisplayNamePlural": "Defines Instance TypeKinds",
         "Description": "Marks an abstract descriptor as the local anchor for the representation kind of the instances described by it and its descendants.",
-        "InheritanceMode": "None",
         "IsValueRequired": true,
         "DefaultValue": false
       },

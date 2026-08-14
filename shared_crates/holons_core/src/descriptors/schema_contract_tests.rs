@@ -366,8 +366,8 @@ fn transaction_descriptor_afforded_commands_returns_flattened_command_set() -> R
     assert_eq!(
         command_names(transaction_descriptor.afforded_commands()?)?,
         vec![
-            CommandName(MapString("GetStagedCount".to_string())),
             CommandName(MapString("Commit".to_string())),
+            CommandName(MapString("GetStagedCount".to_string())),
         ]
     );
 
@@ -489,8 +489,8 @@ fn dance_descriptor_afforded_dances_return_flattened_dance_set() -> Result<(), H
     assert_eq!(
         dance_names(dance_descriptor.afforded_dances()?)?,
         vec![
-            type_names::DanceName(MapString("Dance".to_string())),
             type_names::DanceName(MapString("Query".to_string())),
+            type_names::DanceName(MapString("Dance".to_string())),
         ]
     );
 

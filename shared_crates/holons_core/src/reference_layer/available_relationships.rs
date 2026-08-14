@@ -10,15 +10,14 @@
 //! | uncommitted `StagedReference`   | yes      | no      |
 //! | `TransientReference`            | yes      | no      |
 //!
-//! The declared side is collected from `effective_descriptor_lineage`, so
-//! descriptor holon sources include declared relationships from their own
-//! `Extends` lineage. The inverse side remains anchored on the source holon's
-//! `DescribedBy` descriptor and is consulted only for committed sources.
+//! The declared side uses the uniform two-route contract: the source holon's
+//! `DescribedBy` contract plus any `InstanceRelationships` contract declared by
+//! the source holon itself. The inverse side is consulted only for committed
+//! sources.
 
 use crate::descriptors::{
-    accessor_helpers, effective_descriptor_lineage,
-    effective_relationships::collect_declared_from_anchors, Descriptor, QualifiedRelationship,
-    RelationshipDescriptor, RelationshipDirection,
+    effective_relationships::effective_declared_relationships_for_holon, Descriptor,
+    QualifiedRelationship, RelationshipDescriptor, RelationshipDirection,
 };
 use crate::reference_layer::{readable_impl::ReadableHolonImpl, ReadableHolon};
 use core_types::HolonError;
@@ -29,17 +28,14 @@ pub(crate) fn available_relationships<T>(
 where
     T: ReadableHolonImpl + ?Sized,
 {
-    let source_reference = source_ref.holon_reference_impl();
-    let mut relationships = collect_declared_from_anchors(
-        effective_descriptor_lineage(&source_reference)?.into_iter().map(Ok),
-        || accessor_helpers::descriptor_label(&source_reference),
-    )?
-    .into_iter()
-    .map(|declared| QualifiedRelationship {
-        descriptor: RelationshipDescriptor::from_holon(declared.holon().clone()),
-        descriptor_direction: RelationshipDirection::Declared,
-    })
-    .collect::<Vec<_>>();
+    let source_holon = source_ref.holon_reference_impl();
+    let mut relationships = effective_declared_relationships_for_holon(&source_holon)?
+        .into_iter()
+        .map(|declared| QualifiedRelationship {
+            descriptor: RelationshipDescriptor::from_holon(declared.holon().clone()),
+            descriptor_direction: RelationshipDirection::Declared,
+        })
+        .collect::<Vec<_>>();
 
     if source_ref.is_committed_source_impl()? {
         relationships.extend(
@@ -105,12 +101,12 @@ mod tests {
             &core_holon_type_name(CoreHolonTypeName::InverseRelationshipType),
             "Relationship",
         )?)?;
-        let mut source_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
+        let source_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
             &context,
             &format!("{key_prefix}-book-type"),
             "BookType",
         )?)?;
-        let mut target_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
+        let target_type = context.mutation().stage_new_holon(new_holon_type_descriptor(
             &context,
             &format!("{key_prefix}-person-type"),
             "PersonType",
@@ -121,55 +117,65 @@ mod tests {
             "ClubType",
         )?)?;
 
-        let authored_by_transient = new_relationship_descriptor_holon(
+        let authored_by = new_relationship_descriptor_holon(
             &context,
             &format!("{key_prefix}-authored-by"),
             "AuthoredBy",
             HolonReference::from(&source_type),
             HolonReference::from(&target_type),
         )?;
-        let authors_transient = new_relationship_descriptor_holon(
+        let authors = new_relationship_descriptor_holon(
             &context,
             &format!("{key_prefix}-authors"),
             "Authors",
             HolonReference::from(&target_type),
             HolonReference::from(&source_type),
         )?;
-        let member_of_transient = new_relationship_descriptor_holon(
+        let member_of = new_relationship_descriptor_holon(
             &context,
             &format!("{key_prefix}-member-of"),
             "MemberOf",
             HolonReference::from(&target_type),
             HolonReference::from(&club_type),
         )?;
-        let mut authored_by = context.mutation().stage_new_holon(authored_by_transient)?;
-        let mut authors = context.mutation().stage_new_holon(authors_transient)?;
-        let mut member_of = context.mutation().stage_new_holon(member_of_transient)?;
-
-        authored_by.add_related_holons(
+        let mut authored_by = context.mutation().stage_new_holon(authored_by)?;
+        let mut authors = context.mutation().stage_new_holon(authors)?;
+        let mut member_of = context.mutation().stage_new_holon(member_of)?;
+        authored_by.add_related_holons_ungoverned(
             CoreRelationshipTypeName::Extends,
             vec![HolonReference::from(&declared_type)],
         )?;
-        member_of.add_related_holons(
+        member_of.add_related_holons_ungoverned(
             CoreRelationshipTypeName::Extends,
             vec![HolonReference::from(&declared_type)],
         )?;
-        authors.add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse_type.into()])?;
-        authored_by
-            .add_related_holons(CoreRelationshipTypeName::HasInverse, vec![(&authors).into()])?;
-        authors
-            .add_related_holons(CoreRelationshipTypeName::InverseOf, vec![(&authored_by).into()])?;
+        authors.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::Extends,
+            vec![inverse_type.into()],
+        )?;
+        authored_by.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::HasInverse,
+            vec![(&authors).into()],
+        )?;
+        authors.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::InverseOf,
+            vec![(&authored_by).into()],
+        )?;
 
-        source_type.add_related_holons(
+        let mut source_type = source_type;
+        let mut target_type = target_type;
+        source_type.add_related_holons_ungoverned(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![(&authored_by).into()],
         )?;
-        target_type.add_related_holons(
+        target_type.add_related_holons_ungoverned(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![member_of.into()],
         )?;
-        target_type
-            .add_related_holons(CoreRelationshipTypeName::TargetOf, vec![authored_by.into()])?;
+        target_type.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::TargetOf,
+            vec![authored_by.into()],
+        )?;
 
         Ok(AvailabilityFixture { context, target_type })
     }
@@ -213,10 +219,7 @@ mod tests {
         let fixture = build_availability_fixture("avail-uncommitted-ref")?;
         let source = new_test_holon(&fixture.context, "avail-uncommitted-person")?;
         let mut staged_source = fixture.context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![HolonReference::from(&fixture.target_type)],
-        )?;
+        staged_source.with_descriptor(HolonReference::from(&fixture.target_type))?;
 
         let names = qualified_names(&staged_source.available_relationships()?)?;
 
@@ -229,10 +232,7 @@ mod tests {
         let fixture = build_availability_fixture("avail-committed-ref")?;
         let source = new_test_holon(&fixture.context, "avail-committed-person")?;
         let mut staged_source = fixture.context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![HolonReference::from(&fixture.target_type)],
-        )?;
+        staged_source.with_descriptor(HolonReference::from(&fixture.target_type))?;
         mark_committed(&fixture.context, &staged_source)?;
 
         let names = qualified_names(&staged_source.available_relationships()?)?;

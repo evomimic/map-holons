@@ -58,6 +58,18 @@ pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
     commit_status: ExpectedLoadStatus::Complete,
 };
 
+/// Metrics for the checked-in Schema 2.0 compiler artifact. This is distinct
+/// from the legacy curated host import corpus above.
+pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
+    staged: 376,
+    committed: 376,
+    links_created: 1741,
+    errors: 0,
+    total_bundles: 12,
+    total_loader_holons: 376,
+    commit_status: ExpectedLoadStatus::Complete,
+};
+
 /// Absolute paths to all core schema import files used for loader-client testing.
 pub fn map_core_schema_paths() -> Vec<PathBuf> {
     // CARGO_MANIFEST_DIR for these tests points to `tests/sweetests`,

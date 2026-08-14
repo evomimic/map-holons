@@ -83,9 +83,32 @@ impl PropertyDescriptor {
                     Some(other) => {
                         Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into()))
                     }
-                    None => Err(HolonError::EmptyField("IsValueRequired".into())),
+                    None => self.is_value_required_default(),
                 }
             }
+        }
+    }
+
+    /// Resolves the Schema 2 default for an omitted `IsValueRequired` member.
+    ///
+    /// `L(P)` determines whether property descriptor `P` explicitly supplies
+    /// requiredness. When it does not, `D(P)` determines the contract governing
+    /// `P` as a holon: that contract supplies the `IsValueRequired` property
+    /// descriptor, whose effective `DefaultValue` supplies the omitted value.
+    /// This is deliberately descriptor-driven; it is not a kernel default of
+    /// `false`.
+    fn is_value_required_default(&self) -> Result<bool, HolonError> {
+        let definition_descriptor = self
+            .holon
+            .holon_descriptor()?
+            .get_property_by_name(CorePropertyTypeName::IsValueRequired)?;
+
+        match definition_descriptor.effective_default_value()? {
+            Some(BaseValue::BooleanValue(value)) => Ok(value.0),
+            Some(other) => {
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into()))
+            }
+            None => Err(HolonError::EmptyField("IsValueRequired.DefaultValue".into())),
         }
     }
 
@@ -153,6 +176,21 @@ mod tests {
         assert_eq!(descriptor.holon(), &holon);
         assert_eq!(descriptor.header().type_name()?, MapString("PropertyType".to_string()));
 
+        Ok(())
+    }
+
+    #[test]
+    fn populate_defaults_is_a_noop_for_an_undescribed_holon() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_test_holon(&context, "undescribed-instance")?;
+        holon.with_property_value("Authored", "preserved")?;
+
+        holon.populate_defaults()?;
+
+        assert!(matches!(
+            holon.property_value("Authored")?,
+            Some(BaseValue::StringValue(value)) if value.0 == "preserved"
+        ));
         Ok(())
     }
 
@@ -346,6 +384,75 @@ mod tests {
         descriptor.populate_default_if_required_and_absent(&mut target)?;
 
         assert_eq!(target.property_value("Optional")?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn omitted_is_value_required_uses_the_meta_property_contract_default() -> Result<(), HolonError>
+    {
+        let context = build_context();
+
+        let mut is_value_required_definition = new_descriptor_holon(
+            &context,
+            "is-value-required-definition",
+            "IsValueRequired",
+            "Property",
+        )?;
+        is_value_required_definition
+            .with_property_value(CorePropertyTypeName::DefaultValue, false)?;
+
+        let mut meta_property_type =
+            new_descriptor_holon(&context, "meta-property-type", "MetaPropertyType", "Holon")?;
+        meta_property_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![is_value_required_definition.into()],
+        )?;
+
+        let mut optional_property =
+            new_descriptor_holon(&context, "optional-property", "OptionalProperty", "Property")?;
+        optional_property.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![meta_property_type.into()],
+        )?;
+
+        let descriptor = PropertyDescriptor::from_holon(optional_property.into());
+
+        assert!(!descriptor.effective_is_value_required()?);
+        Ok(())
+    }
+
+    #[test]
+    fn authored_is_value_required_overrides_the_meta_property_contract_default(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+
+        let mut is_value_required_definition = new_descriptor_holon(
+            &context,
+            "is-value-required-definition",
+            "IsValueRequired",
+            "Property",
+        )?;
+        is_value_required_definition
+            .with_property_value(CorePropertyTypeName::DefaultValue, false)?;
+
+        let mut meta_property_type =
+            new_descriptor_holon(&context, "meta-property-type", "MetaPropertyType", "Holon")?;
+        meta_property_type.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![is_value_required_definition.into()],
+        )?;
+
+        let mut required_property =
+            new_descriptor_holon(&context, "required-property", "RequiredProperty", "Property")?;
+        required_property.with_property_value(CorePropertyTypeName::IsValueRequired, true)?;
+        required_property.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![meta_property_type.into()],
+        )?;
+
+        let descriptor = PropertyDescriptor::from_holon(required_property.into());
+
+        assert!(descriptor.effective_is_value_required()?);
         Ok(())
     }
 }
