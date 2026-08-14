@@ -61,7 +61,7 @@ pub fn get_all_holon_ids() -> Result<Vec<HolonId>, HolonError> {
     for link in links {
         let holon_id = HolonId::Local(local_id_from_action_hash(
             link.target.clone().into_action_hash().ok_or(HolonError::HashConversion(
-                "Source/Base".to_string(),
+                "Target".to_string(),
                 "ActionHash".to_string(),
             ))?,
         ));
