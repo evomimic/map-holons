@@ -1,4 +1,4 @@
-use crate::descriptors::inheritance::flatten_related_members;
+use crate::descriptors::inheritance::effective_relationship_members;
 use crate::descriptors::{accessor_helpers, OperatorDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
 use base_types::BaseValue;
@@ -52,9 +52,9 @@ fn unsupported_operator_error(
 pub(crate) fn supported_operators(
     holon: &HolonReference,
 ) -> Result<Vec<OperatorDescriptor>, HolonError> {
-    Ok(flatten_related_members(holon, CoreRelationshipTypeName::AffordsOperator)?
+    Ok(effective_relationship_members(holon, CoreRelationshipTypeName::AffordsOperator)?
         .into_iter()
-        .map(OperatorDescriptor::from_holon)
+        .map(|member| OperatorDescriptor::from_holon(member.member))
         .collect())
 }
 

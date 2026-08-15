@@ -2,9 +2,8 @@ use std::collections::HashSet;
 
 use crate::descriptors::accessor_helpers::{descriptor_label, lock_error, search_extends_chain};
 use crate::reference_layer::{HolonReference, ReadableHolon};
-use base_types::BaseValue;
 use core_types::HolonError;
-use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
+use type_names::{CoreHolonTypeName, CoreRelationshipTypeName};
 
 /// Direction of a relationship type descriptor relative to its declared edge.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -13,6 +12,40 @@ pub enum RelationshipDirection {
     Declared,
     /// The descriptor names the inverse target-to-source relationship.
     Inverse,
+}
+
+/// Kernel-defined inheritance policy for a populated relationship member.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum InheritanceRule {
+    Local,
+    Additive,
+    Override,
+}
+
+/// A relationship target selected from an effective descriptor surface.
+///
+/// `declared_on` preserves the local descriptor contribution that supplied the
+/// target. Collection policy, duplicate diagnostics, and cardinality are
+/// intentionally evaluated by the consuming descriptor semantics.
+#[derive(Clone, Debug)]
+pub(crate) struct EffectiveRelationshipMember {
+    pub member: HolonReference,
+    pub declared_on: HolonReference,
+}
+
+/// Returns the MAP kernel inheritance rule for a Core relationship type.
+pub(crate) fn inheritance_rule(relationship: &CoreRelationshipTypeName) -> InheritanceRule {
+    match relationship {
+        CoreRelationshipTypeName::InstanceProperties
+        | CoreRelationshipTypeName::InstanceRelationships
+        | CoreRelationshipTypeName::AffordsCommand
+        | CoreRelationshipTypeName::AffordsDance
+        | CoreRelationshipTypeName::AffordsOperator
+        | CoreRelationshipTypeName::Validations
+        | CoreRelationshipTypeName::Constraints => InheritanceRule::Additive,
+        CoreRelationshipTypeName::InstanceKeyRule => InheritanceRule::Override,
+        _ => InheritanceRule::Local,
+    }
 }
 
 /// Resolves the direct `Extends` parent for a descriptor holon.
@@ -69,27 +102,6 @@ pub(crate) fn equals_or_extends(
     Ok(false)
 }
 
-/// Computes the effective descriptor lineage for a holon(per MAP Type System) v1.2.
-///
-/// Ordinary instances use the `Extends` lineage of their `DescribedBy` descriptor.
-/// Descriptor holons additionally contribute their own `Extends` lineage before
-/// the effective lineage of their describing `TypeDescriptor` descriptor.
-pub fn effective_descriptor_lineage(
-    holon: &HolonReference,
-) -> Result<Vec<HolonReference>, HolonError> {
-    let Some(described_by_descriptor) = described_by_descriptor(holon)? else {
-        return ancestors(holon);
-    };
-
-    if is_type_descriptor_descriptor(&described_by_descriptor)? {
-        let mut lineage = ancestors(holon)?;
-        append_unique(&mut lineage, ancestors(&described_by_descriptor)?);
-        return Ok(lineage);
-    }
-
-    ancestors(&described_by_descriptor)
-}
-
 pub(crate) fn described_by_descriptor(
     holon: &HolonReference,
 ) -> Result<Option<HolonReference>, HolonError> {
@@ -104,25 +116,6 @@ pub(crate) fn described_by_descriptor(
             "DescribedBy".into(),
             "Expected exactly one descriptor target".into(),
         )),
-    }
-}
-
-fn is_type_descriptor_descriptor(descriptor: &HolonReference) -> Result<bool, HolonError> {
-    let expected = CoreHolonTypeName::TypeDescriptor.as_holon_name();
-    match descriptor.property_value(CorePropertyTypeName::TypeName)? {
-        Some(BaseValue::StringValue(type_name)) => Ok(type_name == expected),
-        Some(BaseValue::EnumValue(type_name)) => Ok(type_name.0 == expected),
-        Some(_) | None => Ok(false),
-    }
-}
-
-fn append_unique(lineage: &mut Vec<HolonReference>, additional: Vec<HolonReference>) {
-    let mut seen = lineage.iter().map(HolonReference::reference_id_string).collect::<HashSet<_>>();
-
-    for descriptor in additional {
-        if seen.insert(descriptor.reference_id_string()) {
-            lineage.push(descriptor);
-        }
     }
 }
 
@@ -157,30 +150,52 @@ pub fn classify_relationship_direction(
     )
 }
 
-/// Collects related members across a descriptor's effective inheritance chain.
+/// Resolves relationship targets across a descriptor's effective inheritance
+/// chain using the MAP kernel's canonical [`InheritanceRule`].
 ///
-/// Members are returned in self-first ancestor order. A member reference that
-/// appears more than once is included only at its first occurrence.
-pub(crate) fn flatten_related_members(
+/// Additive contributions are ancestor-before-local and intentionally retain
+/// duplicate targets and their provenance. Override currently applies only to
+/// the singular `InstanceKeyRule` relationship: the nearest non-empty local
+/// target set wins.
+pub(crate) fn effective_relationship_members(
     start: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
-) -> Result<Vec<HolonReference>, HolonError> {
-    let mut members = Vec::new();
-    let mut seen = HashSet::new();
-
-    for ancestor in walk_extends_chain(start) {
-        let ancestor = ancestor?;
-        let collection_arc = ancestor.related_holons(relationship_name.clone())?;
-        let collection = collection_arc.read().map_err(lock_error)?;
-
-        for member in collection.get_members() {
-            if seen.insert(member.reference_id_string()) {
-                members.push(member.clone());
+) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
+    match inheritance_rule(&relationship_name) {
+        InheritanceRule::Local => local_relationship_members(start, relationship_name),
+        InheritanceRule::Additive => {
+            let mut lineage = ancestors(start)?;
+            lineage.reverse();
+            let mut members = Vec::new();
+            for ancestor in lineage {
+                members.extend(local_relationship_members(&ancestor, relationship_name.clone())?);
             }
+            Ok(members)
+        }
+        InheritanceRule::Override => {
+            for ancestor in walk_extends_chain(start) {
+                let members = local_relationship_members(&ancestor?, relationship_name.clone())?;
+                if !members.is_empty() {
+                    return Ok(members);
+                }
+            }
+            Ok(Vec::new())
         }
     }
+}
 
-    Ok(members)
+fn local_relationship_members(
+    descriptor: &HolonReference,
+    relationship_name: CoreRelationshipTypeName,
+) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
+    let collection_arc = descriptor.related_holons(relationship_name)?;
+    let collection = collection_arc.read().map_err(lock_error)?;
+    Ok(collection
+        .get_members()
+        .iter()
+        .cloned()
+        .map(|member| EffectiveRelationshipMember { member, declared_on: descriptor.clone() })
+        .collect())
 }
 
 /// Lazy iterator over a descriptor's `Extends` lineage.
@@ -328,84 +343,6 @@ mod tests {
         assert!(equals_or_extends(&child_ref, &child_ref)?);
         assert!(equals_or_extends(&child_ref, &root_ref)?);
         assert!(!equals_or_extends(&child_ref, &unrelated_ref)?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn effective_descriptor_lineage_for_instance_uses_described_by_extends_chain(
-    ) -> Result<(), HolonError> {
-        let context = build_context();
-        let holon_type = new_descriptor_holon(&context, "HolonType", "HolonType", "Holon")?;
-        let mut book_type = new_descriptor_holon(&context, "Book.HolonType", "Book", "Holon")?;
-        let mut book = new_test_holon(&context, "book-instance")?;
-
-        book_type.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&holon_type)],
-        )?;
-        book.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![HolonReference::from(&book_type)],
-        )?;
-
-        assert_eq!(
-            effective_descriptor_lineage(&HolonReference::from(&book))?,
-            vec![HolonReference::from(&book_type), HolonReference::from(&holon_type)]
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn effective_descriptor_lineage_for_descriptor_combines_own_and_describing_lineages(
-    ) -> Result<(), HolonError> {
-        let context = build_context();
-        let meta_type_descriptor =
-            new_descriptor_holon(&context, "MetaTypeDescriptor", "MetaTypeDescriptor", "Holon")?;
-        let mut meta_holon_type =
-            new_descriptor_holon(&context, "MetaHolonType", "MetaHolonType", "Holon")?;
-        let mut holon_type = new_descriptor_holon(&context, "HolonType", "HolonType", "Holon")?;
-        let mut type_descriptor =
-            new_descriptor_holon(&context, "TypeDescriptor.HolonType", "TypeDescriptor", "Holon")?;
-        let mut descriptor_holon = new_descriptor_holon(
-            &context,
-            "MetaTypeDescriptor.Instance",
-            "MetaTypeDescriptor",
-            "Holon",
-        )?;
-
-        meta_holon_type.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&meta_type_descriptor)],
-        )?;
-        holon_type.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&meta_holon_type)],
-        )?;
-        type_descriptor.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&holon_type)],
-        )?;
-        descriptor_holon.add_related_holons(
-            CoreRelationshipTypeName::Extends,
-            vec![HolonReference::from(&meta_type_descriptor)],
-        )?;
-        descriptor_holon.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![HolonReference::from(&type_descriptor)],
-        )?;
-
-        assert_eq!(
-            effective_descriptor_lineage(&HolonReference::from(&descriptor_holon))?,
-            vec![
-                HolonReference::from(&descriptor_holon),
-                HolonReference::from(&meta_type_descriptor),
-                HolonReference::from(&type_descriptor),
-                HolonReference::from(&holon_type),
-                HolonReference::from(&meta_holon_type),
-            ]
-        );
 
         Ok(())
     }
@@ -606,8 +543,8 @@ mod tests {
     }
 
     #[test]
-    fn flatten_related_members_preserves_lineage_order_and_deduplicates() -> Result<(), HolonError>
-    {
+    fn effective_relationship_members_adds_ancestor_contributions_before_local_and_preserves_provenance(
+    ) -> Result<(), HolonError> {
         let context = build_context();
         let member_a = new_test_holon(&context, "member-a")?;
         let member_b = new_test_holon(&context, "member-b")?;
@@ -631,18 +568,107 @@ mod tests {
             vec![member_c.clone().into(), member_b.clone().into()],
         )?;
 
+        let members = effective_relationship_members(
+            &HolonReference::from(&leaf),
+            CoreRelationshipTypeName::InstanceProperties,
+        )?;
         assert_eq!(
-            flatten_related_members(
-                &HolonReference::from(&leaf),
-                CoreRelationshipTypeName::InstanceProperties,
-            )?,
+            members.iter().map(|member| member.member.clone()).collect::<Vec<_>>(),
             vec![
-                HolonReference::from(&member_c),
+                HolonReference::from(&member_a),
                 HolonReference::from(&member_b),
                 HolonReference::from(&member_a),
+                HolonReference::from(&member_c),
+                HolonReference::from(&member_b),
             ]
         );
+        assert_eq!(members[0].declared_on, HolonReference::from(&root));
+        assert_eq!(members[1].declared_on, HolonReference::from(&middle));
+        assert_eq!(members[3].declared_on, HolonReference::from(&leaf));
 
         Ok(())
+    }
+
+    #[test]
+    fn effective_relationship_members_uses_local_fallback() -> Result<(), HolonError> {
+        let context = build_context();
+        let parent_member = new_test_holon(&context, "parent-member")?;
+        let local_member = new_test_holon(&context, "local-member")?;
+        let mut parent = new_test_holon(&context, "parent")?;
+        let mut child = new_test_holon(&context, "child")?;
+        parent
+            .add_related_holons(CoreRelationshipTypeName::Variants, vec![parent_member.into()])?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+        child.add_related_holons(
+            CoreRelationshipTypeName::Variants,
+            vec![local_member.clone().into()],
+        )?;
+
+        let members = effective_relationship_members(
+            &HolonReference::from(&child),
+            CoreRelationshipTypeName::Variants,
+        )?;
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].member, HolonReference::from(&local_member));
+        Ok(())
+    }
+
+    #[test]
+    fn effective_relationship_members_uses_nearest_populated_override() -> Result<(), HolonError> {
+        let context = build_context();
+        let root_rule = new_test_holon(&context, "root-rule")?;
+        let parent_rule = new_test_holon(&context, "parent-rule")?;
+        let mut root = new_test_holon(&context, "root")?;
+        let mut parent = new_test_holon(&context, "parent")?;
+        let mut child = new_test_holon(&context, "child")?;
+        root.add_related_holons(
+            CoreRelationshipTypeName::InstanceKeyRule,
+            vec![root_rule.clone().into()],
+        )?;
+        parent.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone().into()])?;
+
+        assert_eq!(
+            effective_relationship_members(
+                &HolonReference::from(&child),
+                CoreRelationshipTypeName::InstanceKeyRule
+            )?[0]
+                .member,
+            HolonReference::from(&root_rule)
+        );
+
+        parent.add_related_holons(
+            CoreRelationshipTypeName::InstanceKeyRule,
+            vec![parent_rule.clone().into()],
+        )?;
+        assert_eq!(
+            effective_relationship_members(
+                &HolonReference::from(&child),
+                CoreRelationshipTypeName::InstanceKeyRule
+            )?[0]
+                .member,
+            HolonReference::from(&parent_rule)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn inheritance_rules_cover_core_relationship_policies() {
+        for relationship in [
+            CoreRelationshipTypeName::InstanceProperties,
+            CoreRelationshipTypeName::InstanceRelationships,
+            CoreRelationshipTypeName::AffordsCommand,
+            CoreRelationshipTypeName::AffordsDance,
+            CoreRelationshipTypeName::AffordsOperator,
+            CoreRelationshipTypeName::Validations,
+            CoreRelationshipTypeName::Constraints,
+        ] {
+            assert_eq!(inheritance_rule(&relationship), InheritanceRule::Additive);
+        }
+        assert_eq!(
+            inheritance_rule(&CoreRelationshipTypeName::InstanceKeyRule),
+            InheritanceRule::Override
+        );
+        assert_eq!(inheritance_rule(&CoreRelationshipTypeName::Variants), InheritanceRule::Local);
     }
 }

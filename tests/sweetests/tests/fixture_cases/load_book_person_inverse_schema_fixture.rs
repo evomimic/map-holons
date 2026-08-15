@@ -17,7 +17,7 @@ use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 /// described by their loaded `HolonType` descriptors, relates them through the
 /// declared `AuthoredBy` relationship, commits with an expected `Complete`
 /// status, and asserts bidirectional SmartLink traversal — the forward
-/// declared edges plus the commit-materialized inverse edges (`Authors`,
+/// declared edges plus the commit-materialized inverse edges (`AuthorOf`,
 /// `Instances`).
 pub fn load_book_person_inverse_schema_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(

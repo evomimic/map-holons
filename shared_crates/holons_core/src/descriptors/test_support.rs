@@ -216,3 +216,37 @@ pub(crate) fn new_relationship_descriptor_holon(
     descriptor.add_related_holons(CoreRelationshipTypeName::TargetType, vec![target_type])?;
     Ok(descriptor)
 }
+
+/// Creates the minimal declared-relationship classifier used by Schema 2
+/// fixtures. Individual declaration descriptors extend this holon so the
+/// runtime can classify their direction without name-based shortcuts.
+pub(crate) fn new_declared_relationship_type_descriptor(
+    context: &Arc<TransactionContext>,
+    key: &str,
+) -> Result<TransientReference, HolonError> {
+    new_descriptor_holon(
+        context,
+        key,
+        &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
+        TypeKind::Relationship,
+    )
+}
+
+/// Creates a declared relationship descriptor with its Schema 2 classifier.
+pub(crate) fn new_declared_relationship_descriptor_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    type_name: &str,
+    source_type: HolonReference,
+    target_type: HolonReference,
+) -> Result<TransientReference, HolonError> {
+    let mut descriptor =
+        new_relationship_descriptor_holon(context, key, type_name, source_type, target_type)?;
+    let declared_type =
+        context.mutation().stage_new_holon(new_declared_relationship_type_descriptor(
+            context,
+            &format!("{key}-declared-relationship-type"),
+        )?)?;
+    descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
+    Ok(descriptor)
+}

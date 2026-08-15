@@ -113,6 +113,26 @@ impl StagedReference {
         self.get_rc_holon()
     }
 
+    /// Returns errors recorded while committing this staged holon.
+    ///
+    /// Commit implementations attach per-holon failures here so callers can
+    /// project them into their own response or diagnostic representation.
+    pub fn commit_errors(&self) -> Result<Vec<HolonError>, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire staged holon read lock for commit errors: {error}"
+            ))
+        })?;
+
+        match &*holon {
+            Holon::Staged(staged_holon) => Ok(staged_holon.errors().to_vec()),
+            other => Err(HolonError::InvalidType(format!(
+                "StagedReference points to a non-staged holon: {other:?}"
+            ))),
+        }
+    }
+
     /// Retrieves a shared reference to the holon with interior mutability.
     ///
     /// # Arguments
@@ -237,6 +257,17 @@ impl StagedReference {
             relationship_name.clone(),
         ) {
             Ok(descriptor) => descriptor,
+            // A new holon has no descriptor until one is explicitly attached.
+            // Relationship staging remains descriptor-independent at this point;
+            // commit-time validation decides whether the resulting graph is valid.
+            Err(HolonError::MissingDescribedBy { .. })
+                if staged_state == StagedState::ForCreate =>
+            {
+                return Ok(RelationshipMutationPolicy {
+                    note_definitional: None,
+                    duplicate_policy: DuplicatePolicy::Ungoverned,
+                });
+            }
             Err(
                 original_error @ HolonError::DescriptorDeclarationNotFound {
                     kind: _,
@@ -854,8 +885,9 @@ mod tests {
     use crate::{
         core_shared_objects::StagedHolon,
         descriptors::test_support::{
-            build_context, core_holon_type_name, new_descriptor_holon, new_holon_type_descriptor,
-            new_relationship_descriptor_holon, new_test_holon,
+            build_context, core_holon_type_name, new_declared_relationship_descriptor_holon,
+            new_descriptor_holon, new_holon_type_descriptor, new_relationship_descriptor_holon,
+            new_test_holon,
         },
         reference_layer::WritableHolon,
     };
@@ -901,7 +933,7 @@ mod tests {
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;
 
         let relationship_descriptor = if let Some(is_definitional) = is_definitional {
-            let mut relationship_descriptor = new_relationship_descriptor_holon(
+            let mut relationship_descriptor = new_declared_relationship_descriptor_holon(
                 context,
                 "relationship-descriptor",
                 relationship_name,
@@ -912,18 +944,22 @@ mod tests {
                 .with_property_value(CorePropertyTypeName::IsDefinitional, is_definitional)?;
             relationship_descriptor
         } else {
-            new_descriptor_holon(
+            let mut relationship_descriptor = new_declared_relationship_descriptor_holon(
                 context,
                 "relationship-descriptor",
                 relationship_name,
-                "Relationship",
-            )?
+                staged_source_type.clone().into(),
+                staged_target_type.clone().into(),
+            )?;
+            relationship_descriptor
+                .remove_property_value(CorePropertyTypeName::AllowsDuplicates)?;
+            relationship_descriptor
         };
         let staged_relationship_descriptor =
             context.mutation().stage_new_holon(relationship_descriptor)?;
 
         let mut staged_source_type = staged_source_type;
-        staged_source_type.add_related_holons(
+        staged_source_type.add_related_holons_ungoverned(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![staged_relationship_descriptor.into()],
         )?;
@@ -940,7 +976,7 @@ mod tests {
         let staged_source_type = context.mutation().stage_new_holon(source_type)?;
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;
 
-        let mut relationship_descriptor = new_relationship_descriptor_holon(
+        let mut relationship_descriptor = new_declared_relationship_descriptor_holon(
             context,
             "relationship-descriptor",
             relationship_name,
@@ -953,7 +989,7 @@ mod tests {
             context.mutation().stage_new_holon(relationship_descriptor)?;
 
         let mut staged_source_type = staged_source_type;
-        staged_source_type.add_related_holons(
+        staged_source_type.add_related_holons_ungoverned(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![staged_relationship_descriptor.into()],
         )?;
@@ -972,12 +1008,15 @@ mod tests {
         let staged_source_type = context.mutation().stage_new_holon(source_type)?;
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;
 
-        let mut relationship_descriptor = new_descriptor_holon(
+        let mut relationship_descriptor = new_declared_relationship_descriptor_holon(
             context,
             "relationship-descriptor",
             relationship_name,
-            "Relationship",
+            staged_source_type.clone().into(),
+            staged_target_type.clone().into(),
         )?;
+        relationship_descriptor.remove_property_value(CorePropertyTypeName::IsDefinitional)?;
+        relationship_descriptor.remove_property_value(CorePropertyTypeName::AllowsDuplicates)?;
         if let Some(is_definitional) = is_definitional {
             relationship_descriptor.with_property_value_impl(
                 CorePropertyTypeName::IsDefinitional.as_property_name(),
@@ -994,7 +1033,7 @@ mod tests {
             context.mutation().stage_new_holon(relationship_descriptor)?;
 
         let mut staged_source_type = staged_source_type;
-        staged_source_type.add_related_holons(
+        staged_source_type.add_related_holons_ungoverned(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![staged_relationship_descriptor.into()],
         )?;
@@ -1047,19 +1086,33 @@ mod tests {
             HolonReference::from(&source_type),
         )?)?;
 
-        declared
-            .add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
-        inverse.add_related_holons(CoreRelationshipTypeName::Extends, vec![inverse_type.into()])?;
-        declared
-            .add_related_holons(CoreRelationshipTypeName::HasInverse, vec![(&inverse).into()])?;
-        inverse
-            .add_related_holons(CoreRelationshipTypeName::InverseOf, vec![(&declared).into()])?;
-        source_type.add_related_holons(
+        declared.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::Extends,
+            vec![declared_type.clone().into()],
+        )?;
+        // The declaration itself is a holon too: bind its meta-type before
+        // exercising descriptor-level relationship availability.
+        declared.with_descriptor(HolonReference::from(&declared_type))?;
+        inverse.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::Extends,
+            vec![inverse_type.into()],
+        )?;
+        declared.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::HasInverse,
+            vec![(&inverse).into()],
+        )?;
+        inverse.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::InverseOf,
+            vec![(&declared).into()],
+        )?;
+        source_type.add_related_holons_ungoverned(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![(&declared).into()],
         )?;
-        target_type
-            .add_related_holons(CoreRelationshipTypeName::TargetOf, vec![(&declared).into()])?;
+        target_type.add_related_holons_ungoverned(
+            CoreRelationshipTypeName::TargetOf,
+            vec![(&declared).into()],
+        )?;
 
         Ok(RelationshipPairFixture { target_type })
     }
@@ -1070,10 +1123,7 @@ mod tests {
     ) -> Result<StagedReference, HolonError> {
         let source = new_test_holon(context, "source-instance")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![source_descriptor.into()],
-        )?;
+        staged_source.with_descriptor(source_descriptor.into())?;
         force_staged_reference_for_update(context, &staged_source)?;
         Ok(staged_source)
     }
@@ -1122,8 +1172,7 @@ mod tests {
     }
 
     #[test]
-    fn undescribed_for_create_relationship_mutation_keeps_legacy_append() -> Result<(), HolonError>
-    {
+    fn undescribed_for_create_relationship_mutation_is_ungoverned() -> Result<(), HolonError> {
         let context = build_context();
         let source = new_test_holon(&context, "new-source")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
@@ -1131,7 +1180,7 @@ mod tests {
 
         staged_source.add_related_holons("UndeclaredRelationship", vec![target.into()])?;
 
-        assert!(staged_source.is_in_state(&context, StagedState::ForCreate)?);
+        assert_eq!(relationship_member_count(&staged_source, "UndeclaredRelationship")?, 1);
         Ok(())
     }
 
@@ -1205,7 +1254,8 @@ mod tests {
         let mut staged_source = context.mutation().stage_new_holon(source)?;
         let target = staged_target(&context, "new-target")?;
 
-        staged_source.add_related_holons("UndeclaredRelationship", vec![target.clone().into()])?;
+        staged_source
+            .add_related_holons_ungoverned("UndeclaredRelationship", vec![target.clone().into()])?;
         staged_source.with_descriptor(source_descriptor.into())?;
         assert_eq!(relationship_member_count(&staged_source, "UndeclaredRelationship")?, 1);
 
@@ -1247,10 +1297,7 @@ mod tests {
             staged_relationship_descriptor(&context, "AuthoredBy", Some(false))?;
         let source = new_test_holon(&context, "source-instance")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
-        staged_source.add_related_holons(
-            CoreRelationshipTypeName::DescribedBy,
-            vec![source_descriptor.into()],
-        )?;
+        staged_source.with_descriptor(source_descriptor.into())?;
         let target = staged_target(&context, "author")?;
 
         staged_source.add_related_holons("AuthoredBy", vec![target.clone().into()])?;
@@ -1272,14 +1319,14 @@ mod tests {
         let staged_source_type = context.mutation().stage_new_holon(source_type)?;
         let staged_target_type = context.mutation().stage_new_holon(target_type)?;
 
-        let first_declaration = new_relationship_descriptor_holon(
+        let first_declaration = new_declared_relationship_descriptor_holon(
             &context,
             "relationship-descriptor-a",
             "AuthoredBy",
             staged_source_type.clone().into(),
             staged_target_type.clone().into(),
         )?;
-        let second_declaration = new_relationship_descriptor_holon(
+        let second_declaration = new_declared_relationship_descriptor_holon(
             &context,
             "relationship-descriptor-b",
             "AuthoredBy",
@@ -1290,7 +1337,7 @@ mod tests {
         let staged_second = context.mutation().stage_new_holon(second_declaration)?;
 
         let mut staged_source_type = staged_source_type;
-        staged_source_type.add_related_holons(
+        staged_source_type.add_related_holons_ungoverned(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![staged_first.into(), staged_second.into()],
         )?;

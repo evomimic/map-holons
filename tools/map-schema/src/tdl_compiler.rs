@@ -527,6 +527,13 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
                 descriptor.name
             ));
         }
+        if relationship.name == "HasInverse" && descriptor.has_inverse.is_some() {
+            // `HasInverse` is promoted to the relationship-pair semantic slot
+            // and normalized to the inverse descriptor's full holon key. Do
+            // not also emit its literal shorthand target: that would create a
+            // second, unresolved loader reference such as `AuthorOf`.
+            continue;
+        }
         holon.relationship_targets(relationship.name.clone(), relationship.targets.clone());
     }
     if descriptor.kind == DescriptorKind::Enum && !descriptor.variants.is_empty() {
@@ -709,7 +716,6 @@ fn ordered_properties(properties: BTreeMap<String, Value>) -> serde_json::Map<St
         "MinCardinality",
         "MaxCardinality",
         "DeletionSemantic",
-        "InheritanceMode",
         "IsValueRequired",
         "DefaultValue",
         "AllowsAdditionalProperties",
@@ -1783,7 +1789,7 @@ fn apply_literal_relationships_to_tdl_descriptor(descriptor: &mut TdlDescriptor)
             "Extends" if descriptor.extends.is_none() => {
                 descriptor.extends = relationship.targets.first().cloned();
             }
-            "UsesKeyRule" if descriptor.key_rule.is_none() => {
+            "InstanceKeyRule" if descriptor.key_rule.is_none() => {
                 descriptor.key_rule = relationship.targets.first().cloned();
             }
             "SourceType" if descriptor.source_type.is_none() => {
@@ -2153,6 +2159,63 @@ enum Color.EnumType {
         assert!(target.is_array());
         assert_eq!(target[0]["$ref"], "Schema.HolonType");
         assert!(!relationship_json.contains(r##""$ref": "#TypeDescriptor.HolonType""##));
+
+        Ok(())
+    }
+
+    #[test]
+    fn core_schema_emits_one_normalized_has_inverse_target() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        let relationship_json = fs::read_to_string(
+            out_dir.join("MAP Schema Types-map-core-schema-relationship-types.json"),
+        )?;
+        let relationship_value: Value = serde_json::from_str(&relationship_json)?;
+        let instance_properties = relationship_value["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| {
+                    holon["key"].as_str()
+                        == Some("(HolonType.TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)")
+                })
+            })
+            .expect("InstanceProperties relationship holon");
+        let targets = &instance_properties["relationships"]
+            .as_array()
+            .and_then(|relationships| {
+                relationships
+                    .iter()
+                    .find(|relationship| relationship["name"].as_str() == Some("HasInverse"))
+            })
+            .expect("HasInverse relationship")["target"];
+
+        assert_eq!(targets.as_array().map(Vec::len), Some(1));
+        assert_eq!(
+            targets[0]["$ref"],
+            "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor)"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn core_schema_leaves_max_cardinality_requiredness_to_the_meta_property_contract() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        let property_json = fs::read_to_string(
+            out_dir.join("MAP Schema Types-map-core-schema-property-types.json"),
+        )?;
+        let property_value: Value = serde_json::from_str(&property_json)?;
+        let max_cardinality = property_value["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| holon["key"].as_str() == Some("MaxCardinality.PropertyType"))
+            })
+            .expect("MaxCardinality property holon");
+
+        assert!(max_cardinality["properties"].get("IsValueRequired").is_none());
 
         Ok(())
     }

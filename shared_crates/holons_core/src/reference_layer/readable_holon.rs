@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use super::{HolonReference, TransientReference};
-use crate::descriptors::{HolonDescriptor, QualifiedRelationship};
+use crate::descriptors::{HolonDescriptor, PropertyDescriptor, QualifiedRelationship};
 use crate::reference_layer::available_relationships;
 use crate::reference_layer::definitional_equivalence::{
     self, EquivalenceOutcome, EquivalenceResolver, NoOpResolver,
@@ -198,6 +198,13 @@ pub trait ReadableHolon: ReadableHolonImpl {
     #[inline]
     fn available_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {
         available_relationships::available_relationships(self)
+    }
+
+    /// Enumerates the property descriptors available through this holon's
+    /// effective instance contract, whether or not values are populated.
+    #[inline]
+    fn available_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
+        self.holon_descriptor()?.instance_properties()
     }
 
     fn holon_descriptor(&self) -> Result<HolonDescriptor, HolonError> {

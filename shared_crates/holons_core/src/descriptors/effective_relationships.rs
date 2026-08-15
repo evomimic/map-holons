@@ -37,10 +37,9 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, effective_descriptor_lineage, inheritance::equals_or_extends,
-    inheritance::flatten_related_members, walk_extends_chain, DeclaredRelationshipDescriptor,
-    Descriptor, HolonDescriptor, InverseRelationshipDescriptor, RelationshipDescriptor,
-    RelationshipDirection,
+    accessor_helpers, inheritance::effective_relationship_members, inheritance::equals_or_extends,
+    DeclaredRelationshipDescriptor, Descriptor, HolonDescriptor, InverseRelationshipDescriptor,
+    RelationshipDescriptor, RelationshipDirection,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::{HolonError, RelationshipName};
@@ -71,66 +70,6 @@ struct CandidateSet {
     requires_materialized_target_index: bool,
 }
 
-/// Collects relationship descriptors from an already-selected declared surface lineage.
-///
-/// Anchors are expected in most-specific to most-general order. Each anchor is
-/// read directly for `InstanceRelationships`; the caller owns which lineage is
-/// appropriate for the subject. Repeated references are deduped, while distinct
-/// descriptors with the same base relationship type name fail eagerly as a local
-/// effective-lineage schema defect. `subject_label` is evaluated lazily, only
-/// for duplicate-error attribution.
-pub(crate) fn collect_relationships_from_anchors(
-    anchors: impl IntoIterator<Item = Result<HolonReference, HolonError>>,
-    subject_label: impl Fn() -> String,
-) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-    let mut relationship_descriptors = Vec::new();
-    let mut seen_declaration_refs = HashSet::new();
-    let mut seen_declaration_names = HashSet::new();
-
-    for anchor in anchors {
-        let anchor = anchor?;
-        let collection_arc =
-            anchor.related_holons(CoreRelationshipTypeName::InstanceRelationships)?;
-        let collection = collection_arc.read().map_err(accessor_helpers::lock_error)?;
-
-        for declaration_ref in collection.get_members() {
-            if !seen_declaration_refs.insert(declaration_ref.reference_id_string()) {
-                continue;
-            }
-
-            let relationship_descriptor =
-                RelationshipDescriptor::from_holon(declaration_ref.clone());
-            let declaration_name = relationship_descriptor.base_relationship_name()?;
-            let declaration_label = declaration_name.to_string();
-            if !seen_declaration_names.insert(declaration_label.clone()) {
-                return Err(HolonError::DuplicateInheritedDeclaration {
-                    kind: "relationship".to_string(),
-                    name: declaration_label,
-                    descriptor: subject_label(),
-                });
-            }
-
-            relationship_descriptors.push(relationship_descriptor);
-        }
-    }
-
-    Ok(relationship_descriptors)
-}
-
-/// Collects declared relationship descriptors from an already-selected lineage.
-pub(crate) fn collect_declared_from_anchors(
-    anchors: impl IntoIterator<Item = Result<HolonReference, HolonError>>,
-    subject_label: impl Fn() -> String,
-) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
-    let mut declared_descriptors = Vec::new();
-
-    for descriptor in collect_relationships_from_anchors(anchors, subject_label)? {
-        declared_descriptors.push(descriptor.try_into_declared_relationship_descriptor()?);
-    }
-
-    Ok(declared_descriptors)
-}
-
 /// Enumerates effective declared relationships for `endpoint`.
 ///
 /// This is staged-safe because it uses the forward `InstanceRelationships`
@@ -138,9 +77,39 @@ pub(crate) fn collect_declared_from_anchors(
 pub(crate) fn effective_declared_relationships(
     endpoint: &HolonDescriptor,
 ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
-    collect_declared_from_anchors(walk_extends_chain(endpoint.holon()), || {
+    let members = effective_relationship_members(
+        endpoint.holon(),
+        CoreRelationshipTypeName::InstanceRelationships,
+    )?;
+    collect_declared_from_relationship_members(members, || {
         accessor_helpers::descriptor_label(endpoint.holon())
     })
+}
+
+fn collect_declared_from_relationship_members(
+    members: Vec<crate::descriptors::inheritance::EffectiveRelationshipMember>,
+    subject_label: impl Fn() -> String,
+) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
+    let mut declared_descriptors = Vec::new();
+    let mut seen_declaration_names = HashSet::new();
+
+    for member in members {
+        let _declared_on = member.declared_on;
+        let relationship_descriptor = RelationshipDescriptor::from_holon(member.member);
+        let declaration_name = relationship_descriptor.base_relationship_name()?;
+        let declaration_label = declaration_name.to_string();
+        if !seen_declaration_names.insert(declaration_label.clone()) {
+            return Err(HolonError::DuplicateInheritedDeclaration {
+                kind: "relationship".to_string(),
+                name: declaration_label,
+                descriptor: subject_label(),
+            });
+        }
+        declared_descriptors
+            .push(relationship_descriptor.try_into_declared_relationship_descriptor()?);
+    }
+
+    Ok(declared_descriptors)
 }
 
 /// Enumerates effective inverse relationships for `endpoint`.
@@ -199,12 +168,13 @@ pub(crate) fn effective_relationships(
     Ok(relationships)
 }
 
-/// Finds a relationship declaration on a holon's effective relationship surface.
+/// Finds the declared relationship that licenses `name` on `source_holon`.
 ///
-/// Ordinary runtime holons draw this surface from `DescribedBy -> Extends*`.
-/// Descriptor holons also contribute their own `Extends*` lineage, which is
-/// where descriptor-populated relationships like `SourceType`, `TargetType`,
-/// `InverseOf`, and `ValueType` are licensed in MAP Type System v1.2.
+/// Candidates come exclusively from the contract that describes the source
+/// holon: `EffectiveValues(D(H), InstanceRelationships)`. This applies uniformly
+/// to ordinary and descriptor holons. A descriptor holon's own
+/// `InstanceRelationships` declarations license its instances, not the
+/// descriptor holon itself.
 pub fn effective_relationship_declaration(
     source_holon: &HolonReference,
     name: impl ToRelationshipName,
@@ -212,14 +182,9 @@ pub fn effective_relationship_declaration(
     let requested_name = name.to_relationship_name();
     let requested = requested_name.to_string();
 
-    let declared_relationships = collect_relationships_from_anchors(
-        effective_descriptor_lineage(source_holon)?.into_iter().map(Ok),
-        || accessor_helpers::descriptor_label(source_holon),
-    )?;
-
-    for descriptor in declared_relationships {
+    for descriptor in effective_declared_relationships_for_holon(source_holon)? {
         if descriptor.base_relationship_name()? == requested_name {
-            return Ok(descriptor);
+            return Ok(RelationshipDescriptor::from_holon(descriptor.holon().clone()));
         }
     }
 
@@ -228,6 +193,15 @@ pub fn effective_relationship_declaration(
         name: requested,
         descriptor: accessor_helpers::descriptor_label(source_holon),
     })
+}
+
+/// Enumerates declared relationships licensed by the source holon's describing
+/// contract, `D(H)`.
+pub(crate) fn effective_declared_relationships_for_holon(
+    source_holon: &HolonReference,
+) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
+    let source_descriptor = source_holon.holon_descriptor()?;
+    effective_declared_relationships(&source_descriptor)
 }
 
 /// Validates that `relationship_name` is effective outbound from `endpoint`.
@@ -330,9 +304,9 @@ fn collect_inverse_candidates(
     // Inverse relationships whose SourceType is this type, discovered through
     // the materialized TargetOf index on the declared relationship's target.
     let target_of_members =
-        flatten_related_members(endpoint.holon(), CoreRelationshipTypeName::TargetOf)?;
+        effective_relationship_members(endpoint.holon(), CoreRelationshipTypeName::TargetOf)?;
     for member in &target_of_members {
-        let declared = DeclaredRelationshipDescriptor::try_from_holon(member.clone())?;
+        let declared = DeclaredRelationshipDescriptor::try_from_holon(member.member.clone())?;
         if !target_endpoint_is_compatible(endpoint, &declared)? {
             continue;
         }
@@ -415,8 +389,8 @@ fn source_licenses_declared_relationship(
 mod tests {
     use super::*;
     use crate::descriptors::test_support::{
-        build_context, core_holon_type_name, new_descriptor_holon, new_holon_type_descriptor,
-        new_relationship_descriptor_holon,
+        build_context, core_holon_type_name, new_declared_relationship_descriptor_holon,
+        new_descriptor_holon, new_holon_type_descriptor, new_relationship_descriptor_holon,
     };
     use crate::reference_layer::{HolonReference, TransientReference, WritableHolon};
     use base_types::MapString;
@@ -703,7 +677,7 @@ mod tests {
             .map(|declared| declared.base_relationship_name().map(|name| name.to_string()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        assert_eq!(names, vec!["TaggedWith".to_string(), "AuthoredBy".to_string()]);
+        assert_eq!(names, vec!["AuthoredBy".to_string(), "TaggedWith".to_string()]);
         Ok(())
     }
 
@@ -804,7 +778,7 @@ mod tests {
             CoreRelationshipTypeName::Extends,
             vec![HolonReference::from(&fixture.target_type)],
         )?;
-        fixture.target_type.clone().add_related_holons(
+        child_target.add_related_holons(
             CoreRelationshipTypeName::TargetOf,
             vec![HolonReference::from(&fixture.declared)],
         )?;
@@ -951,11 +925,10 @@ mod tests {
     fn finds_ordinary_instance_declaration_through_described_by_lineage() -> Result<(), HolonError>
     {
         let context = build_context();
-        let mut holon_type =
-            new_holon_type_descriptor(&context, "surface-holon-type", "HolonType")?;
+        let holon_type = new_holon_type_descriptor(&context, "surface-holon-type", "HolonType")?;
         let mut book_type = new_holon_type_descriptor(&context, "surface-book-type", "Book")?;
         let person_type = new_holon_type_descriptor(&context, "surface-person-type", "Person")?;
-        let authored_by = new_relationship_descriptor_holon(
+        let authored_by = new_declared_relationship_descriptor_holon(
             &context,
             "surface-authored-by",
             "AuthoredBy",
@@ -964,7 +937,7 @@ mod tests {
         )?;
         let mut book = crate::descriptors::test_support::new_test_holon(&context, "surface-book")?;
 
-        holon_type.add_related_holons(
+        book_type.add_related_holons(
             CoreRelationshipTypeName::InstanceRelationships,
             vec![(&authored_by).into()],
         )?;
@@ -979,7 +952,8 @@ mod tests {
     }
 
     #[test]
-    fn finds_descriptor_holon_declaration_through_own_extends_lineage() -> Result<(), HolonError> {
+    fn descriptor_own_instance_relationships_do_not_license_the_descriptor_holon(
+    ) -> Result<(), HolonError> {
         let context = build_context();
         let type_descriptor =
             new_holon_type_descriptor(&context, "surface-type-descriptor", "TypeDescriptor")?;
@@ -994,7 +968,7 @@ mod tests {
             &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
             "Relationship",
         )?;
-        let source_type = new_relationship_descriptor_holon(
+        let source_type = new_declared_relationship_descriptor_holon(
             &context,
             "surface-source-type",
             "SourceType",
@@ -1028,10 +1002,11 @@ mod tests {
             vec![type_descriptor.into()],
         )?;
 
-        let declaration =
-            effective_relationship_declaration(&(&relationship_descriptor).into(), "SourceType")?;
-
-        assert_eq!(declaration.base_relationship_name()?.to_string(), "SourceType");
+        assert!(matches!(
+            effective_relationship_declaration(&(&relationship_descriptor).into(), "SourceType"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "relationship" && name == "SourceType"
+        ));
         Ok(())
     }
 
@@ -1049,7 +1024,7 @@ mod tests {
             new_holon_type_descriptor(&context, "surface-tail-holon-type", "HolonType")?;
         let mut type_descriptor =
             new_holon_type_descriptor(&context, "surface-tail-type-descriptor", "TypeDescriptor")?;
-        let properties = new_relationship_descriptor_holon(
+        let properties = new_declared_relationship_descriptor_holon(
             &context,
             "surface-properties",
             "Properties",
@@ -1093,14 +1068,14 @@ mod tests {
         let mut parent_type = new_holon_type_descriptor(&context, "surface-parent-type", "Parent")?;
         let mut book_type = new_holon_type_descriptor(&context, "surface-dup-book-type", "Book")?;
         let person_type = new_holon_type_descriptor(&context, "surface-dup-person-type", "Person")?;
-        let authored_by_a = new_relationship_descriptor_holon(
+        let authored_by_a = new_declared_relationship_descriptor_holon(
             &context,
             "surface-authored-by-a",
             "AuthoredBy",
             (&book_type).into(),
             (&person_type).into(),
         )?;
-        let authored_by_b = new_relationship_descriptor_holon(
+        let authored_by_b = new_declared_relationship_descriptor_holon(
             &context,
             "surface-authored-by-b",
             "AuthoredBy",

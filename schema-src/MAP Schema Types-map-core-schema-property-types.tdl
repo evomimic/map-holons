@@ -157,7 +157,6 @@ property IsValueRequired.PropertyType {
   value MapBooleanValueType.BooleanValueType
   IsValueRequired true
   DefaultValue false
-  InheritanceMode None
   header {
     description: "True if a value for this property type is required for the holon having this property."
     display_name: "IsValueRequired"
@@ -171,27 +170,11 @@ property DefaultValue.PropertyType {
   extends PropertyType.TypeDescriptor
   value BaseValueValueType.ValueType
   IsValueRequired false
-  InheritanceMode None
   header {
     description: "Value materialized when a required property is omitted during creation. The value must conform to the ValueType selected by the property descriptor carrying the default."
     display_name: "Default Value"
     display_plural: "Default Values"
     plural: "DefaultValues"
-  }
-}
-
-property InheritanceMode.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value InheritanceMode.MapEnumValueType
-  IsValueRequired true
-  DefaultValue None
-  InheritanceMode None
-  header {
-    description: "Controls whether populated descriptor values remain local, accumulate additively, or override inherited values across Extends."
-    display_name: "Inheritance Mode"
-    display_plural: "Inheritance Modes"
-    plural: "InheritanceModes"
   }
 }
 
@@ -281,7 +264,6 @@ property DefinesInstanceTypeKind.PropertyType {
   value MapBooleanValueType.BooleanValueType
   IsValueRequired true
   DefaultValue false
-  InheritanceMode None
   header {
     description: "Marks an abstract descriptor as the local anchor for the representation kind of the instances described by it and its descendants."
     display_name: "Defines Instance TypeKind"

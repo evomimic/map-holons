@@ -399,10 +399,10 @@
               "$ref": "(HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)"
             },
             {
-              "$ref": "(TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)"
+              "$ref": "(HolonType.TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)"
             },
             {
-              "$ref": "(TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)"
+              "$ref": "(HolonType.TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)"
             }
           ]
         }
@@ -443,9 +443,6 @@
             },
             {
               "$ref": "DefaultValue.PropertyType"
-            },
-            {
-              "$ref": "InheritanceMode.PropertyType"
             }
           ]
         },
@@ -515,9 +512,6 @@
             },
             {
               "$ref": "DeletionSemantic.PropertyType"
-            },
-            {
-              "$ref": "InheritanceMode.PropertyType"
             }
           ]
         },
@@ -704,14 +698,6 @@
           "target": [
             {
               "$ref": "QueryDance.DanceType"
-            }
-          ]
-        },
-        {
-          "name": "AffordsTransactionModel",
-          "target": [
-            {
-              "$ref": "Transaction.HolonType"
             }
           ]
         }

@@ -1,5 +1,6 @@
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::reference_layer::HolonReference;
+use crate::reference_layer::ReadableHolon;
 use base_types::ToBaseValue;
 use core_types::HolonError;
 use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
@@ -13,6 +14,23 @@ use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
 /// This is the trait you should import and use in call sites.
 /// Implementors only need to implement [`WritableHolonImpl`].
 pub trait WritableHolon: WritableHolonImpl {
+    /// Populates applicable effective defaults without overwriting authored
+    /// values.
+    ///
+    /// The receiver must have exactly one `DescribedBy` target so completion
+    /// can resolve its effective instance-property contract. Callers that
+    /// construct a holon in stages must attach that target before completion.
+    fn populate_defaults(&mut self) -> Result<(), HolonError>
+    where
+        Self: ReadableHolon,
+    {
+        let properties = self.available_properties()?;
+        for property in properties {
+            property.populate_default_if_required_and_absent(self)?;
+        }
+        Ok(())
+    }
+
     /// Adds one or more related holons under the given relationship.
     ///
     /// # Ergonomics

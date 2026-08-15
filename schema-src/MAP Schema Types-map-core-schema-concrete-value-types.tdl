@@ -123,43 +123,6 @@ enum CollectionType.MapEnumValueType {
   }
 }
 
-enum InheritanceMode.MapEnumValueType {
-  type MetaEnumValueType.MetaValueType
-  extends MapEnumValueType.EnumValueType
-  header {
-    description: "Enum value type controlling inheritance of populated descriptor members across Extends."
-    display_name: "Inheritance Mode"
-    display_plural: "Inheritance Modes"
-    plural: "InheritanceModes"
-  }
-  variants {
-    variant None {
-      type MetaEnumVariantValueType.MetaValueType
-      extends MapEnumVariantValueType.EnumVariantValueType
-      header {
-        description: "Only locally populated values contribute to effective descriptor semantics."
-        display_name: "None"
-      }
-    }
-    variant Additive {
-      type MetaEnumVariantValueType.MetaValueType
-      extends MapEnumVariantValueType.EnumVariantValueType
-      header {
-        description: "Distinct inherited and local values accumulate by set union."
-        display_name: "Additive"
-      }
-    }
-    variant Override {
-      type MetaEnumVariantValueType.MetaValueType
-      extends MapEnumVariantValueType.EnumVariantValueType
-      header {
-        description: "The nearest non-empty local value set replaces values from more distant ancestors."
-        display_name: "Override"
-      }
-    }
-  }
-}
-
 value HolonIdValueType.MapBytesValueType {
   type MetaBytesValueType.MetaValueType
   extends MapBytesValueType.BytesValueType

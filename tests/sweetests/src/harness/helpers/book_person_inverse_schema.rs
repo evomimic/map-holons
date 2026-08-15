@@ -6,21 +6,25 @@ use std::path::PathBuf;
 use super::{read_file_data, CoreSchemaLoadMetrics};
 use crate::ExpectedLoadStatus;
 
-const DOMAIN_SCHEMA_RELATIVE_PATH: &str =
-    "import_files/MAP Schema Types-map-test-schema-book-person-inverse.json";
+const GENERATED_DOMAIN_SCHEMA_FILENAME: &str =
+    "MAP Schema Types-map-test-schema-book-person-inverse.json";
 
 pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 7,
-    committed: 7,
-    links_created: 30,
+    staged: 9,
+    committed: 9,
+    links_created: 42,
     errors: 0,
     total_bundles: 1,
-    total_loader_holons: 7,
+    total_loader_holons: 9,
     commit_status: ExpectedLoadStatus::Complete,
 };
 
 pub fn domain_schema_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(DOMAIN_SCHEMA_RELATIVE_PATH)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("generated/json-imports")
+        .join(GENERATED_DOMAIN_SCHEMA_FILENAME)
 }
 
 pub fn build_book_person_inverse_content_set() -> Result<ContentSet, HolonError> {
@@ -57,7 +61,7 @@ pub fn build_inverse_oriented_book_person_instance_content_set() -> Result<Conte
           },
           "relationships": [
             {
-              "name": "Authors",
+              "name": "AuthorOf",
               "target": {
                 "$ref": "Book.InverseOrientationFailure.1"
               }

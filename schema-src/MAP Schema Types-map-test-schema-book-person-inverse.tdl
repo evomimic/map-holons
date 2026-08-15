@@ -16,7 +16,43 @@ holon Book.HolonType {
   }
   relationships {
     InstanceProperties -> Title.PropertyType
-    InstanceRelationships -> (Book.HolonType)-[AuthoredBy]->(Person.HolonType)
+    InstanceRelationships -> [
+      (Book.HolonType)-[AuthoredBy]->(Person.HolonType),
+      (Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor)
+    ]
+  }
+}
+
+relationship (Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ReferencedByBook
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Book.HolonType
+  target PropertyType.TypeDescriptor
+  cardinality 0..*
+  deletion_semantic Allow
+  header {
+    description: "Non-definitional test relationship used to verify graph-only update anchoring and duplicate suppression."
+    display_name: "ReferencesProperty"
+    display_plural: "ReferencesProperty Relationships"
+    plural: "ReferencesPropertyRelationships"
+  }
+}
+
+inverse relationship (PropertyType.TypeDescriptor)-[ReferencedByBook]->(Book.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source PropertyType.TypeDescriptor
+  target Book.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of ReferencesProperty for graph-only update tests."
+    display_name: "ReferencedByBook"
+    display_plural: "ReferencedByBook Relationships"
+    plural: "ReferencedByBookRelationships"
   }
 }
 

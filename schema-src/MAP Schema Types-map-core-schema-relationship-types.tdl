@@ -41,17 +41,16 @@ inverse relationship (Schema.HolonType)-[Components]->(TypeDescriptor) {
   }
 }
 
-def relationship (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor) {
+def relationship (HolonType.TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     HasInverse -> InstancePropertyFor
   }
   extends DeclaredRelationshipType.RelationshipType
-  source TypeDescriptor
+  source HolonType.TypeDescriptor
   target PropertyType.TypeDescriptor
   cardinality 0..*
   deletion_semantic Block
-  inheritance_mode Additive
   header {
     description: "Connects a type descriptor to the property descriptors in its instance contract."
     display_name: "InstanceProperties"
@@ -60,11 +59,11 @@ def relationship (TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescri
   }
 }
 
-inverse relationship (PropertyType.TypeDescriptor)-[InstancePropertyFor]->(TypeDescriptor) {
+inverse relationship (PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source PropertyType.TypeDescriptor
-  target TypeDescriptor
+  target HolonType.TypeDescriptor
   cardinality 0..*
   deletion_semantic Block
   header {
@@ -75,17 +74,16 @@ inverse relationship (PropertyType.TypeDescriptor)-[InstancePropertyFor]->(TypeD
   }
 }
 
-def relationship (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType) {
+def relationship (HolonType.TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     HasInverse -> InstanceRelationshipFor
   }
   extends DeclaredRelationshipType.RelationshipType
-  source TypeDescriptor
+  source HolonType.TypeDescriptor
   target DeclaredRelationshipType.RelationshipType
   cardinality 0..*
   deletion_semantic Block
-  inheritance_mode Additive
   header {
     description: "Connects a type descriptor to the declared relationship descriptors in its instance contract."
     display_name: "Instance Relationships"
@@ -94,11 +92,11 @@ def relationship (TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationship
   }
 }
 
-inverse relationship (DeclaredRelationshipType.RelationshipType)-[InstanceRelationshipFor]->(TypeDescriptor) {
+inverse relationship (DeclaredRelationshipType.RelationshipType)-[InstanceRelationshipFor]->(HolonType.TypeDescriptor) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source DeclaredRelationshipType.RelationshipType
-  target TypeDescriptor
+  target HolonType.TypeDescriptor
   cardinality 0..*
   deletion_semantic Block
   header {

@@ -426,8 +426,7 @@
         "Description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
         "IsDefinitional": true,
         "MinCardinality": 0,
-        "DeletionSemantic": "Allow",
-        "InheritanceMode": "Additive"
+        "DeletionSemantic": "Allow"
       },
       "relationships": [
         {
@@ -467,9 +466,6 @@
           "target": [
             {
               "$ref": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)"
-            },
-            {
-              "$ref": "DanceAffordedBy"
             }
           ]
         }
@@ -574,9 +570,6 @@
           "target": [
             {
               "$ref": "(DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor)"
-            },
-            {
-              "$ref": "ImplementedFor"
             }
           ]
         }
@@ -682,9 +675,6 @@
           "target": [
             {
               "$ref": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)"
-            },
-            {
-              "$ref": "HasImplementation"
             }
           ]
         }
@@ -789,9 +779,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.HolonType)"
-            },
-            {
-              "$ref": "DanceInputFor"
             }
           ]
         }
@@ -896,9 +883,6 @@
           "target": [
             {
               "$ref": "(DanceResponseType.HolonType)-[ResponseFor]->(DanceType.HolonType)"
-            },
-            {
-              "$ref": "ResponseFor"
             }
           ]
         }
@@ -1003,9 +987,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceResponseType.HolonType)"
-            },
-            {
-              "$ref": "ResponseBodyFor"
             }
           ]
         }
@@ -1110,9 +1091,6 @@
           "target": [
             {
               "$ref": "(DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType)"
-            },
-            {
-              "$ref": "InvokedBy"
             }
           ]
         }
@@ -1217,9 +1195,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(DanceInvocation.HolonType)"
-            },
-            {
-              "$ref": "AffordsDanceInvocation"
             }
           ]
         }
@@ -1324,9 +1299,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.HolonType)"
-            },
-            {
-              "$ref": "RequestFor"
             }
           ]
         }
@@ -1430,9 +1402,6 @@
           "target": [
             {
               "$ref": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType.HolonType)"
-            },
-            {
-              "$ref": "DiagnosticFor"
             }
           ]
         }
@@ -3129,9 +3098,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse.Projection)"
-            },
-            {
-              "$ref": "SavedByCommit"
             }
           ]
         }
@@ -3235,9 +3201,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection)"
-            },
-            {
-              "$ref": "AbandonedByCommit"
             }
           ]
         }

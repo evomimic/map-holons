@@ -315,8 +315,7 @@
         "IsDefinitional": true,
         "MinCardinality": 1,
         "MaxCardinality": 1,
-        "DeletionSemantic": "Allow",
-        "InheritanceMode": "Override"
+        "DeletionSemantic": "Allow"
       },
       "relationships": [
         {
@@ -356,9 +355,6 @@
           "target": [
             {
               "$ref": "(KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType.TypeDescriptor)"
-            },
-            {
-              "$ref": "KeyRuleForInstancesOf"
             }
           ]
         }

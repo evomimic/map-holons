@@ -128,7 +128,6 @@ def relationship (HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.Holo
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target KeyRuleType.HolonType
-  InheritanceMode Override
   cardinality 1..1
   deletion_semantic Allow
   header {

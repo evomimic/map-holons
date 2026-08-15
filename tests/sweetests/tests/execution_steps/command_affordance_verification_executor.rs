@@ -136,7 +136,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     // `AffordsCommand` is the declared descriptor edge from holon types to command types.
     let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(HolonType)-[AffordsCommand]->(CommandType.HolonType)",
+        "(HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)",
     ))
     .try_into_declared_relationship_descriptor()
     .expect("AffordsCommand should be a declared relationship descriptor");
@@ -169,7 +169,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
     // `CommandAffordedBy` must be the inverse view of the same command affordance relationship.
     let inverse_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType)",
+        "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType.TypeDescriptor)",
     ))
     .try_into_inverse_relationship_descriptor()
     .expect("CommandAffordedBy should be an inverse relationship descriptor");
@@ -185,7 +185,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
 
     // `HolonType` owns the baseline command affordance set and typed command lookup behavior.
     let holon_type_descriptor =
-        HolonDescriptor::from_holon(find_holon_by_key(&holons, "HolonType"));
+        HolonDescriptor::from_holon(find_holon_by_key(&holons, "HolonType.TypeDescriptor"));
     let instance_relationship_names =
         relationship_base_names(holon_type_descriptor.instance_relationships());
     assert_contains(&instance_relationship_names, "AffordsCommand");
@@ -372,7 +372,7 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
         transaction_model_inverse
             .deletion_semantic()
             .expect("TransactionModelAffordedBy deletion_semantic"),
-        None
+        Some(MapString("Block".to_string()))
     );
 
     info!(
