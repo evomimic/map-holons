@@ -1017,9 +1017,6 @@
           "target": [
             {
               "$ref": "(QueryGraph.HolonType)-[GraphForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
-            },
-            {
-              "$ref": "GraphForQueryDanceRequest"
             }
           ]
         }
@@ -1124,9 +1121,6 @@
           "target": [
             {
               "$ref": "(ExecutionBinding.HolonType)-[InitialBindingForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
-            },
-            {
-              "$ref": "InitialBindingForQueryDanceRequest"
             }
           ]
         }
@@ -1231,9 +1225,6 @@
           "target": [
             {
               "$ref": "(QueryStep.HolonType)-[StepInQueryGraph]->(QueryGraph.HolonType)"
-            },
-            {
-              "$ref": "StepInQueryGraph"
             }
           ]
         }
@@ -1339,9 +1330,6 @@
           "target": [
             {
               "$ref": "(QueryBinding.HolonType)-[InputBindingForQueryGraph]->(QueryGraph.HolonType)"
-            },
-            {
-              "$ref": "InputBindingForQueryGraph"
             }
           ]
         }
@@ -1446,9 +1434,6 @@
           "target": [
             {
               "$ref": "(QueryBinding.HolonType)-[ResultBindingForQueryGraph]->(QueryGraph.HolonType)"
-            },
-            {
-              "$ref": "ResultBindingForQueryGraph"
             }
           ]
         }
@@ -1554,9 +1539,6 @@
           "target": [
             {
               "$ref": "(QueryStepKind.HolonType)-[StepKindFor]->(QueryStep.HolonType)"
-            },
-            {
-              "$ref": "StepKindFor"
             }
           ]
         }
@@ -1661,9 +1643,6 @@
           "target": [
             {
               "$ref": "(QueryBinding.HolonType)-[InitialBindingUsedByStep]->(QueryStep.HolonType)"
-            },
-            {
-              "$ref": "InitialBindingUsedByStep"
             }
           ]
         }
@@ -1768,9 +1747,6 @@
           "target": [
             {
               "$ref": "(QueryBinding.HolonType)-[OutputBindingForStep]->(QueryStep.HolonType)"
-            },
-            {
-              "$ref": "OutputBindingForStep"
             }
           ]
         }
@@ -1876,9 +1852,6 @@
           "target": [
             {
               "$ref": "(Projection.HolonType)-[ParametersForStep]->(QueryStep.HolonType)"
-            },
-            {
-              "$ref": "ParametersForStep"
             }
           ]
         }
@@ -1983,9 +1956,6 @@
           "target": [
             {
               "$ref": "(QueryStep.HolonType)-[StepDependedOnBy]->(QueryStep.HolonType)"
-            },
-            {
-              "$ref": "StepDependedOnBy"
             }
           ]
         }
@@ -2090,9 +2060,6 @@
           "target": [
             {
               "$ref": "(HolonCollection.HolonType)-[InputTypeForStepKind]->(QueryStepKind.HolonType)"
-            },
-            {
-              "$ref": "InputTypeForStepKind"
             }
           ]
         }
@@ -2197,9 +2164,6 @@
           "target": [
             {
               "$ref": "(HolonCollection.HolonType)-[ResultTypeForStepKind]->(QueryStepKind.HolonType)"
-            },
-            {
-              "$ref": "ResultTypeForStepKind"
             }
           ]
         }
@@ -2304,9 +2268,6 @@
           "target": [
             {
               "$ref": "(Projection.HolonType)-[ParameterTypeForStepKind]->(QueryStepKind.HolonType)"
-            },
-            {
-              "$ref": "ParameterTypeForStepKind"
             }
           ]
         }
@@ -2411,9 +2372,6 @@
           "target": [
             {
               "$ref": "(QueryDanceRequest.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType)"
-            },
-            {
-              "$ref": "ExecutedBy"
             }
           ]
         }
@@ -2517,9 +2475,6 @@
           "target": [
             {
               "$ref": "(ExecutionBinding.HolonType)-[BindingForExecutionInstance]->(ExecutionInstance.HolonType)"
-            },
-            {
-              "$ref": "BindingForExecutionInstance"
             }
           ]
         }
@@ -2625,9 +2580,6 @@
           "target": [
             {
               "$ref": "(QueryBinding.HolonType)-[ExecutionVariableBinding]->(ExecutionBinding.HolonType)"
-            },
-            {
-              "$ref": "ExecutionVariableBinding"
             }
           ]
         }
@@ -2732,9 +2684,6 @@
           "target": [
             {
               "$ref": "(HolonCollection.HolonType)-[CollectionBoundIn]->(ExecutionBinding.HolonType)"
-            },
-            {
-              "$ref": "CollectionBoundIn"
             }
           ]
         }
@@ -2838,9 +2787,6 @@
           "target": [
             {
               "$ref": "(HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType)"
-            },
-            {
-              "$ref": "ResultOfExecution"
             }
           ]
         }

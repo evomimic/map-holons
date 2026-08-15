@@ -7,21 +7,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const CORE_SCHEMA_RELATIVE_PATHS: [&str; 12] = [
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-abstract-value-types.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-command-types.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-concrete-value-types.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-dance-schema.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-keyrules-schema.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-loader-types.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-operator-types.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-property-types.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-query-schema.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-relationship-types.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-root.json",
-    "import_files/map-schema/core-schema/MAP Schema Types-map-core-schema-value-constraint-types.json"
-];
-
 const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 12] = [
     "MAP Schema Types-map-core-schema-abstract-value-types.json",
     "MAP Schema Types-map-core-schema-command-types.json",
@@ -48,23 +33,30 @@ pub struct CoreSchemaLoadMetrics {
     pub commit_status: ExpectedLoadStatus,
 }
 
-pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 379,
-    committed: 379,
-    links_created: 1775,
+/// Metrics for the checked-in Schema 2.0 compiler artifact.
+pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
+    staged: 376,
+    committed: 376,
+    links_created: 1740,
     errors: 0,
     total_bundles: 12,
-    total_loader_holons: 379,
+    total_loader_holons: 376,
     commit_status: ExpectedLoadStatus::Complete,
 };
 
+/// The standard Sweettest Core bootstrap uses the checked-in Schema 2.0
+/// compiler artifact. The legacy host import corpus is no longer a supported
+/// runtime compatibility path.
+pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = GENERATED_CORE_SCHEMA_METRICS;
+
 /// Absolute paths to all core schema import files used for loader-client testing.
 pub fn map_core_schema_paths() -> Vec<PathBuf> {
-    // CARGO_MANIFEST_DIR for these tests points to `tests/sweetests`,
-    // so we need to walk back to the repo root before joining the import_files path.
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("host");
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
 
-    CORE_SCHEMA_RELATIVE_PATHS.iter().map(|relative_path| repo_root.join(relative_path)).collect()
+    GENERATED_CORE_SCHEMA_FILENAMES
+        .iter()
+        .map(|filename| repo_root.join("generated/json-imports").join(filename))
+        .collect()
 }
 
 pub fn build_core_schema_content_set() -> Result<ContentSet, HolonError> {

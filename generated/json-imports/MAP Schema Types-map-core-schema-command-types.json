@@ -1114,8 +1114,7 @@
         "Description": "Declares that a HolonType affords a CommandType, making the command discoverable through descriptor-local command affordance lookup.",
         "IsDefinitional": true,
         "MinCardinality": 0,
-        "DeletionSemantic": "Allow",
-        "InheritanceMode": "Additive"
+        "DeletionSemantic": "Allow"
       },
       "relationships": [
         {
@@ -1155,9 +1154,6 @@
           "target": [
             {
               "$ref": "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType.TypeDescriptor)"
-            },
-            {
-              "$ref": "CommandAffordedBy"
             }
           ]
         }
@@ -1262,9 +1258,6 @@
           "target": [
             {
               "$ref": "(HolonType.TypeDescriptor)-[CommandPayloadTypeFor]->(CommandType.HolonType)"
-            },
-            {
-              "$ref": "CommandPayloadTypeFor"
             }
           ]
         }

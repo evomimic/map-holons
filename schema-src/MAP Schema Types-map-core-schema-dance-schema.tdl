@@ -180,7 +180,6 @@ def relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceType.HolonType
-  InheritanceMode Additive
   cardinality 0..*
   deletion_semantic Allow
   header {

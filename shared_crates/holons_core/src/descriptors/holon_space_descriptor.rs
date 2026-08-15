@@ -1,4 +1,4 @@
-use crate::descriptors::{accessor_helpers, Descriptor, TransactionDescriptor, TypeHeader};
+use crate::descriptors::{Descriptor, HolonDescriptor, TransactionDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
@@ -19,14 +19,13 @@ impl HolonSpaceDescriptor {
         TypeHeader::new(&self.holon)
     }
 
-    /// Returns the single transaction command-scope model afforded by this holon-space descriptor.
+    /// Returns the transaction command-scope model declared for HolonSpace instances.
     pub fn transaction_model(&self) -> Result<TransactionDescriptor, HolonError> {
-        // Follow the schema cardinality contract through the descriptor relationship.
-        let transaction_model = accessor_helpers::require_single_related(
-            &self.holon,
-            CoreRelationshipTypeName::AffordsTransactionModel,
-        )?;
-        Ok(TransactionDescriptor::from_holon(transaction_model))
+        let relationship = HolonDescriptor::from_holon(self.holon.clone())
+            .get_relationship_by_name(CoreRelationshipTypeName::AffordsTransactionModel)?
+            .try_into_declared_relationship_descriptor()?;
+        let transaction_model = relationship.target_type()?;
+        Ok(TransactionDescriptor::from_holon(transaction_model.holon().clone()))
     }
 }
 

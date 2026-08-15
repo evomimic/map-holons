@@ -98,7 +98,6 @@ pub enum CorePropertyTypeName {
     HolonKey,
     HolonId,
     HolonsStaged,
-    InheritanceMode,
     InstanceTypeKind,
     IsAbstractType,
     IsDefinitional,

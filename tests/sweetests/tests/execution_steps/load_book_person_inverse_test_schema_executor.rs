@@ -42,7 +42,7 @@ pub async fn execute_load_inverse_oriented_book_person_instances_expect_failure(
         content_set,
         holons_test::ExpectedLoadStatus::Skipped,
         &[
-            "Authors",
+            "AuthorOf",
             "declared orientation",
             "opposite endpoint",
             "Person.InverseOrientationFailure.1",

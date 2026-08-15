@@ -45,7 +45,6 @@ def relationship (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.Hol
   extends DeclaredRelationshipType.RelationshipType
   source ValueType.TypeDescriptor
   target OperatorType.HolonType
-  InheritanceMode Additive
   cardinality 0..*
   deletion_semantic Block
   header {

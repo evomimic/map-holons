@@ -22,10 +22,10 @@ pub use core_shared_objects::{
 };
 pub use core_types::HolonError;
 pub use descriptors::{
-    ancestors, classify_relationship_direction, effective_descriptor_lineage,
-    effective_relationship_declaration, walk_extends_chain, Descriptor, ExtendsIter,
-    HolonDescriptor, HolonSpaceDescriptor, PropertyDescriptor, RelationshipDescriptor,
-    RelationshipDirection, TransactionDescriptor, TypeHeader, ValueDescriptor,
+    ancestors, classify_relationship_direction, effective_relationship_declaration,
+    walk_extends_chain, Descriptor, ExtendsIter, HolonDescriptor, HolonSpaceDescriptor,
+    PropertyDescriptor, RelationshipDescriptor, RelationshipDirection, TransactionDescriptor,
+    TypeHeader, ValueDescriptor,
 };
 pub use reference_layer::{
     Divergence, EquivalenceOutcome, EquivalenceResolver, HolonCollectionApi, HolonReference,
