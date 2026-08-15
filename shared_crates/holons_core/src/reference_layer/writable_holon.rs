@@ -15,17 +15,16 @@ use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
 /// Implementors only need to implement [`WritableHolonImpl`].
 pub trait WritableHolon: WritableHolonImpl {
     /// Populates applicable effective defaults without overwriting authored
-    /// values. An undescribed holon has no available property contract, so
-    /// this is a no-op until a unique `DescribedBy` target is attached.
+    /// values.
+    ///
+    /// The receiver must have exactly one `DescribedBy` target so completion
+    /// can resolve its effective instance-property contract. Callers that
+    /// construct a holon in stages must attach that target before completion.
     fn populate_defaults(&mut self) -> Result<(), HolonError>
     where
         Self: ReadableHolon,
     {
-        let properties = match self.available_properties() {
-            Ok(properties) => properties,
-            Err(HolonError::MissingDescribedBy { .. }) => return Ok(()),
-            Err(error) => return Err(error),
-        };
+        let properties = self.available_properties()?;
         for property in properties {
             property.populate_default_if_required_and_absent(self)?;
         }

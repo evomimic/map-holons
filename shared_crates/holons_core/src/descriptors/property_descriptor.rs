@@ -180,17 +180,36 @@ mod tests {
     }
 
     #[test]
-    fn populate_defaults_is_a_noop_for_an_undescribed_holon() -> Result<(), HolonError> {
+    fn populate_defaults_errors_for_an_undescribed_holon() -> Result<(), HolonError> {
         let context = build_context();
         let mut holon = new_test_holon(&context, "undescribed-instance")?;
         holon.with_property_value("Authored", "preserved")?;
 
-        holon.populate_defaults()?;
+        assert!(matches!(holon.populate_defaults(), Err(HolonError::MissingDescribedBy { .. })));
 
         assert!(matches!(
             holon.property_value("Authored")?,
             Some(BaseValue::StringValue(value)) if value.0 == "preserved"
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn populate_defaults_errors_for_multiple_described_by_targets() -> Result<(), HolonError> {
+        let context = build_context();
+        let descriptor_a = new_descriptor_holon(&context, "descriptor-a", "DescriptorA", "Holon")?;
+        let descriptor_b = new_descriptor_holon(&context, "descriptor-b", "DescriptorB", "Holon")?;
+        let mut holon = new_test_holon(&context, "multiple-descriptor-instance")?;
+        holon.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![descriptor_a.into(), descriptor_b.into()],
+        )?;
+
+        assert!(matches!(
+            holon.populate_defaults(),
+            Err(HolonError::MultipleDescribedBy { count: 2, .. })
+        ));
+
         Ok(())
     }
 
