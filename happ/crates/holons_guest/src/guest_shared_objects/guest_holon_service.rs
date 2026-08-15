@@ -16,12 +16,12 @@ use holons_guest_integrity::{
     LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
 };
 
+use crate::get_holon_by_path;
 use crate::guest_shared_objects::commit_functions;
 use crate::persistence_layer::{
     delete_holon_node, expand_all_from_source, expand_from_source, get_all_holon_ids, get_holon,
-    persist_holon, saved_holon_from_stored,
+    index_local_holon_space, persist_holon, saved_holon_from_stored,
 };
-use crate::{create_local_path, get_holon_by_path};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, HolonWriteRequest, SmartLink};
 use holons_core::core_shared_objects::transactions::TransactionContextHandle;
@@ -74,12 +74,8 @@ impl GuestHolonService {
         // Log the creation of the LocalHolonSpace
         info!("Created LocalHolonSpace with id {:#?}", local_id);
 
-        // Try to create the local path for the holon
-        create_local_path(
-            local_id,
-            LOCAL_HOLON_SPACE_PATH.to_string(),
-            LinkTypes::LocalHolonSpace,
-        )?;
+        // Anchor the persisted lineage root under the canonical LocalHolonSpace path.
+        index_local_holon_space(&local_id)?;
 
         // Return the created holon
         Ok(saved_holon)
