@@ -53,9 +53,10 @@ impl fmt::Display for InfrastructureLinkRejection {
 
 /// Validates a whole-space index link to one `HolonNode` lineage root.
 ///
-/// The index represents each lineage once, so its target must be the lineage's `Create` action;
-/// accepting an `Update` would let the generic path-authoring extern insert arbitrary versions
-/// into an index whose readers expect roots.
+/// Peers author infrastructure links directly, independently of any local coordinator API, so the
+/// canonical base and lineage-root target are DHT invariants rather than guards on one local
+/// ingress. The index represents each lineage once, so accepting an `Update` would admit arbitrary
+/// versions into an index whose readers expect roots.
 pub fn validate_all_holon_nodes_create(
     base_address: &AnyLinkableHash,
     target_address: &AnyLinkableHash,

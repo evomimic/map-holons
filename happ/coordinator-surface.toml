@@ -97,13 +97,6 @@ rationale = "Canonical SmartLink expansion filtered by key."
 
 [[export]]
 zome = "holons"
-symbol = "create_path_to_holon_node"
-exposure_kind = "zome_call"
-classification = "legacy_ingress"
-rationale = "Scaffolded infrastructure ingress that accepts an arbitrary Path, LinkTypes value, and target ActionHash and calls create_link directly; classification preserves the current behavior pending a storage-contract decision on constraining or retiring it."
-
-[[export]]
-zome = "holons"
 symbol = "get_holon_node_by_path"
 exposure_kind = "zome_call"
 classification = "legacy_ingress"
@@ -177,7 +170,21 @@ zome = "holons_test_probes"
 symbol = "all_holon_nodes_delete_for_test"
 exposure_kind = "zome_call"
 classification = "test_only"
-rationale = "Test probe that re-resolves and deletes an AllHolonNodes CreateLink to exercise Integrity validation."
+rationale = "Test probe that derives the canonical AllHolonNodes topology from a persisted root target and attempts deletion to exercise AllHolonNodesDelete."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "infrastructure_author_noncanonical_base_for_test"
+exposure_kind = "zome_call"
+classification = "test_only"
+rationale = "Test probe that permits only a noncanonical path for closed root-index link types to exercise NonCanonicalBase."
+
+[[export]]
+zome = "holons_test_probes"
+symbol = "infrastructure_author_update_target_for_test"
+exposure_kind = "zome_call"
+classification = "test_only"
+rationale = "Test probe that permits only an existing Update target under a canonical closed root-index type to exercise NonRootHolonNodeTarget."
 
 [[export]]
 zome = "holons"

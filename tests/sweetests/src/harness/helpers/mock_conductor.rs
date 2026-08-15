@@ -1,4 +1,6 @@
 use async_trait::async_trait;
+use base_types::MapString;
+use core_types::HolonId;
 use holochain::conductor::api::error::ConductorApiError;
 use holochain::conductor::CellError;
 use holochain::core::ribosome::error::RibosomeError;
@@ -11,7 +13,10 @@ use holochain::sweettest::{
     SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
 };
 use holons_boundary::envelopes::{DanceRequestEnvelope, DanceResponseEnvelope};
-use holons_core::dances::DanceInitiator;
+use holons_boundary::session_state::SessionStateWire;
+use holons_boundary::{DanceRequestWire, DanceTypeWire, HolonReferenceWire, RequestBodyWire};
+use holons_core::core_shared_objects::transactions::TxId;
+use holons_core::dances::{DanceInitiator, ResponseStatusCode};
 use holons_core::HolonError;
 use holons_trust_channel::{DanceEnvelopeTransport, TrustChannel};
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap};
@@ -26,6 +31,9 @@ const PRODUCTION_COORDINATOR_ZOME: &str = "holons";
 const PROBE_COORDINATOR_ZOME: &str = "holons_test_probes";
 const INTEGRITY_ZOME: &str = "holons_integrity";
 const PROBE_DISPATCH_FUNCTION: &str = "holon_storage_author_create_for_test";
+// Each helper call supplies a fresh unanchored session and guest context, so this id only needs to
+// be well-formed; it carries no identity or ordering meaning across calls.
+const BOOTSTRAP_TX_ID: &str = "1";
 
 #[derive(Debug)]
 pub struct MockConductorConfig {
@@ -131,6 +139,45 @@ pub async fn setup_test_conductor() -> Arc<MockConductorConfig> {
     let agent = AgentPubKey::from_raw_39(agent_hash);
 
     Arc::new(MockConductorConfig { conductor, agent, cell })
+}
+
+/// Sends a harmless read-only production dance with no LocalHolonSpace anchor, forcing the guest
+/// bootstrap/discovery path, and returns the LocalHolonSpace id from the response session.
+pub async fn bootstrap_local_holon_space(backend: &MockConductorConfig) -> HolonId {
+    let mut session = SessionStateWire::default();
+    session.set_tx_id(
+        TxId::from_str(BOOTSTRAP_TX_ID).expect("the fixed test transaction id must be valid"),
+    );
+    let envelope = DanceRequestEnvelope {
+        request: DanceRequestWire {
+            dance_name: MapString("get_all_holons".into()),
+            dance_type: DanceTypeWire::Standalone,
+            body: RequestBodyWire::None,
+        },
+        session: Some(session),
+    };
+
+    let response: DanceResponseEnvelope = backend
+        .conductor
+        .call_fallible(&backend.cell.zome(PRODUCTION_COORDINATOR_ZOME), "dance_adapter", envelope)
+        .await
+        .expect("the LocalHolonSpace bootstrap dance must reach the production coordinator");
+    assert_eq!(
+        response.response.status_code,
+        ResponseStatusCode::OK,
+        "the LocalHolonSpace bootstrap dance must succeed: {:?}",
+        response.response
+    );
+
+    let reference = response
+        .session
+        .expect("the bootstrap dance must return session state")
+        .get_local_space_holon_wire()
+        .expect("the response session must carry a LocalHolonSpace reference");
+    match reference {
+        HolonReferenceWire::Smart(smart) => smart.holon_id(),
+        other => panic!("LocalHolonSpace must be returned as a Smart reference, got {other:?}"),
+    }
 }
 
 /// Installs the production DNA and then appends the loose test-probe coordinator in an isolated
