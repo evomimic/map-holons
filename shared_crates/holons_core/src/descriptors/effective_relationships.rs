@@ -170,12 +170,11 @@ pub(crate) fn effective_relationships(
 
 /// Finds the declared relationship that licenses `name` on `source_holon`.
 ///
-/// Candidates come from both the contract that describes the source holon
-/// (`EffectiveValues(D(H), InstanceRelationships)`) and the contract the
-/// source holon itself declares (`EffectiveValues(H, InstanceRelationships)`).
-/// The latter is relevant when `H` is a descriptor holon. A candidate is valid
-/// only when its source type occurs in `L(D(H))` or `L(H)`, so this is one
-/// uniform lineage predicate rather than a descriptor-only resolution path.
+/// Candidates come exclusively from the contract that describes the source
+/// holon: `EffectiveValues(D(H), InstanceRelationships)`. This applies uniformly
+/// to ordinary and descriptor holons. A descriptor holon's own
+/// `InstanceRelationships` declarations license its instances, not the
+/// descriptor holon itself.
 pub fn effective_relationship_declaration(
     source_holon: &HolonReference,
     name: impl ToRelationshipName,
@@ -196,57 +195,13 @@ pub fn effective_relationship_declaration(
     })
 }
 
-/// Enumerates declared relationships available through both uniform contract routes:
-/// the source holon's describing contract and the contract declared by the source
-/// holon itself. Source compatibility uses the same `L(D(H)) or L(H)` predicate
-/// as singular relationship-name resolution.
+/// Enumerates declared relationships licensed by the source holon's describing
+/// contract, `D(H)`.
 pub(crate) fn effective_declared_relationships_for_holon(
     source_holon: &HolonReference,
 ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
     let source_descriptor = source_holon.holon_descriptor()?;
-    let describing_contract = effective_declared_relationships(&source_descriptor)?;
-    let self_declared_members = effective_relationship_members(
-        source_holon,
-        CoreRelationshipTypeName::InstanceRelationships,
-    )?;
-    let mut seen_ids = HashSet::new();
-    let mut seen_names = HashSet::new();
-    let mut effective = Vec::new();
-
-    let candidates = describing_contract
-        .into_iter()
-        .map(|descriptor| RelationshipDescriptor::from_holon(descriptor.holon().clone()))
-        .chain(
-            self_declared_members
-                .into_iter()
-                .map(|member| RelationshipDescriptor::from_holon(member.member)),
-        );
-
-    for descriptor in candidates {
-        if !seen_ids.insert(descriptor.holon().reference_id_string()) {
-            continue;
-        }
-
-        let descriptor = descriptor.try_into_declared_relationship_descriptor()?;
-        let required_source_type = descriptor.source_type()?;
-        if !equals_or_extends(source_descriptor.holon(), required_source_type.holon())?
-            && !equals_or_extends(source_holon, required_source_type.holon())?
-        {
-            continue;
-        }
-
-        let name = descriptor.base_relationship_name()?.to_string();
-        if !seen_names.insert(name.clone()) {
-            return Err(HolonError::DuplicateInheritedDeclaration {
-                kind: "relationship".to_string(),
-                name,
-                descriptor: accessor_helpers::descriptor_label(source_holon),
-            });
-        }
-        effective.push(descriptor);
-    }
-
-    Ok(effective)
+    effective_declared_relationships(&source_descriptor)
 }
 
 /// Validates that `relationship_name` is effective outbound from `endpoint`.
@@ -997,7 +952,8 @@ mod tests {
     }
 
     #[test]
-    fn finds_descriptor_holon_declaration_through_own_extends_lineage() -> Result<(), HolonError> {
+    fn descriptor_own_instance_relationships_do_not_license_the_descriptor_holon(
+    ) -> Result<(), HolonError> {
         let context = build_context();
         let type_descriptor =
             new_holon_type_descriptor(&context, "surface-type-descriptor", "TypeDescriptor")?;
@@ -1046,10 +1002,11 @@ mod tests {
             vec![type_descriptor.into()],
         )?;
 
-        let declaration =
-            effective_relationship_declaration(&(&relationship_descriptor).into(), "SourceType")?;
-
-        assert_eq!(declaration.base_relationship_name()?.to_string(), "SourceType");
+        assert!(matches!(
+            effective_relationship_declaration(&(&relationship_descriptor).into(), "SourceType"),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "relationship" && name == "SourceType"
+        ));
         Ok(())
     }
 

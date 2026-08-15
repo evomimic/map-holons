@@ -133,7 +133,7 @@ mod tests {
             .with_property_value(CorePropertyTypeName::Arity, 2_i64)?
             .with_property_value(
                 CorePropertyTypeName::OperatorCategory,
-                operator_category_value("OperatorCategory.Equality"),
+                operator_category_value("Equality"),
             )?;
         holon.add_related_holons(
             CoreRelationshipTypeName::AffordedBy,
@@ -259,10 +259,7 @@ mod tests {
             "StringBackedOperatorCategory",
             "Holon",
         )?;
-        holon.with_property_value(
-            CorePropertyTypeName::OperatorCategory,
-            "OperatorCategory.Equality",
-        )?;
+        holon.with_property_value(CorePropertyTypeName::OperatorCategory, "Equality")?;
         let descriptor = OperatorDescriptor::from_holon(holon.into());
 
         assert_eq!(descriptor.operator_category()?, OperatorCategory::Equality);
@@ -281,37 +278,38 @@ mod tests {
         )?;
         holon.with_property_value(
             CorePropertyTypeName::OperatorCategory,
-            operator_category_value("OperatorCategory.Matching"),
+            operator_category_value("Matching"),
         )?;
         let descriptor = OperatorDescriptor::from_holon(holon.into());
 
         assert!(matches!(
             descriptor.operator_category(),
             Err(HolonError::UnknownOperatorCategory { value })
-                if value == "OperatorCategory.Matching"
+                if value == "Matching"
         ));
 
         Ok(())
     }
 
     #[test]
-    fn operator_category_rejects_bare_variant_name() -> Result<(), HolonError> {
+    fn operator_category_rejects_legacy_qualified_variant_name() -> Result<(), HolonError> {
         let context = build_context();
         let mut holon = new_descriptor_holon(
             &context,
-            "bare-operator-category",
-            "BareOperatorCategory",
+            "qualified-operator-category",
+            "QualifiedOperatorCategory",
             "Holon",
         )?;
         holon.with_property_value(
             CorePropertyTypeName::OperatorCategory,
-            operator_category_value("Equality"),
+            operator_category_value("OperatorCategory.Equality"),
         )?;
         let descriptor = OperatorDescriptor::from_holon(holon.into());
 
         assert!(matches!(
             descriptor.operator_category(),
-            Err(HolonError::UnknownOperatorCategory { value }) if value == "Equality"
+            Err(HolonError::UnknownOperatorCategory { value })
+                if value == "OperatorCategory.Equality"
         ));
 
         Ok(())

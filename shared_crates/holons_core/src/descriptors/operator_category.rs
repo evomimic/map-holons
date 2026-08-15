@@ -9,11 +9,11 @@ pub enum OperatorCategory {
 }
 
 impl OperatorCategory {
-    /// Parses the schema-qualified enum value stored on operator descriptors.
+    /// Parses the enum variant TypeName stored on operator descriptors.
     pub fn parse(value: &MapString) -> Result<Self, HolonError> {
         match value.0.as_str() {
-            "OperatorCategory.Equality" => Ok(Self::Equality),
-            "OperatorCategory.Ordering" => Ok(Self::Ordering),
+            "Equality" => Ok(Self::Equality),
+            "Ordering" => Ok(Self::Ordering),
             _ => Err(HolonError::UnknownOperatorCategory { value: value.to_string() }),
         }
     }

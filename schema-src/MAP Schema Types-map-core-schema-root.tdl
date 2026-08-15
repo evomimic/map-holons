@@ -266,7 +266,6 @@ holon HolonSpace.HolonType {
     ]
     AffordsCommand -> BeginTransaction.CommandType
     AffordsDance -> QueryDance.DanceType
-    AffordsTransactionModel -> Transaction.HolonType
   }
 }
 

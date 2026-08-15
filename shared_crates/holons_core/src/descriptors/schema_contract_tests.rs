@@ -1,6 +1,7 @@
 use super::test_support::{
-    build_context, core_holon_type_name, new_descriptor_holon, new_holon_type_descriptor,
-    new_property_descriptor_holon, new_relationship_descriptor_holon,
+    build_context, core_holon_type_name, new_declared_relationship_descriptor_holon,
+    new_descriptor_holon, new_holon_type_descriptor, new_property_descriptor_holon,
+    new_relationship_descriptor_holon,
 };
 use crate::descriptors::{
     CommandDescriptor, DanceDescriptor, Descriptor, HolonDescriptor, HolonSpaceDescriptor,
@@ -282,10 +283,17 @@ fn holon_space_descriptor_returns_single_transaction_model() -> Result<(), Holon
     let context = build_context();
     let mut holon_space = new_holon_type_descriptor(&context, "holon-space-type", "HolonSpace")?;
     let transaction_type = new_holon_type_descriptor(&context, "transaction-type", "Transaction")?;
+    let affords_transaction_model = new_declared_relationship_descriptor_holon(
+        &context,
+        "affords-transaction-model",
+        "AffordsTransactionModel",
+        (&holon_space).into(),
+        (&transaction_type).into(),
+    )?;
 
     holon_space.add_related_holons(
-        CoreRelationshipTypeName::AffordsTransactionModel,
-        vec![HolonReference::from(&transaction_type)],
+        CoreRelationshipTypeName::InstanceRelationships,
+        vec![affords_transaction_model.into()],
     )?;
 
     let holon_space_descriptor = HolonSpaceDescriptor::from_holon(holon_space.into());
@@ -306,8 +314,8 @@ fn transaction_model_errors_when_required_relationship_is_missing() -> Result<()
 
     assert!(matches!(
         holon_space_descriptor.transaction_model(),
-        Err(HolonError::MissingRequiredRelationship { relationship, .. })
-            if relationship == "AffordsTransactionModel"
+        Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+            if kind == "relationship" && name == "AffordsTransactionModel"
     ));
 
     Ok(())
@@ -321,21 +329,32 @@ fn transaction_model_errors_when_multiple_models_are_related() -> Result<(), Hol
         new_holon_type_descriptor(&context, "transaction-type-a", "Transaction")?;
     let transaction_type_b =
         new_holon_type_descriptor(&context, "transaction-type-b", "Transaction")?;
+    let affords_transaction_model_a = new_declared_relationship_descriptor_holon(
+        &context,
+        "affords-transaction-model-a",
+        "AffordsTransactionModel",
+        (&holon_space).into(),
+        transaction_type_a.into(),
+    )?;
+    let affords_transaction_model_b = new_declared_relationship_descriptor_holon(
+        &context,
+        "affords-transaction-model-b",
+        "AffordsTransactionModel",
+        (&holon_space).into(),
+        transaction_type_b.into(),
+    )?;
 
     holon_space.add_related_holons(
-        CoreRelationshipTypeName::AffordsTransactionModel,
-        vec![transaction_type_a.into(), transaction_type_b.into()],
+        CoreRelationshipTypeName::InstanceRelationships,
+        vec![affords_transaction_model_a.into(), affords_transaction_model_b.into()],
     )?;
 
     let holon_space_descriptor = HolonSpaceDescriptor::from_holon(holon_space.into());
 
     assert!(matches!(
         holon_space_descriptor.transaction_model(),
-        Err(HolonError::MultipleRelatedHolons {
-            relationship,
-            count,
-            ..
-        }) if relationship == "AffordsTransactionModel" && count == 2
+        Err(HolonError::DuplicateInheritedDeclaration { kind, name, .. })
+            if kind == "relationship" && name == "AffordsTransactionModel"
     ));
 
     Ok(())

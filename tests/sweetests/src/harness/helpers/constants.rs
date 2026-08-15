@@ -21,26 +21,27 @@ pub const PERSON_DESCRIPTOR_KEY: &str = "Person.HolonType";
 pub const SCHEMA_TYPE_KEY: &str = "Schema.HolonType";
 pub const HOLON_SPACE_TYPE_KEY: &str = "HolonSpace.HolonType";
 pub const TRANSACTION_TYPE_KEY: &str = "Transaction.HolonType";
-pub const HOLON_TYPE_KEY: &str = "HolonType";
-pub const DELETION_SEMANTIC_KEY: &str = "DeletionSemantic";
-pub const DELETION_SEMANTIC_ALLOW_KEY: &str = "DeletionSemantic.Allow";
-pub const DELETION_SEMANTIC_BLOCK_KEY: &str = "DeletionSemantic.Block";
-pub const DELETION_SEMANTIC_CASCADE_KEY: &str = "DeletionSemantic.Cascade";
-pub const OPERATOR_CATEGORY_KEY: &str = "OperatorCategory";
-pub const OPERATOR_CATEGORY_EQUALITY_KEY: &str = "OperatorCategory.Equality";
-pub const OPERATOR_CATEGORY_ORDERING_KEY: &str = "OperatorCategory.Ordering";
+pub const HOLON_TYPE_KEY: &str = "HolonType.TypeDescriptor";
+pub const DELETION_SEMANTIC_KEY: &str = "DeletionSemantic.MapEnumValueType";
+pub const DELETION_SEMANTIC_ALLOW_KEY: &str = "DeletionSemantic.MapEnumValueType.Allow";
+pub const DELETION_SEMANTIC_BLOCK_KEY: &str = "DeletionSemantic.MapEnumValueType.Block";
+pub const DELETION_SEMANTIC_CASCADE_KEY: &str = "DeletionSemantic.MapEnumValueType.Cascade";
+pub const OPERATOR_CATEGORY_KEY: &str = "OperatorCategory.MapEnumValueType";
+pub const OPERATOR_CATEGORY_EQUALITY_KEY: &str = "OperatorCategory.MapEnumValueType.Equality";
+pub const OPERATOR_CATEGORY_ORDERING_KEY: &str = "OperatorCategory.MapEnumValueType.Ordering";
 pub const VARIANTS_RELATIONSHIP: &str = "Variants";
 pub const CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY: &str =
-    "(TypeDescriptor.HolonType)-[InstanceProperties]->(PropertyType)";
+    "(HolonType.TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)";
 pub const CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY: &str =
-    "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor.HolonType)";
-pub const CORE_PREDECESSOR_RELATIONSHIP_KEY: &str = "(HolonType)-[Predecessor]->(HolonType)";
+    "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor)";
+pub const CORE_PREDECESSOR_RELATIONSHIP_KEY: &str =
+    "(HolonType.TypeDescriptor)-[Predecessor]->(HolonType.TypeDescriptor)";
 pub const CORE_HAS_INVERSE_RELATIONSHIP_KEY: &str =
-    "(DeclaredRelationshipType)-[HasInverse]->(InverseRelationshipType)";
+    "(DeclaredRelationshipType.RelationshipType)-[HasInverse]->(InverseRelationshipType.RelationshipType)";
 pub const CORE_INVERSE_OF_RELATIONSHIP_KEY: &str =
-    "(InverseRelationshipType)-[InverseOf]->(DeclaredRelationshipType)";
+    "(InverseRelationshipType.RelationshipType)-[InverseOf]->(DeclaredRelationshipType.RelationshipType)";
 pub const BOOK_TO_PERSON_RELATIONSHIP_KEY: &str =
     "(Book.HolonType)-[AuthoredBy]->(Person.HolonType)";
-pub const PERSON_TO_BOOK_REL_INVERSE: &str = "Authors";
+pub const PERSON_TO_BOOK_REL_INVERSE: &str = "AuthorOf";
 pub const PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY: &str =
-    "(Person.HolonType)-[Authors]->(Book.HolonType)";
+    "(Person.HolonType)-[AuthorOf]->(Book.HolonType)";

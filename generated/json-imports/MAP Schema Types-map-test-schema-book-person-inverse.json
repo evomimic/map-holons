@@ -58,6 +58,111 @@
           "target": [
             {
               "$ref": "(Book.HolonType)-[AuthoredBy]->(Person.HolonType)"
+            },
+            {
+              "$ref": "(Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ReferencesProperty",
+        "TypeNamePlural": "ReferencesPropertyRelationships",
+        "DisplayName": "ReferencesProperty",
+        "DisplayNamePlural": "ReferencesProperty Relationships",
+        "Description": "Non-definitional test relationship used to verify graph-only update anchoring and duplicate suppression.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Book.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(PropertyType.TypeDescriptor)-[ReferencedByBook]->(Book.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(PropertyType.TypeDescriptor)-[ReferencedByBook]->(Book.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ReferencedByBook",
+        "TypeNamePlural": "ReferencedByBookRelationships",
+        "DisplayName": "ReferencedByBook",
+        "DisplayNamePlural": "ReferencedByBook Relationships",
+        "Description": "Inverse of ReferencesProperty for graph-only update tests.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Book.HolonType"
             }
           ]
         }

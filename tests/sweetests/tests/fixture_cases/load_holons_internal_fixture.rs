@@ -15,7 +15,7 @@
 //!
 //! 1. **Empty bundle** → `UnprocessableEntity`; database remains baseline (only Space holon)
 //! 2. **Nodes-only bundle** (no relationships) → `OK`; LinksCreated = 0
-//! 3. **Undeclared relationship bundle** → relationship staged; current two-pass commit is incomplete
+//! 3. **Undeclared relationship bundle** → relationship staged; current two-pass commit reports its error
 //! 4. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; DB unchanged
 //!
 //! ### Why a single fixture?
@@ -276,7 +276,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(node_count as i64), // holons_staged
         MapInteger(node_count as i64), // holons_committed
         MapInteger(1),                 // relationship resolved and staged
-        MapInteger(0),                 // errors_encountered
+        MapInteger(1),                 // commit-time undeclared-relationship error
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
         ExpectedLoadStatus::Incomplete,

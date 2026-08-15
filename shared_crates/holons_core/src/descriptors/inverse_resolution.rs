@@ -146,7 +146,7 @@ mod tests {
     }
 
     #[test]
-    fn resolves_descriptor_holon_relationship_through_own_extends_lineage() -> Result<(), HolonError>
+    fn descriptor_own_extends_lineage_does_not_license_inverse_resolution() -> Result<(), HolonError>
     {
         let context = build_context();
         let type_descriptor =
@@ -214,18 +214,19 @@ mod tests {
             vec![type_descriptor.into()],
         )?;
 
-        let inverse_name = resolve_inverse_relationship_name(
-            &(&concrete_relationship).into(),
-            &RelationshipName(MapString("SourceType".to_string())),
-        )?;
-
-        assert_eq!(inverse_name, RelationshipName(MapString("SourceFor".to_string())));
+        assert!(matches!(
+            resolve_inverse_relationship_name(
+                &(&concrete_relationship).into(),
+                &RelationshipName(MapString("SourceType".to_string())),
+            ),
+            Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
+                if kind == "relationship" && name == "SourceType"
+        ));
         Ok(())
     }
 
     #[test]
-    fn resolves_a_descriptor_owned_relationship_through_its_own_contract() -> Result<(), HolonError>
-    {
+    fn resolves_instance_relationship_through_described_by_contract() -> Result<(), HolonError> {
         let context = build_context();
         let meta_holon_type =
             new_holon_type_descriptor(&context, "meta-holon-type", "MetaHolonType")?;
@@ -273,13 +274,14 @@ mod tests {
             CoreRelationshipTypeName::InstanceRelationships,
             vec![(&declared).into()],
         )?;
-        holon_space_type.add_related_holons(
-            CoreRelationshipTypeName::AffordsTransactionModel,
-            vec![transaction_type.into()],
+        let mut holon_space = new_test_holon(&context, "holon-space-instance")?;
+        holon_space.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![(&holon_space_type).into()],
         )?;
 
         let inverse_name = resolve_inverse_relationship_name(
-            &(&holon_space_type).into(),
+            &(&holon_space).into(),
             &RelationshipName(MapString("AffordsTransactionModel".to_string())),
         )?;
 

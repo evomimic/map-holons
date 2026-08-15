@@ -32,7 +32,7 @@ fn schema_backed_db_count(fixture_holons: &FixtureHolons) -> MapInteger {
 /// changes to the existing Book node and version-producing changes to the new
 /// Book version.
 ///
-/// A second graph-only cycle replays the already-persisted `Properties` edge
+/// A second graph-only cycle replays the already-persisted `ReferencesProperty` edge
 /// (issue #516): commit-time SmartLink duplicate suppression must absorb the
 /// equivalent re-write, leaving exactly one forward and one inverse link.
 #[fixture]
@@ -110,8 +110,9 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     let post_setup_db_count = schema_backed_db_count(&fixture_holons);
 
-    // Begin a fresh transaction for a graph-only relationship mutation. `Properties`
-    // is a non-definitional relationship declared on HolonType, so this must not
+    // Begin a fresh transaction for a graph-only relationship mutation.
+    // `ReferencesProperty` is a non-definitional relationship declared by
+    // Book.HolonType, so this must not
     // create a new Book node; it should persist against the existing Book source.
     test_case.add_begin_transaction_step(
         None,
@@ -129,10 +130,10 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     let graph_only_update = test_case.add_add_related_holons_step(
         &mut fixture_holons,
         graph_only_update,
-        RelationshipName(MapString("Properties".to_string())),
+        RelationshipName(MapString("ReferencesProperty".to_string())),
         vec![title_property_token],
         None,
-        Some("Add non-definitional Book --Properties--> Title.PropertyType".to_string()),
+        Some("Add non-definitional Book --ReferencesProperty--> Title.PropertyType".to_string()),
     )?;
 
     test_case.add_commit_step(
@@ -149,15 +150,18 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Replay the already-persisted graph-only edge to prove commit-time SmartLink
     // idempotency (issue #516). `stage_new_version` clones all persisted
-    // relationships into the staged map, so appending a second Properties target
+    // relationships into the staged map, so appending a second ReferencesProperty target
     // marks the relationship touched; the graph-only commit then re-persists the
     // whole collection, including a SmartLink equivalent to the already-persisted
-    // Book --Properties--> Title.PropertyType edge. Duplicate suppression must
+    // Book --ReferencesProperty--> Title.PropertyType edge. Duplicate suppression must
     // leave exactly one link per direction for that edge, asserted by the
     // relationship-anchoring verification step below.
     test_case.add_begin_transaction_step(
         None,
-        Some("Begin new transaction before replaying the persisted Properties edge".to_string()),
+        Some(
+            "Begin new transaction before replaying the persisted ReferencesProperty edge"
+                .to_string(),
+        ),
     )?;
 
     let replay_update = test_case.add_stage_new_version_step(
@@ -183,11 +187,11 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_add_related_holons_step(
         &mut fixture_holons,
         replay_update,
-        RelationshipName(MapString("Properties".to_string())),
+        RelationshipName(MapString("ReferencesProperty".to_string())),
         vec![name_property_token],
         None,
         Some(
-            "Append Book --Properties--> Name.PropertyType beside the cloned Title member"
+            "Append Book --ReferencesProperty--> Name.PropertyType beside the cloned Title member"
                 .to_string(),
         ),
     )?;

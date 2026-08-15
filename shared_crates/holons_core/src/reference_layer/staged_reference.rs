@@ -113,6 +113,26 @@ impl StagedReference {
         self.get_rc_holon()
     }
 
+    /// Returns errors recorded while committing this staged holon.
+    ///
+    /// Commit implementations attach per-holon failures here so callers can
+    /// project them into their own response or diagnostic representation.
+    pub fn commit_errors(&self) -> Result<Vec<HolonError>, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire staged holon read lock for commit errors: {error}"
+            ))
+        })?;
+
+        match &*holon {
+            Holon::Staged(staged_holon) => Ok(staged_holon.errors().to_vec()),
+            other => Err(HolonError::InvalidType(format!(
+                "StagedReference points to a non-staged holon: {other:?}"
+            ))),
+        }
+    }
+
     /// Retrieves a shared reference to the holon with interior mutability.
     ///
     /// # Arguments

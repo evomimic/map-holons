@@ -49,40 +49,11 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
 
     let instance_property_names = property_type_names(holon_type_descriptor.instance_properties());
-    assert_contains(&instance_property_names, "AllowsAdditionalProperties");
-    assert_contains(&instance_property_names, "AllowsAdditionalRelationships");
+    assert!(instance_property_names.is_empty());
 
     let instance_relationship_names =
         relationship_base_names(holon_type_descriptor.instance_relationships());
-    assert_contains(&instance_relationship_names, "Properties");
     assert_contains(&instance_relationship_names, "DescribedBy");
-
-    let property = holon_type_descriptor
-        .get_property_by_name(PropertyName(MapString::from("AllowsAdditionalProperties")))
-        .expect("AllowsAdditionalProperties lookup");
-    assert_eq!(
-        property
-            .value_type()
-            .expect("AllowsAdditionalProperties value_type")
-            .header()
-            .type_name()
-            .expect("AllowsAdditionalProperties value type_name"),
-        MapString("MapBooleanValueType".to_string())
-    );
-
-    let relationship = holon_type_descriptor
-        .get_relationship_by_name(RelationshipName(MapString::from("Properties")))
-        .expect("Properties relationship lookup");
-    assert_relationship_shape(
-        relationship.base_relationship_name(),
-        relationship.source_type(),
-        relationship.target_type(),
-        relationship.full_relationship_name(),
-        "Properties",
-        "HolonType",
-        "PropertyType",
-        "(HolonType)-[Properties]->(PropertyType)",
-    );
 
     let dance_type = find_holon_by_key(&holons, "DanceType.HolonType");
     let dance_type_descriptor = HolonDescriptor::from_holon(dance_type.clone());
@@ -93,9 +64,10 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         dance_descriptor.dance_name().expect("DanceType dance_name"),
         DanceName(MapString("DanceType".to_string()))
     );
-    let input_parameters_relationship = dance_type_descriptor
-        .get_relationship_by_name(RelationshipName(MapString::from("DanceInput")))
-        .expect("DanceType.DanceInput lookup");
+    let input_parameters_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)",
+    ));
     assert_relationship_shape(
         input_parameters_relationship.base_relationship_name(),
         input_parameters_relationship.source_type(),
@@ -106,9 +78,10 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "HolonType",
         "(DanceType)-[DanceInput]->(HolonType)",
     );
-    let response_relationship = dance_type_descriptor
-        .get_relationship_by_name(RelationshipName(MapString::from("Response")))
-        .expect("DanceType.Response lookup");
+    let response_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)",
+    ));
     assert_relationship_shape(
         response_relationship.base_relationship_name(),
         response_relationship.source_type(),
@@ -120,17 +93,9 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "(DanceType)-[Response]->(DanceResponseType)",
     );
     assert_eq!(dance_descriptor.input_type().expect("DanceType input_parameters").is_none(), true);
-    assert_contains(
-        &relationship_base_names(dance_type_descriptor.instance_relationships()),
-        "DanceInput",
-    );
-    assert_contains(
-        &relationship_base_names(dance_type_descriptor.instance_relationships()),
-        "Response",
-    );
     let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(HolonType)-[AffordsDance]->(DanceType.HolonType)",
+        "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)",
     ))
     .try_into_declared_relationship_descriptor()
     .expect("AffordsDance should be a declared relationship descriptor");
@@ -146,7 +111,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
     let afforded_by_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType)",
+        "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)",
     ))
     .try_into_inverse_relationship_descriptor()
     .expect("DanceAffordedBy should be an inverse relationship descriptor");
@@ -163,9 +128,10 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
 
     let dance_response_type = find_holon_by_key(&holons, "DanceResponseType.HolonType");
     let dance_response_descriptor = HolonDescriptor::from_holon(dance_response_type.clone());
-    let response_body_relationship = dance_response_descriptor
-        .get_relationship_by_name(RelationshipName(MapString::from("ResponseBody")))
-        .expect("DanceResponseType.ResponseBody lookup");
+    let response_body_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)",
+    ));
     assert_relationship_shape(
         response_body_relationship.base_relationship_name(),
         response_body_relationship.source_type(),
@@ -187,7 +153,7 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         projection_descriptor.header().type_name().expect("Projection type_name"),
         MapString("Projection".to_string())
     );
-    assert_contains(&related_holon_keys(&projection, "Extends"), "HolonType");
+    assert_contains(&related_holon_keys(&projection, "Extends"), "HolonType.TypeDescriptor");
 
     let holon_id_projection = find_holon_by_key(&holons, "HolonId.Projection");
     let holon_id_projection_descriptor = HolonDescriptor::from_holon(holon_id_projection.clone());
@@ -232,25 +198,28 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     assert_contains(&diagnostic_property_names, "DiagnosticCode");
     assert_contains(&diagnostic_property_names, "DiagnosticMessage");
 
-    let invocation_source = find_holon_by_key(&holons, "InvocationSource");
+    let invocation_source = find_holon_by_key(&holons, "InvocationSource.MapEnumValueType");
     assert_enum_variants_rewritten_to_declared_side(
         &holons,
-        "InvocationSource",
+        "InvocationSource.MapEnumValueType",
         &[
-            "InvocationSource.ClientCommand",
-            "InvocationSource.TrustChannel",
-            "InvocationSource.Internal",
+            "InvocationSource.MapEnumValueType.ClientCommand",
+            "InvocationSource.MapEnumValueType.TrustChannel",
+            "InvocationSource.MapEnumValueType.Internal",
         ],
     );
     assert_contains(
         &related_holon_keys(&invocation_source, "Variants"),
-        "InvocationSource.ClientCommand",
+        "InvocationSource.MapEnumValueType.ClientCommand",
     );
 
     assert_enum_variants_rewritten_to_declared_side(
         &holons,
-        "DanceDiagnosticSeverity",
-        &["DanceDiagnosticSeverity.Info", "DanceDiagnosticSeverity.Warning"],
+        "DanceDiagnosticSeverity.MapEnumValueType",
+        &[
+            "DanceDiagnosticSeverity.MapEnumValueType.Info",
+            "DanceDiagnosticSeverity.MapEnumValueType.Warning",
+        ],
     );
 
     info!("verified representative core schema descriptor access");
@@ -417,9 +386,9 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
         declared.target_type(),
         declared.full_relationship_name(),
         "InstanceProperties",
-        "TypeDescriptor",
+        "HolonType",
         "PropertyType",
-        "(TypeDescriptor)-[InstanceProperties]->(PropertyType)",
+        "(HolonType)-[InstanceProperties]->(PropertyType)",
     );
 
     let inverse = RelationshipDescriptor::from_holon(find_holon_by_key(
@@ -435,8 +404,8 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
         inverse.full_relationship_name(),
         "InstancePropertyFor",
         "PropertyType",
-        "TypeDescriptor",
-        "(PropertyType)-[InstancePropertyFor]->(TypeDescriptor)",
+        "HolonType",
+        "(PropertyType)-[InstancePropertyFor]->(HolonType)",
     );
     assert_eq!(
         inverse
@@ -503,8 +472,10 @@ pub async fn execute_verify_core_schema_descriptor_subtypes(state: &mut TestExec
 pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_core_schema_value_semantics").await;
 
-    let equals = OperatorDescriptor::from_holon(find_holon_by_key(&holons, "EqualsOperator"));
-    let less_than = OperatorDescriptor::from_holon(find_holon_by_key(&holons, "LessThanOperator"));
+    let equals =
+        OperatorDescriptor::from_holon(find_holon_by_key(&holons, "EqualsOperator.OperatorType"));
+    let less_than =
+        OperatorDescriptor::from_holon(find_holon_by_key(&holons, "LessThanOperator.OperatorType"));
 
     assert_eq!(equals.arity().expect("EqualsOperator arity"), 2);
     assert_eq!(
@@ -512,7 +483,8 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
         OperatorCategory::Equality
     );
 
-    let integer = ValueDescriptor::from_holon(find_holon_by_key(&holons, "IntegerValueType"));
+    let integer =
+        ValueDescriptor::from_holon(find_holon_by_key(&holons, "IntegerValueType.ValueType"));
     let integer_operator_names = operator_type_names(integer.supported_operators());
     assert_contains(&integer_operator_names, "EqualsOperator");
     assert_contains(&integer_operator_names, "LessThanOperator");
@@ -535,7 +507,8 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
         )
         .expect("IntegerValueType LessThanOperator execution"));
 
-    let boolean = ValueDescriptor::from_holon(find_holon_by_key(&holons, "BooleanValueType"));
+    let boolean =
+        ValueDescriptor::from_holon(find_holon_by_key(&holons, "BooleanValueType.ValueType"));
     assert!(!boolean
         .supports_operator(&less_than)
         .expect("BooleanValueType does not support LessThanOperator"));
@@ -550,7 +523,7 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
     ));
 
     let operator_category =
-        ValueDescriptor::from_holon(find_holon_by_key(&holons, "OperatorCategory"));
+        ValueDescriptor::from_holon(find_holon_by_key(&holons, OPERATOR_CATEGORY_KEY));
     operator_category
         .is_valid(&BaseValue::EnumValue(MapEnumValue(MapString("Equality".to_string()))))
         .expect("OperatorCategory Equality variant should validate");
@@ -584,12 +557,12 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
 
     let instance_property_names = property_type_names(book_descriptor.instance_properties());
     assert_contains(&instance_property_names, "Title");
-    assert_contains(&instance_property_names, "AllowsAdditionalProperties");
+    assert_eq!(instance_property_names.len(), 1);
 
     let instance_relationship_names =
         relationship_base_names(book_descriptor.instance_relationships());
     assert_contains(&instance_relationship_names, "AuthoredBy");
-    assert_contains(&instance_relationship_names, "Properties");
+    assert_contains(&instance_relationship_names, "ReferencesProperty");
 
     let title = book_descriptor
         .get_property_by_name(PropertyName(MapString::from("Title")))
@@ -650,8 +623,8 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         "Person",
         "(Book)-[AuthoredBy]->(Person)",
     );
-    // Commit Pass 2 materialized AuthoredBy's reciprocal Authors link from HasInverse.
-    assert_materialized_has_inverse(&declared, "Authors");
+    // Commit Pass 2 materialized AuthoredBy's reciprocal AuthorOf link from HasInverse.
+    assert_materialized_has_inverse(&declared, "AuthorOf");
 
     info!("verified representative Book/Person descriptor access");
 }
@@ -662,7 +635,7 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
 /// Commit Pass 2 persists each declared forward edge and materializes the
 /// corresponding inverse edge on the target, so this asserts both directions:
 /// - forward: Book --AuthoredBy--> Person and Book --DescribedBy--> Book.HolonType
-/// - inverse: Person --Authors--> Book and Book.HolonType --Instances--> Book
+/// - inverse: Person --AuthorOf--> Book and Book.HolonType --Instances--> Book
 pub async fn execute_verify_book_person_instance_links(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_book_person_instance_links").await;
 
@@ -739,23 +712,31 @@ pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionStat
     let title_property_id = local_id(&title_property);
 
     // Non-definitional graph-only mutation: no new node was created for this
-    // commit, so the Properties edge and its inverse must be anchored to the
+    // commit, so the ReferencesProperty edge and its inverse must be anchored to the
     // existing Book id. The fixture's second graph-only commit re-persisted the
-    // full cloned Properties collection (issue #516), so exactly one link must
+    // full cloned ReferencesProperty collection (issue #516), so exactly one link must
     // exist in each direction: commit-time duplicate suppression absorbed the
     // equivalent re-write.
-    assert_related_ids_contain_exactly_once(&original_book, "Properties", &title_property_id);
-    assert_related_ids_contain_exactly_once(&title_property, "PropertyOf", &original_book_id);
+    assert_related_ids_contain_exactly_once(
+        &original_book,
+        "ReferencesProperty",
+        &title_property_id,
+    );
+    assert_related_ids_contain_exactly_once(&title_property, "ReferencedByBook", &original_book_id);
 
     // The replay commit also appended Name.PropertyType; its links prove that
     // commit persisted the touched collection, so the single Title link above
     // reflects duplicate suppression rather than a skipped write.
     let name_property = find_holon_by_key(&holons, "Name.PropertyType");
     let name_property_id = local_id(&name_property);
-    assert_related_ids_contain_exactly_once(&original_book, "Properties", &name_property_id);
-    assert_related_ids_contain_exactly_once(&name_property, "PropertyOf", &original_book_id);
+    assert_related_ids_contain_exactly_once(
+        &original_book,
+        "ReferencesProperty",
+        &name_property_id,
+    );
+    assert_related_ids_contain_exactly_once(&name_property, "ReferencedByBook", &original_book_id);
 
-    // Definitional mutation: the AuthoredBy edge and its Authors inverse must
+    // Definitional mutation: the AuthoredBy edge and its AuthorOf inverse must
     // be anchored to the new Book version, not the prior persisted source.
     assert_related_ids_contain(&new_book, BOOK_TO_PERSON_RELATIONSHIP, &person_id);
     assert_related_ids_contain(&person, PERSON_TO_BOOK_REL_INVERSE, &new_book_id);

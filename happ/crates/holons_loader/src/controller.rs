@@ -412,6 +412,11 @@ impl HolonLoaderController {
             );
         }
 
+        let commit_errors = Self::collect_commit_errors(context)?;
+        let commit_error_count = commit_errors.len() as i64;
+        let commit_error_holons =
+            make_error_holons_best_effort(context, &commit_errors, Some(&provenance_index))?;
+
         let summary = if matches!(load_commit_status, LoadCommitStatus::Complete) {
             format!(
                 "Commit successful: {} holons staged; {} committed; {} abandoned; {} attempts.",
@@ -419,24 +424,27 @@ impl HolonLoaderController {
             )
         } else {
             format!(
-                "Commit incomplete: {} holons staged; {} committed; {} abandoned; {} attempts.",
-                total_holons_staged, saved_holons, abandoned_holons, commits_attempted
+                "Commit incomplete: {} holons staged; {} committed; {} abandoned; {} attempts; {} commit errors.",
+                total_holons_staged,
+                saved_holons,
+                abandoned_holons,
+                commits_attempted,
+                commit_error_count
             )
         };
 
-        // We’re not surfacing per-item commit errors yet; just report via summary.
         let response_reference = self.build_response(
             context,
             run_id,
             total_holons_staged,
             saved_holons,
             links_created,
-            0, // errors_encountered
+            commit_error_count,
             total_bundles,
             total_loader_holons,
             load_commit_status,
             summary,
-            Vec::new(),
+            commit_error_holons,
         )?;
 
         debug!("HolonLoaderController::load_set - done");
@@ -446,6 +454,24 @@ impl HolonLoaderController {
     // ─────────────────────────────────────────────────────────────────────────
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    /// Collects per-holon errors recorded by the commit implementation and
+    /// preserves loader-key context for provenance enrichment.
+    fn collect_commit_errors(
+        context: &Arc<TransactionContext>,
+    ) -> Result<Vec<ErrorWithContext>, HolonError> {
+        let mut commit_errors = Vec::new();
+
+        for staged_reference in context.staged_references()? {
+            let source_loader_key = staged_reference.key()?;
+            for error in staged_reference.commit_errors()? {
+                commit_errors
+                    .push(ErrorWithContext { error, source_loader_key: source_loader_key.clone() });
+            }
+        }
+
+        Ok(commit_errors)
+    }
 
     /// Discover HolonLoaderBundle references from a HolonLoadSet.
     /// - Uses `related_holons()` and manages the RwLock explicitly (current TransientHolonManager behavior).

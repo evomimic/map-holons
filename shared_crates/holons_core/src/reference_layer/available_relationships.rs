@@ -10,9 +10,10 @@
 //! | uncommitted `StagedReference`   | yes      | no      |
 //! | `TransientReference`            | yes      | no      |
 //!
-//! The declared side uses the uniform two-route contract: the source holon's
-//! `DescribedBy` contract plus any `InstanceRelationships` contract declared by
-//! the source holon itself. The inverse side is consulted only for committed
+//! The declared side comes exclusively from the source holon's `DescribedBy`
+//! contract. This applies to descriptor holons as well as ordinary holons: a
+//! descriptor's own `InstanceRelationships` declarations license its instances,
+//! not the descriptor itself. The inverse side is consulted only for committed
 //! sources.
 
 use crate::descriptors::{
@@ -244,7 +245,7 @@ mod tests {
     }
 
     #[test]
-    fn descriptor_holon_source_includes_own_lineage_declared_relationships(
+    fn descriptor_holon_source_excludes_own_lineage_declared_relationships(
     ) -> Result<(), HolonError> {
         let context = build_context();
         let type_descriptor =
@@ -299,7 +300,8 @@ mod tests {
 
         let names = qualified_names(&relationship_descriptor.available_relationships()?)?;
 
-        assert!(names.contains(&("SourceType".to_string(), RelationshipDirection::Declared)));
+        assert!(!names.contains(&("SourceType".to_string(), RelationshipDirection::Declared)));
+        assert!(names.is_empty());
         Ok(())
     }
 

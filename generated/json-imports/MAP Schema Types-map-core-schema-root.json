@@ -700,14 +700,6 @@
               "$ref": "QueryDance.DanceType"
             }
           ]
-        },
-        {
-          "name": "AffordsTransactionModel",
-          "target": [
-            {
-              "$ref": "Transaction.HolonType"
-            }
-          ]
         }
       ]
     },
