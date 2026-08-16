@@ -18,8 +18,8 @@
 //! pre-exist when Pass 2 runs. A non-definitional relationship mutation on a staged-for-update
 //! holon is what selects that state.
 //!
-//! The mutation used here is `Book --Properties--> Title.PropertyType`, matching the graph-only
-//! phase of `stage_new_version_fixture`. `Properties` is declared for Book instances through
+//! The mutation used here is `Book --ReferencesProperty--> Title.PropertyType`, matching the graph-only
+//! phase of `stage_new_version_fixture`. `ReferencesProperty` is declared for Book instances through
 //! `Book.HolonType`'s `InstanceProperties` and is non-definitional. The Book instance is described
 //! explicitly rather than loaded, because a descriptor is what makes the relationship declaration
 //! resolvable at all.
@@ -66,7 +66,7 @@ const PROBE_ZOME: &str = "holons_test_probes";
 
 const BOOK_KEY: &str = "Book.CommitConflict.1";
 const TITLE_PROPERTY_KEY: &str = "Title.PropertyType";
-const PROPERTIES: &str = "Properties";
+const REFERENCES_PROPERTY: &str = "ReferencesProperty";
 
 /// Canonical key on the planted link. Differs from the book's real key, which is what makes the
 /// commit-time write a `Conflict` rather than an idempotent `AlreadyPresent`.
@@ -78,7 +78,7 @@ fn rel(name: &str) -> RelationshipName {
 
 /// Creates one Book instance, described by `Book.HolonType`, and commits it.
 ///
-/// Returns the saved instance's id. The `DescribedBy` edge is what makes `Properties` resolvable on
+/// Returns the saved instance's id. The `DescribedBy` edge is what makes `ReferencesProperty` resolvable on
 /// this holon later; without it the graph-only add fails with `DescriptorDeclarationNotFound`
 /// before reaching any SmartLink write.
 ///
@@ -266,7 +266,7 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     let book_id = create_described_book(&runtime).await;
 
     // --- Phase 2: stage the graph-only relationship add ------------------------------------
-    // `Properties` is non-definitional, so this stays a graph-only edit and Pass 2 anchors the
+    // `ReferencesProperty` is non-definitional, so this stays a graph-only edit and Pass 2 anchors the
     // link to the book's *existing* id — the only commit shape that can collide with a live link.
     // Nothing is planted yet: see the module doc on why planting first makes the add a no-op.
     let context = begin_transaction(&runtime).await;
@@ -295,14 +295,14 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
                 context: Arc::clone(&context),
                 target: staged,
                 action: HolonAction::Write(WritableHolonAction::AddRelatedHolons {
-                    name: rel(PROPERTIES),
+                    name: rel(REFERENCES_PROPERTY),
                     holons: vec![title_property.clone()],
                 }),
             }),
             ExecutionPolicy::default(),
         )
         .await
-        .expect("adding the Properties relationship failed");
+        .expect("adding the ReferencesProperty relationship failed");
 
     // --- Phase 3: a foreign writer lands the same edge, with a different key ----------------
     // Between staging and commit, so the staged collection cannot absorb it. The identity matches
@@ -311,7 +311,7 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     // zome because no supported write path produces a stale-keyed row.
     let stale_tag = encode_smartlink_tag(&SmartLinkTagInput {
         target_id: HolonId::Local(title_property_id.clone()),
-        relationship_name: rel(PROPERTIES),
+        relationship_name: rel(REFERENCES_PROPERTY),
         canonical_key: CanonicalKey::new(STALE_KEY).unwrap(),
         occurrence_id: None,
         relationship_property_values: PropertyMap::new(),
@@ -328,7 +328,7 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
         )
         .await;
 
-    let planted = live_smartlinks(&backend, &book_id, &rel(PROPERTIES)).await;
+    let planted = live_smartlinks(&backend, &book_id, &rel(REFERENCES_PROPERTY)).await;
     assert_eq!(planted.len(), 1, "setup: exactly one planted link should be live");
     assert_eq!(
         planted[0].canonical_key.as_str(),
@@ -358,7 +358,7 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
         Ok(Some(PropertyValue::StringValue(MapString(status)))) => status,
         other => panic!("expected a string CommitRequestStatus, got {other:?}"),
     };
-    let after = live_smartlinks(&backend, &book_id, &rel(PROPERTIES)).await;
+    let after = live_smartlinks(&backend, &book_id, &rel(REFERENCES_PROPERTY)).await;
     let from_target: Vec<SmartLink> = backend
         .conductor
         .call(&backend.cell.zome(ZOME), "smartlink_expand_all", title_property_id.clone())
@@ -368,7 +368,7 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
         "Incomplete",
         "a SmartLink conflict must downgrade the commit response, not report success.\n\
          book_id                = {:?}\n\
-         {PROPERTIES} from book = {:?}\n\
+         {REFERENCES_PROPERTY} from book = {:?}\n\
          links from the target  = {:?}",
         book_id,
         after
