@@ -70,45 +70,6 @@ pub fn get_all_deletes_for_holon_node(
     }
 }
 
-/// Enumerates revisions reachable through `HolonNodeUpdates` links.
-///
-/// Scaffolded, and currently reports only the record it was given: MAP authors versions as native
-/// root-addressed updates and deliberately does not maintain a parallel `HolonNodeUpdates` link
-/// index, so there are no links for this to follow. Revision-history traversal is later storage
-/// work, which will decide whether to build on Holochain's own update graph (`get_details`) or on
-/// the link index — it should not harden both.
-#[hdk_extern]
-pub fn get_all_revisions_for_holon_node(
-    original_holon_node_hash: ActionHash,
-) -> ExternResult<Vec<Record>> {
-    let Some(original_record) =
-        get_original_holon_node_with_details(original_holon_node_hash.clone())?
-    else {
-        return Ok(vec![]);
-    };
-    let links_query =
-        LinkQuery::try_new(original_holon_node_hash.clone(), LinkTypes::HolonNodeUpdates)?;
-    let links = get_links(links_query, GetStrategy::default())?;
-    let get_input: Vec<GetInput> = links
-        .into_iter()
-        .map(|link| {
-            Ok(GetInput::new(
-                link.target
-                    .into_action_hash()
-                    .ok_or(wasm_error!(WasmErrorInner::Guest(
-                        "No action hash associated with link".to_string()
-                    )))?
-                    .into(),
-                GetOptions::default(),
-            ))
-        })
-        .collect::<ExternResult<Vec<GetInput>>>()?;
-    let records = HDK.with(|hdk| hdk.borrow().get(get_input))?;
-    let mut records: Vec<Record> = records.into_iter().flatten().collect();
-    records.insert(0, original_record);
-    Ok(records)
-}
-
 #[hdk_extern]
 pub fn get_holon_node_by_path(input: GetPathInput) -> ExternResult<Option<Record>> {
     let links_query = LinkQuery::try_new(input.path.path_entry_hash()?, input.link_type)?;
@@ -134,29 +95,6 @@ pub fn get_original_holon_node(
     original_holon_node_hash: ActionHash,
 ) -> ExternResult<Option<Record>> {
     get(original_holon_node_hash, GetOptions::default())
-}
-
-/// Selects the newest revision reachable through `HolonNodeUpdates` links.
-///
-/// Scaffolded, and currently equivalent to `get_original_holon_node`: MAP authors no
-/// `HolonNodeUpdates` links (see `get_all_revisions_for_holon_node`), so this always falls through
-/// to the hash it was given. Note that hash is now a lineage *root* rather than the only version
-/// of a holon, so this returns the root's content, not the lineage head. Head selection is later
-/// storage work.
-#[hdk_extern]
-pub fn get_latest_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<Option<Record>> {
-    let links_query =
-        LinkQuery::try_new(original_holon_node_hash.clone(), LinkTypes::HolonNodeUpdates)?;
-    let links = get_links(links_query, GetStrategy::default())?;
-    let latest_link =
-        links.into_iter().max_by(|link_a, link_b| link_a.timestamp.cmp(&link_b.timestamp));
-    let latest_holon_node_hash = match latest_link {
-        Some(link) => link.target.clone().into_action_hash().ok_or(wasm_error!(
-            WasmErrorInner::Guest("No action hash associated with link".to_string())
-        ))?,
-        None => original_holon_node_hash.clone(),
-    };
-    get(latest_holon_node_hash, GetOptions::default())
 }
 
 #[hdk_extern]

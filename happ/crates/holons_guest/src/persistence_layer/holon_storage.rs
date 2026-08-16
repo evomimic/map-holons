@@ -12,15 +12,14 @@
 //! deliberately absent — they are later storage work, and folding them in here would make an
 //! exact read ambiguous.
 //!
-//! Two deliberate non-decisions, recorded so they are not mistaken for oversights:
+//! One deliberate non-decision, recorded so it is not mistaken for an oversight: `PublishRoot`
+//! indexes the new holon under `AllHolonNodes`; `PublishVersion` does not. The lineage root is
+//! already indexed, and one index entry per version would make a get-all return every version of
+//! every holon as a separate top-level result.
 //!
-//! - `PublishRoot` indexes the new holon under `AllHolonNodes`; `PublishVersion` does not. The
-//!   lineage root is already indexed, and one index entry per version would make a get-all
-//!   return every version of every holon as a separate top-level result.
-//! - `PublishVersion` does not author `HolonNodeUpdates` links. Holochain's own update graph
-//!   already records that an update happened, and a parallel link index would be a second
-//!   source of truth for the same fact. Those links remain declared for later storage work
-//!   that will decide deliberately which model to build on.
+//! Versions are authored as native root-addressed Holochain updates and nothing else: Holochain's
+//! own update graph already records that an update happened, so there is no parallel link index
+//! to keep in step with it.
 
 use core_types::{
     resolve_shared_lineage_root, HolonError, HolonWriteRequest, LineageId, StoredHolonNode,

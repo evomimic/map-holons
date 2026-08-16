@@ -32,8 +32,10 @@ const EXPECTED_MALFORMED_SMARTLINK_REJECTION: &str =
 #[derive(Clone, Copy, Debug, Serialize)]
 enum LinkTypeInput {
     AllHolonNodes,
-    HolonNodeUpdates,
     LocalHolonSpace,
+    /// Retired in Storage SL5a (#631). Kept here with no guest counterpart so
+    /// `obsolete_updates_link_type_is_no_longer_addressable` can prove the ingress refuses it.
+    HolonNodeUpdates,
 }
 
 #[derive(Debug, Serialize)]
@@ -321,21 +323,35 @@ async fn infrastructure_root_indexes_reject_update_targets_at_the_public_ingress
     }
 }
 
+/// The obsolete revision index is unreachable, not merely rejected.
+///
+/// Storage SL5a removed `HolonNodeUpdates` from `LinkTypes`, so the public ingress can no longer
+/// deserialize the name into a link type at all — a stronger guarantee than the validation
+/// rejection it replaces. The failure is an HDK deserialization error, so this asserts only that
+/// the call fails; its wording is not ours to pin.
 #[tokio::test(flavor = "multi_thread")]
-async fn obsolete_updates_create_and_all_holon_nodes_delete_are_rejected() {
-    let backend = setup_probe_enabled_conductor().await;
+async fn obsolete_updates_link_type_is_no_longer_addressable() {
+    let backend = setup_test_conductor().await;
     let target = publish_root(&backend, "target").await;
-    let updates = create_path(
+
+    let result = create_path(
         &backend,
         "arbitrary_obsolete_base",
         LinkTypeInput::HolonNodeUpdates,
         target.version_id(),
     )
     .await;
-    assert_commit_rejected_with_message(
-        updates,
-        "HolonNodeUpdates links are obsolete and cannot be created",
+
+    assert!(
+        result.is_err(),
+        "the retired HolonNodeUpdates link type must not be addressable through the ingress"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn all_holon_nodes_delete_is_rejected() {
+    let backend = setup_probe_enabled_conductor().await;
+    let target = publish_root(&backend, "target").await;
 
     let all_link =
         create_path(&backend, "all_holon_nodes", LinkTypeInput::AllHolonNodes, target.version_id())

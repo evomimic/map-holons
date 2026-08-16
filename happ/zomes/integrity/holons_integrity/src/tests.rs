@@ -6,7 +6,6 @@ use shared_validation::pvl_limits_v1::MAX_HOLON_NODE_BYTES;
 const HOLON_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
 const HOLON_ZOME_INDEX: ZomeIndex = ZomeIndex(0);
 const ALL_HOLON_NODES_LINK_TYPE: LinkType = LinkType(LinkTypes::AllHolonNodes as u8);
-const HOLON_NODE_UPDATES_LINK_TYPE: LinkType = LinkType(LinkTypes::HolonNodeUpdates as u8);
 const LOCAL_HOLON_SPACE_LINK_TYPE: LinkType = LinkType(LinkTypes::LocalHolonSpace as u8);
 const SMARTLINK_LINK_TYPE: LinkType = LinkType(LinkTypes::SmartLink as u8);
 
@@ -259,12 +258,7 @@ fn zome_info() -> ZomeInfo {
             // flattening and StoreRecord delete dispatch.
             links: ScopedZomeTypes(vec![(
                 HOLON_ZOME_INDEX,
-                vec![
-                    ALL_HOLON_NODES_LINK_TYPE,
-                    HOLON_NODE_UPDATES_LINK_TYPE,
-                    LOCAL_HOLON_SPACE_LINK_TYPE,
-                    SMARTLINK_LINK_TYPE,
-                ],
+                vec![ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE],
             )]),
         },
     )
@@ -427,11 +421,9 @@ fn create_link(link_type: LinkType, tag: LinkTag) -> CreateLink {
 fn infrastructure_create_link(link_type: LinkType) -> CreateLink {
     let path = if link_type == ALL_HOLON_NODES_LINK_TYPE {
         ALL_HOLON_NODES_PATH
-    } else if link_type == LOCAL_HOLON_SPACE_LINK_TYPE {
-        LOCAL_HOLON_SPACE_PATH
     } else {
-        assert_eq!(link_type, HOLON_NODE_UPDATES_LINK_TYPE);
-        "obsolete_holon_node_updates_has_no_canonical_base"
+        assert_eq!(link_type, LOCAL_HOLON_SPACE_LINK_TYPE);
+        LOCAL_HOLON_SPACE_PATH
     };
     let mut create = create_link(link_type, LinkTag::new(Vec::new()));
     create.base_address = Path::from(path).path_entry_hash().expect("path hashing is local").into();
@@ -516,18 +508,6 @@ fn both_smartlink_create_forms_use_no_dependencies() {
 #[test]
 fn infrastructure_create_forms_pin_their_structural_dependency_counts() {
     for form in [CreateLinkOpForm::RegisterCreateLink, CreateLinkOpForm::StoreRecord] {
-        install_infrastructure_create_target(0);
-        assert_eq!(
-            validate(create_link_op(
-                form,
-                infrastructure_create_link(HOLON_NODE_UPDATES_LINK_TYPE),
-            )),
-            Ok(ValidateCallbackResult::Invalid(
-                "HolonNodeUpdates links are obsolete and cannot be created".into()
-            )),
-            "{form:?} bypassed HolonNodeUpdates create rejection"
-        );
-
         for link_type in [ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE] {
             install_infrastructure_create_target(1);
             assert_eq!(
@@ -541,12 +521,7 @@ fn infrastructure_create_forms_pin_their_structural_dependency_counts() {
 
 #[test]
 fn every_register_delete_link_form_uses_no_dependencies() {
-    for link_type in [
-        ALL_HOLON_NODES_LINK_TYPE,
-        HOLON_NODE_UPDATES_LINK_TYPE,
-        LOCAL_HOLON_SPACE_LINK_TYPE,
-        SMARTLINK_LINK_TYPE,
-    ] {
+    for link_type in [ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
         let mut mock = MockHdi::new();
         mock.expect_must_get_action().times(0);
         mock.expect_must_get_valid_record().times(0);
@@ -572,12 +547,7 @@ fn every_register_delete_link_form_uses_no_dependencies() {
 
 #[test]
 fn every_store_record_delete_link_form_uses_one_action_dependency() {
-    for link_type in [
-        ALL_HOLON_NODES_LINK_TYPE,
-        HOLON_NODE_UPDATES_LINK_TYPE,
-        LOCAL_HOLON_SPACE_LINK_TYPE,
-        SMARTLINK_LINK_TYPE,
-    ] {
+    for link_type in [ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
         let create = if link_type == SMARTLINK_LINK_TYPE {
             create_link(link_type, valid_smartlink_tag())
         } else {

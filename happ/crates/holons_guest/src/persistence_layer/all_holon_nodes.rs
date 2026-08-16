@@ -1,4 +1,3 @@
-use crate::persistence_layer::holon_node::get_latest_holon_node;
 use core_types::{HolonError, HolonId};
 use hdk::prelude::*;
 use holons_guest_integrity::{type_conversions::*, ALL_HOLON_NODES_PATH};
@@ -11,10 +10,9 @@ use holons_integrity::*;
 /// addressed at its lineage root and deliberately adds no index entry, so a lineage never appears
 /// more than once here.
 ///
-/// The stated intent of returning the *latest* version is not met. `get_latest_holon_node` has no
-/// `HolonNodeUpdates` links to follow, so each result is the lineage root — which, once a lineage
-/// has versions, is no longer its current content. Head selection is later storage work; until
-/// then a caller needing the current version traverses `Successor` from the root.
+/// Each result is therefore a lineage *root*, which once a lineage has versions is no longer its
+/// current content. Head selection is later storage work; until then a caller needing the current
+/// version traverses `Successor` from the root.
 #[hdk_extern]
 pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
     let path = Path::from(ALL_HOLON_NODES_PATH);
@@ -27,14 +25,7 @@ pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
         .map(|link| GetInput::new(link.target.try_into().unwrap(), GetOptions::default()))
         .collect();
     let records = HDK.with(|hdk| hdk.borrow().get(get_input))?;
-    let records: Vec<Record> = records.into_iter().filter_map(|r| r).collect();
-    let mut latest_records = Vec::new();
-    for record in &records {
-        if let Some(latest_record) = get_latest_holon_node(record.action_address().clone())? {
-            latest_records.push(latest_record);
-        }
-    }
-    Ok(latest_records)
+    Ok(records.into_iter().flatten().collect())
 }
 
 /// Get the `HolonId` of every HolonNode in the HolonSpace, one per lineage.
@@ -43,7 +34,8 @@ pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
 /// identities rather than records, so callers that only need ids skip the record fetch.
 /// The one-entry-per-lineage and lineage-root caveats documented above apply here too.
 ///
-/// This global-index reader is preserved until Storage SL5 replaces the index itself.
+/// This global-index reader is preserved until the `AllHolonNodes` index itself is retired, which
+/// waits on a coordinator-owned replacement for whole-space discovery (Storage SL5b, #631).
 /// It moved here from the retired guest SmartLink facade (Storage SL4, #630): despite
 /// the old `fetch_links_to_all_holons` name it never returned links, and `AllHolonNodes`
 /// is not a SmartLink relationship.
