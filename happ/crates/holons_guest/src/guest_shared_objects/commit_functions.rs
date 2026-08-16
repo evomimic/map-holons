@@ -1,9 +1,8 @@
 use hdk::prelude::*;
 use std::sync::{Arc, RwLock};
 
-use crate::guest_shared_objects::save_smartlink;
-use crate::persistence_layer::persist_holon;
-use core_types::{HolonWriteRequest, PreparedSmartLink};
+use crate::persistence_layer::{persist_holon, put_smartlink};
+use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
 
 use holons_core::{
     core_shared_objects::{
@@ -663,7 +662,7 @@ fn save_smartlinks_for_collection(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, name.0 .0, source_id, forward_smartlink.target_id
         );
-        save_smartlink(forward_smartlink)?;
+        persist_smartlink(forward_smartlink)?;
 
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
@@ -679,10 +678,45 @@ fn save_smartlinks_for_collection(
             "saving inverse smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, inverse_name.0 .0, resolved_target.target_local_id, source_id
         );
-        save_smartlink(inverse_smartlink)?;
+        persist_smartlink(inverse_smartlink)?;
     }
 
     Ok(())
+}
+
+/// Persists one SmartLink through the storage API and applies commit's outcome policy.
+///
+/// `Inserted` and `AlreadyPresent` are both success: the requested link is live either
+/// way, and commit needs no identity back from it. A `Conflict` is an error: a live link
+/// already shares this insertion identity but differs in canonical key or authoritative
+/// relationship properties, so the requested SmartLink was *not* persisted. Pass 2 turns
+/// that error into an `Incomplete` commit response rather than a failed commit — the
+/// holon itself is already persisted by then. Reporting success instead would claim a
+/// relationship was committed when it was not.
+///
+/// This is deliberately defensive, and the window is narrow. Staging hydrates a holon's
+/// persisted relationships, and `add_related_holons` treats an entry whose reference
+/// identity already exists as an idempotent no-op, so a link that is live *before*
+/// staging never reaches this function at all. A conflict therefore requires the
+/// colliding link to appear between staging and commit — a concurrent writer, or a
+/// legacy DHT row surfacing under the old dedup, which matched only exact tag bytes.
+///
+/// Note that no write happens either way: `put_smartlink` declines before authoring. The
+/// entire observable effect of this arm is the reported outcome, which is why
+/// `commit_conflict_tests.rs` asserts the response status rather than the DHT state.
+fn persist_smartlink(prepared: PreparedSmartLink) -> Result<(), HolonError> {
+    let source_id = prepared.source_id.clone();
+    let target_id = prepared.target_id.clone();
+    let relationship_name = prepared.relationship_name.clone();
+
+    match put_smartlink(prepared)? {
+        PutSmartLinkOutcome::Inserted(_) | PutSmartLinkOutcome::AlreadyPresent(_) => Ok(()),
+        PutSmartLinkOutcome::Conflict(existing) => Err(HolonError::CommitFailure(format!(
+            "SmartLink conflict: a live link {existing:?} already shares the insertion identity \
+             (source={source_id:?}, target={target_id:?}, relationship={relationship_name:?}) \
+             but differs in canonical key or relationship properties; requested link not persisted"
+        ))),
+    }
 }
 
 /// Requires relationship targets to be local before SmartLink persistence.

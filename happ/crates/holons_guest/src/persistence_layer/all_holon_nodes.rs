@@ -1,6 +1,7 @@
 use crate::persistence_layer::holon_node::get_latest_holon_node;
+use core_types::{HolonError, HolonId};
 use hdk::prelude::*;
-use holons_guest_integrity::ALL_HOLON_NODES_PATH;
+use holons_guest_integrity::{type_conversions::*, ALL_HOLON_NODES_PATH};
 use holons_integrity::*;
 //TODO: move this function to holon_node.rs and delete the file
 
@@ -34,4 +35,38 @@ pub fn get_all_holon_nodes(_: ()) -> ExternResult<Vec<Record>> {
         }
     }
     Ok(latest_records)
+}
+
+/// Get the `HolonId` of every HolonNode in the HolonSpace, one per lineage.
+///
+/// Reads the same `AllHolonNodes` global index as `get_all_holon_nodes`, but returns
+/// identities rather than records, so callers that only need ids skip the record fetch.
+/// The one-entry-per-lineage and lineage-root caveats documented above apply here too.
+///
+/// This global-index reader is preserved until Storage SL5 replaces the index itself.
+/// It moved here from the retired guest SmartLink facade (Storage SL4, #630): despite
+/// the old `fetch_links_to_all_holons` name it never returned links, and `AllHolonNodes`
+/// is not a SmartLink relationship.
+// This link query defaults on all fields; `GetStrategy::default()` performs a network fetch.
+pub fn get_all_holon_ids() -> Result<Vec<HolonId>, HolonError> {
+    let path = Path::from(ALL_HOLON_NODES_PATH);
+    let base_address = path.path_entry_hash().map_err(holon_error_from_wasm_error)?;
+    let links_query = LinkQuery::try_new(base_address, LinkTypes::AllHolonNodes)
+        .map_err(holon_error_from_wasm_error)?;
+    let links =
+        get_links(links_query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+    info!("Retrieved {:?} links for 'all_holon_nodes' path, converting to HolonIds..", links.len());
+
+    let mut holon_ids = Vec::with_capacity(links.len());
+    for link in links {
+        let holon_id = HolonId::Local(local_id_from_action_hash(
+            link.target.clone().into_action_hash().ok_or(HolonError::HashConversion(
+                "Target".to_string(),
+                "ActionHash".to_string(),
+            ))?,
+        ));
+        holon_ids.push(holon_id);
+    }
+
+    Ok(holon_ids)
 }
