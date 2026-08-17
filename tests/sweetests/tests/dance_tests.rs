@@ -46,6 +46,7 @@ use execution_steps::load_book_person_inverse_test_schema_executor::execute_load
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_inverse_oriented_book_person_instances_expect_failure;
 use execution_steps::load_core_schema_executor::{
     execute_load_core_schema, execute_load_generated_core_schema,
+    execute_load_generated_validation_schema,
 };
 use execution_steps::load_holons_internal_executor::execute_load_holons_internal;
 use execution_steps::lookup_saved_holon_executor::execute_lookup_saved_holon_by_key;
@@ -66,6 +67,7 @@ use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_book_person_inverse_schema_fixture::*;
 use fixture_cases::load_core_schema_fixture::*;
 use fixture_cases::load_generated_core_schema_fixture::*;
+use fixture_cases::load_generated_validation_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
@@ -118,6 +120,7 @@ use holons_prelude::prelude::*;
 #[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
 #[case::load_core_schema_test(load_core_schema_fixture())]
 #[case::load_generated_core_schema_test(load_generated_core_schema_fixture())]
+#[case::load_generated_validation_schema_test(load_generated_validation_schema_fixture())]
 #[case::load_book_person_inverse_schema_test(load_book_person_inverse_schema_fixture())]
 #[case::frozen_member_head_redirect_test(frozen_member_head_redirect_fixture())]
 #[case::frozen_member_head_redirect_cross_tx_test(frozen_member_head_redirect_cross_tx_fixture())]
@@ -235,6 +238,9 @@ async fn run_dance_test_case(mut test_case: DancesTestCase) {
             }
             DanceTestStep::LoadGeneratedCoreSchema { .. } => {
                 execute_load_generated_core_schema(&mut test_execution_state).await
+            }
+            DanceTestStep::LoadGeneratedValidationSchema { .. } => {
+                execute_load_generated_validation_schema(&mut test_execution_state).await
             }
             DanceTestStep::LoadBookPersonInverseTestSchema { .. } => {
                 execute_load_book_person_inverse_test_schema(&mut test_execution_state).await

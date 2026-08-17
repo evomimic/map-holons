@@ -22,6 +22,8 @@ const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 12] = [
     "MAP Schema Types-map-core-schema-value-constraint-types.json",
 ];
 
+const GENERATED_VALIDATION_SCHEMA_FILENAME: &str = "map-validation-schema.json";
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CoreSchemaLoadMetrics {
     pub staged: i64,
@@ -85,6 +87,20 @@ pub fn build_generated_core_schema_content_set() -> Result<ContentSet, HolonErro
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(ContentSet { schema, files_to_load })
+}
+
+/// Builds the checked-in validation package artifact. Callers must have
+/// loaded the generated Core schema in an earlier completed transaction.
+pub fn build_generated_validation_schema_content_set() -> Result<ContentSet, HolonError> {
+    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH);
+    let schema = read_file_data(&schema_path, "validation schema")?;
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+    let validation_schema_path =
+        repo_root.join("generated/json-imports").join(GENERATED_VALIDATION_SCHEMA_FILENAME);
+    let files_to_load =
+        vec![read_file_data(&validation_schema_path, "generated validation schema import")?];
 
     Ok(ContentSet { schema, files_to_load })
 }
