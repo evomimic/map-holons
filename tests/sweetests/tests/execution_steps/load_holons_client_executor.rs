@@ -154,6 +154,62 @@ pub async fn execute_load_holons_client(
     }
 }
 
+/// Execute a successful package load where the topology is the assertion. The
+/// validation package has a fixed holon count, while its link count is an
+/// implementation detail of generated descriptor relationships; requiring it
+/// to be positive catches a relationship-free import without fossilizing that
+/// internal count.
+pub async fn execute_load_holons_client_expect_success(
+    test_state: &mut TestExecutionState,
+    content_set: ContentSet,
+    expected_holons: i64,
+    expected_bundles: i64,
+) {
+    let context = test_state.context();
+    let command = MapCommand::Transaction(TransactionCommand {
+        context: context.clone(),
+        action: TransactionAction::LoadHolons { content_set },
+    });
+    let result = test_state
+        .dispatch_command(command, "load_holons_client_expect_success")
+        .await
+        .unwrap_or_else(|error| panic!("load_holons_client_expect_success failed: {error:?}"));
+
+    let response_reference = match result {
+        MapResult::Reference(HolonReference::Transient(reference)) => reference,
+        other => panic!("LoadHolons: expected Reference(Transient), got {other:?}"),
+    };
+
+    let staged = read_int_property(&response_reference, CorePropertyTypeName::HolonsStaged);
+    let committed = read_int_property(&response_reference, CorePropertyTypeName::HolonsCommitted);
+    let links_created = read_int_property(&response_reference, CorePropertyTypeName::LinksCreated);
+    let errors = read_int_property(&response_reference, CorePropertyTypeName::ErrorCount);
+    let total_bundles = read_int_property(&response_reference, CorePropertyTypeName::TotalBundles);
+    let total_loader_holons =
+        read_int_property(&response_reference, CorePropertyTypeName::TotalLoaderHolons);
+    let commit_status =
+        read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus);
+
+    if errors != 0 {
+        panic!(
+            "validation package import reported {errors} errors.{}{}",
+            dump_full_response(&response_reference),
+            dump_error_holons_from_response(&response_reference),
+        );
+    }
+
+    assert_eq!(staged, expected_holons, "unexpected staged holon count");
+    assert_eq!(committed, expected_holons, "unexpected committed holon count");
+    assert!(links_created > 0, "validation package must create relationships");
+    assert_eq!(total_bundles, expected_bundles, "unexpected content bundle count");
+    assert_eq!(total_loader_holons, expected_holons, "unexpected loader holon count");
+    assert_eq!(
+        commit_status,
+        ExpectedLoadStatus::Complete.to_string(),
+        "validation package load must complete"
+    );
+}
+
 pub async fn execute_load_holons_client_expect_failure(
     test_state: &mut TestExecutionState,
     content_set: ContentSet,

@@ -1,12 +1,15 @@
 use holons_prelude::prelude::*;
 
 use holons_test::harness::helpers::{
-    build_core_schema_content_set, build_generated_core_schema_content_set, CORE_SCHEMA_METRICS,
+    build_core_schema_content_set, build_generated_core_schema_content_set,
+    build_generated_validation_schema_content_set, CORE_SCHEMA_METRICS,
     GENERATED_CORE_SCHEMA_METRICS,
 };
 use holons_test::TestExecutionState;
 
-use super::load_holons_client_executor::execute_load_holons_client;
+use super::load_holons_client_executor::{
+    execute_load_holons_client, execute_load_holons_client_expect_success,
+};
 
 pub async fn execute_load_core_schema(test_state: &mut TestExecutionState) {
     let content_set = build_core_schema_content_set()
@@ -24,6 +27,15 @@ pub async fn execute_load_core_schema(test_state: &mut TestExecutionState) {
         CORE_SCHEMA_METRICS.commit_status,
     )
     .await;
+}
+
+/// Loads the validation-owned generated package after Core has committed.
+pub async fn execute_load_generated_validation_schema(test_state: &mut TestExecutionState) {
+    let content_set = build_generated_validation_schema_content_set().unwrap_or_else(|error| {
+        panic!("failed to build generated validation schema ContentSet: {error:?}")
+    });
+
+    execute_load_holons_client_expect_success(test_state, content_set, 155, 1).await;
 }
 
 /// Loads the checked-in Schema 2.0 compiler artifact. Metrics are recorded by
