@@ -1,36 +1,18 @@
 //
 use crate::{
-    persistence_layer::{
-        create_path_to_holon_node, get_holon_node_by_path, CreatePathInput, GetPathInput,
-    },
+    persistence_layer::{get_holon_node_by_path, GetPathInput},
     try_from_record,
 };
 use core_types::HolonError;
-use hdi::prelude::{ActionHash, Path};
+use hdi::prelude::Path;
 use holons_core::core_shared_objects::SavedHolon;
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
-use integrity_core_types::LocalId;
 //Stateless HDI service to bridge Holon and HolonNode
 //Holochain API logic and calls should all done from the HolonNode module (separation of concerns)
 //Holon should be mostly self-referential methods and data
 //
 // ///  ------ COMMANDS ------
-
-pub fn create_local_path(
-    target_holon_hash: LocalId,
-    path_name: String,
-    linktype: LinkTypes,
-) -> Result<ActionHash, HolonError> {
-    let path = Path::from(path_name);
-    let link_type = linktype; //LinkTypes::LocalHolonSpace;
-    let input = CreatePathInput {
-        path,
-        link_type,
-        target_holon_node_hash: try_action_hash_from_local_id(&target_holon_hash)?,
-    };
-    create_path_to_holon_node(input).map_err(|e| holon_error_from_wasm_error(e))
-}
 
 // /// Marks the holon_node identified by the specified LocalId as deleted in the persistent store.
 // pub fn delete_holon_internal(id: LocalId) -> Result<ActionHash, HolonError> {

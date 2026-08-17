@@ -1,8 +1,9 @@
 //! Conductor-level PVL tests that exercise authoring directly below the dance layer.
 //!
-//! Coordinator tests prove typed preflight behavior, while narrowly scoped raw-authoring probes
-//! separately prove Integrity enforcement. Keeping those paths distinct prevents a coordinator
-//! guest error from being mistaken for consensus validation coverage.
+//! These tests distinguish supported production behavior, typed coordinator preflight, and
+//! peer-authored Integrity enforcement through narrowly scoped raw-authoring probes. Keeping those
+//! paths distinct prevents a coordinator guest error from being mistaken for consensus validation
+//! coverage or a probe operation from being mistaken for supported setup.
 //! Every test conductor setup also completes genesis/CreateAgent, providing the positive joining
 //! path while the focused adapter tests pin its predecessor policy and dependency behavior.
 
@@ -11,11 +12,12 @@ use core_types::{
     PutSmartLinkOutcome, StoredHolonNode,
 };
 use hdi::prelude::Path;
-use holochain::prelude::ActionHash;
+use holochain::prelude::{ActionHash, Record};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     assert_commit_rejected_with_message, assert_commit_rejected_with_pvl,
-    assert_preflight_rejected_with_pvl, setup_probe_enabled_conductor, setup_test_conductor,
+    assert_preflight_rejected_with_pvl, bootstrap_local_holon_space, setup_probe_enabled_conductor,
+    setup_test_conductor,
 };
 use holons_test::MockConductorConfig;
 use integrity_core_types::{HolonNodeModel, LocalId, RelationshipName};
@@ -29,20 +31,32 @@ const EXPECTED_EMPTY_RELATIONSHIP_REJECTION: &str = "MAP-PVL-2101: relationship 
 const EXPECTED_MALFORMED_SMARTLINK_REJECTION: &str =
     "MAP-PVL-2001: malformed SmartLink (invalid discriminant at TagHeader)";
 
+// These serde mirrors are pinned to the closed probe inputs in `holons_test_probes`. The root-index
+// enum also serializes compatibly with the same-named production `LinkTypes` variants for the
+// retained path getter used by the bootstrap assertion.
 #[derive(Clone, Copy, Debug, Serialize)]
-enum LinkTypeInput {
+enum RootIndexLinkType {
     AllHolonNodes,
     LocalHolonSpace,
-    /// Retired in Storage SL5a (#631). Kept here with no guest counterpart so
-    /// `obsolete_updates_link_type_is_no_longer_addressable` can prove the ingress refuses it.
-    HolonNodeUpdates,
 }
 
 #[derive(Debug, Serialize)]
-struct CreatePathInput {
+struct NonCanonicalBaseInput {
+    link_type: RootIndexLinkType,
+    path: String,
+    target_id: LocalId,
+}
+
+#[derive(Debug, Serialize)]
+struct RootIndexUpdateTargetInput {
+    link_type: RootIndexLinkType,
+    target_id: LocalId,
+}
+
+#[derive(Debug, Serialize)]
+struct GetPathInput {
     path: Path,
-    link_type: LinkTypeInput,
-    target_holon_node_hash: ActionHash,
+    link_type: RootIndexLinkType,
 }
 
 fn node(title: &str) -> HolonNodeModel {
@@ -100,26 +114,6 @@ fn prepared_smartlink(
         relationship_property_values: PropertyMap::new(),
         target_property_cache_candidates: Vec::new(),
     }
-}
-
-async fn create_path(
-    backend: &MockConductorConfig,
-    path: &str,
-    link_type: LinkTypeInput,
-    target: &LocalId,
-) -> Result<ActionHash, holochain::conductor::api::error::ConductorApiError> {
-    backend
-        .conductor
-        .call_fallible(
-            &backend.cell.zome(ZOME),
-            "create_path_to_holon_node",
-            CreatePathInput {
-                path: Path::from(path),
-                link_type,
-                target_holon_node_hash: action_hash(target),
-            },
-        )
-        .await
 }
 
 /// Proves that coordinator preflight rejects an invalid canonical model before authoring.
@@ -264,40 +258,75 @@ async fn valid_root_version_and_smartlink_create_delete_are_accepted() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn canonical_infrastructure_creates_and_local_space_delete_are_accepted() {
+async fn local_holon_space_bootstrap_creates_reuses_and_deletes_the_canonical_link() {
     let backend = setup_test_conductor().await;
-    let all_target = publish_root(&backend, "all-index-target").await;
-    create_path(&backend, "all_holon_nodes", LinkTypeInput::AllHolonNodes, all_target.version_id())
-        .await
-        .expect("canonical AllHolonNodes create must be accepted");
+    let first = bootstrap_local_holon_space(&backend).await;
+    let first_local_id = match &first {
+        HolonId::Local(local_id) => local_id.clone(),
+        HolonId::External(_) => panic!("LocalHolonSpace bootstrap returned an external id"),
+    };
 
-    let local_target = publish_root(&backend, "local-space-target").await;
-    create_path(
-        &backend,
-        "local_holon_space",
-        LinkTypeInput::LocalHolonSpace,
-        local_target.version_id(),
-    )
-    .await
-    .expect("canonical LocalHolonSpace create must be accepted");
+    let indexed: Option<Record> = backend
+        .conductor
+        .call(
+            &backend.cell.zome(ZOME),
+            "get_holon_node_by_path",
+            GetPathInput {
+                path: Path::from("local_holon_space"),
+                link_type: RootIndexLinkType::LocalHolonSpace,
+            },
+        )
+        .await;
+    assert_eq!(
+        indexed
+            .expect("bootstrap must create the canonical LocalHolonSpace path link")
+            .action_address(),
+        &action_hash(&first_local_id)
+    );
+
+    let second = bootstrap_local_holon_space(&backend).await;
+    assert_eq!(second, first, "a second unanchored session must discover the existing space");
 
     let _: ActionHash = backend
         .conductor
-        .call(&backend.cell.zome(ZOME), "delete_holon_node", action_hash(local_target.version_id()))
+        .call(&backend.cell.zome(ZOME), "delete_holon_node", action_hash(&first_local_id))
         .await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn noncanonical_infrastructure_bases_are_rejected_at_the_public_ingress() {
+async fn canonical_all_holon_nodes_creation_uses_production_persistence() {
     let backend = setup_test_conductor().await;
+    let root = publish_root(&backend, "all-index-target").await;
+    let indexed: Vec<Record> =
+        backend.conductor.call(&backend.cell.zome(ZOME), "get_all_holon_nodes", ()).await;
+
+    assert!(
+        indexed.iter().any(|record| record.action_address() == &action_hash(root.version_id())),
+        "PublishRoot must add the persisted lineage root to AllHolonNodes"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn integrity_rejects_noncanonical_infrastructure_bases() {
+    let backend = setup_probe_enabled_conductor().await;
     let target = publish_root(&backend, "target").await;
 
     for (link_type, link_name, canonical_path) in [
-        (LinkTypeInput::AllHolonNodes, "AllHolonNodes", "all_holon_nodes"),
-        (LinkTypeInput::LocalHolonSpace, "LocalHolonSpace", "local_holon_space"),
+        (RootIndexLinkType::AllHolonNodes, "AllHolonNodes", "all_holon_nodes"),
+        (RootIndexLinkType::LocalHolonSpace, "LocalHolonSpace", "local_holon_space"),
     ] {
-        let result =
-            create_path(&backend, "noncanonical_path", link_type, target.version_id()).await;
+        let result = backend
+            .conductor
+            .call_fallible::<_, LocalId>(
+                &backend.cell.zome(PROBE_ZOME),
+                "infrastructure_author_noncanonical_base_for_test",
+                NonCanonicalBaseInput {
+                    link_type,
+                    path: "noncanonical_path".into(),
+                    target_id: target.version_id().clone(),
+                },
+            )
+            .await;
         assert_commit_rejected_with_message(
             result,
             &format!("{link_name} links must use the canonical `{canonical_path}` path base"),
@@ -306,16 +335,23 @@ async fn noncanonical_infrastructure_bases_are_rejected_at_the_public_ingress() 
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn infrastructure_root_indexes_reject_update_targets_at_the_public_ingress() {
-    let backend = setup_test_conductor().await;
+async fn integrity_rejects_update_targets_for_root_infrastructure_indexes() {
+    let backend = setup_probe_enabled_conductor().await;
     let root = publish_root(&backend, "root").await;
     let version = publish_version(&backend, "version", root.version_id().clone()).await;
 
-    for (link_type, link_name, canonical_path) in [
-        (LinkTypeInput::AllHolonNodes, "AllHolonNodes", "all_holon_nodes"),
-        (LinkTypeInput::LocalHolonSpace, "LocalHolonSpace", "local_holon_space"),
+    for (link_type, link_name) in [
+        (RootIndexLinkType::AllHolonNodes, "AllHolonNodes"),
+        (RootIndexLinkType::LocalHolonSpace, "LocalHolonSpace"),
     ] {
-        let result = create_path(&backend, canonical_path, link_type, version.version_id()).await;
+        let result = backend
+            .conductor
+            .call_fallible::<_, LocalId>(
+                &backend.cell.zome(PROBE_ZOME),
+                "infrastructure_author_update_target_for_test",
+                RootIndexUpdateTargetInput { link_type, target_id: version.version_id().clone() },
+            )
+            .await;
         assert_commit_rejected_with_message(
             result,
             &format!("{link_name} links must target a HolonNode lineage-root Create action"),
@@ -323,46 +359,17 @@ async fn infrastructure_root_indexes_reject_update_targets_at_the_public_ingress
     }
 }
 
-/// The obsolete revision index is unreachable, not merely rejected.
-///
-/// Storage SL5a removed `HolonNodeUpdates` from `LinkTypes`, so the public ingress can no longer
-/// deserialize the name into a link type at all — a stronger guarantee than the validation
-/// rejection it replaces. The failure is an HDK deserialization error, so this asserts only that
-/// the call fails; its wording is not ours to pin.
-#[tokio::test(flavor = "multi_thread")]
-async fn obsolete_updates_link_type_is_no_longer_addressable() {
-    let backend = setup_test_conductor().await;
-    let target = publish_root(&backend, "target").await;
-
-    let result = create_path(
-        &backend,
-        "arbitrary_obsolete_base",
-        LinkTypeInput::HolonNodeUpdates,
-        target.version_id(),
-    )
-    .await;
-
-    assert!(
-        result.is_err(),
-        "the retired HolonNodeUpdates link type must not be addressable through the ingress"
-    );
-}
-
 #[tokio::test(flavor = "multi_thread")]
 async fn all_holon_nodes_delete_is_rejected() {
     let backend = setup_probe_enabled_conductor().await;
     let target = publish_root(&backend, "target").await;
 
-    let all_link =
-        create_path(&backend, "all_holon_nodes", LinkTypeInput::AllHolonNodes, target.version_id())
-            .await
-            .expect("canonical AllHolonNodes create must succeed before its delete is tested");
     let result = backend
         .conductor
         .call_fallible::<_, LocalId>(
             &backend.cell.zome(PROBE_ZOME),
             "all_holon_nodes_delete_for_test",
-            LocalId(all_link.get_raw_39().to_vec()),
+            target.version_id().clone(),
         )
         .await;
     assert_commit_rejected_with_message(result, "AllHolonNodes links cannot be deleted");

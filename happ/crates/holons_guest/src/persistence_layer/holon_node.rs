@@ -1,7 +1,7 @@
 //! Scaffolded HolonNode externs, retained from the Holochain scaffolding tool.
 //!
-//! Version-aware persistence lives in `holon_storage`; this module holds the raw externs that
-//! predate it and are kept for API stability and for later storage work.
+//! Version-aware persistence lives in `holon_storage`; this module holds the remaining scaffolded
+//! externs that predate it and are kept for API stability and for later storage work.
 //!
 //! # Naming
 //!
@@ -15,27 +15,9 @@ use holons_guest_integrity::LOCAL_HOLON_SPACE_PATH;
 use holons_integrity::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct CreatePathInput {
-    pub path: Path,
-    pub link_type: LinkTypes,
-    pub target_holon_node_hash: ActionHash,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct GetPathInput {
     pub path: Path,
     pub link_type: LinkTypes,
-}
-
-#[hdk_extern]
-pub fn create_path_to_holon_node(input: CreatePathInput) -> ExternResult<ActionHash> {
-    let result = create_link(
-        input.path.path_entry_hash()?,
-        input.target_holon_node_hash.clone(),
-        input.link_type,
-        (),
-    )?;
-    Ok(result)
 }
 
 #[hdk_extern]
