@@ -1,0 +1,3487 @@
+{
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "../core/root.json",
+      "../core/concrete-value-types.json",
+      "../core/keyrules.json",
+      "../core/property-types.json",
+      "../core/loader-types.json"
+    ],
+    "source_files": [
+      "map-core-schema-dance-schema.csv",
+      "map-core-schema-loader-types.csv"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MAP Dance Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Dance Schema-v0.1.0",
+        "Description": "Schema containing MAP's Dance descriptors, affordance contracts, and loader dance response contract."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ImplementationName.FormatRule",
+      "type": "FormatRule.KeyRuleType",
+      "properties": {
+        "TypeName": "ImplementationName",
+        "TemplateString": "{0}"
+      },
+      "relationships": [
+        {
+          "name": "TemplateParameters",
+          "target": [
+            {
+              "$ref": "ImplementationName.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaDanceType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaDanceType",
+        "TypeNamePlural": "MetaDanceTypes",
+        "DisplayName": "Meta Dance Type",
+        "DisplayNamePlural": "Meta Dance Types",
+        "Description": "Meta-type describing dance-type descriptor holons and their descriptor-local input, response, and descriptive metadata."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaHolonType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "DanceDescription.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaDanceResponseType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaDanceResponseType",
+        "TypeNamePlural": "MetaDanceResponseTypes",
+        "DisplayName": "Meta Dance Response Type",
+        "DisplayNamePlural": "Meta Dance Response Types",
+        "Description": "Meta-type describing dance-response-type descriptor holons and their optional structured response-body type metadata."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaHolonType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceType.HolonType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "DanceType",
+        "TypeNamePlural": "DanceTypes",
+        "DisplayName": "Dance Type",
+        "DisplayNamePlural": "Dance Types",
+        "Description": "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type (DanceInput) and a response holon type. Dance input may be any fixed-shape holon type, not only a Projection.",
+        "IsAbstractType": true,
+        "DefinesInstanceTypeKind": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceResponseType.HolonType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "DanceResponseType",
+        "TypeNamePlural": "DanceResponseTypes",
+        "DisplayName": "Dance Response Type",
+        "DisplayNamePlural": "Dance Response Types",
+        "Description": "Abstract holon type for successful response holons returned from dances. Response bodies and diagnostics are ordinary holons.",
+        "IsAbstractType": true,
+        "DefinesInstanceTypeKind": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseBodyType.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ResponseBodyType",
+        "TypeNamePlural": "ResponseBodyTypes",
+        "DisplayName": "Response Body Type",
+        "DisplayNamePlural": "Response Body Types",
+        "Description": "Deprecated old-world abstract holon type for structured response bodies returned from dances. New-world response bodies are ordinary concrete holon types.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonLoadResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "HolonLoadResponse",
+        "TypeNamePlural": "HolonLoadResponses",
+        "DisplayName": "HolonLoadResponse",
+        "DisplayNamePlural": "HolonLoadResponses",
+        "Description": "Message-only holon summarizing the outcome of a holon load operation (not persisted by the loader commit)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "HolonsStaged.PropertyType"
+            },
+            {
+              "$ref": "HolonsCommitted.PropertyType"
+            },
+            {
+              "$ref": "ErrorCount.PropertyType"
+            },
+            {
+              "$ref": "DanceSummary.PropertyType"
+            },
+            {
+              "$ref": "LinksCreated.PropertyType"
+            },
+            {
+              "$ref": "LoadCommitStatus.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadHolons.DanceType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "LoadHolons",
+        "TypeNamePlural": "LoadHolonsDances",
+        "DisplayName": "Load Holons Dance",
+        "DisplayNamePlural": "Load Holons Dances",
+        "Description": "Concrete standalone dance type for the holon data loader.",
+        "DanceDescription": "Loads a transient HolonLoadSet, stages and commits valid imported holons, and returns a transient HolonLoadResponse."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "DanceInput",
+          "target": [
+            {
+              "$ref": "HolonLoadSet.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceInvocation.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DanceInvocation",
+        "TypeNamePlural": "DanceInvocations",
+        "DisplayName": "Dance Invocation",
+        "DisplayNamePlural": "Dance Invocations",
+        "Description": "Concrete holon type for invocation records capturing the dance invoked, the holon affording the dance, the request holon, and ingress context. The related holon is the subject affording the dance, not merely a target object."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Context.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)"
+            },
+            {
+              "$ref": "(DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceImplementation.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DanceImplementation",
+        "TypeNamePlural": "DanceImplementations",
+        "DisplayName": "Dance Implementation",
+        "DisplayNamePlural": "Dance Implementations",
+        "Description": "Concrete binding of a DanceType with executable details (engine, module, entrypoint, ABI, version/compat)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "ImplementationName.FormatRule"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Engine.PropertyType"
+            },
+            {
+              "$ref": "ModuleRef.PropertyType"
+            },
+            {
+              "$ref": "Entrypoint.PropertyType"
+            },
+            {
+              "$ref": "AbiId.PropertyType"
+            },
+            {
+              "$ref": "Version.PropertyType"
+            },
+            {
+              "$ref": "Compat.PropertyType"
+            },
+            {
+              "$ref": "DanceSummary.PropertyType"
+            },
+            {
+              "$ref": "ImplementationName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnostic.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DanceDiagnostic",
+        "TypeNamePlural": "DanceDiagnostics",
+        "DisplayName": "Dance Diagnostic",
+        "DisplayNamePlural": "Dance Diagnostics",
+        "Description": "Concrete holon type for non-fatal diagnostic notes attached to successful dance responses."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "DanceDiagnosticSeverity.PropertyType"
+            },
+            {
+              "$ref": "DiagnosticCode.PropertyType"
+            },
+            {
+              "$ref": "DiagnosticMessage.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Projection.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Projection",
+        "TypeNamePlural": "Projections",
+        "DisplayName": "Projection",
+        "DisplayNamePlural": "Projections",
+        "Description": "Abstract base type for value-shaped property-map holons used as request, parameter, response-body, or projected-result shapes.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasLoadError",
+        "TypeNamePlural": "HasLoadErrors",
+        "DisplayName": "HasLoadError",
+        "DisplayNamePlural": "HasLoadError Relationships",
+        "Description": "Declared relationship from a HolonLoadResponse to one or more HolonError holons.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonLoadError.HolonError"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LoadErrorOf",
+        "TypeNamePlural": "LoadErrorOfs",
+        "DisplayName": "LoadErrorOf",
+        "DisplayNamePlural": "LoadErrorOf Relationships",
+        "Description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonLoadError.HolonError"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonLoadResponse.DanceResponseType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AffordsDance",
+        "TypeNamePlural": "AffordsDanceRelationships",
+        "DisplayName": "AffordsDance Relationship",
+        "DisplayNamePlural": "AffordsDance Relationships",
+        "Description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DanceAffordedBy",
+        "TypeNamePlural": "DanceAffordedByRelationships",
+        "DisplayName": "DanceAffordedBy Relationship",
+        "DisplayNamePlural": "DanceAffordedBy Relationships",
+        "Description": "Inverse of AffordsDance, from DanceType to HolonType.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ImplementsDance",
+        "TypeNamePlural": "ImplementsDanceRelationships",
+        "DisplayName": "ImplementsDance Relationship",
+        "DisplayNamePlural": "ImplementsDance Relationships",
+        "Description": "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceImplementation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ImplementedFor",
+        "TypeNamePlural": "ImplementedForRelationships",
+        "DisplayName": "ImplementedFor Relationship",
+        "DisplayNamePlural": "ImplementedFor Relationships",
+        "Description": "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceImplementation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ForDance",
+        "TypeNamePlural": "ForDanceRelationships",
+        "DisplayName": "ForDance Relationship",
+        "DisplayNamePlural": "ForDance Relationships",
+        "Description": "Pins a DanceImplementation to exactly one DanceType interface it satisfies.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceImplementation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasImplementation",
+        "TypeNamePlural": "HasImplementationRelationships",
+        "DisplayName": "HasImplementation Relationship",
+        "DisplayNamePlural": "HasImplementation Relationships",
+        "Description": "Inverse of ForDance, from DanceType to DanceImplementation.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceImplementation.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DanceInput",
+        "TypeNamePlural": "DanceInputRelationships",
+        "DisplayName": "DanceInput Relationship",
+        "DisplayNamePlural": "DanceInput Relationships",
+        "Description": "Links a DanceType to the holon type used as its request contract.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DanceInputFor",
+        "TypeNamePlural": "DanceInputForRelationships",
+        "DisplayName": "DanceInputFor Relationship",
+        "DisplayNamePlural": "DanceInputFor Relationships",
+        "Description": "Inverse of DanceInput, from HolonType to DanceType.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Response",
+        "TypeNamePlural": "ResponseRelationships",
+        "DisplayName": "Response Relationship",
+        "DisplayNamePlural": "Response Relationships",
+        "Description": "Links a DanceType to the DanceResponseType used to structure its response.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DanceResponseType.HolonType)-[ResponseFor]->(DanceType.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceResponseType.HolonType)-[ResponseFor]->(DanceType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResponseFor",
+        "TypeNamePlural": "ResponseForRelationships",
+        "DisplayName": "ResponseFor Relationship",
+        "DisplayNamePlural": "ResponseFor Relationships",
+        "Description": "Inverse of Response, from DanceResponseType to DanceType.",
+        "MinCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResponseBody",
+        "TypeNamePlural": "ResponseBody Relationships",
+        "DisplayName": "ResponseBody Relationship",
+        "DisplayNamePlural": "ResponseBody Relationships",
+        "Description": "Links a DanceResponseType to the concrete holon type that will serve as the structured response body.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceResponseType.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceResponseType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResponseBodyFor",
+        "TypeNamePlural": "ResponseBodyForRelationships",
+        "DisplayName": "ResponseBodyFor Relationship",
+        "DisplayNamePlural": "ResponseBodyFor Relationships",
+        "Description": "Inverse of ResponseBody, from HolonType to DanceResponseType.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InvokesDance",
+        "TypeNamePlural": "InvokesDanceRelationships",
+        "DisplayName": "InvokesDance Relationship",
+        "DisplayNamePlural": "InvokesDance Relationships",
+        "Description": "Links a DanceInvocation holon to the DanceType it invokes.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InvokedBy",
+        "TypeNamePlural": "InvokedByRelationships",
+        "DisplayName": "InvokedBy Relationship",
+        "DisplayNamePlural": "InvokedBy Relationships",
+        "Description": "Inverse of InvokesDance, from DanceType to DanceInvocation.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AffordingHolon",
+        "TypeNamePlural": "AffordingHolonRelationships",
+        "DisplayName": "AffordingHolon Relationship",
+        "DisplayNamePlural": "AffordingHolon Relationships",
+        "Description": "Links a DanceInvocation to the holon affording the invoked dance. The referenced instance must afford the dance named by InvokesDance.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(DanceInvocation.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(DanceInvocation.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AffordsDanceInvocation",
+        "TypeNamePlural": "AffordsDanceInvocationRelationships",
+        "DisplayName": "AffordsDanceInvocation Relationship",
+        "DisplayNamePlural": "AffordsDanceInvocation Relationships",
+        "Description": "Inverse of AffordingHolon, from HolonType to DanceInvocation.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Request",
+        "TypeNamePlural": "RequestRelationships",
+        "DisplayName": "Request Relationship",
+        "DisplayNamePlural": "Request Relationships",
+        "Description": "Links a DanceInvocation holon to the concrete request holon supplied for that invocation.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestFor",
+        "TypeNamePlural": "RequestForRelationships",
+        "DisplayName": "RequestFor Relationship",
+        "DisplayNamePlural": "RequestFor Relationships",
+        "Description": "Inverse of Request, from HolonType to DanceInvocation.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceInvocation.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Diagnostics",
+        "TypeNamePlural": "DiagnosticsRelationships",
+        "DisplayName": "Diagnostics Relationship",
+        "DisplayNamePlural": "Diagnostics Relationships",
+        "Description": "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceDiagnostic.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DiagnosticFor",
+        "TypeNamePlural": "DiagnosticForRelationships",
+        "DisplayName": "DiagnosticFor Relationship",
+        "DisplayNamePlural": "DiagnosticFor Relationships",
+        "Description": "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceDiagnostic.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DanceName",
+        "TypeNamePlural": "DanceNames",
+        "DisplayName": "dance_name",
+        "DisplayNamePlural": "dance_names",
+        "Description": "Unique string identifier for a DanceType descriptor, used in dispatch tables.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DanceDescription",
+        "TypeNamePlural": "DanceDescriptions",
+        "DisplayName": "dance_description",
+        "DisplayNamePlural": "dance_descriptions",
+        "Description": "Human-readable explanation of what the dance does or when it should be invoked."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Context.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Context",
+        "TypeNamePlural": "Contexts",
+        "DisplayName": "context",
+        "DisplayNamePlural": "contexts",
+        "Description": "Ingress context for a DanceInvocation, recorded as an InvocationSource enum value.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "InvocationSource.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DanceDiagnosticSeverity",
+        "TypeNamePlural": "DanceDiagnosticSeverities",
+        "DisplayName": "dance_diagnostic_severity",
+        "DisplayNamePlural": "dance_diagnostic_severities",
+        "Description": "Severity classification for a DanceDiagnostic holon."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "DanceDiagnosticSeverity.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DiagnosticCode.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DiagnosticCode",
+        "TypeNamePlural": "DiagnosticCodes",
+        "DisplayName": "diagnostic_code",
+        "DisplayNamePlural": "diagnostic_codes",
+        "Description": "Stable machine-readable code for a DanceDiagnostic holon."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DiagnosticMessage.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DiagnosticMessage",
+        "TypeNamePlural": "DiagnosticMessages",
+        "DisplayName": "diagnostic_message",
+        "DisplayNamePlural": "diagnostic_messages",
+        "Description": "Human-readable message for a DanceDiagnostic holon."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ResponseStatusCode",
+        "TypeNamePlural": "ResponseStatusCodes",
+        "DisplayName": "response_status_code",
+        "DisplayNamePlural": "response_status_codes",
+        "Description": "Machine-readable status code indicating the result of the dance."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Engine.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Engine",
+        "TypeNamePlural": "Engines",
+        "DisplayName": "engine",
+        "DisplayNamePlural": "engines",
+        "Description": "Execution engine for the implementation (e.g., WasmWasi, Process, RustDylib, Builtin)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "DanceEngine.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ModuleRef.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ModuleRef",
+        "TypeNamePlural": "ModuleRefs",
+        "DisplayName": "module_ref",
+        "DisplayNamePlural": "module_refs",
+        "Description": "Content-address or locator of the executable module (e.g., hash/URL/capability address)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Entrypoint.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Entrypoint",
+        "TypeNamePlural": "Entrypoints",
+        "DisplayName": "entrypoint",
+        "DisplayNamePlural": "entrypoints",
+        "Description": "Function/export name to invoke inside the module."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AbiId.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "AbiId",
+        "TypeNamePlural": "AbiId",
+        "DisplayName": "abi_id",
+        "DisplayNamePlural": "abi_ids",
+        "Description": "Identifier of the stable smart contract ABI expected by the module/entrypoint."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Version.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Version",
+        "TypeNamePlural": "Versions",
+        "DisplayName": "version",
+        "DisplayNamePlural": "versions",
+        "Description": "Semantic version or content hash pin of the implementation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Compat.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Compat",
+        "TypeNamePlural": "Compats",
+        "DisplayName": "compat",
+        "DisplayNamePlural": "compats",
+        "Description": "Compatibility range or constraints (e.g., ABI or schema versions)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceSummary.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DanceSummary",
+        "TypeNamePlural": "DanceSummaries",
+        "DisplayName": "dance_summary",
+        "DisplayNamePlural": "dance_summaries",
+        "Description": "Human-readable summary of a dance outcome."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ImplementationName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ImplementationName",
+        "TypeNamePlural": "ImplementationNames",
+        "DisplayName": "implementation_name",
+        "DisplayNamePlural": "implementation_names",
+        "Description": "Unique name of a DanceImplementation instance.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InvocationSource.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "InvocationSource",
+        "TypeNamePlural": "InvocationSources",
+        "DisplayName": "Invocation Source",
+        "DisplayNamePlural": "Invocation Sources",
+        "Description": "Enum value type that records how a DanceInvocation entered the runtime."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "InvocationSource.MapEnumValueType.ClientCommand"
+            },
+            {
+              "$ref": "InvocationSource.MapEnumValueType.TrustChannel"
+            },
+            {
+              "$ref": "InvocationSource.MapEnumValueType.Internal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InvocationSource.MapEnumValueType.ClientCommand",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ClientCommand",
+        "TypeNamePlural": "ClientCommands",
+        "DisplayName": "Client Command",
+        "DisplayNamePlural": "Client Commands",
+        "Description": "Invocation entered the runtime through a client command ingress path."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InvocationSource.MapEnumValueType.TrustChannel",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "TrustChannel",
+        "TypeNamePlural": "TrustChannels",
+        "DisplayName": "Trust Channel",
+        "DisplayNamePlural": "Trust Channels",
+        "Description": "Invocation entered the runtime through a trust-channel ingress path."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InvocationSource.MapEnumValueType.Internal",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Internal",
+        "TypeNamePlural": "Internals",
+        "DisplayName": "Internal",
+        "DisplayNamePlural": "Internals",
+        "Description": "Invocation originated from trusted internal runtime code."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "DanceDiagnosticSeverity",
+        "TypeNamePlural": "DanceDiagnosticSeverities",
+        "DisplayName": "Dance Diagnostic Severity",
+        "DisplayNamePlural": "Dance Diagnostic Severities",
+        "Description": "Enum value type for the severity of a DanceDiagnostic holon."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "DanceDiagnosticSeverity.MapEnumValueType.Info"
+            },
+            {
+              "$ref": "DanceDiagnosticSeverity.MapEnumValueType.Warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity.MapEnumValueType.Info",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Info",
+        "TypeNamePlural": "Infos",
+        "DisplayName": "Info",
+        "DisplayNamePlural": "Infos",
+        "Description": "Informational non-fatal diagnostic note."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceDiagnosticSeverity.MapEnumValueType.Warning",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Warning",
+        "TypeNamePlural": "Warnings",
+        "DisplayName": "Warning",
+        "DisplayNamePlural": "Warnings",
+        "Description": "Warning-level non-fatal diagnostic note."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ResponseStatusCode",
+        "TypeNamePlural": "ResponseStatusCodes",
+        "DisplayName": "Response Status Code",
+        "DisplayNamePlural": "Response Status Codes",
+        "Description": "Deprecated old-world enum value type for dance status codes. New-world success and failure are expressed by the outer Result contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.OK"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.Accepted"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.BadRequest"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.Unauthorized"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.Forbidden"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.NotFound"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.Conflict"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.UnprocessableEntity"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.ServerError"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.NotImplemented"
+            },
+            {
+              "$ref": "ResponseStatusCode.MapEnumValueType.ServiceUnavailable"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.OK",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "OK",
+        "TypeNamePlural": "OKs",
+        "DisplayName": "OK",
+        "DisplayNamePlural": "OKs",
+        "Description": "200 — Request succeeded."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.Accepted",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Accepted",
+        "TypeNamePlural": "Accepteds",
+        "DisplayName": "Accepted",
+        "DisplayNamePlural": "Accepteds",
+        "Description": "202 — Request accepted but not yet processed."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.BadRequest",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "BadRequest",
+        "TypeNamePlural": "BadRequests",
+        "DisplayName": "Bad Request",
+        "DisplayNamePlural": "Bad Requests",
+        "Description": "400 — The request was malformed or invalid."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.Unauthorized",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Unauthorized",
+        "TypeNamePlural": "Unauthorized",
+        "DisplayName": "Unauthorized",
+        "DisplayNamePlural": "Unauthorized",
+        "Description": "401 — The requester is not authenticated."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.Forbidden",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Forbidden",
+        "TypeNamePlural": "Forbidden",
+        "DisplayName": "Forbidden",
+        "DisplayNamePlural": "Forbidden",
+        "Description": "403 — The requester lacks permission."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.NotFound",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "NotFound",
+        "TypeNamePlural": "NotFounds",
+        "DisplayName": "Not Found",
+        "DisplayNamePlural": "Not Founds",
+        "Description": "404 — The target resource was not found."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.Conflict",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Conflict",
+        "TypeNamePlural": "Conflicts",
+        "DisplayName": "Conflict",
+        "DisplayNamePlural": "Conflicts",
+        "Description": "409 — Conflict with the current state of the resource."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.UnprocessableEntity",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "UnprocessableEntity",
+        "TypeNamePlural": "UnprocessableEntities",
+        "DisplayName": "Unprocessable Entity",
+        "DisplayNamePlural": "Unprocessable Entities",
+        "Description": "422 — Semantic validation failed."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.ServerError",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ServerError",
+        "TypeNamePlural": "ServerErrors",
+        "DisplayName": "Server Error",
+        "DisplayNamePlural": "Server Errors",
+        "Description": "500 — Unexpected internal error."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.NotImplemented",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "NotImplemented",
+        "TypeNamePlural": "NotImplemented",
+        "DisplayName": "Not Implemented",
+        "DisplayNamePlural": "Not Implemented",
+        "Description": "501 — Functionality required to fulfill the request is not supported."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ResponseStatusCode.MapEnumValueType.ServiceUnavailable",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ServiceUnavailable",
+        "TypeNamePlural": "ServiceUnavailable",
+        "DisplayName": "Service Unavailable",
+        "DisplayNamePlural": "Service Unavailable",
+        "Description": "503 — The server is currently unable to handle the request (overload/maintenance)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceEngine.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "DanceEngine",
+        "TypeNamePlural": "DanceEngines",
+        "DisplayName": "Dance Engine",
+        "DisplayNamePlural": "Dance Engines",
+        "Description": "Enum value type for execution engines used by DanceImplementations."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "DanceEngine.MapEnumValueType.WasmWasi"
+            },
+            {
+              "$ref": "DanceEngine.MapEnumValueType.Process"
+            },
+            {
+              "$ref": "DanceEngine.MapEnumValueType.RustDylib"
+            },
+            {
+              "$ref": "DanceEngine.MapEnumValueType.Builtin"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceEngine.MapEnumValueType.WasmWasi",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "WasmWasi",
+        "TypeNamePlural": "WasmWasi",
+        "DisplayName": "WasmWasi",
+        "DisplayNamePlural": "WasmWasi",
+        "Description": "Execute a WASM module under WASI (preferred)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceEngine.MapEnumValueType.Process",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Process",
+        "TypeNamePlural": "Processes",
+        "DisplayName": "Process",
+        "DisplayNamePlural": "Processes",
+        "Description": "Spawn a separate OS process with protocol pipes."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceEngine.MapEnumValueType.RustDylib",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "RustDylib",
+        "TypeNamePlural": "RustDylibs",
+        "DisplayName": "RustDylib",
+        "DisplayNamePlural": "RustDylibs",
+        "Description": "Dynamically load a Rust dylib via FFI (platform-coupled)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceEngine.MapEnumValueType.Builtin",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Builtin",
+        "TypeNamePlural": "Builtins",
+        "DisplayName": "Builtin",
+        "DisplayNamePlural": "Builtins",
+        "Description": "Call a registered host builtin function."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonId.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "HolonId",
+        "TypeNamePlural": "HolonIdProjections",
+        "DisplayName": "HolonId Projection",
+        "DisplayNamePlural": "HolonId Projections",
+        "Description": "Concrete projection holon type containing exactly one holon_id property."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "HolonId.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitResponse.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CommitResponse",
+        "TypeNamePlural": "CommitResponses",
+        "DisplayName": "Commit Response",
+        "DisplayNamePlural": "Commit Responses",
+        "Description": "Concrete commit response-body holon type retained under its existing key during parallel buildout. Instances are projection-shaped response holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "CommitsAttempted.PropertyType"
+            },
+            {
+              "$ref": "CommitRequestStatus.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitsAttempted.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CommitsAttempted",
+        "TypeNamePlural": "CommitsAttempteds",
+        "DisplayName": "commits_attempted",
+        "DisplayNamePlural": "commits_attempted",
+        "Description": "Number of holons the commit operation attempted to save."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "CommitRequestStatus",
+        "TypeNamePlural": "CommitRequestStatus",
+        "DisplayName": "CommitRequestStatus",
+        "DisplayNamePlural": "CommitRequestStatus",
+        "Description": "Enum value type for commit request outcomes (Complete, Incomplete)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "CommitRequestStatus.MapEnumValueType.Complete"
+            },
+            {
+              "$ref": "CommitRequestStatus.MapEnumValueType.Incomplete"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.MapEnumValueType.Complete",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Complete",
+        "TypeNamePlural": "Completes",
+        "DisplayName": "Complete",
+        "DisplayNamePlural": "Completes",
+        "Description": "All staged holons committed; no staged holons remain."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.MapEnumValueType.Incomplete",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Incomplete",
+        "TypeNamePlural": "Incompletes",
+        "DisplayName": "Incomplete",
+        "DisplayNamePlural": "Incompletes",
+        "Description": "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CommitRequestStatus",
+        "TypeNamePlural": "CommitRequestStatuses",
+        "DisplayName": "commit_request_status",
+        "DisplayNamePlural": "commit_request_statuses",
+        "Description": "Overall status of the commit request (Complete or Incomplete)."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "CommitRequestStatus.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SavedHolons",
+        "TypeNamePlural": "SavedHolonsRelationships",
+        "DisplayName": "SavedHolons Relationship",
+        "DisplayNamePlural": "SavedHolons Relationships",
+        "Description": "Declared relationship from a CommitResponse to each holon successfully saved by this commit.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "CommitResponse.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse.Projection)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SavedByCommit",
+        "TypeNamePlural": "SavedByCommitRelationships",
+        "DisplayName": "SavedByCommit Relationship",
+        "DisplayNamePlural": "SavedByCommit Relationships",
+        "Description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "CommitResponse.Projection"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AbandonedHolons",
+        "TypeNamePlural": "AbandonedHolonsRelationships",
+        "DisplayName": "AbandonedHolons Relationship",
+        "DisplayNamePlural": "AbandonedHolons Relationships",
+        "Description": "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "CommitResponse.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AbandonedByCommit",
+        "TypeNamePlural": "AbandonedByCommitRelationships",
+        "DisplayName": "AbandonedByCommit Relationship",
+        "DisplayNamePlural": "AbandonedByCommit Relationships",
+        "Description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "CommitResponse.Projection"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

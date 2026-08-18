@@ -1129,6 +1129,12 @@ impl<'a> Parser<'a> {
                         self.consume_trimmed();
                         descriptor.literal_relationships.extend(self.parse_relationship_map()?);
                     }
+                    s if s.starts_with("relationships {") => {
+                        return Err(anyhow!(
+                            "relationship maps must use a newline-oriented braced block: {}",
+                            s
+                        ));
+                    }
                     "variants {" if descriptor.kind == DescriptorKind::Enum => {
                         self.consume_trimmed();
                         for variant in self.parse_variant_block(&descriptor.name)? {
@@ -2045,6 +2051,7 @@ enum Color.EnumType {
       type A.Type
       type B.Type
     }
+
   }
 }
 "#,
@@ -2053,9 +2060,28 @@ enum Color.EnumType {
     }
 
     #[test]
+    fn check_rejects_inline_relationship_maps() {
+        let error = check_input_string(
+            r#"schema Example.Schema
+
+holon Example.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  relationships { InstanceProperties -> Example.PropertyType }
+}
+"#,
+            "inline-relationship-map.tdl",
+        )
+        .expect_err("inline relationship maps are not part of the TDL grammar");
+
+        assert!(error
+            .to_string()
+            .contains("relationship maps must use a newline-oriented braced block"));
+    }
+
+    #[test]
     fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 15);
 
         let diagnostics = check_inputs(&[fixture_root])?;
 
@@ -2077,12 +2103,12 @@ enum Color.EnumType {
         let parsed = parse_inputs(&[fixture_root.clone()])?;
         let compilation = build_r6_compilation(parsed)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
-        assert_eq!(compilation.files.len(), 13);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 15);
+        assert_eq!(compilation.files.len(), 15);
         assert!(compilation
             .files
             .iter()
-            .any(|file| { file.relative_path == PathBuf::from("map-core-schema-root.tdl") }));
+            .any(|file| { file.relative_path == PathBuf::from("core/root.tdl") }));
 
         Ok(())
     }
@@ -2093,10 +2119,10 @@ enum Color.EnumType {
         let out_dir = temp_out_dir();
         let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
-        assert_eq!(compiled_files.len(), 13);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 15);
+        assert_eq!(compiled_files.len(), 15);
 
-        let root_json = fs::read_to_string(out_dir.join("map-core-schema-root.json"))?;
+        let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
         assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.7""#));
         assert!(!root_json.contains(r#""type_name""#));
@@ -2125,7 +2151,7 @@ enum Color.EnumType {
         }
 
         assert_eq!(map_core_schema_files.len(), 1);
-        assert!(map_core_schema_files[0].to_string_lossy().ends_with("map-core-schema-root.json"));
+        assert!(map_core_schema_files[0].to_string_lossy().ends_with("core/root.json"));
         Ok(())
     }
 
@@ -2135,7 +2161,7 @@ enum Color.EnumType {
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
         let relationship_json =
-            fs::read_to_string(out_dir.join("map-core-schema-relationship-types.json"))?;
+            fs::read_to_string(out_dir.join("core/relationship-types.json"))?;
         let relationship_value: Value = serde_json::from_str(&relationship_json)?;
         let component_of = relationship_value["holons"]
             .as_array()
@@ -2167,7 +2193,7 @@ enum Color.EnumType {
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
         let relationship_json =
-            fs::read_to_string(out_dir.join("map-core-schema-relationship-types.json"))?;
+            fs::read_to_string(out_dir.join("core/relationship-types.json"))?;
         let relationship_value: Value = serde_json::from_str(&relationship_json)?;
         let instance_properties = relationship_value["holons"]
             .as_array()
@@ -2197,13 +2223,40 @@ enum Color.EnumType {
     }
 
     #[test]
+    fn core_schema_lowers_command_affordances_as_relationships() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        let commands_json = fs::read_to_string(out_dir.join("commands/schema.json"))?;
+        let commands: Value = serde_json::from_str(&commands_json)?;
+        let clone_holon = commands["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| holon["key"].as_str() == Some("CloneHolon.CommandType"))
+            })
+            .expect("CloneHolon command descriptor");
+
+        let affordance = clone_holon["relationships"]
+            .as_array()
+            .and_then(|relationships| {
+                relationships.iter().find(|relationship| {
+                    relationship["name"].as_str() == Some("CommandAffordedBy")
+                })
+            })
+            .expect("CloneHolon CommandAffordedBy relationship");
+        assert_eq!(affordance["target"], json!([{ "$ref": "HolonType.TypeDescriptor" }]));
+
+        Ok(())
+    }
+
+    #[test]
     fn core_schema_leaves_max_cardinality_requiredness_to_the_meta_property_contract() -> Result<()>
     {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
         let property_json =
-            fs::read_to_string(out_dir.join("map-core-schema-property-types.json"))?;
+            fs::read_to_string(out_dir.join("core/property-types.json"))?;
         let property_value: Value = serde_json::from_str(&property_json)?;
         let max_cardinality = property_value["holons"]
             .as_array()
@@ -2264,14 +2317,13 @@ abstract property MetaPropertyType {
             &out_dir,
         )?;
 
-        let root = fs::read_to_string(out_dir.join("map-core-schema-root.tdl"))?;
-        let abstract_values =
-            fs::read_to_string(out_dir.join("map-core-schema-abstract-value-types.tdl"))?;
+        let root = fs::read_to_string(out_dir.join("core/root.tdl"))?;
+        let abstract_values = fs::read_to_string(out_dir.join("core/abstract-value-types.tdl"))?;
 
-        assert!(root.contains("holon \"MetaPropertyType\" {"));
-        assert!(!root.contains("property \"MetaPropertyType\" {"));
-        assert!(abstract_values.contains("holon \"MetaValueType\" {"));
-        assert!(!abstract_values.contains("value \"MetaValueType\" {"));
+        assert!(root.contains("holon \"MetaPropertyType.MetaTypeDescriptor\" {"));
+        assert!(!root.contains("property \"MetaPropertyType.MetaTypeDescriptor\" {"));
+        assert!(abstract_values.contains("holon \"MetaValueType.MetaTypeDescriptor\" {"));
+        assert!(!abstract_values.contains("value \"MetaValueType.MetaTypeDescriptor\" {"));
 
         Ok(())
     }

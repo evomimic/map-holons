@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use super::{read_file_data, CoreSchemaLoadMetrics};
 use crate::ExpectedLoadStatus;
 
-const GENERATED_DOMAIN_SCHEMA_FILENAME: &str = "map-test-schema-book-person-inverse.json";
+const GENERATED_DOMAIN_SCHEMA_FILENAME: &str = "test/book-person-inverse.json";
 
 pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
     staged: 9,

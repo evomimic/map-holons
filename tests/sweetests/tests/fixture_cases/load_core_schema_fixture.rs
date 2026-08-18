@@ -8,10 +8,16 @@ use holons_test::{DancesTestCase, TestCaseInit};
 /// `holons_loader_client::load_holons_from_files`, so this covers the same
 /// loader-client path that the earlier `loader_client_fixture` was built to exercise.
 pub fn load_core_schema_fixture() -> Result<DancesTestCase, HolonError> {
-    let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } =
-        TestCaseInit::new("load_core_schema", "Load MAP core schema via LoadCoreSchema step");
+    let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } = TestCaseInit::new(
+        "load_core_schema",
+        "Load Core, Dance, and Commands through explicit package steps",
+    );
 
     test_case.add_load_core_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    test_case.add_load_generated_dance_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    test_case.add_load_generated_commands_schema_step(None)?;
     test_case.add_verify_core_schema_descriptors_step(None)?;
     test_case.add_verify_core_schema_descriptor_subtypes_step(None)?;
     test_case.add_verify_core_schema_command_affordances_step(None)?;

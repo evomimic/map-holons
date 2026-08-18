@@ -1,0 +1,655 @@
+meta {
+  export_mode: "design-seed"
+  source_files: ["docs/core/map-queries/command-dance-query-schema-tdl.md","docs/core/map-queries/query-engine-design-spec.md","docs/core/map-queries/queries-impl-plan.md"]
+  load_with: ["../core/root.json","../core/concrete-value-types.json","../core/abstract-value-types.json","../core/property-types.json","../core/relationship-types.json"]
+}
+
+schema "MAP Query Schema-v0.0.2" {
+  depends_on "MAP Core Schema-v0.0.7"
+  header {
+    description: "Descriptor definitions for reusable MAP queries and their direct runtime execution state. Dance-mediated invocation is owned by the separate Query Dance Adapter Schema."
+  }
+}
+
+holon Query.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Reusable saved query definition rooted at a QueryExpression. It never carries invocation state."
+    display_name: "Query"
+    display_plural: "Queries"
+    plural: "Queries"
+  }
+  relationships {
+    InstanceProperties -> [QueryName.PropertyType, QueryDescription.PropertyType]
+    InstanceRelationships -> (Query.HolonType)-[RootExpression]->(QueryExpression.HolonType)
+  }
+}
+
+abstract holon QueryExpression.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Reusable query-expression definition. Concrete operators extend this type."
+    display_name: "Query Expression"
+    display_plural: "Query Expressions"
+    plural: "QueryExpressions"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (QueryExpression.HolonType)-[ExpressionParameters]->(QueryParameterDeclaration.HolonType),
+      (QueryExpression.HolonType)-[Next]->(QueryExpression.HolonType)
+    ]
+  }
+}
+
+holon QuerySubTree.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Composite QueryExpression whose ordered Subtree members are implementation containment, not continuation."
+    display_name: "Query Subtree"
+    display_plural: "Query Subtrees"
+    plural: "QuerySubTrees"
+  }
+  relationships {
+    InstanceRelationships -> (QuerySubTree.HolonType)-[Subtree]->(QueryExpression.HolonType)
+  }
+}
+
+holon QueryParameterDeclaration.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Reusable declaration of a parameter accepted by a query expression."
+    display_name: "Query Parameter Declaration"
+    display_plural: "Query Parameter Declarations"
+    plural: "QueryParameterDeclarations"
+  }
+  relationships {
+    InstanceProperties -> ParameterName.PropertyType
+    InstanceRelationships -> (QueryParameterDeclaration.HolonType)-[ParameterBindingType]->(HolonType.TypeDescriptor)
+  }
+}
+
+abstract holon QueryParameterBinding.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Runtime value binding for a QueryParameterDeclaration. Concrete binding types own their values."
+    display_name: "Query Parameter Binding"
+    display_plural: "Query Parameter Bindings"
+    plural: "QueryParameterBindings"
+  }
+  relationships {
+    InstanceProperties -> ParameterName.PropertyType
+    InstanceRelationships -> (QueryParameterBinding.HolonType)-[BindsParameter]->(QueryParameterDeclaration.HolonType)
+  }
+}
+
+holon ExecutionInstance.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Runtime state for one direct or Dance-mediated execution of a Query."
+    display_name: "Execution Instance"
+    display_plural: "Execution Instances"
+    plural: "ExecutionInstances"
+  }
+  relationships {
+    InstanceProperties -> ExecutionStatus.PropertyType
+    InstanceRelationships -> [
+      (ExecutionInstance.HolonType)-[ExecutesQuery]->(Query.HolonType),
+      (ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType),
+      (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)
+    ]
+  }
+}
+
+holon QueryExpressionExecution.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Runtime state for one invocation of one QueryExpression."
+    display_name: "Query Expression Execution"
+    display_plural: "Query Expression Executions"
+    plural: "QueryExpressionExecutions"
+  }
+  relationships {
+    InstanceProperties -> ExecutionStatus.PropertyType
+    InstanceRelationships -> [
+      (QueryExpressionExecution.HolonType)-[ExecutesExpression]->(QueryExpression.HolonType),
+      (QueryExpressionExecution.HolonType)-[Input]->(HolonCollection.HolonType),
+      (QueryExpressionExecution.HolonType)-[Result]->(HolonCollection.HolonType),
+      (QueryExpressionExecution.HolonType)-[RuntimeParameters]->(QueryParameterBinding.HolonType)
+    ]
+  }
+}
+
+property QueryName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Human-readable name for a saved Query."
+    display_name: "Query Name"
+    display_plural: "Query Names"
+    plural: "QueryNames"
+  }
+}
+
+property QueryDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Human-readable description of a Query."
+    display_name: "Query Description"
+    display_plural: "Query Descriptions"
+    plural: "QueryDescriptions"
+  }
+}
+
+property ParameterName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Stable name of a declared or runtime query parameter."
+    display_name: "Parameter Name"
+    display_plural: "Parameter Names"
+    plural: "ParameterNames"
+  }
+}
+
+property ExecutionStatus.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value QueryExecutionStatus.MapEnumValueType
+  IsValueRequired true
+  header {
+    description: "Lifecycle status of a Query execution."
+    display_name: "Execution Status"
+    display_plural: "Execution Statuses"
+    plural: "ExecutionStatuses"
+  }
+}
+
+enum QueryExecutionStatus.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Lifecycle states for a Query execution."
+    display_name: "Query Execution Status"
+    display_plural: "Query Execution Statuses"
+    plural: "QueryExecutionStatuses"
+  }
+  variants {
+    variant Pending {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Execution has been created but has not started."
+        display_name: "Pending"
+      }
+    }
+    variant Running {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Execution is in progress."
+        display_name: "Running"
+      }
+    }
+    variant Complete {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Execution completed successfully."
+        display_name: "Complete"
+      }
+    }
+    variant Failed {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Execution completed with failure."
+        display_name: "Failed"
+      }
+    }
+  }
+}
+
+def relationship (Query.HolonType)-[RootExpression]->(QueryExpression.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> RootExpressionFor
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Query.HolonType
+  target QueryExpression.HolonType
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Identifies the root expression of a Query definition."
+    display_name: "Root Expression"
+    display_plural: "Root Expressions"
+    plural: "RootExpressions"
+  }
+}
+
+inverse relationship (QueryExpression.HolonType)-[RootExpressionFor]->(Query.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryExpression.HolonType
+  target Query.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of RootExpression."
+    display_name: "Root Expression For"
+    display_plural: "Root Expression Fors"
+    plural: "RootExpressionFors"
+  }
+}
+
+def relationship (QueryExpression.HolonType)-[ExpressionParameters]->(QueryParameterDeclaration.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ParametersForQueryExpression
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryExpression.HolonType
+  target QueryParameterDeclaration.HolonType
+  cardinality 0..*
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Lists reusable parameter declarations required by a QueryExpression."
+    display_name: "Expression Parameters"
+    display_plural: "Expression Parameters"
+    plural: "ExpressionParameters"
+  }
+}
+
+inverse relationship (QueryParameterDeclaration.HolonType)-[ParametersForQueryExpression]->(QueryExpression.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryParameterDeclaration.HolonType
+  target QueryExpression.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of ExpressionParameters."
+    display_name: "Parameters For Query Expression"
+    display_plural: "Parameters For Query Expressions"
+    plural: "ParametersForQueryExpressions"
+  }
+}
+
+def relationship (QueryExpression.HolonType)-[Next]->(QueryExpression.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Previous
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryExpression.HolonType
+  target QueryExpression.HolonType
+  cardinality 0..1
+  deletion_semantic Block
+  header {
+    description: "The sole sequential continuation relationship for QueryExpression execution."
+    display_name: "Next"
+    display_plural: "Next"
+    plural: "Next"
+  }
+}
+
+inverse relationship (QueryExpression.HolonType)-[Previous]->(QueryExpression.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryExpression.HolonType
+  target QueryExpression.HolonType
+  cardinality 0..1
+  deletion_semantic Block
+  header {
+    description: "Inverse of Next."
+    display_name: "Previous"
+    display_plural: "Previous"
+    plural: "Previous"
+  }
+}
+
+def relationship (QueryParameterDeclaration.HolonType)-[ParameterBindingType]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ParameterDeclaredBy
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryParameterDeclaration.HolonType
+  target HolonType.TypeDescriptor
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Identifies the concrete QueryParameterBinding descriptor accepted by a declaration."
+    display_name: "Parameter Binding Type"
+    display_plural: "Parameter Binding Types"
+    plural: "ParameterBindingTypes"
+  }
+}
+
+inverse relationship (HolonType.TypeDescriptor)-[ParameterDeclaredBy]->(QueryParameterDeclaration.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target QueryParameterDeclaration.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of ParameterBindingType."
+    display_name: "Parameter Declared By"
+    display_plural: "Parameter Declared Bys"
+    plural: "ParameterDeclaredBys"
+  }
+}
+
+def relationship (QueryParameterBinding.HolonType)-[BindsParameter]->(QueryParameterDeclaration.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ParameterBoundBy
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryParameterBinding.HolonType
+  target QueryParameterDeclaration.HolonType
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Identifies the declaration satisfied by a runtime query parameter binding."
+    display_name: "Binds Parameter"
+    display_plural: "Binds Parameters"
+    plural: "BindsParameters"
+  }
+}
+
+inverse relationship (QueryParameterDeclaration.HolonType)-[ParameterBoundBy]->(QueryParameterBinding.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryParameterDeclaration.HolonType
+  target QueryParameterBinding.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of BindsParameter."
+    display_name: "Parameter Bound By"
+    display_plural: "Parameter Bound Bys"
+    plural: "ParameterBoundBys"
+  }
+}
+
+def relationship (QuerySubTree.HolonType)-[Subtree]->(QueryExpression.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> Parent
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QuerySubTree.HolonType
+  target QueryExpression.HolonType
+  cardinality 1..*
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Contains the ordered implementation subtree of a composite QueryExpression."
+    display_name: "Subtree"
+    display_plural: "Subtrees"
+    plural: "Subtrees"
+  }
+}
+
+inverse relationship (QueryExpression.HolonType)-[Parent]->(QuerySubTree.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryExpression.HolonType
+  target QuerySubTree.HolonType
+  cardinality 0..1
+  deletion_semantic Block
+  header {
+    description: "Inverse of Subtree."
+    display_name: "Parent"
+    display_plural: "Parents"
+    plural: "Parents"
+  }
+}
+
+def relationship (ExecutionInstance.HolonType)-[ExecutesQuery]->(Query.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ExecutedBy
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ExecutionInstance.HolonType
+  target Query.HolonType
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Identifies the Query executed by this runtime instance."
+    display_name: "Executes Query"
+    display_plural: "Executes Queries"
+    plural: "ExecutesQueries"
+  }
+}
+
+inverse relationship (Query.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Query.HolonType
+  target ExecutionInstance.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of ExecutesQuery."
+    display_name: "Executed By"
+    display_plural: "Executed Bys"
+    plural: "ExecutedBys"
+  }
+}
+
+def relationship (ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ExecutionFor
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ExecutionInstance.HolonType
+  target QueryExpressionExecution.HolonType
+  cardinality 0..*
+  ordered
+  deletion_semantic Block
+  header {
+    description: "Owns the ordered runtime executions of a Query's expressions."
+    display_name: "Expression Executions"
+    display_plural: "Expression Executions"
+    plural: "ExpressionExecutions"
+  }
+}
+
+inverse relationship (QueryExpressionExecution.HolonType)-[ExecutionFor]->(ExecutionInstance.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryExpressionExecution.HolonType
+  target ExecutionInstance.HolonType
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Inverse of ExpressionExecutions."
+    display_name: "Execution For"
+    display_plural: "Execution Fors"
+    plural: "ExecutionFors"
+  }
+}
+
+def relationship (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ResultOfExecution
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ExecutionInstance.HolonType
+  target HolonCollection.HolonType
+  cardinality 0..1
+  deletion_semantic Block
+  header {
+    description: "Records the final HolonCollection of a completed Query execution."
+    display_name: "Execution Result"
+    display_plural: "Execution Results"
+    plural: "ExecutionResults"
+  }
+}
+
+inverse relationship (HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonCollection.HolonType
+  target ExecutionInstance.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of ExecutionResult."
+    display_name: "Result Of Execution"
+    display_plural: "Results Of Execution"
+    plural: "ResultsOfExecution"
+  }
+}
+
+def relationship (QueryExpressionExecution.HolonType)-[ExecutesExpression]->(QueryExpression.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ExpressionExecutedBy
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryExpressionExecution.HolonType
+  target QueryExpression.HolonType
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Identifies the reusable QueryExpression invoked by runtime execution state."
+    display_name: "Executes Expression"
+    display_plural: "Executes Expressions"
+    plural: "ExecutesExpressions"
+  }
+}
+
+inverse relationship (QueryExpression.HolonType)-[ExpressionExecutedBy]->(QueryExpressionExecution.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryExpression.HolonType
+  target QueryExpressionExecution.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of ExecutesExpression."
+    display_name: "Expression Executed By"
+    display_plural: "Expressions Executed By"
+    plural: "ExpressionsExecutedBy"
+  }
+}
+
+def relationship (QueryExpressionExecution.HolonType)-[Input]->(HolonCollection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> InputFor
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryExpressionExecution.HolonType
+  target HolonCollection.HolonType
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Records the runtime input collection for one expression invocation."
+    display_name: "Input"
+    display_plural: "Inputs"
+    plural: "Inputs"
+  }
+}
+
+inverse relationship (HolonCollection.HolonType)-[InputFor]->(QueryExpressionExecution.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonCollection.HolonType
+  target QueryExpressionExecution.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of Input."
+    display_name: "Input For"
+    display_plural: "Input Fors"
+    plural: "InputFors"
+  }
+}
+
+def relationship (QueryExpressionExecution.HolonType)-[Result]->(HolonCollection.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> ResultOf
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryExpressionExecution.HolonType
+  target HolonCollection.HolonType
+  cardinality 0..1
+  deletion_semantic Block
+  header {
+    description: "Records the runtime result collection for one expression invocation."
+    display_name: "Result"
+    display_plural: "Results"
+    plural: "Results"
+  }
+}
+
+inverse relationship (HolonCollection.HolonType)-[ResultOf]->(QueryExpressionExecution.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonCollection.HolonType
+  target QueryExpressionExecution.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of Result."
+    display_name: "Result Of"
+    display_plural: "Results Of"
+    plural: "ResultsOf"
+  }
+}
+
+def relationship (QueryExpressionExecution.HolonType)-[RuntimeParameters]->(QueryParameterBinding.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> RuntimeParametersFor
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source QueryExpressionExecution.HolonType
+  target QueryParameterBinding.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Records resolved runtime bindings for one expression invocation."
+    display_name: "Runtime Parameters"
+    display_plural: "Runtime Parameters"
+    plural: "RuntimeParameters"
+  }
+}
+
+inverse relationship (QueryParameterBinding.HolonType)-[RuntimeParametersFor]->(QueryExpressionExecution.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryParameterBinding.HolonType
+  target QueryExpressionExecution.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of RuntimeParameters."
+    display_name: "Runtime Parameters For"
+    display_plural: "Runtime Parameters For"
+    plural: "RuntimeParametersFor"
+  }
+}

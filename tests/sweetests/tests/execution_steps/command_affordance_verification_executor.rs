@@ -133,63 +133,78 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
         );
     }
 
-    // `AffordsCommand` is the declared descriptor edge from holon types to command types.
+    // `CommandAffordedBy` is declared by Commands so package-owned command descriptors can
+    // author their Core affordance targets without re-declaring Core holons.
     let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)",
+        "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType.TypeDescriptor)",
     ))
     .try_into_declared_relationship_descriptor()
-    .expect("AffordsCommand should be a declared relationship descriptor");
+    .expect("CommandAffordedBy should be a declared relationship descriptor");
     assert_eq!(
         affordance_relationship
             .base_relationship_name()
-            .expect("AffordsCommand base_relationship_name")
+            .expect("CommandAffordedBy base_relationship_name")
             .to_string(),
-        "AffordsCommand"
+        "CommandAffordedBy"
     );
     assert_eq!(
         affordance_relationship
             .source_type()
-            .expect("AffordsCommand source_type")
+            .expect("CommandAffordedBy source_type")
             .header()
             .type_name()
-            .expect("AffordsCommand source type_name"),
-        MapString("HolonType".to_string())
+            .expect("CommandAffordedBy source type_name"),
+        MapString("CommandType".to_string())
     );
     assert_eq!(
         affordance_relationship
             .target_type()
-            .expect("AffordsCommand target_type")
+            .expect("CommandAffordedBy target_type")
             .header()
             .type_name()
-            .expect("AffordsCommand target type_name"),
-        MapString("CommandType".to_string())
+            .expect("CommandAffordedBy target type_name"),
+        MapString("HolonType".to_string())
     );
 
-    // `CommandAffordedBy` must be the inverse view of the same command affordance relationship.
+    // The declared Commands-side occurrence is the authored fact. Its committed inverse below
+    // is what makes Core-side affordance discovery available to descriptor consumers.
+    let clone_command = find_holon_by_key(&holons, "CloneHolon.CommandType");
+    let clone_afforded_by = clone_command
+        .related_holons(RelationshipName(MapString::from("CommandAffordedBy")))
+        .expect("CloneHolon CommandAffordedBy relationship");
+    let clone_afforded_by =
+        clone_afforded_by.read().expect("CloneHolon CommandAffordedBy relationship lock");
+    let clone_afforded_by = clone_afforded_by.get_members();
+    assert_eq!(clone_afforded_by.len(), 1, "CloneHolon should have one affordance target");
+    assert_eq!(
+        HolonDescriptor::from_holon(clone_afforded_by[0].clone())
+            .header()
+            .type_name()
+            .expect("CloneHolon affordance target type_name"),
+        MapString("HolonType".to_string())
+    );
+
+    // `AffordsCommand` remains the Core-side inverse used by descriptor discovery.
     let inverse_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType.TypeDescriptor)",
+        "(HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)",
     ))
     .try_into_inverse_relationship_descriptor()
-    .expect("CommandAffordedBy should be an inverse relationship descriptor");
+    .expect("AffordsCommand should be an inverse relationship descriptor");
     assert_eq!(
         inverse_relationship
             .inverse_of()
-            .expect("CommandAffordedBy inverse_of")
+            .expect("AffordsCommand inverse_of")
             .base_relationship_name()
-            .expect("CommandAffordedBy inverse_of base name")
+            .expect("AffordsCommand inverse_of base name")
             .to_string(),
-        "AffordsCommand"
+        "CommandAffordedBy"
     );
 
     // `HolonType` owns the baseline command affordance set and typed command lookup behavior.
     let holon_type_descriptor =
         HolonDescriptor::from_holon(find_holon_by_key(&holons, "HolonType.TypeDescriptor"));
-    let instance_relationship_names =
-        relationship_base_names(holon_type_descriptor.instance_relationships());
-    assert_contains(&instance_relationship_names, "AffordsCommand");
-
     assert_command_set_eq(
         command_names(holon_type_descriptor.afforded_commands()),
         HOLON_TYPE_AFFORDED_COMMANDS,
@@ -408,28 +423,6 @@ fn find_holon_by_key(holons: &HolonCollection, key: &str) -> HolonReference {
         .get_by_key(&MapString::from(key))
         .unwrap_or_else(|error| panic!("key lookup for {key} failed: {error:?}"))
         .unwrap_or_else(|| panic!("expected loaded holon with key {key}"))
-}
-
-fn relationship_base_names(
-    descriptors: Result<Vec<RelationshipDescriptor>, HolonError>,
-) -> Vec<String> {
-    descriptors
-        .expect("relationship descriptor list")
-        .into_iter()
-        .map(|descriptor| {
-            descriptor
-                .base_relationship_name()
-                .expect("relationship descriptor base name")
-                .to_string()
-        })
-        .collect()
-}
-
-fn assert_contains(values: &[String], expected: &str) {
-    assert!(
-        values.iter().any(|actual| actual == expected),
-        "expected {values:?} to contain {expected}"
-    );
 }
 
 fn assert_command_absent(values: &[CommandName], unexpected: CoreCommandTypeName, message: &str) {

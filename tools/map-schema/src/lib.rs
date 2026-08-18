@@ -921,7 +921,7 @@ mod tests {
         decompile_inputs(&[generated_fixture_dir()], &out_dir)?;
 
         let relationship_types =
-            std::fs::read_to_string(out_dir.join("map-core-schema-relationship-types.tdl"))?;
+            std::fs::read_to_string(out_dir.join("core/relationship-types.tdl"))?;
 
         assert!(relationship_types
             .contains("instance \"(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)\""));
@@ -948,10 +948,10 @@ mod tests {
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_dir)?;
         assert_eq!(decompiled_files.len(), expected_file_count);
         assert!(decompiled_files.iter().any(|path| {
-            path.to_string_lossy().ends_with("domain/core-schema/map-core-schema-root.tdl")
+            path.to_string_lossy().ends_with("domain/core-schema/core/root.tdl")
         }));
         assert!(decompiled_files.iter().any(|path| {
-            path.to_string_lossy().ends_with("domain/core-schema/map-core-schema-dance-schema.tdl")
+            path.to_string_lossy().ends_with("domain/core-schema/dance/schema.tdl")
         }));
 
         let roundtrip_json_dir = temp_roundtrip_json_dir();

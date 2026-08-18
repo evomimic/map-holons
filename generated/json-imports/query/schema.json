@@ -1,0 +1,2018 @@
+{
+  "meta": {
+    "export_mode": "design-seed",
+    "load_with": [
+      "../core/root.json",
+      "../core/concrete-value-types.json",
+      "../core/abstract-value-types.json",
+      "../core/property-types.json",
+      "../core/relationship-types.json"
+    ],
+    "source_files": [
+      "docs/core/map-queries/command-dance-query-schema-tdl.md",
+      "docs/core/map-queries/query-engine-design-spec.md",
+      "docs/core/map-queries/queries-impl-plan.md"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MAP Query Schema-v0.0.2",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Query Schema-v0.0.2",
+        "Description": "Descriptor definitions for reusable MAP queries and their direct runtime execution state. Dance-mediated invocation is owned by the separate Query Dance Adapter Schema."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Query.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Query",
+        "TypeNamePlural": "Queries",
+        "DisplayName": "Query",
+        "DisplayNamePlural": "Queries",
+        "Description": "Reusable saved query definition rooted at a QueryExpression. It never carries invocation state."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "QueryName.PropertyType"
+            },
+            {
+              "$ref": "QueryDescription.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Query.HolonType)-[RootExpression]->(QueryExpression.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryExpression.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryExpression",
+        "TypeNamePlural": "QueryExpressions",
+        "DisplayName": "Query Expression",
+        "DisplayNamePlural": "Query Expressions",
+        "Description": "Reusable query-expression definition. Concrete operators extend this type.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryExpression.HolonType)-[ExpressionParameters]->(QueryParameterDeclaration.HolonType)"
+            },
+            {
+              "$ref": "(QueryExpression.HolonType)-[Next]->(QueryExpression.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QuerySubTree.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QuerySubTree",
+        "TypeNamePlural": "QuerySubTrees",
+        "DisplayName": "Query Subtree",
+        "DisplayNamePlural": "Query Subtrees",
+        "Description": "Composite QueryExpression whose ordered Subtree members are implementation containment, not continuation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QuerySubTree.HolonType)-[Subtree]->(QueryExpression.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryParameterDeclaration.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryParameterDeclaration",
+        "TypeNamePlural": "QueryParameterDeclarations",
+        "DisplayName": "Query Parameter Declaration",
+        "DisplayNamePlural": "Query Parameter Declarations",
+        "Description": "Reusable declaration of a parameter accepted by a query expression."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ParameterName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryParameterDeclaration.HolonType)-[ParameterBindingType]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryParameterBinding.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryParameterBinding",
+        "TypeNamePlural": "QueryParameterBindings",
+        "DisplayName": "Query Parameter Binding",
+        "DisplayNamePlural": "Query Parameter Bindings",
+        "Description": "Runtime value binding for a QueryParameterDeclaration. Concrete binding types own their values.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ParameterName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryParameterBinding.HolonType)-[BindsParameter]->(QueryParameterDeclaration.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionInstance.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExecutionInstance",
+        "TypeNamePlural": "ExecutionInstances",
+        "DisplayName": "Execution Instance",
+        "DisplayNamePlural": "Execution Instances",
+        "Description": "Runtime state for one direct or Dance-mediated execution of a Query."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ExecutionStatus.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ExecutionInstance.HolonType)-[ExecutesQuery]->(Query.HolonType)"
+            },
+            {
+              "$ref": "(ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType)"
+            },
+            {
+              "$ref": "(ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryExpressionExecution.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryExpressionExecution",
+        "TypeNamePlural": "QueryExpressionExecutions",
+        "DisplayName": "Query Expression Execution",
+        "DisplayNamePlural": "Query Expression Executions",
+        "Description": "Runtime state for one invocation of one QueryExpression."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ExecutionStatus.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryExpressionExecution.HolonType)-[ExecutesExpression]->(QueryExpression.HolonType)"
+            },
+            {
+              "$ref": "(QueryExpressionExecution.HolonType)-[Input]->(HolonCollection.HolonType)"
+            },
+            {
+              "$ref": "(QueryExpressionExecution.HolonType)-[Result]->(HolonCollection.HolonType)"
+            },
+            {
+              "$ref": "(QueryExpressionExecution.HolonType)-[RuntimeParameters]->(QueryParameterBinding.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryName",
+        "TypeNamePlural": "QueryNames",
+        "DisplayName": "Query Name",
+        "DisplayNamePlural": "Query Names",
+        "Description": "Human-readable name for a saved Query.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryDescription",
+        "TypeNamePlural": "QueryDescriptions",
+        "DisplayName": "Query Description",
+        "DisplayNamePlural": "Query Descriptions",
+        "Description": "Human-readable description of a Query."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ParameterName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ParameterName",
+        "TypeNamePlural": "ParameterNames",
+        "DisplayName": "Parameter Name",
+        "DisplayNamePlural": "Parameter Names",
+        "Description": "Stable name of a declared or runtime query parameter.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionStatus.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExecutionStatus",
+        "TypeNamePlural": "ExecutionStatuses",
+        "DisplayName": "Execution Status",
+        "DisplayNamePlural": "Execution Statuses",
+        "Description": "Lifecycle status of a Query execution.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "QueryExecutionStatus.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryExecutionStatus.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "QueryExecutionStatus",
+        "TypeNamePlural": "QueryExecutionStatuses",
+        "DisplayName": "Query Execution Status",
+        "DisplayNamePlural": "Query Execution Statuses",
+        "Description": "Lifecycle states for a Query execution."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "QueryExecutionStatus.MapEnumValueType.Pending"
+            },
+            {
+              "$ref": "QueryExecutionStatus.MapEnumValueType.Running"
+            },
+            {
+              "$ref": "QueryExecutionStatus.MapEnumValueType.Complete"
+            },
+            {
+              "$ref": "QueryExecutionStatus.MapEnumValueType.Failed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryExecutionStatus.MapEnumValueType.Pending",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Pending",
+        "DisplayName": "Pending",
+        "Description": "Execution has been created but has not started."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryExecutionStatus.MapEnumValueType.Running",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Running",
+        "DisplayName": "Running",
+        "Description": "Execution is in progress."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryExecutionStatus.MapEnumValueType.Complete",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Complete",
+        "DisplayName": "Complete",
+        "Description": "Execution completed successfully."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryExecutionStatus.MapEnumValueType.Failed",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Failed",
+        "DisplayName": "Failed",
+        "Description": "Execution completed with failure."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Query.HolonType)-[RootExpression]->(QueryExpression.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RootExpression",
+        "TypeNamePlural": "RootExpressions",
+        "DisplayName": "Root Expression",
+        "DisplayNamePlural": "Root Expressions",
+        "Description": "Identifies the root expression of a Query definition.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Query.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryExpression.HolonType)-[RootExpressionFor]->(Query.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpression.HolonType)-[RootExpressionFor]->(Query.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RootExpressionFor",
+        "TypeNamePlural": "RootExpressionFors",
+        "DisplayName": "Root Expression For",
+        "DisplayNamePlural": "Root Expression Fors",
+        "Description": "Inverse of RootExpression.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Query.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpression.HolonType)-[ExpressionParameters]->(QueryParameterDeclaration.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExpressionParameters",
+        "TypeNamePlural": "ExpressionParameters",
+        "DisplayName": "Expression Parameters",
+        "DisplayNamePlural": "Expression Parameters",
+        "Description": "Lists reusable parameter declarations required by a QueryExpression.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryParameterDeclaration.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryParameterDeclaration.HolonType)-[ParametersForQueryExpression]->(QueryExpression.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryParameterDeclaration.HolonType)-[ParametersForQueryExpression]->(QueryExpression.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ParametersForQueryExpression",
+        "TypeNamePlural": "ParametersForQueryExpressions",
+        "DisplayName": "Parameters For Query Expression",
+        "DisplayNamePlural": "Parameters For Query Expressions",
+        "Description": "Inverse of ExpressionParameters.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryParameterDeclaration.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpression.HolonType)-[Next]->(QueryExpression.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Next",
+        "TypeNamePlural": "Next",
+        "DisplayName": "Next",
+        "DisplayNamePlural": "Next",
+        "Description": "The sole sequential continuation relationship for QueryExpression execution.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryExpression.HolonType)-[Previous]->(QueryExpression.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpression.HolonType)-[Previous]->(QueryExpression.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Previous",
+        "TypeNamePlural": "Previous",
+        "DisplayName": "Previous",
+        "DisplayNamePlural": "Previous",
+        "Description": "Inverse of Next.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryParameterDeclaration.HolonType)-[ParameterBindingType]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ParameterBindingType",
+        "TypeNamePlural": "ParameterBindingTypes",
+        "DisplayName": "Parameter Binding Type",
+        "DisplayNamePlural": "Parameter Binding Types",
+        "Description": "Identifies the concrete QueryParameterBinding descriptor accepted by a declaration.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryParameterDeclaration.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[ParameterDeclaredBy]->(QueryParameterDeclaration.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[ParameterDeclaredBy]->(QueryParameterDeclaration.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ParameterDeclaredBy",
+        "TypeNamePlural": "ParameterDeclaredBys",
+        "DisplayName": "Parameter Declared By",
+        "DisplayNamePlural": "Parameter Declared Bys",
+        "Description": "Inverse of ParameterBindingType.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryParameterDeclaration.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryParameterBinding.HolonType)-[BindsParameter]->(QueryParameterDeclaration.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "BindsParameter",
+        "TypeNamePlural": "BindsParameters",
+        "DisplayName": "Binds Parameter",
+        "DisplayNamePlural": "Binds Parameters",
+        "Description": "Identifies the declaration satisfied by a runtime query parameter binding.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryParameterBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryParameterDeclaration.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryParameterDeclaration.HolonType)-[ParameterBoundBy]->(QueryParameterBinding.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryParameterDeclaration.HolonType)-[ParameterBoundBy]->(QueryParameterBinding.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ParameterBoundBy",
+        "TypeNamePlural": "ParameterBoundBys",
+        "DisplayName": "Parameter Bound By",
+        "DisplayNamePlural": "Parameter Bound Bys",
+        "Description": "Inverse of BindsParameter.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryParameterDeclaration.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryParameterBinding.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QuerySubTree.HolonType)-[Subtree]->(QueryExpression.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Subtree",
+        "TypeNamePlural": "Subtrees",
+        "DisplayName": "Subtree",
+        "DisplayNamePlural": "Subtrees",
+        "Description": "Contains the ordered implementation subtree of a composite QueryExpression.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "MinCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QuerySubTree.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryExpression.HolonType)-[Parent]->(QuerySubTree.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpression.HolonType)-[Parent]->(QuerySubTree.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Parent",
+        "TypeNamePlural": "Parents",
+        "DisplayName": "Parent",
+        "DisplayNamePlural": "Parents",
+        "Description": "Inverse of Subtree.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QuerySubTree.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionInstance.HolonType)-[ExecutesQuery]->(Query.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutesQuery",
+        "TypeNamePlural": "ExecutesQueries",
+        "DisplayName": "Executes Query",
+        "DisplayNamePlural": "Executes Queries",
+        "Description": "Identifies the Query executed by this runtime instance.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Query.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Query.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Query.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutedBy",
+        "TypeNamePlural": "ExecutedBys",
+        "DisplayName": "Executed By",
+        "DisplayNamePlural": "Executed Bys",
+        "Description": "Inverse of ExecutesQuery.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Query.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExpressionExecutions",
+        "TypeNamePlural": "ExpressionExecutions",
+        "DisplayName": "Expression Executions",
+        "DisplayNamePlural": "Expression Executions",
+        "Description": "Owns the ordered runtime executions of a Query's expressions.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryExpressionExecution.HolonType)-[ExecutionFor]->(ExecutionInstance.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpressionExecution.HolonType)-[ExecutionFor]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutionFor",
+        "TypeNamePlural": "ExecutionFors",
+        "DisplayName": "Execution For",
+        "DisplayNamePlural": "Execution Fors",
+        "Description": "Inverse of ExpressionExecutions.",
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutionResult",
+        "TypeNamePlural": "ExecutionResults",
+        "DisplayName": "Execution Result",
+        "DisplayNamePlural": "Execution Results",
+        "Description": "Records the final HolonCollection of a completed Query execution.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResultOfExecution",
+        "TypeNamePlural": "ResultsOfExecution",
+        "DisplayName": "Result Of Execution",
+        "DisplayNamePlural": "Results Of Execution",
+        "Description": "Inverse of ExecutionResult.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpressionExecution.HolonType)-[ExecutesExpression]->(QueryExpression.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutesExpression",
+        "TypeNamePlural": "ExecutesExpressions",
+        "DisplayName": "Executes Expression",
+        "DisplayNamePlural": "Executes Expressions",
+        "Description": "Identifies the reusable QueryExpression invoked by runtime execution state.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryExpression.HolonType)-[ExpressionExecutedBy]->(QueryExpressionExecution.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpression.HolonType)-[ExpressionExecutedBy]->(QueryExpressionExecution.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExpressionExecutedBy",
+        "TypeNamePlural": "ExpressionsExecutedBy",
+        "DisplayName": "Expression Executed By",
+        "DisplayNamePlural": "Expressions Executed By",
+        "Description": "Inverse of ExecutesExpression.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpressionExecution.HolonType)-[Input]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Input",
+        "TypeNamePlural": "Inputs",
+        "DisplayName": "Input",
+        "DisplayNamePlural": "Inputs",
+        "Description": "Records the runtime input collection for one expression invocation.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[InputFor]->(QueryExpressionExecution.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[InputFor]->(QueryExpressionExecution.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InputFor",
+        "TypeNamePlural": "InputFors",
+        "DisplayName": "Input For",
+        "DisplayNamePlural": "Input Fors",
+        "Description": "Inverse of Input.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpressionExecution.HolonType)-[Result]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Result",
+        "TypeNamePlural": "Results",
+        "DisplayName": "Result",
+        "DisplayNamePlural": "Results",
+        "Description": "Records the runtime result collection for one expression invocation.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[ResultOf]->(QueryExpressionExecution.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[ResultOf]->(QueryExpressionExecution.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResultOf",
+        "TypeNamePlural": "ResultsOf",
+        "DisplayName": "Result Of",
+        "DisplayNamePlural": "Results Of",
+        "Description": "Inverse of Result.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryExpressionExecution.HolonType)-[RuntimeParameters]->(QueryParameterBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RuntimeParameters",
+        "TypeNamePlural": "RuntimeParameters",
+        "DisplayName": "Runtime Parameters",
+        "DisplayNamePlural": "Runtime Parameters",
+        "Description": "Records resolved runtime bindings for one expression invocation.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryParameterBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryParameterBinding.HolonType)-[RuntimeParametersFor]->(QueryExpressionExecution.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryParameterBinding.HolonType)-[RuntimeParametersFor]->(QueryExpressionExecution.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RuntimeParametersFor",
+        "TypeNamePlural": "RuntimeParametersFor",
+        "DisplayName": "Runtime Parameters For",
+        "DisplayNamePlural": "Runtime Parameters For",
+        "Description": "Inverse of RuntimeParameters.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryParameterBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
