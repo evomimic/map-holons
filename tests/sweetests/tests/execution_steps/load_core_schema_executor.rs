@@ -2,6 +2,7 @@ use holons_prelude::prelude::*;
 
 use holons_test::harness::helpers::{
     build_core_schema_content_set, build_generated_core_schema_content_set,
+    build_generated_query_dance_schema_content_set, build_generated_query_schema_content_set,
     build_generated_validation_schema_content_set, CORE_SCHEMA_METRICS,
     GENERATED_CORE_SCHEMA_METRICS,
 };
@@ -36,6 +37,22 @@ pub async fn execute_load_generated_validation_schema(test_state: &mut TestExecu
     });
 
     execute_load_holons_client_expect_success(test_state, content_set, 155, 1).await;
+}
+
+/// Loads the independently usable Query package after Core has committed.
+pub async fn execute_load_generated_query_schema(test_state: &mut TestExecutionState) {
+    let content_set = build_generated_query_schema_content_set().unwrap_or_else(|error| {
+        panic!("failed to build generated Query Schema ContentSet: {error:?}")
+    });
+    execute_load_holons_client_expect_success(test_state, content_set, 43, 1).await;
+}
+
+/// Loads the Dance-layer Query adapter after Core and Query have committed.
+pub async fn execute_load_generated_query_dance_schema(test_state: &mut TestExecutionState) {
+    let content_set = build_generated_query_dance_schema_content_set().unwrap_or_else(|error| {
+        panic!("failed to build generated Query Dance Adapter Schema ContentSet: {error:?}")
+    });
+    execute_load_holons_client_expect_success(test_state, content_set, 13, 1).await;
 }
 
 /// Loads the checked-in Schema 2.0 compiler artifact. Metrics are recorded by

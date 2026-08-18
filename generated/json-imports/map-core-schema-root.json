@@ -8,8 +8,7 @@
       "map-core-schema-property-types.json",
       "map-core-schema-relationship-types.json",
       "map-core-schema-keyrules-schema.json",
-      "map-core-schema-dance-schema.json",
-      "map-core-schema-query-schema.json"
+      "map-core-schema-dance-schema.json"
     ],
     "source_files": [
       "map-core-schema-root.csv"
@@ -690,14 +689,6 @@
           "target": [
             {
               "$ref": "BeginTransaction.CommandType"
-            }
-          ]
-        },
-        {
-          "name": "AffordsDance",
-          "target": [
-            {
-              "$ref": "QueryDance.DanceType"
             }
           ]
         }
