@@ -47,7 +47,6 @@ export interface FileData {
 }
 
 export interface ContentSet {
-  schema: FileData;
   files_to_load: FileData[];
 }
 
@@ -181,7 +180,6 @@ export function isFileData(value: unknown): value is FileData {
 export function isContentSet(value: unknown): value is ContentSet {
   return (
     isRecord(value) &&
-    isFileData(value['schema']) &&
     Array.isArray(value['files_to_load']) &&
     value['files_to_load'].every(isFileData)
   );

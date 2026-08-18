@@ -61,13 +61,7 @@ pub async fn load_holons_from_files(
             "load_holons_from_files: no import files provided".into(),
         ));
     }
-    if content_set.schema.raw_contents.trim().is_empty() {
-        return Err(HolonError::InvalidParameter(
-            "load_holons_from_files: schema contents are empty".into(),
-        ));
-    }
-
-    // Phase 1: Parse and validate all files into a single HolonLoadSet.
+    // Phase 1: Parse and structurally validate all files into a single HolonLoadSet.
     //
     // For now we allow the parser to choose its own load-set key; a later
     // iteration may derive a deterministic key (e.g., from filenames or

@@ -48,10 +48,8 @@ Consult before making architectural assumptions:
 Call out conflicts instead of silently choosing an interpretation. Search existing code and docs
 before creating a new module, path, or architectural seam.
 
-`host/import_files/map-schema/core-schema/` contains canonical generated/curated MAP Core Schema
-JSON imports. Treat these as schema source-of-truth inputs. Do not hand-edit them unless explicitly
-instructed. If a task appears to require changes there, ask the user to update or regenerate the
-schema source files.
+`schema-src/` contains the authoritative MAP Schema 2.0 TDL source. Generated loader JSON lives
+under `generated/json-imports/` and must be regenerated from TDL rather than hand-edited.
 
 ## Execution Contexts
 
@@ -198,9 +196,8 @@ Holochain dictates MSRV. Keep dependency changes deliberate, auditable, and repr
 * Backwards compatibility with obsolete paths is not a general requirement in this pre-production
   codebase. Do not remove compatibility code as incidental cleanup; when it conflicts with current
   architecture, surface the conflict and remove or replace it deliberately.
-* Do not directly edit files under `host/import_files/map-schema/core-schema/` as part of normal
-  implementation work. Ask the user to update or regenerate schema source files unless direct edits
-  were explicitly requested.
+* Do not directly edit generated files under `generated/json-imports/`; update `schema-src/` and
+  regenerate them through `map-schema`.
 * Call out and propagate cross-boundary changes:
 
     * shared API → host/hApp consumers

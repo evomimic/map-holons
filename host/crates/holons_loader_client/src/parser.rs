@@ -1,8 +1,7 @@
 //! Parsing entrypoints for the Holons Loader Client.
 //!
 //! This module is responsible for:
-//! - Validating loader import JSON files against the Holon Loader JSON Schema.
-//! - Deserializing into lightweight raw structures that borrow from the
+//! - Deserializing loader import JSON into lightweight raw structures that borrow from the
 //!   original buffer and expose per-holon UTF-8 byte offsets.
 //! - Orchestrating per-file bundle construction via the `builder` module
 //!   and wiring everything into a single `HolonLoadSet`.
@@ -15,7 +14,6 @@ use crate::builder::{
 use core_types::{ContentSet, FileData, ValidationError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_prelude::prelude::*;
-use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 use std::collections::HashMap;
@@ -25,18 +23,18 @@ use std::sync::Arc;
 /// High-level classification of a per-file parsing issue.
 ///
 /// This allows the caller (and UI) to distinguish between simple I/O failures,
-/// schema violations, JSON decoding problems, and internal holon construction
+/// JSON decoding problems, structural violations, and internal holon construction
 /// failures.
 #[derive(Debug)]
 pub enum ImportFileParsingIssueKind {
     /// Any failure to read or open the import file.
     IoFailure,
 
-    /// JSON Schema validation errors (structure or type mismatches).
-    SchemaValidationFailure,
-
     /// Raw JSON decoding errors (malformed JSON or unexpected shape).
     JsonDecodingFailure,
+
+    /// Generated JSON violates loader-owned structural constraints.
+    StructuralValidationFailure,
 
     /// Errors that occur while constructing transient holons and their
     /// relationships inside the loader graph.
@@ -135,7 +133,6 @@ pub fn parse_files_into_load_set(
             context,
             &load_set_ref,
             import_file,
-            &content_set.schema.raw_contents,
             &mut inverse_target_tracker,
         ) {
             issues.push(issue);
@@ -176,7 +173,6 @@ pub fn create_holon_load_set(
 ///
 /// This function is responsible for:
 /// - Reading the file into memory.
-/// - Validating the JSON instance against the loader schema.
 /// - Deserializing into `RawLoaderFileWithSlices<'_>`.
 /// - Computing `start_utf8_byte_offset` for each holon record.
 /// - Delegating bundle + holon construction to the builder module.
@@ -187,29 +183,23 @@ fn parse_single_import_file_into_bundle_with_tracker(
     context: &Arc<TransactionContext>,
     load_set_ref: &HolonReference,
     import_file: &FileData,
-    schema_json: &str,
     inverse_target_tracker: &mut HasInverseTargetUniquenessTracker,
 ) -> Result<(), ImportFileParsingIssue> {
     let raw_json = import_file.raw_contents.as_str();
     let file_path = PathBuf::from(import_file.filename.clone());
 
-    // 2) Validate against the loader JSON Schema and deserialize into
-    //    `RawLoaderFileWithSlices<'_>`.
+    // 2) Deserialize and structurally validate the generated loader JSON.
     let (raw_file_with_slices, has_inverse_pairs) =
-        match validate_and_deserialize_loader_file_with_pairs(
-            raw_json,
-            schema_json,
-            &import_file.filename,
-        ) {
+        match validate_and_deserialize_loader_file_with_pairs(raw_json, &import_file.filename) {
             Ok(wrapper) => wrapper,
             Err(err) => {
                 return Err(ImportFileParsingIssue {
                     file_path: file_path.clone(),
-                    kind: ImportFileParsingIssueKind::SchemaValidationFailure,
+                    kind: ImportFileParsingIssueKind::StructuralValidationFailure,
                     message: format!(
-                    "Loader import file '{}' failed schema validation or top-level decoding: {}",
-                    import_file.filename, err
-                ),
+                        "Loader import file '{}' failed structural decoding: {}",
+                        import_file.filename, err
+                    ),
                     source_error: Some(err),
                 });
             }
@@ -223,7 +213,7 @@ fn parse_single_import_file_into_bundle_with_tracker(
         ) {
             return Err(ImportFileParsingIssue {
                 file_path: file_path.clone(),
-                kind: ImportFileParsingIssueKind::SchemaValidationFailure,
+                kind: ImportFileParsingIssueKind::StructuralValidationFailure,
                 message: format!(
                     "Loader import file '{}' failed relationship-pair validation: {}",
                     import_file.filename, err
@@ -361,42 +351,26 @@ fn parse_single_import_file_into_bundle_with_tracker(
     Ok(())
 }
 
-/// Validate a raw JSON buffer against the Holon Loader JSON Schema and
-/// deserialize it into a `RawLoaderFileWithSlices<'a>` wrapper.
-///
-/// Phase 1 behavior:
-/// - Run schema validation using the `json_schema_validation` crate.
-/// - On success, deserialize into `RawLoaderFileWithSlices`.
-/// - On failure, return `HolonError::ValidationError`.
+/// Deserialize generated loader JSON into a `RawLoaderFileWithSlices<'a>` wrapper and validate
+/// source-independent structural constraints owned by the loader client.
 #[cfg(test)]
 fn validate_and_deserialize_loader_file<'a>(
     raw_json: &'a str,
-    schema_json: &str,
     filename: &str,
 ) -> Result<RawLoaderFileWithSlices<'a>, HolonError> {
-    validate_and_deserialize_loader_file_with_pairs(raw_json, schema_json, filename)
+    validate_and_deserialize_loader_file_with_pairs(raw_json, filename)
         .map(|(raw_file, _pairs)| raw_file)
 }
 
 fn validate_and_deserialize_loader_file_with_pairs<'a>(
     raw_json: &'a str,
-    schema_json: &str,
     filename: &str,
 ) -> Result<(RawLoaderFileWithSlices<'a>, Vec<HasInversePair>), HolonError> {
-    // 1. First run schema validation using in-memory schema + instance JSON.
-    match validate_json_str_against_schema_str(schema_json, raw_json) {
-        Ok(()) => { /* schema validation succeeded */ }
-        Err(validation_err) => {
-            // Convert ValidationError into HolonError::ValidationError
-            return Err(HolonError::ValidationError(validation_err));
-        }
-    }
-
-    // 2. JSON is valid; now deserialize *borrowed* RawValue slices.
+    // Deserialize borrowed RawValue slices before loader-structural validation.
     let raw_file =
         serde_json::from_str::<RawLoaderFileWithSlices<'a>>(raw_json).map_err(|err| {
             HolonError::InvalidParameter(format!(
-                "Failed to decode loader import JSON after schema validation (file '{}'): {}",
+                "Failed to decode loader import JSON (file '{}'): {}",
                 filename, err
             ))
         })?;
@@ -581,9 +555,6 @@ mod tests {
     use super::*;
     use std::{fs, path::PathBuf};
 
-    const BOOTSTRAP_SCHEMA: &str =
-        include_str!("../../../import_files/map-schema/bootstrap-import.schema.json");
-
     fn relationship_pair_import(
         declared_relationships: &str,
         inverse_relationships: &str,
@@ -692,7 +663,7 @@ mod tests {
             "",
         );
 
-        let parsed = validate_and_deserialize_loader_file(&raw_json, BOOTSTRAP_SCHEMA, "pair.json")
+        let parsed = validate_and_deserialize_loader_file(&raw_json, "pair.json")
             .expect("declared HasInverse authoring should validate");
 
         assert_eq!(parsed.holons.len(), 2);
@@ -703,9 +674,9 @@ mod tests {
         let core_schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
             .join("..")
-            .join("import_files")
-            .join("map-schema")
-            .join("core-schema");
+            .join("..")
+            .join("generated")
+            .join("json-imports");
 
         let mut schema_paths = fs::read_dir(&core_schema_dir)
             .unwrap_or_else(|error| {
@@ -729,7 +700,6 @@ mod tests {
             });
             let (_raw_file, has_inverse_pairs) = validate_and_deserialize_loader_file_with_pairs(
                 &raw_json,
-                BOOTSTRAP_SCHEMA,
                 &schema_path.display().to_string(),
             )
             .unwrap_or_else(|error| {
@@ -761,7 +731,6 @@ mod tests {
 
         let message = assert_relationship_validation_error(validate_and_deserialize_loader_file(
             &raw_json,
-            BOOTSTRAP_SCHEMA,
             "shared-inverse-target.json",
         ));
 
@@ -801,7 +770,6 @@ mod tests {
 
         let message = assert_relationship_validation_error(validate_and_deserialize_loader_file(
             &raw_json,
-            BOOTSTRAP_SCHEMA,
             "missing-has-inverse.json",
         ));
 
@@ -825,7 +793,6 @@ mod tests {
 
         let message = assert_relationship_validation_error(validate_and_deserialize_loader_file(
             &raw_json,
-            BOOTSTRAP_SCHEMA,
             "wrong-kind-has-inverse.json",
         ));
 
@@ -853,7 +820,6 @@ mod tests {
 
         let message = assert_relationship_validation_error(validate_and_deserialize_loader_file(
             &raw_json,
-            BOOTSTRAP_SCHEMA,
             "authored-inverse-of.json",
         ));
 

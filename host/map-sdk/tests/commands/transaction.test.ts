@@ -126,10 +126,6 @@ const danceResponse: DanceResponseWire = {
 };
 
 const contentSet: ContentSet = {
-  schema: {
-    filename: 'bootstrap-import.schema.json',
-    raw_contents: '{"type":"object"}',
-  },
   files_to_load: [
     {
       filename: 'sample-loader-file.json',

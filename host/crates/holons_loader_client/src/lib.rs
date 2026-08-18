@@ -1,7 +1,7 @@
 //! Host-side Holons Loader Client.
 //!
 //! This crate is responsible for:
-//! - Validating loader import JSON files against the Holon Loader Schema.
+//! - Structurally decoding generated loader import JSON files.
 //! - Parsing them into transient loader graph structures
 //!   (`HolonLoadSet`, `HolonLoaderBundle`, `LoaderHolon`, etc.).
 //! - Invoking the guest-side Holon Loader dance via the existing
@@ -13,7 +13,6 @@ mod builder;
 mod errors;
 pub mod loader_client;
 mod parser;
-pub mod types;
 
 // Public re-exports for the main entrypoint.
 pub use loader_client::load_holons_from_files;
@@ -22,4 +21,3 @@ pub use loader_client::load_holons_from_files;
 // tooling can use them without reaching into private modules.
 pub use builder::{RawLoaderHolon, RawLoaderMeta, RawRelationshipEndpoints, RawRelationshipSpec};
 pub use parser::{ImportFileParsingIssue, ImportFileParsingIssueKind, RawLoaderFileWithSlices};
-pub use types::BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH;

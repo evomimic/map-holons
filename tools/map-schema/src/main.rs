@@ -43,7 +43,7 @@ enum Commands {
         out_dir: Option<PathBuf>,
     },
 
-    /// Validate TDL source files and report semantic diagnostics.
+    /// Validate TDL syntax and lowering diagnostics.
     Check {
         /// Input TDL files or directories containing TDL files.
         inputs: Vec<PathBuf>,
@@ -134,29 +134,25 @@ Commands:
       Print this workflow-oriented guide.
 
   decompile [JSON_FILE_OR_DIR ...] --out-dir <DIR>
-      Convert loader JSON imports into TDL files. Directory inputs preserve
+      Convert generated loader JSON into TDL files. Directory inputs preserve
       relative paths and write one .tdl file per .json file.
 
   compile [TDL_FILE_OR_DIR ...] --out-dir <DIR>
-      Convert TDL files into loader JSON imports. Compile works over a corpus:
-      pass all TDL files needed to resolve references such as HolonType,
-      PropertyType, DeclaredRelationshipType, and MapStringValueType.
+      Convert TDL files into generated loader JSON. Compile works over a corpus.
 
   check [TDL_FILE_OR_DIR ...]
-      Validate TDL syntax and semantic references without writing JSON.
+      Validate TDL syntax and lowering constraints without writing JSON.
 
   roundtrip-json [JSON_FILE_OR_DIR ...] --tdl-out <DIR> --json-out <DIR>
       Decompile JSON to scratch TDL, recompile that TDL to canonical JSON,
       and compare deterministic loader-fact signatures.
 
 Common workflows:
-  npm run map-schema:decompile:coreschema
   npm run map-schema:check:coreschema
   npm run map-schema:compile:coreschema
   npm run map-schema:roundtrip:coreschema
 
 Direct examples:
-  cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile host/import_files/map-schema/core-schema --out-dir schema-src
   cargo run --manifest-path tools/map-schema/Cargo.toml -- check schema-src
   cargo run --manifest-path tools/map-schema/Cargo.toml -- compile schema-src --out-dir generated/json-imports
   cargo run --manifest-path tools/map-schema/Cargo.toml -- roundtrip-json generated/json-imports --tdl-out generated/tdl-decompiled --json-out generated/json-roundtrip
@@ -166,12 +162,11 @@ Single-file stdin/stdout mode:
   map-schema compile < input.tdl > output.json
 
 Notes:
-  Decompile can inspect one JSON file, but dependency names are best resolved
-  when the full JSON corpus is present.
+  Decompile can inspect one generated JSON file, but corpus context is best
+  supplied when preserving cross-file source relationships.
 
-  Compile validates semantic references against the TDL files passed in the
-  same invocation. A dependent standalone file may fail until its core schema
-  dependencies are included in the input corpus.
+  Compile validates TDL syntax and lowering constraints across the files passed
+  in the same invocation. Descriptor semantics remain outside source tooling.
 "#
 }
 

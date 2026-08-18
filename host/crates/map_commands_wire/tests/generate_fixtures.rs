@@ -476,10 +476,6 @@ fn mutation_options(label: &str) -> RequestOptions {
 
 fn sample_content_set() -> ContentSet {
     ContentSet {
-        schema: FileData {
-            filename: "bootstrap-import.schema.json".to_string(),
-            raw_contents: r#"{"type":"object"}"#.to_string(),
-        },
         files_to_load: vec![FileData {
             filename: "sample-loader-file.json".to_string(),
             raw_contents: r#"{"holons":[]}"#.to_string(),

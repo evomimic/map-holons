@@ -1,6 +1,5 @@
 use crate::diagnostics::{format_diagnostics, Diagnostic};
 use anyhow::{anyhow, Context, Result};
-use json_schema_validation::json_schema_validator::validate_json_str_against_schema_str;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
@@ -276,9 +275,6 @@ fn is_preferred_schema_owner(candidate: &Path, current: &Path) -> bool {
 }
 
 fn validate_r6_import_json(raw_json: &str) -> Result<()> {
-    const BOOTSTRAP_SCHEMA: &str =
-        include_str!("../../../host/import_files/map-schema/bootstrap-import.schema.json");
-    validate_json_str_against_schema_str(BOOTSTRAP_SCHEMA, raw_json)?;
     let parsed: R6ImportFile = serde_json::from_str(raw_json)?;
     for holon in parsed.holons {
         if holon.key.trim().is_empty() {
@@ -332,7 +328,10 @@ fn lower_r6_file_to_import_json(
 
     let mut root = serde_json::Map::new();
     if !file.meta.is_empty() {
-        root.insert("meta".to_string(), literal_to_json(&TdlLiteralValue::Object(file.meta.clone())));
+        root.insert(
+            "meta".to_string(),
+            literal_to_json(&TdlLiteralValue::Object(file.meta.clone())),
+        );
     }
     root.insert("holons".to_string(), Value::Array(holons));
     Ok(Value::Object(root))
@@ -888,7 +887,9 @@ impl<'a> Parser<'a> {
             if line == "meta {" {
                 self.consume_trimmed();
                 let (properties, references) = self.parse_properties_block()?;
-                if !meta.is_empty() || !references.is_empty() { return Err(anyhow!("invalid meta declaration in {}", file_path.display())); }
+                if !meta.is_empty() || !references.is_empty() {
+                    return Err(anyhow!("invalid meta declaration in {}", file_path.display()));
+                }
                 meta = properties;
             } else if line.starts_with("schema ") {
                 if schema.is_some() {
@@ -2078,9 +2079,10 @@ enum Color.EnumType {
 
         assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
         assert_eq!(compilation.files.len(), 13);
-        assert!(compilation.files.iter().any(|file| {
-            file.relative_path == PathBuf::from("MAP Schema Types-map-core-schema-root.tdl")
-        }));
+        assert!(compilation
+            .files
+            .iter()
+            .any(|file| { file.relative_path == PathBuf::from("map-core-schema-root.tdl") }));
 
         Ok(())
     }
@@ -2094,8 +2096,7 @@ enum Color.EnumType {
         assert_eq!(discovered_tdl_file_count(&fixture_root)?, 13);
         assert_eq!(compiled_files.len(), 13);
 
-        let root_json =
-            fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-root.json"))?;
+        let root_json = fs::read_to_string(out_dir.join("map-core-schema-root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
         assert!(root_json.contains(r#""$ref": "MAP Core Schema-v0.0.7""#));
         assert!(!root_json.contains(r#""type_name""#));
@@ -2124,9 +2125,7 @@ enum Color.EnumType {
         }
 
         assert_eq!(map_core_schema_files.len(), 1);
-        assert!(map_core_schema_files[0]
-            .to_string_lossy()
-            .ends_with("MAP Schema Types-map-core-schema-root.json"));
+        assert!(map_core_schema_files[0].to_string_lossy().ends_with("map-core-schema-root.json"));
         Ok(())
     }
 
@@ -2135,9 +2134,8 @@ enum Color.EnumType {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
-        let relationship_json = fs::read_to_string(
-            out_dir.join("MAP Schema Types-map-core-schema-relationship-types.json"),
-        )?;
+        let relationship_json =
+            fs::read_to_string(out_dir.join("map-core-schema-relationship-types.json"))?;
         let relationship_value: Value = serde_json::from_str(&relationship_json)?;
         let component_of = relationship_value["holons"]
             .as_array()
@@ -2168,9 +2166,8 @@ enum Color.EnumType {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
-        let relationship_json = fs::read_to_string(
-            out_dir.join("MAP Schema Types-map-core-schema-relationship-types.json"),
-        )?;
+        let relationship_json =
+            fs::read_to_string(out_dir.join("map-core-schema-relationship-types.json"))?;
         let relationship_value: Value = serde_json::from_str(&relationship_json)?;
         let instance_properties = relationship_value["holons"]
             .as_array()
@@ -2200,18 +2197,20 @@ enum Color.EnumType {
     }
 
     #[test]
-    fn core_schema_leaves_max_cardinality_requiredness_to_the_meta_property_contract() -> Result<()> {
+    fn core_schema_leaves_max_cardinality_requiredness_to_the_meta_property_contract() -> Result<()>
+    {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
-        let property_json = fs::read_to_string(
-            out_dir.join("MAP Schema Types-map-core-schema-property-types.json"),
-        )?;
+        let property_json =
+            fs::read_to_string(out_dir.join("map-core-schema-property-types.json"))?;
         let property_value: Value = serde_json::from_str(&property_json)?;
         let max_cardinality = property_value["holons"]
             .as_array()
             .and_then(|holons| {
-                holons.iter().find(|holon| holon["key"].as_str() == Some("MaxCardinality.PropertyType"))
+                holons
+                    .iter()
+                    .find(|holon| holon["key"].as_str() == Some("MaxCardinality.PropertyType"))
             })
             .expect("MaxCardinality property holon");
 
@@ -2260,17 +2259,14 @@ abstract property MetaPropertyType {
             &[PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("..")
                 .join("..")
-                .join("host")
-                .join("import_files")
-                .join("map-schema")
-                .join("core-schema")],
+                .join("generated")
+                .join("json-imports")],
             &out_dir,
         )?;
 
-        let root = fs::read_to_string(out_dir.join("MAP Schema Types-map-core-schema-root.tdl"))?;
-        let abstract_values = fs::read_to_string(
-            out_dir.join("MAP Schema Types-map-core-schema-abstract-value-types.tdl"),
-        )?;
+        let root = fs::read_to_string(out_dir.join("map-core-schema-root.tdl"))?;
+        let abstract_values =
+            fs::read_to_string(out_dir.join("map-core-schema-abstract-value-types.tdl"))?;
 
         assert!(root.contains("holon \"MetaPropertyType\" {"));
         assert!(!root.contains("property \"MetaPropertyType\" {"));

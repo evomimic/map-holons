@@ -180,10 +180,6 @@ describe('request options wire type guard', () => {
 
 describe('LoadHolons wire type guard', () => {
   const contentSet = {
-    schema: {
-      filename: 'bootstrap-import.schema.json',
-      raw_contents: '{"type":"object"}',
-    },
     files_to_load: [
       {
         filename: 'sample-loader-file.json',
@@ -193,7 +189,6 @@ describe('LoadHolons wire type guard', () => {
   };
 
   it('accepts ContentSet payloads', () => {
-    expect(isFileData(contentSet.schema)).toBe(true);
     expect(isContentSet(contentSet)).toBe(true);
     expect(isTransactionActionWire({ LoadHolons: { content_set: contentSet } })).toBe(
       true,
