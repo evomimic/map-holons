@@ -878,13 +878,11 @@ mod tests {
     #[test]
     fn decompiles_schema_depends_on_relationships_into_tdl_dependencies() -> Result<()> {
         let out_dir = temp_out_dir();
-        let source_file = sweettests_import_fixture_dir()
-            .join("MAP Schema Types-map-test-schema-book-person-inverse.json");
+        let source_file =
+            sweettests_import_fixture_dir().join("map-test-schema-book-person-inverse.json");
         decompile_inputs(&[source_file], &out_dir)?;
 
-        let tdl = fs::read_to_string(
-            out_dir.join("MAP Schema Types-map-test-schema-book-person-inverse.tdl"),
-        )?;
+        let tdl = fs::read_to_string(out_dir.join("map-test-schema-book-person-inverse.tdl"))?;
 
         assert!(tdl.contains(
             "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.7\""
@@ -922,9 +920,8 @@ mod tests {
         let out_dir = temp_out_dir();
         decompile_inputs(&[generated_fixture_dir()], &out_dir)?;
 
-        let relationship_types = std::fs::read_to_string(
-            out_dir.join("MAP Schema Types-map-core-schema-relationship-types.tdl"),
-        )?;
+        let relationship_types =
+            std::fs::read_to_string(out_dir.join("map-core-schema-relationship-types.tdl"))?;
 
         assert!(relationship_types
             .contains("instance \"(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)\""));
@@ -951,12 +948,10 @@ mod tests {
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_dir)?;
         assert_eq!(decompiled_files.len(), expected_file_count);
         assert!(decompiled_files.iter().any(|path| {
-            path.to_string_lossy()
-                .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-root.tdl")
+            path.to_string_lossy().ends_with("domain/core-schema/map-core-schema-root.tdl")
         }));
         assert!(decompiled_files.iter().any(|path| {
-            path.to_string_lossy()
-                .ends_with("domain/core-schema/MAP Schema Types-map-core-schema-dance-schema.tdl")
+            path.to_string_lossy().ends_with("domain/core-schema/map-core-schema-dance-schema.tdl")
         }));
 
         let roundtrip_json_dir = temp_roundtrip_json_dir();

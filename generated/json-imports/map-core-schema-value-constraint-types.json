@@ -1,0 +1,1035 @@
+{
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "map-core-schema-root.json",
+      "map-core-schema-abstract-value-types.json",
+      "map-core-schema-concrete-value-types.json",
+      "map-core-schema-keyrules-schema.json"
+    ],
+    "source_files": [
+      "map-core-schema-value-constraint-types.csv"
+    ]
+  },
+  "holons": [
+    {
+      "key": "ValueConstraintType.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValueConstraintType",
+        "TypeNamePlural": "ValueConstraintTypes",
+        "DisplayName": "Value Constraint Type",
+        "DisplayNamePlural": "Value Constraint Types",
+        "Description": "Abstract holon type for constraints that refine the accepted values of a ValueType. Constraint instances inherit the keyless baseline from HolonType.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StringValueConstraint.ValueConstraintType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "StringValueConstraint",
+        "TypeNamePlural": "StringValueConstraints",
+        "DisplayName": "String Value Constraint",
+        "DisplayNamePlural": "String Value Constraints",
+        "Description": "Abstract constraint-family anchor for string value constraints.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "IntegerValueConstraint.ValueConstraintType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "IntegerValueConstraint",
+        "TypeNamePlural": "IntegerValueConstraints",
+        "DisplayName": "Integer Value Constraint",
+        "DisplayNamePlural": "Integer Value Constraints",
+        "Description": "Abstract constraint-family anchor for integer value constraints.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesValueConstraint.ValueConstraintType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "BytesValueConstraint",
+        "TypeNamePlural": "BytesValueConstraints",
+        "DisplayName": "Bytes Value Constraint",
+        "DisplayNamePlural": "Bytes Value Constraints",
+        "Description": "Abstract constraint-family anchor for byte sequence value constraints.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValueArrayConstraint.ValueConstraintType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValueArrayConstraint",
+        "TypeNamePlural": "ValueArrayConstraints",
+        "DisplayName": "Value Array Constraint",
+        "DisplayNamePlural": "Value Array Constraints",
+        "Description": "Abstract constraint-family anchor for value array constraints.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MinimumLength.StringValueConstraint",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MinimumLength",
+        "TypeNamePlural": "MinimumLengths",
+        "DisplayName": "Minimum String Length",
+        "DisplayNamePlural": "Minimum String Lengths",
+        "Description": "Requires string values to have at least the configured number of characters."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "StringValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintLength.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MaximumLength.StringValueConstraint",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MaximumLength",
+        "TypeNamePlural": "MaximumLengths",
+        "DisplayName": "Maximum String Length",
+        "DisplayNamePlural": "Maximum String Lengths",
+        "Description": "Requires string values to have at most the configured number of characters."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "StringValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintLength.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MinimumValue.IntegerValueConstraint",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MinimumValue",
+        "TypeNamePlural": "MinimumValues",
+        "DisplayName": "Minimum Integer Value",
+        "DisplayNamePlural": "Minimum Integer Values",
+        "Description": "Requires integer values to be greater than, or optionally equal to, the configured minimum."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "IntegerValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintIntegerValue.PropertyType"
+            },
+            {
+              "$ref": "ConstraintIsInclusive.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MaximumValue.IntegerValueConstraint",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MaximumValue",
+        "TypeNamePlural": "MaximumValues",
+        "DisplayName": "Maximum Integer Value",
+        "DisplayNamePlural": "Maximum Integer Values",
+        "Description": "Requires integer values to be less than, or optionally equal to, the configured maximum."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "IntegerValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintIntegerValue.PropertyType"
+            },
+            {
+              "$ref": "ConstraintIsInclusive.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MinimumItems.ValueArrayConstraint",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MinimumItems",
+        "TypeNamePlural": "MinimumItemsConstraints",
+        "DisplayName": "Minimum Items",
+        "DisplayNamePlural": "Minimum Items Constraints",
+        "Description": "Requires value arrays to contain at least the configured number of elements."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueArrayConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintItemCount.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MaximumItems.ValueArrayConstraint",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MaximumItems",
+        "TypeNamePlural": "MaximumItemsConstraints",
+        "DisplayName": "Maximum Items",
+        "DisplayNamePlural": "Maximum Items Constraints",
+        "Description": "Requires value arrays to contain no more than the configured number of elements."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueArrayConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintItemCount.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UniqueItems.ValueArrayConstraint",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "UniqueItems",
+        "TypeNamePlural": "UniqueItemsConstraints",
+        "DisplayName": "Unique Items",
+        "DisplayNamePlural": "Unique Items Constraints",
+        "Description": "Requires value arrays to contain no duplicate elements."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueArrayConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintEnabled.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintLength.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintLength",
+        "TypeNamePlural": "ConstraintLengths",
+        "DisplayName": "Constraint Length",
+        "DisplayNamePlural": "Constraint Lengths",
+        "Description": "Limit of allowed character count for a string value.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintIntegerValue.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintIntegerValue",
+        "TypeNamePlural": "ConstraintIntegerValues",
+        "DisplayName": "Constraint Integer Value",
+        "DisplayNamePlural": "Constraint Integer Values",
+        "Description": "Limit of an integer value.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintItemCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintItemCount",
+        "TypeNamePlural": "ConstraintItemCounts",
+        "DisplayName": "Constraint Item Count",
+        "DisplayNamePlural": "Constraint Item Counts",
+        "Description": "Limit on the number of items in an array.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintIsInclusive.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintIsInclusive",
+        "TypeNamePlural": "ConstraintIsInclusives",
+        "DisplayName": "Constraint Is Inclusive",
+        "DisplayNamePlural": "IsInclusive Constraints",
+        "Description": "Whether the configured boundary value is included in the allowed range.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintEnabled.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintEnabled",
+        "TypeNamePlural": "ConstraintEnabledValues",
+        "DisplayName": "Constraint Enabled",
+        "DisplayNamePlural": "Constraint Enabled Values",
+        "Description": "Boolean parameter indicating whether a boolean-style constraint rule is active.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(StringValueType.ValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constraints",
+        "TypeNamePlural": "Constraints",
+        "DisplayName": "Constraints Relationship",
+        "DisplayNamePlural": "Constraints Relationships",
+        "Description": "Attaches string-specific value constraints to a string value type. Inherited and local constraint declarations accumulate.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "StringValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "StringValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(StringValueConstraint.ValueConstraintType)-[Constrains]->(StringValueType.ValueType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constraints",
+        "TypeNamePlural": "Constraints",
+        "DisplayName": "Constraints Relationship",
+        "DisplayNamePlural": "Constraints Relationships",
+        "Description": "Attaches integer-specific value constraints to an integer value type. Inherited and local constraint declarations accumulate.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "IntegerValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "IntegerValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(IntegerValueConstraint.ValueConstraintType)-[Constrains]->(IntegerValueType.ValueType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constraints",
+        "TypeNamePlural": "Constraints",
+        "DisplayName": "Constraints Relationship",
+        "DisplayNamePlural": "Constraints Relationships",
+        "Description": "Attaches bytes-specific value constraints to a bytes value type. Inherited and local constraint declarations accumulate.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "BytesValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "BytesValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(BytesValueConstraint.ValueConstraintType)-[Constrains]->(BytesValueType.ValueType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constraints",
+        "TypeNamePlural": "Constraints",
+        "DisplayName": "Constraints Relationship",
+        "DisplayNamePlural": "Constraints Relationships",
+        "Description": "Attaches value-array-specific constraints to a value array type. Inherited and local constraint declarations accumulate.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ValueArrayValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ValueArrayConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ValueArrayConstraint.ValueConstraintType)-[Constrains]->(ValueArrayValueType.ValueType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(StringValueConstraint.ValueConstraintType)-[Constrains]->(StringValueType.ValueType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constrains",
+        "TypeNamePlural": "Constrains",
+        "DisplayName": "Constrains Relationship",
+        "DisplayNamePlural": "Constrains Relationships",
+        "Description": "Inverse of Constraints, from a string value constraint to the string value type it constrains.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "StringValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "StringValueType.ValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(IntegerValueConstraint.ValueConstraintType)-[Constrains]->(IntegerValueType.ValueType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constrains",
+        "TypeNamePlural": "Constrains",
+        "DisplayName": "Constrains Relationship",
+        "DisplayNamePlural": "Constrains Relationships",
+        "Description": "Inverse of Constraints, from an integer value constraint to the integer value type it constrains.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "IntegerValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "IntegerValueType.ValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(BytesValueConstraint.ValueConstraintType)-[Constrains]->(BytesValueType.ValueType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constrains",
+        "TypeNamePlural": "Constrains",
+        "DisplayName": "Constrains Relationship",
+        "DisplayNamePlural": "Constrains Relationships",
+        "Description": "Inverse of Constraints, from a bytes value constraint to the bytes value type it constrains.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "BytesValueConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "BytesValueType.ValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValueArrayConstraint.ValueConstraintType)-[Constrains]->(ValueArrayValueType.ValueType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constrains",
+        "TypeNamePlural": "Constrains",
+        "DisplayName": "Constrains Relationship",
+        "DisplayNamePlural": "Constrains Relationships",
+        "Description": "Inverse of Constraints, from a value array constraint to the value array type it constrains.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ValueArrayConstraint.ValueConstraintType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ValueArrayValueType.ValueType"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

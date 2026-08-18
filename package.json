@@ -38,7 +38,6 @@
     "check:happ-artifacts": "cargo run --manifest-path tools/happ-artifact-audit/Cargo.toml -- --manifest happ/coordinator-surface.toml --dna happ/workdir/map_holons.dna --happ happ/workdir/map-holons.happ --probe-wasm happ/target/wasm32-unknown-unknown/release/holons_test_probes.wasm --deny-production-test-only",
     "map-schema": "cargo run --manifest-path tools/map-schema/Cargo.toml --",
     "map-schema:decompile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile",
-    "map-schema:decompile:coreschema": "npm run map-schema:decompile -- host/import_files/map-schema/core-schema --out-dir generated/tdl-decompiled",
     "map-schema:help": "cargo run --manifest-path tools/map-schema/Cargo.toml -- help",
     "map-schema:compile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- compile",
     "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out-dir generated/json-imports",

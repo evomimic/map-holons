@@ -1,13 +1,11 @@
 use core_types::{ContentSet, FileData};
-use holons_loader_client::BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH;
 use holons_prelude::prelude::*;
 use std::path::PathBuf;
 
 use super::{read_file_data, CoreSchemaLoadMetrics};
 use crate::ExpectedLoadStatus;
 
-const GENERATED_DOMAIN_SCHEMA_FILENAME: &str =
-    "MAP Schema Types-map-test-schema-book-person-inverse.json";
+const GENERATED_DOMAIN_SCHEMA_FILENAME: &str = "map-test-schema-book-person-inverse.json";
 
 pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
     staged: 9,
@@ -28,19 +26,13 @@ pub fn domain_schema_path() -> PathBuf {
 }
 
 pub fn build_book_person_inverse_content_set() -> Result<ContentSet, HolonError> {
-    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH);
-    let schema = read_file_data(&schema_path, "validation schema")?;
-
     let files_to_load =
         vec![read_file_data(&domain_schema_path(), "Book/Person inverse test schema import")?];
 
-    Ok(ContentSet { schema, files_to_load })
+    Ok(ContentSet { files_to_load })
 }
 
 pub fn build_inverse_oriented_book_person_instance_content_set() -> Result<ContentSet, HolonError> {
-    let schema_path = PathBuf::from(BOOTSTRAP_IMPORT_VALIDATION_SCHEMA_PATH);
-    let schema = read_file_data(&schema_path, "validation schema")?;
-
     let raw_contents = r##"{
       "meta": {
         "bundle_key": "Bundle.BookPersonInverseOrientationFailure"
@@ -73,7 +65,6 @@ pub fn build_inverse_oriented_book_person_instance_content_set() -> Result<Conte
     .to_string();
 
     Ok(ContentSet {
-        schema,
         files_to_load: vec![FileData {
             filename: "book-person-inverse-orientation-failure.json".to_string(),
             raw_contents,

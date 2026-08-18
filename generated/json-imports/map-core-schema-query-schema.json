@@ -1,0 +1,2841 @@
+{
+  "meta": {
+    "export_mode": "by-file",
+    "load_with": [
+      "map-core-schema-root.json",
+      "map-core-schema-concrete-value-types.json",
+      "map-core-schema-dance-schema.json",
+      "map-core-schema-loader-types.json"
+    ],
+    "source_files": [
+      "map-core-schema-query-schema.csv"
+    ]
+  },
+  "holons": [
+    {
+      "key": "QueryDanceRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryDanceRequest",
+        "TypeNamePlural": "QueryDanceRequests",
+        "DisplayName": "Query Dance Request",
+        "DisplayNamePlural": "Query Dance Requests",
+        "Description": "Fixed-shape request holon supplied to a QueryDance. Names the symbolic plan to execute and the caller-supplied initial runtime bindings."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType)"
+            },
+            {
+              "$ref": "(QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryDanceResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "QueryDanceResponse",
+        "TypeNamePlural": "QueryDanceResponses",
+        "DisplayName": "Query Dance Response",
+        "DisplayNamePlural": "Query Dance Responses",
+        "Description": "Concrete dance response type for query execution. Its response body is a HolonCollection; diagnostics and status live at the dance-response layer."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ResponseBody",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryGraph.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryGraph",
+        "TypeNamePlural": "QueryGraphs",
+        "DisplayName": "Query Graph",
+        "DisplayNamePlural": "Query Graphs",
+        "Description": "Symbolic query plan: a reusable, saveable artifact describing what a query means. Owns its steps, its declared input bindings, and its single declared result binding. Carries no runtime execution state."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "QueryName.PropertyType"
+            },
+            {
+              "$ref": "QueryDescription.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType)"
+            },
+            {
+              "$ref": "(QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType)"
+            },
+            {
+              "$ref": "(QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryStep.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryStep",
+        "TypeNamePlural": "QuerySteps",
+        "DisplayName": "Query Step",
+        "DisplayNamePlural": "Query Steps",
+        "Description": "An operation node in a QueryGraph. Names its operation kind, optional parameters, predecessor steps, an optional request-supplied initial binding (root steps only), and an optional symbolic output binding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "StepOrdinal.PropertyType"
+            },
+            {
+              "$ref": "StepLabel.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType)"
+            },
+            {
+              "$ref": "(QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType)"
+            },
+            {
+              "$ref": "(QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType)"
+            },
+            {
+              "$ref": "(QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType)"
+            },
+            {
+              "$ref": "(QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaQueryStepKind.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaQueryStepKind",
+        "TypeNamePlural": "MetaQueryStepKinds",
+        "DisplayName": "Meta Query Step Kind",
+        "DisplayNamePlural": "Meta Query Step Kinds",
+        "Description": "Meta-type describing query-step-kind descriptor holons and their input, result, and parameter type metadata."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaHolonType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType)"
+            },
+            {
+              "$ref": "(QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType)"
+            },
+            {
+              "$ref": "(QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryStepKind.HolonType",
+      "type": "MetaQueryStepKind.MetaHolonType",
+      "properties": {
+        "TypeName": "QueryStepKind",
+        "TypeNamePlural": "QueryStepKinds",
+        "DisplayName": "Query Step Kind",
+        "DisplayNamePlural": "Query Step Kinds",
+        "Description": "Abstract holon type describing a family of query-step operations. Its small semantic contract is an optional input collection type, a result collection type, and an optional parameter projection type.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryBinding.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryBinding",
+        "TypeNamePlural": "QueryBindings",
+        "DisplayName": "Query Binding",
+        "DisplayNamePlural": "Query Bindings",
+        "Description": "Symbolic-only binding: the variable name used by a query plan. It does not carry a runtime collection; that association is made by ExecutionBinding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "BindingName.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionBinding.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExecutionBinding",
+        "TypeNamePlural": "ExecutionBindings",
+        "DisplayName": "Execution Binding",
+        "DisplayNamePlural": "Execution Bindings",
+        "Description": "Runtime binding associating a symbolic QueryBinding with a concrete HolonCollection. Supplied as an initial binding on a request and tracked on an ExecutionInstance during a run."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType)"
+            },
+            {
+              "$ref": "(ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionInstance.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExecutionInstance",
+        "TypeNamePlural": "ExecutionInstances",
+        "DisplayName": "Execution Instance",
+        "DisplayNamePlural": "Execution Instances",
+        "Description": "One ephemeral runtime execution of one QueryDanceRequest. Owns the request it executes, the live runtime bindings, execution status, and the final result collection."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ExecutionStatus.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType)"
+            },
+            {
+              "$ref": "(ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType)"
+            },
+            {
+              "$ref": "(ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExpandParameters.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExpandParameters",
+        "TypeNamePlural": "ExpandParameters",
+        "DisplayName": "Expand Parameters",
+        "DisplayNamePlural": "Expand Parameters",
+        "Description": "Parameter projection for an Expand step. Carries the name of the MAP relationship channel to traverse."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "RelationshipName.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryDance.DanceType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "QueryDance",
+        "TypeNamePlural": "QueryDances",
+        "DisplayName": "Query Dance",
+        "DisplayNamePlural": "Query Dances",
+        "Description": "Concrete dance type for graph query execution. Its dance input is a QueryDanceRequest and its response is a QueryDanceResponse. Ordinarily afforded by HolonSpace.",
+        "DanceDescription": "Executes a symbolic QueryGraph against an affording holon, producing a HolonCollection result."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "DanceInput",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "QueryDanceResponse.DanceResponseType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SeedHolonsQueryStepType.QueryStepKind",
+      "type": "MetaQueryStepKind.MetaHolonType",
+      "properties": {
+        "TypeName": "SeedHolonsQueryStepType",
+        "TypeNamePlural": "SeedHolonsQueryStepTypes",
+        "DisplayName": "Seed Holons Query Step Type",
+        "DisplayNamePlural": "Seed Holons Query Step Types",
+        "Description": "Concrete query step kind that seeds an execution with a starting HolonCollection. Takes no input collection; produces a HolonCollection."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "StepResultType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExpandQueryStepType.QueryStepKind",
+      "type": "MetaQueryStepKind.MetaHolonType",
+      "properties": {
+        "TypeName": "ExpandQueryStepType",
+        "TypeNamePlural": "ExpandQueryStepTypes",
+        "DisplayName": "Expand Query Step Type",
+        "DisplayNamePlural": "Expand Query Step Types",
+        "Description": "Concrete query step kind that follows a named MAP relationship channel. Consumes a HolonCollection, takes ExpandParameters, and produces a HolonCollection."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "StepInputType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "StepParameterType",
+          "target": [
+            {
+              "$ref": "ExpandParameters.Projection"
+            }
+          ]
+        },
+        {
+          "name": "StepResultType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryName",
+        "TypeNamePlural": "QueryNames",
+        "DisplayName": "Query Name",
+        "DisplayNamePlural": "Query Names",
+        "Description": "Human-facing name of a QueryGraph.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryDescription",
+        "TypeNamePlural": "QueryDescriptions",
+        "DisplayName": "Query Description",
+        "DisplayNamePlural": "Query Descriptions",
+        "Description": "Human-readable description of what a QueryGraph means."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BindingName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "BindingName",
+        "TypeNamePlural": "BindingNames",
+        "DisplayName": "Binding Name",
+        "DisplayNamePlural": "Binding Names",
+        "Description": "Symbolic variable name carried by a QueryBinding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StepOrdinal.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "StepOrdinal",
+        "TypeNamePlural": "StepOrdinals",
+        "DisplayName": "Step Ordinal",
+        "DisplayNamePlural": "Step Ordinals",
+        "Description": "Ordinal position of a QueryStep within its QueryGraph.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StepLabel.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "StepLabel",
+        "TypeNamePlural": "StepLabels",
+        "DisplayName": "Step Label",
+        "DisplayNamePlural": "Step Labels",
+        "Description": "Optional human-readable label for a QueryStep."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionStatus.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExecutionStatus",
+        "TypeNamePlural": "ExecutionStatuses",
+        "DisplayName": "Execution Status",
+        "DisplayNamePlural": "Execution Statuses",
+        "Description": "Status of an ExecutionInstance, recorded as an ExecutionStatus enum value."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ExecutionStatus.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionStatus.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ExecutionStatus",
+        "TypeNamePlural": "ExecutionStatuses",
+        "DisplayName": "Execution Status",
+        "DisplayNamePlural": "Execution Statuses",
+        "Description": "Enum value type for the lifecycle status of an ExecutionInstance."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "ExecutionStatus.MapEnumValueType.Pending"
+            },
+            {
+              "$ref": "ExecutionStatus.MapEnumValueType.Running"
+            },
+            {
+              "$ref": "ExecutionStatus.MapEnumValueType.Complete"
+            },
+            {
+              "$ref": "ExecutionStatus.MapEnumValueType.Failed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionStatus.MapEnumValueType.Pending",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Pending",
+        "TypeNamePlural": "Pendings",
+        "DisplayName": "Pending",
+        "DisplayNamePlural": "Pendings",
+        "Description": "Execution has been created but not yet started."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionStatus.MapEnumValueType.Running",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Running",
+        "TypeNamePlural": "Runnings",
+        "DisplayName": "Running",
+        "DisplayNamePlural": "Runnings",
+        "Description": "Execution is in progress."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionStatus.MapEnumValueType.Complete",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Complete",
+        "TypeNamePlural": "Completes",
+        "DisplayName": "Complete",
+        "DisplayNamePlural": "Completes",
+        "Description": "Execution finished successfully."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExecutionStatus.MapEnumValueType.Failed",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Failed",
+        "TypeNamePlural": "Faileds",
+        "DisplayName": "Failed",
+        "DisplayNamePlural": "Faileds",
+        "Description": "Execution terminated with a failure."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryDanceRequest.HolonType)-[QueryGraph]->(QueryGraph.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "QueryGraph",
+        "TypeNamePlural": "QueryGraphRelationships",
+        "DisplayName": "QueryGraph Relationship",
+        "DisplayNamePlural": "QueryGraph Relationships",
+        "Description": "Links a QueryDanceRequest to the symbolic QueryGraph it executes.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryGraph.HolonType)-[GraphForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryGraph.HolonType)-[GraphForQueryDanceRequest]->(QueryDanceRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "GraphForQueryDanceRequest",
+        "TypeNamePlural": "GraphForQueryDanceRequestRelationships",
+        "DisplayName": "GraphForQueryDanceRequest Relationship",
+        "DisplayNamePlural": "GraphForQueryDanceRequest Relationships",
+        "Description": "Inverse of QueryGraph, from QueryGraph to QueryDanceRequest.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryDanceRequest.HolonType)-[InitialBindings]->(ExecutionBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InitialBindings",
+        "TypeNamePlural": "InitialBindingsRelationships",
+        "DisplayName": "InitialBindings Relationship",
+        "DisplayNamePlural": "InitialBindings Relationships",
+        "Description": "Links a QueryDanceRequest to the caller-supplied initial ExecutionBindings that seed the run.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ExecutionBinding.HolonType)-[InitialBindingForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionBinding.HolonType)-[InitialBindingForQueryDanceRequest]->(QueryDanceRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InitialBindingForQueryDanceRequest",
+        "TypeNamePlural": "InitialBindingForQueryDanceRequestRelationships",
+        "DisplayName": "InitialBindingForQueryDanceRequest Relationship",
+        "DisplayNamePlural": "InitialBindingForQueryDanceRequest Relationships",
+        "Description": "Inverse of InitialBindings, from ExecutionBinding to QueryDanceRequest.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryGraph.HolonType)-[QuerySteps]->(QueryStep.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "QuerySteps",
+        "TypeNamePlural": "QueryStepsRelationships",
+        "DisplayName": "QuerySteps Relationship",
+        "DisplayNamePlural": "QuerySteps Relationships",
+        "Description": "Links a QueryGraph to the QuerySteps that make up its plan body.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "MinCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryStep.HolonType)-[StepInQueryGraph]->(QueryGraph.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStep.HolonType)-[StepInQueryGraph]->(QueryGraph.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepInQueryGraph",
+        "TypeNamePlural": "StepInQueryGraphRelationships",
+        "DisplayName": "StepInQueryGraph Relationship",
+        "DisplayNamePlural": "StepInQueryGraph Relationships",
+        "Description": "Inverse of QuerySteps, from QueryStep to QueryGraph.",
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryGraph.HolonType)-[DeclaredInputBindings]->(QueryBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DeclaredInputBindings",
+        "TypeNamePlural": "DeclaredInputBindingsRelationships",
+        "DisplayName": "DeclaredInputBindings Relationship",
+        "DisplayNamePlural": "DeclaredInputBindings Relationships",
+        "Description": "Links a QueryGraph to the symbolic QueryBindings it declares as its external input contract.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryBinding.HolonType)-[InputBindingForQueryGraph]->(QueryGraph.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryBinding.HolonType)-[InputBindingForQueryGraph]->(QueryGraph.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InputBindingForQueryGraph",
+        "TypeNamePlural": "InputBindingForQueryGraphRelationships",
+        "DisplayName": "InputBindingForQueryGraph Relationship",
+        "DisplayNamePlural": "InputBindingForQueryGraph Relationships",
+        "Description": "Inverse of DeclaredInputBindings, from QueryBinding to QueryGraph.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryGraph.HolonType)-[DeclaredResultBinding]->(QueryBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DeclaredResultBinding",
+        "TypeNamePlural": "DeclaredResultBindingRelationships",
+        "DisplayName": "DeclaredResultBinding Relationship",
+        "DisplayNamePlural": "DeclaredResultBinding Relationships",
+        "Description": "Links a QueryGraph to the single QueryBinding designated as its exported result.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryBinding.HolonType)-[ResultBindingForQueryGraph]->(QueryGraph.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryBinding.HolonType)-[ResultBindingForQueryGraph]->(QueryGraph.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResultBindingForQueryGraph",
+        "TypeNamePlural": "ResultBindingForQueryGraphRelationships",
+        "DisplayName": "ResultBindingForQueryGraph Relationship",
+        "DisplayNamePlural": "ResultBindingForQueryGraph Relationships",
+        "Description": "Inverse of DeclaredResultBinding, from QueryBinding to QueryGraph.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryGraph.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStep.HolonType)-[StepKind]->(QueryStepKind.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepKind",
+        "TypeNamePlural": "StepKindRelationships",
+        "DisplayName": "StepKind Relationship",
+        "DisplayNamePlural": "StepKind Relationships",
+        "Description": "Links a QueryStep to the QueryStepKind describing its operation.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryStepKind.HolonType)-[StepKindFor]->(QueryStep.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStepKind.HolonType)-[StepKindFor]->(QueryStep.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepKindFor",
+        "TypeNamePlural": "StepKindForRelationships",
+        "DisplayName": "StepKindFor Relationship",
+        "DisplayNamePlural": "StepKindFor Relationships",
+        "Description": "Inverse of StepKind, from QueryStepKind to QueryStep.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStep.HolonType)-[UsesInitialBinding]->(QueryBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsesInitialBinding",
+        "TypeNamePlural": "UsesInitialBindingRelationships",
+        "DisplayName": "UsesInitialBinding Relationship",
+        "DisplayNamePlural": "UsesInitialBinding Relationships",
+        "Description": "Lets a root QueryStep name the request-supplied initial QueryBinding it consumes.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryBinding.HolonType)-[InitialBindingUsedByStep]->(QueryStep.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryBinding.HolonType)-[InitialBindingUsedByStep]->(QueryStep.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InitialBindingUsedByStep",
+        "TypeNamePlural": "InitialBindingUsedByStepRelationships",
+        "DisplayName": "InitialBindingUsedByStep Relationship",
+        "DisplayNamePlural": "InitialBindingUsedByStep Relationships",
+        "Description": "Inverse of UsesInitialBinding, from QueryBinding to QueryStep.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStep.HolonType)-[StepOutputBinding]->(QueryBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepOutputBinding",
+        "TypeNamePlural": "StepOutputBindingRelationships",
+        "DisplayName": "StepOutputBinding Relationship",
+        "DisplayNamePlural": "StepOutputBinding Relationships",
+        "Description": "Optionally attaches a symbolic QueryBinding name to a QueryStep's output.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryBinding.HolonType)-[OutputBindingForStep]->(QueryStep.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryBinding.HolonType)-[OutputBindingForStep]->(QueryStep.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OutputBindingForStep",
+        "TypeNamePlural": "OutputBindingForStepRelationships",
+        "DisplayName": "OutputBindingForStep Relationship",
+        "DisplayNamePlural": "OutputBindingForStep Relationships",
+        "Description": "Inverse of StepOutputBinding, from QueryBinding to QueryStep.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStep.HolonType)-[StepParameters]->(Projection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepParameters",
+        "TypeNamePlural": "StepParametersRelationships",
+        "DisplayName": "StepParameters Relationship",
+        "DisplayNamePlural": "StepParameters Relationships",
+        "Description": "Links a QueryStep to the Projection holding its operation parameters.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Projection.HolonType)-[ParametersForStep]->(QueryStep.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Projection.HolonType)-[ParametersForStep]->(QueryStep.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ParametersForStep",
+        "TypeNamePlural": "ParametersForStepRelationships",
+        "DisplayName": "ParametersForStep Relationship",
+        "DisplayNamePlural": "ParametersForStep Relationships",
+        "Description": "Inverse of StepParameters, from Projection to QueryStep.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStep.HolonType)-[StepDependsOn]->(QueryStep.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepDependsOn",
+        "TypeNamePlural": "StepDependsOnRelationships",
+        "DisplayName": "StepDependsOn Relationship",
+        "DisplayNamePlural": "StepDependsOn Relationships",
+        "Description": "Links a QueryStep to the predecessor QuerySteps whose output it consumes. This is the normal structural flow mechanism between steps.",
+        "IsDefinitional": true,
+        "IsOrdered": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryStep.HolonType)-[StepDependedOnBy]->(QueryStep.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStep.HolonType)-[StepDependedOnBy]->(QueryStep.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepDependedOnBy",
+        "TypeNamePlural": "StepDependedOnByRelationships",
+        "DisplayName": "StepDependedOnBy Relationship",
+        "DisplayNamePlural": "StepDependedOnBy Relationships",
+        "Description": "Inverse of StepDependsOn, from a QueryStep to the successor QuerySteps that depend on it.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStep.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStepKind.HolonType)-[StepInputType]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepInputType",
+        "TypeNamePlural": "StepInputTypeRelationships",
+        "DisplayName": "StepInputType Relationship",
+        "DisplayNamePlural": "StepInputType Relationships",
+        "Description": "Links a QueryStepKind to the HolonCollection type it consumes as input.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[InputTypeForStepKind]->(QueryStepKind.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[InputTypeForStepKind]->(QueryStepKind.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InputTypeForStepKind",
+        "TypeNamePlural": "InputTypeForStepKindRelationships",
+        "DisplayName": "InputTypeForStepKind Relationship",
+        "DisplayNamePlural": "InputTypeForStepKind Relationships",
+        "Description": "Inverse of StepInputType, from HolonCollection to QueryStepKind.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStepKind.HolonType)-[StepResultType]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepResultType",
+        "TypeNamePlural": "StepResultTypeRelationships",
+        "DisplayName": "StepResultType Relationship",
+        "DisplayNamePlural": "StepResultType Relationships",
+        "Description": "Links a QueryStepKind to the HolonCollection type it produces as its result.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[ResultTypeForStepKind]->(QueryStepKind.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[ResultTypeForStepKind]->(QueryStepKind.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResultTypeForStepKind",
+        "TypeNamePlural": "ResultTypeForStepKindRelationships",
+        "DisplayName": "ResultTypeForStepKind Relationship",
+        "DisplayNamePlural": "ResultTypeForStepKind Relationships",
+        "Description": "Inverse of StepResultType, from HolonCollection to QueryStepKind.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryStepKind.HolonType)-[StepParameterType]->(Projection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "StepParameterType",
+        "TypeNamePlural": "StepParameterTypeRelationships",
+        "DisplayName": "StepParameterType Relationship",
+        "DisplayNamePlural": "StepParameterType Relationships",
+        "Description": "Links a QueryStepKind to the Projection type it expects as its parameters.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Projection.HolonType)-[ParameterTypeForStepKind]->(QueryStepKind.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Projection.HolonType)-[ParameterTypeForStepKind]->(QueryStepKind.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ParameterTypeForStepKind",
+        "TypeNamePlural": "ParameterTypeForStepKindRelationships",
+        "DisplayName": "ParameterTypeForStepKind Relationship",
+        "DisplayNamePlural": "ParameterTypeForStepKind Relationships",
+        "Description": "Inverse of StepParameterType, from Projection to QueryStepKind.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryStepKind.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionInstance.HolonType)-[ExecutesRequest]->(QueryDanceRequest.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutesRequest",
+        "TypeNamePlural": "ExecutesRequestRelationships",
+        "DisplayName": "ExecutesRequest Relationship",
+        "DisplayNamePlural": "ExecutesRequest Relationships",
+        "Description": "Links an ExecutionInstance to the QueryDanceRequest it is executing.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryDanceRequest.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryDanceRequest.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutedBy",
+        "TypeNamePlural": "ExecutedByRelationships",
+        "DisplayName": "ExecutedBy Relationship",
+        "DisplayNamePlural": "ExecutedBy Relationships",
+        "Description": "Inverse of ExecutesRequest, from QueryDanceRequest to ExecutionInstance.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionInstance.HolonType)-[ExecutionBindings]->(ExecutionBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutionBindings",
+        "TypeNamePlural": "ExecutionBindingsRelationships",
+        "DisplayName": "ExecutionBindings Relationship",
+        "DisplayNamePlural": "ExecutionBindings Relationships",
+        "Description": "Links an ExecutionInstance to its live runtime ExecutionBindings.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ExecutionBinding.HolonType)-[BindingForExecutionInstance]->(ExecutionInstance.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionBinding.HolonType)-[BindingForExecutionInstance]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "BindingForExecutionInstance",
+        "TypeNamePlural": "BindingForExecutionInstanceRelationships",
+        "DisplayName": "BindingForExecutionInstance Relationship",
+        "DisplayNamePlural": "BindingForExecutionInstance Relationships",
+        "Description": "Inverse of ExecutionBindings, from ExecutionBinding to ExecutionInstance.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionBinding.HolonType)-[BindsQueryVariable]->(QueryBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "BindsQueryVariable",
+        "TypeNamePlural": "BindsQueryVariableRelationships",
+        "DisplayName": "BindsQueryVariable Relationship",
+        "DisplayNamePlural": "BindsQueryVariable Relationships",
+        "Description": "Links an ExecutionBinding to the symbolic QueryBinding (variable) it binds.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryBinding.HolonType)-[ExecutionVariableBinding]->(ExecutionBinding.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryBinding.HolonType)-[ExecutionVariableBinding]->(ExecutionBinding.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutionVariableBinding",
+        "TypeNamePlural": "ExecutionVariableBindingRelationships",
+        "DisplayName": "ExecutionVariableBinding Relationship",
+        "DisplayNamePlural": "ExecutionVariableBinding Relationships",
+        "Description": "Inverse of BindsQueryVariable, from QueryBinding to ExecutionBinding.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionBinding.HolonType)-[BoundCollection]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "BoundCollection",
+        "TypeNamePlural": "BoundCollectionRelationships",
+        "DisplayName": "BoundCollection Relationship",
+        "DisplayNamePlural": "BoundCollection Relationships",
+        "Description": "Links an ExecutionBinding to the runtime HolonCollection it binds its variable to.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[CollectionBoundIn]->(ExecutionBinding.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[CollectionBoundIn]->(ExecutionBinding.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "CollectionBoundIn",
+        "TypeNamePlural": "CollectionBoundInRelationships",
+        "DisplayName": "CollectionBoundIn Relationship",
+        "DisplayNamePlural": "CollectionBoundIn Relationships",
+        "Description": "Inverse of BoundCollection, from HolonCollection to ExecutionBinding.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionBinding.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExecutionResult",
+        "TypeNamePlural": "ExecutionResultRelationships",
+        "DisplayName": "ExecutionResult Relationship",
+        "DisplayNamePlural": "ExecutionResult Relationships",
+        "Description": "Links an ExecutionInstance to the final HolonCollection result of the run.",
+        "MinCardinality": 0,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ResultOfExecution",
+        "TypeNamePlural": "ResultOfExecutionRelationships",
+        "DisplayName": "ResultOfExecution Relationship",
+        "DisplayNamePlural": "ResultOfExecution Relationships",
+        "Description": "Inverse of ExecutionResult, from HolonCollection to ExecutionInstance.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

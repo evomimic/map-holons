@@ -505,9 +505,9 @@ mod tests {
         let core_schema_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
             .join("..")
-            .join("import_files")
-            .join("map-schema")
-            .join("core-schema");
+            .join("..")
+            .join("generated")
+            .join("json-imports");
 
         let mut schema_paths = fs::read_dir(&core_schema_dir)
             .unwrap_or_else(|error| {
@@ -547,7 +547,7 @@ mod tests {
                 }
                 if let Some(type_name) = holon
                     .get("properties")
-                    .and_then(|properties| properties.get("type_name"))
+                    .and_then(|properties| properties.get("TypeName"))
                     .and_then(|value| value.as_str())
                 {
                     type_names.insert(type_name.to_string());
@@ -567,7 +567,7 @@ mod tests {
 
         assert!(
             missing_names.is_empty(),
-            "core schema export is missing loader-used type_name values: {missing_names:?}"
+            "generated core schema is missing loader-used TypeName values: {missing_names:?}"
         );
     }
 

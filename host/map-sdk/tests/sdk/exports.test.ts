@@ -76,10 +76,6 @@ describe('public SDK exports', () => {
       raw_contents: '{"holons":[]}',
     };
     const contentSet: ContentSet = {
-      schema: {
-        filename: 'bootstrap-import.schema.json',
-        raw_contents: '{"type":"object"}',
-      },
       files_to_load: [fileData],
     };
     const holonError: HolonError = { HolonNotFound: 'missing-holon' };

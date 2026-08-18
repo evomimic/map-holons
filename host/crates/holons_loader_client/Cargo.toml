@@ -17,9 +17,6 @@ tracing = { workspace = true }
 base_types = { workspace = true }
 core_types = { workspace = true }
 
-json_schema_validation = { workspace = true }
-
-
 # --- Holons core / prelude ---
 holons_core = { workspace = true }
 

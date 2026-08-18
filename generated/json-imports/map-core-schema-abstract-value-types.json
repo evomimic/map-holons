@@ -1,0 +1,650 @@
+{
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "map-core-schema-value-constraint-types.json",
+      "map-core-schema-operator-types.json",
+      "map-core-schema-root.json",
+      "map-core-schema-keyrules-schema.json",
+      "map-core-schema-relationship-types.json"
+    ],
+    "source_files": [
+      "map-core-schema-abstract-value-types.csv"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MetaValueType.MetaTypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaValueType",
+        "TypeNamePlural": "MetaValueTypes",
+        "DisplayName": "Meta Value Type",
+        "DisplayNamePlural": "Meta Value Types",
+        "Description": "Common meta-type describing value-type descriptor holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaTypeDescriptor.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaEnumVariantValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaEnumVariantValueType",
+        "TypeNamePlural": "MetaEnumVariantValueTypes",
+        "DisplayName": "Meta Enum Variant Value Type",
+        "DisplayNamePlural": "Meta Enum Variant Value Types",
+        "Description": "Meta-type describing concrete enum-member descriptor holons and prescribing owner-qualified descriptor keys."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaValueType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "EnumVariantRule.KeyRuleType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaStringValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaStringValueType",
+        "TypeNamePlural": "MetaStringValueTypes",
+        "DisplayName": "Meta String Value Type",
+        "DisplayNamePlural": "Meta String Value Types",
+        "Description": "Meta-type describing string value-type descriptor holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaValueType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(StringValueType.ValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaIntegerValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaIntegerValueType",
+        "TypeNamePlural": "MetaIntegerValueTypes",
+        "DisplayName": "Meta Integer Value Type",
+        "DisplayNamePlural": "Meta Integer Value Types",
+        "Description": "Meta-type describing integer value-type descriptor holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaValueType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaBytesValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaBytesValueType",
+        "TypeNamePlural": "MetaBytesValueTypes",
+        "DisplayName": "Meta Bytes Value Type",
+        "DisplayNamePlural": "Meta Bytes Value Types",
+        "Description": "Meta-type describing byte-sequence value-type descriptor holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaValueType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaEnumValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaEnumValueType",
+        "TypeNamePlural": "MetaEnumValueTypes",
+        "DisplayName": "Meta Enum Value Type",
+        "DisplayNamePlural": "Meta Enum Value Types",
+        "Description": "Meta-type describing enum value-type descriptor holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaValueType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaValueArrayValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaValueArrayValueType",
+        "TypeNamePlural": "MetaValueArrayValueTypes",
+        "DisplayName": "Meta Value Array Type",
+        "DisplayNamePlural": "Meta Value Array Types",
+        "Description": "Meta-type describing value-array descriptor holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaValueType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValueType.TypeDescriptor",
+      "type": "MetaValueType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValueType",
+        "TypeNamePlural": "ValueTypes",
+        "DisplayName": "Value Type",
+        "DisplayNamePlural": "Value Types",
+        "Description": "Abstract root for value-type descriptor families. It classifies scalar, enum, variant, and array value descriptors and supplies their shared instance kind, but never directly describes a runtime value. Concrete value types inherit through this lineage.",
+        "IsAbstractType": true,
+        "DefinesInstanceTypeKind": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StringValueType.ValueType",
+      "type": "MetaStringValueType.MetaValueType",
+      "properties": {
+        "TypeName": "StringValueType",
+        "TypeNamePlural": "StringValueTypes",
+        "DisplayName": "String Value Type",
+        "DisplayNamePlural": "String Value Types",
+        "Description": "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals and LessThan operator affordances additively. A specialization retains those affordances and may add its own operators.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "AffordsOperator",
+          "target": [
+            {
+              "$ref": "EqualsOperator.OperatorType"
+            },
+            {
+              "$ref": "LessThanOperator.OperatorType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "IntegerValueType.ValueType",
+      "type": "MetaIntegerValueType.MetaValueType",
+      "properties": {
+        "TypeName": "IntegerValueType",
+        "TypeNamePlural": "IntegerValueTypes",
+        "DisplayName": "Integer Value Type",
+        "DisplayNamePlural": "Integer Value Types",
+        "Description": "Abstract descriptor family for integer-based value types. It does not directly describe runtime values; every concrete descendant inherits its integer classification and core Equals and LessThan operator affordances additively. A specialization retains those affordances and may add its own operators.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "AffordsOperator",
+          "target": [
+            {
+              "$ref": "EqualsOperator.OperatorType"
+            },
+            {
+              "$ref": "LessThanOperator.OperatorType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BooleanValueType.ValueType",
+      "type": "MetaValueType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "BooleanValueType",
+        "TypeNamePlural": "BooleanValueTypes",
+        "DisplayName": "Boolean Value Type",
+        "DisplayNamePlural": "Boolean Value Types",
+        "Description": "Abstract descriptor family for Boolean value types. It does not directly describe runtime values; every concrete descendant inherits its Boolean classification and core Equals operator affordance additively. A specialization retains that affordance and may add its own operators.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "AffordsOperator",
+          "target": [
+            {
+              "$ref": "EqualsOperator.OperatorType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesValueType.ValueType",
+      "type": "MetaBytesValueType.MetaValueType",
+      "properties": {
+        "TypeName": "BytesValueType",
+        "TypeNamePlural": "BytesValueTypes",
+        "DisplayName": "Bytes Value Type",
+        "DisplayNamePlural": "Bytes Value Types",
+        "Description": "Abstract descriptor family for byte-sequence value types. It does not directly describe runtime values; concrete descendants inherit its bytes classification without implying operator affordances that bytes value types may not share.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumValueType.ValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "EnumValueType",
+        "TypeNamePlural": "EnumValueTypes",
+        "DisplayName": "Enum Value Type",
+        "DisplayNamePlural": "Enum Value Types",
+        "Description": "Abstract descriptor family for enum value types. It does not directly describe runtime values; every concrete enum descendant inherits the enum classification and core Equals operator affordance additively, without requiring each enum definition to author it locally. A specialization retains that affordance and may add its own operators.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "AffordsOperator",
+          "target": [
+            {
+              "$ref": "EqualsOperator.OperatorType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MapEnumValueType.EnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "MapEnumValueType",
+        "TypeNamePlural": "MapEnumValueTypes",
+        "DisplayName": "MapEnumValueType",
+        "DisplayNamePlural": "MapEnumValueTypes",
+        "Description": "Abstract MAP enum lineage anchor for concrete enum value-type descriptors. It is not a generic runtime enum value; concrete enum definitions extend it to share the generic enum semantics inherited from EnumValueType while retaining their own variants and domain-specific metadata.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "EnumValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumVariantValueType.ValueType",
+      "type": "MetaValueType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValueType",
+        "TypeNamePlural": "EnumVariantValueTypes",
+        "DisplayName": "Enum Variant Value Type",
+        "DisplayNamePlural": "Enum Variant Value Types",
+        "Description": "Abstract descriptor family for symbolic values owned by enum value types. It does not directly describe runtime values; concrete variant descriptors inherit this classification while their owning enum supplies the permitted member set.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MapEnumVariantValueType.EnumVariantValueType",
+      "type": "MetaValueType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "EnumVariantValueType",
+        "TypeNamePlural": "MapEnumVariantValueTypes",
+        "DisplayName": "MapEnumVariant Value Type",
+        "DisplayNamePlural": "MapEnumVariant Value Types",
+        "Description": "Abstract MAP enum-variant lineage anchor for concrete enum-member descriptors. It is not a generic runtime variant; concrete variants extend it to share the enum-variant classification while remaining owner-qualified members of a particular enum definition.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "EnumVariantValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValueArrayValueType.ValueType",
+      "type": "MetaValueArrayValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ValueArrayValueType",
+        "TypeNamePlural": "ValueArrayValueTypes",
+        "DisplayName": "Value Array Type",
+        "DisplayNamePlural": "Value Array Types",
+        "Description": "Abstract descriptor family for array value types. It does not directly describe runtime values; concrete descendants inherit the array classification and supply the element value type and any applicable array constraints.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MapValueArrayType.ValueArrayValueType",
+      "type": "MetaValueArrayValueType.MetaValueType",
+      "properties": {
+        "TypeName": "MapValueArrayType",
+        "TypeNamePlural": "MapValueArrayTypes",
+        "DisplayName": "MapValueArrayType",
+        "DisplayNamePlural": "MapValueArrayTypes",
+        "Description": "Abstract MAP array lineage anchor for concrete array value-type descriptors. It is not a generic runtime array value; concrete descendants extend it to share array semantics while supplying their own element value type and applicable constraints.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueArrayValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

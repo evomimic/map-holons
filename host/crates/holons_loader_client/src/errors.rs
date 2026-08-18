@@ -8,7 +8,7 @@
 //! Phase 1 can keep the implementation minimal (e.g., aggregate messages into
 //! a single string); future phases can add richer structures if needed.
 
-use core_types::{HolonError, ValidationError};
+use core_types::HolonError;
 use std::fmt::Write;
 
 use crate::parser::{ImportFileParsingIssue, ImportFileParsingIssueKind};
@@ -28,14 +28,6 @@ pub fn map_parsing_issues_to_holon_error(issues: &[ImportFileParsingIssue]) -> H
     }
 
     let formatted = format_parsing_issues(issues);
-    let has_schema_issue = issues
-        .iter()
-        .any(|issue| matches!(issue.kind, ImportFileParsingIssueKind::SchemaValidationFailure));
-
-    if has_schema_issue {
-        return HolonError::ValidationError(ValidationError::JsonSchemaError(formatted));
-    }
-
     HolonError::LoaderParsingError(formatted)
 }
 
@@ -57,8 +49,8 @@ pub fn format_parsing_issues(issues: &[ImportFileParsingIssue]) -> String {
 
         let kind_label = match issue.kind {
             ImportFileParsingIssueKind::IoFailure => "io_failure",
-            ImportFileParsingIssueKind::SchemaValidationFailure => "schema_validation",
             ImportFileParsingIssueKind::JsonDecodingFailure => "json_decoding",
+            ImportFileParsingIssueKind::StructuralValidationFailure => "structural_validation",
             ImportFileParsingIssueKind::HolonConstructionFailure => "holon_construction",
         };
 

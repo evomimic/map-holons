@@ -3485,7 +3485,6 @@ dependencies = [
  "core_types",
  "holons_core",
  "holons_prelude",
- "json_schema_validation",
  "serde",
  "serde_json",
  "tracing",
