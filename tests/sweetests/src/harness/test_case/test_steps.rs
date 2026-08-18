@@ -106,6 +106,12 @@ pub enum DanceTestStep {
     LoadGeneratedValidationSchema {
         description: String,
     },
+    LoadGeneratedQuerySchema {
+        description: String,
+    },
+    LoadGeneratedQueryDanceSchema {
+        description: String,
+    },
     LoadBookPersonInverseTestSchema {
         description: String,
     },
@@ -261,6 +267,12 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::LoadGeneratedValidationSchema { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::LoadGeneratedQuerySchema { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::LoadGeneratedQueryDanceSchema { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::LoadBookPersonInverseTestSchema { description } => {

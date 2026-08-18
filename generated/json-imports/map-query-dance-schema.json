@@ -1,0 +1,623 @@
+{
+  "meta": {
+    "export_mode": "design-seed",
+    "load_with": [
+      "map-core-schema-root.json",
+      "map-core-schema-dance-schema.json",
+      "map-query-schema.json"
+    ],
+    "source_files": [
+      "docs/core/map-queries/query-dance-adapter-schema-tdl.md",
+      "docs/core/map-queries/query-engine-design-spec.md",
+      "docs/core/map-queries/queries-impl-plan.md"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MAP Query Dance Adapter Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Query Dance Adapter Schema-v0.1.0",
+        "Description": "Dance-layer adapter descriptors for invoking an independently usable Query. Dance descriptors are currently packaged by MAP Core Schema."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryDanceRequest.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryDanceRequest",
+        "TypeNamePlural": "QueryDanceRequests",
+        "DisplayName": "Query Dance Request",
+        "DisplayNamePlural": "Query Dance Requests",
+        "Description": "Dance ingress request selecting a Query and providing its initial collection and parameter bindings."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryDanceRequest.HolonType)-[RequestedQuery]->(Query.HolonType)"
+            },
+            {
+              "$ref": "(QueryDanceRequest.HolonType)-[InitialInput]->(HolonCollection.HolonType)"
+            },
+            {
+              "$ref": "(QueryDanceRequest.HolonType)-[RequestParameters]->(QueryParameterBinding.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryDanceResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "QueryDanceResponse",
+        "TypeNamePlural": "QueryDanceResponses",
+        "DisplayName": "Query Dance Response",
+        "DisplayNamePlural": "Query Dance Responses",
+        "Description": "Dance response wrapping a Query result collection."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ResponseBody",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaQueryDanceType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaQueryDanceType",
+        "TypeNamePlural": "MetaQueryDanceTypes",
+        "DisplayName": "Meta Query Dance Type",
+        "DisplayNamePlural": "Meta Query Dance Types",
+        "Description": "Adapter-owned meta-type for QueryDance descriptors, including the HolonSpace affordance contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaDanceType.MetaHolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(QueryDance.DanceType)-[DanceAffordedBy]->(HolonSpace.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryDance.DanceType",
+      "type": "MetaQueryDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "QueryDance",
+        "TypeNamePlural": "QueryDances",
+        "DisplayName": "Query Dance",
+        "DisplayNamePlural": "Query Dances",
+        "Description": "Dance adapter for Query execution. It does not define the Query engine or bind a DanceImplementation.",
+        "DanceDescription": "Adapts a Dance invocation onto direct execution of a Query."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "DanceAffordedBy",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "DanceInput",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "QueryDanceResponse.DanceResponseType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryDance.DanceType)-[DanceAffordedBy]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DanceAffordedBy",
+        "TypeNamePlural": "QueryDanceAffordedByHolonSpaceRelationships",
+        "DisplayName": "Query Dance Afforded By HolonSpace Relationship",
+        "DisplayNamePlural": "Query Dance Afforded By HolonSpace Relationships",
+        "Description": "Declares that the QueryDance adapter is afforded by the HolonSpace.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryDance.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonSpace.HolonType)-[AffordsDance]->(QueryDance.DanceType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[AffordsDance]->(QueryDance.DanceType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AffordsDance",
+        "TypeNamePlural": "HolonSpaceAffordsQueryDanceRelationships",
+        "DisplayName": "HolonSpace Affords Query Dance Relationship",
+        "DisplayNamePlural": "HolonSpace Affords Query Dance Relationships",
+        "Description": "Inverse of the QueryDance DanceAffordedBy relationship for HolonSpace.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryDance.DanceType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryDanceRequest.HolonType)-[RequestedQuery]->(Query.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestedQuery",
+        "TypeNamePlural": "RequestedQueries",
+        "DisplayName": "Requested Query",
+        "DisplayNamePlural": "Requested Queries",
+        "Description": "Selects the Query executed by a Dance-mediated request.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Query.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Query.HolonType)-[QueryRequestedBy]->(QueryDanceRequest.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Query.HolonType)-[QueryRequestedBy]->(QueryDanceRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "QueryRequestedBy",
+        "TypeNamePlural": "QueriesRequestedBy",
+        "DisplayName": "Query Requested By",
+        "DisplayNamePlural": "Queries Requested By",
+        "Description": "Inverse of RequestedQuery.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Query.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryDanceRequest.HolonType)-[InitialInput]->(HolonCollection.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InitialInput",
+        "TypeNamePlural": "InitialInputs",
+        "DisplayName": "Initial Input",
+        "DisplayNamePlural": "Initial Inputs",
+        "Description": "Supplies the initial collection for a Dance-mediated Query invocation.",
+        "IsDefinitional": true,
+        "MinCardinality": 1,
+        "MaxCardinality": 1,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonCollection.HolonType)-[InitialInputForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[InitialInputForQueryDanceRequest]->(QueryDanceRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InitialInputForQueryDanceRequest",
+        "TypeNamePlural": "InitialInputsForQueryDanceRequests",
+        "DisplayName": "Initial Input For Query Dance Request",
+        "DisplayNamePlural": "Initial Inputs For Query Dance Requests",
+        "Description": "Inverse of InitialInput.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonCollection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryDanceRequest.HolonType)-[RequestParameters]->(QueryParameterBinding.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequestParameters",
+        "TypeNamePlural": "RequestParameters",
+        "DisplayName": "Request Parameters",
+        "DisplayNamePlural": "Request Parameters",
+        "Description": "Supplies invocation-specific bindings to a Dance-mediated Query.",
+        "IsDefinitional": true,
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryParameterBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryParameterBinding.HolonType)-[ParametersForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryParameterBinding.HolonType)-[ParametersForQueryDanceRequest]->(QueryDanceRequest.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ParametersForQueryDanceRequest",
+        "TypeNamePlural": "ParametersForQueryDanceRequests",
+        "DisplayName": "Parameters For Query Dance Request",
+        "DisplayNamePlural": "Parameters For Query Dance Requests",
+        "Description": "Inverse of RequestParameters.",
+        "MinCardinality": 0,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryParameterBinding.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

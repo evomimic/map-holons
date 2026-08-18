@@ -3,7 +3,7 @@ meta {
   generated_at: "2026-07-21T14:08:14"
   export_mode: "by-file"
   source_files: ["map-core-schema-root.csv"]
-  load_with: ["map-core-schema-command-types.json","map-core-schema-property-types.json","map-core-schema-relationship-types.json","map-core-schema-keyrules-schema.json","map-core-schema-dance-schema.json","map-core-schema-query-schema.json"]
+  load_with: ["map-core-schema-command-types.json","map-core-schema-property-types.json","map-core-schema-relationship-types.json","map-core-schema-keyrules-schema.json","map-core-schema-dance-schema.json"]
 }
 schema "MAP Core Schema-v0.0.7" {
   header {
@@ -265,7 +265,6 @@ holon HolonSpace.HolonType {
       (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)
     ]
     AffordsCommand -> BeginTransaction.CommandType
-    AffordsDance -> QueryDance.DanceType
   }
 }
 

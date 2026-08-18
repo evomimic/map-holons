@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 12] = [
+const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 11] = [
     "map-core-schema-abstract-value-types.json",
     "map-core-schema-command-types.json",
     "map-core-schema-concrete-value-types.json",
@@ -15,13 +15,14 @@ const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 12] = [
     "map-core-schema-loader-types.json",
     "map-core-schema-operator-types.json",
     "map-core-schema-property-types.json",
-    "map-core-schema-query-schema.json",
     "map-core-schema-relationship-types.json",
     "map-core-schema-root.json",
     "map-core-schema-value-constraint-types.json",
 ];
 
 const GENERATED_VALIDATION_SCHEMA_FILENAME: &str = "map-validation-schema.json";
+const GENERATED_QUERY_SCHEMA_FILENAME: &str = "map-query-schema.json";
+const GENERATED_QUERY_DANCE_SCHEMA_FILENAME: &str = "map-query-dance-schema.json";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CoreSchemaLoadMetrics {
@@ -36,12 +37,12 @@ pub struct CoreSchemaLoadMetrics {
 
 /// Metrics for the checked-in Schema 2.0 compiler artifact.
 pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 376,
-    committed: 376,
-    links_created: 1740,
+    staged: 316,
+    committed: 316,
+    links_created: 1427,
     errors: 0,
-    total_bundles: 12,
-    total_loader_holons: 376,
+    total_bundles: 11,
+    total_loader_holons: 316,
     commit_status: ExpectedLoadStatus::Complete,
 };
 
@@ -96,6 +97,31 @@ pub fn build_generated_validation_schema_content_set() -> Result<ContentSet, Hol
         vec![read_file_data(&validation_schema_path, "generated validation schema import")?];
 
     Ok(ContentSet { files_to_load })
+}
+
+/// Builds the independently loadable Query Schema package after Core has committed.
+pub fn build_generated_query_schema_content_set() -> Result<ContentSet, HolonError> {
+    build_generated_schema_package_content_set(
+        GENERATED_QUERY_SCHEMA_FILENAME,
+        "generated query schema import",
+    )
+}
+
+/// Builds the Query--Dance adapter package after Core and Query have committed.
+pub fn build_generated_query_dance_schema_content_set() -> Result<ContentSet, HolonError> {
+    build_generated_schema_package_content_set(
+        GENERATED_QUERY_DANCE_SCHEMA_FILENAME,
+        "generated query dance adapter schema import",
+    )
+}
+
+fn build_generated_schema_package_content_set(
+    filename: &str,
+    role: &str,
+) -> Result<ContentSet, HolonError> {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+    let schema_path = repo_root.join("generated/json-imports").join(filename);
+    Ok(ContentSet { files_to_load: vec![read_file_data(&schema_path, role)?] })
 }
 
 pub fn read_file_data(path: &Path, role: &str) -> Result<FileData, HolonError> {

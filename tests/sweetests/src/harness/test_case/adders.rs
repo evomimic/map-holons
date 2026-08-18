@@ -185,6 +185,29 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_load_generated_query_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description
+            .unwrap_or_else(|| "Load generated Query Schema JSON after Core".to_string());
+        self.steps.push(DanceTestStep::LoadGeneratedQuerySchema { description });
+        Ok(())
+    }
+
+    pub fn add_load_generated_query_dance_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Load generated Query Dance Adapter Schema JSON after Query".to_string()
+        });
+        self.steps.push(DanceTestStep::LoadGeneratedQueryDanceSchema { description });
+        Ok(())
+    }
+
     pub fn add_load_book_person_inverse_test_schema_step(
         &mut self,
         description: Option<String>,
