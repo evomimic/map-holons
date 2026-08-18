@@ -174,6 +174,29 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_load_generated_dance_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description
+            .unwrap_or_else(|| "Load generated Dance Schema JSON after Core".to_string());
+        self.steps.push(DanceTestStep::LoadGeneratedDanceSchema { description });
+        Ok(())
+    }
+
+    pub fn add_load_generated_commands_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Load generated Commands Schema JSON after Core and Dance".to_string()
+        });
+        self.steps.push(DanceTestStep::LoadGeneratedCommandsSchema { description });
+        Ok(())
+    }
+
     pub fn add_load_generated_validation_schema_step(
         &mut self,
         description: Option<String>,

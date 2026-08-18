@@ -7,8 +7,8 @@
       "map-test-schema-book-person-inverse.csv"
     ],
     "load_with": [
-      "map-core-schema-root.json",
-      "map-core-schema-concrete-value-types.json"
+      "../core/root.json",
+      "../core/concrete-value-types.json"
     ]
   },
   "holons": [

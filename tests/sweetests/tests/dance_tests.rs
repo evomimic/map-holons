@@ -45,7 +45,8 @@ use execution_steps::ensure_database_count_executor::execute_ensure_database_cou
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_book_person_inverse_test_schema;
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_inverse_oriented_book_person_instances_expect_failure;
 use execution_steps::load_core_schema_executor::{
-    execute_load_core_schema, execute_load_generated_core_schema,
+    execute_load_core_schema, execute_load_generated_commands_schema,
+    execute_load_generated_core_schema, execute_load_generated_dance_schema,
     execute_load_generated_query_dance_schema, execute_load_generated_query_schema,
     execute_load_generated_validation_schema,
 };
@@ -241,6 +242,12 @@ async fn run_dance_test_case(mut test_case: DancesTestCase) {
             }
             DanceTestStep::LoadGeneratedCoreSchema { .. } => {
                 execute_load_generated_core_schema(&mut test_execution_state).await
+            }
+            DanceTestStep::LoadGeneratedDanceSchema { .. } => {
+                execute_load_generated_dance_schema(&mut test_execution_state).await
+            }
+            DanceTestStep::LoadGeneratedCommandsSchema { .. } => {
+                execute_load_generated_commands_schema(&mut test_execution_state).await
             }
             DanceTestStep::LoadGeneratedValidationSchema { .. } => {
                 execute_load_generated_validation_schema(&mut test_execution_state).await

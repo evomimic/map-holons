@@ -6,23 +6,23 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 11] = [
-    "map-core-schema-abstract-value-types.json",
-    "map-core-schema-command-types.json",
-    "map-core-schema-concrete-value-types.json",
-    "map-core-schema-dance-schema.json",
-    "map-core-schema-keyrules-schema.json",
-    "map-core-schema-loader-types.json",
-    "map-core-schema-operator-types.json",
-    "map-core-schema-property-types.json",
-    "map-core-schema-relationship-types.json",
-    "map-core-schema-root.json",
-    "map-core-schema-value-constraint-types.json",
+const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 9] = [
+    "core/abstract-value-types.json",
+    "core/concrete-value-types.json",
+    "core/keyrules.json",
+    "core/loader-types.json",
+    "core/operator-types.json",
+    "core/property-types.json",
+    "core/relationship-types.json",
+    "core/root.json",
+    "core/value-constraint-types.json",
 ];
 
-const GENERATED_VALIDATION_SCHEMA_FILENAME: &str = "map-validation-schema.json";
-const GENERATED_QUERY_SCHEMA_FILENAME: &str = "map-query-schema.json";
-const GENERATED_QUERY_DANCE_SCHEMA_FILENAME: &str = "map-query-dance-schema.json";
+const GENERATED_DANCE_SCHEMA_FILENAME: &str = "dance/schema.json";
+const GENERATED_COMMANDS_SCHEMA_FILENAME: &str = "commands/schema.json";
+const GENERATED_VALIDATION_SCHEMA_FILENAME: &str = "validation/schema.json";
+const GENERATED_QUERY_SCHEMA_FILENAME: &str = "query/schema.json";
+const GENERATED_QUERY_DANCE_SCHEMA_FILENAME: &str = "query-dance/schema.json";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CoreSchemaLoadMetrics {
@@ -37,12 +37,12 @@ pub struct CoreSchemaLoadMetrics {
 
 /// Metrics for the checked-in Schema 2.0 compiler artifact.
 pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 316,
-    committed: 316,
-    links_created: 1427,
+    staged: 191,
+    committed: 191,
+    links_created: 0,
     errors: 0,
-    total_bundles: 11,
-    total_loader_holons: 316,
+    total_bundles: 9,
+    total_loader_holons: 191,
     commit_status: ExpectedLoadStatus::Complete,
 };
 
@@ -99,6 +99,22 @@ pub fn build_generated_validation_schema_content_set() -> Result<ContentSet, Hol
     Ok(ContentSet { files_to_load })
 }
 
+/// Builds the Dance package after Core has committed.
+pub fn build_generated_dance_schema_content_set() -> Result<ContentSet, HolonError> {
+    build_generated_schema_package_content_set(
+        GENERATED_DANCE_SCHEMA_FILENAME,
+        "generated dance schema import",
+    )
+}
+
+/// Builds the Commands package after Core and Dance have committed.
+pub fn build_generated_commands_schema_content_set() -> Result<ContentSet, HolonError> {
+    build_generated_schema_package_content_set(
+        GENERATED_COMMANDS_SCHEMA_FILENAME,
+        "generated commands schema import",
+    )
+}
+
 /// Builds the independently loadable Query Schema package after Core has committed.
 pub fn build_generated_query_schema_content_set() -> Result<ContentSet, HolonError> {
     build_generated_schema_package_content_set(
@@ -107,7 +123,7 @@ pub fn build_generated_query_schema_content_set() -> Result<ContentSet, HolonErr
     )
 }
 
-/// Builds the Query--Dance adapter package after Core and Query have committed.
+/// Builds the Query--Dance adapter package after Core, Dance, and Query have committed.
 pub fn build_generated_query_dance_schema_content_set() -> Result<ContentSet, HolonError> {
     build_generated_schema_package_content_set(
         GENERATED_QUERY_DANCE_SCHEMA_FILENAME,

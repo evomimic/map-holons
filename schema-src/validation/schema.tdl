@@ -1,0 +1,1547 @@
+meta {
+  generator: "MAP validation architecture design seed"
+  generated_at: "2026-08-10"
+  export_mode: "design-seed"
+  source_files: ["docs/core/validation/validation-schema-design-spec.md","docs/core/validation/validation-arch.md","docs/core/validation/validation-impl-plan.md"]
+  load_with: ["../core/root.json","../core/concrete-value-types.json","../core/abstract-value-types.json","../core/property-types.json","../core/relationship-types.json","../core/operator-types.json"]
+}
+
+schema "MAP Validation Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  header {
+    description: "Design seed for validation-owned descriptor types, ValidationRule families, seeded core ValidationRule instances, and ValidationBinding commitments."
+  }
+}
+
+enum ValidationLevel.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Validator level at which a ValidationRule is evaluated."
+    display_name: "Validation Level"
+    display_plural: "Validation Levels"
+    plural: "ValidationLevels"
+  }
+  variants {
+    variant Holon {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over a holon and its descriptor-level instance contract."
+        display_name: "Holon"
+      }
+    }
+    variant Property {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over a populated or required property member."
+        display_name: "Property"
+      }
+    }
+    variant Value {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over a property value and its selected ValueType descriptor."
+        display_name: "Value"
+      }
+    }
+    variant Relationship {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over relationship descriptors or relationship occurrences."
+        display_name: "Relationship"
+      }
+    }
+    variant Transaction {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over a staged transaction and available graph snapshot."
+        display_name: "Transaction"
+      }
+    }
+    variant Command {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over command invocation contracts and preconditions."
+        display_name: "Command"
+      }
+    }
+    variant Dance {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over dance invocation contracts and preconditions."
+        display_name: "Dance"
+      }
+    }
+    variant Agreement {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Validation over agreement, role, trust, or policy commitments."
+        display_name: "Agreement"
+      }
+    }
+  }
+}
+
+enum ValidationSeverity.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Default severity emitted when a ValidationRule fails."
+    display_name: "Validation Severity"
+    display_plural: "Validation Severities"
+    plural: "ValidationSeverities"
+  }
+  variants {
+    variant Info {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Informational validation result."
+        display_name: "Info"
+      }
+    }
+    variant Warning {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Non-blocking warning validation result."
+        display_name: "Warning"
+      }
+    }
+    variant Error {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Blocking error validation result when selected by a commit-oriented profile."
+        display_name: "Error"
+      }
+    }
+  }
+}
+
+enum ValidationBlockingBehavior.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Minimum operation-blocking behavior for a ValidationRule."
+    display_name: "Validation Blocking Behavior"
+    display_plural: "Validation Blocking Behaviors"
+    plural: "ValidationBlockingBehaviors"
+  }
+  variants {
+    variant Advisory {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "The rule may report results without blocking commit."
+        display_name: "Advisory"
+      }
+    }
+    variant CommitBlocking {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "The rule blocks commit when it fails in a commit-oriented validation profile."
+        display_name: "Commit Blocking"
+      }
+    }
+  }
+}
+
+enum ValidationDeterminismClass.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Determinism classification for validation-rule execution."
+    display_name: "Validation Determinism Class"
+    display_plural: "Validation Determinism Classes"
+    plural: "ValidationDeterminismClasses"
+  }
+  variants {
+    variant Deterministic {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "The rule can produce reproducible results with the declared context."
+        display_name: "Deterministic"
+      }
+    }
+    variant Contextual {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "The rule depends on local runtime, profile, or snapshot context."
+        display_name: "Contextual"
+      }
+    }
+  }
+}
+
+property ValidationLevel.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value ValidationLevel.MapEnumValueType
+  IsValueRequired true
+  header {
+    description: "Validator level at which a ValidationRule operates."
+    display_name: "validation_level"
+    display_plural: "validation_levels"
+    plural: "ValidationLevels"
+  }
+}
+
+property DefaultSeverity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value ValidationSeverity.MapEnumValueType
+  IsValueRequired true
+  header {
+    description: "Default severity emitted by a failing ValidationRule."
+    display_name: "default_severity"
+    display_plural: "default_severities"
+    plural: "DefaultSeverities"
+  }
+}
+
+property MinimumBlockingBehavior.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value ValidationBlockingBehavior.MapEnumValueType
+  IsValueRequired true
+  header {
+    description: "Weakest blocking behavior a binding or profile may apply to a ValidationRule."
+    display_name: "minimum_blocking_behavior"
+    display_plural: "minimum_blocking_behaviors"
+    plural: "MinimumBlockingBehaviors"
+  }
+}
+
+property DeterminismClass.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value ValidationDeterminismClass.MapEnumValueType
+  IsValueRequired true
+  header {
+    description: "Determinism class for the ValidationRule implementation contract."
+    display_name: "determinism_class"
+    display_plural: "determinism_classes"
+    plural: "DeterminismClasses"
+  }
+}
+
+property SemanticAuthority.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired false
+  header {
+    description: "Stable reference to the descriptor-semantics rule family or normative source that defines the ValidationRule meaning."
+    display_name: "semantic_authority"
+    display_plural: "semantic_authorities"
+    plural: "SemanticAuthorities"
+  }
+}
+
+property ValidationRuleDescription.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Human-readable ValidationRule description."
+    display_name: "validation_rule_description"
+    display_plural: "validation_rule_descriptions"
+    plural: "ValidationRuleDescriptions"
+  }
+}
+
+holon MetaValidationRule.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "Meta-type describing ValidationRule family descriptor holons. It narrows local operator affordance to validation-rule descriptors."
+    display_name: "Meta Validation Rule"
+    display_plural: "Meta Validation Rules"
+    plural: "MetaValidationRules"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (ValidationRule.HolonType)-[AffordsOperator]->(OperatorType.HolonType)
+    ]
+  }
+}
+
+abstract holon ValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends HolonType.TypeDescriptor
+  DefinesInstanceTypeKind true
+  header {
+    description: "Abstract root for first-class validation rule holons."
+    display_name: "Validation Rule"
+    display_plural: "Validation Rules"
+    plural: "ValidationRules"
+  }
+  relationships {
+    InstanceProperties -> [
+      ValidationLevel.PropertyType,
+      DefaultSeverity.PropertyType,
+      MinimumBlockingBehavior.PropertyType,
+      DeterminismClass.PropertyType,
+      SemanticAuthority.PropertyType,
+      ValidationRuleDescription.PropertyType
+    ]
+    // The loader currently resolves instance relationship declarations directly
+    // from this descriptor rather than through TypeDescriptor's inherited list.
+    // Reuse the Core declaration; this does not define a validation-owned
+    // ComponentOf relationship.
+    InstanceRelationships -> [
+      (TypeDescriptor)-[ComponentOf]->(Schema.HolonType)
+    ]
+    AffordsOperator -> [
+      Validate.OperatorType
+    ]
+  }
+}
+
+abstract holon HolonValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for rules evaluated over holons and their descriptor-level contracts."
+    display_name: "Holon Validation Rule"
+    display_plural: "Holon Validation Rules"
+    plural: "HolonValidationRules"
+  }
+}
+
+abstract holon PropertyValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for rules evaluated over property descriptors, required properties, and populated property members."
+    display_name: "Property Validation Rule"
+    display_plural: "Property Validation Rules"
+    plural: "PropertyValidationRules"
+  }
+}
+
+abstract holon ValueValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for rules evaluated over property values and their selected ValueType descriptors."
+    display_name: "Value Validation Rule"
+    display_plural: "Value Validation Rules"
+    plural: "ValueValidationRules"
+  }
+}
+
+abstract holon StringValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValueValidationRule.HolonType
+  header {
+    description: "ValidationRule family for string value rules."
+    display_name: "String Validation Rule"
+    display_plural: "String Validation Rules"
+    plural: "StringValidationRules"
+  }
+}
+
+abstract holon IntegerValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValueValidationRule.HolonType
+  header {
+    description: "ValidationRule family for integer value rules."
+    display_name: "Integer Validation Rule"
+    display_plural: "Integer Validation Rules"
+    plural: "IntegerValidationRules"
+  }
+}
+
+abstract holon BooleanValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValueValidationRule.HolonType
+  header {
+    description: "ValidationRule family for boolean value rules."
+    display_name: "Boolean Validation Rule"
+    display_plural: "Boolean Validation Rules"
+    plural: "BooleanValidationRules"
+  }
+}
+
+abstract holon EnumValueValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValueValidationRule.HolonType
+  header {
+    description: "ValidationRule family for enum value and enum variant membership rules."
+    display_name: "Enum Value Validation Rule"
+    display_plural: "Enum Value Validation Rules"
+    plural: "EnumValueValidationRules"
+  }
+}
+
+abstract holon BytesValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValueValidationRule.HolonType
+  header {
+    description: "ValidationRule family for bytes value rules."
+    display_name: "Bytes Validation Rule"
+    display_plural: "Bytes Validation Rules"
+    plural: "BytesValidationRules"
+  }
+}
+
+abstract holon ValueArrayValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValueValidationRule.HolonType
+  header {
+    description: "ValidationRule family for value-array and collection value rules."
+    display_name: "Value Array Validation Rule"
+    display_plural: "Value Array Validation Rules"
+    plural: "ValueArrayValidationRules"
+  }
+}
+
+abstract holon RelationshipValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for relationship descriptor and relationship occurrence rules."
+    display_name: "Relationship Validation Rule"
+    display_plural: "Relationship Validation Rules"
+    plural: "RelationshipValidationRules"
+  }
+}
+
+abstract holon TransactionValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for staged transaction rules."
+    display_name: "Transaction Validation Rule"
+    display_plural: "Transaction Validation Rules"
+    plural: "TransactionValidationRules"
+  }
+}
+
+abstract holon CommandValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for command invocation validation rules."
+    display_name: "Command Validation Rule"
+    display_plural: "Command Validation Rules"
+    plural: "CommandValidationRules"
+  }
+}
+
+abstract holon DanceValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for dance invocation validation rules."
+    display_name: "Dance Validation Rule"
+    display_plural: "Dance Validation Rules"
+    plural: "DanceValidationRules"
+  }
+}
+
+abstract holon AgreementValidationRule.HolonType {
+  type MetaValidationRule.MetaHolonType
+  extends ValidationRule.HolonType
+  header {
+    description: "ValidationRule family for agreement, trust, role, and policy validation rules."
+    display_name: "Agreement Validation Rule"
+    display_plural: "Agreement Validation Rules"
+    plural: "AgreementValidationRules"
+  }
+}
+
+holon Validate.OperatorType {
+  type MetaOperatorType.MetaHolonType
+  extends OperatorType.HolonType
+  Arity 1
+  OperatorCategory Equality
+  header {
+    description: "Local operator contract for evaluating a ValidationRule in a validation context. Initial execution is wrapper-based and does not require generic operator or Dance dispatch."
+    display_name: "Validate"
+    display_plural: "Validate Operators"
+    plural: "ValidateOperators"
+  }
+}
+
+def relationship (ValidationRule.HolonType)-[AffordsOperator]->(OperatorType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> AffordedBy
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ValidationRule.HolonType
+  target OperatorType.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Links a ValidationRule family descriptor to the local operator descriptors available for rules in that family."
+    display_name: "AffordsOperator Relationship"
+    display_plural: "AffordsOperator Relationships"
+    plural: "AffordsOperatorRelationships"
+  }
+}
+
+inverse relationship (OperatorType.HolonType)-[AffordedBy]->(ValidationRule.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source OperatorType.HolonType
+  target ValidationRule.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse of AffordsOperator for ValidationRule family descriptors."
+    display_name: "AffordedBy Relationship"
+    display_plural: "AffordedBy Relationships"
+    plural: "AffordedByRelationships"
+  }
+}
+
+holon ValidationBinding.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "A validation-owned commitment that applies one ValidationRule to one descriptor target."
+    display_name: "Validation Binding"
+    display_plural: "Validation Bindings"
+    plural: "ValidationBindings"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (TypeDescriptor)-[ComponentOf]->(Schema.HolonType),
+      (ValidationBinding.HolonType)-[AppliesTo]->(TypeDescriptor),
+      (ValidationBinding.HolonType)-[UsesRule]->(ValidationRule.HolonType)
+    ]
+  }
+}
+
+def relationship (ValidationBinding.HolonType)-[AppliesTo]->(TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> HasValidationBinding
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ValidationBinding.HolonType
+  target TypeDescriptor
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Identifies the descriptor whose instances are subject to this validation commitment."
+    display_name: "Applies To"
+    display_plural: "Applies To"
+    plural: "AppliesTo"
+  }
+}
+
+inverse relationship (TypeDescriptor)-[HasValidationBinding]->(ValidationBinding.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source TypeDescriptor
+  target ValidationBinding.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse index from a descriptor to validation-owned commitments that apply to it."
+    display_name: "Has Validation Binding"
+    display_plural: "Has Validation Bindings"
+    plural: "HasValidationBindings"
+  }
+}
+
+def relationship (ValidationBinding.HolonType)-[UsesRule]->(ValidationRule.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    HasInverse -> UsedByValidationBinding
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ValidationBinding.HolonType
+  target ValidationRule.HolonType
+  cardinality 1..1
+  deletion_semantic Block
+  header {
+    description: "Identifies the ValidationRule committed by this binding."
+    display_name: "Uses Rule"
+    display_plural: "Uses Rules"
+    plural: "UsesRules"
+  }
+}
+
+inverse relationship (ValidationRule.HolonType)-[UsedByValidationBinding]->(ValidationBinding.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source ValidationRule.HolonType
+  target ValidationBinding.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+  header {
+    description: "Inverse index from a ValidationRule to validation bindings that commit it."
+    display_name: "Used By Validation Binding"
+    display_plural: "Used By Validation Bindings"
+    plural: "UsedByValidationBindings"
+  }
+}
+
+holon ValidationImplementation.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Descriptor for holons that bind a ValidationRule to executable validation behavior. Dynamic implementation selection is deferred."
+    display_name: "Validation Implementation"
+    display_plural: "Validation Implementations"
+    plural: "ValidationImplementations"
+  }
+}
+
+holon ValidationRuleSet.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Descriptor for named compositions of validation rules. Rule-set expansion is deferred until individual rule dispatch is stable."
+    display_name: "Validation Rule Set"
+    display_plural: "Validation Rule Sets"
+    plural: "ValidationRuleSets"
+  }
+}
+
+holon ValidationResult.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Descriptor for durable validation result evidence. Persisted result policy is deferred."
+    display_name: "Validation Result"
+    display_plural: "Validation Results"
+    plural: "ValidationResults"
+  }
+}
+
+holon AtMostOneDirectParent.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-STRUCT-002"
+  ValidationRuleDescription "A holon has at most one direct Extends parent."
+}
+
+holon AcyclicExtendsLineage.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-STRUCT-003"
+  ValidationRuleDescription "A descriptor Extends lineage must be acyclic."
+}
+
+holon ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-STRUCT-004"
+  ValidationRuleDescription "A parented descriptor lineage must terminate at TypeDescriptor."
+}
+
+holon UniqueTypeDescriptorRoot.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-STRUCT-005"
+  ValidationRuleDescription "TypeDescriptor is the unique root of the descriptor hierarchy."
+}
+
+holon SchemaDependenciesAcyclic.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-SCHEMA-001"
+  ValidationRuleDescription "Versioned schema dependency relationships must be acyclic."
+}
+
+holon CrossSchemaDependenciesDeclared.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-SCHEMA-002"
+  ValidationRuleDescription "Every cross-schema reference must have a direct schema dependency declaration."
+}
+
+holon CoreAccumulatorsAreAdditive.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-SCHEMA-003"
+  ValidationRuleDescription "Core contract, behavior, and operator accumulator relationships must declare Additive inheritance."
+}
+
+holon LocalInstanceKindAnchorDesignation.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KIND-001"
+  ValidationRuleDescription "Instance TypeKind anchor designation is local and singular."
+}
+
+holon InstanceKindAnchorsAreAbstract.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KIND-002"
+  ValidationRuleDescription "Every Instance TypeKind anchor must be abstract."
+}
+
+holon TypeDescriptorRootKindException.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KIND-003"
+  ValidationRuleDescription "TypeDescriptor is the only descriptor root that lacks an Instance TypeKind anchor."
+}
+
+holon DescribingCategoryCompatibility.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KIND-004"
+  ValidationRuleDescription "Every describing type must belong to the required describing category."
+}
+
+holon DescriptorMetaTypeCorrespondence.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KIND-005"
+  ValidationRuleDescription "Descriptor holons, and only descriptor holons, must use meta-type describers."
+}
+
+holon NoInheritedMemberRedeclaration.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-CONTRACT-001"
+  ValidationRuleDescription "A descriptor must not redundantly redeclare an inherited member."
+}
+
+holon UniqueSemanticMemberNames.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-CONTRACT-002"
+  ValidationRuleDescription "Effective semantic member names must be unique within each namespace."
+}
+
+holon WellFormedEffectiveMemberDefinitions.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-CONTRACT-003"
+  ValidationRuleDescription "Every effective member definition must be well formed."
+}
+
+holon ContractMemberKindCompatibility.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-CONTRACT-004"
+  ValidationRuleDescription "Every effective contract member must have the required instance kind."
+}
+
+holon InheritedValueConstraintNonRelaxation.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-CONSTRAINT-001"
+  ValidationRuleDescription "A ValueType subtype must not relax a value constraint inherited through its Extends lineage."
+}
+
+holon DefaultsRequireRequiredProperties.ValidationRule {
+  type PropertyValidationRule.HolonType
+  ValidationLevel Property
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-DEFAULT-001"
+  ValidationRuleDescription "Only required properties may declare defaults."
+}
+
+holon DefaultValueConformance.ValidationRule {
+  type PropertyValidationRule.HolonType
+  ValidationLevel Property
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-DEFAULT-002"
+  ValidationRuleDescription "Every declared default value must conform to its effective value definition."
+}
+
+holon InverseEndpointCorrespondence.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-REL-002"
+  ValidationRuleDescription "Inverse relationship endpoints must correspond to declared relationship endpoints."
+}
+
+holon DirectionalDeletionDeclarations.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-REL-003"
+  ValidationRuleDescription "Both relationship directions must declare valid deletion semantics."
+}
+
+holon EffectiveKeyRuleSelection.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KEY-001"
+  ValidationRuleDescription "Every holon type must resolve exactly one effective instance key rule."
+}
+
+holon KeyRuleTargetCompatibility.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KEY-002"
+  ValidationRuleDescription "The selected key rule target must be compatible with and executable for the descriptor."
+}
+
+holon ExplicitKeylessBaseline.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KEY-003"
+  ValidationRuleDescription "The keyless root must be explicit and key-rule inheritance must use Override semantics."
+}
+
+holon EnumMemberNamesUnique.ValidationRule {
+  type EnumValueValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-ENUM-001"
+  ValidationRuleDescription "Enum member names must be unique within each effective enum definition."
+}
+
+holon AbstractMemberMinimumEnforcement.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-CONFORM-002"
+  ValidationRuleDescription "Minimum enforcement for abstract descriptors is member-specific."
+}
+
+holon UniquePropertyMemberBinding.ValidationRule {
+  type PropertyValidationRule.HolonType
+  ValidationLevel Property
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-BIND-001"
+  ValidationRuleDescription "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."
+}
+
+holon RelationshipOccurrenceGrouping.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-OCC-001"
+  ValidationRuleDescription "Relationship occurrences must be grouped by resolved relationship descriptor identity."
+}
+
+holon AdditionalRelationshipPolicy.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-OCC-004"
+  ValidationRuleDescription "Every unbound relationship must be permitted by the effective additional-relationship policy."
+}
+
+holon ExplicitKeylessness.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KEY-004"
+  ValidationRuleDescription "A keyless holon must carry no semantic key."
+}
+
+holon KeyPresenceAndValue.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-KEY-005"
+  ValidationRuleDescription "A keyed new holon must carry exactly the computed semantic key."
+}
+
+holon ExactlyOneDescribedBy.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-STRUCT-001"
+  ValidationRuleDescription "A holon must have exactly one describing descriptor before descriptor-aware validation can continue."
+}
+
+holon ConcreteDescribingType.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-CONFORM-001"
+  ValidationRuleDescription "A runtime holon must be described by a concrete descriptor that can describe instances."
+}
+
+holon NoUndescribedProperties.ValidationRule {
+  type HolonValidationRule.HolonType
+  ValidationLevel Holon
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-PROP-003"
+  ValidationRuleDescription "Every unbound property must be permitted by the effective additional-property policy."
+}
+
+holon RequiredPropertyPresence.ValidationRule {
+  type PropertyValidationRule.HolonType
+  ValidationLevel Property
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-PROP-001"
+  ValidationRuleDescription "A property declared required by the effective descriptor contract must be present."
+}
+
+holon PropertyValueConformance.ValidationRule {
+  type PropertyValidationRule.HolonType
+  ValidationLevel Property
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-PROP-002"
+  ValidationRuleDescription "A populated property value must conform to the selected ValueType descriptor."
+}
+
+holon BaseValueKindMatchesString.ValidationRule {
+  type StringValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "Built-in value-dispatch rule"
+  ValidationRuleDescription "A value governed by a StringValueType descriptor must use the string BaseValue representation."
+}
+
+holon StringLength.ValidationRule {
+  type StringValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "String constraint semantics; Unicode extended grapheme cluster counting"
+  ValidationRuleDescription "A string value must satisfy the min and max length constraints declared by its StringValueType descriptor."
+}
+
+holon BaseValueKindMatchesInteger.ValidationRule {
+  type IntegerValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "Built-in value-dispatch rule"
+  ValidationRuleDescription "A value governed by an IntegerValueType descriptor must use the integer BaseValue representation."
+}
+
+holon IntegerRange.ValidationRule {
+  type IntegerValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "Integer constraint semantics"
+  ValidationRuleDescription "An integer value must satisfy the min and max constraints declared by its IntegerValueType descriptor."
+}
+
+holon BaseValueKindMatchesBoolean.ValidationRule {
+  type BooleanValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "Built-in value-dispatch rule"
+  ValidationRuleDescription "A value governed by a BooleanValueType descriptor must use the boolean BaseValue representation."
+}
+
+holon BaseValueKindMatchesEnum.ValidationRule {
+  type EnumValueValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "Built-in value-dispatch rule"
+  ValidationRuleDescription "A value governed by an EnumValueType descriptor must use the enum BaseValue representation."
+}
+
+holon EnumTokenMembership.ValidationRule {
+  type EnumValueValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-ENUM-002"
+  ValidationRuleDescription "An enum value token must match one of the effective enum variants admitted by the EnumValueType descriptor."
+}
+
+holon EnumTokenNonRetroactivity.ValidationRule {
+  type EnumValueValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Contextual
+  SemanticAuthority "DS-ENUM-003"
+  ValidationRuleDescription "Enum token changes must never rewrite or alias persisted enum values."
+}
+
+holon BaseValueKindMatchesBytes.ValidationRule {
+  type BytesValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "Built-in value-dispatch rule"
+  ValidationRuleDescription "A value governed by a BytesValueType descriptor must use the bytes BaseValue representation."
+}
+
+holon BytesLength.ValidationRule {
+  type BytesValidationRule.HolonType
+  ValidationLevel Value
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "Bytes constraint semantics"
+  ValidationRuleDescription "A bytes value must satisfy the min and max length constraints declared by its BytesValueType descriptor."
+}
+
+holon RelationshipOccurrenceBinding.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-BIND-002"
+  ValidationRuleDescription "A populated relationship name must bind uniquely to a relationship descriptor admitted by the effective contract."
+}
+
+holon RelationshipEndpointCompatibility.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-OCC-002"
+  ValidationRuleDescription "A relationship occurrence endpoint must be compatible with the effective source and target descriptors."
+}
+
+holon RelationshipCollectionPolicy.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-OCC-003"
+  ValidationRuleDescription "A relationship occurrence collection must honor ordering and duplicate policies declared by the relationship descriptor."
+}
+
+holon RelationshipCardinality.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Contextual
+  SemanticAuthority "DS-CARD-001"
+  ValidationRuleDescription "A relationship occurrence set must satisfy descriptor cardinality where the validation context supplies the required transaction or graph snapshot."
+}
+
+holon RelationshipDescriptorPairing.ValidationRule {
+  type RelationshipValidationRule.HolonType
+  ValidationLevel Relationship
+  DefaultSeverity Error
+  MinimumBlockingBehavior CommitBlocking
+  DeterminismClass Deterministic
+  SemanticAuthority "DS-REL-001"
+  ValidationRuleDescription "Declared and inverse relationship descriptor pairing must be bijective."
+}
+
+holon TypeDescriptorAtMostOneDirectParent.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> AtMostOneDirectParent.ValidationRule
+  }
+}
+
+holon TypeDescriptorAcyclicExtendsLineage.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> AcyclicExtendsLineage.ValidationRule
+  }
+}
+
+holon TypeDescriptorExtendsLineageTerminates.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule
+  }
+}
+
+holon TypeDescriptorUniqueRoot.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> UniqueTypeDescriptorRoot.ValidationRule
+  }
+}
+
+holon TypeDescriptorSchemaDependenciesAcyclic.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> SchemaDependenciesAcyclic.ValidationRule
+  }
+}
+
+holon TypeDescriptorCrossSchemaDependenciesDeclared.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> CrossSchemaDependenciesDeclared.ValidationRule
+  }
+}
+
+holon TypeDescriptorCoreAccumulatorsAdditive.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> CoreAccumulatorsAreAdditive.ValidationRule
+  }
+}
+
+holon TypeDescriptorLocalInstanceKindAnchor.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> LocalInstanceKindAnchorDesignation.ValidationRule
+  }
+}
+
+holon TypeDescriptorInstanceKindAnchorAbstract.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> InstanceKindAnchorsAreAbstract.ValidationRule
+  }
+}
+
+holon TypeDescriptorRootKindException.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> TypeDescriptorRootKindException.ValidationRule
+  }
+}
+
+holon TypeDescriptorDescribingCategoryCompatibility.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> DescribingCategoryCompatibility.ValidationRule
+  }
+}
+
+holon TypeDescriptorMetaTypeCorrespondence.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> DescriptorMetaTypeCorrespondence.ValidationRule
+  }
+}
+
+holon TypeDescriptorNoInheritedMemberRedeclaration.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> NoInheritedMemberRedeclaration.ValidationRule
+  }
+}
+
+holon TypeDescriptorUniqueSemanticMemberNames.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> UniqueSemanticMemberNames.ValidationRule
+  }
+}
+
+holon TypeDescriptorWellFormedEffectiveMembers.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> WellFormedEffectiveMemberDefinitions.ValidationRule
+  }
+}
+
+holon TypeDescriptorContractMemberKindCompatibility.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> TypeDescriptor
+    UsesRule -> ContractMemberKindCompatibility.ValidationRule
+  }
+}
+
+holon HolonTypeExactlyOneDescribedBy.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> ExactlyOneDescribedBy.ValidationRule
+  }
+}
+
+holon HolonTypeConcreteDescribingType.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> ConcreteDescribingType.ValidationRule
+  }
+}
+
+holon HolonTypeNoUndescribedProperties.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> NoUndescribedProperties.ValidationRule
+  }
+}
+
+holon HolonTypeAbstractMemberMinimum.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> AbstractMemberMinimumEnforcement.ValidationRule
+  }
+}
+
+holon HolonTypeEffectiveKeyRuleSelection.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> EffectiveKeyRuleSelection.ValidationRule
+  }
+}
+
+holon HolonTypeKeyRuleTargetCompatibility.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> KeyRuleTargetCompatibility.ValidationRule
+  }
+}
+
+holon HolonTypeExplicitKeylessBaseline.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> ExplicitKeylessBaseline.ValidationRule
+  }
+}
+
+holon HolonTypeExplicitKeylessness.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> ExplicitKeylessness.ValidationRule
+  }
+}
+
+holon HolonTypeKeyPresenceAndValue.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> HolonType.TypeDescriptor
+    UsesRule -> KeyPresenceAndValue.ValidationRule
+  }
+}
+
+holon ValueTypeInheritedConstraintNonRelaxation.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> ValueType.TypeDescriptor
+    UsesRule -> InheritedValueConstraintNonRelaxation.ValidationRule
+  }
+}
+
+holon PropertyTypeDefaultsRequireRequiredProperties.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> PropertyType.TypeDescriptor
+    UsesRule -> DefaultsRequireRequiredProperties.ValidationRule
+  }
+}
+
+holon PropertyTypeDefaultValueConformance.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> PropertyType.TypeDescriptor
+    UsesRule -> DefaultValueConformance.ValidationRule
+  }
+}
+
+holon PropertyTypeUniquePropertyMemberBinding.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> PropertyType.TypeDescriptor
+    UsesRule -> UniquePropertyMemberBinding.ValidationRule
+  }
+}
+
+holon PropertyTypeRequiredPropertyPresence.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> PropertyType.TypeDescriptor
+    UsesRule -> RequiredPropertyPresence.ValidationRule
+  }
+}
+
+holon PropertyTypePropertyValueConformance.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> PropertyType.TypeDescriptor
+    UsesRule -> PropertyValueConformance.ValidationRule
+  }
+}
+
+holon StringValueTypeBaseValueKind.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> StringValueType.ValueType
+    UsesRule -> BaseValueKindMatchesString.ValidationRule
+  }
+}
+
+holon StringValueTypeLength.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> StringValueType.ValueType
+    UsesRule -> StringLength.ValidationRule
+  }
+}
+
+holon IntegerValueTypeBaseValueKind.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> IntegerValueType.ValueType
+    UsesRule -> BaseValueKindMatchesInteger.ValidationRule
+  }
+}
+
+holon IntegerValueTypeRange.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> IntegerValueType.ValueType
+    UsesRule -> IntegerRange.ValidationRule
+  }
+}
+
+holon BooleanValueTypeBaseValueKind.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> BooleanValueType.ValueType
+    UsesRule -> BaseValueKindMatchesBoolean.ValidationRule
+  }
+}
+
+holon EnumValueTypeMemberNamesUnique.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> EnumValueType.ValueType
+    UsesRule -> EnumMemberNamesUnique.ValidationRule
+  }
+}
+
+holon EnumValueTypeBaseValueKind.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> EnumValueType.ValueType
+    UsesRule -> BaseValueKindMatchesEnum.ValidationRule
+  }
+}
+
+holon EnumValueTypeTokenMembership.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> EnumValueType.ValueType
+    UsesRule -> EnumTokenMembership.ValidationRule
+  }
+}
+
+holon EnumValueTypeTokenNonRetroactivity.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> EnumValueType.ValueType
+    UsesRule -> EnumTokenNonRetroactivity.ValidationRule
+  }
+}
+
+holon BytesValueTypeBaseValueKind.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> BytesValueType.ValueType
+    UsesRule -> BaseValueKindMatchesBytes.ValidationRule
+  }
+}
+
+holon BytesValueTypeLength.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> BytesValueType.ValueType
+    UsesRule -> BytesLength.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeOccurrenceBinding.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> RelationshipOccurrenceBinding.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeOccurrenceGrouping.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> RelationshipOccurrenceGrouping.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeEndpointCompatibility.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> RelationshipEndpointCompatibility.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeCollectionPolicy.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> RelationshipCollectionPolicy.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeAdditionalPolicy.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> AdditionalRelationshipPolicy.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeCardinality.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> RelationshipCardinality.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeDescriptorPairing.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> RelationshipDescriptorPairing.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeInverseEndpointCorrespondence.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> InverseEndpointCorrespondence.ValidationRule
+  }
+}
+
+holon DeclaredRelationshipTypeDirectionalDeletion.ValidationBinding {
+  type ValidationBinding.HolonType
+  relationships {
+    AppliesTo -> DeclaredRelationshipType.RelationshipType
+    UsesRule -> DirectionalDeletionDeclarations.ValidationRule
+  }
+}

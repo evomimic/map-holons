@@ -508,6 +508,7 @@ mod tests {
             .join("..")
             .join("generated")
             .join("json-imports");
+        let core_schema_dir = core_schema_dir.join("core");
 
         let mut schema_paths = fs::read_dir(&core_schema_dir)
             .unwrap_or_else(|error| {
