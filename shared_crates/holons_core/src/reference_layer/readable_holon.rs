@@ -1,7 +1,9 @@
 use std::sync::{Arc, RwLock};
 
 use super::{HolonReference, TransientReference};
-use crate::descriptors::{HolonDescriptor, PropertyDescriptor, QualifiedRelationship};
+use crate::descriptors::{
+    CommandDescriptor, DanceDescriptor, HolonDescriptor, PropertyDescriptor, QualifiedRelationship,
+};
 use crate::reference_layer::available_relationships;
 use crate::reference_layer::definitional_equivalence::{
     self, EquivalenceOutcome, EquivalenceResolver, NoOpResolver,
@@ -15,6 +17,7 @@ use base_types::MapString;
 use core_types::{HolonError, HolonId, HolonNodeModel, PropertyValue};
 use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 use type_names::ToPropertyName;
+use type_names::{ToCommandName, ToDanceName};
 
 // Façade: ergonomic + complete; default bodies delegate to *_impl.
 pub trait ReadableHolon: ReadableHolonImpl {
@@ -205,6 +208,29 @@ pub trait ReadableHolon: ReadableHolonImpl {
     #[inline]
     fn available_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
         self.holon_descriptor()?.instance_properties()
+    }
+
+    #[inline]
+    fn available_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
+        self.holon_descriptor()?.afforded_dances()
+    }
+
+    #[inline]
+    fn available_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
+        self.holon_descriptor()?.afforded_commands()
+    }
+
+    #[inline]
+    fn get_dance_by_name<T: ToDanceName>(&self, name: T) -> Result<DanceDescriptor, HolonError> {
+        self.holon_descriptor()?.get_dance_by_name(name)
+    }
+
+    #[inline]
+    fn get_command_by_name<T: ToCommandName>(
+        &self,
+        name: T,
+    ) -> Result<CommandDescriptor, HolonError> {
+        self.holon_descriptor()?.get_command_by_name(name)
     }
 
     fn holon_descriptor(&self) -> Result<HolonDescriptor, HolonError> {

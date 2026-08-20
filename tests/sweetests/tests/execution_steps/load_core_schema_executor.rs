@@ -38,7 +38,7 @@ pub async fn execute_load_generated_dance_schema(test_state: &mut TestExecutionS
     let content_set = build_generated_dance_schema_content_set().unwrap_or_else(|error| {
         panic!("failed to build generated Dance Schema ContentSet: {error:?}")
     });
-    execute_load_holons_client_expect_success(test_state, content_set, 85, 1).await;
+    execute_load_holons_client_expect_success(test_state, content_set, 83, 1).await;
 }
 
 /// Loads the Commands package after Core and Dance have committed.
@@ -62,7 +62,7 @@ pub async fn execute_load_generated_query_dance_schema(test_state: &mut TestExec
     let content_set = build_generated_query_dance_schema_content_set().unwrap_or_else(|error| {
         panic!("failed to build generated Query Dance Adapter Schema ContentSet: {error:?}")
     });
-    execute_load_holons_client_expect_success(test_state, content_set, 13, 1).await;
+    execute_load_holons_client_expect_success(test_state, content_set, 10, 1).await;
 }
 
 /// Loads the checked-in Schema 2.0 compiler artifact. Metrics are recorded by

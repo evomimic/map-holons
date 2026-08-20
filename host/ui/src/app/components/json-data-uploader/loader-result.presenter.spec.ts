@@ -11,6 +11,7 @@ import { presentLoaderResult } from './loader-result.presenter';
 function holonMock(
   properties: Record<string, BaseValue>,
   relatedErrors: Array<Record<string, BaseValue>> = [],
+  relatedHolons?: ReadableHolon['relatedHolons'],
 ): ReadableHolon {
   const members = relatedErrors.map(
     (error) => holonMock(error) as unknown as HolonReference,
@@ -36,9 +37,9 @@ function holonMock(
     propertyValue: vi.fn<(name: string) => Promise<BaseValue | null>>(
       async (name: string) => properties[name] ?? null,
     ),
-    relatedHolons: vi.fn<(name: string) => Promise<HolonCollection>>(
-      async () => relatedCollection,
-    ),
+    relatedHolons:
+      relatedHolons ??
+      vi.fn<(name: string) => Promise<HolonCollection>>(async () => relatedCollection),
   };
 }
 
@@ -101,6 +102,33 @@ describe('presentLoaderResult', () => {
           errorMessage: 'Missing required field',
         },
       ],
+    });
+  });
+
+  it('keeps summary fields when related load errors cannot be read', async () => {
+    const loaderHolon = holonMock(
+      {
+        HolonsStaged: { IntegerValue: 0 },
+        HolonsCommitted: { IntegerValue: 0 },
+        ErrorCount: { IntegerValue: 2 },
+        DanceSummary: { StringValue: 'pass2 short-circuit' },
+        LinksCreated: { IntegerValue: 0 },
+        LoadCommitStatus: { StringValue: 'Failed' },
+      },
+      [],
+      vi.fn(async () => {
+        throw new Error('HasLoadError unavailable');
+      }),
+    );
+
+    await expect(presentLoaderResult(loaderHolon)).resolves.toEqual({
+      holonsStaged: '0',
+      holonsCommitted: '0',
+      errorCount: '2',
+      danceSummary: 'pass2 short-circuit',
+      linksCreated: '0',
+      loadCommitStatus: 'Failed',
+      loadErrors: [],
     });
   });
 });

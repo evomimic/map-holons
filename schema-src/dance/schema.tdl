@@ -33,8 +33,9 @@ holon MetaDanceType.MetaHolonType {
   relationships {
     InstanceProperties -> DanceDescription.PropertyType
     InstanceRelationships -> [
-      (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor),
-      (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)
+      (DanceType.HolonType)-[RequestType]->(HolonType.TypeDescriptor),
+      (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType),
+      (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)
     ]
   }
 }
@@ -60,7 +61,7 @@ abstract holon DanceType.HolonType {
   extends HolonType.TypeDescriptor
   DefinesInstanceTypeKind true
   header {
-    description: "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type (DanceInput) and a response holon type. Dance input may be any fixed-shape holon type, not only a Projection."
+    description: "Abstract holon type for descriptors of executable dances, linking to an optional request-contract holon type and a response holon type."
     display_name: "Dance Type"
     display_plural: "Dance Types"
     plural: "DanceTypes"
@@ -128,8 +129,9 @@ holon LoadHolons.DanceType {
     plural: "LoadHolonsDances"
   }
   relationships {
-    DanceInput -> HolonLoadSet.HolonType
+    RequestType -> HolonLoadSet.HolonType
     Response -> HolonLoadResponse.DanceResponseType
+    DanceAffordedBy -> HolonSpace.HolonType
   }
 }
 
@@ -144,9 +146,8 @@ holon DanceInvocation.HolonType {
     plural: "DanceInvocations"
   }
   relationships {
-    InstanceProperties -> Context.PropertyType
+    InstanceProperties -> [DanceName.PropertyType, InvocationSource.PropertyType]
     InstanceRelationships -> [
-      (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType),
       (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor),
       (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor)
     ]
@@ -244,37 +245,37 @@ inverse relationship (HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadRespon
   }
 }
 
-def relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType) {
+def relationship (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
-    HasInverse -> DanceAffordedBy
+    HasInverse -> AffordsDance
   }
   extends DeclaredRelationshipType.RelationshipType
-  source HolonType.TypeDescriptor
-  target DanceType.HolonType
+  source DanceType.HolonType
+  target HolonType.TypeDescriptor
   cardinality 0..*
   deletion_semantic Allow
   header {
-    description: "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type)."
-    display_name: "AffordsDance Relationship"
-    display_plural: "AffordsDance Relationships"
-    plural: "AffordsDanceRelationships"
+    description: "Declares that a DanceType is afforded by a HolonType."
+    display_name: "Dance Afforded By Relationship"
+    display_plural: "Dance Afforded By Relationships"
+    plural: "DanceAffordedByRelationships"
   }
 }
 
 
-inverse relationship (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor) {
+inverse relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
-  source DanceType.HolonType
-  target HolonType.TypeDescriptor
+  source HolonType.TypeDescriptor
+  target DanceType.HolonType
   cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Inverse of AffordsDance, from DanceType to HolonType."
-    display_name: "DanceAffordedBy Relationship"
-    display_plural: "DanceAffordedBy Relationships"
-    plural: "DanceAffordedByRelationships"
+    description: "Inverse of DanceAffordedBy, exposing Dances afforded by a HolonType."
+    display_name: "Affords Dance Relationship"
+    display_plural: "Affords Dance Relationships"
+    plural: "AffordsDanceRelationships"
   }
 }
 
@@ -349,10 +350,10 @@ inverse relationship (DanceType.HolonType)-[HasImplementation]->(DanceImplementa
 }
 
 
-def relationship (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor) {
+def relationship (DanceType.HolonType)-[RequestType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
-    HasInverse -> DanceInputFor
+    HasInverse -> RequestTypeFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
@@ -361,14 +362,14 @@ def relationship (DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor) 
   deletion_semantic Block
   header {
     description: "Links a DanceType to the holon type used as its request contract."
-    display_name: "DanceInput Relationship"
-    display_plural: "DanceInput Relationships"
-    plural: "DanceInputRelationships"
+    display_name: "Request Type Relationship"
+    display_plural: "Request Type Relationships"
+    plural: "RequestTypeRelationships"
   }
 }
 
 
-inverse relationship (HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.HolonType) {
+inverse relationship (HolonType.TypeDescriptor)-[RequestTypeFor]->(DanceType.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
@@ -376,10 +377,10 @@ inverse relationship (HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.Holo
   cardinality 0..*
   deletion_semantic Block
   header {
-    description: "Inverse of DanceInput, from HolonType to DanceType."
-    display_name: "DanceInputFor Relationship"
-    display_plural: "DanceInputFor Relationships"
-    plural: "DanceInputForRelationships"
+    description: "Inverse of RequestType, from HolonType to DanceType."
+    display_name: "Request Type For Relationship"
+    display_plural: "Request Type For Relationships"
+    plural: "RequestTypeForRelationships"
   }
 }
 
@@ -454,41 +455,6 @@ inverse relationship (HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceRespons
 }
 
 
-def relationship (DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType) {
-  type MetaDeclaredRelationshipType.MetaRelationshipType
-  relationships {
-    HasInverse -> InvokedBy
-  }
-  extends DeclaredRelationshipType.RelationshipType
-  source DanceInvocation.HolonType
-  target DanceType.HolonType
-  cardinality 1..1
-  deletion_semantic Block
-  header {
-    description: "Links a DanceInvocation holon to the DanceType it invokes."
-    display_name: "InvokesDance Relationship"
-    display_plural: "InvokesDance Relationships"
-    plural: "InvokesDanceRelationships"
-  }
-}
-
-
-inverse relationship (DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType) {
-  type MetaInverseRelationshipType.MetaRelationshipType
-  extends InverseRelationshipType.RelationshipType
-  source DanceType.HolonType
-  target DanceInvocation.HolonType
-  cardinality 0..*
-  deletion_semantic Block
-  header {
-    description: "Inverse of InvokesDance, from DanceType to DanceInvocation."
-    display_name: "InvokedBy Relationship"
-    display_plural: "InvokedBy Relationships"
-    plural: "InvokedByRelationships"
-  }
-}
-
-
 def relationship (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
@@ -497,10 +463,10 @@ def relationship (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDe
   extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..1
+  cardinality 1..1
   deletion_semantic Block
   header {
-    description: "Links a DanceInvocation to the holon affording the invoked dance. The referenced instance must afford the dance named by InvokesDance."
+    description: "Links a DanceInvocation to the holon whose effective affordances resolve the invocation's DanceName."
     display_name: "AffordingHolon Relationship"
     display_plural: "AffordingHolon Relationships"
     plural: "AffordingHolonRelationships"
@@ -621,16 +587,16 @@ property DanceDescription.PropertyType {
 }
 
 
-property Context.PropertyType {
+property InvocationSource.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
   value InvocationSource.MapEnumValueType
   IsValueRequired true
   header {
     description: "Ingress context for a DanceInvocation, recorded as an InvocationSource enum value."
-    display_name: "context"
-    display_plural: "contexts"
-    plural: "Contexts"
+    display_name: "invocation_source"
+    display_plural: "invocation_sources"
+    plural: "InvocationSources"
   }
 }
 

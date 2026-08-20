@@ -1,14 +1,11 @@
-use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::Holon;
 use crate::descriptors::{
     accessor_helpers, DanceDescriptor, DanceResponseDescriptor, Descriptor, HolonDescriptor,
 };
-use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
-use base_types::{BaseValue, MapBytes, MapString};
-use core_types::{HolonError, HolonId, TypeKind};
+use crate::reference_layer::{HolonReference, ReadableHolon};
+use base_types::{BaseValue, MapString};
+use core_types::{HolonError, HolonId};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use type_names::CoreDanceImplementationName;
 use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 /// Runtime result for dance execution within a transaction.
@@ -238,13 +235,23 @@ impl DanceInvocation {
         self.invocation
     }
 
-    /// Follows `InvokesDance` and returns the referenced dance descriptor.
-    pub fn dance_descriptor(&self) -> Result<DanceDescriptor, HolonError> {
-        let descriptor = accessor_helpers::require_single_related(
-            self.as_holon_reference(),
-            CoreRelationshipTypeName::InvokesDance,
-        )?;
-        Ok(DanceDescriptor::from_holon(descriptor))
+    /// Returns the canonical DanceName requested by this invocation.
+    pub fn dance_name(&self) -> Result<type_names::DanceName, HolonError> {
+        let value = self
+            .as_holon_reference()
+            .property_value(CorePropertyTypeName::DanceName)?
+            .ok_or_else(|| {
+                HolonError::InvalidParameter(format!(
+                    "DanceInvocation {} is missing required DanceName",
+                    self.as_holon_reference().summarize().unwrap_or_default()
+                ))
+            })?;
+        match value {
+            BaseValue::StringValue(value) => Ok(type_names::DanceName(value)),
+            other => {
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "String".to_string()))
+            }
+        }
     }
 
     /// Follows `Request` and returns the request holon, if present.
@@ -289,13 +296,15 @@ impl DanceInvocation {
 
     /// Resolves the descriptor-backed execution context needed by the executor.
     pub fn bind(self) -> Result<BoundDanceInvocation, HolonError> {
-        let dance_descriptor = self.dance_descriptor()?;
-        let request_type = dance_descriptor.input_type()?;
         let affording_holon = self.affording_holon()?;
-        let affording_holon_descriptor = match affording_holon.as_ref() {
-            Some(holon) => Some(holon.holon_descriptor()?),
-            None => None,
-        };
+        let affording_holon =
+            affording_holon.ok_or_else(|| HolonError::MissingRequiredRelationship {
+                relationship: "AffordingHolon".to_string(),
+                descriptor: self.as_holon_reference().summarize().unwrap_or_default(),
+            })?;
+        let affording_holon_descriptor = affording_holon.holon_descriptor()?;
+        let dance_descriptor = affording_holon.get_dance_by_name(self.dance_name()?)?;
+        let request_type = dance_descriptor.input_type()?;
 
         Ok(BoundDanceInvocation {
             request: self.request()?,
@@ -303,150 +312,10 @@ impl DanceInvocation {
             invocation: self,
             dance_descriptor,
             request_type,
-            affording_holon,
-            affording_holon_descriptor,
+            affording_holon: Some(affording_holon),
+            affording_holon_descriptor: Some(affording_holon_descriptor),
         })
     }
-
-    /// Builds a canonical invocation holon for the host-side `DeleteHolon`
-    /// dance surface.
-    ///
-    /// `DeleteHolon` is request-driven: the holon id to delete is carried in a
-    /// transient request holon rather than by resolving a target holon up
-    /// front.
-    pub fn build_delete_holon(
-        context: &Arc<TransactionContext>,
-        holon_id: HolonId,
-    ) -> Result<Self, HolonError> {
-        let invocation_descriptor = new_runtime_descriptor_holon(
-            context,
-            "dance-invocation-descriptor",
-            "DanceInvocation",
-        )?;
-        let response_type = new_runtime_response_descriptor_holon(
-            context,
-            "delete-holon-response-type-family",
-            "DanceResponseType",
-            "delete-holon-response-type",
-            "DeleteHolonResponse",
-        )?;
-        let implementation = new_runtime_descriptor_holon(
-            context,
-            "delete-holon-implementation",
-            CoreDanceImplementationName::DeleteHolon.as_command_name().0,
-        )?;
-
-        let mut dance_descriptor =
-            context.mutation().new_holon(Some(MapString::from("delete-holon-dance")))?;
-        initialize_runtime_descriptor_holon(&mut dance_descriptor, "DeleteHolon")?;
-        dance_descriptor
-            .add_related_holons(CoreRelationshipTypeName::Response, vec![response_type.into()])?;
-        dance_descriptor
-            .add_related_holons(CoreRelationshipTypeName::ForDance, vec![implementation.into()])?;
-
-        let mut request =
-            context.mutation().new_holon(Some(MapString::from("delete-holon-parameters")))?;
-        request.with_property_value(
-            CorePropertyTypeName::HolonId,
-            BaseValue::BytesValue(MapBytes(holon_id.to_canonical_bytes())),
-        )?;
-
-        let mut invocation =
-            context.mutation().new_holon(Some(MapString::from("delete-holon-invocation")))?;
-        invocation.with_descriptor(invocation_descriptor.into())?;
-        invocation
-            .with_property_value("InvocationSource", MapString("ClientCommand".to_string()))?;
-        invocation.add_related_holons(
-            CoreRelationshipTypeName::InvokesDance,
-            vec![dance_descriptor.into()],
-        )?;
-        invocation.add_related_holons(CoreRelationshipTypeName::Request, vec![request.into()])?;
-
-        Self::new(invocation.into())
-    }
-
-    /// Builds a canonical invocation holon for the host-side `Commit`
-    /// dance surface.
-    ///
-    /// Commit has no request holon and no affording holon. The transaction
-    /// context itself provides the state being committed.
-    pub fn build_commit(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
-        let invocation_descriptor = new_runtime_descriptor_holon(
-            context,
-            "dance-invocation-descriptor",
-            "DanceInvocation",
-        )?;
-        let response_type = new_runtime_response_descriptor_holon(
-            context,
-            "commit-response-type-family",
-            "DanceResponseType",
-            "commit-response-type",
-            "CommitDanceResponse",
-        )?;
-        let implementation = new_runtime_descriptor_holon(
-            context,
-            "commit-implementation",
-            CoreDanceImplementationName::Commit.as_command_name().0,
-        )?;
-
-        let mut dance_descriptor =
-            context.mutation().new_holon(Some(MapString::from("commit-dance")))?;
-        initialize_runtime_descriptor_holon(&mut dance_descriptor, "Commit")?;
-        dance_descriptor
-            .add_related_holons(CoreRelationshipTypeName::Response, vec![response_type.into()])?;
-        dance_descriptor
-            .add_related_holons(CoreRelationshipTypeName::ForDance, vec![implementation.into()])?;
-
-        let mut invocation =
-            context.mutation().new_holon(Some(MapString::from("commit-invocation")))?;
-        invocation.with_descriptor(invocation_descriptor.into())?;
-        invocation
-            .with_property_value("InvocationSource", MapString("ClientCommand".to_string()))?;
-        invocation.add_related_holons(
-            CoreRelationshipTypeName::InvokesDance,
-            vec![dance_descriptor.into()],
-        )?;
-
-        Self::new(invocation.into())
-    }
-}
-
-fn new_runtime_descriptor_holon(
-    context: &Arc<TransactionContext>,
-    key: &str,
-    type_name: impl Into<MapString>,
-) -> Result<HolonReference, HolonError> {
-    let mut descriptor = context.mutation().new_holon(Some(MapString::from(key)))?;
-    initialize_runtime_descriptor_holon(&mut descriptor, type_name)?;
-    Ok(descriptor.into())
-}
-
-fn new_runtime_response_descriptor_holon(
-    context: &Arc<TransactionContext>,
-    family_key: &str,
-    family_type_name: impl Into<MapString>,
-    response_key: &str,
-    response_type_name: impl Into<MapString>,
-) -> Result<HolonReference, HolonError> {
-    let family = new_runtime_descriptor_holon(context, family_key, family_type_name)?;
-    let mut response_descriptor =
-        context.mutation().new_holon(Some(MapString::from(response_key)))?;
-    initialize_runtime_descriptor_holon(&mut response_descriptor, response_type_name)?;
-    response_descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![family])?;
-    Ok(response_descriptor.into())
-}
-
-fn initialize_runtime_descriptor_holon<T: WritableHolon>(
-    descriptor: &mut T,
-    type_name: impl Into<MapString>,
-) -> Result<(), HolonError> {
-    descriptor.with_property_value(CorePropertyTypeName::TypeName, type_name.into())?;
-    descriptor.with_property_value(CorePropertyTypeName::IsAbstractType, false)?;
-    descriptor.with_property_value(
-        CorePropertyTypeName::InstanceTypeKind,
-        MapString(TypeKind::Holon.as_schema_key()),
-    )?;
-    Ok(())
 }
 
 fn parse_invocation_source(value: &MapString) -> Result<InvocationSource, HolonError> {

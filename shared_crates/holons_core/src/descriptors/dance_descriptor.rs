@@ -28,7 +28,7 @@ impl DanceDescriptor {
     pub fn input_type(&self) -> Result<Option<HolonDescriptor>, HolonError> {
         Ok(accessor_helpers::optional_single_related(
             &self.holon,
-            CoreRelationshipTypeName::DanceInput,
+            CoreRelationshipTypeName::RequestType,
         )?
         .map(HolonDescriptor::from_holon))
     }
@@ -125,7 +125,7 @@ mod tests {
         let request_type = new_descriptor_holon(&context, "request-type", "Projection", "Holon")?;
         let mut holon = new_descriptor_holon(&context, "dance-with-request", "Query", "Holon")?;
         holon
-            .add_related_holons(CoreRelationshipTypeName::DanceInput, vec![request_type.into()])?;
+            .add_related_holons(CoreRelationshipTypeName::RequestType, vec![request_type.into()])?;
         let descriptor = DanceDescriptor::from_holon(holon.into());
 
         assert_eq!(
@@ -146,7 +146,7 @@ mod tests {
         let mut holon =
             new_descriptor_holon(&context, "dance-with-many-requests", "Query", "Holon")?;
         holon.add_related_holons(
-            CoreRelationshipTypeName::DanceInput,
+            CoreRelationshipTypeName::RequestType,
             vec![request_type_a.into(), request_type_b.into()],
         )?;
         let descriptor = DanceDescriptor::from_holon(holon.into());
@@ -154,7 +154,7 @@ mod tests {
         assert!(matches!(
             descriptor.input_type(),
             Err(HolonError::MultipleRelatedHolons { relationship, count, .. })
-                if relationship == "DanceInput" && count == 2
+                if relationship == "RequestType" && count == 2
         ));
 
         Ok(())
