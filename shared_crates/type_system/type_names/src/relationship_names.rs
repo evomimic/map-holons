@@ -67,7 +67,6 @@ impl ToRelationshipName for &RelationshipName {
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreRelationshipTypeName {
     AbandonedHolons,
-    AffordedBy,
     AffordingHolon,
     AffordsCommand,
     AffordsDance,
@@ -80,8 +79,8 @@ pub enum CoreRelationshipTypeName {
     Constraints,
     Contains,
     DanceAffordedBy,
-    DanceInput,
-    DanceInputFor,
+    RequestType,
+    RequestTypeFor,
     Dependents,
     DependsOn,
     DescribedBy,
@@ -100,7 +99,6 @@ pub enum CoreRelationshipTypeName {
     InstanceRelationships,
     Instances,
     InverseOf,
-    InvokesDance,
     OwnedBy,
     Owns,
     Predecessor,
@@ -120,8 +118,10 @@ pub enum CoreRelationshipTypeName {
     TargetOf,
     TargetType,
     TransactionModelAffordedBy,
+    ValidationRuleAffordedBy,
     Validations,
     ValueType,
+    ValueTypeAffordedBy,
     ValueTypeFor,
     Variants,
 }
@@ -167,6 +167,14 @@ mod tests {
         assert_eq!(
             RelationshipName(MapString("TransactionModelAffordedBy".to_string())),
             CoreRelationshipTypeName::TransactionModelAffordedBy.as_relationship_name()
+        );
+        assert_eq!(
+            RelationshipName(MapString("ValueTypeAffordedBy".to_string())),
+            CoreRelationshipTypeName::ValueTypeAffordedBy.as_relationship_name()
+        );
+        assert_eq!(
+            RelationshipName(MapString("ValidationRuleAffordedBy".to_string())),
+            CoreRelationshipTypeName::ValidationRuleAffordedBy.as_relationship_name()
         );
     }
 

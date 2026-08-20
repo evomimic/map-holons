@@ -64,19 +64,33 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         dance_descriptor.dance_name().expect("DanceType dance_name"),
         DanceName(MapString("DanceType".to_string()))
     );
-    let input_parameters_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+    let request_type_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
-        "(DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)",
+        "(DanceType.HolonType)-[RequestType]->(HolonType.TypeDescriptor)",
     ));
     assert_relationship_shape(
-        input_parameters_relationship.base_relationship_name(),
-        input_parameters_relationship.source_type(),
-        input_parameters_relationship.target_type(),
-        input_parameters_relationship.full_relationship_name(),
-        "DanceInput",
+        request_type_relationship.base_relationship_name(),
+        request_type_relationship.source_type(),
+        request_type_relationship.target_type(),
+        request_type_relationship.full_relationship_name(),
+        "RequestType",
         "DanceType",
         "HolonType",
-        "(DanceType)-[DanceInput]->(HolonType)",
+        "(DanceType)-[RequestType]->(HolonType)",
+    );
+    let dance_afforded_by_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)",
+    ));
+    assert_relationship_shape(
+        dance_afforded_by_relationship.base_relationship_name(),
+        dance_afforded_by_relationship.source_type(),
+        dance_afforded_by_relationship.target_type(),
+        dance_afforded_by_relationship.full_relationship_name(),
+        "DanceAffordedBy",
+        "DanceType",
+        "HolonType",
+        "(DanceType)-[DanceAffordedBy]->(HolonType)",
     );
     let response_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
@@ -93,36 +107,36 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         "(DanceType)-[Response]->(DanceResponseType)",
     );
     assert_eq!(dance_descriptor.input_type().expect("DanceType input_parameters").is_none(), true);
-    let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
-        &holons,
-        "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)",
-    ))
-    .try_into_declared_relationship_descriptor()
-    .expect("AffordsDance should be a declared relationship descriptor");
-    assert_relationship_shape(
-        affordance_relationship.base_relationship_name(),
-        affordance_relationship.source_type(),
-        affordance_relationship.target_type(),
-        affordance_relationship.full_relationship_name(),
-        "AffordsDance",
-        "HolonType",
-        "DanceType",
-        "(HolonType)-[AffordsDance]->(DanceType)",
-    );
     let afforded_by_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
         &holons,
         "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)",
     ))
+    .try_into_declared_relationship_descriptor()
+    .expect("DanceAffordedBy should be a declared relationship descriptor");
+    assert_relationship_shape(
+        afforded_by_relationship.base_relationship_name(),
+        afforded_by_relationship.source_type(),
+        afforded_by_relationship.target_type(),
+        afforded_by_relationship.full_relationship_name(),
+        "DanceAffordedBy",
+        "DanceType",
+        "HolonType",
+        "(DanceType)-[DanceAffordedBy]->(HolonType)",
+    );
+    let affordance_relationship = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)",
+    ))
     .try_into_inverse_relationship_descriptor()
-    .expect("DanceAffordedBy should be an inverse relationship descriptor");
+    .expect("AffordsDance should be an inverse relationship descriptor");
     assert_eq!(
-        afforded_by_relationship
+        affordance_relationship
             .inverse_of()
-            .expect("DanceAffordedBy inverse_of")
+            .expect("AffordsDance inverse_of")
             .base_relationship_name()
-            .expect("DanceAffordedBy inverse_of base name")
+            .expect("AffordsDance inverse_of base name")
             .to_string(),
-        "AffordsDance"
+        "DanceAffordedBy"
     );
     assert_loaded_schema_backed_dance_discovery(state, &holons).await;
 
@@ -171,22 +185,22 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     let dance_invocation_descriptor = HolonDescriptor::from_holon(dance_invocation.clone());
     let invocation_property_names =
         property_type_names(dance_invocation_descriptor.instance_properties());
-    assert_contains(&invocation_property_names, "Context");
+    assert_contains(&invocation_property_names, "DanceName");
+    assert_contains(&invocation_property_names, "InvocationSource");
     let invocation_relationship_names =
         relationship_base_names(dance_invocation_descriptor.instance_relationships());
-    assert_contains(&invocation_relationship_names, "InvokesDance");
     assert_contains(&invocation_relationship_names, "AffordingHolon");
     assert_contains(&invocation_relationship_names, "Request");
-    let context_property = dance_invocation_descriptor
-        .get_property_by_name(PropertyName(MapString::from("Context")))
-        .expect("DanceInvocation.Context lookup");
+    let invocation_source_property = dance_invocation_descriptor
+        .get_property_by_name(PropertyName(MapString::from("InvocationSource")))
+        .expect("DanceInvocation.InvocationSource lookup");
     assert_eq!(
-        context_property
+        invocation_source_property
             .value_type()
-            .expect("DanceInvocation.Context value_type")
+            .expect("DanceInvocation.InvocationSource value_type")
             .header()
             .type_name()
-            .expect("DanceInvocation.Context value type_name"),
+            .expect("DanceInvocation.InvocationSource value type_name"),
         MapString("InvocationSource".to_string())
     );
 
@@ -272,7 +286,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Query extends DanceType");
     query_dance
-        .add_related_holons(CoreRelationshipTypeName::DanceInput, vec![projection.clone()])
+        .add_related_holons(CoreRelationshipTypeName::RequestType, vec![projection.clone()])
         .expect("Query request type");
     query_dance
         .add_related_holons(
@@ -288,7 +302,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Inspect extends DanceType");
     inspect_dance
-        .add_related_holons(CoreRelationshipTypeName::DanceInput, vec![projection.clone()])
+        .add_related_holons(CoreRelationshipTypeName::RequestType, vec![projection.clone()])
         .expect("Inspect request type");
     inspect_dance
         .add_related_holons(

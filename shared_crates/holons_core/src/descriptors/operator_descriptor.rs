@@ -65,10 +65,13 @@ impl OperatorDescriptor {
 
     /// Returns value descriptors that declare this operator as afforded.
     pub fn afforded_by(&self) -> Result<Vec<ValueDescriptor>, HolonError> {
-        Ok(effective_relationship_members(&self.holon, CoreRelationshipTypeName::AffordedBy)?
-            .into_iter()
-            .map(|member| ValueDescriptor::from_holon(member.member))
-            .collect())
+        Ok(effective_relationship_members(
+            &self.holon,
+            CoreRelationshipTypeName::ValueTypeAffordedBy,
+        )?
+        .into_iter()
+        .map(|member| ValueDescriptor::from_holon(member.member))
+        .collect())
     }
 }
 
@@ -136,7 +139,7 @@ mod tests {
                 operator_category_value("Equality"),
             )?;
         holon.add_related_holons(
-            CoreRelationshipTypeName::AffordedBy,
+            CoreRelationshipTypeName::ValueTypeAffordedBy,
             vec![value_type.clone().into()],
         )?;
 

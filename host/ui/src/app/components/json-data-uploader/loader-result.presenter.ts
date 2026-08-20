@@ -102,7 +102,13 @@ async function readStringProperty(
 async function readLoadErrors(
   loaderHolon: ReadableHolon,
 ): Promise<LoaderErrorView[]> {
-  const errorCollection = await loaderHolon.relatedHolons('HasLoadError');
+  let errorCollection;
+  try {
+    errorCollection = await loaderHolon.relatedHolons('HasLoadError');
+  } catch (error) {
+    console.error('[Uploader] Failed to read HasLoadError collection:', error);
+    return [];
+  }
 
   return Promise.all(
     errorCollection.members.map(async (errorHolon: ReadableHolon) => ({

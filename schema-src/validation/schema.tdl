@@ -481,7 +481,7 @@ holon Validate.OperatorType {
 def relationship (ValidationRule.HolonType)-[AffordsOperator]->(OperatorType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
-    HasInverse -> AffordedBy
+    HasInverse -> ValidationRuleAffordedBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source ValidationRule.HolonType
@@ -496,7 +496,7 @@ def relationship (ValidationRule.HolonType)-[AffordsOperator]->(OperatorType.Hol
   }
 }
 
-inverse relationship (OperatorType.HolonType)-[AffordedBy]->(ValidationRule.HolonType) {
+inverse relationship (OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source OperatorType.HolonType
@@ -505,9 +505,9 @@ inverse relationship (OperatorType.HolonType)-[AffordedBy]->(ValidationRule.Holo
   deletion_semantic Block
   header {
     description: "Inverse of AffordsOperator for ValidationRule family descriptors."
-    display_name: "AffordedBy Relationship"
-    display_plural: "AffordedBy Relationships"
-    plural: "AffordedByRelationships"
+    display_name: "ValidationRuleAffordedBy Relationship"
+    display_plural: "ValidationRuleAffordedBy Relationships"
+    plural: "ValidationRuleAffordedByRelationships"
   }
 }
 

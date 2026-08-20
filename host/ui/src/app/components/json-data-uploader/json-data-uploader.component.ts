@@ -20,7 +20,9 @@ interface ValidationResult {
 }
 
 interface DataFileRecord {
+  id: string;
   filename: string;
+  displayName: string;
   content: string;
   validationResult: ValidationResult | null;
 }
@@ -50,6 +52,7 @@ export class JsonDataUploader implements OnInit {
   loaderResultStatus: string = '';
   showLoadErrors = false;
   showLoaderResult = false;
+  private nextDataFileId = 0;
 
   constructor(
     private schemaValidatorService: SchemaValidatorService,
@@ -102,28 +105,66 @@ export class JsonDataUploader implements OnInit {
 
   onDataFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files) {
-      const currentFiles = this.dataFiles();
-      Array.from(input.files).forEach((file) => {
-        this.readFile(file, (content) => {
-          // Check if file already exists
-          const existingIndex = currentFiles.findIndex(df => df.filename === file.name);
-          if (existingIndex >= 0) {
-            // Update existing file
-            currentFiles[existingIndex].content = content;
-            currentFiles[existingIndex].validationResult = null;
-          } else {
-            // Add new file
-            currentFiles.push({
-              filename: file.name,
-              content,
-              validationResult: null
-            });
-          }
-          this.dataFiles.set([...currentFiles]);
-        });
-      });
+    this.addSelectedJsonFiles(input, 'file');
+  }
+
+  onDataDirectorySelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    this.addSelectedJsonFiles(input, 'directory');
+  }
+
+  private addSelectedJsonFiles(input: HTMLInputElement, source: 'file' | 'directory') {
+    const selectedFiles = Array.from(input.files ?? []);
+    const jsonFiles = selectedFiles.filter((file) => this.isJsonFile(file));
+    const skipped = selectedFiles.length - jsonFiles.length;
+
+    if (selectedFiles.length === 0) {
+      return;
     }
+
+    if (jsonFiles.length === 0) {
+      this.errorMessage =
+        source === 'directory'
+          ? 'No JSON files were found in the selected directory.'
+          : 'Please select at least one JSON file.';
+      input.value = '';
+      return;
+    }
+
+    jsonFiles.forEach((file) => {
+      this.readFile(file, (content) => {
+        this.dataFiles.update((currentFiles) => [
+          ...currentFiles,
+          {
+            id: this.nextDataFileIdValue(file),
+            filename: file.name,
+            displayName: this.displayNameForFile(file),
+            content,
+            validationResult: null,
+          },
+        ]);
+      });
+    });
+
+    if (skipped > 0) {
+      this.successMessage = `Added ${jsonFiles.length} JSON file(s); skipped ${skipped} non-JSON file(s).`;
+    }
+    input.value = '';
+  }
+
+  private isJsonFile(file: File): boolean {
+    return file.name.toLowerCase().endsWith('.json');
+  }
+
+  private nextDataFileIdValue(file: File): string {
+    this.nextDataFileId += 1;
+    const sourcePath = this.displayNameForFile(file);
+    return `${this.nextDataFileId}:${sourcePath}:${file.size}:${file.lastModified}`;
+  }
+
+  private displayNameForFile(file: File): string {
+    const tauriPath = (file as File & { path?: string }).path;
+    return tauriPath || file.webkitRelativePath || file.name;
   }
 
   removeDataFile(index: number) {
@@ -148,7 +189,7 @@ export class JsonDataUploader implements OnInit {
       }
     };
     reader.onerror = () => {
-      this.errorMessage = `Error reading file: ${file.name}`;
+      this.errorMessage = `Error reading file: ${this.displayNameForFile(file)}`;
     };
     reader.readAsText(file);
   }
@@ -261,9 +302,10 @@ export class JsonDataUploader implements OnInit {
 
         const loaderReference = await storeInstance.uploadHolons(file_and_schema_Data);
         this.loaderResultStatus = 'Loading loader result...';
-        void this.loadLoaderResult(loaderReference);
-        this.successMessage = 'Operation submitted, waiting for loader result.';
-        this.clearForms();
+        await this.loadLoaderResult(loaderReference);
+        if (this.loaderResult && Number(this.loaderResult.errorCount) === 0) {
+          this.clearForms();
+        }
         this.cdr.markForCheck();
       } catch (error) {
         this.errorMessage = `Tauri Error: ${error instanceof Error ? error.message : 'Unknown error'}`;

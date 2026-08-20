@@ -91,10 +91,13 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)"
+              "$ref": "(DanceType.HolonType)-[RequestType]->(HolonType.TypeDescriptor)"
             },
             {
               "$ref": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)"
+            },
+            {
+              "$ref": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)"
             }
           ]
         }
@@ -145,7 +148,7 @@
         "TypeNamePlural": "DanceTypes",
         "DisplayName": "Dance Type",
         "DisplayNamePlural": "Dance Types",
-        "Description": "Abstract holon type for descriptors of executable dances, linking to a request-contract holon type (DanceInput) and a response holon type. Dance input may be any fixed-shape holon type, not only a Projection.",
+        "Description": "Abstract holon type for descriptors of executable dances, linking to an optional request-contract holon type and a response holon type.",
         "IsAbstractType": true,
         "DefinesInstanceTypeKind": true
       },
@@ -326,7 +329,15 @@
           ]
         },
         {
-          "name": "DanceInput",
+          "name": "DanceAffordedBy",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequestType",
           "target": [
             {
               "$ref": "HolonLoadSet.HolonType"
@@ -374,16 +385,16 @@
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "Context.PropertyType"
+              "$ref": "DanceName.PropertyType"
+            },
+            {
+              "$ref": "InvocationSource.PropertyType"
             }
           ]
         },
         {
           "name": "InstanceRelationships",
           "target": [
-            {
-              "$ref": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)"
-            },
             {
               "$ref": "(DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)"
             },
@@ -645,14 +656,14 @@
       ]
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)",
+      "key": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "AffordsDance",
-        "TypeNamePlural": "AffordsDanceRelationships",
-        "DisplayName": "AffordsDance Relationship",
-        "DisplayNamePlural": "AffordsDance Relationships",
-        "Description": "Declares that a HolonType affords (supports) a DanceType (i.e., the verb is valid for instances of the type).",
+        "TypeName": "DanceAffordedBy",
+        "TypeNamePlural": "DanceAffordedByRelationships",
+        "DisplayName": "Dance Afforded By Relationship",
+        "DisplayNamePlural": "Dance Afforded By Relationships",
+        "Description": "Declares that a DanceType is afforded by a HolonType.",
         "IsDefinitional": true,
         "MinCardinality": 0,
         "DeletionSemantic": "Allow"
@@ -678,7 +689,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "DanceType.HolonType"
             }
           ]
         },
@@ -686,7 +697,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "DanceType.HolonType"
+              "$ref": "HolonType.TypeDescriptor"
             }
           ]
         },
@@ -694,21 +705,21 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)"
+              "$ref": "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)"
             }
           ]
         }
       ]
     },
     {
-      "key": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)",
+      "key": "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "DanceAffordedBy",
-        "TypeNamePlural": "DanceAffordedByRelationships",
-        "DisplayName": "DanceAffordedBy Relationship",
-        "DisplayNamePlural": "DanceAffordedBy Relationships",
-        "Description": "Inverse of AffordsDance, from DanceType to HolonType.",
+        "TypeName": "AffordsDance",
+        "TypeNamePlural": "AffordsDanceRelationships",
+        "DisplayName": "Affords Dance Relationship",
+        "DisplayNamePlural": "Affords Dance Relationships",
+        "Description": "Inverse of DanceAffordedBy, exposing Dances afforded by a HolonType.",
         "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
@@ -733,7 +744,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "DanceType.HolonType"
+              "$ref": "HolonType.TypeDescriptor"
             }
           ]
         },
@@ -741,7 +752,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "DanceType.HolonType"
             }
           ]
         }
@@ -957,13 +968,13 @@
       ]
     },
     {
-      "key": "(DanceType.HolonType)-[DanceInput]->(HolonType.TypeDescriptor)",
+      "key": "(DanceType.HolonType)-[RequestType]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "DanceInput",
-        "TypeNamePlural": "DanceInputRelationships",
-        "DisplayName": "DanceInput Relationship",
-        "DisplayNamePlural": "DanceInput Relationships",
+        "TypeName": "RequestType",
+        "TypeNamePlural": "RequestTypeRelationships",
+        "DisplayName": "Request Type Relationship",
+        "DisplayNamePlural": "Request Type Relationships",
         "Description": "Links a DanceType to the holon type used as its request contract.",
         "IsDefinitional": true,
         "MinCardinality": 0,
@@ -1007,21 +1018,21 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.HolonType)"
+              "$ref": "(HolonType.TypeDescriptor)-[RequestTypeFor]->(DanceType.HolonType)"
             }
           ]
         }
       ]
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[DanceInputFor]->(DanceType.HolonType)",
+      "key": "(HolonType.TypeDescriptor)-[RequestTypeFor]->(DanceType.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "DanceInputFor",
-        "TypeNamePlural": "DanceInputForRelationships",
-        "DisplayName": "DanceInputFor Relationship",
-        "DisplayNamePlural": "DanceInputFor Relationships",
-        "Description": "Inverse of DanceInput, from HolonType to DanceType.",
+        "TypeName": "RequestTypeFor",
+        "TypeNamePlural": "RequestTypeForRelationships",
+        "DisplayName": "Request Type For Relationship",
+        "DisplayNamePlural": "Request Type For Relationships",
+        "Description": "Inverse of RequestType, from HolonType to DanceType.",
         "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
@@ -1269,110 +1280,6 @@
       ]
     },
     {
-      "key": "(DanceInvocation.HolonType)-[InvokesDance]->(DanceType.HolonType)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "InvokesDance",
-        "TypeNamePlural": "InvokesDanceRelationships",
-        "DisplayName": "InvokesDance Relationship",
-        "DisplayNamePlural": "InvokesDance Relationships",
-        "Description": "Links a DanceInvocation holon to the DanceType it invokes.",
-        "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
-        "DeletionSemantic": "Block"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "DeclaredRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Dance Schema-v0.1.0"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "DanceInvocation.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "DanceType.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "HasInverse",
-          "target": [
-            {
-              "$ref": "(DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType)"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(DanceType.HolonType)-[InvokedBy]->(DanceInvocation.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "InvokedBy",
-        "TypeNamePlural": "InvokedByRelationships",
-        "DisplayName": "InvokedBy Relationship",
-        "DisplayNamePlural": "InvokedBy Relationships",
-        "Description": "Inverse of InvokesDance, from DanceType to DanceInvocation.",
-        "MinCardinality": 0,
-        "DeletionSemantic": "Block"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "InverseRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Dance Schema-v0.1.0"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "DanceType.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "DanceInvocation.HolonType"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "(DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
@@ -1380,9 +1287,9 @@
         "TypeNamePlural": "AffordingHolonRelationships",
         "DisplayName": "AffordingHolon Relationship",
         "DisplayNamePlural": "AffordingHolon Relationships",
-        "Description": "Links a DanceInvocation to the holon affording the invoked dance. The referenced instance must afford the dance named by InvokesDance.",
+        "Description": "Links a DanceInvocation to the holon whose effective affordances resolve the invocation's DanceName.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
+        "MinCardinality": 1,
         "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
@@ -1759,13 +1666,13 @@
       ]
     },
     {
-      "key": "Context.PropertyType",
+      "key": "InvocationSource.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
-        "TypeName": "Context",
-        "TypeNamePlural": "Contexts",
-        "DisplayName": "context",
-        "DisplayNamePlural": "contexts",
+        "TypeName": "InvocationSource",
+        "TypeNamePlural": "InvocationSources",
+        "DisplayName": "invocation_source",
+        "DisplayNamePlural": "invocation_sources",
         "Description": "Ingress context for a DanceInvocation, recorded as an InvocationSource enum value.",
         "IsValueRequired": true
       },

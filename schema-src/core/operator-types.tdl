@@ -40,7 +40,7 @@ abstract holon OperatorType.HolonType {
 def relationship (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
-    HasInverse -> AffordedBy
+    HasInverse -> ValueTypeAffordedBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source ValueType.TypeDescriptor
@@ -55,7 +55,7 @@ def relationship (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.Hol
   }
 }
 
-inverse relationship (OperatorType.HolonType)-[AffordedBy]->(ValueType.TypeDescriptor) {
+inverse relationship (OperatorType.HolonType)-[ValueTypeAffordedBy]->(ValueType.TypeDescriptor) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source OperatorType.HolonType
@@ -64,9 +64,9 @@ inverse relationship (OperatorType.HolonType)-[AffordedBy]->(ValueType.TypeDescr
   deletion_semantic Block
   header {
     description: "Inverse of AffordsOperator, from a concrete operator descriptor to the value type descriptors that afford it."
-    display_name: "AffordedBy Relationship"
-    display_plural: "AffordedBy Relationships"
-    plural: "AffordedByRelationships"
+    display_name: "ValueTypeAffordedBy Relationship"
+    display_plural: "ValueTypeAffordedBy Relationships"
+    plural: "ValueTypeAffordedByRelationships"
   }
 }
 
