@@ -135,20 +135,20 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(OperatorType.HolonType)-[AffordedBy]->(ValueType.TypeDescriptor)"
+              "$ref": "(OperatorType.HolonType)-[ValueTypeAffordedBy]->(ValueType.TypeDescriptor)"
             }
           ]
         }
       ]
     },
     {
-      "key": "(OperatorType.HolonType)-[AffordedBy]->(ValueType.TypeDescriptor)",
+      "key": "(OperatorType.HolonType)-[ValueTypeAffordedBy]->(ValueType.TypeDescriptor)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "AffordedBy",
-        "TypeNamePlural": "AffordedByRelationships",
-        "DisplayName": "AffordedBy Relationship",
-        "DisplayNamePlural": "AffordedBy Relationships",
+        "TypeName": "ValueTypeAffordedBy",
+        "TypeNamePlural": "ValueTypeAffordedByRelationships",
+        "DisplayName": "ValueTypeAffordedBy Relationship",
+        "DisplayNamePlural": "ValueTypeAffordedBy Relationships",
         "Description": "Inverse of AffordsOperator, from a concrete operator descriptor to the value type descriptors that afford it.",
         "MinCardinality": 1,
         "DeletionSemantic": "Block"

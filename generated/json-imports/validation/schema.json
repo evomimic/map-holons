@@ -1458,20 +1458,20 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(OperatorType.HolonType)-[AffordedBy]->(ValidationRule.HolonType)"
+              "$ref": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)"
             }
           ]
         }
       ]
     },
     {
-      "key": "(OperatorType.HolonType)-[AffordedBy]->(ValidationRule.HolonType)",
+      "key": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "AffordedBy",
-        "TypeNamePlural": "AffordedByRelationships",
-        "DisplayName": "AffordedBy Relationship",
-        "DisplayNamePlural": "AffordedBy Relationships",
+        "TypeName": "ValidationRuleAffordedBy",
+        "TypeNamePlural": "ValidationRuleAffordedByRelationships",
+        "DisplayName": "ValidationRuleAffordedBy Relationship",
+        "DisplayNamePlural": "ValidationRuleAffordedBy Relationships",
         "Description": "Inverse of AffordsOperator for ValidationRule family descriptors.",
         "MinCardinality": 0,
         "DeletionSemantic": "Block"

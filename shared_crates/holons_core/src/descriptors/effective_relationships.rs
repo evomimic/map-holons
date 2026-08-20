@@ -525,6 +525,57 @@ mod tests {
     }
 
     #[test]
+    fn distinct_operator_inverse_names_resolve_without_ambiguity() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut value_operator = build_relationship_pair(
+            &context,
+            "value-operator",
+            "AffordsOperator",
+            "ValueTypeAffordedBy",
+            true,
+            false,
+        )?;
+        let validation_operator = build_relationship_pair(
+            &context,
+            "validation-operator",
+            "AffordsOperator",
+            "ValidationRuleAffordedBy",
+            true,
+            false,
+        )?;
+
+        value_operator.target_type.add_related_holons(
+            CoreRelationshipTypeName::Extends,
+            vec![HolonReference::from(&validation_operator.target_type)],
+        )?;
+        value_operator.target_type.add_related_holons(
+            CoreRelationshipTypeName::TargetOf,
+            vec![
+                HolonReference::from(&value_operator.declared),
+                HolonReference::from(&validation_operator.declared),
+            ],
+        )?;
+        let operator_descriptor = HolonDescriptor::from_holon(value_operator.target_type.into());
+
+        let value_inverse = operator_descriptor.allows_relationship("ValueTypeAffordedBy")?;
+        assert_eq!(value_inverse.descriptor_direction, RelationshipDirection::Inverse);
+        assert_eq!(
+            value_inverse.descriptor.base_relationship_name()?,
+            relationship_name("ValueTypeAffordedBy")
+        );
+
+        let validation_inverse =
+            operator_descriptor.allows_relationship("ValidationRuleAffordedBy")?;
+        assert_eq!(validation_inverse.descriptor_direction, RelationshipDirection::Inverse);
+        assert_eq!(
+            validation_inverse.descriptor.base_relationship_name()?,
+            relationship_name("ValidationRuleAffordedBy")
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn allows_relationship_reports_not_found_for_unknown_name_on_saved_index(
     ) -> Result<(), HolonError> {
         let context = build_context();
