@@ -372,7 +372,18 @@ impl ExecutionReference {
                         e
                     )
                 })?;
-                if Self::relationship_entries_with_members(&relationship_map)?.is_empty() {
+                // Space membership is infrastructure-supplied, not fixture-authored: every
+                // committed lineage acquires `OwnedBy` from its transaction context. It is
+                // therefore not "relationship content" for the purpose of deciding whether an
+                // undescribed holon needs a descriptor to be compared — the same reasoning that
+                // already tolerates commit-materialized inverse SmartLinks here.
+                let owned_by = CoreRelationshipTypeName::OwnedBy.as_relationship_name();
+                let authored_entries: Vec<_> =
+                    Self::relationship_entries_with_members(&relationship_map)?
+                        .into_iter()
+                        .filter(|(name, _)| *name != owned_by)
+                        .collect();
+                if authored_entries.is_empty() {
                     return Ok(Vec::new());
                 }
                 return Err(format!(

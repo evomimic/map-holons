@@ -429,7 +429,10 @@ impl FixtureHolons {
                 // (e.g. by a schema load); they contribute to no fixture counts.
                 TestHolonState::SavedLookup => {}
                 TestHolonState::Abandoned => counts.staged -= 1,
-                TestHolonState::Deleted => counts.saved -= 1,
+                // A deleted holon is no longer a DB row. Its head no longer counts as Saved, so
+                // contributing nothing is the whole of its removal — subtracting again would
+                // charge the deletion twice.
+                TestHolonState::Deleted => {}
             }
         }
         counts
@@ -441,8 +444,12 @@ impl FixtureHolons {
     pub fn count_staged(&self) -> MapInteger {
         MapInteger(self.counts().staged)
     }
+    /// Saved holons the DB is expected to report.
+    ///
+    /// No allowance for the LocalHolonSpace anchor: whole-space discovery reads the space's
+    /// `Owns` members, and the anchor is not a member of its own collection.
     pub fn count_saved(&self) -> MapInteger {
-        MapInteger(self.counts().saved + 1) // Accounts for initial LocalHolonSpace
+        MapInteger(self.counts().saved)
     }
 }
 

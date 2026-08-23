@@ -54,6 +54,8 @@ pub enum TransactionAction {
 
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
+    ///
+    /// The current HolonSpace's `Owns` members; the space anchor itself is not included.
     GetAllHolons,
 
     /// `get_staged_holon_by_base_key(key)` → `StagedReference`

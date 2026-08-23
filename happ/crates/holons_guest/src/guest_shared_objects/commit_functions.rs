@@ -436,6 +436,7 @@ fn commit_holon(
             StagedState::ForCreate => {
                 trace!("StagedState::ForCreate — publishing a new HolonNode lineage");
                 staged_holon.prepare_full_relationship_commit_scope()?;
+                stage_space_membership(staged_holon, context)?;
                 let stored = persist_holon(HolonWriteRequest::PublishRoot {
                     holon_node: staged_holon.into_node_model(),
                 })?;
@@ -467,7 +468,10 @@ fn commit_holon(
             StagedState::ForUpdateNewVersion => {
                 trace!("StagedState::ForUpdateNewVersion — publishing the next HolonNode version");
                 let predecessor_id = staged_holon.get_versioned_source_id()?;
-                staged_holon.prepare_full_relationship_commit_scope()?;
+                // Full replay, except space membership: the lineage already belongs to the
+                // space, and re-emitting `OwnedBy` here would make the space `Owns` both the
+                // lineage root and every version published after it.
+                staged_holon.prepare_new_version_relationship_commit_scope()?;
                 // Storage decides how a version is written: it resolves the lineage this
                 // predecessor belongs to and roots the new version there. Immediate-predecessor
                 // ordering is not carried by the node — it is staged below as a SmartLink.
@@ -520,6 +524,61 @@ fn commit_holon(
             holon_write
         )))
     }
+}
+
+/// Stamps `OwnedBy → current HolonSpace` on a lineage-creating commit.
+///
+/// Space membership is infrastructure-supplied, and this is the one place it can be supplied
+/// reliably. Staging can happen in a client transaction that has not yet been told which space
+/// it is bound to, whereas by the time a commit reaches the guest the local space anchor has
+/// always been resolved. Stamping here also keeps membership and publication together — the same
+/// coupling the global index it replaces got from being written during `PublishRoot`.
+///
+/// Only lineage-creating commits stamp: a new version inherits the membership its lineage root
+/// already holds, and re-emitting it would make the space own every version separately.
+///
+/// Idempotent, so a lineage that was already stamped upstream keeps its existing owner.
+fn stage_space_membership(
+    staged_holon: &mut StagedHolon,
+    context: &Arc<TransactionContext>,
+) -> Result<(), HolonError> {
+    let owned_by = CoreRelationshipTypeName::OwnedBy.as_relationship_name();
+
+    let already_owned = {
+        let collection_rc = staged_holon.get_staged_relationship(&owned_by)?;
+        let collection = collection_rc.read().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on staged OwnedBy collection: {}",
+                e
+            ))
+        })?;
+        !collection.get_members().is_empty()
+    };
+    if already_owned {
+        return Ok(());
+    }
+
+    // No space means nothing to belong to. Reachable only while the local space anchor is itself
+    // being established, which is the one lineage that must not be a member of its own space.
+    let Some(space_reference) = context.get_space_holon()? else {
+        return Ok(());
+    };
+
+    let space_key = space_reference.key()?.ok_or_else(|| {
+        HolonError::EmptyField("HolonSpace holon has no key; cannot record membership".to_string())
+    })?;
+
+    // Carry the key on the reference: relationship commit fail-fasts on a target whose key
+    // cannot be resolved, and this answers it without re-fetching the space per staged holon.
+    let space_target = HolonReference::smart_with_key(
+        TransactionContextHandle::new(Arc::clone(context)),
+        space_reference.holon_id()?,
+        space_key.clone(),
+    );
+
+    staged_holon.add_related_holons_with_keys(owned_by, vec![(space_target, Some(space_key))])?;
+
+    Ok(())
 }
 
 fn stage_predecessor_relationship(
