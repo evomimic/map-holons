@@ -145,6 +145,9 @@ pub enum DanceTestStep {
     VerifyCoreSchemaValueSemantics {
         description: String,
     },
+    VerifyValidationBindingsDescriptorContract {
+        description: String,
+    },
     MatchSavedContent,
     NewHolon {
         step_token: TestReference,
@@ -312,6 +315,9 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyCoreSchemaValueSemantics { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyValidationBindingsDescriptorContract { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::MatchSavedContent => {

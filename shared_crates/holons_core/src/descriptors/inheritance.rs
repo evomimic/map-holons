@@ -41,7 +41,7 @@ pub(crate) fn inheritance_rule(relationship: &CoreRelationshipTypeName) -> Inher
         | CoreRelationshipTypeName::AffordsCommand
         | CoreRelationshipTypeName::AffordsDance
         | CoreRelationshipTypeName::AffordsOperator
-        | CoreRelationshipTypeName::Validations
+        | CoreRelationshipTypeName::ValidationBindings
         | CoreRelationshipTypeName::Constraints => InheritanceRule::Additive,
         CoreRelationshipTypeName::InstanceKeyRule => InheritanceRule::Override,
         _ => InheritanceRule::Local,
@@ -660,7 +660,7 @@ mod tests {
             CoreRelationshipTypeName::AffordsCommand,
             CoreRelationshipTypeName::AffordsDance,
             CoreRelationshipTypeName::AffordsOperator,
-            CoreRelationshipTypeName::Validations,
+            CoreRelationshipTypeName::ValidationBindings,
             CoreRelationshipTypeName::Constraints,
         ] {
             assert_eq!(inheritance_rule(&relationship), InheritanceRule::Additive);

@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 9] = [
+const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 10] = [
     "core/abstract-value-types.json",
     "core/concrete-value-types.json",
     "core/keyrules.json",
@@ -16,6 +16,7 @@ const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 9] = [
     "core/relationship-types.json",
     "core/root.json",
     "core/value-constraint-types.json",
+    "core/validation.json",
 ];
 
 const GENERATED_DANCE_SCHEMA_FILENAME: &str = "dance/schema.json";
@@ -37,12 +38,12 @@ pub struct CoreSchemaLoadMetrics {
 
 /// Metrics for the checked-in Schema 2.0 compiler artifact.
 pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 191,
-    committed: 191,
+    staged: 283,
+    committed: 283,
     links_created: 0,
     errors: 0,
-    total_bundles: 9,
-    total_loader_holons: 191,
+    total_bundles: 10,
+    total_loader_holons: 283,
     commit_status: ExpectedLoadStatus::Complete,
 };
 

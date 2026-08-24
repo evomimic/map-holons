@@ -9,6 +9,7 @@ pub fn load_generated_validation_schema_fixture() -> Result<DancesTestCase, Holo
         "Load Core, then the generated validation package in a separate transaction",
     );
     test_case.add_load_generated_core_schema_step(None)?;
+    test_case.add_verify_validation_bindings_descriptor_contract_step(None)?;
     test_case.add_begin_transaction_step(None, None)?;
     test_case.add_load_generated_validation_schema_step(None)?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
