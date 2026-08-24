@@ -1,27 +1,15 @@
 use crate::descriptors::effective_relationship_declaration;
 use crate::reference_layer::HolonReference;
 use core_types::{HolonError, RelationshipName};
-use type_names::CoreRelationshipTypeName;
 
 /// Resolves the inverse relationship name for a declared relationship on `source_ref`.
 ///
 /// The declared descriptor must carry exactly one `HasInverse` target; commit uses
 /// that declared-side edge to materialize the reciprocal SmartLink.
-///
-/// `OwnedBy` is the one exception. Space membership is infrastructure-supplied — staging
-/// stamps it on every new lineage, before the holon has been given a `DescribedBy` and,
-/// during the first core-schema load, before the `OwnedBy` descriptor itself has been
-/// persisted. Routing it through the descriptor surface would therefore make ownership
-/// depend on schema load order and would break commit for undescribed holons, so its
-/// inverse is resolved structurally instead.
 pub fn resolve_inverse_relationship_name(
     source_ref: &HolonReference,
     forward_name: &RelationshipName,
 ) -> Result<RelationshipName, HolonError> {
-    if *forward_name == CoreRelationshipTypeName::OwnedBy.as_relationship_name() {
-        return Ok(CoreRelationshipTypeName::Owns.as_relationship_name());
-    }
-
     // Resolve the declared descriptor through the source holon's effective surface.
     let declared_descriptor = effective_relationship_declaration(source_ref, forward_name)?
         .try_into_declared_relationship_descriptor()?;
@@ -154,22 +142,6 @@ mod tests {
             resolve_inverse_relationship_name(&(&source).into(), &authored_by()),
             Err(HolonError::MissingDescribedBy { .. })
         ));
-        Ok(())
-    }
-
-    #[test]
-    fn owned_by_resolves_structurally_without_a_descriptor() -> Result<(), HolonError> {
-        // Space membership is stamped at staging time, before `DescribedBy` is attached and
-        // (on the first core-schema load) before the `OwnedBy` descriptor exists at all.
-        let context = build_context();
-        let source = new_test_holon(&context, "undescribed-source")?;
-
-        let inverse_name = resolve_inverse_relationship_name(
-            &(&source).into(),
-            &CoreRelationshipTypeName::OwnedBy.as_relationship_name(),
-        )?;
-
-        assert_eq!(inverse_name, CoreRelationshipTypeName::Owns.as_relationship_name());
         Ok(())
     }
 
