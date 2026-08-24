@@ -545,9 +545,16 @@ fn persist_space_membership(
     source_id: &LocalId,
     source_key: Option<MapString>,
 ) -> Result<(), HolonError> {
-    // No space means nothing to belong to. Reachable only while the local space anchor is itself
-    // being established — the one lineage that must not be a member of its own space.
+    // Every guest dance context is anchored to a persisted space before its body runs
+    // (`dance_adapter::init_guest_context` calls `ensure_local_holon_space`), and the anchor itself
+    // never reaches commit, so this branch should be unreachable. Skipping quietly would leave a
+    // published holon permanently undiscoverable with nothing to show for it, so say so.
     let Some(space_reference) = context.get_space_holon()? else {
+        warn!(
+            "No space holon bound to this transaction; {} was published without space membership \
+             and will not appear in whole-space discovery",
+            short_hex(source_id, 8)
+        );
         return Ok(());
     };
 
@@ -556,6 +563,13 @@ fn persist_space_membership(
     let HolonId::Local(space_id) = space_reference.holon_id()? else {
         return Ok(());
     };
+
+    // A space does not own itself (#642 §1). The anchor is exempt today because
+    // `create_local_space_holon` publishes it outside staging, so it never reaches commit at all —
+    // this makes the rule hold on its own terms rather than as a consequence of that routing.
+    if *source_id == space_id {
+        return Ok(());
+    }
 
     persist_smartlink(PreparedSmartLink {
         source_id: source_id.clone(),
