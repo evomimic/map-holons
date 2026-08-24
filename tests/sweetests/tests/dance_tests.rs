@@ -40,6 +40,7 @@ use execution_steps::descriptor_verification_executor::{
     execute_verify_book_person_descriptors, execute_verify_book_person_instance_links,
     execute_verify_core_schema_descriptor_subtypes, execute_verify_core_schema_descriptors,
     execute_verify_core_schema_value_semantics, execute_verify_relationship_anchoring,
+    execute_verify_validation_bindings_descriptor_contract,
 };
 use execution_steps::ensure_database_count_executor::execute_ensure_database_count;
 use execution_steps::load_book_person_inverse_test_schema_executor::execute_load_book_person_inverse_test_schema;
@@ -287,6 +288,10 @@ async fn run_dance_test_case(mut test_case: DancesTestCase) {
             }
             DanceTestStep::VerifyCoreSchemaValueSemantics { .. } => {
                 execute_verify_core_schema_value_semantics(&mut test_execution_state).await
+            }
+            DanceTestStep::VerifyValidationBindingsDescriptorContract { .. } => {
+                execute_verify_validation_bindings_descriptor_contract(&mut test_execution_state)
+                    .await
             }
             DanceTestStep::MatchSavedContent => {
                 execute_match_db_content(&mut test_execution_state).await

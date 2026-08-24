@@ -344,6 +344,18 @@ impl DancesTestCase {
         Ok(())
     }
 
+    pub fn add_verify_validation_bindings_descriptor_contract_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Verify ValidationBindings descriptor contract and inverse traversal".to_string()
+        });
+        self.steps.push(DanceTestStep::VerifyValidationBindingsDescriptorContract { description });
+        Ok(())
+    }
+
     pub fn add_load_holons_internal_step(
         &mut self,
         set: TransientReference,

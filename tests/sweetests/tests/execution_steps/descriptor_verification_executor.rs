@@ -685,6 +685,56 @@ pub async fn execute_verify_book_person_instance_links(state: &mut TestExecution
 /// second Book, so get-all surfaces the lineage root only (Storage SL2, issue #607).
 /// The new version is therefore reached by traversing `Successor` from the root, which
 /// also proves the lineage is navigable rather than merely present.
+/// Verifies the Core-owned ValidationBindings contract and its inverse descriptor.
+///
+/// No binding occurrence is active in VAL0b. This verifies the authored relationship
+/// descriptor pair itself: forward and inverse traversal, plus both declared endpoints.
+pub async fn execute_verify_validation_bindings_descriptor_contract(
+    state: &mut TestExecutionState,
+) {
+    let holons = loaded_holons(state, "verify_validation_bindings_descriptor_contract").await;
+
+    let bindings = RelationshipDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "(TypeDescriptor)-[ValidationBindings]->(ValidationRule.HolonType)",
+    ))
+    .try_into_declared_relationship_descriptor()
+    .expect("ValidationBindings should be a declared relationship descriptor");
+    assert_relationship_shape(
+        bindings.base_relationship_name(),
+        bindings.source_type(),
+        bindings.target_type(),
+        bindings.full_relationship_name(),
+        "ValidationBindings",
+        "TypeDescriptor",
+        "ValidationRule",
+        "(TypeDescriptor)-[ValidationBindings]->(ValidationRule)",
+    );
+
+    let bindings_inverse = bindings
+        .required_inverse()
+        .expect("ValidationBindings should have ValidationBindingFor inverse");
+    assert_relationship_shape(
+        bindings_inverse.base_relationship_name(),
+        bindings_inverse.source_type(),
+        bindings_inverse.target_type(),
+        bindings_inverse.full_relationship_name(),
+        "ValidationBindingFor",
+        "ValidationRule",
+        "TypeDescriptor",
+        "(ValidationRule)-[ValidationBindingFor]->(TypeDescriptor)",
+    );
+    assert_eq!(
+        bindings_inverse
+            .inverse_of()
+            .expect("ValidationBindingFor inverse_of")
+            .base_relationship_name()
+            .expect("ValidationBindingFor inverse_of base relationship name")
+            .to_string(),
+        "ValidationBindings"
+    );
+}
+
 pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_relationship_anchoring").await;
 
