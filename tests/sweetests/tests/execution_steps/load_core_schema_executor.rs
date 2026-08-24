@@ -30,7 +30,7 @@ pub async fn execute_load_generated_validation_schema(test_state: &mut TestExecu
         panic!("failed to build generated validation schema ContentSet: {error:?}")
     });
 
-    execute_load_holons_client_expect_success(test_state, content_set, 155, 1).await;
+    execute_load_holons_client_expect_success(test_state, content_set, 10, 1).await;
 }
 
 /// Loads the Dance package after Core has committed.

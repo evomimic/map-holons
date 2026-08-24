@@ -25,16 +25,32 @@ A plan and binding-layer symbol used to name values in navigation query executio
 _Avoid_: BoundHolonCollection property
 
 **ExecutionPlan**:
-A replayable MAP navigation/query view represented as holon-backed algebra operation nodes and accessed through typed Rust facades.
-_Avoid_: Plain query DTO, row pipeline
+A superseded PRO3 navigation/query design; it is not the current storage-grounded Query execution model.
+_Avoid_: Current Query definition, QRY1 execution substrate
 
 **Output Binding**:
 The variable name on an ExecutionPlan that selects the externally returned non-project bound result.
 _Avoid_: Implicit final binding
 
 **New-World Query Contract**:
-The descriptor-aware, bound-first future query/navigation direction built around HolonReference, HolonCollection, descriptor-afforded Dances, and later holon-backed ExecutionPlans.
+The storage-grounded, descriptor-aware query direction built around reusable Query definitions, bound HolonReference and HolonCollection runtime values, and Dance as an adapter over direct execution.
 _Avoid_: Legacy query bridge, command-owned query envelope
+
+**Query**:
+A reusable, holon-backed query definition rooted at one QueryExpression and never carrying invocation state.
+_Avoid_: Query request, query result, execution instance
+
+**QueryExpression**:
+A reusable executable unit in a Query definition; concrete operator holon types extend it.
+_Avoid_: Returned query data, legacy serialized relationship selector
+
+**ExecutionInstance**:
+The transient runtime state for one invocation of one Query.
+_Avoid_: Saved query definition, staged mutation
+
+**QueryExpressionExecution**:
+The transient runtime state for one invocation of one QueryExpression.
+_Avoid_: QueryExpression definition, query result
 
 **Runtime Shared Type**:
 A canonical value or reference family reused across MAP surfaces without owning a surface's request or response envelope.
@@ -241,7 +257,7 @@ The single connective used by a FilterStep to combine its FilterExpressions.
 _Avoid_: Nested predicate tree for PRO3
 
 **Query Result**:
-The future outcome of descriptor-backed navigation work, which should be holon-native and bound-first unless a later projection boundary explicitly defines a materialized shape.
+The holon-native, bound-first output of a completed Query execution, represented by a HolonCollection unless a later projection boundary explicitly defines a materialized shape.
 _Avoid_: Query expression
 
 **Materialized Projection**:
@@ -256,7 +272,9 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 
 - Query PRO3 removes the transaction-level query envelope family rather than replacing it with a new command-owned query envelope.
 - The only retained old-world query compatibility surface is the deprecated relationship traversal dance path: `query_relationships`, `fetch_all_related_holons`, and their `Node` / `NodeCollection` / `QueryPathMap` / `QueryExpression` support types.
-- Future descriptor-backed navigation behavior belongs in descriptor-afforded Dances and later Query PRS / Dance PRS work.
+- Direct Query execution is the base path; descriptor-afforded QueryDance adapts DanceInvocation and QueryDanceRequest onto that same path.
+- A **Query** owns one root **QueryExpression**; each invocation creates an **ExecutionInstance** and one **QueryExpressionExecution** per expression invocation.
+- Query definition state is reusable; invocation input, output, status, and resolved bindings belong only to execution-state holons.
 - A **Runtime Envelope** may carry **Runtime Shared Types** but is not itself a **Runtime Shared Type**.
 - An **ExecutionPlan** has an **Output Binding** for non-project results.
 - An **ExecutionPlan** reaches its starting **PlanNode** through **RootNode**.
@@ -377,11 +395,11 @@ _Avoid_: Implicit row materialization by order, distinct, skip, or limit
 ## Example dialogue
 
 > **Dev:** "When a user expands a relationship and applies a filter, are we just building a JSON query?"
-> **Domain expert:** "No. We are building an **ExecutionPlan** from holon-backed **PlanSteps** so that navigation can be retrieved and replayed later."
+> **Domain expert:** "No. We execute a reusable **Query** through its root **QueryExpression**; each run records transient **ExecutionInstance** state and returns a **HolonCollection**."
 
 ## Flagged ambiguities
 
-- "query expression" has been used to mean both the executable navigation/query structure and the returned query data. Resolved: use **ExecutionPlan**, **PlanNode**, and **PlanStep** for executable structure; use **Query Result** for returned data.
+- "query expression" has been used to mean both executable definition state and returned query data. Resolved: use **QueryExpression** only for the executable definition and **Query Result** for returned data; QRY1's storage-grounded Query model supersedes the prior ExecutionPlan / PlanNode / PlanStep query posture.
 - Existing `Node`, `NodeCollection`, `QueryPathMap`, and `QueryExpression` names should stay unchanged while deprecated compatibility code remains. Resolved: do not rename them to `Legacy*`, do not extend them, and do not use them as foundations for new query/navigation design.
 - `DanceRequest`, command wrappers, and future navigation envelopes are **Runtime Envelopes**, not **Runtime Shared Types**. Resolved: their disposition belongs in the corresponding surface/query docs, while `runtime-shared-types.md` governs carried runtime value/reference families.
 - `QueryRequest`, `QuerySpec`, and `QueryResult` were old-world query envelopes. Resolved: PRO3 removes them rather than retaining or replacing them.

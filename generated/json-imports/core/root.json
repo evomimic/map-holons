@@ -293,6 +293,9 @@
             },
             {
               "$ref": "(TypeDescriptor)-[Extends]->(TypeDescriptor)"
+            },
+            {
+              "$ref": "(TypeDescriptor)-[ValidationBindings]->(ValidationRule.HolonType)"
             }
           ]
         }

@@ -111,6 +111,8 @@ pub enum CoreRelationshipTypeName {
     ResponseBody,
     ResponseBodyFor,
     ResponseFor,
+    RuleOf,
+    Rules,
     SavedHolons,
     SourceOf,
     SourceType,
@@ -119,7 +121,7 @@ pub enum CoreRelationshipTypeName {
     TargetType,
     TransactionModelAffordedBy,
     ValidationRuleAffordedBy,
-    Validations,
+    ValidationBindings,
     ValueType,
     ValueTypeAffordedBy,
     ValueTypeFor,
@@ -175,6 +177,14 @@ mod tests {
         assert_eq!(
             RelationshipName(MapString("ValidationRuleAffordedBy".to_string())),
             CoreRelationshipTypeName::ValidationRuleAffordedBy.as_relationship_name()
+        );
+        assert_eq!(
+            RelationshipName(MapString("ValidationBindings".to_string())),
+            CoreRelationshipTypeName::ValidationBindings.as_relationship_name()
+        );
+        assert_eq!(
+            RelationshipName(MapString("RuleOf".to_string())),
+            CoreRelationshipTypeName::RuleOf.as_relationship_name()
         );
     }
 
