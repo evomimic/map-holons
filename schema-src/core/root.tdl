@@ -303,14 +303,14 @@ holon MetaConstraintType.MetaHolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends MetaHolonType.MetaTypeDescriptor
   header {
-    description: "Meta-type describing constraint type descriptors and their declared applicability anchors."
+    description: "Meta-type describing constraint type descriptors and their declared applicable descriptor families."
     display_name: "Meta Constraint Type"
     display_plural: "Meta Constraint Types"
     plural: "MetaConstraintTypes"
   }
   relationships {
     InstanceRelationships -> [
-      (ConstraintType.HolonType)-[ApplicableToInstanceTypeKinds]->(TypeDescriptor)
+      (ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)
     ]
   }
 }
@@ -417,7 +417,7 @@ holon CardinalityConstraint.ConstraintType {
       Minimum.PropertyType,
       Maximum.PropertyType
     ]
-    ApplicableToInstanceTypeKinds -> RelationshipType.TypeDescriptor
+    ApplicableToDescriptorTypes -> RelationshipType.TypeDescriptor
   }
 }
 
@@ -480,7 +480,7 @@ inverse relationship (Constraint.HolonType)-[Constrains]->(TypeDescriptor) {
   }
 }
 
-def relationship (ConstraintType.HolonType)-[ApplicableToInstanceTypeKinds]->(TypeDescriptor) {
+def relationship (ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> OneOrMore.CardinalityConstraint
@@ -491,10 +491,10 @@ def relationship (ConstraintType.HolonType)-[ApplicableToInstanceTypeKinds]->(Ty
   target TypeDescriptor
   deletion_semantic Block
   header {
-    description: "Declares the graph-derived Instance TypeKind anchors to which a constraint type may attach."
-    display_name: "Applicable To Instance TypeKinds"
-    display_plural: "Applicable To Instance TypeKinds Relationships"
-    plural: "ApplicableToInstanceTypeKinds"
+    description: "Declares the descriptor families to which instances of a constraint type may attach."
+    display_name: "Applicable To Descriptor Types"
+    display_plural: "Applicable To Descriptor Types Relationships"
+    plural: "ApplicableToDescriptorTypes"
   }
 }
 
@@ -508,7 +508,7 @@ inverse relationship (TypeDescriptor)-[HasApplicableConstraintTypes]->(Constrain
   }
   deletion_semantic Block
   header {
-    description: "Inverse of ApplicableToInstanceTypeKinds from an Instance TypeKind anchor to compatible constraint types."
+    description: "Inverse of ApplicableToDescriptorTypes from a descriptor family to compatible constraint types."
     display_name: "Has Applicable Constraint Types"
     display_plural: "Has Applicable Constraint Types Relationships"
     plural: "HasApplicableConstraintTypes"

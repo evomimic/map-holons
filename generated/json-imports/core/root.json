@@ -762,7 +762,7 @@
         "TypeNamePlural": "MetaConstraintTypes",
         "DisplayName": "Meta Constraint Type",
         "DisplayNamePlural": "Meta Constraint Types",
-        "Description": "Meta-type describing constraint type descriptors and their declared applicability anchors."
+        "Description": "Meta-type describing constraint type descriptors and their declared applicable descriptor families."
       },
       "relationships": [
         {
@@ -785,7 +785,7 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(ConstraintType.HolonType)-[ApplicableToInstanceTypeKinds]->(TypeDescriptor)"
+              "$ref": "(ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)"
             }
           ]
         }
@@ -1093,7 +1093,7 @@
           ]
         },
         {
-          "name": "ApplicableToInstanceTypeKinds",
+          "name": "ApplicableToDescriptorTypes",
           "target": [
             {
               "$ref": "RelationshipType.TypeDescriptor"
@@ -1254,14 +1254,14 @@
       ]
     },
     {
-      "key": "(ConstraintType.HolonType)-[ApplicableToInstanceTypeKinds]->(TypeDescriptor)",
+      "key": "(ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "ApplicableToInstanceTypeKinds",
-        "TypeNamePlural": "ApplicableToInstanceTypeKinds",
-        "DisplayName": "Applicable To Instance TypeKinds",
-        "DisplayNamePlural": "Applicable To Instance TypeKinds Relationships",
-        "Description": "Declares the graph-derived Instance TypeKind anchors to which a constraint type may attach.",
+        "TypeName": "ApplicableToDescriptorTypes",
+        "TypeNamePlural": "ApplicableToDescriptorTypes",
+        "DisplayName": "Applicable To Descriptor Types",
+        "DisplayNamePlural": "Applicable To Descriptor Types Relationships",
+        "Description": "Declares the descriptor families to which instances of a constraint type may attach.",
         "IsDefinitional": true,
         "DeletionSemantic": "Block"
       },
@@ -1324,7 +1324,7 @@
         "TypeNamePlural": "HasApplicableConstraintTypes",
         "DisplayName": "Has Applicable Constraint Types",
         "DisplayNamePlural": "Has Applicable Constraint Types Relationships",
-        "Description": "Inverse of ApplicableToInstanceTypeKinds from an Instance TypeKind anchor to compatible constraint types.",
+        "Description": "Inverse of ApplicableToDescriptorTypes from a descriptor family to compatible constraint types.",
         "DeletionSemantic": "Block"
       },
       "relationships": [

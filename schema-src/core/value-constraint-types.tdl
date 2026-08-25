@@ -24,7 +24,7 @@ holon LengthConstraint.ConstraintType {
       MinimumIsInclusive.PropertyType,
       MaximumIsInclusive.PropertyType
     ]
-    ApplicableToInstanceTypeKinds -> ValueType.TypeDescriptor
+    ApplicableToDescriptorTypes -> StringValueType.ValueType
   }
 }
 
@@ -44,7 +44,7 @@ holon NumericRangeConstraint.ConstraintType {
       MinimumIsInclusive.PropertyType,
       MaximumIsInclusive.PropertyType
     ]
-    ApplicableToInstanceTypeKinds -> ValueType.TypeDescriptor
+    ApplicableToDescriptorTypes -> IntegerValueType.ValueType
   }
 }
 
@@ -64,7 +64,7 @@ holon ItemCountConstraint.ConstraintType {
       MinimumIsInclusive.PropertyType,
       MaximumIsInclusive.PropertyType
     ]
-    ApplicableToInstanceTypeKinds -> ValueType.TypeDescriptor
+    ApplicableToDescriptorTypes -> ValueArrayValueType.ValueType
   }
 }
 
@@ -78,6 +78,6 @@ holon UniqueItemsConstraint.ConstraintType {
     plural: "UniqueItemsConstraints"
   }
   relationships {
-    ApplicableToInstanceTypeKinds -> ValueType.TypeDescriptor
+    ApplicableToDescriptorTypes -> ValueArrayValueType.ValueType
   }
 }

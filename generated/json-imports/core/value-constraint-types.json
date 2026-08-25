@@ -59,10 +59,10 @@
           ]
         },
         {
-          "name": "ApplicableToInstanceTypeKinds",
+          "name": "ApplicableToDescriptorTypes",
           "target": [
             {
-              "$ref": "ValueType.TypeDescriptor"
+              "$ref": "StringValueType.ValueType"
             }
           ]
         }
@@ -113,10 +113,10 @@
           ]
         },
         {
-          "name": "ApplicableToInstanceTypeKinds",
+          "name": "ApplicableToDescriptorTypes",
           "target": [
             {
-              "$ref": "ValueType.TypeDescriptor"
+              "$ref": "IntegerValueType.ValueType"
             }
           ]
         }
@@ -167,10 +167,10 @@
           ]
         },
         {
-          "name": "ApplicableToInstanceTypeKinds",
+          "name": "ApplicableToDescriptorTypes",
           "target": [
             {
-              "$ref": "ValueType.TypeDescriptor"
+              "$ref": "ValueArrayValueType.ValueType"
             }
           ]
         }
@@ -204,10 +204,10 @@
           ]
         },
         {
-          "name": "ApplicableToInstanceTypeKinds",
+          "name": "ApplicableToDescriptorTypes",
           "target": [
             {
-              "$ref": "ValueType.TypeDescriptor"
+              "$ref": "ValueArrayValueType.ValueType"
             }
           ]
         }
