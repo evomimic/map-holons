@@ -31,12 +31,12 @@ holon Book.HolonType {
 relationship (Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ReferencedByBook
   }
   extends DeclaredRelationshipType.RelationshipType
   source Book.HolonType
   target PropertyType.TypeDescriptor
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Non-definitional test relationship used to verify graph-only update anchoring and duplicate suppression."
@@ -51,7 +51,9 @@ inverse relationship (PropertyType.TypeDescriptor)-[ReferencedByBook]->(Book.Hol
   extends InverseRelationshipType.RelationshipType
   source PropertyType.TypeDescriptor
   target Book.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ReferencesProperty for graph-only update tests."
@@ -78,12 +80,12 @@ holon Person.HolonType {
 def relationship (Book.HolonType)-[AuthoredBy]->(Person.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> AuthorOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source Book.HolonType
   target Person.HolonType
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Defines the author of a book."
@@ -98,7 +100,9 @@ inverse relationship (Person.HolonType)-[AuthorOf]->(Book.HolonType) {
   extends InverseRelationshipType.RelationshipType
   source Person.HolonType
   target Book.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Specifies a book that a Person has authored. Inverse of AuthoredBy."

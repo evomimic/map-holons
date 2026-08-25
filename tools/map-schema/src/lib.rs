@@ -335,8 +335,6 @@ fn canonical_loader_fact_property_name(name: &str) -> String {
         "is_definitional" => "IsDefinitional",
         "is_ordered" => "IsOrdered",
         "allows_duplicates" => "AllowsDuplicates",
-        "min_cardinality" => "MinCardinality",
-        "max_cardinality" => "MaxCardinality",
         "deletion_semantic" => "DeletionSemantic",
         other => other,
     }
@@ -491,6 +489,22 @@ fn render_loader_fact_holon(
 
     out.push_str(&format!("{} {} {{\n", declaration, render_reference_token(&holon.key)));
     out.push_str(&format!("{}type {}\n", INDENT, render_reference_token(&holon.descriptor_type)));
+    let cardinality_shorthand = (declaration == "instance"
+        && holon.descriptor_type == "CardinalityConstraint.ConstraintType")
+        .then(|| {
+            holon.properties.get("Minimum").and_then(Value::as_i64).map(|minimum| {
+                let maximum = holon
+                    .properties
+                    .get("Maximum")
+                    .and_then(Value::as_i64)
+                    .map_or_else(|| "*".to_string(), |maximum| maximum.to_string());
+                (minimum, maximum)
+            })
+        })
+        .flatten();
+    if let Some((minimum, maximum)) = &cardinality_shorthand {
+        out.push_str(&format!("{}cardinality {}..{}\n", INDENT, minimum, maximum));
+    }
     if use_descriptor_form {
         if let Some(extends) = single_relationship_target(&holon.relationships, "Extends") {
             out.push_str(&format!("{}extends {}\n", INDENT, render_reference_token(&extends)));
@@ -509,7 +523,11 @@ fn render_loader_fact_holon(
     }
     let properties = ordered_loader_fact_properties(&holon.properties)
         .into_iter()
-        .filter(|(name, _)| !(use_descriptor_form && name == "TypeName"))
+        .filter(|(name, _)| {
+            !(use_descriptor_form && name == "TypeName")
+                && !(cardinality_shorthand.is_some()
+                    && matches!(name.as_str(), "Minimum" | "Maximum"))
+        })
         .collect::<Vec<_>>();
     let relationships = ordered_loader_fact_relationships(&holon.relationships)
         .into_iter()
@@ -668,8 +686,8 @@ fn ordered_loader_fact_properties(properties: &BTreeMap<String, Value>) -> Vec<(
         "IsDefinitional",
         "IsOrdered",
         "AllowsDuplicates",
-        "MinCardinality",
-        "MaxCardinality",
+        "Minimum",
+        "Maximum",
         "DeletionSemantic",
         "IsValueRequired",
         "DefaultValue",
@@ -947,9 +965,9 @@ mod tests {
         let decompiled_dir = temp_out_dir();
         let decompiled_files = decompile_inputs(&[source_dir.clone()], &decompiled_dir)?;
         assert_eq!(decompiled_files.len(), expected_file_count);
-        assert!(decompiled_files.iter().any(|path| {
-            path.to_string_lossy().ends_with("domain/core-schema/core/root.tdl")
-        }));
+        assert!(decompiled_files
+            .iter()
+            .any(|path| { path.to_string_lossy().ends_with("domain/core-schema/core/root.tdl") }));
         assert!(decompiled_files.iter().any(|path| {
             path.to_string_lossy().ends_with("domain/core-schema/dance/schema.tdl")
         }));

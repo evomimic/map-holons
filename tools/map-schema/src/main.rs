@@ -3,7 +3,8 @@ use clap::{Parser, Subcommand};
 use map_schema_tool::{
     decompile_input_string, decompile_inputs, roundtrip_json_inputs,
     tdl_compiler::{
-        check_input_string, check_inputs, compile_input_string, compile_inputs, render_check_output,
+        check_input_string, check_inputs, compile_input_string, compile_inputs,
+        render_check_output, type_definition_counts,
     },
 };
 use std::{
@@ -89,6 +90,14 @@ fn main() -> Result<()> {
             } else if let Some(out_dir) = out_dir {
                 let written = compile_inputs(&inputs, &out_dir)?;
                 println!("wrote {} JSON files to {}", written.len(), out_dir.display());
+                println!("defined type descriptors by schema:");
+                for (schema, counts) in type_definition_counts(&inputs)? {
+                    let total = counts.values().sum::<usize>();
+                    println!("  {schema}: {total}");
+                    for (type_kind, count) in counts {
+                        println!("    {type_kind}: {count}");
+                    }
+                }
             } else {
                 print!("{}", compile_input_string(&read_single_input(&inputs)?, &inputs[0])?);
             }

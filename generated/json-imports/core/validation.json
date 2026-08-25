@@ -1261,7 +1261,6 @@
         "DisplayNamePlural": "Validation Bindings Relationships",
         "Description": "Additive, definitional Commit-validation commitments declared by a governed type.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1304,6 +1303,14 @@
               "$ref": "(ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDescriptor)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1316,7 +1323,6 @@
         "DisplayName": "Validation Binding For",
         "DisplayNamePlural": "Validation Binding For Relationships",
         "Description": "Inverse of ValidationBindings from a validation rule to governed types that bind it.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1351,6 +1357,14 @@
               "$ref": "TypeDescriptor"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1364,8 +1378,6 @@
         "DisplayNamePlural": "Rule Of Relationships",
         "Description": "Identifies the schema whose semantic enforcement contract includes this ValidationRule.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1408,6 +1420,14 @@
               "$ref": "(Schema.HolonType)-[Rules]->(ValidationRule.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1420,7 +1440,6 @@
         "DisplayName": "Rules",
         "DisplayNamePlural": "Rules Relationships",
         "Description": "Inverse of RuleOf from a schema to the ValidationRules that define its semantic enforcement contract.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1453,6 +1472,14 @@
           "target": [
             {
               "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

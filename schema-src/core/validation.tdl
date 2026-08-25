@@ -420,12 +420,12 @@ abstract holon TransactionValidationRule.HolonType {
 def relationship (TypeDescriptor)-[ValidationBindings]->(ValidationRule.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ValidationBindingFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target ValidationRule.HolonType
-  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Additive, definitional Commit-validation commitments declared by a governed type."
@@ -440,7 +440,9 @@ inverse relationship (ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDes
   extends InverseRelationshipType.RelationshipType
   source ValidationRule.HolonType
   target TypeDescriptor
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ValidationBindings from a validation rule to governed types that bind it."
@@ -453,12 +455,12 @@ inverse relationship (ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDes
 def relationship (ValidationRule.HolonType)-[RuleOf]->(Schema.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> Rules
   }
   extends DeclaredRelationshipType.RelationshipType
   source ValidationRule.HolonType
   target Schema.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Identifies the schema whose semantic enforcement contract includes this ValidationRule."
@@ -473,7 +475,9 @@ inverse relationship (Schema.HolonType)-[Rules]->(ValidationRule.HolonType) {
   extends InverseRelationshipType.RelationshipType
   source Schema.HolonType
   target ValidationRule.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of RuleOf from a schema to the ValidationRules that define its semantic enforcement contract."

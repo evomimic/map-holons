@@ -168,7 +168,6 @@
         "DisplayNamePlural": "AffordsOperator Relationships",
         "Description": "Links a ValidationRule family descriptor to the local operator descriptors available for rules in that family.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -211,6 +210,14 @@
               "$ref": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -223,7 +230,6 @@
         "DisplayName": "ValidationRuleAffordedBy Relationship",
         "DisplayNamePlural": "ValidationRuleAffordedBy Relationships",
         "Description": "Inverse of AffordsOperator for ValidationRule family descriptors.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -256,6 +262,14 @@
           "target": [
             {
               "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

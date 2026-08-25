@@ -115,14 +115,6 @@
               "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "(StringValueType.ValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)"
-            }
-          ]
         }
       ]
     },
@@ -152,14 +144,6 @@
               "$ref": "MAP Core Schema-v0.0.7"
             }
           ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "(IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)"
-            }
-          ]
         }
       ]
     },
@@ -187,14 +171,6 @@
           "target": [
             {
               "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "(BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)"
             }
           ]
         }
@@ -269,9 +245,6 @@
           "target": [
             {
               "$ref": "(ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor)"
-            },
-            {
-              "$ref": "(ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)"
             }
           ]
         }

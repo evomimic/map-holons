@@ -670,8 +670,6 @@
         "DisplayNamePlural": "Root Expressions",
         "Description": "Identifies the root expression of a Query definition.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -714,6 +712,14 @@
               "$ref": "(QueryExpression.HolonType)-[RootExpressionFor]->(Query.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -726,7 +732,6 @@
         "DisplayName": "Root Expression For",
         "DisplayNamePlural": "Root Expression Fors",
         "Description": "Inverse of RootExpression.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -761,6 +766,14 @@
               "$ref": "Query.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -775,7 +788,6 @@
         "Description": "Lists reusable parameter declarations required by a QueryExpression.",
         "IsDefinitional": true,
         "IsOrdered": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -818,6 +830,14 @@
               "$ref": "(QueryParameterDeclaration.HolonType)-[ParametersForQueryExpression]->(QueryExpression.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -830,7 +850,6 @@
         "DisplayName": "Parameters For Query Expression",
         "DisplayNamePlural": "Parameters For Query Expressions",
         "Description": "Inverse of ExpressionParameters.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -865,6 +884,14 @@
               "$ref": "QueryExpression.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -878,8 +905,6 @@
         "DisplayNamePlural": "Next",
         "Description": "The sole sequential continuation relationship for QueryExpression execution.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -922,6 +947,14 @@
               "$ref": "(QueryExpression.HolonType)-[Previous]->(QueryExpression.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -934,8 +967,6 @@
         "DisplayName": "Previous",
         "DisplayNamePlural": "Previous",
         "Description": "Inverse of Next.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -970,6 +1001,14 @@
               "$ref": "QueryExpression.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -983,8 +1022,6 @@
         "DisplayNamePlural": "Parameter Binding Types",
         "Description": "Identifies the concrete QueryParameterBinding descriptor accepted by a declaration.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1027,6 +1064,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[ParameterDeclaredBy]->(QueryParameterDeclaration.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1039,7 +1084,6 @@
         "DisplayName": "Parameter Declared By",
         "DisplayNamePlural": "Parameter Declared Bys",
         "Description": "Inverse of ParameterBindingType.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1074,6 +1118,14 @@
               "$ref": "QueryParameterDeclaration.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1087,8 +1139,6 @@
         "DisplayNamePlural": "Binds Parameters",
         "Description": "Identifies the declaration satisfied by a runtime query parameter binding.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1131,6 +1181,14 @@
               "$ref": "(QueryParameterDeclaration.HolonType)-[ParameterBoundBy]->(QueryParameterBinding.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1143,7 +1201,6 @@
         "DisplayName": "Parameter Bound By",
         "DisplayNamePlural": "Parameter Bound Bys",
         "Description": "Inverse of BindsParameter.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1178,6 +1235,14 @@
               "$ref": "QueryParameterBinding.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1192,7 +1257,6 @@
         "Description": "Contains the ordered implementation subtree of a composite QueryExpression.",
         "IsDefinitional": true,
         "IsOrdered": true,
-        "MinCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1235,6 +1299,14 @@
               "$ref": "(QueryExpression.HolonType)-[Parent]->(QuerySubTree.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1247,8 +1319,6 @@
         "DisplayName": "Parent",
         "DisplayNamePlural": "Parents",
         "Description": "Inverse of Subtree.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1283,6 +1353,14 @@
               "$ref": "QuerySubTree.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1296,8 +1374,6 @@
         "DisplayNamePlural": "Executes Queries",
         "Description": "Identifies the Query executed by this runtime instance.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1340,6 +1416,14 @@
               "$ref": "(Query.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1352,7 +1436,6 @@
         "DisplayName": "Executed By",
         "DisplayNamePlural": "Executed Bys",
         "Description": "Inverse of ExecutesQuery.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1387,6 +1470,14 @@
               "$ref": "ExecutionInstance.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1401,7 +1492,6 @@
         "Description": "Owns the ordered runtime executions of a Query's expressions.",
         "IsDefinitional": true,
         "IsOrdered": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1444,6 +1534,14 @@
               "$ref": "(QueryExpressionExecution.HolonType)-[ExecutionFor]->(ExecutionInstance.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1456,8 +1554,6 @@
         "DisplayName": "Execution For",
         "DisplayNamePlural": "Execution Fors",
         "Description": "Inverse of ExpressionExecutions.",
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1492,6 +1588,14 @@
               "$ref": "ExecutionInstance.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1505,8 +1609,6 @@
         "DisplayNamePlural": "Execution Results",
         "Description": "Records the final HolonCollection of a completed Query execution.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1549,6 +1651,14 @@
               "$ref": "(HolonCollection.HolonType)-[ResultOfExecution]->(ExecutionInstance.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1561,7 +1671,6 @@
         "DisplayName": "Result Of Execution",
         "DisplayNamePlural": "Results Of Execution",
         "Description": "Inverse of ExecutionResult.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1596,6 +1705,14 @@
               "$ref": "ExecutionInstance.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1609,8 +1726,6 @@
         "DisplayNamePlural": "Executes Expressions",
         "Description": "Identifies the reusable QueryExpression invoked by runtime execution state.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1653,6 +1768,14 @@
               "$ref": "(QueryExpression.HolonType)-[ExpressionExecutedBy]->(QueryExpressionExecution.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1665,7 +1788,6 @@
         "DisplayName": "Expression Executed By",
         "DisplayNamePlural": "Expressions Executed By",
         "Description": "Inverse of ExecutesExpression.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1700,6 +1822,14 @@
               "$ref": "QueryExpressionExecution.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1713,8 +1843,6 @@
         "DisplayNamePlural": "Inputs",
         "Description": "Records the runtime input collection for one expression invocation.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1757,6 +1885,14 @@
               "$ref": "(HolonCollection.HolonType)-[InputFor]->(QueryExpressionExecution.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1769,7 +1905,6 @@
         "DisplayName": "Input For",
         "DisplayNamePlural": "Input Fors",
         "Description": "Inverse of Input.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1804,6 +1939,14 @@
               "$ref": "QueryExpressionExecution.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1817,8 +1960,6 @@
         "DisplayNamePlural": "Results",
         "Description": "Records the runtime result collection for one expression invocation.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1861,6 +2002,14 @@
               "$ref": "(HolonCollection.HolonType)-[ResultOf]->(QueryExpressionExecution.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1873,7 +2022,6 @@
         "DisplayName": "Result Of",
         "DisplayNamePlural": "Results Of",
         "Description": "Inverse of Result.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1908,6 +2056,14 @@
               "$ref": "QueryExpressionExecution.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1921,7 +2077,6 @@
         "DisplayNamePlural": "Runtime Parameters",
         "Description": "Records resolved runtime bindings for one expression invocation.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1964,6 +2119,14 @@
               "$ref": "(QueryParameterBinding.HolonType)-[RuntimeParametersFor]->(QueryExpressionExecution.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1976,7 +2139,6 @@
         "DisplayName": "Runtime Parameters For",
         "DisplayNamePlural": "Runtime Parameters For",
         "Description": "Inverse of RuntimeParameters.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -2009,6 +2171,14 @@
           "target": [
             {
               "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

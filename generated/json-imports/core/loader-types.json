@@ -298,7 +298,6 @@
         "DisplayNamePlural": "HasRelationshipReference Relationships",
         "Description": "Declared relationship from a LoaderHolon to each unresolved relationship reference it contains.",
         "IsOrdered": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -341,6 +340,14 @@
               "$ref": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -353,8 +360,6 @@
         "DisplayName": "RelationshipReferenceOf",
         "DisplayNamePlural": "RelationshipReferenceOf Relationships",
         "Description": "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -389,6 +394,14 @@
               "$ref": "LoaderHolon.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -402,8 +415,6 @@
         "DisplayNamePlural": "ReferenceSource Relationships",
         "Description": "Declared relationship from a LoaderRelationshipReference to the holon that acts as the relationship source.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -446,6 +457,14 @@
               "$ref": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -458,7 +477,6 @@
         "DisplayName": "ReferenceSourceOf",
         "DisplayNamePlural": "ReferenceSourceOf Relationships",
         "Description": "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -493,6 +511,14 @@
               "$ref": "LoaderRelationshipReference.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -507,7 +533,6 @@
         "Description": "Declared relationship from a LoaderRelationshipReference to the holons that act as relationship targets.",
         "IsDefinitional": true,
         "IsOrdered": true,
-        "MinCardinality": 1,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -550,6 +575,14 @@
               "$ref": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -562,7 +595,6 @@
         "DisplayName": "ReferenceTargetOf",
         "DisplayNamePlural": "ReferenceTargetOf Relationships",
         "Description": "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -597,6 +629,14 @@
               "$ref": "LoaderRelationshipReference.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -609,7 +649,6 @@
         "DisplayName": "BundleMembers",
         "DisplayNamePlural": "BundleMembers Relationships",
         "Description": "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -652,6 +691,14 @@
               "$ref": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -664,8 +711,6 @@
         "DisplayName": "BundleMemberOf",
         "DisplayNamePlural": "BundleMemberOf Relationships",
         "Description": "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -700,6 +745,14 @@
               "$ref": "HolonLoaderBundle.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -712,7 +765,6 @@
         "DisplayName": "Contains",
         "DisplayNamePlural": "Contains Relationships",
         "Description": "Declared relationship from a HolonLoadSet to each HolonLoaderBundle it contains.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -755,6 +807,14 @@
               "$ref": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -767,8 +827,6 @@
         "DisplayName": "ContainedIn",
         "DisplayNamePlural": "ContainedIn Relationships",
         "Description": "Inverse of Contains. Points from a HolonLoaderBundle back to its containing HolonLoadSet.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -801,6 +859,14 @@
           "target": [
             {
               "$ref": "HolonLoadSet.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
             }
           ]
         }

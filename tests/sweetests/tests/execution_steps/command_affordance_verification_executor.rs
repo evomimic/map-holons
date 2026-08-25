@@ -12,7 +12,7 @@
 //! PR4a, and PR4b.
 
 use holons_core::descriptors::{
-    CommandDescriptor, HolonDescriptor, HolonSpaceDescriptor, RelationshipDescriptor,
+    CommandDescriptor, Descriptor, HolonDescriptor, HolonSpaceDescriptor, RelationshipDescriptor,
     TransactionDescriptor,
 };
 use holons_prelude::prelude::*;
@@ -343,17 +343,11 @@ pub async fn execute_verify_core_schema_command_affordances(state: &mut TestExec
             .expect("AffordsTransactionModel target type_name"),
         MapString("Transaction".to_string())
     );
-    assert_eq!(
-        transaction_model_relationship
-            .min_cardinality()
-            .expect("AffordsTransactionModel min_cardinality"),
-        1
-    );
-    assert_eq!(
-        transaction_model_relationship
-            .max_cardinality()
-            .expect("AffordsTransactionModel max_cardinality"),
-        1
+    assert_cardinality_constraint(
+        transaction_model_relationship.holon(),
+        "ExactlyOne.CardinalityConstraint",
+        1,
+        Some(1),
     );
     assert!(
         !transaction_model_relationship
@@ -456,6 +450,40 @@ fn direct_command_names(
         .map(CommandDescriptor::from_holon)
         .map(|descriptor| descriptor.command_name().expect("direct command_name"))
         .collect()
+}
+
+/// Verifies the explicitly authored directional cardinality instance attached to a relationship
+/// descriptor. Cardinality is no longer stored directly on the relationship descriptor itself.
+fn assert_cardinality_constraint(
+    relationship: &HolonReference,
+    expected_key: &str,
+    expected_minimum: i64,
+    expected_maximum: Option<i64>,
+) {
+    let constraints = relationship
+        .related_holons(CoreRelationshipTypeName::Constraints)
+        .expect("relationship Constraints collection");
+    let constraints = constraints.read().expect("relationship Constraints collection lock");
+    let members = constraints.get_members();
+    assert_eq!(members.len(), 1, "expected exactly one cardinality constraint");
+
+    let constraint = &members[0];
+    assert_eq!(
+        constraint.key().expect("cardinality constraint key"),
+        Some(MapString::from(expected_key))
+    );
+    assert_eq!(
+        constraint
+            .property_value(&PropertyName(MapString::from("Minimum")))
+            .expect("cardinality minimum property"),
+        Some(BaseValue::IntegerValue(MapInteger(expected_minimum)))
+    );
+    assert_eq!(
+        constraint
+            .property_value(&PropertyName(MapString::from("Maximum")))
+            .expect("cardinality maximum property"),
+        expected_maximum.map(|value| BaseValue::IntegerValue(MapInteger(value)))
+    );
 }
 
 fn assert_command_set_eq(

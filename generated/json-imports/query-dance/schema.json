@@ -181,8 +181,6 @@
         "DisplayNamePlural": "Requested Queries",
         "Description": "Selects the Query executed by a Dance-mediated request.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -225,6 +223,14 @@
               "$ref": "(Query.HolonType)-[QueryRequestedBy]->(QueryDanceRequest.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -237,7 +243,6 @@
         "DisplayName": "Query Requested By",
         "DisplayNamePlural": "Queries Requested By",
         "Description": "Inverse of RequestedQuery.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -272,6 +277,14 @@
               "$ref": "QueryDanceRequest.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -285,8 +298,6 @@
         "DisplayNamePlural": "Initial Inputs",
         "Description": "Supplies the initial collection for a Dance-mediated Query invocation.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -329,6 +340,14 @@
               "$ref": "(HolonCollection.HolonType)-[InitialInputForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -341,7 +360,6 @@
         "DisplayName": "Initial Input For Query Dance Request",
         "DisplayNamePlural": "Initial Inputs For Query Dance Requests",
         "Description": "Inverse of InitialInput.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -376,6 +394,14 @@
               "$ref": "QueryDanceRequest.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -389,7 +415,6 @@
         "DisplayNamePlural": "Request Parameters",
         "Description": "Supplies invocation-specific bindings to a Dance-mediated Query.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -432,6 +457,14 @@
               "$ref": "(QueryParameterBinding.HolonType)-[ParametersForQueryDanceRequest]->(QueryDanceRequest.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -444,7 +477,6 @@
         "DisplayName": "Parameters For Query Dance Request",
         "DisplayNamePlural": "Parameters For Query Dance Requests",
         "Description": "Inverse of RequestParameters.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -477,6 +509,14 @@
           "target": [
             {
               "$ref": "QueryDanceRequest.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

@@ -95,7 +95,6 @@
         "DisplayNamePlural": "AffordsOperator Relationships",
         "Description": "Links a ValueType descriptor to the concrete operator descriptors available for that value type, supporting validation and query construction. Core operator targets may be populated on an abstract value-family anchor so that every specialization inherits them through Additive relationship semantics. A specialization retains those inherited affordances and may add distinct operators, but cannot replace or remove the core targets.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -138,6 +137,14 @@
               "$ref": "(OperatorType.HolonType)-[ValueTypeAffordedBy]->(ValueType.TypeDescriptor)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -150,7 +157,6 @@
         "DisplayName": "ValueTypeAffordedBy Relationship",
         "DisplayNamePlural": "ValueTypeAffordedBy Relationships",
         "Description": "Inverse of AffordsOperator, from a concrete operator descriptor to the value type descriptors that afford it.",
-        "MinCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -183,6 +189,14 @@
           "target": [
             {
               "$ref": "ValueType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
             }
           ]
         }

@@ -40,12 +40,12 @@ abstract holon OperatorType.HolonType {
 def relationship (ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ValueTypeAffordedBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source ValueType.TypeDescriptor
   target OperatorType.HolonType
-  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Links a ValueType descriptor to the concrete operator descriptors available for that value type, supporting validation and query construction. Core operator targets may be populated on an abstract value-family anchor so that every specialization inherits them through Additive relationship semantics. A specialization retains those inherited affordances and may add distinct operators, but cannot replace or remove the core targets."
@@ -60,7 +60,9 @@ inverse relationship (OperatorType.HolonType)-[ValueTypeAffordedBy]->(ValueType.
   extends InverseRelationshipType.RelationshipType
   source OperatorType.HolonType
   target ValueType.TypeDescriptor
-  cardinality 1..*
+  relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of AffordsOperator, from a concrete operator descriptor to the value type descriptors that afford it."
