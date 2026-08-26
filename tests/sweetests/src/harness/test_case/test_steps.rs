@@ -133,6 +133,11 @@ pub enum DanceTestStep {
     VerifyRelationshipAnchoring {
         description: String,
     },
+    VerifySpaceMembership {
+        anchor_token: TestReference,
+        expected: SpaceMembershipExpectation,
+        description: String,
+    },
     VerifyCoreSchemaDescriptorSubtypes {
         description: String,
     },
@@ -200,6 +205,17 @@ pub enum DanceTestStep {
         expected_error: Option<HolonErrorKind>,
         description: String,
     },
+}
+
+/// What a `VerifySpaceMembership` step asserts about the current space's `Owns` collection.
+///
+/// `ExactKeys` is the precise assertion, usable when the fixture owns every holon in the space.
+/// `ExactCount` is for schema-backed fixtures, where naming ~200 loader-committed members would
+/// swamp the assertion it is trying to make.
+#[derive(Clone, Debug)]
+pub enum SpaceMembershipExpectation {
+    ExactKeys(Vec<MapString>),
+    ExactCount(MapInteger),
 }
 
 impl core::fmt::Display for DanceTestStep {
@@ -305,6 +321,14 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::VerifyRelationshipAnchoring { description } => {
                 write!(f, "{description}")
             }
+            DanceTestStep::VerifySpaceMembership { expected, description, .. } => match expected {
+                SpaceMembershipExpectation::ExactKeys(keys) => {
+                    write!(f, "{description} (expecting exactly {} member(s))", keys.len())
+                }
+                SpaceMembershipExpectation::ExactCount(count) => {
+                    write!(f, "{description} (expecting {} member(s))", count.0)
+                }
+            },
             DanceTestStep::VerifyCoreSchemaDescriptorSubtypes { description } => {
                 write!(f, "{description}")
             }

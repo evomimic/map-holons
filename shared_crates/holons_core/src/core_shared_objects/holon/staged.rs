@@ -15,12 +15,15 @@ use core_types::{
     HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
     RelationshipName,
 };
-use type_names::CorePropertyTypeName;
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum RelationshipCommitScope {
     #[default]
     Full,
+    /// `Full`, minus space membership. Used by version-producing commits: see
+    /// [`StagedHolon::relationship_collections_for_commit`].
+    FullExceptMembership,
     TouchedOnly,
 }
 
@@ -179,10 +182,28 @@ impl StagedHolon {
         Ok(self.staged_relationships.clone())
     }
 
+    /// Selects the relationship collections this commit should persist, in commit order.
+    ///
+    /// Two things about space membership are deliberate here.
+    ///
+    /// **Under `Full`, `OwnedBy` is ordered first.** The relationship pass stops at a source
+    /// holon's first failing relationship, and a holon whose membership went unwritten is
+    /// persisted but undiscoverable — a split the global index this replaces could not produce,
+    /// because it indexed at publish time. Freeform relationships on undescribed holons fail
+    /// this way by design, so membership is written before anything that can fail.
+    ///
+    /// **Under `FullExceptMembership`, `OwnedBy` is withheld.** A version-producing commit
+    /// replays every staged relationship against the *new* version's id, so replaying membership
+    /// would add a second `Owns` member on the space for every version, and whole-space
+    /// discovery would report both the lineage root and its head. Membership belongs to the
+    /// lineage rather than to each version, so it stays anchored where the lineage began. It
+    /// remains in the staged map either way, so the reference layer still reports the owner.
     pub fn relationship_collections_for_commit(
         &self,
     ) -> Result<Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>, HolonError> {
         self.is_accessible(AccessType::Read)?;
+
+        let owned_by = CoreRelationshipTypeName::OwnedBy.as_relationship_name();
 
         let pairs = match self.relationship_commit_scope {
             RelationshipCommitScope::TouchedOnly => self
@@ -195,10 +216,22 @@ impl StagedHolon {
                         .map(|collection| (name.clone(), collection.clone()))
                 })
                 .collect(),
-            RelationshipCommitScope::Full => self
+            RelationshipCommitScope::Full => {
+                let mut pairs: Vec<_> = self
+                    .staged_relationships
+                    .map
+                    .iter()
+                    .map(|(name, collection)| (name.clone(), collection.clone()))
+                    .collect();
+                // Stable partition: membership first, every other relationship in map order.
+                pairs.sort_by_key(|(name, _)| *name != owned_by);
+                pairs
+            }
+            RelationshipCommitScope::FullExceptMembership => self
                 .staged_relationships
                 .map
                 .iter()
+                .filter(|(name, _)| **name != owned_by)
                 .map(|(name, collection)| (name.clone(), collection.clone()))
                 .collect(),
         };
@@ -294,6 +327,17 @@ impl StagedHolon {
     pub fn prepare_full_relationship_commit_scope(&mut self) -> Result<(), HolonError> {
         self.is_accessible(AccessType::Commit)?;
         self.relationship_commit_scope = RelationshipCommitScope::Full;
+        Ok(())
+    }
+
+    /// Full replay, except space membership — the scope for a version-producing commit.
+    ///
+    /// Set instead of [`Self::prepare_full_relationship_commit_scope`] because the scope is read
+    /// in the relationship pass, by which point this holon is already `Committed` and its
+    /// version-producing origin is no longer visible in its staged state.
+    pub fn prepare_new_version_relationship_commit_scope(&mut self) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Commit)?;
+        self.relationship_commit_scope = RelationshipCommitScope::FullExceptMembership;
         Ok(())
     }
 
@@ -835,5 +879,53 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(filtered_names, vec![properties]);
+    }
+
+    #[test]
+    fn version_producing_commit_filter_withholds_space_membership_only() {
+        let owned_by = CoreRelationshipTypeName::OwnedBy.as_relationship_name();
+        let described_by = RelationshipName(MapString("DescribedBy".to_string()));
+
+        let mut relationships = BTreeMap::new();
+        relationships
+            .insert(owned_by.clone(), Arc::new(RwLock::new(HolonCollection::new_staged())));
+        relationships
+            .insert(described_by.clone(), Arc::new(RwLock::new(HolonCollection::new_staged())));
+
+        let mut staged = StagedHolon::from_parts(
+            MapInteger(1),
+            HolonState::Mutable,
+            StagedState::ForUpdateNewVersion,
+            ValidationState::ValidationRequired,
+            PropertyMap::new(),
+            StagedRelationshipMap { map: relationships },
+            None,
+            Some(LocalId(vec![1, 2, 3])),
+            BTreeSet::new(),
+            Vec::new(),
+        );
+
+        // A create replays membership, and replays it first so a later relationship failure
+        // cannot leave the holon persisted but undiscoverable. `DescribedBy` sorts ahead of
+        // `OwnedBy` in the staged map, so this ordering is not the map's doing.
+        staged.prepare_full_relationship_commit_scope().unwrap();
+        let full_names = staged
+            .relationship_collections_for_commit()
+            .unwrap()
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>();
+        assert_eq!(full_names, vec![owned_by.clone(), described_by.clone()]);
+
+        // A new version does not: membership stays anchored at the lineage root.
+        staged.prepare_new_version_relationship_commit_scope().unwrap();
+        let version_names = staged
+            .relationship_collections_for_commit()
+            .unwrap()
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>();
+
+        assert_eq!(version_names, vec![described_by]);
     }
 }
