@@ -38,12 +38,12 @@ pub struct CoreSchemaLoadMetrics {
 
 /// Metrics for the checked-in Schema 2.0 compiler artifact.
 pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 278,
-    committed: 278,
+    staged: 279,
+    committed: 279,
     links_created: 0,
     errors: 0,
     total_bundles: 10,
-    total_loader_holons: 278,
+    total_loader_holons: 279,
     commit_status: ExpectedLoadStatus::Complete,
 };
 
