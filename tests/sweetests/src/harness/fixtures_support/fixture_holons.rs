@@ -1,5 +1,5 @@
 use crate::harness::fixtures_support::{TestHolonState, TestReference};
-use base_types::MapInteger;
+use base_types::{MapInteger, MapString};
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
 use holons_core::HolonReference;
@@ -359,9 +359,28 @@ impl FixtureHolons {
     /// Mint tokens with expected state Saved.
     /// Returned tokens are *only* used for resolution of expected during the execution, and never passed to an add step.
     pub fn commit(&mut self) -> Result<Vec<TestReference>, HolonError> {
+        self.commit_excluding_keys(&[])
+    }
+
+    /// Advances staged heads to Saved, except for holons whose key is listed in `unsaved_keys`.
+    ///
+    /// Ordinary `commit()` assumes every staged holon publishes, which is true even for an
+    /// `Incomplete` commit whose *relationship* pass failed. It is not true when a holon fails to
+    /// publish in the node pass: that holon stays staged and the transaction stays open, so its
+    /// fixture head must stay staged too, or later steps resolve a Saved realization that was
+    /// never recorded.
+    pub fn commit_excluding_keys(
+        &mut self,
+        unsaved_keys: &[MapString],
+    ) -> Result<Vec<TestReference>, HolonError> {
         let mut saved_tokens = Vec::new();
 
         for holon in self.holons.clone().values() {
+            let head_key = holon.head_snapshot.snapshot().key().unwrap_or(None);
+            if head_key.is_some_and(|key| unsaved_keys.contains(&key)) {
+                debug!("Holon is expected not to publish, leaving it staged: {:#?}", holon);
+                continue;
+            }
             match holon.head_snapshot.state() {
                 TestHolonState::Staged => {
                     let snapshot = holon.head_snapshot.snapshot().clone().clone_holon()?;
@@ -429,7 +448,10 @@ impl FixtureHolons {
                 // (e.g. by a schema load); they contribute to no fixture counts.
                 TestHolonState::SavedLookup => {}
                 TestHolonState::Abandoned => counts.staged -= 1,
-                TestHolonState::Deleted => counts.saved -= 1,
+                // A deleted holon is no longer a DB row. Its head no longer counts as Saved, so
+                // contributing nothing is the whole of its removal — subtracting again would
+                // charge the deletion twice.
+                TestHolonState::Deleted => {}
             }
         }
         counts
@@ -441,8 +463,12 @@ impl FixtureHolons {
     pub fn count_staged(&self) -> MapInteger {
         MapInteger(self.counts().staged)
     }
+    /// Saved holons the DB is expected to report.
+    ///
+    /// No allowance for the LocalHolonSpace anchor: whole-space discovery reads the space's
+    /// `Owns` members, and the anchor is not a member of its own collection.
     pub fn count_saved(&self) -> MapInteger {
-        MapInteger(self.counts().saved + 1) // Accounts for initial LocalHolonSpace
+        MapInteger(self.counts().saved)
     }
 }
 

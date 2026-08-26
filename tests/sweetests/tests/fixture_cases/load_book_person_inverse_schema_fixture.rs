@@ -123,7 +123,7 @@ pub fn load_book_person_inverse_schema_fixture() -> Result<DancesTestCase, Holon
         Some("Commit described Book/Person instances".to_string()),
     )?;
 
-    // DB = fixture-saved holons (incl. space baseline) + loader-committed schema holons.
+    // DB = fixture-saved holons + loader-committed schema holons (no space anchor).
     let expected_db_count = MapInteger(
         fixture_holons.count_saved().0
             + CORE_SCHEMA_METRICS.committed

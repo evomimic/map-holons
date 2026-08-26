@@ -531,6 +531,32 @@ impl DancesTestCase {
         Ok(())
     }
 
+    /// Commit step for a commit in which some staged holons are expected not to publish.
+    ///
+    /// `unsaved_keys` names the holons whose node write is expected to fail, so their fixture heads
+    /// stay staged and remain resolvable for repair steps afterwards. Ordinary
+    /// [`Self::add_commit_step`] assumes every staged holon publishes.
+    pub fn add_commit_step_expecting_unsaved(
+        &mut self,
+        fixture_holons: &mut FixtureHolons,
+        unsaved_keys: &[MapString],
+        expected_status: ExpectedCommitStatus,
+        expected_error: Option<HolonErrorKind>,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| "Commit".to_string());
+        let saved_tokens = fixture_holons.commit_excluding_keys(unsaved_keys)?;
+        self.steps.push(DanceTestStep::Commit {
+            saved_tokens,
+            expected_status,
+            expected_error,
+            description,
+        });
+
+        Ok(())
+    }
+
     // Special step that creates a new 'freshly minted' TransientReference,
     // i.e. the first snapshot for a FixtureHolon.
     pub fn add_new_holon_step(

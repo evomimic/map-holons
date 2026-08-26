@@ -86,7 +86,9 @@ pub fn delete_holon_dance(
     }
 }
 
-/// Get all holons from the persistent store
+/// Get the holons owned by the current HolonSpace.
+///
+/// Returns the space's `Owns` members — lineage roots, not the space anchor itself.
 ///
 /// *DanceRequest:*
 /// - dance_name: "get_all_holons"

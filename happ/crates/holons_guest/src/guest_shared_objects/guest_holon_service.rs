@@ -19,8 +19,8 @@ use holons_guest_integrity::{
 use crate::get_holon_by_path;
 use crate::guest_shared_objects::commit_functions;
 use crate::persistence_layer::{
-    delete_holon_node, delete_smartlink, expand_all_from_source, expand_from_source,
-    get_all_holon_ids, get_holon, index_local_holon_space, persist_holon, saved_holon_from_stored,
+    delete_holon_node, delete_smartlink, expand_all_from_source, expand_from_source, get_holon,
+    index_local_holon_space, persist_holon, saved_holon_from_stored,
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId, HolonWriteRequest, SmartLink};
@@ -326,19 +326,30 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
+    /// Retrieves the holons owned by the transaction's current `HolonSpace`.
+    ///
+    /// Whole-space discovery is ordinary graph traversal: every committed lineage carries
+    /// `OwnedBy → HolonSpace`, and commit materializes the reciprocal `Owns` SmartLink on the
+    /// space, so the space's `Owns` collection *is* the membership list. Members are lineage
+    /// roots, since membership is not re-emitted for later versions.
+    ///
+    /// The space anchor is not a member of its own collection; callers that need it use
+    /// `TransactionContext::get_space_holon()`.
     fn get_all_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
-        let mut collection = HolonCollection::new_existing();
-        let holon_ids = get_all_holon_ids()?;
-        let mut holon_references = Vec::new();
-        for id in holon_ids {
-            holon_references.push(self.mint_smart_reference(context, id, None)?);
-        }
-        collection.add_references(holon_references)?;
+        // No space yet means nothing can belong to one. This is reachable before bootstrap has
+        // anchored the local space, where an empty membership list is the right answer.
+        let Some(space_reference) = context.get_space_holon()? else {
+            return Ok(HolonCollection::new_existing());
+        };
 
-        Ok(collection)
+        self.fetch_related_holons_internal(
+            context,
+            &space_reference.holon_id()?,
+            &CoreRelationshipTypeName::Owns.as_relationship_name(),
+        )
     }
 
     /// Execute a Holon import from a `HolonLoadSet`.

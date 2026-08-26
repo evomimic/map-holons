@@ -233,7 +233,9 @@ export function loadHolons(
 }
 
 /**
- * Return the full holon collection visible to the transaction.
+ * Return the holons owned by the transaction's current HolonSpace.
+ *
+ * These are the space's `Owns` members; the space holon itself is not one of them.
  */
 export function getAllHolons(
   txId: TxId,

@@ -67,9 +67,13 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Attempting invalid delete...".to_string()),
     )?;
 
-    // TODO: more robust handling of the implication of deletes on links needs to be implemented before this step will work
-    // // ADD STEP:  ENSURE DATABASE COUNT
-    // test_case.add_ensure_database_count_step( fixture_holons.count_saved())?;
+    // ADD STEP:  ENSURE DATABASE COUNT
+    // A deleted holon must not remain discoverable: delete retracts its space membership, so
+    // `count_saved()` (which nets out the deletion) is the count whole-space discovery reports.
+    test_case.add_ensure_database_count_step(
+        fixture_holons.count_saved(),
+        Some("Deleted holon is no longer an owned member".to_string()),
+    )?;
 
     // Finalize
     test_case.finalize(&fixture_context, &fixture_holons)?;

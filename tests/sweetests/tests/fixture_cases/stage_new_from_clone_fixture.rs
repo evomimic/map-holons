@@ -25,7 +25,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
             "Clone from transient, staged, and saved; mutate staged clones; assert counts+content",
         );
 
-    // Assert DB starts with 1 (space Holon)
+    // Assert DB starts empty (the space anchor does not own itself)
     test_case.add_ensure_database_count_step(
         fixture_holons.count_saved(),
         Some(ENSURE_DB_EMPTY.to_string()),
