@@ -868,15 +868,14 @@
         "DisplayName": "Validation Rule",
         "DisplayNamePlural": "Validation Rules",
         "Description": "Abstract root for first-class validation rule holons.",
-        "IsAbstractType": true,
-        "DefinesInstanceTypeKind": true
+        "IsAbstractType": true
       },
       "relationships": [
         {
           "name": "Extends",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "Rule.HolonType"
             }
           ]
         },
@@ -908,14 +907,6 @@
             },
             {
               "$ref": "ValidationRuleDescription.PropertyType"
-            }
-          ]
-        },
-        {
-          "name": "InstanceRelationships",
-          "target": [
-            {
-              "$ref": "(ValidationRule.HolonType)-[RuleOf]->(Schema.HolonType)"
             }
           ]
         }
@@ -1355,123 +1346,6 @@
           "target": [
             {
               "$ref": "TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "ZeroOrMore.CardinalityConstraint"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(ValidationRule.HolonType)-[RuleOf]->(Schema.HolonType)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "RuleOf",
-        "TypeNamePlural": "RuleOfRelationships",
-        "DisplayName": "Rule Of",
-        "DisplayNamePlural": "Rule Of Relationships",
-        "Description": "Identifies the schema whose semantic enforcement contract includes this ValidationRule.",
-        "IsDefinitional": true,
-        "DeletionSemantic": "Block"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "DeclaredRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "ValidationRule.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "Schema.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "HasInverse",
-          "target": [
-            {
-              "$ref": "(Schema.HolonType)-[Rules]->(ValidationRule.HolonType)"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "ExactlyOne.CardinalityConstraint"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(Schema.HolonType)-[Rules]->(ValidationRule.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "Rules",
-        "TypeNamePlural": "RulesRelationships",
-        "DisplayName": "Rules",
-        "DisplayNamePlural": "Rules Relationships",
-        "Description": "Inverse of RuleOf from a schema to the ValidationRules that define its semantic enforcement contract.",
-        "DeletionSemantic": "Block"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "InverseRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "Schema.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "ValidationRule.HolonType"
             }
           ]
         },

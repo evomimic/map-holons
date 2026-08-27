@@ -8,14 +8,14 @@ meta {
 schema "MAP Core Schema-v0.0.7" {
 }
 
-holon LengthConstraint.ConstraintType {
+holon StringLengthConstraint.ConstraintType {
   type MetaConstraintType.MetaHolonType
   extends ConstraintType.HolonType
   header {
-    description: "Constrains the Unicode grapheme-cluster length of a string value to a configured inclusive range."
-    display_name: "Length Constraint"
-    display_plural: "Length Constraints"
-    plural: "LengthConstraints"
+    description: "Constrains the Unicode grapheme-cluster length of a string value to a configured range."
+    display_name: "String Length Constraint"
+    display_plural: "String Length Constraints"
+    plural: "StringLengthConstraints"
   }
   relationships {
     InstanceProperties -> [
@@ -25,6 +25,26 @@ holon LengthConstraint.ConstraintType {
       MaximumIsInclusive.PropertyType
     ]
     ApplicableToDescriptorTypes -> StringValueType.ValueType
+  }
+}
+
+holon BytesLengthConstraint.ConstraintType {
+  type MetaConstraintType.MetaHolonType
+  extends ConstraintType.HolonType
+  header {
+    description: "Constrains the byte length of a bytes value to a configured range."
+    display_name: "Bytes Length Constraint"
+    display_plural: "Bytes Length Constraints"
+    plural: "BytesLengthConstraints"
+  }
+  relationships {
+    InstanceProperties -> [
+      Minimum.PropertyType,
+      Maximum.PropertyType,
+      MinimumIsInclusive.PropertyType,
+      MaximumIsInclusive.PropertyType
+    ]
+    ApplicableToDescriptorTypes -> BytesValueType.ValueType
   }
 }
 

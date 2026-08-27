@@ -299,6 +299,20 @@ holon HolonCollection.HolonType {
   }
 }
 
+abstract holon Rule.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Abstract semantic family for ordinary configured rules. It is not an Instance TypeKind anchor."
+    display_name: "Rule"
+    display_plural: "Rules"
+    plural: "Rules"
+  }
+  relationships {
+    InstanceRelationships -> (Rule.HolonType)-[RuleOf]->(Schema.HolonType)
+  }
+}
+
 holon MetaConstraintType.MetaHolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends MetaHolonType.MetaTypeDescriptor
@@ -318,8 +332,7 @@ holon MetaConstraintType.MetaHolonType {
 abstract holon Constraint.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   instance_keyrule ConstraintInstanceRule.KeyRuleType
-  extends HolonType.TypeDescriptor
-  DefinesInstanceTypeKind true
+  extends Rule.HolonType
   header {
     description: "Abstract root for ordinary configured definitional constraint holons."
     display_name: "Constraint"
@@ -423,26 +436,65 @@ holon CardinalityConstraint.ConstraintType {
 
 instance ZeroOrMore.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
+  rule_of "MAP Core Schema-v0.0.7"
   ConstraintName "ZeroOrMore"
   cardinality 0..*
 }
 
 instance ExactlyOne.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
+  rule_of "MAP Core Schema-v0.0.7"
   ConstraintName "ExactlyOne"
   cardinality 1..1
 }
 
 instance ZeroOrOne.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
+  rule_of "MAP Core Schema-v0.0.7"
   ConstraintName "ZeroOrOne"
   cardinality 0..1
 }
 
 instance OneOrMore.CardinalityConstraint {
   type CardinalityConstraint.ConstraintType
+  rule_of "MAP Core Schema-v0.0.7"
   ConstraintName "OneOrMore"
   cardinality 1..*
+}
+
+def relationship (Rule.HolonType)-[RuleOf]->(Schema.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> Rules
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Rule.HolonType
+  target Schema.HolonType
+  deletion_semantic Block
+  header {
+    description: "Records the sole origin schema of an ordinary configured rule."
+    display_name: "Rule Of"
+    display_plural: "Rule Of Relationships"
+    plural: "RuleOfRelationships"
+  }
+}
+
+inverse relationship (Schema.HolonType)-[Rules]->(Rule.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Schema.HolonType
+  target Rule.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Materialized inverse of RuleOf from an origin schema to its rules."
+    display_name: "Rules"
+    display_plural: "Rules Relationships"
+    plural: "RulesRelationships"
+  }
 }
 
 def relationship (TypeDescriptor)-[Constraints]->(Constraint.HolonType) {

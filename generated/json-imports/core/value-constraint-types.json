@@ -15,14 +15,14 @@
   },
   "holons": [
     {
-      "key": "LengthConstraint.ConstraintType",
+      "key": "StringLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType",
       "properties": {
-        "TypeName": "LengthConstraint",
-        "TypeNamePlural": "LengthConstraints",
-        "DisplayName": "Length Constraint",
-        "DisplayNamePlural": "Length Constraints",
-        "Description": "Constrains the Unicode grapheme-cluster length of a string value to a configured inclusive range."
+        "TypeName": "StringLengthConstraint",
+        "TypeNamePlural": "StringLengthConstraints",
+        "DisplayName": "String Length Constraint",
+        "DisplayNamePlural": "String Length Constraints",
+        "Description": "Constrains the Unicode grapheme-cluster length of a string value to a configured range."
       },
       "relationships": [
         {
@@ -63,6 +63,60 @@
           "target": [
             {
               "$ref": "StringValueType.ValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesLengthConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "BytesLengthConstraint",
+        "TypeNamePlural": "BytesLengthConstraints",
+        "DisplayName": "Bytes Length Constraint",
+        "DisplayNamePlural": "Bytes Length Constraints",
+        "Description": "Constrains the byte length of a bytes value to a configured range."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Minimum.PropertyType"
+            },
+            {
+              "$ref": "Maximum.PropertyType"
+            },
+            {
+              "$ref": "MinimumIsInclusive.PropertyType"
+            },
+            {
+              "$ref": "MaximumIsInclusive.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "BytesValueType.ValueType"
             }
           ]
         }

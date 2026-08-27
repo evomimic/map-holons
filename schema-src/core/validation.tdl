@@ -272,8 +272,7 @@ holon MetaValidationRule.MetaHolonType {
 
 abstract holon ValidationRule.HolonType {
   type MetaValidationRule.MetaHolonType
-  extends HolonType.TypeDescriptor
-  DefinesInstanceTypeKind true
+  extends Rule.HolonType
   header {
     description: "Abstract root for first-class validation rule holons."
     display_name: "Validation Rule"
@@ -288,9 +287,6 @@ abstract holon ValidationRule.HolonType {
       DeterminismClass.PropertyType,
       SemanticAuthority.PropertyType,
       ValidationRuleDescription.PropertyType
-    ]
-    InstanceRelationships -> [
-      (ValidationRule.HolonType)-[RuleOf]->(Schema.HolonType)
     ]
   }
 }
@@ -449,41 +445,6 @@ inverse relationship (ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDes
     display_name: "Validation Binding For"
     display_plural: "Validation Binding For Relationships"
     plural: "ValidationBindingFors"
-  }
-}
-
-def relationship (ValidationRule.HolonType)-[RuleOf]->(Schema.HolonType) {
-  type MetaDeclaredRelationshipType.MetaRelationshipType
-  relationships {
-    Constraints -> ExactlyOne.CardinalityConstraint
-    HasInverse -> Rules
-  }
-  extends DeclaredRelationshipType.RelationshipType
-  source ValidationRule.HolonType
-  target Schema.HolonType
-  deletion_semantic Block
-  header {
-    description: "Identifies the schema whose semantic enforcement contract includes this ValidationRule."
-    display_name: "Rule Of"
-    display_plural: "Rule Of Relationships"
-    plural: "RuleOfRelationships"
-  }
-}
-
-inverse relationship (Schema.HolonType)-[Rules]->(ValidationRule.HolonType) {
-  type MetaInverseRelationshipType.MetaRelationshipType
-  extends InverseRelationshipType.RelationshipType
-  source Schema.HolonType
-  target ValidationRule.HolonType
-  relationships {
-    Constraints -> ZeroOrMore.CardinalityConstraint
-  }
-  deletion_semantic Block
-  header {
-    description: "Inverse of RuleOf from a schema to the ValidationRules that define its semantic enforcement contract."
-    display_name: "Rules"
-    display_plural: "Rules Relationships"
-    plural: "RulesRelationships"
   }
 }
 

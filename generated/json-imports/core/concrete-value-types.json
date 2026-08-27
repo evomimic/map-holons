@@ -14,13 +14,23 @@
   },
   "holons": [
     {
-      "key": "Length16k.LengthConstraint",
-      "type": "LengthConstraint.ConstraintType",
+      "key": "Length16k.StringLengthConstraint",
+      "type": "StringLengthConstraint.ConstraintType",
       "properties": {
         "Maximum": 16384,
         "ConstraintName": "Length16k",
         "MaximumIsInclusive": true
-      }
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
     },
     {
       "key": "MapStringValueType.StringValueType",
@@ -53,7 +63,7 @@
           "name": "Constraints",
           "target": [
             {
-              "$ref": "Length16k.LengthConstraint"
+              "$ref": "Length16k.StringLengthConstraint"
             }
           ]
         }

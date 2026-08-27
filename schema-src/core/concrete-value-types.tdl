@@ -8,8 +8,9 @@ meta {
 schema "MAP Core Schema-v0.0.7" {
 }
 
-instance Length16k.LengthConstraint {
-  type LengthConstraint.ConstraintType
+instance Length16k.StringLengthConstraint {
+  type StringLengthConstraint.ConstraintType
+  rule_of "MAP Core Schema-v0.0.7"
   ConstraintName "Length16k"
   Maximum 16384
   MaximumIsInclusive true
@@ -25,7 +26,7 @@ value MapStringValueType.StringValueType {
     plural: "MapStringValueTypes"
   }
   relationships {
-    Constraints -> Length16k.LengthConstraint
+    Constraints -> Length16k.StringLengthConstraint
   }
 }
 

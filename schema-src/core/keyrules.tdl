@@ -13,7 +13,7 @@ schema "MAP Core Schema-v0.0.7" {
 
 abstract holon KeyRuleType.HolonType {
   type MetaHolonType.MetaTypeDescriptor
-  extends HolonType.TypeDescriptor
+  extends Rule.HolonType
   header {
     description: "Abstract holon type for key-rule strategies that derive semantic keys for holons. Concrete key-rule types define the available derivation algorithms."
     display_name: "Abstract Key Rule Type"

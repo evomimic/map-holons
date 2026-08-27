@@ -489,6 +489,12 @@ fn render_loader_fact_holon(
 
     out.push_str(&format!("{} {} {{\n", declaration, render_reference_token(&holon.key)));
     out.push_str(&format!("{}type {}\n", INDENT, render_reference_token(&holon.descriptor_type)));
+    let rule_of = (declaration == "instance")
+        .then(|| single_relationship_target(&holon.relationships, "RuleOf"))
+        .flatten();
+    if let Some(rule_of) = &rule_of {
+        out.push_str(&format!("{}rule_of {}\n", INDENT, render_reference_token(rule_of)));
+    }
     let cardinality_shorthand = (declaration == "instance"
         && holon.descriptor_type == "CardinalityConstraint.ConstraintType")
         .then(|| {
@@ -539,6 +545,9 @@ fn render_loader_fact_holon(
                 return None;
             }
             if use_descriptor_form && name == "InstanceKeyRule" && targets.len() == 1 {
+                return None;
+            }
+            if rule_of.is_some() && name == "RuleOf" && targets.len() == 1 {
                 return None;
             }
             if use_descriptor_form && name == "ComponentOf" && targets == component_of_targets {
@@ -708,6 +717,7 @@ fn ordered_loader_fact_relationships(
         "TargetType",
         "ValueType",
         "InstanceKeyRule",
+        "RuleOf",
         "HasInverse",
         "Variants",
         "InstanceProperties",
@@ -906,6 +916,34 @@ mod tests {
             "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.7\""
         ));
 
+        Ok(())
+    }
+
+    #[test]
+    fn decompiles_single_rule_of_relationship_as_rule_of_clause() -> Result<()> {
+        let tdl = decompile_input_string(
+            r#"{
+  "holons": [
+    {
+      "key": "Example.Schema",
+      "type": "Schema.HolonType",
+      "properties": { "SchemaName": "Example.Schema" }
+    },
+    {
+      "key": "DisplayName.StringLengthConstraint",
+      "type": "StringLengthConstraint.ConstraintType",
+      "properties": { "ConstraintName": "DisplayName", "Minimum": 1 },
+      "relationships": [
+        { "name": "RuleOf", "target": [{ "$ref": "Example.Schema" }] }
+      ]
+    }
+  ]
+}"#,
+            "rule-of.json",
+        )?;
+
+        assert!(tdl.contains("rule_of \"Example.Schema\""));
+        assert!(!tdl.contains("RuleOf ->"));
         Ok(())
     }
 

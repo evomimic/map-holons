@@ -29,7 +29,7 @@
           "name": "Extends",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "Rule.HolonType"
             }
           ]
         },
