@@ -324,7 +324,7 @@ holon MetaConstraintType.MetaHolonType {
   }
   relationships {
     InstanceRelationships -> [
-      (ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)
+      (MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)
     ]
   }
 }
@@ -532,14 +532,14 @@ inverse relationship (Constraint.HolonType)-[Constrains]->(TypeDescriptor) {
   }
 }
 
-def relationship (ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor) {
+def relationship (MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> OneOrMore.CardinalityConstraint
     HasInverse -> HasApplicableConstraintTypes
   }
   extends DeclaredRelationshipType.RelationshipType
-  source ConstraintType.HolonType
+  source MetaConstraintType.MetaHolonType
   target TypeDescriptor
   deletion_semantic Block
   header {
@@ -550,11 +550,11 @@ def relationship (ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(Type
   }
 }
 
-inverse relationship (TypeDescriptor)-[HasApplicableConstraintTypes]->(ConstraintType.HolonType) {
+inverse relationship (TypeDescriptor)-[HasApplicableConstraintTypes]->(MetaConstraintType.MetaHolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source TypeDescriptor
-  target ConstraintType.HolonType
+  target MetaConstraintType.MetaHolonType
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }

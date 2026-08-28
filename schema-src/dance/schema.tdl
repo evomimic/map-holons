@@ -14,6 +14,7 @@ schema "MAP Dance Schema-v0.1.0" {
 
 instance ImplementationName.FormatRule {
   type FormatRule.KeyRuleType
+  rule_of "MAP Dance Schema-v0.1.0"
   TypeName "ImplementationName"
   TemplateString "{0}"
   relationships {

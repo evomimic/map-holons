@@ -823,7 +823,7 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)"
+              "$ref": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)"
             }
           ]
         }
@@ -1448,7 +1448,7 @@
       ]
     },
     {
-      "key": "(ConstraintType.HolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)",
+      "key": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "ApplicableToDescriptorTypes",
@@ -1480,7 +1480,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "ConstraintType.HolonType"
+              "$ref": "MetaConstraintType.MetaHolonType"
             }
           ]
         },
@@ -1496,7 +1496,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(TypeDescriptor)-[HasApplicableConstraintTypes]->(ConstraintType.HolonType)"
+              "$ref": "(TypeDescriptor)-[HasApplicableConstraintTypes]->(MetaConstraintType.MetaHolonType)"
             }
           ]
         },
@@ -1511,7 +1511,7 @@
       ]
     },
     {
-      "key": "(TypeDescriptor)-[HasApplicableConstraintTypes]->(ConstraintType.HolonType)",
+      "key": "(TypeDescriptor)-[HasApplicableConstraintTypes]->(MetaConstraintType.MetaHolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "HasApplicableConstraintTypes",
@@ -1550,7 +1550,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "ConstraintType.HolonType"
+              "$ref": "MetaConstraintType.MetaHolonType"
             }
           ]
         },

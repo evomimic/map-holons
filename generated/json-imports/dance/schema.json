@@ -43,6 +43,14 @@
       },
       "relationships": [
         {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
           "name": "TemplateParameters",
           "target": [
             {
