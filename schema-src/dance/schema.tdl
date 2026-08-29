@@ -14,6 +14,7 @@ schema "MAP Dance Schema-v0.1.0" {
 
 instance ImplementationName.FormatRule {
   type FormatRule.KeyRuleType
+  rule_of "MAP Dance Schema-v0.1.0"
   TypeName "ImplementationName"
   TemplateString "{0}"
   relationships {
@@ -215,12 +216,12 @@ abstract holon Projection.HolonType {
 relationship (HolonLoadResponse.DanceResponseType)-[HasLoadError]->(HolonLoadError.HolonError) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> LoadErrorOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source HolonLoadResponse.DanceResponseType
   target HolonLoadError.HolonError
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoadResponse to one or more HolonError holons."
@@ -235,7 +236,9 @@ inverse relationship (HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadRespon
   extends InverseRelationshipType.RelationshipType
   source HolonLoadError.HolonError
   target HolonLoadResponse.DanceResponseType
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of HasLoadError. Points from HolonError back to the response that reported it."
@@ -248,12 +251,12 @@ inverse relationship (HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadRespon
 def relationship (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> AffordsDance
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declares that a DanceType is afforded by a HolonType."
@@ -269,7 +272,9 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.Holon
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceType.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of DanceAffordedBy, exposing Dances afforded by a HolonType."
@@ -283,12 +288,12 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.Holon
 def relationship (TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> ImplementedFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source TypeDescriptor
   target DanceImplementation.HolonType
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched."
@@ -304,7 +309,9 @@ inverse relationship (DanceImplementation.HolonType)-[ImplementedFor]->(TypeDesc
   extends InverseRelationshipType.RelationshipType
   source DanceImplementation.HolonType
   target TypeDescriptor
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor."
@@ -318,12 +325,12 @@ inverse relationship (DanceImplementation.HolonType)-[ImplementedFor]->(TypeDesc
 def relationship (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> HasImplementation
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceImplementation.HolonType
   target DanceType.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Pins a DanceImplementation to exactly one DanceType interface it satisfies."
@@ -339,7 +346,9 @@ inverse relationship (DanceType.HolonType)-[HasImplementation]->(DanceImplementa
   extends InverseRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceImplementation.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ForDance, from DanceType to DanceImplementation."
@@ -353,12 +362,12 @@ inverse relationship (DanceType.HolonType)-[HasImplementation]->(DanceImplementa
 def relationship (DanceType.HolonType)-[RequestType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> RequestTypeFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "Links a DanceType to the holon type used as its request contract."
@@ -374,7 +383,9 @@ inverse relationship (HolonType.TypeDescriptor)-[RequestTypeFor]->(DanceType.Hol
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceType.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of RequestType, from HolonType to DanceType."
@@ -388,12 +399,12 @@ inverse relationship (HolonType.TypeDescriptor)-[RequestTypeFor]->(DanceType.Hol
 def relationship (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> ResponseFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceType.HolonType
   target DanceResponseType.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Links a DanceType to the DanceResponseType used to structure its response."
@@ -409,7 +420,9 @@ inverse relationship (DanceResponseType.HolonType)-[ResponseFor]->(DanceType.Hol
   extends InverseRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target DanceType.HolonType
-  cardinality 1..*
+  relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Response, from DanceResponseType to DanceType."
@@ -423,12 +436,12 @@ inverse relationship (DanceResponseType.HolonType)-[ResponseFor]->(DanceType.Hol
 def relationship (DanceResponseType.HolonType)-[ResponseBody]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> ResponseBodyFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "Links a DanceResponseType to the concrete holon type that will serve as the structured response body."
@@ -444,7 +457,9 @@ inverse relationship (HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceRespons
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceResponseType.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ResponseBody, from HolonType to DanceResponseType."
@@ -458,12 +473,12 @@ inverse relationship (HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceRespons
 def relationship (DanceInvocation.HolonType)-[AffordingHolon]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> AffordsDanceInvocation
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
   target HolonType.TypeDescriptor
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Links a DanceInvocation to the holon whose effective affordances resolve the invocation's DanceName."
@@ -479,7 +494,9 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(Dance
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of AffordingHolon, from HolonType to DanceInvocation."
@@ -493,12 +510,12 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(Dance
 def relationship (DanceInvocation.HolonType)-[Request]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> RequestFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceInvocation.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "Links a DanceInvocation holon to the concrete request holon supplied for that invocation."
@@ -514,7 +531,9 @@ inverse relationship (HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.H
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target DanceInvocation.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Request, from HolonType to DanceInvocation."
@@ -528,12 +547,12 @@ inverse relationship (HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.H
 def relationship (DanceResponseType.HolonType)-[Diagnostics]->(DanceDiagnostic.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> DiagnosticFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceResponseType.HolonType
   target DanceDiagnostic.HolonType
-  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes."
@@ -549,7 +568,9 @@ inverse relationship (DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponse
   extends InverseRelationshipType.RelationshipType
   source DanceDiagnostic.HolonType
   target DanceResponseType.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType."
@@ -1114,12 +1135,12 @@ property CommitRequestStatus.PropertyType {
 relationship (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> SavedByCommit
   }
   extends DeclaredRelationshipType.RelationshipType
   source CommitResponse.Projection
   target HolonType.TypeDescriptor
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a CommitResponse to each holon successfully saved by this commit."
@@ -1135,7 +1156,9 @@ inverse relationship (HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommitResponse.Projection
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it."
@@ -1149,12 +1172,12 @@ inverse relationship (HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse
 relationship (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> AbandonedByCommit
   }
   extends DeclaredRelationshipType.RelationshipType
   source CommitResponse.Projection
   target HolonType.TypeDescriptor
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors."
@@ -1170,7 +1193,9 @@ inverse relationship (HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResp
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommitResponse.Projection
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it."

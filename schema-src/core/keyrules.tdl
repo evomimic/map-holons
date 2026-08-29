@@ -13,7 +13,7 @@ schema "MAP Core Schema-v0.0.7" {
 
 abstract holon KeyRuleType.HolonType {
   type MetaHolonType.MetaTypeDescriptor
-  extends HolonType.TypeDescriptor
+  extends Rule.HolonType
   header {
     description: "Abstract holon type for key-rule strategies that derive semantic keys for holons. Concrete key-rule types define the available derivation algorithms."
     display_name: "Abstract Key Rule Type"
@@ -98,6 +98,17 @@ holon DescribedTypeRule.KeyRuleType {
   }
 }
 
+holon ConstraintInstanceRule.KeyRuleType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends KeyRuleType.HolonType
+  header {
+    description: "Derives a configured constraint instance key from its required ConstraintName and its DescribedBy constraint type."
+    display_name: "Constraint Instance Key Rule"
+    display_plural: "Constraint Instance Key Rules"
+    plural: "ConstraintInstanceRules"
+  }
+}
+
 holon NoneRule.KeyRuleType {
   type MetaHolonType.MetaTypeDescriptor
   extends KeyRuleType.HolonType
@@ -123,12 +134,12 @@ holon SchemaNameRule.KeyRuleType {
 def relationship (HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> KeyRuleForInstancesOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target KeyRuleType.HolonType
-  cardinality 1..1
   deletion_semantic Allow
   header {
     description: "Selects the key rule governing holons described by a holon type. The rule does not govern the key of the source type descriptor itself."
@@ -143,7 +154,9 @@ inverse relationship (KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType
   extends InverseRelationshipType.RelationshipType
   source KeyRuleType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of InstanceKeyRule, from a key rule to the holon types whose described instances use it."

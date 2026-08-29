@@ -122,12 +122,12 @@ holon HolonLoadSet.HolonType {
 relationship (LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> RelationshipReferenceOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source LoaderHolon.HolonType
   target LoaderRelationshipReference.HolonType
-  cardinality 0..*
   ordered
   deletion_semantic Allow
   header {
@@ -144,7 +144,9 @@ inverse relationship (LoaderRelationshipReference.HolonType)-[RelationshipRefere
   extends InverseRelationshipType.RelationshipType
   source LoaderRelationshipReference.HolonType
   target LoaderHolon.HolonType
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of HasRelationshipReference. Points from LoaderRelationshipReference back to the originating LoaderHolon."
@@ -158,12 +160,12 @@ inverse relationship (LoaderRelationshipReference.HolonType)-[RelationshipRefere
 def relationship (LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> ReferenceSourceOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source LoaderRelationshipReference.HolonType
   target LoaderHolonReference.HolonType
-  cardinality 1..1
   deletion_semantic Allow
   header {
     description: "Declared relationship from a LoaderRelationshipReference to the holon that acts as the relationship source."
@@ -179,7 +181,9 @@ inverse relationship (LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(Load
   extends InverseRelationshipType.RelationshipType
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ReferenceSource. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as the source."
@@ -193,12 +197,12 @@ inverse relationship (LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(Load
 def relationship (LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
     HasInverse -> ReferenceTargetOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source LoaderRelationshipReference.HolonType
   target LoaderHolonReference.HolonType
-  cardinality 1..*
   ordered
   deletion_semantic Allow
   header {
@@ -215,7 +219,9 @@ inverse relationship (LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(Load
   extends InverseRelationshipType.RelationshipType
   source LoaderHolonReference.HolonType
   target LoaderRelationshipReference.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ReferenceTarget. Points from LoaderHolonReference to the LoaderRelationshipReference where it acts as a target."
@@ -229,12 +235,12 @@ inverse relationship (LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(Load
 relationship (HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> BundleMemberOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source HolonLoaderBundle.HolonType
   target LoaderHolon.HolonType
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoaderBundle to each LoaderHolon it contains."
@@ -250,7 +256,9 @@ inverse relationship (LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundl
   extends InverseRelationshipType.RelationshipType
   source LoaderHolon.HolonType
   target HolonLoaderBundle.HolonType
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of BundleMembers. Points from LoaderHolon back to the containing HolonLoaderBundle."
@@ -264,12 +272,12 @@ inverse relationship (LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundl
 relationship (HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ContainedIn
   }
   extends DeclaredRelationshipType.RelationshipType
   source HolonLoadSet.HolonType
   target HolonLoaderBundle.HolonType
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declared relationship from a HolonLoadSet to each HolonLoaderBundle it contains."
@@ -285,7 +293,9 @@ inverse relationship (HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.
   extends InverseRelationshipType.RelationshipType
   source HolonLoaderBundle.HolonType
   target HolonLoadSet.HolonType
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Contains. Points from a HolonLoaderBundle back to its containing HolonLoadSet."

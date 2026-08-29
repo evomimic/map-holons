@@ -10,7 +10,7 @@ const GENERATED_DOMAIN_SCHEMA_FILENAME: &str = "test/book-person-inverse.json";
 pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
     staged: 9,
     committed: 9,
-    links_created: 42,
+    links_created: 46,
     errors: 0,
     total_bundles: 1,
     total_loader_holons: 9,

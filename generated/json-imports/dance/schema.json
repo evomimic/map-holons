@@ -43,6 +43,14 @@
       },
       "relationships": [
         {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
           "name": "TemplateParameters",
           "target": [
             {
@@ -561,7 +569,6 @@
         "DisplayName": "HasLoadError",
         "DisplayNamePlural": "HasLoadError Relationships",
         "Description": "Declared relationship from a HolonLoadResponse to one or more HolonError holons.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -604,6 +611,14 @@
               "$ref": "(HolonLoadError.HolonError)-[LoadErrorOf]->(HolonLoadResponse.DanceResponseType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -616,8 +631,6 @@
         "DisplayName": "LoadErrorOf",
         "DisplayNamePlural": "LoadErrorOf Relationships",
         "Description": "Inverse of HasLoadError. Points from HolonError back to the response that reported it.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -652,6 +665,14 @@
               "$ref": "HolonLoadResponse.DanceResponseType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -665,7 +686,6 @@
         "DisplayNamePlural": "Dance Afforded By Relationships",
         "Description": "Declares that a DanceType is afforded by a HolonType.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -708,6 +728,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -720,7 +748,6 @@
         "DisplayName": "Affords Dance Relationship",
         "DisplayNamePlural": "Affords Dance Relationships",
         "Description": "Inverse of DanceAffordedBy, exposing Dances afforded by a HolonType.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -755,6 +782,14 @@
               "$ref": "DanceType.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -768,8 +803,6 @@
         "DisplayNamePlural": "ImplementsDance Relationships",
         "Description": "Binds a TypeDescriptor to a specific DanceImplementation that can be dispatched.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -812,6 +845,14 @@
               "$ref": "(DanceImplementation.HolonType)-[ImplementedFor]->(TypeDescriptor)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -824,8 +865,6 @@
         "DisplayName": "ImplementedFor Relationship",
         "DisplayNamePlural": "ImplementedFor Relationships",
         "Description": "Inverse of ImplementsDance, from DanceImplementation to TypeDescriptor.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -860,6 +899,14 @@
               "$ref": "TypeDescriptor"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -873,8 +920,6 @@
         "DisplayNamePlural": "ForDance Relationships",
         "Description": "Pins a DanceImplementation to exactly one DanceType interface it satisfies.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -917,6 +962,14 @@
               "$ref": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -929,7 +982,6 @@
         "DisplayName": "HasImplementation Relationship",
         "DisplayNamePlural": "HasImplementation Relationships",
         "Description": "Inverse of ForDance, from DanceType to DanceImplementation.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -964,6 +1016,14 @@
               "$ref": "DanceImplementation.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -977,8 +1037,6 @@
         "DisplayNamePlural": "Request Type Relationships",
         "Description": "Links a DanceType to the holon type used as its request contract.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1021,6 +1079,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[RequestTypeFor]->(DanceType.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1033,7 +1099,6 @@
         "DisplayName": "Request Type For Relationship",
         "DisplayNamePlural": "Request Type For Relationships",
         "Description": "Inverse of RequestType, from HolonType to DanceType.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1068,6 +1133,14 @@
               "$ref": "DanceType.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1081,8 +1154,6 @@
         "DisplayNamePlural": "Response Relationships",
         "Description": "Links a DanceType to the DanceResponseType used to structure its response.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1125,6 +1196,14 @@
               "$ref": "(DanceResponseType.HolonType)-[ResponseFor]->(DanceType.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1137,7 +1216,6 @@
         "DisplayName": "ResponseFor Relationship",
         "DisplayNamePlural": "ResponseFor Relationships",
         "Description": "Inverse of Response, from DanceResponseType to DanceType.",
-        "MinCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1172,6 +1250,14 @@
               "$ref": "DanceType.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1185,8 +1271,6 @@
         "DisplayNamePlural": "ResponseBody Relationships",
         "Description": "Links a DanceResponseType to the concrete holon type that will serve as the structured response body.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1229,6 +1313,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[ResponseBodyFor]->(DanceResponseType.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1241,7 +1333,6 @@
         "DisplayName": "ResponseBodyFor Relationship",
         "DisplayNamePlural": "ResponseBodyFor Relationships",
         "Description": "Inverse of ResponseBody, from HolonType to DanceResponseType.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1276,6 +1367,14 @@
               "$ref": "DanceResponseType.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1289,8 +1388,6 @@
         "DisplayNamePlural": "AffordingHolon Relationships",
         "Description": "Links a DanceInvocation to the holon whose effective affordances resolve the invocation's DanceName.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1333,6 +1430,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[AffordsDanceInvocation]->(DanceInvocation.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1345,7 +1450,6 @@
         "DisplayName": "AffordsDanceInvocation Relationship",
         "DisplayNamePlural": "AffordsDanceInvocation Relationships",
         "Description": "Inverse of AffordingHolon, from HolonType to DanceInvocation.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1380,6 +1484,14 @@
               "$ref": "DanceInvocation.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1393,8 +1505,6 @@
         "DisplayNamePlural": "Request Relationships",
         "Description": "Links a DanceInvocation holon to the concrete request holon supplied for that invocation.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1437,6 +1547,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1449,7 +1567,6 @@
         "DisplayName": "RequestFor Relationship",
         "DisplayNamePlural": "RequestFor Relationships",
         "Description": "Inverse of Request, from HolonType to DanceInvocation.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1484,6 +1601,14 @@
               "$ref": "DanceInvocation.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1497,7 +1622,6 @@
         "DisplayNamePlural": "Diagnostics Relationships",
         "Description": "Links a DanceResponseType to zero or more DanceDiagnostic holons that carry non-fatal notes.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1540,6 +1664,14 @@
               "$ref": "(DanceDiagnostic.HolonType)-[DiagnosticFor]->(DanceResponseType.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1552,7 +1684,6 @@
         "DisplayName": "DiagnosticFor Relationship",
         "DisplayNamePlural": "DiagnosticFor Relationships",
         "Description": "Inverse of Diagnostics, from DanceDiagnostic to DanceResponseType.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1585,6 +1716,14 @@
           "target": [
             {
               "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }
@@ -3193,7 +3332,6 @@
         "DisplayName": "SavedHolons Relationship",
         "DisplayNamePlural": "SavedHolons Relationships",
         "Description": "Declared relationship from a CommitResponse to each holon successfully saved by this commit.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -3236,6 +3374,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse.Projection)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -3248,8 +3394,6 @@
         "DisplayName": "SavedByCommit Relationship",
         "DisplayNamePlural": "SavedByCommit Relationships",
         "Description": "Inverse of SavedHolons. Links a holon to a CommitResponse that successfully saved it.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -3284,6 +3428,14 @@
               "$ref": "CommitResponse.Projection"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -3296,7 +3448,6 @@
         "DisplayName": "AbandonedHolons Relationship",
         "DisplayNamePlural": "AbandonedHolons Relationships",
         "Description": "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -3339,6 +3490,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -3351,8 +3510,6 @@
         "DisplayName": "AbandonedByCommit Relationship",
         "DisplayNamePlural": "AbandonedByCommit Relationships",
         "Description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -3385,6 +3542,14 @@
           "target": [
             {
               "$ref": "CommitResponse.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
             }
           ]
         }

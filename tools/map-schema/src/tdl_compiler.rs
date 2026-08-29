@@ -114,6 +114,7 @@ struct TdlDescriptor {
     target_type: Option<String>,
     inverse_of: Option<String>,
     has_inverse: Option<String>,
+    rule_of: Option<String>,
     key_rule: Option<String>,
     min_cardinality: Option<i64>,
     max_cardinality: Option<i64>,
@@ -149,6 +150,37 @@ pub fn compile_inputs(inputs: &[PathBuf], out_dir: &Path) -> Result<Vec<PathBuf>
     }
 
     Ok(written)
+}
+
+/// Counts authored type-descriptor declarations by their TDL declaration category.
+///
+/// This is a source-reporting aid only. It deliberately reports authored declaration
+/// categories rather than resolving graph-derived Instance TypeKinds.
+pub fn type_definition_counts(
+    inputs: &[PathBuf],
+) -> Result<BTreeMap<String, BTreeMap<String, usize>>> {
+    let mut counts = BTreeMap::new();
+    for file in parse_inputs(inputs)? {
+        let schema_counts = counts.entry(file.schema.name).or_insert_with(BTreeMap::new);
+        for descriptor in file.descriptors {
+            let category = match (descriptor.kind, descriptor.relationship_flavor) {
+                (DescriptorKind::HolonType, _) => "HolonType",
+                (DescriptorKind::ValueType, _) => "ValueType",
+                (DescriptorKind::PropertyType, _) => "PropertyType",
+                (DescriptorKind::RelationshipType, Some(RelationshipFlavor::Declared)) => {
+                    "DeclaredRelationshipType"
+                }
+                (DescriptorKind::RelationshipType, Some(RelationshipFlavor::Inverse)) => {
+                    "InverseRelationshipType"
+                }
+                (DescriptorKind::RelationshipType, None) => "RelationshipType",
+                (DescriptorKind::Enum, _) => "EnumValueType",
+                (DescriptorKind::EnumVariant, _) => "EnumVariantValueType",
+            };
+            *schema_counts.entry(category.to_string()).or_default() += 1;
+        }
+    }
+    Ok(counts)
 }
 
 /// Compiles one TDL document provided as a raw string into loader JSON.
@@ -446,11 +478,19 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
     if descriptor.allows_additional_relationships {
         holon.property("AllowsAdditionalRelationships", json!(true))?;
     }
+    let uses_cardinality_shorthand =
+        descriptor.min_cardinality.is_some() || descriptor.max_cardinality.is_some();
+    if uses_cardinality_shorthand && !descriptor.is_generic_instance {
+        return Err(anyhow!(
+            "cardinality shorthand is valid only on a generic instance, not {}",
+            descriptor.name
+        ));
+    }
     if let Some(min) = descriptor.min_cardinality {
-        holon.property("MinCardinality", json!(min))?;
+        holon.property("Minimum", json!(min))?;
     }
     if let Some(max) = descriptor.max_cardinality {
-        holon.property("MaxCardinality", json!(max))?;
+        holon.property("Maximum", json!(max))?;
     }
     if let Some(deletion_semantic) = &descriptor.deletion_semantic {
         holon.property("DeletionSemantic", json!(deletion_semantic))?;
@@ -466,8 +506,6 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
             || descriptor.source_type.is_some()
             || descriptor.target_type.is_some()
             || descriptor.key_rule.is_some()
-            || descriptor.min_cardinality.is_some()
-            || descriptor.max_cardinality.is_some()
             || descriptor.deletion_semantic.is_some()
             || descriptor.is_abstract
             || descriptor.is_definitional
@@ -476,6 +514,12 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
     {
         return Err(anyhow!(
             "generic instance `{}` must not use descriptor-only shorthand",
+            descriptor.name
+        ));
+    }
+    if descriptor.rule_of.is_some() && !descriptor.is_generic_instance {
+        return Err(anyhow!(
+            "rule_of is valid only on a generic instance, not {}",
             descriptor.name
         ));
     }
@@ -497,6 +541,9 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
     }
     if let Some(key_rule) = &descriptor.key_rule {
         holon.relationship("InstanceKeyRule", key_rule.clone());
+    }
+    if let Some(rule_of) = &descriptor.rule_of {
+        holon.relationship("RuleOf", rule_of.clone());
     }
     if let Some(has_inverse) = &descriptor.has_inverse {
         holon.relationship("HasInverse", has_inverse.clone());
@@ -523,6 +570,12 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
         if relationship.name == "Extends" && descriptor.extends.is_some() {
             return Err(anyhow!(
                 "descriptor `{}` must not author both extends and Extends",
+                descriptor.name
+            ));
+        }
+        if relationship.name == "RuleOf" && descriptor.rule_of.is_some() {
+            return Err(anyhow!(
+                "instance `{}` must not author both rule_of and RuleOf",
                 descriptor.name
             ));
         }
@@ -691,8 +744,6 @@ fn canonical_property_name(name: &str) -> String {
         "is_definitional" => "IsDefinitional",
         "is_ordered" => "IsOrdered",
         "allows_duplicates" => "AllowsDuplicates",
-        "min_cardinality" => "MinCardinality",
-        "max_cardinality" => "MaxCardinality",
         "deletion_semantic" => "DeletionSemantic",
         other => other,
     }
@@ -712,8 +763,8 @@ fn ordered_properties(properties: BTreeMap<String, Value>) -> serde_json::Map<St
         "IsDefinitional",
         "IsOrdered",
         "AllowsDuplicates",
-        "MinCardinality",
-        "MaxCardinality",
+        "Minimum",
+        "Maximum",
         "DeletionSemantic",
         "IsValueRequired",
         "DefaultValue",
@@ -996,6 +1047,7 @@ impl<'a> Parser<'a> {
             target_type: None,
             inverse_of: None,
             has_inverse: None,
+            rule_of: None,
             key_rule: None,
             min_cardinality: None,
             max_cardinality: None,
@@ -1063,6 +1115,12 @@ impl<'a> Parser<'a> {
                         } else {
                             descriptor.has_inverse = Some(inverse_name);
                         }
+                        self.consume_trimmed();
+                    }
+                    s if s.starts_with("rule_of ") => {
+                        clauses.mark("rule_of", &declaration_name)?;
+                        descriptor.rule_of =
+                            Some(parse_reference_token(s["rule_of ".len()..].trim())?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("instance_keyrule ") => {
@@ -1193,6 +1251,7 @@ impl<'a> Parser<'a> {
             target_type: None,
             inverse_of: None,
             has_inverse: None,
+            rule_of: None,
             key_rule: None,
             min_cardinality: None,
             max_cardinality: None,
@@ -1474,6 +1533,7 @@ struct DescriptorClauseTracker {
     source_type: bool,
     target_type: bool,
     inverse_pair: bool,
+    rule_of: bool,
     key_rule: bool,
     cardinality: bool,
     ordered: bool,
@@ -1493,6 +1553,7 @@ impl DescriptorClauseTracker {
             "source" => &mut self.source_type,
             "target" => &mut self.target_type,
             "inverse" => &mut self.inverse_pair,
+            "rule_of" => &mut self.rule_of,
             "keyrule" => &mut self.key_rule,
             "cardinality" => &mut self.cardinality,
             "ordered" => &mut self.ordered,
@@ -2160,8 +2221,7 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
-        let relationship_json =
-            fs::read_to_string(out_dir.join("core/relationship-types.json"))?;
+        let relationship_json = fs::read_to_string(out_dir.join("core/relationship-types.json"))?;
         let relationship_value: Value = serde_json::from_str(&relationship_json)?;
         let component_of = relationship_value["holons"]
             .as_array()
@@ -2192,8 +2252,7 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
-        let relationship_json =
-            fs::read_to_string(out_dir.join("core/relationship-types.json"))?;
+        let relationship_json = fs::read_to_string(out_dir.join("core/relationship-types.json"))?;
         let relationship_value: Value = serde_json::from_str(&relationship_json)?;
         let instance_properties = relationship_value["holons"]
             .as_array()
@@ -2239,9 +2298,9 @@ holon Example.HolonType {
         let affordance = clone_holon["relationships"]
             .as_array()
             .and_then(|relationships| {
-                relationships.iter().find(|relationship| {
-                    relationship["name"].as_str() == Some("CommandAffordedBy")
-                })
+                relationships
+                    .iter()
+                    .find(|relationship| relationship["name"].as_str() == Some("CommandAffordedBy"))
             })
             .expect("CloneHolon CommandAffordedBy relationship");
         assert_eq!(affordance["target"], json!([{ "$ref": "HolonType.TypeDescriptor" }]));
@@ -2250,25 +2309,272 @@ holon Example.HolonType {
     }
 
     #[test]
-    fn core_schema_leaves_max_cardinality_requiredness_to_the_meta_property_contract() -> Result<()>
-    {
+    fn core_schema_leaves_maximum_optional_on_cardinality_constraints() -> Result<()> {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
-        let property_json =
-            fs::read_to_string(out_dir.join("core/property-types.json"))?;
+        let property_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         let property_value: Value = serde_json::from_str(&property_json)?;
-        let max_cardinality = property_value["holons"]
+        let maximum = property_value["holons"]
             .as_array()
             .and_then(|holons| {
-                holons
-                    .iter()
-                    .find(|holon| holon["key"].as_str() == Some("MaxCardinality.PropertyType"))
+                holons.iter().find(|holon| holon["key"].as_str() == Some("Maximum.PropertyType"))
             })
-            .expect("MaxCardinality property holon");
+            .expect("Maximum property holon");
 
-        assert!(max_cardinality["properties"].get("IsValueRequired").is_none());
+        assert!(maximum["properties"].get("IsValueRequired").is_none());
 
+        Ok(())
+    }
+
+    #[test]
+    fn core_schema_emits_rule_provenance_and_distinct_length_constraint_types() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        let root: Value =
+            serde_json::from_str(&fs::read_to_string(out_dir.join("core/root.json"))?)?;
+        let root_holons = root["holons"].as_array().expect("root holons");
+        let rule = root_holons
+            .iter()
+            .find(|holon| holon["key"] == "Rule.HolonType")
+            .expect("Rule descriptor");
+        assert!(rule["properties"].get("DefinesInstanceTypeKind").is_none());
+        let exactly_one = root_holons
+            .iter()
+            .find(|holon| holon["key"] == "ExactlyOne.CardinalityConstraint")
+            .expect("ExactlyOne constraint");
+        assert!(exactly_one["relationships"].as_array().is_some_and(|relationships| {
+            relationships.iter().any(|relationship| {
+                relationship["name"] == "RuleOf"
+                    && relationship["target"] == json!([{ "$ref": "MAP Core Schema-v0.0.7" }])
+            })
+        }));
+        let applicability = root_holons
+            .iter()
+            .find(|holon| {
+                holon["key"]
+                    == "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)"
+            })
+            .expect("ApplicableToDescriptorTypes relationship descriptor");
+        assert!(applicability["relationships"].as_array().is_some_and(|relationships| {
+            relationships.iter().any(|relationship| {
+                relationship["name"] == "SourceType"
+                    && relationship["target"]
+                        == json!([{ "$ref": "MetaConstraintType.MetaHolonType" }])
+            })
+        }));
+        let meta_constraint = root_holons
+            .iter()
+            .find(|holon| holon["key"] == "MetaConstraintType.MetaHolonType")
+            .expect("MetaConstraintType descriptor");
+        assert!(meta_constraint["relationships"].as_array().is_some_and(|relationships| {
+            relationships.iter().any(|relationship| {
+                relationship["name"] == "InstanceRelationships"
+                    && relationship["target"]
+                        == json!([{
+                            "$ref": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)"
+                        }])
+            })
+        }));
+
+        let dance: Value =
+            serde_json::from_str(&fs::read_to_string(out_dir.join("dance/schema.json"))?)?;
+        let format_rule = dance["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| holon["key"] == "ImplementationName.FormatRule")
+            })
+            .expect("ImplementationName format rule");
+        assert!(format_rule["relationships"].as_array().is_some_and(|relationships| {
+            relationships.iter().any(|relationship| {
+                relationship["name"] == "RuleOf"
+                    && relationship["target"] == json!([{ "$ref": "MAP Dance Schema-v0.1.0" }])
+            })
+        }));
+
+        let constraints: Value = serde_json::from_str(&fs::read_to_string(
+            out_dir.join("core/value-constraint-types.json"),
+        )?)?;
+        let constraint_holons = constraints["holons"].as_array().expect("constraint holons");
+        assert!(constraint_holons
+            .iter()
+            .any(|holon| holon["key"] == "StringLengthConstraint.ConstraintType"));
+        assert!(constraint_holons
+            .iter()
+            .any(|holon| holon["key"] == "BytesLengthConstraint.ConstraintType"));
+        assert!(!constraint_holons
+            .iter()
+            .any(|holon| holon["key"] == "LengthConstraint.ConstraintType"));
+        Ok(())
+    }
+
+    #[test]
+    fn cardinality_shorthand_lowers_on_a_generic_instance_without_type_resolution() -> Result<()> {
+        let compiled = compile_input_string(
+            r#"schema Example.Schema
+
+instance Authors.UnresolvedConstraint {
+  type ExtensionCardinality.ConstraintType
+  cardinality 0..*
+}
+"#,
+            "cardinality-constraint.tdl",
+        )?;
+        let value: Value = serde_json::from_str(&compiled)?;
+        let constraint = value["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| holon["key"] == "Authors.UnresolvedConstraint")
+            })
+            .expect("generic instance");
+
+        assert_eq!(constraint["properties"]["Minimum"], json!(0));
+        assert!(constraint["properties"].get("Maximum").is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn rule_of_lowers_to_the_explicit_provenance_relationship() -> Result<()> {
+        let compiled = compile_input_string(
+            r#"schema Example.Schema
+
+instance DisplayName.StringLengthConstraint {
+  type StringLengthConstraint.ConstraintType
+  rule_of Example.Schema
+  ConstraintName "DisplayName"
+  Minimum 1
+  MinimumIsInclusive true
+}
+"#,
+            "rule-of.tdl",
+        )?;
+        let value: Value = serde_json::from_str(&compiled)?;
+        let constraint = value["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| holon["key"] == "DisplayName.StringLengthConstraint")
+            })
+            .expect("constraint instance");
+
+        assert!(constraint["relationships"].as_array().is_some_and(|relationships| {
+            relationships.iter().any(|relationship| {
+                relationship["name"] == "RuleOf"
+                    && relationship["target"] == json!([{ "$ref": "Example.Schema" }])
+            })
+        }));
+        Ok(())
+    }
+
+    #[test]
+    fn rule_of_is_rejected_on_descriptor_declarations() {
+        let error = check_input_string(
+            r#"schema Example.Schema
+
+holon StringLengthConstraint.ConstraintType {
+  type MetaConstraintType.MetaHolonType
+  rule_of Example.Schema
+}
+"#,
+            "invalid-rule-of.tdl",
+        )
+        .expect_err("rule_of must be limited to generic instances");
+
+        assert!(error.to_string().contains("rule_of is valid only on a generic instance"));
+    }
+
+    #[test]
+    fn explicit_value_constraint_instances_remain_ordinary_attached_holons() -> Result<()> {
+        let compiled = compile_input_string(
+            r#"schema Example.Schema
+
+instance Username.StringLengthConstraint {
+  type StringLengthConstraint.ConstraintType
+  rule_of Example.Schema
+  ConstraintName "Username"
+  Minimum 3
+  MinimumIsInclusive true
+  Maximum 80
+  MaximumIsInclusive true
+}
+
+value Username.StringValueType {
+  type MetaStringValueType.MetaValueType
+  extends StringValueType.ValueType
+  relationships {
+    Constraints -> Username.StringLengthConstraint
+  }
+}
+"#,
+            "value-constraint-instance.tdl",
+        )?;
+        let value: Value = serde_json::from_str(&compiled)?;
+        let holons = value["holons"].as_array().expect("compiled value-constraint holons");
+        let constraint = holons
+            .iter()
+            .find(|holon| holon["key"] == "Username.StringLengthConstraint")
+            .expect("explicit length constraint instance");
+        let value_type = holons
+            .iter()
+            .find(|holon| holon["key"] == "Username.StringValueType")
+            .expect("constrained value type");
+
+        assert_eq!(constraint["type"], json!("StringLengthConstraint.ConstraintType"));
+        assert_eq!(constraint["properties"]["ConstraintName"], json!("Username"));
+        assert_eq!(constraint["properties"]["Minimum"], json!(3));
+        assert_eq!(constraint["properties"]["Maximum"], json!(80));
+        assert!(value_type["relationships"].as_array().is_some_and(|relationships| {
+            relationships.iter().any(|relationship| {
+                relationship["name"] == "Constraints"
+                    && relationship["target"]
+                        == json!([{ "$ref": "Username.StringLengthConstraint" }])
+            })
+        }));
+        Ok(())
+    }
+
+    #[test]
+    fn cardinality_shorthand_is_rejected_on_relationship_declarations() {
+        let error = check_input_string(
+            r#"schema Example.Schema
+
+def relationship (Book.HolonType)-[Authors]->(Person.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  source Book.HolonType
+  target Person.HolonType
+  cardinality 0..*
+  deletion_semantic Block
+}
+"#,
+            "relationship-cardinality.tdl",
+        )
+        .expect_err("relationship cardinality shorthand must be rejected");
+
+        assert!(error.to_string().contains("generic instance"));
+    }
+
+    #[test]
+    fn cardinality_shorthand_does_not_classify_the_authored_instance_type() -> Result<()> {
+        let compiled = compile_input_string(
+            r#"schema Extension.Schema
+
+instance ExtensionAuthors.UnresolvedRule {
+  type ExtensionRule.HolonType
+  cardinality 1..3
+}
+"#,
+            "extension-cardinality.tdl",
+        )?;
+        let value: Value = serde_json::from_str(&compiled)?;
+        let constraint = value["holons"]
+            .as_array()
+            .and_then(|holons| {
+                holons.iter().find(|holon| holon["key"] == "ExtensionAuthors.UnresolvedRule")
+            })
+            .expect("generic instance");
+
+        assert_eq!(constraint["properties"]["Minimum"], json!(1));
+        assert_eq!(constraint["properties"]["Maximum"], json!(3));
         Ok(())
     }
 

@@ -29,7 +29,7 @@
           "name": "Extends",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "Rule.HolonType"
             }
           ]
         },
@@ -245,6 +245,35 @@
       ]
     },
     {
+      "key": "ConstraintInstanceRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintInstanceRule",
+        "TypeNamePlural": "ConstraintInstanceRules",
+        "DisplayName": "Constraint Instance Key Rule",
+        "DisplayNamePlural": "Constraint Instance Key Rules",
+        "Description": "Derives a configured constraint instance key from its required ConstraintName and its DescribedBy constraint type."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "NoneRule.KeyRuleType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
@@ -312,8 +341,6 @@
         "DisplayNamePlural": "Instance Key Rule Relationships",
         "Description": "Selects the key rule governing holons described by a holon type. The rule does not govern the key of the source type descriptor itself.",
         "IsDefinitional": true,
-        "MinCardinality": 1,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -356,6 +383,14 @@
               "$ref": "(KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType.TypeDescriptor)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -368,7 +403,6 @@
         "DisplayName": "Key Rule For Instances Of",
         "DisplayNamePlural": "Key Rule For Instances Of Relationships",
         "Description": "Inverse of InstanceKeyRule, from a key rule to the holon types whose described instances use it.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -401,6 +435,14 @@
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

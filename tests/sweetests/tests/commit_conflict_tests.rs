@@ -189,7 +189,7 @@ async fn begin_transaction(runtime: &Runtime) -> Arc<TransactionContext> {
 /// last one — needs a fresh transaction rather than the one it just closed.
 async fn load(runtime: &Runtime, content_set: ContentSet, label: &str) {
     let context = begin_transaction(runtime).await;
-    runtime
+    let response = runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
                 context,
@@ -199,6 +199,31 @@ async fn load(runtime: &Runtime, content_set: ContentSet, label: &str) {
         )
         .await
         .unwrap_or_else(|error| panic!("{label} failed: {error:?}"));
+
+    let MapResult::Reference(HolonReference::Transient(response)) = response else {
+        panic!("{label} returned an unexpected load response");
+    };
+    let errors = response
+        .property_value(&CorePropertyTypeName::ErrorCount.as_property_name())
+        .unwrap_or_else(|error| panic!("{label} response could not read ErrorCount: {error:?}"));
+    let error_messages = response
+        .related_holons(&CoreRelationshipTypeName::HasLoadError)
+        .ok()
+        .and_then(|errors| errors.read().ok().map(|errors| errors.get_members().clone()))
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|error| {
+            error
+                .property_value(&CorePropertyTypeName::ErrorMessage.as_property_name())
+                .ok()
+                .flatten()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        errors,
+        Some(PropertyValue::IntegerValue(MapInteger(0))),
+        "{label} reported loader errors: {error_messages:?}"
+    );
 }
 
 /// Resolves a committed holon by key through `GetAllHolons`.

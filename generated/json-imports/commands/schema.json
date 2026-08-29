@@ -1416,7 +1416,6 @@
         "DisplayNamePlural": "CommandAffordedBy Relationships",
         "Description": "Declares the Core holon type that affords a CommandType, making the command discoverable through descriptor-local command affordance lookup.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -1459,6 +1458,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1471,7 +1478,6 @@
         "DisplayName": "AffordsCommand Relationship",
         "DisplayNamePlural": "AffordsCommand Relationships",
         "Description": "Inverse of CommandAffordedBy, from a Core holon type to the command it affords.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1506,6 +1512,14 @@
               "$ref": "CommandType.HolonType"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1519,8 +1533,6 @@
         "DisplayNamePlural": "CommandPayloadType Relationships",
         "Description": "Links a CommandType to the holon type carried as its command payload.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
-        "MaxCardinality": 1,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1563,6 +1575,14 @@
               "$ref": "(HolonType.TypeDescriptor)-[CommandPayloadTypeFor]->(CommandType.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -1575,7 +1595,6 @@
         "DisplayName": "CommandPayloadTypeFor Relationship",
         "DisplayNamePlural": "CommandPayloadTypeFor Relationships",
         "Description": "Inverse of CommandPayloadType, from HolonType to CommandType.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -1608,6 +1627,14 @@
           "target": [
             {
               "$ref": "CommandType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

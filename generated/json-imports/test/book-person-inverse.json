@@ -82,7 +82,6 @@
         "DisplayName": "ReferencesProperty",
         "DisplayNamePlural": "ReferencesProperty Relationships",
         "Description": "Non-definitional test relationship used to verify graph-only update anchoring and duplicate suppression.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -125,6 +124,14 @@
               "$ref": "(PropertyType.TypeDescriptor)-[ReferencedByBook]->(Book.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -137,7 +144,6 @@
         "DisplayName": "ReferencedByBook",
         "DisplayNamePlural": "ReferencedByBook Relationships",
         "Description": "Inverse of ReferencesProperty for graph-only update tests.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -170,6 +176,14 @@
           "target": [
             {
               "$ref": "Book.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }
@@ -222,7 +236,6 @@
         "DisplayNamePlural": "AuthoredBy Relationships",
         "Description": "Defines the author of a book.",
         "IsDefinitional": true,
-        "MinCardinality": 0,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -265,6 +278,14 @@
               "$ref": "(Person.HolonType)-[AuthorOf]->(Book.HolonType)"
             }
           ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
         }
       ]
     },
@@ -277,7 +298,6 @@
         "DisplayName": "AuthorOf",
         "DisplayNamePlural": "AuthorOf Relationships",
         "Description": "Specifies a book that a Person has authored. Inverse of AuthoredBy.",
-        "MinCardinality": 0,
         "DeletionSemantic": "Block"
       },
       "relationships": [
@@ -310,6 +330,14 @@
           "target": [
             {
               "$ref": "Book.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

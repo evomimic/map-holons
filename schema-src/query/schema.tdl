@@ -225,12 +225,12 @@ enum QueryExecutionStatus.MapEnumValueType {
 def relationship (Query.HolonType)-[RootExpression]->(QueryExpression.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> RootExpressionFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source Query.HolonType
   target QueryExpression.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Identifies the root expression of a Query definition."
@@ -245,7 +245,9 @@ inverse relationship (QueryExpression.HolonType)-[RootExpressionFor]->(Query.Hol
   extends InverseRelationshipType.RelationshipType
   source QueryExpression.HolonType
   target Query.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of RootExpression."
@@ -258,12 +260,12 @@ inverse relationship (QueryExpression.HolonType)-[RootExpressionFor]->(Query.Hol
 def relationship (QueryExpression.HolonType)-[ExpressionParameters]->(QueryParameterDeclaration.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ParametersForQueryExpression
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryExpression.HolonType
   target QueryParameterDeclaration.HolonType
-  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -279,7 +281,9 @@ inverse relationship (QueryParameterDeclaration.HolonType)-[ParametersForQueryEx
   extends InverseRelationshipType.RelationshipType
   source QueryParameterDeclaration.HolonType
   target QueryExpression.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ExpressionParameters."
@@ -292,12 +296,12 @@ inverse relationship (QueryParameterDeclaration.HolonType)-[ParametersForQueryEx
 def relationship (QueryExpression.HolonType)-[Next]->(QueryExpression.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> Previous
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryExpression.HolonType
   target QueryExpression.HolonType
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "The sole sequential continuation relationship for QueryExpression execution."
@@ -312,7 +316,9 @@ inverse relationship (QueryExpression.HolonType)-[Previous]->(QueryExpression.Ho
   extends InverseRelationshipType.RelationshipType
   source QueryExpression.HolonType
   target QueryExpression.HolonType
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Next."
@@ -325,12 +331,12 @@ inverse relationship (QueryExpression.HolonType)-[Previous]->(QueryExpression.Ho
 def relationship (QueryParameterDeclaration.HolonType)-[ParameterBindingType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> ParameterDeclaredBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryParameterDeclaration.HolonType
   target HolonType.TypeDescriptor
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Identifies the concrete QueryParameterBinding descriptor accepted by a declaration."
@@ -345,7 +351,9 @@ inverse relationship (HolonType.TypeDescriptor)-[ParameterDeclaredBy]->(QueryPar
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target QueryParameterDeclaration.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ParameterBindingType."
@@ -358,12 +366,12 @@ inverse relationship (HolonType.TypeDescriptor)-[ParameterDeclaredBy]->(QueryPar
 def relationship (QueryParameterBinding.HolonType)-[BindsParameter]->(QueryParameterDeclaration.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> ParameterBoundBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryParameterBinding.HolonType
   target QueryParameterDeclaration.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Identifies the declaration satisfied by a runtime query parameter binding."
@@ -378,7 +386,9 @@ inverse relationship (QueryParameterDeclaration.HolonType)-[ParameterBoundBy]->(
   extends InverseRelationshipType.RelationshipType
   source QueryParameterDeclaration.HolonType
   target QueryParameterBinding.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of BindsParameter."
@@ -391,12 +401,12 @@ inverse relationship (QueryParameterDeclaration.HolonType)-[ParameterBoundBy]->(
 def relationship (QuerySubTree.HolonType)-[Subtree]->(QueryExpression.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
     HasInverse -> Parent
   }
   extends DeclaredRelationshipType.RelationshipType
   source QuerySubTree.HolonType
   target QueryExpression.HolonType
-  cardinality 1..*
   ordered
   deletion_semantic Block
   header {
@@ -412,7 +422,9 @@ inverse relationship (QueryExpression.HolonType)-[Parent]->(QuerySubTree.HolonTy
   extends InverseRelationshipType.RelationshipType
   source QueryExpression.HolonType
   target QuerySubTree.HolonType
-  cardinality 0..1
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Subtree."
@@ -425,12 +437,12 @@ inverse relationship (QueryExpression.HolonType)-[Parent]->(QuerySubTree.HolonTy
 def relationship (ExecutionInstance.HolonType)-[ExecutesQuery]->(Query.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> ExecutedBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target Query.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Identifies the Query executed by this runtime instance."
@@ -445,7 +457,9 @@ inverse relationship (Query.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonTyp
   extends InverseRelationshipType.RelationshipType
   source Query.HolonType
   target ExecutionInstance.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ExecutesQuery."
@@ -458,12 +472,12 @@ inverse relationship (Query.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonTyp
 def relationship (ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ExecutionFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target QueryExpressionExecution.HolonType
-  cardinality 0..*
   ordered
   deletion_semantic Block
   header {
@@ -479,7 +493,9 @@ inverse relationship (QueryExpressionExecution.HolonType)-[ExecutionFor]->(Execu
   extends InverseRelationshipType.RelationshipType
   source QueryExpressionExecution.HolonType
   target ExecutionInstance.HolonType
-  cardinality 1..1
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ExpressionExecutions."
@@ -492,12 +508,12 @@ inverse relationship (QueryExpressionExecution.HolonType)-[ExecutionFor]->(Execu
 def relationship (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> ResultOfExecution
   }
   extends DeclaredRelationshipType.RelationshipType
   source ExecutionInstance.HolonType
   target HolonCollection.HolonType
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "Records the final HolonCollection of a completed Query execution."
@@ -512,7 +528,9 @@ inverse relationship (HolonCollection.HolonType)-[ResultOfExecution]->(Execution
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target ExecutionInstance.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ExecutionResult."
@@ -525,12 +543,12 @@ inverse relationship (HolonCollection.HolonType)-[ResultOfExecution]->(Execution
 def relationship (QueryExpressionExecution.HolonType)-[ExecutesExpression]->(QueryExpression.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> ExpressionExecutedBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryExpressionExecution.HolonType
   target QueryExpression.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Identifies the reusable QueryExpression invoked by runtime execution state."
@@ -545,7 +563,9 @@ inverse relationship (QueryExpression.HolonType)-[ExpressionExecutedBy]->(QueryE
   extends InverseRelationshipType.RelationshipType
   source QueryExpression.HolonType
   target QueryExpressionExecution.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of ExecutesExpression."
@@ -558,12 +578,12 @@ inverse relationship (QueryExpression.HolonType)-[ExpressionExecutedBy]->(QueryE
 def relationship (QueryExpressionExecution.HolonType)-[Input]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> InputFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryExpressionExecution.HolonType
   target HolonCollection.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Records the runtime input collection for one expression invocation."
@@ -578,7 +598,9 @@ inverse relationship (HolonCollection.HolonType)-[InputFor]->(QueryExpressionExe
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target QueryExpressionExecution.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Input."
@@ -591,12 +613,12 @@ inverse relationship (HolonCollection.HolonType)-[InputFor]->(QueryExpressionExe
 def relationship (QueryExpressionExecution.HolonType)-[Result]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> ResultOf
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryExpressionExecution.HolonType
   target HolonCollection.HolonType
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "Records the runtime result collection for one expression invocation."
@@ -611,7 +633,9 @@ inverse relationship (HolonCollection.HolonType)-[ResultOf]->(QueryExpressionExe
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target QueryExpressionExecution.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of Result."
@@ -624,12 +648,12 @@ inverse relationship (HolonCollection.HolonType)-[ResultOf]->(QueryExpressionExe
 def relationship (QueryExpressionExecution.HolonType)-[RuntimeParameters]->(QueryParameterBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> RuntimeParametersFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryExpressionExecution.HolonType
   target QueryParameterBinding.HolonType
-  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Records resolved runtime bindings for one expression invocation."
@@ -644,7 +668,9 @@ inverse relationship (QueryParameterBinding.HolonType)-[RuntimeParametersFor]->(
   extends InverseRelationshipType.RelationshipType
   source QueryParameterBinding.HolonType
   target QueryExpressionExecution.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of RuntimeParameters."

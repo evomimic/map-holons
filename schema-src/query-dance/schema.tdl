@@ -65,12 +65,12 @@ holon QueryDance.DanceType {
 def relationship (QueryDanceRequest.HolonType)-[RequestedQuery]->(Query.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> QueryRequestedBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target Query.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Selects the Query executed by a Dance-mediated request."
@@ -85,7 +85,9 @@ inverse relationship (Query.HolonType)-[QueryRequestedBy]->(QueryDanceRequest.Ho
   extends InverseRelationshipType.RelationshipType
   source Query.HolonType
   target QueryDanceRequest.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of RequestedQuery."
@@ -98,12 +100,12 @@ inverse relationship (Query.HolonType)-[QueryRequestedBy]->(QueryDanceRequest.Ho
 def relationship (QueryDanceRequest.HolonType)-[InitialInput]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
     HasInverse -> InitialInputForQueryDanceRequest
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target HolonCollection.HolonType
-  cardinality 1..1
   deletion_semantic Block
   header {
     description: "Supplies the initial collection for a Dance-mediated Query invocation."
@@ -118,7 +120,9 @@ inverse relationship (HolonCollection.HolonType)-[InitialInputForQueryDanceReque
   extends InverseRelationshipType.RelationshipType
   source HolonCollection.HolonType
   target QueryDanceRequest.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of InitialInput."
@@ -131,12 +135,12 @@ inverse relationship (HolonCollection.HolonType)-[InitialInputForQueryDanceReque
 def relationship (QueryDanceRequest.HolonType)-[RequestParameters]->(QueryParameterBinding.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ParametersForQueryDanceRequest
   }
   extends DeclaredRelationshipType.RelationshipType
   source QueryDanceRequest.HolonType
   target QueryParameterBinding.HolonType
-  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Supplies invocation-specific bindings to a Dance-mediated Query."
@@ -151,7 +155,9 @@ inverse relationship (QueryParameterBinding.HolonType)-[ParametersForQueryDanceR
   extends InverseRelationshipType.RelationshipType
   source QueryParameterBinding.HolonType
   target QueryDanceRequest.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of RequestParameters."

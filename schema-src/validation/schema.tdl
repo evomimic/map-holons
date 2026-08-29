@@ -61,12 +61,12 @@ holon Validate.OperatorType {
 def relationship (ValidationRule.HolonType)-[AffordsOperator]->(OperatorType.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> ValidationRuleAffordedBy
   }
   extends DeclaredRelationshipType.RelationshipType
   source ValidationRule.HolonType
   target OperatorType.HolonType
-  cardinality 0..*
   deletion_semantic Block
   header {
     description: "Links a ValidationRule family descriptor to the local operator descriptors available for rules in that family."
@@ -81,7 +81,9 @@ inverse relationship (OperatorType.HolonType)-[ValidationRuleAffordedBy]->(Valid
   extends InverseRelationshipType.RelationshipType
   source OperatorType.HolonType
   target ValidationRule.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of AffordsOperator for ValidationRule family descriptors."

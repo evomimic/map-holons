@@ -45,11 +45,6 @@ holon MetaStringValueType.MetaValueType {
     display_plural: "Meta String Value Types"
     plural: "MetaStringValueTypes"
   }
-  relationships {
-    InstanceRelationships -> [
-      (StringValueType.ValueType)-[Constraints]->(StringValueConstraint.ValueConstraintType)
-    ]
-  }
 }
 
 holon MetaIntegerValueType.MetaValueType {
@@ -61,11 +56,6 @@ holon MetaIntegerValueType.MetaValueType {
     display_plural: "Meta Integer Value Types"
     plural: "MetaIntegerValueTypes"
   }
-  relationships {
-    InstanceRelationships -> [
-      (IntegerValueType.ValueType)-[Constraints]->(IntegerValueConstraint.ValueConstraintType)
-    ]
-  }
 }
 
 holon MetaBytesValueType.MetaValueType {
@@ -76,11 +66,6 @@ holon MetaBytesValueType.MetaValueType {
     display_name: "Meta Bytes Value Type"
     display_plural: "Meta Bytes Value Types"
     plural: "MetaBytesValueTypes"
-  }
-  relationships {
-    InstanceRelationships -> [
-      (BytesValueType.ValueType)-[Constraints]->(BytesValueConstraint.ValueConstraintType)
-    ]
   }
 }
 
@@ -111,8 +96,7 @@ holon MetaValueArrayValueType.MetaValueType {
   }
   relationships {
     InstanceRelationships -> [
-      (ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor),
-      (ValueArrayValueType.ValueType)-[Constraints]->(ValueArrayConstraint.ValueConstraintType)
+      (ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor)
     ]
   }
 }

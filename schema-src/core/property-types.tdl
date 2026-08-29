@@ -231,33 +231,6 @@ property MapString.PropertyType {
 }
 
 
-property MaxCardinality.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value MapIntegerValueType.IntegerValueType
-  header {
-    description: "Maximum number of target holons allowed for the relationship. Absence means the relationship is unbounded."
-    display_name: "max_cardinality"
-    display_plural: "max_cardinalities"
-    plural: "MaxCardinalities"
-  }
-}
-
-
-property MinCardinality.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value MapIntegerValueType.IntegerValueType
-  IsValueRequired true
-  header {
-    description: "Minimum number of target holons allowed for the relationship."
-    display_name: "min_cardinality"
-    display_plural: "min_cardinalities"
-    plural: "MinCardinalities"
-  }
-}
-
-
 property DefinesInstanceTypeKind.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor

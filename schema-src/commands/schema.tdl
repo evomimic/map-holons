@@ -569,12 +569,12 @@ holon DeleteHolon.CommandType {
 def relationship (CommandType.HolonType)-[CommandAffordedBy]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
     HasInverse -> AffordsCommand
   }
   extends DeclaredRelationshipType.RelationshipType
   source CommandType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..*
   deletion_semantic Allow
   header {
     description: "Declares the Core holon type that affords a CommandType, making the command discoverable through descriptor-local command affordance lookup."
@@ -590,7 +590,9 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.H
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommandType.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of CommandAffordedBy, from a Core holon type to the command it affords."
@@ -604,12 +606,12 @@ inverse relationship (HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.H
 def relationship (CommandType.HolonType)-[CommandPayloadType]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> CommandPayloadTypeFor
   }
   extends DeclaredRelationshipType.RelationshipType
   source CommandType.HolonType
   target HolonType.TypeDescriptor
-  cardinality 0..1
   deletion_semantic Block
   header {
     description: "Links a CommandType to the holon type carried as its command payload."
@@ -625,7 +627,9 @@ inverse relationship (HolonType.TypeDescriptor)-[CommandPayloadTypeFor]->(Comman
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target CommandType.HolonType
-  cardinality 0..*
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
   deletion_semantic Block
   header {
     description: "Inverse of CommandPayloadType, from HolonType to CommandType."

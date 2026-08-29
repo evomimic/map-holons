@@ -295,6 +295,9 @@
               "$ref": "(TypeDescriptor)-[Extends]->(TypeDescriptor)"
             },
             {
+              "$ref": "(TypeDescriptor)-[Constraints]->(Constraint.HolonType)"
+            },
+            {
               "$ref": "(TypeDescriptor)-[ValidationBindings]->(ValidationRule.HolonType)"
             }
           ]
@@ -450,12 +453,6 @@
             },
             {
               "$ref": "AllowsDuplicates.PropertyType"
-            },
-            {
-              "$ref": "MinCardinality.PropertyType"
-            },
-            {
-              "$ref": "MaxCardinality.PropertyType"
             },
             {
               "$ref": "DeletionSemantic.PropertyType"
@@ -752,6 +749,816 @@
             },
             {
               "$ref": "(HolonCollection.HolonType)-[ElementType]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Rule.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Rule",
+        "TypeNamePlural": "Rules",
+        "DisplayName": "Rule",
+        "DisplayNamePlural": "Rules",
+        "Description": "Abstract semantic family for ordinary configured rules. It is not an Instance TypeKind anchor.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Rule.HolonType)-[RuleOf]->(Schema.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaConstraintType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaConstraintType",
+        "TypeNamePlural": "MetaConstraintTypes",
+        "DisplayName": "Meta Constraint Type",
+        "DisplayNamePlural": "Meta Constraint Types",
+        "Description": "Meta-type describing constraint type descriptors and their declared applicable descriptor families."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaHolonType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Constraint.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Constraint",
+        "TypeNamePlural": "Constraints",
+        "DisplayName": "Constraint",
+        "DisplayNamePlural": "Constraints",
+        "Description": "Abstract root for ordinary configured definitional constraint holons.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Rule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "ConstraintInstanceRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ConstraintName.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintType.HolonType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "ConstraintType",
+        "TypeNamePlural": "ConstraintTypes",
+        "DisplayName": "Constraint Type",
+        "DisplayNamePlural": "Constraint Types",
+        "Description": "Abstract root for descriptors that define configured definitional constraint holons.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Constraint.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Minimum.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Minimum",
+        "TypeNamePlural": "Minimums",
+        "DisplayName": "Minimum",
+        "DisplayNamePlural": "Minimums",
+        "Description": "Optional non-negative lower bound for a configured constraint."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintName",
+        "TypeNamePlural": "ConstraintNames",
+        "DisplayName": "Constraint Name",
+        "DisplayNamePlural": "Constraint Names",
+        "Description": "Semantic name used by ConstraintInstanceRule to derive a configured constraint instance key.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Maximum.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Maximum",
+        "TypeNamePlural": "Maximums",
+        "DisplayName": "Maximum",
+        "DisplayNamePlural": "Maximums",
+        "Description": "Optional non-negative upper bound for a configured constraint. Absence means unbounded."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MinimumIsInclusive.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MinimumIsInclusive",
+        "TypeNamePlural": "MinimumIsInclusiveValues",
+        "DisplayName": "Minimum Is Inclusive",
+        "DisplayNamePlural": "Minimum Is Inclusive Values",
+        "Description": "Whether a configured minimum bound is included in the accepted range."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MaximumIsInclusive.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MaximumIsInclusive",
+        "TypeNamePlural": "MaximumIsInclusiveValues",
+        "DisplayName": "Maximum Is Inclusive",
+        "DisplayNamePlural": "Maximum Is Inclusive Values",
+        "Description": "Whether a configured maximum bound is included in the accepted range."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CardinalityConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "CardinalityConstraint",
+        "TypeNamePlural": "CardinalityConstraints",
+        "DisplayName": "Cardinality Constraint",
+        "DisplayNamePlural": "Cardinality Constraints",
+        "Description": "Configured directional relationship cardinality constraint with a required inclusive minimum and optional inclusive maximum."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Minimum.PropertyType"
+            },
+            {
+              "$ref": "Maximum.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "RelationshipType.TypeDescriptor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ZeroOrMore.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType",
+      "properties": {
+        "Minimum": 0,
+        "ConstraintName": "ZeroOrMore"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExactlyOne.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType",
+      "properties": {
+        "Minimum": 1,
+        "Maximum": 1,
+        "ConstraintName": "ExactlyOne"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ZeroOrOne.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType",
+      "properties": {
+        "Minimum": 0,
+        "Maximum": 1,
+        "ConstraintName": "ZeroOrOne"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OneOrMore.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType",
+      "properties": {
+        "Minimum": 1,
+        "ConstraintName": "OneOrMore"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Rule.HolonType)-[RuleOf]->(Schema.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RuleOf",
+        "TypeNamePlural": "RuleOfRelationships",
+        "DisplayName": "Rule Of",
+        "DisplayNamePlural": "Rule Of Relationships",
+        "Description": "Records the sole origin schema of an ordinary configured rule.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Rule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Schema.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Schema.HolonType)-[Rules]->(Rule.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Schema.HolonType)-[Rules]->(Rule.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Rules",
+        "TypeNamePlural": "RulesRelationships",
+        "DisplayName": "Rules",
+        "DisplayNamePlural": "Rules Relationships",
+        "Description": "Materialized inverse of RuleOf from an origin schema to its rules.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Schema.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Rule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[Constraints]->(Constraint.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constraints",
+        "TypeNamePlural": "Constraints",
+        "DisplayName": "Constraints Relationship",
+        "DisplayNamePlural": "Constraints Relationships",
+        "Description": "Attaches configured definitional constraints to a type definition. Inherited and local declarations accumulate.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Constraint.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Constraint.HolonType)-[Constrains]->(TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Constraint.HolonType)-[Constrains]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Constrains",
+        "TypeNamePlural": "Constrains",
+        "DisplayName": "Constrains Relationship",
+        "DisplayNamePlural": "Constrains Relationships",
+        "Description": "Inverse of Constraints from a configured constraint to the type definitions it constrains.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Constraint.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ApplicableToDescriptorTypes",
+        "TypeNamePlural": "ApplicableToDescriptorTypes",
+        "DisplayName": "Applicable To Descriptor Types",
+        "DisplayNamePlural": "Applicable To Descriptor Types Relationships",
+        "Description": "Declares the descriptor families to which instances of a constraint type may attach.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "MetaConstraintType.MetaHolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(TypeDescriptor)-[HasApplicableConstraintTypes]->(MetaConstraintType.MetaHolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[HasApplicableConstraintTypes]->(MetaConstraintType.MetaHolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasApplicableConstraintTypes",
+        "TypeNamePlural": "HasApplicableConstraintTypes",
+        "DisplayName": "Has Applicable Constraint Types",
+        "DisplayNamePlural": "Has Applicable Constraint Types Relationships",
+        "Description": "Inverse of ApplicableToDescriptorTypes from a descriptor family to compatible constraint types.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "MetaConstraintType.MetaHolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }
