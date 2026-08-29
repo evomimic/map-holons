@@ -27,6 +27,9 @@ describe('public SDK exports', () => {
     expect(sdk.HolonReference).toBeDefined();
     expect(sdk.TransientHolonReference).toBeDefined();
     expect(sdk.HolonCollection).toBeDefined();
+    expect(sdk.HolonDescriptorHandle).toBeDefined();
+    expect(sdk.PropertyDescriptorHandle).toBeDefined();
+    expect(sdk.RelationshipDescriptorHandle).toBeDefined();
     expect(sdk.MapError).toBeDefined();
     expect(sdk.TransportError).toBeDefined();
     expect(sdk.MalformedResponseError).toBeDefined();

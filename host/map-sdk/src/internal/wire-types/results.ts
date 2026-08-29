@@ -14,6 +14,23 @@ import {
   isRecord,
 } from './references';
 
+export type RelationshipDirectionWire = 'Declared' | 'Inverse';
+
+export interface QualifiedRelationshipWire {
+  descriptor: HolonReferenceWire;
+  direction: RelationshipDirectionWire;
+}
+
+function isQualifiedRelationshipWire(
+  value: unknown,
+): value is QualifiedRelationshipWire {
+  return (
+    isRecord(value) &&
+    isHolonReferenceWire(value['descriptor']) &&
+    (value['direction'] === 'Declared' || value['direction'] === 'Inverse')
+  );
+}
+
 // ===========================================
 // Result Payload Types
 // ===========================================
@@ -35,6 +52,7 @@ export type MapResultWire =
   | { Reference: HolonReferenceWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
+  | { QualifiedRelationships: QualifiedRelationshipWire[] }
   | { Value: BaseValue }
   | { HolonId: HolonId }
   | { DanceResponse: DanceResponseWire };
@@ -59,6 +77,9 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
       value.References.every(isHolonReferenceWire)) ||
     (hasSingleKey(value, 'Collection') &&
       isHolonCollectionWire(value.Collection)) ||
+    (hasSingleKey(value, 'QualifiedRelationships') &&
+      Array.isArray(value.QualifiedRelationships) &&
+      value.QualifiedRelationships.every(isQualifiedRelationshipWire)) ||
     (hasSingleKey(value, 'Value') && isBaseValue(value.Value)) ||
     (hasSingleKey(value, 'HolonId') && isHolonId(value.HolonId)) ||
     (hasSingleKey(value, 'DanceResponse') &&

@@ -51,6 +51,18 @@ fn holon_action_policies() {
         "CloneHolon creates a transient — mutating despite being a ReadableHolonAction"
     );
     assert_eq!(
+        HolonAction::Read(ReadableHolonAction::GetHolonDescriptor).policy(),
+        CommandLifecyclePolicy::holon_read_only()
+    );
+    assert_eq!(
+        HolonAction::Read(ReadableHolonAction::GetAvailableProperties).policy(),
+        CommandLifecyclePolicy::holon_read_only()
+    );
+    assert_eq!(
+        HolonAction::Read(ReadableHolonAction::GetAvailableRelationships).policy(),
+        CommandLifecyclePolicy::holon_read_only()
+    );
+    assert_eq!(
         HolonAction::Write(WritableHolonAction::WithPropertyValue {
             name: PropertyName(MapString::from("x")),
             value: BaseValue::StringValue(MapString::from("v")),

@@ -49,10 +49,20 @@ pub enum ReadableHolonActionWire {
     GetVersionedKey,
 
     /// `property_value(name)` → `Option<PropertyValue>`
-    GetPropertyValue { name: PropertyName },
+    GetPropertyValue {
+        name: PropertyName,
+    },
 
     /// `related_holons(name)` → `HolonCollection`
-    GetRelatedHolons { name: RelationshipName },
+    GetRelatedHolons {
+        name: RelationshipName,
+    },
+
+    GetHolonDescriptor,
+
+    GetAvailableProperties,
+
+    GetAvailableRelationships,
 }
 
 /// Wire-level write (mutating) holon actions.
@@ -113,6 +123,13 @@ impl ReadableHolonActionWire {
             }
             ReadableHolonActionWire::GetRelatedHolons { name } => {
                 ReadableHolonAction::GetRelatedHolons { name }
+            }
+            ReadableHolonActionWire::GetHolonDescriptor => ReadableHolonAction::GetHolonDescriptor,
+            ReadableHolonActionWire::GetAvailableProperties => {
+                ReadableHolonAction::GetAvailableProperties
+            }
+            ReadableHolonActionWire::GetAvailableRelationships => {
+                ReadableHolonAction::GetAvailableRelationships
             }
         }
     }

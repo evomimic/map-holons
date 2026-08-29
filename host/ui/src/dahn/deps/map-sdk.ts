@@ -9,16 +9,21 @@ export type {
   ContentSet,
   FileData,
   HolonCollection,
+  HolonDescriptorHandle,
   HolonId,
   HolonReference,
+  PropertyDescriptorHandle,
   ReadableHolon,
+  RelationshipDescriptorHandle,
   PropertyName,
   RelationshipName,
+  AvailableRelationshipHandle,
 } from '../../../../map-sdk/src';
 
 export {
   MapClient,
   MapTransaction,
+  MapError,
   extractNumber,
   extractString,
 } from '../../../../map-sdk/src';

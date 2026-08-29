@@ -1,6 +1,9 @@
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
+use holons_core::descriptors::Descriptor;
 use holons_core::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
+use holons_core::{CollectionState, HolonCollection};
+use std::collections::BTreeMap;
 
 use map_commands_contract::{
     HolonAction, HolonCommand, MapResult, ReadableHolonAction, WritableHolonAction,
@@ -60,6 +63,24 @@ fn handle_read(
                 .clone();
             Ok(MapResult::Collection(collection))
         }
+        ReadableHolonAction::GetHolonDescriptor => {
+            Ok(MapResult::Reference(target.holon_descriptor()?.holon().clone()))
+        }
+        ReadableHolonAction::GetAvailableProperties => {
+            let members = target
+                .available_properties()?
+                .into_iter()
+                .map(|descriptor| descriptor.holon().clone())
+                .collect();
+            Ok(MapResult::Collection(HolonCollection::from_parts(
+                CollectionState::Fetched,
+                members,
+                BTreeMap::new(),
+            )))
+        }
+        ReadableHolonAction::GetAvailableRelationships => Ok(MapResult::QualifiedRelationships(
+            target.available_relationships()?.into_iter().map(Into::into).collect(),
+        )),
     }
 }
 

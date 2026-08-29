@@ -13,6 +13,11 @@ import type {
 } from '../internal/wire-types/commands';
 import type { HolonCollection } from './collection';
 import type { HolonReference, TransientHolonReference } from './references';
+import type {
+  AvailableRelationshipHandle,
+  HolonDescriptorHandle,
+  PropertyDescriptorHandle,
+} from './descriptors';
 
 export type {
   BaseValue,
@@ -73,6 +78,9 @@ export interface ReadableHolon {
   versionedKey(): Promise<string>;
   propertyValue(name: PropertyName): Promise<BaseValue | null>;
   relatedHolons(name: RelationshipName): Promise<HolonCollection>;
+  holonDescriptor(): Promise<HolonDescriptorHandle>;
+  availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>>;
+  availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
 }
 
 /**

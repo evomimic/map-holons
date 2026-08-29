@@ -1,4 +1,13 @@
 export { HolonCollection } from './collection';
+export {
+  HolonDescriptorHandle,
+  PropertyDescriptorHandle,
+  RelationshipDescriptorHandle,
+} from './descriptors';
+export type {
+  AvailableRelationshipHandle,
+  RelationshipDirection,
+} from './descriptors';
 export { MapClient } from './client';
 export {
   HolonReference,

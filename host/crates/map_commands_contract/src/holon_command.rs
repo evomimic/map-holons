@@ -48,6 +48,13 @@ impl HolonAction {
             HolonAction::Read(ReadableHolonAction::GetVersionedKey) => "get_versioned_key",
             HolonAction::Read(ReadableHolonAction::GetPropertyValue { .. }) => "get_property_value",
             HolonAction::Read(ReadableHolonAction::GetRelatedHolons { .. }) => "get_related_holons",
+            HolonAction::Read(ReadableHolonAction::GetHolonDescriptor) => "get_holon_descriptor",
+            HolonAction::Read(ReadableHolonAction::GetAvailableProperties) => {
+                "get_available_properties"
+            }
+            HolonAction::Read(ReadableHolonAction::GetAvailableRelationships) => {
+                "get_available_relationships"
+            }
             HolonAction::Write(_) => "holon_write",
         }
     }
@@ -84,6 +91,15 @@ pub enum ReadableHolonAction {
 
     /// `ReadableHolon::related_holons(name)` → `HolonCollection`
     GetRelatedHolons { name: RelationshipName },
+
+    /// `ReadableHolon::holon_descriptor()` → descriptor reference.
+    GetHolonDescriptor,
+
+    /// `ReadableHolon::available_properties()` → ordered descriptor collection.
+    GetAvailableProperties,
+
+    /// `ReadableHolon::available_relationships()` → qualified descriptors.
+    GetAvailableRelationships,
 }
 
 /// Mutating holon actions.
