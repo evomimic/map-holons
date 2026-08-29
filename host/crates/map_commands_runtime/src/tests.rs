@@ -17,7 +17,8 @@ use holons_client::SessionReceptor;
 use session_receptor::{RecoveryStore, TransactionRecoveryStore};
 
 use map_commands_contract::{
-    MapCommand, MapResult, SpaceCommand, TransactionAction, TransactionCommand,
+    HolonAction, HolonCommand, MapCommand, MapResult, ReadableHolonAction, SpaceCommand,
+    TransactionAction, TransactionCommand,
 };
 
 use crate::{ExecutionPolicy, Runtime, RuntimeSession};
@@ -403,16 +404,40 @@ async fn delete_holon_command_returns_none() {
 async fn commit_command_returns_reference() {
     let runtime = build_test_runtime();
     let tx_id = begin_tx(&runtime).await;
+    let context = runtime.session().get_transaction(&tx_id).expect("transaction should exist");
 
     let result = runtime
         .execute_command(
-            tx_cmd(&runtime, &tx_id, TransactionAction::Commit),
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&context),
+                action: TransactionAction::Commit,
+            }),
             ExecutionPolicy::default(),
         )
         .await
         .expect("commit command should succeed");
 
-    assert!(matches!(result, MapResult::Reference(HolonReference::Transient(_))));
+    let response = match result {
+        MapResult::Reference(HolonReference::Transient(response)) => response,
+        other => panic!("expected Transient reference, got {:?}", other),
+    };
+
+    let read_result = runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context,
+                target: HolonReference::Transient(response),
+                action: HolonAction::Read(ReadableHolonAction::GetKey),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("committed-context read of the commit response should succeed");
+
+    assert!(matches!(
+        read_result,
+        MapResult::Value(BaseValue::StringValue(MapString(value))) if value == "commit-response"
+    ));
 }
 
 // ── Undo/redo handler tests ─────────────────────────────────────────
