@@ -31,7 +31,8 @@ impl CommandLifecyclePolicy {
     /// Read-only policy for holon-scoped commands.
     ///
     /// Holon reads do not require an open transaction because references from
-    /// committed transactions remain alive and accessible.
+    /// committed transactions remain alive and accessible through their bound
+    /// archived context.
     pub const fn holon_read_only() -> Self {
         Self {
             mutation: MutationClassification::ReadOnly,
