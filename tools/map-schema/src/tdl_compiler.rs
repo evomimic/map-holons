@@ -2142,7 +2142,7 @@ holon Example.HolonType {
     #[test]
     fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 16);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 18);
 
         let diagnostics = check_inputs(&[fixture_root])?;
 
@@ -2164,8 +2164,8 @@ holon Example.HolonType {
         let parsed = parse_inputs(&[fixture_root.clone()])?;
         let compilation = build_r6_compilation(parsed)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 16);
-        assert_eq!(compilation.files.len(), 16);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 18);
+        assert_eq!(compilation.files.len(), 18);
         assert!(compilation
             .files
             .iter()
@@ -2180,8 +2180,8 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 16);
-        assert_eq!(compiled_files.len(), 16);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 18);
+        assert_eq!(compiled_files.len(), 18);
 
         let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
@@ -2190,6 +2190,150 @@ holon Example.HolonType {
         assert!(!root_json.contains(r#""InstanceTypeKind""#));
         assert!(root_json.contains(r#""meta""#));
         assert!(root_json.contains(r#""load_with""#));
+
+        Ok(())
+    }
+
+    #[test]
+    fn dahn_and_space_navigator_schemas_separate_types_from_bootstrap_holons() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        let dahn: Value =
+            serde_json::from_str(&fs::read_to_string(out_dir.join("dahn/schema.json"))?)?;
+        let holons = dahn["holons"].as_array().expect("DAHN schema holons array");
+
+        for key in [
+            "CanvasVisualizer.HolonType",
+            "NodeVisualizer.HolonType",
+            "CollectionVisualizer.HolonType",
+            "PropertyVisualizer.HolonType",
+            "ValueVisualizer.HolonType",
+            "ActionVisualizer.HolonType",
+            "GraphVisualizer.HolonType",
+        ] {
+            let visualizer_type = holons
+                .iter()
+                .find(|holon| holon["key"].as_str() == Some(key))
+                .with_context(|| format!("{key} descriptor"))?;
+            let extends = visualizer_type["relationships"]
+                .as_array()
+                .and_then(|relationships| {
+                    relationships
+                        .iter()
+                        .find(|relationship| relationship["name"].as_str() == Some("Extends"))
+                })
+                .context("Extends relationship")?;
+            assert_eq!(extends["target"][0]["$ref"], "Visualizer.HolonType");
+        }
+
+        let space_navigator: Value = serde_json::from_str(&fs::read_to_string(
+            out_dir.join("space-navigator/schema.json"),
+        )?)?;
+        let space_navigator_holons =
+            space_navigator["holons"].as_array().expect("Space Navigator schema holons array");
+        let generic_node_visualizer = space_navigator_holons
+            .iter()
+            .find(|holon| {
+                holon["key"].as_str() == Some("GenericHolonNodeVisualizer.NodeVisualizer")
+            })
+            .context("Generic Holon Node Visualizer bootstrap holon")?;
+        assert_eq!(generic_node_visualizer["type"], "NodeVisualizer.HolonType");
+
+        let relationships = generic_node_visualizer["relationships"]
+            .as_array()
+            .context("Generic Holon Node Visualizer relationships")?;
+        let applicable_to_type = relationships
+            .iter()
+            .find(|relationship| relationship["name"].as_str() == Some("ApplicableToType"))
+            .context("ApplicableToType relationship")?;
+        assert_eq!(applicable_to_type["target"][0]["$ref"], "HolonType.TypeDescriptor");
+        let implemented_by = relationships
+            .iter()
+            .find(|relationship| relationship["name"].as_str() == Some("ImplementedBy"))
+            .context("ImplementedBy relationship")?;
+        assert_eq!(
+            implemented_by["target"][0]["$ref"],
+            "GenericHolonNodeTypeScript.VisualizerImplementation"
+        );
+
+        let generic_node_implementation = space_navigator_holons
+            .iter()
+            .find(|holon| {
+                holon["key"].as_str() == Some("GenericHolonNodeTypeScript.VisualizerImplementation")
+            })
+            .context("Generic Holon Node Visualizer implementation")?;
+        assert_eq!(
+            generic_node_implementation["properties"]["VisualizerImplementationRuntime"],
+            "TypeScript"
+        );
+        assert_eq!(
+            generic_node_implementation["properties"]["VisualizerImplementationKey"],
+            "dahn.generic-holon-node"
+        );
+
+        let layout_type = holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("Layout.HolonType"))
+            .context("Layout descriptor")?;
+        assert_eq!(layout_type["type"], "MetaHolonType.MetaTypeDescriptor");
+        let visualizer_slot_type = holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("VisualizerSlot.HolonType"))
+            .context("VisualizerSlot descriptor")?;
+        assert_eq!(visualizer_slot_type["type"], "MetaHolonType.MetaTypeDescriptor");
+        let slot_contract = visualizer_slot_type["relationships"]
+            .as_array()
+            .and_then(|relationships| {
+                relationships.iter().find(|relationship| {
+                    relationship["name"].as_str() == Some("InstanceRelationships")
+                        && relationship["target"].as_array().is_some_and(|targets| {
+                            targets.iter().any(|target| {
+                                target["$ref"]
+                                    == "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)"
+                            })
+                        })
+                })
+            })
+            .context("AcceptsVisualizerType instance contract")?;
+        assert!(!slot_contract["target"].as_array().unwrap().is_empty());
+        let accepts_visualizer_type = holons
+            .iter()
+            .find(|holon| {
+                holon["key"].as_str()
+                    == Some(
+                        "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)",
+                    )
+            })
+            .context("AcceptsVisualizerType descriptor")?;
+        let accepts_constraints = accepts_visualizer_type["relationships"]
+            .as_array()
+            .and_then(|relationships| {
+                relationships
+                    .iter()
+                    .find(|relationship| relationship["name"].as_str() == Some("Constraints"))
+            })
+            .context("AcceptsVisualizerType cardinality constraint")?;
+        assert_eq!(accepts_constraints["target"][0]["$ref"], "OneOrMore.CardinalityConstraint");
+        let visualizer_type = holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("Visualizer.HolonType"))
+            .context("Visualizer descriptor")?;
+        let uses_layout = visualizer_type["relationships"]
+            .as_array()
+            .and_then(|relationships| {
+                relationships.iter().find(|relationship| {
+                    relationship["name"].as_str() == Some("InstanceRelationships")
+                        && relationship["target"].as_array().is_some_and(|targets| {
+                            targets.iter().any(|target| {
+                                target["$ref"]
+                                    == "(Visualizer.HolonType)-[UsesLayout]->(Layout.HolonType)"
+                            })
+                        })
+                })
+            })
+            .context("UsesLayout instance contract")?;
+        assert!(!uses_layout["target"].as_array().unwrap().is_empty());
 
         Ok(())
     }

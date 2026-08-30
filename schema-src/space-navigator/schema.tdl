@@ -1,0 +1,47 @@
+schema "MAP Space Navigator Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP DAHN Schema-v0.1.0"
+  header {
+    description: "Non-Core MAP schema for the Space Navigator's statically bundled fallback Visualizer Holons and their locally resolvable implementation identities. These static mappings resolve semantic VisualizerImplementation Holons; they do not create TypeScript-only Visualizer identities. TableCollectionVisualizer intentionally omits ApplicableToType because shape-based collection applicability is deferred."
+  }
+}
+
+instance SpaceNavigator.CanvasVisualizer {
+  type CanvasVisualizer.HolonType
+  relationships {
+    ImplementedBy -> SpaceNavigatorTypeScript.VisualizerImplementation
+  }
+}
+
+instance GenericHolonNodeVisualizer.NodeVisualizer {
+  type NodeVisualizer.HolonType
+  relationships {
+    ImplementedBy -> GenericHolonNodeTypeScript.VisualizerImplementation
+    ApplicableToType -> HolonType.TypeDescriptor
+  }
+}
+
+instance TableCollectionVisualizer.CollectionVisualizer {
+  type CollectionVisualizer.HolonType
+  relationships {
+    ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
+  }
+}
+
+instance SpaceNavigatorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.space-navigator"
+}
+
+instance GenericHolonNodeTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.generic-holon-node"
+}
+
+instance TableCollectionTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.table-collection"
+}
