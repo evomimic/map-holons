@@ -12,6 +12,9 @@ const {
   cloneHolonMock,
   predecessorMock,
   readHolonIdMock,
+  readAvailablePropertiesMock,
+  readAvailableRelationshipsMock,
+  readHolonDescriptorMock,
   readKeyMock,
   readPropertyValueMock,
   readRelatedHolonsMock,
@@ -26,6 +29,9 @@ const {
   cloneHolonMock: vi.fn(),
   predecessorMock: vi.fn(),
   readHolonIdMock: vi.fn(),
+  readAvailablePropertiesMock: vi.fn(),
+  readAvailableRelationshipsMock: vi.fn(),
+  readHolonDescriptorMock: vi.fn(),
   readKeyMock: vi.fn(),
   readPropertyValueMock: vi.fn(),
   readRelatedHolonsMock: vi.fn(),
@@ -42,6 +48,9 @@ vi.mock('../../src/internal/commands/holon', () => ({
   cloneHolon: cloneHolonMock,
   predecessor: predecessorMock,
   readHolonId: readHolonIdMock,
+  readAvailableProperties: readAvailablePropertiesMock,
+  readAvailableRelationships: readAvailableRelationshipsMock,
+  readHolonDescriptor: readHolonDescriptorMock,
   readKey: readKeyMock,
   readPropertyValue: readPropertyValueMock,
   readRelatedHolons: readRelatedHolonsMock,
@@ -54,6 +63,11 @@ vi.mock('../../src/internal/commands/holon', () => ({
 }));
 
 import { HolonCollection } from '../../src/sdk/collection';
+import {
+  HolonDescriptorHandle,
+  PropertyDescriptorHandle,
+  RelationshipDescriptorHandle,
+} from '../../src/sdk/descriptors';
 import {
   createHolonReference,
   createTransientHolonReference,
@@ -112,6 +126,17 @@ const relatedCollection: HolonCollectionWire = {
   },
 };
 
+const descriptorCollection: HolonCollectionWire = {
+  state: 'Fetched',
+  members: [smartReference, stagedReference],
+  keyed_index: {},
+};
+
+const qualifiedRelationships = [
+  { descriptor: smartReference, direction: 'Declared' as const },
+  { descriptor: stagedReference, direction: 'Inverse' as const },
+];
+
 function stagedHandle(): HolonReference {
   return createHolonReference(txId, stagedReference);
 }
@@ -130,6 +155,9 @@ describe('HolonReference', () => {
     cloneHolonMock.mockReset();
     predecessorMock.mockReset();
     readHolonIdMock.mockReset();
+    readAvailablePropertiesMock.mockReset();
+    readAvailableRelationshipsMock.mockReset();
+    readHolonDescriptorMock.mockReset();
     readKeyMock.mockReset();
     readPropertyValueMock.mockReset();
     readRelatedHolonsMock.mockReset();
@@ -227,6 +255,31 @@ describe('HolonReference', () => {
     expect(collection).toBeInstanceOf(HolonCollection);
     expect(collection.members[0]).toBeInstanceOf(TransientHolonReference);
     expect(collection.members[1]).toBeInstanceOf(HolonReference);
+  });
+
+  it('wraps descriptor discovery results in typed public handles', async () => {
+    readHolonDescriptorMock.mockResolvedValue(smartReference);
+    readAvailablePropertiesMock.mockResolvedValue(descriptorCollection);
+    readAvailableRelationshipsMock.mockResolvedValue(qualifiedRelationships);
+
+    const reference = stagedHandle();
+    const descriptor = await reference.holonDescriptor();
+    const properties = await reference.availableProperties();
+    const relationships = await reference.availableRelationships();
+
+    expect(readHolonDescriptorMock).toHaveBeenCalledWith(txId, stagedReference);
+    expect(readAvailablePropertiesMock).toHaveBeenCalledWith(txId, stagedReference);
+    expect(readAvailableRelationshipsMock).toHaveBeenCalledWith(txId, stagedReference);
+    expect(descriptor).toBeInstanceOf(HolonDescriptorHandle);
+    expect(properties).toHaveLength(2);
+    expect(properties[0]).toBeInstanceOf(PropertyDescriptorHandle);
+    expect(properties[1]).toBeInstanceOf(PropertyDescriptorHandle);
+    expect(relationships.map((relationship) => relationship.direction)).toEqual([
+      'declared',
+      'inverse',
+    ]);
+    expect(relationships[0]?.descriptor).toBeInstanceOf(RelationshipDescriptorHandle);
+    expect(relationships[1]?.descriptor).toBeInstanceOf(RelationshipDescriptorHandle);
   });
 
   it('delegates property mutation methods with the expected arguments', async () => {

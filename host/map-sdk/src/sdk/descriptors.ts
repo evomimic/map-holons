@@ -1,6 +1,7 @@
 import type { BaseValue, PropertyName, RelationshipName } from './types';
 import { extractString } from './types';
 import type { HolonReference } from './references';
+import { CorePropertyName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
 
@@ -20,7 +21,10 @@ export class HolonDescriptorHandle {
   }
 
   async typeName(): Promise<string> {
-    return requiredString(this.#reference.propertyValue('TypeName'), 'TypeName');
+    return requiredString(
+      this.#reference.propertyValue(CorePropertyName.TypeName),
+      CorePropertyName.TypeName,
+    );
   }
 }
 
@@ -40,7 +44,10 @@ export class PropertyDescriptorHandle {
   }
 
   async propertyName(): Promise<PropertyName> {
-    return requiredString(this.#reference.propertyValue('PropertyName'), 'PropertyName');
+    return requiredString(
+      this.#reference.propertyValue(CorePropertyName.PropertyName),
+      CorePropertyName.PropertyName,
+    );
   }
 }
 
@@ -61,8 +68,8 @@ export class RelationshipDescriptorHandle {
 
   async relationshipName(): Promise<RelationshipName> {
     return requiredString(
-      this.#reference.propertyValue('RelationshipName'),
-      'RelationshipName',
+      this.#reference.propertyValue(CorePropertyName.RelationshipName),
+      CorePropertyName.RelationshipName,
     );
   }
 }

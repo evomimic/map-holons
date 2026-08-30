@@ -27,6 +27,7 @@ describe('public SDK exports', () => {
     expect(sdk.HolonReference).toBeDefined();
     expect(sdk.TransientHolonReference).toBeDefined();
     expect(sdk.HolonCollection).toBeDefined();
+    expect(sdk.CorePropertyName).toBeDefined();
     expect(sdk.HolonDescriptorHandle).toBeDefined();
     expect(sdk.PropertyDescriptorHandle).toBeDefined();
     expect(sdk.RelationshipDescriptorHandle).toBeDefined();
@@ -37,6 +38,7 @@ describe('public SDK exports', () => {
     expect(sdk.extractString).toBeDefined();
     expect(sdk.extractNumber).toBeDefined();
     expect(sdk.extractBytes).toBeDefined();
+    expect(sdk.CorePropertyName.TypeName).toBe('TypeName');
   });
 
   it('does not expose internal wire or transport-layer exports', () => {

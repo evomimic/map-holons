@@ -1,4 +1,5 @@
 export { HolonCollection } from './collection';
+export { CorePropertyName } from './core-names';
 export {
   HolonDescriptorHandle,
   PropertyDescriptorHandle,
