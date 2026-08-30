@@ -1,0 +1,1167 @@
+{
+  "holons": [
+    {
+      "key": "MAP DAHN Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP DAHN Schema-v0.1.0",
+        "Description": "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Capability taxonomies, compatibility/release contracts, Visualizer Commons stewardship, and dynamic acquisition are deliberately deferred."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaVisualizerType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaVisualizerType",
+        "TypeNamePlural": "MetaVisualizerTypes",
+        "DisplayName": "Meta Visualizer Type",
+        "DisplayNamePlural": "Meta Visualizer Types",
+        "Description": "Meta-type for Visualizer Holon Type descriptors. It identifies the descriptor family whose instances are DAHN Visualizer Holons and provides a semantic target for Visualizer-role composition and discovery."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaHolonType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Visualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "Visualizer",
+        "TypeNamePlural": "Visualizers",
+        "DisplayName": "Visualizer",
+        "DisplayNamePlural": "Visualizers",
+        "Description": "Abstract family anchor for DAHN Visualizer Holon Types. Ordinary Visualizer Holons must be described by concrete descendants; their semantic identity is distinct from executable implementation identities.",
+        "IsAbstractType": true,
+        "DefinesInstanceTypeKind": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType)"
+            },
+            {
+              "$ref": "(Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(Visualizer.HolonType)-[UsesLayout]->(Layout.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "CanvasVisualizer",
+        "TypeNamePlural": "CanvasVisualizers",
+        "DisplayName": "Canvas Visualizer",
+        "DisplayNamePlural": "Canvas Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that compose a canvas experience."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NodeVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "NodeVisualizer",
+        "TypeNamePlural": "NodeVisualizers",
+        "DisplayName": "Node Visualizer",
+        "DisplayNamePlural": "Node Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent individual holons."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CollectionVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "CollectionVisualizer",
+        "TypeNamePlural": "CollectionVisualizers",
+        "DisplayName": "Collection Visualizer",
+        "DisplayNamePlural": "Collection Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent holon collections."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertyVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PropertyVisualizer",
+        "TypeNamePlural": "PropertyVisualizers",
+        "DisplayName": "Property Visualizer",
+        "DisplayNamePlural": "Property Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent properties."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValueVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "ValueVisualizer",
+        "TypeNamePlural": "ValueVisualizers",
+        "DisplayName": "Value Visualizer",
+        "DisplayNamePlural": "Value Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent values."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "ActionVisualizer",
+        "TypeNamePlural": "ActionVisualizers",
+        "DisplayName": "Action Visualizer",
+        "DisplayNamePlural": "Action Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent actions."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GraphVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "GraphVisualizer",
+        "TypeNamePlural": "GraphVisualizers",
+        "DisplayName": "Graph Visualizer",
+        "DisplayNamePlural": "Graph Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that represent graph-oriented views."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerImplementation.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerImplementation",
+        "TypeNamePlural": "VisualizerImplementations",
+        "DisplayName": "Visualizer Implementation",
+        "DisplayNamePlural": "Visualizer Implementations",
+        "Description": "Concrete semantic identity for one executable realization of a Visualizer Holon. Its runtime and stable implementation key support static resolution without making a client registry semantic authority. Acquisition, compatibility, and implementation-private behavior are deferred."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "VisualizerImplementationRuntime.PropertyType"
+            },
+            {
+              "$ref": "VisualizerImplementationKey.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Layout.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Layout",
+        "TypeNamePlural": "Layouts",
+        "DisplayName": "Layout",
+        "DisplayNamePlural": "Layouts",
+        "Description": "First-class semantic layout identity used by a Visualizer for its internal composition. Layouts organize semantic VisualizerSlots only in this first cut; slot ordering, horizontal and vertical flow, nesting, grouping, grid, stack and overlay, gaps and padding, alignment, sizing, responsive variants, and compression variants are deferred."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Layout.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerSlot.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerSlot",
+        "TypeNamePlural": "VisualizerSlots",
+        "DisplayName": "Visualizer Slot",
+        "DisplayNamePlural": "Visualizer Slots",
+        "Description": "Semantic role-bearing location within a Layout that declares one or more accepted Visualizer Holon Type roles. This is not runtime child occupancy; runtime occupancy, slot naming, layout policies, and selection constraints are deferred."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ImplementedBy",
+        "TypeNamePlural": "ImplementedByRelationships",
+        "DisplayName": "ImplementedBy Relationship",
+        "DisplayNamePlural": "ImplementedBy Relationships",
+        "Description": "Relates a Visualizer Holon to one or more executable realization identities without making any realization the Visualizer's durable semantic identity.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerImplementation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerImplementation.HolonType)-[ImplementsVisualizer]->(Visualizer.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerImplementation.HolonType)-[ImplementsVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ImplementsVisualizer",
+        "TypeNamePlural": "ImplementsVisualizerRelationships",
+        "DisplayName": "ImplementsVisualizer Relationship",
+        "DisplayNamePlural": "ImplementsVisualizer Relationships",
+        "Description": "Inverse of ImplementedBy. Each first-cut VisualizerImplementation realizes exactly one Visualizer Holon.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerImplementation.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ApplicableToType",
+        "TypeNamePlural": "ApplicableToTypeRelationships",
+        "DisplayName": "ApplicableToType Relationship",
+        "DisplayNamePlural": "ApplicableToType Relationships",
+        "Description": "Declares a subject Holon Type against which a selector evaluates a Visualizer Holon's applicability using the subject's direct descriptor and type lineage. A target of HolonType.TypeDescriptor means any ordinary subject described by a Holon Type, not descriptor holons as subjects. Additional applicability dimensions remain additive schema work.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasApplicableVisualizer",
+        "TypeNamePlural": "HasApplicableVisualizerRelationships",
+        "DisplayName": "HasApplicableVisualizer Relationship",
+        "DisplayNamePlural": "HasApplicableVisualizer Relationships",
+        "Description": "Inverse of ApplicableToType, exposing the Visualizer Holons applicable to a Holon Type.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Visualizer.HolonType)-[UsesLayout]->(Layout.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "UsesLayout",
+        "TypeNamePlural": "UsesLayoutRelationships",
+        "DisplayName": "UsesLayout Relationship",
+        "DisplayNamePlural": "UsesLayout Relationships",
+        "Description": "Associates a Visualizer Holon with at most one semantic Layout for its internal composition, without encoding pixel geometry or global placement.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Layout.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Layout.HolonType)-[LayoutUsedBy]->(Visualizer.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Layout.HolonType)-[LayoutUsedBy]->(Visualizer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "LayoutUsedBy",
+        "TypeNamePlural": "LayoutUsedByRelationships",
+        "DisplayName": "LayoutUsedBy Relationship",
+        "DisplayNamePlural": "LayoutUsedBy Relationships",
+        "Description": "Inverse of UsesLayout, exposing Visualizer Holons that use a semantic Layout.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Layout.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Layout.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasSlot",
+        "TypeNamePlural": "HasSlotRelationships",
+        "DisplayName": "HasSlot Relationship",
+        "DisplayNamePlural": "HasSlot Relationships",
+        "Description": "Declares the semantic VisualizerSlots that a Layout organizes.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Layout.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[SlotForLayout]->(Layout.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[SlotForLayout]->(Layout.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SlotForLayout",
+        "TypeNamePlural": "SlotForLayoutRelationships",
+        "DisplayName": "SlotForLayout Relationship",
+        "DisplayNamePlural": "SlotForLayout Relationships",
+        "Description": "Inverse of HasSlot. Each first-cut VisualizerSlot belongs to exactly one Layout.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Layout.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AcceptsVisualizerType",
+        "TypeNamePlural": "AcceptsVisualizerTypeRelationships",
+        "DisplayName": "AcceptsVisualizerType Relationship",
+        "DisplayNamePlural": "AcceptsVisualizerType Relationships",
+        "Description": "Declares one or more Visualizer Holon Type roles accepted by a semantic slot. Its cardinality applies to accepted role declarations, not runtime child occupancy; runtime-selected Visualizer occupancy belongs to an experience occurrence and is not persisted in the Layout.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "MetaVisualizerType.MetaHolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(MetaVisualizerType.MetaHolonType)-[AcceptedByVisualizerSlot]->(VisualizerSlot.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(MetaVisualizerType.MetaHolonType)-[AcceptedByVisualizerSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AcceptedByVisualizerSlot",
+        "TypeNamePlural": "AcceptedByVisualizerSlotRelationships",
+        "DisplayName": "AcceptedByVisualizerSlot Relationship",
+        "DisplayNamePlural": "AcceptedByVisualizerSlot Relationships",
+        "Description": "Inverse of AcceptsVisualizerType, exposing the semantic slots that accept a Visualizer Holon Type role.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "MetaVisualizerType.MetaHolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerImplementationRuntime.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerImplementationRuntime",
+        "TypeNamePlural": "VisualizerImplementationRuntimes",
+        "DisplayName": "visualizer_implementation_runtime",
+        "DisplayNamePlural": "visualizer_implementation_runtimes",
+        "Description": "Runtime in which a VisualizerImplementation is executable; the initial runtime set is intentionally small and extensible.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "VisualizerImplementationRuntime.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerImplementationKey.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "VisualizerImplementationKey",
+        "TypeNamePlural": "VisualizerImplementationKeys",
+        "DisplayName": "visualizer_implementation_key",
+        "DisplayNamePlural": "visualizer_implementation_keys",
+        "Description": "Stable symbolic key by which a statically bundled runtime may resolve a VisualizerImplementation to executable code.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerImplementationRuntime.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "VisualizerImplementationRuntime",
+        "TypeNamePlural": "VisualizerImplementationRuntimes",
+        "DisplayName": "Visualizer Implementation Runtime",
+        "DisplayNamePlural": "Visualizer Implementation Runtimes",
+        "Description": "Initial execution runtime variants supported by VisualizerImplementation identities; future runtime variants may be added without changing semantic Visualizer identity."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "VisualizerImplementationRuntime.MapEnumValueType.TypeScript"
+            },
+            {
+              "$ref": "VisualizerImplementationRuntime.MapEnumValueType.Rust"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerImplementationRuntime.MapEnumValueType.TypeScript",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "TypeScript",
+        "TypeNamePlural": "TypeScript",
+        "DisplayName": "TypeScript",
+        "DisplayNamePlural": "TypeScript",
+        "Description": "A TypeScript implementation bundled with a DAHN client."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "VisualizerImplementationRuntime.MapEnumValueType.Rust",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Rust",
+        "TypeNamePlural": "Rust",
+        "DisplayName": "Rust",
+        "DisplayNamePlural": "Rust",
+        "Description": "A Rust implementation available to the MAP host runtime."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

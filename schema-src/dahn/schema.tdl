@@ -1,0 +1,392 @@
+schema "MAP DAHN Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  header {
+    description: "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Capability taxonomies, compatibility/release contracts, Visualizer Commons stewardship, and dynamic acquisition are deliberately deferred."
+  }
+}
+
+holon MetaVisualizerType.MetaHolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends MetaHolonType.MetaTypeDescriptor
+  header {
+    description: "Meta-type for Visualizer Holon Type descriptors. It identifies the descriptor family whose instances are DAHN Visualizer Holons and provides a semantic target for Visualizer-role composition and discovery."
+    display_name: "Meta Visualizer Type"
+    display_plural: "Meta Visualizer Types"
+    plural: "MetaVisualizerTypes"
+  }
+}
+
+abstract holon Visualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends HolonType.TypeDescriptor
+  DefinesInstanceTypeKind true
+  header {
+    description: "Abstract family anchor for DAHN Visualizer Holon Types. Ordinary Visualizer Holons must be described by concrete descendants; their semantic identity is distinct from executable implementation identities."
+    display_name: "Visualizer"
+    display_plural: "Visualizers"
+    plural: "Visualizers"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType),
+      (Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor),
+      (Visualizer.HolonType)-[UsesLayout]->(Layout.HolonType)
+    ]
+  }
+}
+
+holon CanvasVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that compose a canvas experience."
+    display_name: "Canvas Visualizer"
+    display_plural: "Canvas Visualizers"
+    plural: "CanvasVisualizers"
+  }
+}
+
+holon NodeVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that represent individual holons."
+    display_name: "Node Visualizer"
+    display_plural: "Node Visualizers"
+    plural: "NodeVisualizers"
+  }
+}
+
+holon CollectionVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that represent holon collections."
+    display_name: "Collection Visualizer"
+    display_plural: "Collection Visualizers"
+    plural: "CollectionVisualizers"
+  }
+}
+
+holon PropertyVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that represent properties."
+    display_name: "Property Visualizer"
+    display_plural: "Property Visualizers"
+    plural: "PropertyVisualizers"
+  }
+}
+
+holon ValueVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that represent values."
+    display_name: "Value Visualizer"
+    display_plural: "Value Visualizers"
+    plural: "ValueVisualizers"
+  }
+}
+
+holon ActionVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that represent actions."
+    display_name: "Action Visualizer"
+    display_plural: "Action Visualizers"
+    plural: "ActionVisualizers"
+  }
+}
+
+holon GraphVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that represent graph-oriented views."
+    display_name: "Graph Visualizer"
+    display_plural: "Graph Visualizers"
+    plural: "GraphVisualizers"
+  }
+}
+
+holon VisualizerImplementation.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Concrete semantic identity for one executable realization of a Visualizer Holon. Its runtime and stable implementation key support static resolution without making a client registry semantic authority. Acquisition, compatibility, and implementation-private behavior are deferred."
+    display_name: "Visualizer Implementation"
+    display_plural: "Visualizer Implementations"
+    plural: "VisualizerImplementations"
+  }
+  relationships {
+    InstanceProperties -> [
+      VisualizerImplementationRuntime.PropertyType,
+      VisualizerImplementationKey.PropertyType
+    ]
+  }
+}
+
+holon Layout.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "First-class semantic layout identity used by a Visualizer for its internal composition. Layouts organize semantic VisualizerSlots only in this first cut; slot ordering, horizontal and vertical flow, nesting, grouping, grid, stack and overlay, gaps and padding, alignment, sizing, responsive variants, and compression variants are deferred."
+    display_name: "Layout"
+    display_plural: "Layouts"
+    plural: "Layouts"
+  }
+  relationships {
+    InstanceRelationships -> (Layout.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)
+  }
+}
+
+holon VisualizerSlot.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Semantic role-bearing location within a Layout that declares one or more accepted Visualizer Holon Type roles. This is not runtime child occupancy; runtime occupancy, slot naming, layout policies, and selection constraints are deferred."
+    display_name: "Visualizer Slot"
+    display_plural: "Visualizer Slots"
+    plural: "VisualizerSlots"
+  }
+  relationships {
+    InstanceRelationships -> (VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)
+  }
+}
+
+relationship (Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> ImplementsVisualizer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target VisualizerImplementation.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Relates a Visualizer Holon to one or more executable realization identities without making any realization the Visualizer's durable semantic identity."
+    display_name: "ImplementedBy Relationship"
+    display_plural: "ImplementedBy Relationships"
+    plural: "ImplementedByRelationships"
+  }
+}
+
+inverse relationship (VisualizerImplementation.HolonType)-[ImplementsVisualizer]->(Visualizer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerImplementation.HolonType
+  target Visualizer.HolonType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of ImplementedBy. Each first-cut VisualizerImplementation realizes exactly one Visualizer Holon."
+    display_name: "ImplementsVisualizer Relationship"
+    display_plural: "ImplementsVisualizer Relationships"
+    plural: "ImplementsVisualizerRelationships"
+  }
+}
+
+relationship (Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> HasApplicableVisualizer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  header {
+    description: "Declares a subject Holon Type against which a selector evaluates a Visualizer Holon's applicability using the subject's direct descriptor and type lineage. A target of HolonType.TypeDescriptor means any ordinary subject described by a Holon Type, not descriptor holons as subjects. Additional applicability dimensions remain additive schema work."
+    display_name: "ApplicableToType Relationship"
+    display_plural: "ApplicableToType Relationships"
+    plural: "ApplicableToTypeRelationships"
+  }
+}
+
+inverse relationship (HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target Visualizer.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of ApplicableToType, exposing the Visualizer Holons applicable to a Holon Type."
+    display_name: "HasApplicableVisualizer Relationship"
+    display_plural: "HasApplicableVisualizer Relationships"
+    plural: "HasApplicableVisualizerRelationships"
+  }
+}
+
+relationship (Visualizer.HolonType)-[UsesLayout]->(Layout.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> LayoutUsedBy
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target Layout.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Associates a Visualizer Holon with at most one semantic Layout for its internal composition, without encoding pixel geometry or global placement."
+    display_name: "UsesLayout Relationship"
+    display_plural: "UsesLayout Relationships"
+    plural: "UsesLayoutRelationships"
+  }
+}
+
+inverse relationship (Layout.HolonType)-[LayoutUsedBy]->(Visualizer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Layout.HolonType
+  target Visualizer.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of UsesLayout, exposing Visualizer Holons that use a semantic Layout."
+    display_name: "LayoutUsedBy Relationship"
+    display_plural: "LayoutUsedBy Relationships"
+    plural: "LayoutUsedByRelationships"
+  }
+}
+
+relationship (Layout.HolonType)-[HasSlot]->(VisualizerSlot.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> SlotForLayout
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Layout.HolonType
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Declares the semantic VisualizerSlots that a Layout organizes."
+    display_name: "HasSlot Relationship"
+    display_plural: "HasSlot Relationships"
+    plural: "HasSlotRelationships"
+  }
+}
+
+inverse relationship (VisualizerSlot.HolonType)-[SlotForLayout]->(Layout.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target Layout.HolonType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of HasSlot. Each first-cut VisualizerSlot belongs to exactly one Layout."
+    display_name: "SlotForLayout Relationship"
+    display_plural: "SlotForLayout Relationships"
+    plural: "SlotForLayoutRelationships"
+  }
+}
+
+relationship (VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
+    HasInverse -> AcceptedByVisualizerSlot
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target MetaVisualizerType.MetaHolonType
+  deletion_semantic Allow
+  header {
+    description: "Declares one or more Visualizer Holon Type roles accepted by a semantic slot. Its cardinality applies to accepted role declarations, not runtime child occupancy; runtime-selected Visualizer occupancy belongs to an experience occurrence and is not persisted in the Layout."
+    display_name: "AcceptsVisualizerType Relationship"
+    display_plural: "AcceptsVisualizerType Relationships"
+    plural: "AcceptsVisualizerTypeRelationships"
+  }
+}
+
+inverse relationship (MetaVisualizerType.MetaHolonType)-[AcceptedByVisualizerSlot]->(VisualizerSlot.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source MetaVisualizerType.MetaHolonType
+  target VisualizerSlot.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of AcceptsVisualizerType, exposing the semantic slots that accept a Visualizer Holon Type role."
+    display_name: "AcceptedByVisualizerSlot Relationship"
+    display_plural: "AcceptedByVisualizerSlot Relationships"
+    plural: "AcceptedByVisualizerSlotRelationships"
+  }
+}
+
+property VisualizerImplementationRuntime.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value VisualizerImplementationRuntime.MapEnumValueType
+  IsValueRequired true
+  header {
+    description: "Runtime in which a VisualizerImplementation is executable; the initial runtime set is intentionally small and extensible."
+    display_name: "visualizer_implementation_runtime"
+    display_plural: "visualizer_implementation_runtimes"
+    plural: "VisualizerImplementationRuntimes"
+  }
+}
+
+property VisualizerImplementationKey.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Stable symbolic key by which a statically bundled runtime may resolve a VisualizerImplementation to executable code."
+    display_name: "visualizer_implementation_key"
+    display_plural: "visualizer_implementation_keys"
+    plural: "VisualizerImplementationKeys"
+  }
+}
+
+enum VisualizerImplementationRuntime.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Initial execution runtime variants supported by VisualizerImplementation identities; future runtime variants may be added without changing semantic Visualizer identity."
+    display_name: "Visualizer Implementation Runtime"
+    display_plural: "Visualizer Implementation Runtimes"
+    plural: "VisualizerImplementationRuntimes"
+  }
+  variants {
+    variant TypeScript {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "A TypeScript implementation bundled with a DAHN client."
+        display_name: "TypeScript"
+        display_plural: "TypeScript"
+        plural: "TypeScript"
+      }
+    }
+    variant Rust {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "A Rust implementation available to the MAP host runtime."
+        display_name: "Rust"
+        display_plural: "Rust"
+        plural: "Rust"
+      }
+    }
+  }
+}

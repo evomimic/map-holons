@@ -1,0 +1,102 @@
+{
+  "holons": [
+    {
+      "key": "MAP Space Navigator Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Space Navigator Schema-v0.1.0",
+        "Description": "Non-Core MAP schema for the Space Navigator's statically bundled fallback Visualizer Holons and their locally resolvable implementation identities. These static mappings resolve semantic VisualizerImplementation Holons; they do not create TypeScript-only Visualizer identities. TableCollectionVisualizer intentionally omits ApplicableToType because shape-based collection applicability is deferred."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.CanvasVisualizer",
+      "type": "CanvasVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "SpaceNavigatorTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericHolonNodeVisualizer.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "GenericHolonNodeTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TableCollectionVisualizer.CollectionVisualizer",
+      "type": "CollectionVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "TableCollectionTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigatorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "VisualizerImplementationKey": "dahn.space-navigator",
+        "VisualizerImplementationRuntime": "TypeScript"
+      }
+    },
+    {
+      "key": "GenericHolonNodeTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "VisualizerImplementationKey": "dahn.generic-holon-node",
+        "VisualizerImplementationRuntime": "TypeScript"
+      }
+    },
+    {
+      "key": "TableCollectionTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "VisualizerImplementationKey": "dahn.table-collection",
+        "VisualizerImplementationRuntime": "TypeScript"
+      }
+    }
+  ]
+}
