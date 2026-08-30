@@ -5,6 +5,9 @@ import {
   cloneHolon,
   predecessor,
   readHolonId,
+  readAvailableProperties,
+  readAvailableRelationships,
+  readHolonDescriptor,
   readKey,
   readPropertyValue,
   readRelatedHolons,
@@ -100,6 +103,8 @@ const collection: HolonCollectionWire = {
   },
 };
 
+const qualifiedRelationships = [{ descriptor, direction: 'Declared' as const }];
+
 function expectHolonRequest(
   action: HolonActionWire,
   options: RequestOptions = defaultOptions,
@@ -190,6 +195,30 @@ const holonCases: HolonCase<unknown>[] = [
     okResult: { Collection: collection },
     expected: collection,
     wrongResult: { References: [transientReference] },
+  },
+  {
+    name: 'readHolonDescriptor',
+    run: () => readHolonDescriptor(txId, target),
+    action: { Read: 'GetHolonDescriptor' },
+    okResult: { Reference: descriptor },
+    expected: descriptor,
+    wrongResult: { Collection: collection },
+  },
+  {
+    name: 'readAvailableProperties',
+    run: () => readAvailableProperties(txId, target),
+    action: { Read: 'GetAvailableProperties' },
+    okResult: { Collection: collection },
+    expected: collection,
+    wrongResult: { References: [descriptor] },
+  },
+  {
+    name: 'readAvailableRelationships',
+    run: () => readAvailableRelationships(txId, target),
+    action: { Read: 'GetAvailableRelationships' },
+    okResult: { QualifiedRelationships: qualifiedRelationships },
+    expected: qualifiedRelationships,
+    wrongResult: { Collection: collection },
   },
   {
     name: 'withPropertyValue',

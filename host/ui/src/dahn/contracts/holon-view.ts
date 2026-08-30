@@ -1,11 +1,32 @@
 import type { ActionNode } from './actions';
-import type { HolonReference } from '../deps';
+import type {
+  AvailableRelationshipHandle,
+  BaseValue,
+  HolonCollection,
+  HolonDescriptorHandle,
+  HolonId,
+  PropertyDescriptorHandle,
+  PropertyName,
+  RelationshipName,
+} from '../deps';
 
 /**
- * DAHN uses the public SDK's bound holon handle directly rather than defining a
- * parallel DAHN-owned holon access surface.
+ * Read-only DAHN view over one bound MAP holon reference.
+ *
+ * All operations are live reads through the public SDK; this interface neither
+ * caches MAP state nor exposes mutation methods.
  */
-export type HolonViewAccess = HolonReference;
+export interface HolonViewAccess {
+  holonId(): Promise<HolonId>;
+  key(): Promise<string | null>;
+  versionedKey(): Promise<string>;
+  propertyValue(name: PropertyName): Promise<BaseValue | null>;
+  descriptor(): Promise<HolonDescriptorHandle>;
+  availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>>;
+  availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
+  expandRelationship(name: RelationshipName): Promise<HolonCollection>;
+}
+
 
 /**
  * Composite object passed from the access adapter into the runtime.

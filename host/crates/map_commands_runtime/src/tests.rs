@@ -139,6 +139,36 @@ fn tx_cmd(runtime: &Runtime, tx_id: &TxId, action: TransactionAction) -> MapComm
     MapCommand::Transaction(TransactionCommand { context, action })
 }
 
+fn minimally_described_transient(
+    runtime: &Runtime,
+    tx_id: &TxId,
+) -> (Arc<TransactionContext>, HolonReference) {
+    let context = runtime.session().get_transaction(tx_id).expect("transaction should exist");
+    let mut descriptor = context
+        .mutation()
+        .new_holon(Some(MapString::from("readable-type")))
+        .expect("create descriptor");
+    descriptor
+        .with_property_value("TypeName", "ReadableType")
+        .and_then(|descriptor| descriptor.with_property_value("IsAbstractType", false))
+        .and_then(|descriptor| descriptor.with_property_value("InstanceTypeKind", "Holon"))
+        .and_then(|descriptor| descriptor.with_property_value("AllowsAdditionalProperties", false))
+        .and_then(|descriptor| {
+            descriptor.with_property_value("AllowsAdditionalRelationships", false)
+        })
+        .expect("populate descriptor header");
+
+    let mut target = context
+        .mutation()
+        .new_holon(Some(MapString::from("readable-instance")))
+        .expect("create target");
+    target
+        .add_related_holons("DescribedBy", vec![HolonReference::Transient(descriptor)])
+        .expect("link target descriptor");
+
+    (context, HolonReference::Transient(target))
+}
+
 // ── Handler tests ───────────────────────────────────────────────────
 
 #[tokio::test]
@@ -200,6 +230,54 @@ async fn invalid_tx_id_returns_error() {
         }
         other => panic!("expected InvalidParameter error, got {:?}", other),
     }
+}
+
+#[tokio::test]
+async fn descriptor_discovery_reads_map_to_their_runtime_result_families() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let (context, target) = minimally_described_transient(&runtime, &tx_id);
+
+    let descriptor = runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: Arc::clone(&context),
+                target: target.clone(),
+                action: HolonAction::Read(ReadableHolonAction::GetHolonDescriptor),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("descriptor read should succeed");
+    assert!(matches!(descriptor, MapResult::Reference(_)));
+
+    let properties = runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: Arc::clone(&context),
+                target: target.clone(),
+                action: HolonAction::Read(ReadableHolonAction::GetAvailableProperties),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("property discovery should succeed");
+    assert!(
+        matches!(properties, MapResult::Collection(collection) if collection.get_members().is_empty())
+    );
+
+    let relationships = runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context,
+                target,
+                action: HolonAction::Read(ReadableHolonAction::GetAvailableRelationships),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("relationship discovery should succeed");
+    assert!(matches!(relationships, MapResult::QualifiedRelationships(items) if items.is_empty()));
 }
 
 // ── Transaction lookup handler ─────────────────────────────────────

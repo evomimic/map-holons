@@ -109,6 +109,9 @@ export type ReadableHolonActionWire =
   | 'GetPredecessor'
   | 'GetKey'
   | 'GetVersionedKey'
+  | 'GetHolonDescriptor'
+  | 'GetAvailableProperties'
+  | 'GetAvailableRelationships'
   | { GetPropertyValue: { name: PropertyName } }
   | { GetRelatedHolons: { name: RelationshipName } };
 
@@ -148,6 +151,9 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetPredecessor',
   'GetKey',
   'GetVersionedKey',
+  'GetHolonDescriptor',
+  'GetAvailableProperties',
+  'GetAvailableRelationships',
 ]);
 
 const TRANSACTION_UNIT_ACTIONS = new Set([

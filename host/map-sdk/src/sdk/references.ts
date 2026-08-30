@@ -8,6 +8,14 @@ import type {
 } from '../internal/wire-types/references';
 import { HolonCollection } from './collection';
 import {
+  createHolonDescriptorHandle,
+  createPropertyDescriptorHandle,
+  createRelationshipDescriptorHandle,
+  type AvailableRelationshipHandle,
+  type HolonDescriptorHandle,
+  type PropertyDescriptorHandle,
+} from './descriptors';
+import {
   type BaseValue,
   extractString,
   type HolonId,
@@ -85,6 +93,38 @@ export class HolonReference implements WritableHolon {
       name,
     );
     return new HolonCollection(txId, collection);
+  }
+
+  async holonDescriptor(): Promise<HolonDescriptorHandle> {
+    const txId = txIdFor(this);
+    const wireRef = await internalHolon.readHolonDescriptor(txId, wireRefFor(this));
+    return createHolonDescriptorHandle(createHolonReference(txId, wireRef));
+  }
+
+  async availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
+    const txId = txIdFor(this);
+    const collection = await internalHolon.readAvailableProperties(txId, wireRefFor(this));
+    return Object.freeze(
+      collection.members.map((member) =>
+        createPropertyDescriptorHandle(createHolonReference(txId, member)),
+      ),
+    );
+  }
+
+  async availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>> {
+    const txId = txIdFor(this);
+    const relationships = await internalHolon.readAvailableRelationships(
+      txId,
+      wireRefFor(this),
+    );
+    return Object.freeze(
+      relationships.map(({ descriptor, direction }) => ({
+        descriptor: createRelationshipDescriptorHandle(
+          createHolonReference(txId, descriptor),
+        ),
+        direction: direction === 'Declared' ? ('declared' as const) : ('inverse' as const),
+      })),
+    );
   }
 
   withPropertyValue(name: PropertyName, value: BaseValue): Promise<void> {

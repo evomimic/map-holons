@@ -6,6 +6,7 @@ import type {
   HolonId,
   HolonReferenceWire,
   MapResultWire,
+  QualifiedRelationshipWire,
   TxId,
 } from './wire-types';
 
@@ -146,6 +147,21 @@ export function expectCollection(result: MapResultWire): HolonCollectionWire {
   }
 
   throw unexpectedResultVariant('Collection', result);
+}
+
+/** Decode a `MapResultWire::QualifiedRelationships` payload. */
+export function expectQualifiedRelationships(
+  result: MapResultWire,
+): QualifiedRelationshipWire[] {
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    'QualifiedRelationships' in result
+  ) {
+    return result.QualifiedRelationships;
+  }
+
+  throw unexpectedResultVariant('QualifiedRelationships', result);
 }
 
 /**

@@ -2,6 +2,7 @@ use base_types::BaseValue;
 use core_types::HolonId;
 use holons_boundary::{DanceResponseWire, HolonCollectionWire, HolonReferenceWire};
 use holons_core::core_shared_objects::transactions::TxId;
+use holons_core::descriptors::{Descriptor, RelationshipDirection};
 use serde::{Deserialize, Serialize};
 
 use map_commands_contract::MapResult;
@@ -41,6 +42,9 @@ pub enum MapResultWire {
     /// Canonical plural command result carrier at the IPC boundary.
     Collection(HolonCollectionWire),
 
+    /// Ordered lifecycle-valid relationship descriptors and their directions.
+    QualifiedRelationships(Vec<QualifiedRelationshipWire>),
+
     /// Universal scalar return.
     Value(BaseValue),
 
@@ -49,6 +53,29 @@ pub enum MapResultWire {
 
     /// Transitional dance-result exception retained at the IPC boundary.
     DanceResponse(DanceResponseWire),
+}
+
+/// Wire-safe qualified relationship discovery result.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct QualifiedRelationshipWire {
+    pub descriptor: HolonReferenceWire,
+    pub direction: RelationshipDirectionWire,
+}
+
+/// Direction of a relationship descriptor relative to its declared edge.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum RelationshipDirectionWire {
+    Declared,
+    Inverse,
+}
+
+impl From<RelationshipDirection> for RelationshipDirectionWire {
+    fn from(direction: RelationshipDirection) -> Self {
+        match direction {
+            RelationshipDirection::Declared => Self::Declared,
+            RelationshipDirection::Inverse => Self::Inverse,
+        }
+    }
 }
 
 impl From<MapResult> for MapResultWire {
@@ -65,11 +92,47 @@ impl From<MapResult> for MapResultWire {
                 MapResultWire::References(refs.iter().map(HolonReferenceWire::from).collect())
             }
             MapResult::Collection(c) => MapResultWire::Collection(HolonCollectionWire::from(&c)),
+            MapResult::QualifiedRelationships(relationships) => {
+                MapResultWire::QualifiedRelationships(
+                    relationships
+                        .iter()
+                        .map(|relationship| QualifiedRelationshipWire {
+                            descriptor: HolonReferenceWire::from(relationship.descriptor.holon()),
+                            direction: relationship.direction.into(),
+                        })
+                        .collect(),
+                )
+            }
             MapResult::Value(v) => MapResultWire::Value(v),
             MapResult::HolonId(id) => MapResultWire::HolonId(id),
             MapResult::DanceResponse(r) => {
                 MapResultWire::DanceResponse(DanceResponseWire::from(&r))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{QualifiedRelationshipWire, RelationshipDirectionWire};
+    use holons_boundary::{HolonReferenceWire, TransientReferenceWire};
+    use serde_json::{from_str, to_string};
+
+    #[test]
+    fn qualified_relationship_wire_round_trips_direction_with_its_descriptor() {
+        let relationship = QualifiedRelationshipWire {
+            descriptor: HolonReferenceWire::Transient(TransientReferenceWire::new(
+                holons_core::core_shared_objects::transactions::TxId::from_str("7")
+                    .expect("valid transaction id"),
+                core_types::TemporaryId(uuid::Uuid::nil()),
+            )),
+            direction: RelationshipDirectionWire::Inverse,
+        };
+
+        let serialized = to_string(&relationship).expect("serialize qualified relationship");
+        let decoded: QualifiedRelationshipWire =
+            from_str(&serialized).expect("deserialize qualified relationship");
+
+        assert_eq!(decoded, relationship);
     }
 }

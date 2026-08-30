@@ -6,6 +6,7 @@ import {
   expectNone,
   expectOptionalReference,
   expectOptionalValue,
+  expectQualifiedRelationships,
   expectReference,
   expectValue,
 } from '../result-decoders';
@@ -21,6 +22,7 @@ import type {
   TxId,
   WritableHolonActionWire,
   HolonCollectionWire,
+  QualifiedRelationshipWire,
 } from '../wire-types';
 
 // ===========================================
@@ -210,6 +212,39 @@ export function readRelatedHolons(
       },
     },
     expectCollection,
+    options,
+  );
+}
+
+/** Return the target's effective descriptor reference. */
+export function readHolonDescriptor(
+  txId: TxId,
+  target: HolonReferenceWire,
+  options?: RequestOptionsOverrides,
+): Promise<HolonReferenceWire> {
+  return runHolonCommand(txId, target, { Read: 'GetHolonDescriptor' }, expectReference, options);
+}
+
+/** Return ordered effective property descriptor references. */
+export function readAvailableProperties(
+  txId: TxId,
+  target: HolonReferenceWire,
+  options?: RequestOptionsOverrides,
+): Promise<HolonCollectionWire> {
+  return runHolonCommand(txId, target, { Read: 'GetAvailableProperties' }, expectCollection, options);
+}
+
+/** Return lifecycle-valid relationship descriptor references and directions. */
+export function readAvailableRelationships(
+  txId: TxId,
+  target: HolonReferenceWire,
+  options?: RequestOptionsOverrides,
+): Promise<QualifiedRelationshipWire[]> {
+  return runHolonCommand(
+    txId,
+    target,
+    { Read: 'GetAvailableRelationships' },
+    expectQualifiedRelationships,
     options,
   );
 }

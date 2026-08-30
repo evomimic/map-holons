@@ -8,6 +8,7 @@ export type {
   HolonViewAccess,
   HolonViewContext,
 } from './contracts/holon-view';
+export { DahnHolonView } from './map-adapter/dahn-holon-view';
 export type {
   SelectorFunction,
   SelectorInput,

@@ -1,4 +1,4 @@
-import { DefaultDahnRuntime } from './index';
+import { DahnHolonView, DefaultDahnRuntime } from './index';
 import type {
   ActionNode,
   CanvasApi,
@@ -35,7 +35,7 @@ const target: DahnTarget = {
   reference: holonReference,
 };
 
-const holonAccess: HolonViewAccess = holonReference;
+const holonAccess: HolonViewAccess = new DahnHolonView(holonReference);
 
 const canvasDescriptor: CanvasDescriptor = {
   id: 'dahn-2d-minimal',
