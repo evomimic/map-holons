@@ -74,6 +74,7 @@ use fixture_cases::load_generated_core_schema_fixture::*;
 use fixture_cases::load_generated_query_schema_fixture::*;
 use fixture_cases::load_generated_validation_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
+use fixture_cases::partial_commit_membership_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
@@ -115,6 +116,7 @@ use holons_prelude::prelude::*;
 #[rstest]
 #[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
 #[case::delete_holon(delete_holon_fixture())]
+#[case::partial_commit_membership_test(partial_commit_membership_fixture())]
 #[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
 #[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
 #[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]

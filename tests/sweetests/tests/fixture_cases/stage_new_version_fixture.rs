@@ -13,7 +13,8 @@ use holons_test::harness::helpers::{
 // TODO: add/remove relationships
 
 /// Expected DB count once core + Book/Person schemas are loaded: fixture-saved
-/// holons (incl. the LocalHolonSpace baseline) plus the loader-committed schema holons.
+/// holons plus the loader-committed schema holons. The LocalHolonSpace anchor is not
+/// counted — it is not a member of its own `Owns` collection.
 fn schema_backed_db_count(fixture_holons: &FixtureHolons) -> MapInteger {
     MapInteger(
         fixture_holons.count_saved().0

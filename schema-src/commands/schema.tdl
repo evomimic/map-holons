@@ -360,7 +360,7 @@ holon GetAllHolons.CommandType {
   type MetaCommandType.MetaHolonType
   extends CommandType.HolonType
   header {
-    description: "Returns all holons visible in the active transaction."
+    description: "Returns the holons owned by the active transaction's holon space."
     display_name: "Get All Holons Command"
     display_plural: "Get All Holons Commands"
     plural: "GetAllHolonsCommands"

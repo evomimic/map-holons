@@ -896,7 +896,7 @@
         "TypeNamePlural": "GetAllHolonsCommands",
         "DisplayName": "Get All Holons Command",
         "DisplayNamePlural": "Get All Holons Commands",
-        "Description": "Returns all holons visible in the active transaction."
+        "Description": "Returns the holons owned by the active transaction's holon space."
       },
       "relationships": [
         {

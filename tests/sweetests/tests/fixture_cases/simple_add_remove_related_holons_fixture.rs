@@ -1,6 +1,6 @@
 use crate::fixture_cases::setup_undescribed_book_author_steps_with_context;
 use holons_prelude::prelude::*;
-use holons_test::harness::helpers::PUBLISHED_BY;
+use holons_test::harness::helpers::{ENSURE_DB_EMPTY, PUBLISHED_BY};
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
@@ -32,7 +32,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // Ensure DB count //
     test_case.add_ensure_database_count_step(
         fixture_holons.count_saved(),
-        Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()),
+        Some(ENSURE_DB_EMPTY.to_string()),
     )?;
 
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship

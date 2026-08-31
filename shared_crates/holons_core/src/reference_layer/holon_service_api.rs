@@ -59,7 +59,11 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
 
-    /// Retrieves all persisted Holons, as a HolonCollection
+    /// Retrieves the holons owned by the current HolonSpace, as a HolonCollection.
+    ///
+    /// Membership is the space's `Owns` collection, so members are lineage roots and the space
+    /// anchor is not among them — callers needing the anchor use
+    /// `TransactionContext::get_space_holon()`.
     fn get_all_holons_internal(
         &self,
         context: &Arc<TransactionContext>,
