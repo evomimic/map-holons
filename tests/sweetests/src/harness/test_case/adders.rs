@@ -40,8 +40,8 @@
 use super::test_case::DancesTestCase;
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
-    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, SourceSnapshot, TestHolonState,
-    TestSessionState, SAVED_LOOKUP_STUB_MARKER,
+    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, SourceSnapshot,
+    SpaceMembershipExpectation, TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::{
@@ -292,6 +292,53 @@ impl DancesTestCase {
             "Verify graph-only and version-producing relationship anchoring".to_string()
         });
         self.steps.push(DanceTestStep::VerifyRelationshipAnchoring { description });
+
+        Ok(())
+    }
+
+    /// Asserts holon space membership through ordinary relationship traversal.
+    ///
+    /// `anchor_token` is any saved holon that belongs to the space; the space is reached by
+    /// following its `OwnedBy`. `expected_member_keys` is the exact set the space should own.
+    ///
+    /// Deliberately independent of `GetAllHolons`, which still reads the `AllHolonNodes` index —
+    /// and which cannot even be called after a delete, since the index still lists the deleted
+    /// holon and resolving it fails.
+    pub fn add_verify_space_membership_step(
+        &mut self,
+        anchor_token: TestReference,
+        expected_member_keys: Vec<MapString>,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Verify holon space membership".to_string());
+        self.steps.push(DanceTestStep::VerifySpaceMembership {
+            anchor_token,
+            expected: SpaceMembershipExpectation::ExactKeys(expected_member_keys),
+            description,
+        });
+
+        Ok(())
+    }
+
+    /// Asserts only how many holons the current space owns.
+    ///
+    /// For schema-backed fixtures, where the loader commits members the fixture never named.
+    pub fn add_verify_space_membership_count_step(
+        &mut self,
+        anchor_token: TestReference,
+        expected_member_count: MapInteger,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description =
+            description.unwrap_or_else(|| "Verify holon space membership count".to_string());
+        self.steps.push(DanceTestStep::VerifySpaceMembership {
+            anchor_token,
+            expected: SpaceMembershipExpectation::ExactCount(expected_member_count),
+            description,
+        });
 
         Ok(())
     }

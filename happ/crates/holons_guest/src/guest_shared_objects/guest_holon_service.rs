@@ -19,8 +19,8 @@ use holons_guest_integrity::{
 use crate::get_holon_by_path;
 use crate::guest_shared_objects::commit_functions;
 use crate::persistence_layer::{
-    delete_holon_node, expand_all_from_source, expand_from_source, get_all_holon_ids, get_holon,
-    index_local_holon_space, persist_holon, saved_holon_from_stored,
+    delete_holon_node, delete_smartlink, expand_all_from_source, expand_from_source,
+    get_all_holon_ids, get_holon, index_local_holon_space, persist_holon, saved_holon_from_stored,
 };
 use base_types::MapString;
 use core_types::{HolonError, HolonId, HolonWriteRequest, SmartLink};
@@ -35,6 +35,7 @@ use holons_core::{
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
+use type_names::CoreRelationshipTypeName;
 
 pub struct GuestHolonService;
 
@@ -43,6 +44,13 @@ impl GuestHolonService {
         GuestHolonService
     }
 
+    /// Creates and anchors the local space holon.
+    ///
+    /// This path deliberately goes transient → `persist_holon` without passing through staging.
+    /// That is now load-bearing rather than incidental: space membership is stamped at staging
+    /// time, so bypassing staging is what keeps the anchor out of its own `Owns` collection.
+    /// Routing space creation through `stage_new_holon` would make the space own itself and put
+    /// it back into whole-space discovery results.
     fn create_local_space_holon(
         &self,
         context: &Arc<TransactionContext>,
@@ -160,6 +168,37 @@ impl GuestHolonService {
 
         Ok((key, reference))
     }
+
+    /// Retracts `local_id`'s space membership: its `OwnedBy` links and the reciprocal `Owns`
+    /// links naming it on each owning space.
+    ///
+    /// The space's inverse view is retracted first because that is the side whole-space
+    /// discovery reads; if only one direction could be retracted, it is the one that matters.
+    ///
+    /// Idempotent — `delete_smartlink` reports `AlreadyAbsent` rather than failing, so this is a
+    /// no-op for a holon that never acquired membership or whose membership is already gone.
+    fn retract_space_membership(local_id: &LocalId) -> Result<(), HolonError> {
+        let owned_by = CoreRelationshipTypeName::OwnedBy.as_relationship_name();
+        let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
+
+        for membership in expand_from_source(local_id, &owned_by)? {
+            // Membership is a local-space relationship; a non-local owner is not something this
+            // guest can retract, and is left for the space that authored it.
+            let HolonId::Local(space_id) = &membership.target_id else {
+                continue;
+            };
+
+            for member_link in expand_from_source(space_id, &owns)? {
+                if member_link.target_id == HolonId::Local(local_id.clone()) {
+                    delete_smartlink(&member_link.smartlink_id)?;
+                }
+            }
+
+            delete_smartlink(&membership.smartlink_id)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl HolonServiceApi for GuestHolonService {
@@ -187,6 +226,12 @@ impl HolonServiceApi for GuestHolonService {
         let _stored = get_holon(local_id)?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
         // holon.is_deletable()?;
+
+        // Membership is carried by SmartLinks, and deleting an entry does not retract the links
+        // pointing at it, so a deleted holon would otherwise stay in its space's `Owns`
+        // collection and remain discoverable. Retract membership before the node goes away.
+        Self::retract_space_membership(local_id)?;
+
         delete_holon_node(try_action_hash_from_local_id(&local_id)?)
             .map(|_| ()) // Convert ActionHash to ()
             .map_err(|e| holon_error_from_wasm_error(e))
