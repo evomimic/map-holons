@@ -130,6 +130,9 @@ pub enum DanceTestStep {
     VerifyBookPersonInstanceLinks {
         description: String,
     },
+    VerifyBookPersonSmartLinkCommitCacheLinks {
+        description: String,
+    },
     VerifyRelationshipAnchoring {
         description: String,
     },
@@ -300,6 +303,9 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyBookPersonInstanceLinks { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::VerifyBookPersonSmartLinkCommitCacheLinks { description } => {
                 write!(f, "{description}")
             }
             DanceTestStep::VerifyRelationshipAnchoring { description } => {

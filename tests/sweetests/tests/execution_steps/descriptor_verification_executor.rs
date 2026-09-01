@@ -671,6 +671,32 @@ pub async fn execute_verify_book_person_instance_links(state: &mut TestExecution
     info!("verified bidirectional Book/Person instance SmartLink traversal");
 }
 
+/// Verifies the ordinary domain relationships used to exercise the commit-local
+/// SmartLink cache. The first Book produces two `AuthoredBy` writes from one
+/// source bucket; both Books produce inverse `AuthorOf` writes from the same
+/// first Person bucket.
+pub async fn execute_verify_book_person_smartlink_commit_cache_links(
+    state: &mut TestExecutionState,
+) {
+    const BOOK_1: &str = "Book.SmartLinkCache.1";
+    const BOOK_2: &str = "Book.SmartLinkCache.2";
+    const PERSON_1: &str = "Person.SmartLinkCache.1";
+    const PERSON_2: &str = "Person.SmartLinkCache.2";
+
+    let holons = loaded_holons(state, "verify_book_person_smartlink_commit_cache_links").await;
+    let book_1 = find_holon_by_key(&holons, BOOK_1);
+    let book_2 = find_holon_by_key(&holons, BOOK_2);
+    let person_1 = find_holon_by_key(&holons, PERSON_1);
+    let person_2 = find_holon_by_key(&holons, PERSON_2);
+
+    assert_exact_related_keys(&book_1, BOOK_TO_PERSON_RELATIONSHIP, &[PERSON_1, PERSON_2]);
+    assert_exact_related_keys(&book_2, BOOK_TO_PERSON_RELATIONSHIP, &[PERSON_1]);
+    assert_exact_related_keys(&person_1, PERSON_TO_BOOK_REL_INVERSE, &[BOOK_1, BOOK_2]);
+    assert_exact_related_keys(&person_2, PERSON_TO_BOOK_REL_INVERSE, &[BOOK_1]);
+
+    info!("verified repeated Book/Person SmartLink traversal");
+}
+
 /// Verifies the persisted anchoring rules after the stage-new-version
 /// fixture has exercised both update modes:
 /// - graph-only mutation: Book --Properties--> Title.PropertyType is anchored to
@@ -1056,6 +1082,14 @@ fn assert_contains(values: &[String], expected: &str) {
         values.iter().any(|actual| actual == expected),
         "expected {values:?} to contain {expected}"
     );
+}
+
+fn assert_exact_related_keys(holon: &HolonReference, relationship_name: &str, expected: &[&str]) {
+    let mut actual = related_holon_keys(holon, relationship_name);
+    actual.sort();
+    let mut expected = expected.iter().map(ToString::to_string).collect::<Vec<_>>();
+    expected.sort();
+    assert_eq!(actual, expected, "unexpected {relationship_name} relationship members");
 }
 
 fn assert_relationship_shape(

@@ -38,6 +38,7 @@ use execution_steps::commit_executor::execute_commit;
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::descriptor_verification_executor::{
     execute_verify_book_person_descriptors, execute_verify_book_person_instance_links,
+    execute_verify_book_person_smartlink_commit_cache_links,
     execute_verify_core_schema_descriptor_subtypes, execute_verify_core_schema_descriptors,
     execute_verify_core_schema_value_semantics, execute_verify_relationship_anchoring,
     execute_verify_validation_bindings_descriptor_contract,
@@ -76,6 +77,7 @@ use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
+use fixture_cases::smartlink_commit_cache_fixture::*;
 use fixture_cases::stage_new_from_clone_fixture::*;
 use fixture_cases::stage_new_version_fixture::*;
 use fixture_cases::transaction_lifecycle_fixture::*;
@@ -127,6 +129,7 @@ use holons_prelude::prelude::*;
 #[case::load_generated_validation_schema_test(load_generated_validation_schema_fixture())]
 #[case::load_generated_query_schema_test(load_generated_query_schema_fixture())]
 #[case::load_book_person_inverse_schema_test(load_book_person_inverse_schema_fixture())]
+#[case::smartlink_commit_cache_test(smartlink_commit_cache_fixture())]
 #[case::frozen_member_head_redirect_test(frozen_member_head_redirect_fixture())]
 #[case::frozen_member_head_redirect_cross_tx_test(frozen_member_head_redirect_cross_tx_fixture())]
 #[case::cross_transaction_staged_target_diagnostic_test(
@@ -273,6 +276,10 @@ async fn run_dance_test_case(mut test_case: DancesTestCase) {
             }
             DanceTestStep::VerifyBookPersonInstanceLinks { .. } => {
                 execute_verify_book_person_instance_links(&mut test_execution_state).await
+            }
+            DanceTestStep::VerifyBookPersonSmartLinkCommitCacheLinks { .. } => {
+                execute_verify_book_person_smartlink_commit_cache_links(&mut test_execution_state)
+                    .await
             }
             DanceTestStep::VerifyRelationshipAnchoring { .. } => {
                 execute_verify_relationship_anchoring(&mut test_execution_state).await
