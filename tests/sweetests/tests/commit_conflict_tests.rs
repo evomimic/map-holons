@@ -67,13 +67,6 @@ const PROBE_ZOME: &str = "holons_test_probes";
 const BOOK_KEY: &str = "Book.CommitConflict.1";
 const TITLE_PROPERTY_KEY: &str = "Title.PropertyType";
 const REFERENCES_PROPERTY: &str = "ReferencesProperty";
-const BOOK_CACHE_1_KEY: &str = "Book.SmartLinkCache.1";
-const BOOK_CACHE_2_KEY: &str = "Book.SmartLinkCache.2";
-const PERSON_CACHE_1_KEY: &str = "Person.SmartLinkCache.1";
-const PERSON_CACHE_2_KEY: &str = "Person.SmartLinkCache.2";
-const PERSON_DESCRIPTOR_KEY: &str = "Person.HolonType";
-const AUTHORED_BY: &str = "AuthoredBy";
-const AUTHOR_OF: &str = "AuthorOf";
 
 /// Canonical key on the planted link. Differs from the book's real key, which is what makes the
 /// commit-time write a `Conflict` rather than an idempotent `AlreadyPresent`.
@@ -92,22 +85,14 @@ fn rel(name: &str) -> RelationshipName {
 /// The descriptor is resolved inside this function's own transaction: `HolonReference`s are
 /// transaction-bound, so only ids may cross a transaction boundary.
 async fn create_described_book(runtime: &Runtime) -> LocalId {
-    create_described_holon(runtime, BOOK_KEY, BOOK_DESCRIPTOR_KEY).await
-}
-
-/// Creates and commits one instance with an explicit `DescribedBy` relationship.
-///
-/// The descriptor reference is resolved in the creation transaction because runtime references
-/// are transaction-bound; the returned local id can safely cross into later transactions.
-async fn create_described_holon(runtime: &Runtime, key: &str, descriptor_key: &str) -> LocalId {
     let context = begin_transaction(runtime).await;
-    let descriptor = saved_reference_by_key(runtime, &context, descriptor_key).await;
+    let book_type = saved_reference_by_key(runtime, &context, BOOK_DESCRIPTOR_KEY).await;
 
     let transient = match runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
                 context: Arc::clone(&context),
-                action: TransactionAction::NewHolon { key: Some(MapString(key.to_string())) },
+                action: TransactionAction::NewHolon { key: Some(MapString(BOOK_KEY.to_string())) },
             }),
             ExecutionPolicy::default(),
         )
@@ -140,13 +125,13 @@ async fn create_described_holon(runtime: &Runtime, key: &str, descriptor_key: &s
                 target: staged,
                 action: HolonAction::Write(WritableHolonAction::AddRelatedHolons {
                     name: CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-                    holons: vec![descriptor],
+                    holons: vec![book_type.clone()],
                 }),
             }),
             ExecutionPolicy::default(),
         )
         .await
-        .unwrap_or_else(|error| panic!("describing '{key}' failed: {error:?}"));
+        .expect("describing the book failed");
 
     runtime
         .execute_command(
@@ -157,10 +142,10 @@ async fn create_described_holon(runtime: &Runtime, key: &str, descriptor_key: &s
             ExecutionPolicy::default(),
         )
         .await
-        .unwrap_or_else(|error| panic!("committing described '{key}' failed: {error:?}"));
+        .expect("committing the described book failed");
 
     let context = begin_transaction(runtime).await;
-    local_id_of(&saved_reference_by_key(runtime, &context, key).await)
+    local_id_of(&saved_reference_by_key(runtime, &context, BOOK_KEY).await)
 }
 
 /// Builds a runtime over `backend`, keeping the same conductor handle the test uses for raw probe
@@ -287,79 +272,6 @@ async fn live_smartlinks(
             (source_id.clone(), relationship_name.clone()),
         )
         .await
-}
-
-async fn stage_saved_holon(
-    runtime: &Runtime,
-    context: &Arc<TransactionContext>,
-    holon_id: LocalId,
-    label: &str,
-) -> HolonReference {
-    match runtime
-        .execute_command(
-            MapCommand::Transaction(TransactionCommand {
-                context: Arc::clone(context),
-                action: TransactionAction::StageNewVersionFromId {
-                    holon_id: HolonId::Local(holon_id),
-                },
-            }),
-            ExecutionPolicy::default(),
-        )
-        .await
-        .unwrap_or_else(|error| panic!("staging {label} failed: {error:?}"))
-    {
-        MapResult::Reference(reference) => reference,
-        other => panic!("staging {label}: expected a Reference, got {other:?}"),
-    }
-}
-
-async fn add_relationship(
-    runtime: &Runtime,
-    context: &Arc<TransactionContext>,
-    source: HolonReference,
-    relationship: &str,
-    targets: Vec<HolonReference>,
-    label: &str,
-) {
-    runtime
-        .execute_command(
-            MapCommand::Holon(HolonCommand {
-                context: Arc::clone(context),
-                target: source,
-                action: HolonAction::Write(WritableHolonAction::AddRelatedHolons {
-                    name: rel(relationship),
-                    holons: targets,
-                }),
-            }),
-            ExecutionPolicy::default(),
-        )
-        .await
-        .unwrap_or_else(|error| panic!("adding {label} failed: {error:?}"));
-}
-
-fn commit_status(result: MapResult) -> String {
-    let response = match result {
-        MapResult::Reference(HolonReference::Transient(response)) => response,
-        other => panic!("expected a transient CommitResponse reference, got {other:?}"),
-    };
-    match response.property_value(&CorePropertyTypeName::CommitRequestStatus) {
-        Ok(Some(PropertyValue::StringValue(MapString(status)))) => status,
-        other => panic!("expected a string CommitRequestStatus, got {other:?}"),
-    }
-}
-
-fn assert_exact_targets(links: &[SmartLink], expected: &[LocalId], label: &str) {
-    assert_eq!(links.len(), expected.len(), "{label}: unexpected link count: {links:?}");
-    for expected_id in expected {
-        assert_eq!(
-            links
-                .iter()
-                .filter(|link| link.target_id == HolonId::Local(expected_id.clone()))
-                .count(),
-            1,
-            "{label}: expected exactly one link to {expected_id:?}: {links:?}"
-        );
-    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -512,133 +424,5 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     assert!(
         !from_target.iter().any(|link| link.target_id == HolonId::Local(book_id.clone())),
         "the inverse link back to the book must not be written after a forward conflict"
-    );
-}
-
-/// Relationship pass 2 must share its SmartLink write context across every staged holon in one
-/// commit. This ordinary domain scenario covers both repeated declared and repeated inverse
-/// buckets without relying on an instance-to-descriptor relationship:
-///
-/// - `Book.Cache.1 --AuthoredBy--> [Person.Cache.1, Person.Cache.2]` repeats the declared bucket;
-/// - `Book.Cache.2 --AuthoredBy--> Person.Cache.1` repeats Person.Cache.1's `AuthorOf` inverse
-///   bucket after the first Book's inverse has been materialized.
-#[tokio::test(flavor = "multi_thread")]
-async fn commit_reuses_smartlink_buckets_for_declared_and_inverse_relationships() {
-    let backend = setup_probe_enabled_conductor().await;
-    let runtime = runtime_over(Arc::clone(&backend)).await;
-
-    load(&runtime, build_core_schema_content_set().unwrap(), "core schema load").await;
-    load(&runtime, build_book_person_inverse_content_set().unwrap(), "book/person schema load")
-        .await;
-
-    let book_1_id = create_described_holon(&runtime, BOOK_CACHE_1_KEY, BOOK_DESCRIPTOR_KEY).await;
-    let book_2_id = create_described_holon(&runtime, BOOK_CACHE_2_KEY, BOOK_DESCRIPTOR_KEY).await;
-    let person_1_id =
-        create_described_holon(&runtime, PERSON_CACHE_1_KEY, PERSON_DESCRIPTOR_KEY).await;
-    let person_2_id =
-        create_described_holon(&runtime, PERSON_CACHE_2_KEY, PERSON_DESCRIPTOR_KEY).await;
-
-    // One transaction covers both repeated declared writes from Book.Cache.1 and repeated inverse
-    // writes from Person.Cache.1. The relationship is ordinary instance-to-instance domain data.
-    let context = begin_transaction(&runtime).await;
-    let book_1 = stage_saved_holon(&runtime, &context, book_1_id, BOOK_CACHE_1_KEY).await;
-    let book_2 = stage_saved_holon(&runtime, &context, book_2_id, BOOK_CACHE_2_KEY).await;
-    let committed_book_1 = book_1.clone();
-    let committed_book_2 = book_2.clone();
-    let person_1 = saved_reference_by_key(&runtime, &context, PERSON_CACHE_1_KEY).await;
-    let person_2 = saved_reference_by_key(&runtime, &context, PERSON_CACHE_2_KEY).await;
-
-    add_relationship(
-        &runtime,
-        &context,
-        book_1,
-        AUTHORED_BY,
-        vec![person_1.clone(), person_2.clone()],
-        "Book.Cache.1 --AuthoredBy--> Person.Cache.1 and Person.Cache.2",
-    )
-    .await;
-    add_relationship(
-        &runtime,
-        &context,
-        book_2,
-        AUTHORED_BY,
-        vec![person_1],
-        "Book.Cache.2 --AuthoredBy--> Person.Cache.1",
-    )
-    .await;
-
-    let first_commit = runtime
-        .execute_command(
-            MapCommand::Transaction(TransactionCommand {
-                context: Arc::clone(&context),
-                action: TransactionAction::Commit,
-            }),
-            ExecutionPolicy::default(),
-        )
-        .await
-        .expect("first relationship commit failed");
-    assert_eq!(commit_status(first_commit), "Complete");
-
-    // AuthoredBy is definitional, so both Books now have new committed versions. Retain the
-    // staging references selected by pass 1: a broad GetAllHolons-by-key lookup may also expose
-    // an earlier version with the same key, which is not the SmartLink source under test.
-    let committed_book_1_id = local_id_of(&committed_book_1);
-    let committed_book_2_id = local_id_of(&committed_book_2);
-
-    let book_1_authored = live_smartlinks(&backend, &committed_book_1_id, &rel(AUTHORED_BY)).await;
-    let book_2_authored = live_smartlinks(&backend, &committed_book_2_id, &rel(AUTHORED_BY)).await;
-    let person_1_authored = live_smartlinks(&backend, &person_1_id, &rel(AUTHOR_OF)).await;
-    let person_2_authored = live_smartlinks(&backend, &person_2_id, &rel(AUTHOR_OF)).await;
-
-    assert_exact_targets(
-        &book_1_authored,
-        &[person_1_id.clone(), person_2_id.clone()],
-        "Book.Cache.1 AuthoredBy",
-    );
-    assert_exact_targets(&book_2_authored, &[person_1_id.clone()], "Book.Cache.2 AuthoredBy");
-    assert_exact_targets(
-        &person_1_authored,
-        &[committed_book_1_id.clone(), committed_book_2_id.clone()],
-        "Person.Cache.1 AuthorOf",
-    );
-    assert_exact_targets(
-        &person_2_authored,
-        &[committed_book_1_id.clone()],
-        "Person.Cache.2 AuthorOf",
-    );
-
-    // A no-op transaction must leave the established directional links untouched.
-    let no_op_context = begin_transaction(&runtime).await;
-    let no_op_commit = runtime
-        .execute_command(
-            MapCommand::Transaction(TransactionCommand {
-                context: no_op_context,
-                action: TransactionAction::Commit,
-            }),
-            ExecutionPolicy::default(),
-        )
-        .await
-        .expect("no-op commit failed");
-    assert_eq!(commit_status(no_op_commit), "Complete");
-
-    assert_exact_targets(
-        &live_smartlinks(&backend, &committed_book_1_id, &rel(AUTHORED_BY)).await,
-        &[person_1_id.clone(), person_2_id.clone()],
-        "Book.Cache.1 AuthoredBy after no-op commit",
-    );
-    assert_exact_targets(
-        &live_smartlinks(&backend, &committed_book_2_id, &rel(AUTHORED_BY)).await,
-        &[person_1_id.clone()],
-        "Book.Cache.2 AuthoredBy after no-op commit",
-    );
-    assert_exact_targets(
-        &live_smartlinks(&backend, &person_1_id, &rel(AUTHOR_OF)).await,
-        &[committed_book_1_id.clone(), committed_book_2_id],
-        "Person.Cache.1 AuthorOf after no-op commit",
-    );
-    assert_exact_targets(
-        &live_smartlinks(&backend, &person_2_id, &rel(AUTHOR_OF)).await,
-        &[committed_book_1_id],
-        "Person.Cache.2 AuthorOf after no-op commit",
     );
 }

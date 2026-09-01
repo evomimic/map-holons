@@ -283,6 +283,21 @@ impl DancesTestCase {
         Ok(())
     }
 
+    /// Asserts the ordinary Book/Person relationship pattern that exercises
+    /// repeated declared and inverse SmartLink write buckets in one commit.
+    pub fn add_verify_book_person_smartlink_commit_cache_links_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Verify repeated Book/Person forward and inverse SmartLink traversal".to_string()
+        });
+        self.steps.push(DanceTestStep::VerifyBookPersonSmartLinkCommitCacheLinks { description });
+
+        Ok(())
+    }
+
     pub fn add_verify_relationship_anchoring_step(
         &mut self,
         description: Option<String>,
