@@ -23,6 +23,139 @@ use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use integrity_core_types::{LocalId, RelationshipName};
 use shared_validation::validate_smartlink_envelope;
+use std::collections::HashMap;
+
+/// Commit-local cache for SmartLink identity checks.
+///
+/// This is intentionally constructed by relationship commit orchestration rather than stored on a
+/// transaction. A bucket is populated from one complete, fail-closed storage expansion and is
+/// discarded when that commit returns.
+#[derive(Default)]
+pub(crate) struct SmartLinkWriteContext {
+    buckets: HashMap<SmartLinkBucketKey, SmartLinkBucket>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct SmartLinkBucketKey {
+    source_id: LocalId,
+    relationship_name: RelationshipName,
+}
+
+impl SmartLinkBucketKey {
+    fn from_prepared(prepared: &PreparedSmartLink) -> Self {
+        Self {
+            source_id: prepared.source_id.clone(),
+            relationship_name: prepared.relationship_name.clone(),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct SmartLinkIdentity {
+    source_id: LocalId,
+    target_id: core_types::HolonId,
+    relationship_name: RelationshipName,
+    occurrence_id: Option<core_types::OccurrenceId>,
+}
+
+impl SmartLinkIdentity {
+    fn from_prepared(prepared: &PreparedSmartLink) -> Self {
+        Self {
+            source_id: prepared.source_id.clone(),
+            target_id: prepared.target_id.clone(),
+            relationship_name: prepared.relationship_name.clone(),
+            occurrence_id: prepared.occurrence_id,
+        }
+    }
+
+    fn from_smartlink(smartlink: &SmartLink) -> Self {
+        Self {
+            source_id: smartlink.source_id.clone(),
+            target_id: smartlink.target_id.clone(),
+            relationship_name: smartlink.relationship_name.clone(),
+            occurrence_id: smartlink.occurrence_id,
+        }
+    }
+}
+
+/// The fields relevant to identity conflict decisions. Optional target-property cache values are
+/// deliberately omitted because they do not participate in idempotency.
+struct CachedSmartLink {
+    smartlink_id: SmartLinkId,
+    canonical_key: core_types::CanonicalKey,
+    relationship_property_values: integrity_core_types::PropertyMap,
+}
+
+impl CachedSmartLink {
+    fn from_smartlink(smartlink: SmartLink) -> Self {
+        Self {
+            smartlink_id: smartlink.smartlink_id,
+            canonical_key: smartlink.canonical_key,
+            relationship_property_values: smartlink.relationship_property_values,
+        }
+    }
+
+    fn from_inserted(prepared: &PreparedSmartLink, smartlink_id: SmartLinkId) -> Self {
+        Self {
+            smartlink_id,
+            canonical_key: prepared.canonical_key.clone(),
+            relationship_property_values: prepared.relationship_property_values.clone(),
+        }
+    }
+
+    fn outcome_for(&self, prepared: &PreparedSmartLink) -> PutSmartLinkOutcome {
+        if self.canonical_key == prepared.canonical_key
+            && self.relationship_property_values == prepared.relationship_property_values
+        {
+            PutSmartLinkOutcome::AlreadyPresent(self.smartlink_id.clone())
+        } else {
+            PutSmartLinkOutcome::Conflict(self.smartlink_id.clone())
+        }
+    }
+}
+
+#[derive(Default)]
+struct SmartLinkBucket {
+    identities: HashMap<SmartLinkIdentity, CachedSmartLink>,
+}
+
+impl SmartLinkBucket {
+    fn from_expansion(smartlinks: Vec<SmartLink>) -> Self {
+        let mut bucket = Self::default();
+        for smartlink in smartlinks {
+            bucket.insert(
+                SmartLinkIdentity::from_smartlink(&smartlink),
+                CachedSmartLink::from_smartlink(smartlink),
+            );
+        }
+        bucket
+    }
+
+    fn insert(&mut self, identity: SmartLinkIdentity, candidate: CachedSmartLink) {
+        match self.identities.get(&identity) {
+            Some(existing) if existing.smartlink_id.0 .0 <= candidate.smartlink_id.0 .0 => {}
+            _ => {
+                self.identities.insert(identity, candidate);
+            }
+        }
+    }
+}
+
+impl SmartLinkWriteContext {
+    fn bucket_for<F>(
+        &mut self,
+        key: SmartLinkBucketKey,
+        expand: F,
+    ) -> Result<&mut SmartLinkBucket, HolonError>
+    where
+        F: FnOnce() -> Result<Vec<SmartLink>, HolonError>,
+    {
+        if !self.buckets.contains_key(&key) {
+            self.buckets.insert(key.clone(), SmartLinkBucket::from_expansion(expand()?));
+        }
+        Ok(self.buckets.get_mut(&key).expect("inserted or previously cached bucket"))
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Read: expansion
@@ -123,12 +256,33 @@ pub fn put_smartlink(prepared: PreparedSmartLink) -> Result<PutSmartLinkOutcome,
         return Ok(PutSmartLinkOutcome::Conflict(existing.smartlink_id.clone()));
     }
 
-    let source_hash = try_action_hash_from_local_id(&prepared.source_id)?;
-    let target_hash = try_action_hash_from_local_id(prepared.target_id.local_id())?;
-    let create_hash =
-        create_link(source_hash, target_hash, LinkTypes::SmartLink, LinkTag(validated_tag))
-            .map_err(holon_error_from_wasm_error)?;
-    Ok(PutSmartLinkOutcome::Inserted(SmartLinkId(local_id_from_action_hash(create_hash))))
+    Ok(PutSmartLinkOutcome::Inserted(create_prepared_smartlink(&prepared, validated_tag)?))
+}
+
+/// Commit-only variant of [`put_smartlink`] that reuses a successful relationship expansion.
+///
+/// The public storage API retains its complete standalone read/check/create behavior. Commit
+/// orchestration owns this bounded optimization context and supplies it only while persisting its
+/// relationship plan.
+pub(crate) fn put_smartlink_cached(
+    context: &mut SmartLinkWriteContext,
+    prepared: PreparedSmartLink,
+) -> Result<PutSmartLinkOutcome, HolonError> {
+    // Preserve standalone preflight precedence even when a matching identity is already cached.
+    let validated_tag = prepare_validated_smartlink_tag(&prepared)?;
+    let bucket_key = SmartLinkBucketKey::from_prepared(&prepared);
+    let identity = SmartLinkIdentity::from_prepared(&prepared);
+    let bucket = context.bucket_for(bucket_key, || {
+        expand_from_source(&prepared.source_id, &prepared.relationship_name)
+    })?;
+
+    if let Some(existing) = bucket.identities.get(&identity) {
+        return Ok(existing.outcome_for(&prepared));
+    }
+
+    let smartlink_id = create_prepared_smartlink(&prepared, validated_tag)?;
+    bucket.insert(identity, CachedSmartLink::from_inserted(&prepared, smartlink_id.clone()));
+    Ok(PutSmartLinkOutcome::Inserted(smartlink_id))
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +352,18 @@ fn prepare_validated_smartlink_tag(prepared: &PreparedSmartLink) -> Result<Vec<u
     Ok(encoded)
 }
 
+fn create_prepared_smartlink(
+    prepared: &PreparedSmartLink,
+    validated_tag: Vec<u8>,
+) -> Result<SmartLinkId, HolonError> {
+    let source_hash = try_action_hash_from_local_id(&prepared.source_id)?;
+    let target_hash = try_action_hash_from_local_id(prepared.target_id.local_id())?;
+    let create_hash =
+        create_link(source_hash, target_hash, LinkTypes::SmartLink, LinkTag(validated_tag))
+            .map_err(holon_error_from_wasm_error)?;
+    Ok(SmartLinkId(local_id_from_action_hash(create_hash)))
+}
+
 /// Runs a prepared `LinkQuery` and decodes every live match into a `SmartLink`.
 fn decode_query(source_id: &LocalId, query: LinkQuery) -> Result<Vec<SmartLink>, HolonError> {
     let links = get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
@@ -245,7 +411,7 @@ fn tag_error(error: impl std::fmt::Display) -> HolonError {
 mod tests {
     use super::*;
     use base_types::MapString;
-    use core_types::{CanonicalKey, HolonId, PropertyMap, HOLOCHAIN_ACTION_HASH_BYTES};
+    use core_types::{CanonicalKey, HolonId, PropertyMap, SmartLink, HOLOCHAIN_ACTION_HASH_BYTES};
     use integrity_core_types::PvlViolation;
 
     fn local_id(seed: u8) -> LocalId {
@@ -261,6 +427,19 @@ mod tests {
             occurrence_id: None,
             relationship_property_values: PropertyMap::new(),
             target_property_cache_candidates: Vec::new(),
+        }
+    }
+
+    fn decoded_smartlink(id_seed: u8, canonical_key: &str) -> SmartLink {
+        SmartLink {
+            smartlink_id: SmartLinkId(local_id(id_seed)),
+            source_id: local_id(1),
+            target_id: HolonId::Local(local_id(2)),
+            relationship_name: RelationshipName(MapString("Related".to_string())),
+            canonical_key: CanonicalKey::new(canonical_key).unwrap(),
+            occurrence_id: None,
+            relationship_property_values: PropertyMap::new(),
+            target_property_values: PropertyMap::new(),
         }
     }
 
@@ -289,5 +468,55 @@ mod tests {
             }
             other => panic!("packing failure must remain a storage error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn write_context_expands_a_bucket_once_and_keeps_the_lowest_identity_match() {
+        let prepared = prepared("Related");
+        let bucket_key = SmartLinkBucketKey::from_prepared(&prepared);
+        let identity = SmartLinkIdentity::from_prepared(&prepared);
+        let mut context = SmartLinkWriteContext::default();
+        let mut expansion_count = 0;
+
+        {
+            let bucket = context
+                .bucket_for(bucket_key.clone(), || {
+                    expansion_count += 1;
+                    // The DHT does not promise ordering. The cache must retain the same lowest-id
+                    // choice as standalone put_smartlink regardless of expansion order.
+                    Ok(vec![
+                        decoded_smartlink(9, "newer-conflicting-key"),
+                        decoded_smartlink(3, ""),
+                    ])
+                })
+                .unwrap();
+            assert_eq!(
+                bucket.identities.get(&identity).unwrap().outcome_for(&prepared),
+                PutSmartLinkOutcome::AlreadyPresent(SmartLinkId(local_id(3)))
+            );
+        }
+
+        let _ = context
+            .bucket_for(bucket_key, || -> Result<Vec<SmartLink>, HolonError> {
+                panic!("a populated commit bucket must not expand again")
+            })
+            .unwrap();
+        assert_eq!(expansion_count, 1);
+    }
+
+    #[test]
+    fn write_context_records_an_inserted_identity_for_later_writes() {
+        let prepared = prepared("Related");
+        let identity = SmartLinkIdentity::from_prepared(&prepared);
+        let mut bucket = SmartLinkBucket::default();
+        let inserted = SmartLinkId(local_id(7));
+
+        bucket
+            .insert(identity.clone(), CachedSmartLink::from_inserted(&prepared, inserted.clone()));
+
+        assert_eq!(
+            bucket.identities.get(&identity).unwrap().outcome_for(&prepared),
+            PutSmartLinkOutcome::AlreadyPresent(inserted)
+        );
     }
 }

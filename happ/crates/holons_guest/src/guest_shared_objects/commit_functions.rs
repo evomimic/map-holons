@@ -1,7 +1,7 @@
 use hdk::prelude::*;
 use std::sync::{Arc, RwLock};
 
-use crate::persistence_layer::{persist_holon, put_smartlink};
+use crate::persistence_layer::{persist_holon, put_smartlink_cached, SmartLinkWriteContext};
 use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
 
 use holons_core::{
@@ -251,6 +251,10 @@ pub fn commit(
     // Snapshot the committed LocalId + relationship collections under a short-lived read lock,
     // then drop the lock before resolving targets / computing keys / saving smartlinks.
     // This avoids re-entrant locking when a relationship includes a self-edge.
+    // This context is deliberately narrower than TransactionContext: it represents only the
+    // bounded relationship write set for this commit invocation.
+    let mut smartlink_write_context = SmartLinkWriteContext::default();
+
     for staged_reference in staged_references {
         let rc_holon = staged_reference.get_holon_to_commit(context)?;
 
@@ -332,6 +336,7 @@ pub fn commit(
                 name.clone(),
                 inverse_name,
                 &holon_collection,
+                &mut smartlink_write_context,
             ) {
                 first_error = Some(err);
                 break;
@@ -546,10 +551,17 @@ fn commit_relationship(
     name: RelationshipName,
     inverse_name: RelationshipName,
     collection: &HolonCollection,
+    smartlink_write_context: &mut SmartLinkWriteContext,
 ) -> Result<(), HolonError> {
     collection.is_accessible(AccessType::Commit)?;
 
-    save_smartlinks_for_collection(source, name.clone(), inverse_name, collection)?;
+    save_smartlinks_for_collection(
+        source,
+        name.clone(),
+        inverse_name,
+        collection,
+        smartlink_write_context,
+    )?;
 
     Ok(())
 }
@@ -576,6 +588,7 @@ fn save_smartlinks_for_collection(
     name: RelationshipName,
     inverse_name: RelationshipName,
     collection: &HolonCollection,
+    smartlink_write_context: &mut SmartLinkWriteContext,
 ) -> Result<(), HolonError> {
     let source_id = source.source_local_id();
     debug!(
@@ -662,7 +675,7 @@ fn save_smartlinks_for_collection(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, name.0 .0, source_id, forward_smartlink.target_id
         );
-        persist_smartlink(forward_smartlink)?;
+        persist_smartlink(smartlink_write_context, forward_smartlink)?;
 
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
@@ -678,7 +691,7 @@ fn save_smartlinks_for_collection(
             "saving inverse smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, inverse_name.0 .0, resolved_target.target_local_id, source_id
         );
-        persist_smartlink(inverse_smartlink)?;
+        persist_smartlink(smartlink_write_context, inverse_smartlink)?;
     }
 
     Ok(())
@@ -704,12 +717,15 @@ fn save_smartlinks_for_collection(
 /// Note that no write happens either way: `put_smartlink` declines before authoring. The
 /// entire observable effect of this arm is the reported outcome, which is why
 /// `commit_conflict_tests.rs` asserts the response status rather than the DHT state.
-fn persist_smartlink(prepared: PreparedSmartLink) -> Result<(), HolonError> {
+fn persist_smartlink(
+    smartlink_write_context: &mut SmartLinkWriteContext,
+    prepared: PreparedSmartLink,
+) -> Result<(), HolonError> {
     let source_id = prepared.source_id.clone();
     let target_id = prepared.target_id.clone();
     let relationship_name = prepared.relationship_name.clone();
 
-    match put_smartlink(prepared)? {
+    match put_smartlink_cached(smartlink_write_context, prepared)? {
         PutSmartLinkOutcome::Inserted(_) | PutSmartLinkOutcome::AlreadyPresent(_) => Ok(()),
         PutSmartLinkOutcome::Conflict(existing) => Err(HolonError::CommitFailure(format!(
             "SmartLink conflict: a live link {existing:?} already shares the insertion identity \
