@@ -543,6 +543,8 @@ async fn commit_reuses_smartlink_buckets_for_declared_and_inverse_relationships(
     let context = begin_transaction(&runtime).await;
     let book_1 = stage_saved_holon(&runtime, &context, book_1_id, BOOK_CACHE_1_KEY).await;
     let book_2 = stage_saved_holon(&runtime, &context, book_2_id, BOOK_CACHE_2_KEY).await;
+    let committed_book_1 = book_1.clone();
+    let committed_book_2 = book_2.clone();
     let person_1 = saved_reference_by_key(&runtime, &context, PERSON_CACHE_1_KEY).await;
     let person_2 = saved_reference_by_key(&runtime, &context, PERSON_CACHE_2_KEY).await;
 
@@ -577,12 +579,11 @@ async fn commit_reuses_smartlink_buckets_for_declared_and_inverse_relationships(
         .expect("first relationship commit failed");
     assert_eq!(commit_status(first_commit), "Complete");
 
-    // AuthoredBy is definitional, so both Books now resolve to their new committed versions.
-    let context = begin_transaction(&runtime).await;
-    let committed_book_1_id =
-        local_id_of(&saved_reference_by_key(&runtime, &context, BOOK_CACHE_1_KEY).await);
-    let committed_book_2_id =
-        local_id_of(&saved_reference_by_key(&runtime, &context, BOOK_CACHE_2_KEY).await);
+    // AuthoredBy is definitional, so both Books now have new committed versions. Retain the
+    // staging references selected by pass 1: a broad GetAllHolons-by-key lookup may also expose
+    // an earlier version with the same key, which is not the SmartLink source under test.
+    let committed_book_1_id = local_id_of(&committed_book_1);
+    let committed_book_2_id = local_id_of(&committed_book_2);
 
     let book_1_authored = live_smartlinks(&backend, &committed_book_1_id, &rel(AUTHORED_BY)).await;
     let book_2_authored = live_smartlinks(&backend, &committed_book_2_id, &rel(AUTHORED_BY)).await;
