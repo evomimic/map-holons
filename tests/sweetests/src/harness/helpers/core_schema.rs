@@ -19,6 +19,20 @@ const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 10] = [
     "core/validation.json",
 ];
 
+const CORE_SCHEMA_BOOTSTRAP_FILENAMES: [&str; 11] = [
+    "abstract-value-types.json",
+    "concrete-value-types.json",
+    "keyrules.json",
+    "loader-types.json",
+    "operator-types.json",
+    "property-types.json",
+    "relationship-types.json",
+    "root.json",
+    "validation.json",
+    "value-constraint-types.json",
+    "core-schema-bootstrap.json",
+];
+
 const GENERATED_DANCE_SCHEMA_FILENAME: &str = "dance/schema.json";
 const GENERATED_COMMANDS_SCHEMA_FILENAME: &str = "commands/schema.json";
 const GENERATED_VALIDATION_SCHEMA_FILENAME: &str = "validation/schema.json";
@@ -38,12 +52,12 @@ pub struct CoreSchemaLoadMetrics {
 
 /// Metrics for the checked-in Schema 2.0 compiler artifact.
 pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 281,
-    committed: 281,
+    staged: 283,
+    committed: 283,
     links_created: 0,
     errors: 0,
     total_bundles: 10,
-    total_loader_holons: 281,
+    total_loader_holons: 283,
     commit_status: ExpectedLoadStatus::Complete,
 };
 
@@ -68,6 +82,23 @@ pub fn build_core_schema_content_set() -> Result<ContentSet, HolonError> {
         .map(|path| read_file_data(&path, "core schema import"))
         .collect::<Result<Vec<_>, _>>()?;
 
+    Ok(ContentSet { files_to_load })
+}
+
+/// Builds the generated first-space bundle used by the Conductora bootstrap
+/// service. Sweettests use this exact graph so ordinary test transactions
+/// never depend on the removed lazy LocalHolonSpace creation path.
+pub fn build_core_schema_bootstrap_content_set() -> Result<ContentSet, HolonError> {
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+    let files_to_load = CORE_SCHEMA_BOOTSTRAP_FILENAMES
+        .iter()
+        .map(|filename| {
+            read_file_data(
+                &repo_root.join("generated/core-schema-bootstrap/imports").join(filename),
+                "Core Schema bootstrap import",
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(ContentSet { files_to_load })
 }
 

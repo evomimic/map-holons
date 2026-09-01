@@ -151,6 +151,21 @@ property IsOrdered.PropertyType {
 }
 
 
+property InstanceDeletionAllowed.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapBooleanValueType.BooleanValueType
+  IsValueRequired true
+  DefaultValue true
+  header {
+    description: "Controls whether instances described by a holon type may be deleted. A false declaration is restrictive through the describing type's Extends lineage."
+    display_name: "instanceDeletionAllowed"
+    display_plural: "instanceDeletionAllowed"
+    plural: "InstanceDeletionAllowed"
+  }
+}
+
+
 property IsValueRequired.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
@@ -162,6 +177,20 @@ property IsValueRequired.PropertyType {
     display_name: "IsValueRequired"
     display_plural: "IsValueRequired"
     plural: "IsValueRequired"
+  }
+}
+
+
+property HolonSpaceName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "The stable semantic name of a HolonSpace."
+    display_name: "holonSpaceName"
+    display_plural: "holonSpaceNames"
+    plural: "HolonSpaceNames"
   }
 }
 

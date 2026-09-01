@@ -339,6 +339,9 @@
             },
             {
               "$ref": "AllowsAdditionalRelationships.PropertyType"
+            },
+            {
+              "$ref": "InstanceDeletionAllowed.PropertyType"
             }
           ]
         },
@@ -602,7 +605,8 @@
         "TypeNamePlural": "HolonSpaces",
         "DisplayName": "Holon Space",
         "DisplayNamePlural": "Holon Spaces",
-        "Description": "Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope."
+        "Description": "Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope.",
+        "InstanceDeletionAllowed": false
       },
       "relationships": [
         {
@@ -618,6 +622,28 @@
           "target": [
             {
               "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "HolonSpaceNameRule.FormatRule"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "HolonSpaceName.PropertyType"
+            },
+            {
+              "$ref": "DisplayName.PropertyType"
+            },
+            {
+              "$ref": "Description.PropertyType"
             }
           ]
         },

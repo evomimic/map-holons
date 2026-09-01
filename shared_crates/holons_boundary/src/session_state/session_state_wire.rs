@@ -26,6 +26,7 @@ pub struct SessionStateWire {
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReferenceWire>,
+    bootstrap_provisioning: bool,
 }
 
 impl SessionStateWire {
@@ -36,7 +37,13 @@ impl SessionStateWire {
         local_holon_space: Option<HolonReferenceWire>,
         tx_id: Option<TxId>,
     ) -> Self {
-        Self { tx_id, transient_holons, staged_holons, local_holon_space }
+        Self {
+            tx_id,
+            transient_holons,
+            staged_holons,
+            local_holon_space,
+            bootstrap_provisioning: false,
+        }
     }
 
     pub fn get_tx_id(&self) -> Option<TxId> {
@@ -54,6 +61,14 @@ impl SessionStateWire {
     /// Sets a new local holon space reference.
     pub fn set_local_holon_space(&mut self, local_holon_space: Option<HolonReferenceWire>) {
         self.local_holon_space = local_holon_space;
+    }
+
+    pub fn is_bootstrap_provisioning(&self) -> bool {
+        self.bootstrap_provisioning
+    }
+
+    pub fn set_bootstrap_provisioning(&mut self, bootstrap_provisioning: bool) {
+        self.bootstrap_provisioning = bootstrap_provisioning;
     }
 
     /// Retrieves the staged holon pool.

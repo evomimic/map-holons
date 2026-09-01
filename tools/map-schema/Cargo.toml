@@ -8,6 +8,7 @@ anyhow = "1"
 clap = { version = "4.5.16", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
 
 [lib]
 name = "map_schema_tool"

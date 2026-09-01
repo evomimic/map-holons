@@ -22,6 +22,7 @@ use holons_trust_channel::{DanceEnvelopeTransport, TrustChannel};
 use integrity_core_types::{HolonNodeModel, LocalId, PropertyMap};
 use std::collections::BTreeSet;
 use std::sync::Arc;
+use std::time::Instant;
 use tracing::info;
 
 const DNA_FILEPATH: &str = "../../happ/workdir/map_holons.dna";
@@ -50,6 +51,8 @@ impl DanceEnvelopeTransport for MockConductorConfig {
         &self,
         envelope: DanceRequestEnvelope,
     ) -> Result<DanceResponseEnvelope, HolonError> {
+        let is_load_holons = envelope.request.dance_name.0 == "load_holons";
+        let started = Instant::now();
         let result = self
             .conductor
             .call_fallible::<DanceRequestEnvelope, DanceResponseEnvelope>(
@@ -58,6 +61,13 @@ impl DanceEnvelopeTransport for MockConductorConfig {
                 envelope,
             )
             .await;
+
+        if is_load_holons {
+            info!(
+                elapsed_ms = started.elapsed().as_millis(),
+                "sweettest transport: load_holons conductor call complete"
+            );
+        }
 
         match result {
             Ok(response_envelope) => Ok(response_envelope),

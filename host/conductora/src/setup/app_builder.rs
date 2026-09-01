@@ -6,8 +6,11 @@ use crate::{
     config::{providers::ProviderRuntimeSelection, storage_manager::StorageManager},
     map_commands as commands, runtime,
     setup::{
-        plugin_manager::PluginManager, provider_registry::ProviderRegistry,
-        receptor_config_registry::ReceptorConfigRegistry, setup_manager::SetupManager,
+        core_schema_bootstrap::{ensure_core_schema_space, CoreSchemaBootstrapGate},
+        plugin_manager::PluginManager,
+        provider_registry::ProviderRegistry,
+        receptor_config_registry::ReceptorConfigRegistry,
+        setup_manager::SetupManager,
     },
 };
 
@@ -72,6 +75,7 @@ impl AppBuilder {
             .manage::<runtime::SessionReceptorState>(RwLock::new(None))
             //.manage::<runtime::HolochainReceptorState>(RwLock::new(None))
             .manage::<runtime::RuntimeState>(RwLock::new(None))
+            .manage(CoreSchemaBootstrapGate::new())
             .invoke_handler(tauri::generate_handler![
                 commands::root_space,
                 commands::serde_test,
@@ -107,6 +111,9 @@ impl AppBuilder {
                     if !runtime::init_from_state(&handle) {
                         anyhow::bail!("MAP Commands runtime initialization failed");
                     }
+                    ensure_core_schema_space(&handle)
+                        .await
+                        .context("ensure_core_schema_space failed")?;
                     SetupManager::create_window(&handle, &storage_cfg, &runtime_selection)
                         .await
                         .context("create_window failed")?;
@@ -118,6 +125,14 @@ impl AppBuilder {
                 .await;
 
                 if let Err(e) = startup_result {
+                    if let Some(gate) = handle.try_state::<CoreSchemaBootstrapGate>() {
+                        if let Err(gate_error) = gate.mark_failed() {
+                            tracing::error!(
+                                "[APP BUILDER] failed to close Core Schema bootstrap gate: {}",
+                                gate_error
+                            );
+                        }
+                    }
                     // eprintln flushes synchronously before process::exit kills async writers
                     eprintln!("[APP BUILDER] FATAL startup error: {:#}", e);
                     tracing::error!("[APP BUILDER] startup failed: {}", e);

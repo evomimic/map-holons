@@ -117,25 +117,15 @@ fn initialize_context_from_session_state(
     let context =
         init_guest_context(transient_holons, staged_holons, local_space_holon_id.clone(), tx_id)?;
 
-    // Ensure the transaction context is anchored to a persisted space holon.
-    let ensured_space_holon_id: HolonId = match local_space_holon_id {
-        Some(id) => id,
-        None => {
-            let ensured_space_ref = context.ensure_local_holon_space()?;
-            match ensured_space_ref {
-                holons_core::HolonReference::Smart(smart_ref) => smart_ref.get_id()?,
-                other => {
-                    return Err(HolonError::InvalidHolonReference(format!(
-                        "ensure_local_holon_space returned non-smart reference: {} ({})",
-                        other.reference_kind_string(),
-                        other.reference_id_string()
-                    )))
-                }
-            }
-        }
-    };
-
-    context.set_space_holon_id(ensured_space_holon_id)?;
+    let bootstrap_provisioning = session_state.is_bootstrap_provisioning();
+    if local_space_holon_id.is_none() && !bootstrap_provisioning {
+        return Err(HolonError::InvalidState(
+            "ordinary transaction is missing its persisted local HolonSpace".to_string(),
+        ));
+    }
+    if bootstrap_provisioning {
+        context.enable_bootstrap_provisioning();
+    }
     Ok(context)
 }
 

@@ -1,5 +1,6 @@
 pub mod app_builder;
 pub mod common_setup;
+pub mod core_schema_bootstrap;
 pub mod plugin_manager;
 pub mod provider_integration;
 pub mod provider_registry;

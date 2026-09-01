@@ -48,7 +48,7 @@ use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    build_book_person_inverse_content_set, build_core_schema_content_set,
+    build_book_person_inverse_content_set, build_core_schema_bootstrap_content_set,
     setup_probe_enabled_conductor, BOOK_DESCRIPTOR_KEY,
 };
 use holons_test::MockConductorConfig;
@@ -163,7 +163,28 @@ async fn runtime_over(backend: Arc<MockConductorConfig>) -> Runtime {
 
     let session = Arc::new(RuntimeSession::new(Arc::clone(&space_manager), None));
 
-    Runtime::new(session)
+    let runtime = Runtime::new(session);
+    let bootstrap_context = begin_transaction(&runtime).await;
+    bootstrap_context.enable_bootstrap_provisioning();
+    runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&bootstrap_context),
+                action: TransactionAction::LoadHolons {
+                    content_set: build_core_schema_bootstrap_content_set()
+                        .expect("Core Schema bootstrap bundle must be available"),
+                },
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("Core Schema bootstrap must succeed");
+    runtime
+        .session()
+        .archive_transaction(&bootstrap_context.tx_id())
+        .expect("bootstrap transaction must archive");
+
+    runtime
 }
 
 async fn begin_transaction(runtime: &Runtime) -> Arc<TransactionContext> {
@@ -280,7 +301,6 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     let runtime = runtime_over(Arc::clone(&backend)).await;
 
     // --- Phase 1: schema, then one described Book instance ---------------------------------
-    load(&runtime, build_core_schema_content_set().unwrap(), "core schema load").await;
     load(&runtime, build_book_person_inverse_content_set().unwrap(), "book/person schema load")
         .await;
 

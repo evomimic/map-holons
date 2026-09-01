@@ -1,0 +1,1193 @@
+{
+  "release_identity": "MAP Core Schema-v0.0.7",
+  "core_schema_key": "MAP Core Schema-v0.0.7",
+  "core_schema_space_key": "MAP.CoreSchemaSpace",
+  "imports": [
+    {
+      "path": "imports/abstract-value-types.json",
+      "sha256": "d3e030caf33737970c769512d597a7b2f97604c86d2b033bc7294806c5ed0e1a"
+    },
+    {
+      "path": "imports/concrete-value-types.json",
+      "sha256": "3396a3d3c4894d3fc02f0b968fe1ec892ecf39e38f47c46ca1ec737658d725e9"
+    },
+    {
+      "path": "imports/keyrules.json",
+      "sha256": "679bd2004c24461d45e2fb341f809281feee0261a51ec4dd63b17090174c7046"
+    },
+    {
+      "path": "imports/loader-types.json",
+      "sha256": "adb06688e396c9055780fd60418c1f623eed1316720bf4f9abda0078a22562ea"
+    },
+    {
+      "path": "imports/operator-types.json",
+      "sha256": "e6f2fc866aad00aec5985dcd93f0b9e01cbcebbbc5e6f507ea82ab1af8f59c6a"
+    },
+    {
+      "path": "imports/property-types.json",
+      "sha256": "5e4178738e78ca908b03f0bbec21ace657e6169b89fe4d3656304bedfdcc8422"
+    },
+    {
+      "path": "imports/relationship-types.json",
+      "sha256": "c2447bad66757a27ffb1426082907a2b7f505da7653e500211722c5468bc6568"
+    },
+    {
+      "path": "imports/root.json",
+      "sha256": "a1b98219a63eb9e2788ea6b0bef34eca911577672eb3120c997caa6004f93b49"
+    },
+    {
+      "path": "imports/validation.json",
+      "sha256": "4e2d2ec90380f5cab902a67804ef03866eeddd1c15128743f47e9396ff0734dd"
+    },
+    {
+      "path": "imports/value-constraint-types.json",
+      "sha256": "46d4447bcd3751c06809ba14562b39732fe7345db1e90db97884ae7a4acfd7bd"
+    },
+    {
+      "path": "imports/core-schema-bootstrap.json",
+      "sha256": "fdead3ba40104df85f57f3e01ac0d1b02283ff62180b2f24a559f60b252d30c7"
+    }
+  ],
+  "required_holons": [
+    {
+      "key": "(Constraint.HolonType)-[Constrains]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DeclaredRelationshipType.RelationshipType)-[HasInverse]->(InverseRelationshipType.RelationshipType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DeclaredRelationshipType.RelationshipType)-[InstanceRelationshipFor]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(EnumVariantValueType.ValueType)-[VariantOf]->(EnumValueType.ValueType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[CollectionMembers]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonCollection.HolonType)-[ElementType]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonLoadSet.HolonType)-[Contains]->(HolonLoaderBundle.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonLoaderBundle.HolonType)-[BundleMembers]->(LoaderHolon.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[ElementTypeFor]->(HolonCollection.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[InstanceProperties]->(PropertyType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[InstanceRelationships]->(DeclaredRelationshipType.RelationshipType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[MemberOfCollection]->(HolonCollection.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[Predecessor]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[SourceOf]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[Successor]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[TargetOf]->(RelationshipType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(InverseRelationshipType.RelationshipType)-[InverseOf]->(DeclaredRelationshipType.RelationshipType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoaderHolon.HolonType)-[BundleMemberOf]->(HolonLoaderBundle.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceSourceOf]->(LoaderRelationshipReference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoaderHolonReference.HolonType)-[ReferenceTargetOf]->(LoaderRelationshipReference.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceSource]->(LoaderHolonReference.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoaderRelationshipReference.HolonType)-[ReferenceTarget]->(LoaderHolonReference.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(LoaderRelationshipReference.HolonType)-[RelationshipReferenceOf]->(LoaderHolon.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(OperatorType.HolonType)-[ValueTypeAffordedBy]->(ValueType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(PropertyType.TypeDescriptor)-[InstancePropertyFor]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(PropertyType.TypeDescriptor)-[TemplateParameterFor]->(FormatRule.KeyRuleType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(PropertyType.TypeDescriptor)-[ValueType]->(ValueType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(RelationshipType.TypeDescriptor)-[TargetType]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Rule.HolonType)-[RuleOf]->(Schema.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Schema.HolonType)-[Components]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Schema.HolonType)-[Dependents]->(Schema.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Schema.HolonType)-[Rules]->(Rule.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Transaction.HolonType)-[TransactionModelAffordedBy]->(HolonSpace.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[ComponentOf]->(Schema.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[Constraints]->(Constraint.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[ExtendedBy]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[Extends]->(TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[HasApplicableConstraintTypes]->(MetaConstraintType.MetaHolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[Instances]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(TypeDescriptor)-[ValidationBindings]->(ValidationRule.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValueArrayValueType.ValueType)-[ElementValueType]->(ValueType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValueType.TypeDescriptor)-[AffordsOperator]->(OperatorType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValueType.TypeDescriptor)-[ElementValueTypeFor]->(ValueArrayValueType.ValueType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ValueType.TypeDescriptor)-[ValueTypeFor]->(PropertyType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "AbstractMemberMinimumEnforcement.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "AcyclicExtendsLineage.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "AdditionalRelationshipPolicy.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "AllowsAdditionalProperties.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "AllowsAdditionalRelationships.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "AllowsDuplicates.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Arity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "AtMostOneDirectParent.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "BaseValueKindMatchesBoolean.ValidationRule",
+      "type": "BooleanValidationRule.HolonType"
+    },
+    {
+      "key": "BaseValueKindMatchesBytes.ValidationRule",
+      "type": "BytesValidationRule.HolonType"
+    },
+    {
+      "key": "BaseValueKindMatchesEnum.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType"
+    },
+    {
+      "key": "BaseValueKindMatchesInteger.ValidationRule",
+      "type": "IntegerValidationRule.HolonType"
+    },
+    {
+      "key": "BaseValueKindMatchesString.ValidationRule",
+      "type": "StringValidationRule.HolonType"
+    },
+    {
+      "key": "BaseValueValueType.ValueType",
+      "type": "MetaValueType.MetaTypeDescriptor"
+    },
+    {
+      "key": "BooleanValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "BooleanValueType.ValueType",
+      "type": "MetaValueType.MetaTypeDescriptor"
+    },
+    {
+      "key": "BytesLength.ValidationRule",
+      "type": "BytesValidationRule.HolonType"
+    },
+    {
+      "key": "BytesLengthConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "BytesValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "BytesValueType.ValueType",
+      "type": "MetaBytesValueType.MetaValueType"
+    },
+    {
+      "key": "CardinalityConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "CollectionType.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "CollectionType.MapEnumValueType.HolonArray",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CollectionType.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ConcreteDescribingType.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "Constraint.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ConstraintInstanceRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ConstraintName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ConstraintType.HolonType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "ContractMemberKindCompatibility.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "CoreAccumulatorsAreAdditive.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "CrossSchemaDependenciesDeclared.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "DeclaredRelationshipType.RelationshipType",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "DefaultSeverity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DefaultValue.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DefaultValueConformance.ValidationRule",
+      "type": "PropertyValidationRule.HolonType"
+    },
+    {
+      "key": "DefaultsRequireRequiredProperties.ValidationRule",
+      "type": "PropertyValidationRule.HolonType"
+    },
+    {
+      "key": "DefinesInstanceTypeKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DeletionSemantic.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "DeletionSemantic.MapEnumValueType.Allow",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "DeletionSemantic.MapEnumValueType.Block",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "DeletionSemantic.MapEnumValueType.Cascade",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "DeletionSemantic.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DescribedTypeRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DescribingCategoryCompatibility.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "Description.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DescriptorMetaTypeCorrespondence.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "DeterminismClass.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DirectionalDeletionDeclarations.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "DisplayName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DisplayNamePlural.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "EffectiveKeyRuleSelection.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "EnumMemberNamesUnique.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType"
+    },
+    {
+      "key": "EnumTokenMembership.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType"
+    },
+    {
+      "key": "EnumTokenNonRetroactivity.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType"
+    },
+    {
+      "key": "EnumValueType.ValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "EnumValueValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "EnumVariantRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "EnumVariantValueType.ValueType",
+      "type": "MetaValueType.MetaTypeDescriptor"
+    },
+    {
+      "key": "EqualsOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "ErrorCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ErrorMessage.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ErrorType.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ExactlyOne.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType"
+    },
+    {
+      "key": "ExplicitKeylessBaseline.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ExplicitKeylessness.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ExtendedTypeRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "Filename.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "FormatRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonCollection.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonError.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonId.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonIdValueType.MapBytesValueType",
+      "type": "MetaBytesValueType.MetaValueType"
+    },
+    {
+      "key": "HolonKey.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonLoadError.HolonError",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonLoadSet.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonLoaderBundle.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonSpace.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonSpaceName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonSpaceNameRule.FormatRule",
+      "type": "FormatRule.KeyRuleType"
+    },
+    {
+      "key": "HolonType.TypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "HolonsCommitted.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "HolonsStaged.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "InheritedValueConstraintNonRelaxation.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "InstanceDeletionAllowed.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "InstanceKindAnchorsAreAbstract.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "IntegerRange.ValidationRule",
+      "type": "IntegerValidationRule.HolonType"
+    },
+    {
+      "key": "IntegerValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "IntegerValueType.ValueType",
+      "type": "MetaIntegerValueType.MetaValueType"
+    },
+    {
+      "key": "InverseEndpointCorrespondence.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "InverseRelationshipType.RelationshipType",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "IsAbstractType.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "IsDefinitional.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "IsOrdered.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "IsValueRequired.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ItemCountConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "Key.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "KeyPresenceAndValue.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "KeyRuleTargetCompatibility.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "KeyRuleType.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Length16k.StringLengthConstraint",
+      "type": "StringLengthConstraint.ConstraintType"
+    },
+    {
+      "key": "LessThanOperator.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "LinksCreated.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoadCommitStatus.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "LoadCommitStatus.MapEnumValueType.Complete",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "LoadCommitStatus.MapEnumValueType.Incomplete",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "LoadCommitStatus.MapEnumValueType.Skipped",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "LoadCommitStatus.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoaderHolon.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoaderHolonKey.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoaderHolonReference.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LoaderRelationshipReference.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LocalInstanceKindAnchorDesignation.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "MAP Core Schema-v0.0.7",
+      "type": "Schema.HolonType"
+    },
+    {
+      "key": "MAP.CoreSchemaSpace",
+      "type": "HolonSpace.HolonType"
+    },
+    {
+      "key": "MapBoolean.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MapBooleanValueType.BooleanValueType",
+      "type": "MetaValueType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MapBytes.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MapBytesValueType.BytesValueType",
+      "type": "MetaBytesValueType.MetaValueType"
+    },
+    {
+      "key": "MapEnumValueType.EnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "MapEnumVariantValueType.EnumVariantValueType",
+      "type": "MetaValueType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MapInteger.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MapIntegerValueType.IntegerValueType",
+      "type": "MetaIntegerValueType.MetaValueType"
+    },
+    {
+      "key": "MapString.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MapStringValueType.StringValueType",
+      "type": "MetaStringValueType.MetaValueType"
+    },
+    {
+      "key": "MapValueArrayType.ValueArrayValueType",
+      "type": "MetaValueArrayValueType.MetaValueType"
+    },
+    {
+      "key": "Maximum.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MaximumIsInclusive.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaBytesValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaConstraintType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaEnumValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaEnumVariantValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaHolonType.MetaTypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaIntegerValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaInverseRelationshipType.MetaRelationshipType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaOperatorType.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaPropertyType.MetaTypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaRelationshipType.MetaTypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaStringValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaTypeDescriptor.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaValidationRule.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaValueArrayValueType.MetaValueType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaValueType.MetaTypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Minimum.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MinimumBlockingBehavior.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MinimumIsInclusive.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "NoInheritedMemberRedeclaration.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "NoUndescribedProperties.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "NoneRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "NumericRangeConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "OneOrMore.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType"
+    },
+    {
+      "key": "OperatorCategory.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "OperatorCategory.MapEnumValueType.Equality",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "OperatorCategory.MapEnumValueType.Ordering",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "OperatorCategory.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "OperatorType.HolonType",
+      "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "PropertyType.TypeDescriptor",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "PropertyValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "PropertyValueConformance.ValidationRule",
+      "type": "PropertyValidationRule.HolonType"
+    },
+    {
+      "key": "ProxyId.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ProxyKey.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "RelationshipCardinality.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "RelationshipCollectionPolicy.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "RelationshipDescriptorPairing.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "RelationshipEndpointCompatibility.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "RelationshipName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "RelationshipOccurrenceBinding.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "RelationshipOccurrenceGrouping.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "RelationshipRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "RelationshipType.TypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "RelationshipValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "RequiredPropertyPresence.ValidationRule",
+      "type": "PropertyValidationRule.HolonType"
+    },
+    {
+      "key": "Rule.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Schema.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SchemaDependenciesAcyclic.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "SchemaName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SchemaNameRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SemanticAuthority.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "StartUtf8ByteOffset.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "StringLength.ValidationRule",
+      "type": "StringValidationRule.HolonType"
+    },
+    {
+      "key": "StringLengthConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "StringValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "StringValueType.ValueType",
+      "type": "MetaStringValueType.MetaValueType"
+    },
+    {
+      "key": "TemplateString.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Transaction.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "TransactionValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "TypeDescriptor",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "TypeDescriptorRootKindException.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "TypeName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "TypeNamePlural.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "TypeNameRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "UniqueItemsConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType"
+    },
+    {
+      "key": "UniquePropertyMemberBinding.ValidationRule",
+      "type": "PropertyValidationRule.HolonType"
+    },
+    {
+      "key": "UniqueSemanticMemberNames.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "UniqueTypeDescriptorRoot.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ValidationBlockingBehavior.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationBlockingBehavior.MapEnumValueType.Advisory",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationBlockingBehavior.MapEnumValueType.CommitBlocking",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationDeterminismClass.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationDeterminismClass.MapEnumValueType.Contextual",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationDeterminismClass.MapEnumValueType.Deterministic",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Agreement",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Command",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Dance",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Holon",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Property",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Relationship",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Transaction",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Value",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationLevel.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "ValidationRuleDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType.Error",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType.Info",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType.Warning",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValueArrayValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "ValueArrayValueType.ValueType",
+      "type": "MetaValueArrayValueType.MetaValueType"
+    },
+    {
+      "key": "ValueType.TypeDescriptor",
+      "type": "MetaValueType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ValueValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "WellFormedEffectiveMemberDefinitions.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ZeroOrMore.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType"
+    },
+    {
+      "key": "ZeroOrOne.CardinalityConstraint",
+      "type": "CardinalityConstraint.ConstraintType"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
+    bootstrap_bundle::generate_core_schema_bootstrap_bundle,
     decompile_input_string, decompile_inputs, roundtrip_json_inputs,
     tdl_compiler::{
         check_input_string, check_inputs, compile_input_string, compile_inputs,
@@ -42,6 +43,16 @@ enum Commands {
         /// Output directory for generated JSON import files.
         #[arg(short = 'o', long = "out-dir", visible_alias = "out")]
         out_dir: Option<PathBuf>,
+    },
+
+    /// Build the manifest-selected Core Schema bootstrap distribution bundle.
+    BootstrapBundle {
+        /// Generated canonical Core JSON imports.
+        import_dir: PathBuf,
+
+        /// Output directory for the bootstrap bundle.
+        #[arg(short = 'o', long = "out-dir", visible_alias = "out")]
+        out_dir: PathBuf,
     },
 
     /// Validate TDL syntax and lowering diagnostics.
@@ -102,6 +113,10 @@ fn main() -> Result<()> {
                 print!("{}", compile_input_string(&read_single_input(&inputs)?, &inputs[0])?);
             }
         }
+        Commands::BootstrapBundle { import_dir, out_dir } => {
+            generate_core_schema_bootstrap_bundle(&import_dir, &out_dir)?;
+            println!("wrote Core Schema bootstrap bundle to {}", out_dir.display());
+        }
         Commands::Check { inputs } => {
             let diagnostics = if inputs.is_empty() {
                 if io::stdin().is_terminal() {
@@ -148,6 +163,9 @@ Commands:
 
   compile [TDL_FILE_OR_DIR ...] --out-dir <DIR>
       Convert TDL files into generated loader JSON. Compile works over a corpus.
+
+  bootstrap-bundle GENERATED_CORE_IMPORT_DIR --out-dir <DIR>
+      Create the manifest-selected Core Schema bootstrap distribution bundle.
 
   check [TDL_FILE_OR_DIR ...]
       Validate TDL syntax and lowering constraints without writing JSON.

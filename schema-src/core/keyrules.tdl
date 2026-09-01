@@ -43,6 +43,16 @@ holon FormatRule.KeyRuleType {
   }
 }
 
+instance HolonSpaceNameRule.FormatRule {
+  type FormatRule.KeyRuleType
+  rule_of "MAP Core Schema-v0.0.7"
+  TypeName "HolonSpaceNameRule"
+  TemplateString "$0"
+  relationships {
+    TemplateParameters -> HolonSpaceName.PropertyType
+  }
+}
+
 holon EnumVariantRule.KeyRuleType {
   type MetaHolonType.MetaTypeDescriptor
   extends KeyRuleType.HolonType

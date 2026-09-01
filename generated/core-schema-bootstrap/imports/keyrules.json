@@ -1,0 +1,582 @@
+{
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "root.json",
+      "property-types.json",
+      "relationship-types.json"
+    ],
+    "source_files": [
+      "map-core-schema-keyrules-schema.csv"
+    ]
+  },
+  "holons": [
+    {
+      "key": "KeyRuleType.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "KeyRuleType",
+        "TypeNamePlural": "KeyRuleTypes",
+        "DisplayName": "Abstract Key Rule Type",
+        "DisplayNamePlural": "Abstract Key Rule Types",
+        "Description": "Abstract holon type for key-rule strategies that derive semantic keys for holons. Concrete key-rule types define the available derivation algorithms.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Rule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "FormatRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "FormatRule",
+        "TypeNamePlural": "FormatRules",
+        "DisplayName": "Format Key Rule Type",
+        "DisplayNamePlural": "Format Key Rule Types",
+        "Description": "Concrete key-rule type for named, reusable format configurations composed from a template string and an ordered list of property descriptors."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "DescribedTypeRule.KeyRuleType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "TypeName.PropertyType"
+            },
+            {
+              "$ref": "TemplateString.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonSpaceNameRule.FormatRule",
+      "type": "FormatRule.KeyRuleType",
+      "properties": {
+        "TypeName": "HolonSpaceNameRule",
+        "TemplateString": "$0"
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "TemplateParameters",
+          "target": [
+            {
+              "$ref": "HolonSpaceName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumVariantRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "EnumVariantRule",
+        "TypeNamePlural": "EnumVariantRules",
+        "DisplayName": "Enum Variant Rule",
+        "DisplayNamePlural": "Enum Variant Rules",
+        "Description": "For enum-variant descriptors, derives keys as {EnumName}.{VariantName}, for example DeletionSemantic.Allow."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TypeNameRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "TypeNameRule",
+        "TypeNamePlural": "TypeNameRules",
+        "DisplayName": "Type Name Rule",
+        "DisplayNamePlural": "Type Name Rules",
+        "Description": "Derives a key from the holon's type_name property."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "RelationshipRule",
+        "TypeNamePlural": "RelationshipRules",
+        "DisplayName": "Relationship Key Rule Type",
+        "DisplayNamePlural": "Relationship Key Rule Types",
+        "Description": "Derives a relationship descriptor key as ({source_type})-[{type_name}]->({target_type})."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExtendedTypeRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExtendedTypeRule",
+        "TypeNamePlural": "ExtendedTypeRules",
+        "DisplayName": "Extended Type Key Rule Type",
+        "DisplayNamePlural": "Extended Type Key Rule Types",
+        "Description": "Derives a descriptor key from the descriptor's local type_name and the type_name of its immediate Extends target. A descriptor without Extends uses its local type_name."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DescribedTypeRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DescribedTypeRule",
+        "TypeNamePlural": "DescribedTypeRules",
+        "DisplayName": "Described Type Rule",
+        "DisplayNamePlural": "Described Type Rules",
+        "Description": "Derives a key from the holon's local type_name and the type_name of its DescribedBy target."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintInstanceRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintInstanceRule",
+        "TypeNamePlural": "ConstraintInstanceRules",
+        "DisplayName": "Constraint Instance Key Rule",
+        "DisplayNamePlural": "Constraint Instance Key Rules",
+        "Description": "Derives a configured constraint instance key from its required ConstraintName and its DescribedBy constraint type."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NoneRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "NoneRule",
+        "TypeNamePlural": "NoneRules",
+        "DisplayName": "None Key Rule Type",
+        "DisplayNamePlural": "None Key Rule Types",
+        "Description": "Explicitly represents keylessness. A holon type selecting this rule defines instances with no semantic key."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SchemaNameRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SchemaNameRule",
+        "TypeNamePlural": "SchemaNameRules",
+        "DisplayName": "Schema Name Rule",
+        "DisplayNamePlural": "Schema Name Rules",
+        "Description": "Derives a key from the holon's schema_name property."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "InstanceKeyRule",
+        "TypeNamePlural": "InstanceKeyRuleRelationships",
+        "DisplayName": "Instance Key Rule",
+        "DisplayNamePlural": "Instance Key Rule Relationships",
+        "Description": "Selects the key rule governing holons described by a holon type. The rule does not govern the key of the source type descriptor itself.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(KeyRuleType.HolonType)-[KeyRuleForInstancesOf]->(HolonType.TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "KeyRuleForInstancesOf",
+        "TypeNamePlural": "KeyRuleForInstancesOfRelationships",
+        "DisplayName": "Key Rule For Instances Of",
+        "DisplayNamePlural": "Key Rule For Instances Of Relationships",
+        "Description": "Inverse of InstanceKeyRule, from a key rule to the holon types whose described instances use it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

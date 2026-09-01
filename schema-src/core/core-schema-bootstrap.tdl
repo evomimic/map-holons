@@ -1,0 +1,14 @@
+// The bootstrap overlay is compiled with the Core corpus.  Its generated
+// loader projection is packaged only as part of the Core Schema bootstrap
+// bundle; it is not an independently authored JSON import.
+schema "MAP Core Schema-v0.0.7"
+
+instance MAP.CoreSchemaSpace {
+  type HolonSpace.HolonType
+  HolonSpaceName "MAP.CoreSchemaSpace"
+  DisplayName "MAP Core Schema Space"
+  Description "The stewarding HolonSpace for the initial MAP Core Schema release."
+  relationships {
+    OwnedBy -> MAP.CoreSchemaSpace
+  }
+}

@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, effective_relationships, inheritance::effective_relationship_members,
+    accessor_helpers, effective_relationships,
+    inheritance::{effective_relationship_members, walk_extends_chain},
     CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor,
     InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor, QualifiedRelationship,
     RelationshipDescriptor, TypeHeader,
 };
-use crate::reference_layer::HolonReference;
+use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::{HolonError, PropertyName};
 use type_names::{
     CorePropertyTypeName, CoreRelationshipTypeName, ToCommandName, ToDanceName, ToPropertyName,
@@ -46,6 +47,37 @@ impl HolonDescriptor {
             &self.holon,
             CorePropertyTypeName::AllowsAdditionalRelationships,
         )
+    }
+
+    /// Returns whether instances described by this type may be deleted.
+    ///
+    /// A false declaration on any descriptor in the self-first `Extends`
+    /// lineage is restrictive. This deliberately does not use the ordinary
+    /// descriptor-property `Local` inheritance policy: lifecycle permission
+    /// may be narrowed by a subtype but never widened again.
+    pub fn instance_deletion_allowed(&self) -> Result<bool, HolonError> {
+        for descriptor in walk_extends_chain(&self.holon) {
+            let value =
+                descriptor?.property_value(CorePropertyTypeName::InstanceDeletionAllowed)?;
+            match value {
+                Some(base_types::BaseValue::BooleanValue(value)) if !value.0 => return Ok(false),
+                Some(base_types::BaseValue::BooleanValue(_)) => {}
+                Some(other) => {
+                    return Err(HolonError::UnexpectedValueType(
+                        format!("{other:?}"),
+                        "Boolean".into(),
+                    ));
+                }
+                None => {
+                    return Err(HolonError::InvalidState(
+                        "InstanceDeletionAllowed is missing from a holon type descriptor"
+                            .to_string(),
+                    ));
+                }
+            }
+        }
+
+        Ok(true)
     }
 
     /// Returns effective instance property descriptors across this descriptor's inheritance chain.
@@ -1465,6 +1497,30 @@ mod tests {
                 if relationship == "HasInverse"
         ));
 
+        Ok(())
+    }
+
+    #[test]
+    fn instance_deletion_policy_allows_completed_true_value() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut descriptor = new_descriptor_holon(&context, "deletion-default", "DeletionDefault")?;
+        descriptor.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, true)?;
+
+        assert!(HolonDescriptor::from_holon(descriptor.into()).instance_deletion_allowed()?);
+        Ok(())
+    }
+
+    #[test]
+    fn instance_deletion_policy_remains_blocked_for_descendants() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut anchor = new_descriptor_holon(&context, "space-anchor", "SpaceAnchor")?;
+        anchor.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, false)?;
+
+        let mut descendant = new_descriptor_holon(&context, "space-descendant", "SpaceDescendant")?;
+        descendant.with_property_value(CorePropertyTypeName::InstanceDeletionAllowed, true)?;
+        descendant.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.into()])?;
+
+        assert!(!HolonDescriptor::from_holon(descendant.into()).instance_deletion_allowed()?);
         Ok(())
     }
 }

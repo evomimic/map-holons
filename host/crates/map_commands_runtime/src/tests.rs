@@ -459,7 +459,7 @@ async fn staged_count(runtime: &Runtime, tx_id: &TxId) -> i64 {
 }
 
 #[tokio::test]
-async fn delete_holon_command_returns_none() {
+async fn delete_holon_command_requires_a_resolvable_descriptor() {
     let runtime = build_test_runtime();
     let tx_id = begin_tx(&runtime).await;
 
@@ -473,9 +473,9 @@ async fn delete_holon_command_returns_none() {
             ExecutionPolicy::default(),
         )
         .await
-        .expect("delete holon command should succeed");
+        .expect_err("delete holon must resolve its descriptor before persistence");
 
-    assert!(matches!(result, MapResult::None));
+    assert!(matches!(result, HolonError::NotImplemented(message) if message == "TestHolonService"));
 }
 
 #[tokio::test]

@@ -41,6 +41,7 @@
     "map-schema:help": "cargo run --manifest-path tools/map-schema/Cargo.toml -- help",
     "map-schema:compile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- compile",
     "map-schema:compile:coreschema": "npm run map-schema:compile -- schema-src --out-dir generated/json-imports",
+    "map-schema:bootstrap-bundle": "npm run map-schema:compile:coreschema && npm run map-schema -- bootstrap-bundle generated/json-imports/core --out-dir generated/core-schema-bootstrap",
     "map-schema:check": "cargo run --manifest-path tools/map-schema/Cargo.toml -- check",
     "map-schema:check:coreschema": "npm run map-schema:check -- schema-src",
     "map-schema:roundtrip:coreschema": "npm run map-schema -- roundtrip-json generated/json-imports --tdl-out generated/tdl-decompiled --json-out generated/json-roundtrip",
