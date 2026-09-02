@@ -2,20 +2,9 @@ use core_types::{ContentSet, FileData};
 use holons_prelude::prelude::*;
 use std::path::PathBuf;
 
-use super::{read_file_data, CoreSchemaLoadMetrics};
-use crate::ExpectedLoadStatus;
+use super::read_file_data;
 
 const GENERATED_DOMAIN_SCHEMA_FILENAME: &str = "test/book-person-inverse.json";
-
-pub const BOOK_PERSON_INVERSE_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 9,
-    committed: 9,
-    links_created: 46,
-    errors: 0,
-    total_bundles: 1,
-    total_loader_holons: 9,
-    commit_status: ExpectedLoadStatus::Complete,
-};
 
 pub fn domain_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

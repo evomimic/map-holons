@@ -47,8 +47,12 @@ enum Commands {
 
     /// Build the manifest-selected Core Schema bootstrap distribution bundle.
     BootstrapBundle {
-        /// Generated canonical Core JSON imports.
-        import_dir: PathBuf,
+        /// Root directory containing generated canonical schema JSON imports.
+        import_root: PathBuf,
+
+        /// Source manifest selecting the operational schema packages to bootstrap.
+        #[arg(long)]
+        manifest: PathBuf,
 
         /// Output directory for the bootstrap bundle.
         #[arg(short = 'o', long = "out-dir", visible_alias = "out")]
@@ -113,8 +117,8 @@ fn main() -> Result<()> {
                 print!("{}", compile_input_string(&read_single_input(&inputs)?, &inputs[0])?);
             }
         }
-        Commands::BootstrapBundle { import_dir, out_dir } => {
-            generate_core_schema_bootstrap_bundle(&import_dir, &out_dir)?;
+        Commands::BootstrapBundle { import_root, manifest, out_dir } => {
+            generate_core_schema_bootstrap_bundle(&import_root, &manifest, &out_dir)?;
             println!("wrote Core Schema bootstrap bundle to {}", out_dir.display());
         }
         Commands::Check { inputs } => {
@@ -164,8 +168,8 @@ Commands:
   compile [TDL_FILE_OR_DIR ...] --out-dir <DIR>
       Convert TDL files into generated loader JSON. Compile works over a corpus.
 
-  bootstrap-bundle GENERATED_CORE_IMPORT_DIR --out-dir <DIR>
-      Create the manifest-selected Core Schema bootstrap distribution bundle.
+  bootstrap-bundle GENERATED_IMPORT_ROOT --manifest <FILE> --out-dir <DIR>
+      Create the manifest-selected operational CoreSchemaSpace bootstrap bundle.
 
   check [TDL_FILE_OR_DIR ...]
       Validate TDL syntax and lowering constraints without writing JSON.

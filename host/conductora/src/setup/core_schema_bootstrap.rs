@@ -19,13 +19,22 @@ use crate::runtime::RuntimeState;
 // directory (including in dev mode under `target/debug/resources`).
 const BUNDLE_DIRECTORY: &str = "resources/core-schema-bootstrap";
 const MANIFEST_FILENAME: &str = "manifest.json";
+const REQUIRED_BOOTSTRAP_PACKAGES: [&str; 7] =
+    ["core", "validation", "dance", "commands", "query", "query-dance", "dahn"];
 
 #[derive(Debug, Deserialize)]
 struct BootstrapManifest {
     release_identity: String,
     core_schema_key: String,
     core_schema_space_key: String,
+    packages: Vec<BootstrapPackage>,
     imports: Vec<BootstrapImport>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BootstrapPackage {
+    name: String,
+    import_directory: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -180,6 +189,13 @@ fn bootstrap_content_set_from_directory(bundle_directory: &Path) -> anyhow::Resu
         || manifest.core_schema_key.is_empty()
         || manifest.core_schema_space_key != "MAP.CoreSchemaSpace"
         || manifest.imports.is_empty()
+        || manifest.packages.len() != REQUIRED_BOOTSTRAP_PACKAGES.len()
+        || manifest
+            .packages
+            .iter()
+            .map(|package| package.name.as_str())
+            .ne(REQUIRED_BOOTSTRAP_PACKAGES)
+        || manifest.packages.iter().any(|package| package.import_directory != package.name)
     {
         anyhow::bail!("Core Schema bootstrap manifest is incomplete or incompatible");
     }
@@ -254,7 +270,7 @@ mod tests {
         fs::write(
             directory.join(MANIFEST_FILENAME),
             format!(
-                "{{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"imports\":[{{\"path\":\"imports/core.json\",\"sha256\":\"{digest}\"}}]}}"
+                "{{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{{\"name\":\"core\",\"import_directory\":\"core\"}},{{\"name\":\"validation\",\"import_directory\":\"validation\"}},{{\"name\":\"dance\",\"import_directory\":\"dance\"}},{{\"name\":\"commands\",\"import_directory\":\"commands\"}},{{\"name\":\"query\",\"import_directory\":\"query\"}},{{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"}},{{\"name\":\"dahn\",\"import_directory\":\"dahn\"}}],\"imports\":[{{\"path\":\"imports/core.json\",\"sha256\":\"{digest}\"}}]}}"
             ),
         )?;
 
@@ -275,7 +291,7 @@ mod tests {
         fs::write(imports.join("core.json"), "{\"holons\":[]}")?;
         fs::write(
             directory.join(MANIFEST_FILENAME),
-            "{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"imports\":[{\"path\":\"imports/core.json\",\"sha256\":\"invalid\"}]}",
+            "{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{\"name\":\"core\",\"import_directory\":\"core\"},{\"name\":\"validation\",\"import_directory\":\"validation\"},{\"name\":\"dance\",\"import_directory\":\"dance\"},{\"name\":\"commands\",\"import_directory\":\"commands\"},{\"name\":\"query\",\"import_directory\":\"query\"},{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"},{\"name\":\"dahn\",\"import_directory\":\"dahn\"}],\"imports\":[{\"path\":\"imports/core.json\",\"sha256\":\"invalid\"}]}",
         )?;
 
         assert!(bootstrap_content_set_from_directory(&directory).is_err());

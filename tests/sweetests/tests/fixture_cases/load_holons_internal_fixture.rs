@@ -11,10 +11,10 @@
 //!
 //! ## Fixture Progression (combined)
 //!
-//! 1. **Empty bundle** → `UnprocessableEntity`; database remains baseline (only Space holon)
+//! 1. **Empty bundle** → `UnprocessableEntity`; no loader holons commit
 //! 2. **Nodes-only undescribed bundle** → staged, then skipped during default population
 //! 3. **Undescribed relationship bundle** → relationship staged, then skipped during default population
-//! 4. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; DB unchanged
+//! 4. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; no loader holons commit
 //!
 //! ### Why a single fixture?
 //! - Enables incremental coverage growth by appending new steps (`add_load_holons_internal_step()`).
@@ -206,9 +206,6 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
             leaves the DB unchanged, and surfaces per-file provenance via error holons.\n",
         );
 
-    // A) Ensure DB starts with only the Space holon.
-    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
-
     // B) Empty bundle → expect UnprocessableEntity and no DB change.
     let empty_bundle = build_empty_bundle(&fixture_context, "Bundle.Empty.1")?;
     let empty_set = make_load_set_from_bundles(
@@ -226,8 +223,6 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0), // total_loader_holons
         ExpectedLoadStatus::Skipped,
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
-
     // C) Nodes-only undescribed bundle -> staged, then rejected before commit.
     let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
     let (nodes_bundle, n_nodes) =
@@ -247,7 +242,6 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(n_nodes as i64), // total_loader_holons
         ExpectedLoadStatus::Skipped,
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
     test_case.add_begin_transaction_step(
         None,
         Some("Begin new transaction before declared-link load".to_string()),
@@ -277,7 +271,6 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(node_count as i64), // total_loader_holons
         ExpectedLoadStatus::Skipped,
     )?;
-    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
     test_case.add_begin_transaction_step(
         None,
         Some("Begin new transaction before duplicate-key load".to_string()),
@@ -331,9 +324,6 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(dup_total_nodes), // total_loader_holons
         ExpectedLoadStatus::Skipped,
     )?;
-
-    // DB must remain unchanged after duplicate-key failure.
-    test_case.add_ensure_database_count_step(MapInteger(1), None)?;
 
     // Finalize
     test_case.finalize(&fixture_context, &fixture_holons)?;

@@ -65,14 +65,11 @@ use execution_steps::stage_new_version_executor::execute_stage_new_version;
 use execution_steps::with_properties_executor::execute_with_properties;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
+use fixture_cases::bootstrap_operational_schema_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_book_person_inverse_schema_fixture::*;
-use fixture_cases::load_core_schema_fixture::*;
-use fixture_cases::load_generated_core_schema_fixture::*;
-use fixture_cases::load_generated_query_schema_fixture::*;
-use fixture_cases::load_generated_validation_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
@@ -124,10 +121,7 @@ use holons_prelude::prelude::*;
 #[case::stage_new_version_test(stage_new_version_fixture())]
 #[case::load_holons_internal_test(loader_incremental_fixture())]
 #[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
-#[case::load_core_schema_test(load_core_schema_fixture())]
-#[case::load_generated_core_schema_test(load_generated_core_schema_fixture())]
-#[case::load_generated_validation_schema_test(load_generated_validation_schema_fixture())]
-#[case::load_generated_query_schema_test(load_generated_query_schema_fixture())]
+#[case::bootstrap_operational_schema_test(bootstrap_operational_schema_fixture())]
 #[case::load_book_person_inverse_schema_test(load_book_person_inverse_schema_fixture())]
 #[case::smartlink_commit_cache_test(smartlink_commit_cache_fixture())]
 #[case::frozen_member_head_redirect_test(frozen_member_head_redirect_fixture())]

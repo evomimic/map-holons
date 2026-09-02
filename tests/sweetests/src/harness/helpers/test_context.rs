@@ -157,14 +157,17 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     // Step 7: Import transient holons from fixture phase
     let context =
         runtime.session().get_transaction(&tx_id).expect("failed to get initial transaction");
-    let bound_transient_holons = test_case
+    // Fixture construction happens before runtime startup. Bootstrap consumes
+    // transaction 1, so fixture wires must be re-bound into this first
+    // ordinary transaction rather than validated against their original id.
+    let rebound_transient_holons = test_case
         .test_session_state
         .get_transient_holons()
         .clone()
-        .bind(&context)
-        .expect("failed to bind transient holon wire pool into runtime holon pool");
+        .rebind(&context)
+        .expect("failed to rebind fixture transient holon wire pool into runtime holon pool");
     context
-        .import_transient_holons(bound_transient_holons)
+        .import_transient_holons(rebound_transient_holons)
         .expect("failed to import transient holons into test context");
 
     info!(

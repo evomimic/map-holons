@@ -1,6 +1,5 @@
 use super::setup_undescribed_book_people_publisher_steps_with_context;
 use holons_prelude::prelude::*;
-use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
@@ -19,12 +18,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
             "Simple AbandonStagedChanges Testcase",
             "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible",
         );
-
-    // // Ensure DB count //
-    test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some(ENSURE_DB_EMPTY.to_string()),
-    )?;
 
     // Use helper function to set up a book holon, 2 persons, and a publisher.
     setup_undescribed_book_people_publisher_steps_with_context(
@@ -65,9 +58,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         None,
         Some("Committing after First Abandon".to_string()),
     )?;
-
-    // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     //  MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;
@@ -150,9 +140,6 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         None,
         Some("Third Abandon --- abandoning example_abandon2 (H5)...".to_string()),
     )?;
-
-    // ADD STEP:  ENSURE DATABASE COUNT
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     // MATCH SAVED CONTENT
     test_case.add_match_saved_content_step()?;

@@ -1,9 +1,9 @@
-use crate::ExpectedLoadStatus;
 use core_types::{ContentSet, FileData};
 use holons_prelude::prelude::*;
+use serde::Deserialize;
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 10] = [
@@ -19,52 +19,21 @@ const GENERATED_CORE_SCHEMA_FILENAMES: [&str; 10] = [
     "core/validation.json",
 ];
 
-const CORE_SCHEMA_BOOTSTRAP_FILENAMES: [&str; 11] = [
-    "abstract-value-types.json",
-    "concrete-value-types.json",
-    "keyrules.json",
-    "loader-types.json",
-    "operator-types.json",
-    "property-types.json",
-    "relationship-types.json",
-    "root.json",
-    "validation.json",
-    "value-constraint-types.json",
-    "core-schema-bootstrap.json",
-];
+#[derive(Debug, Deserialize)]
+struct CoreSchemaBootstrapManifest {
+    imports: Vec<CoreSchemaBootstrapImport>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CoreSchemaBootstrapImport {
+    path: String,
+}
 
 const GENERATED_DANCE_SCHEMA_FILENAME: &str = "dance/schema.json";
 const GENERATED_COMMANDS_SCHEMA_FILENAME: &str = "commands/schema.json";
 const GENERATED_VALIDATION_SCHEMA_FILENAME: &str = "validation/schema.json";
 const GENERATED_QUERY_SCHEMA_FILENAME: &str = "query/schema.json";
 const GENERATED_QUERY_DANCE_SCHEMA_FILENAME: &str = "query-dance/schema.json";
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct CoreSchemaLoadMetrics {
-    pub staged: i64,
-    pub committed: i64,
-    pub links_created: i64,
-    pub errors: i64,
-    pub total_bundles: i64,
-    pub total_loader_holons: i64,
-    pub commit_status: ExpectedLoadStatus,
-}
-
-/// Metrics for the checked-in Schema 2.0 compiler artifact.
-pub const GENERATED_CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = CoreSchemaLoadMetrics {
-    staged: 283,
-    committed: 283,
-    links_created: 0,
-    errors: 0,
-    total_bundles: 10,
-    total_loader_holons: 283,
-    commit_status: ExpectedLoadStatus::Complete,
-};
-
-/// The standard Sweettest Core bootstrap uses the checked-in Schema 2.0
-/// compiler artifact. The legacy host import corpus is no longer a supported
-/// runtime compatibility path.
-pub const CORE_SCHEMA_METRICS: CoreSchemaLoadMetrics = GENERATED_CORE_SCHEMA_METRICS;
 
 /// Absolute paths to all core schema import files used for loader-client testing.
 pub fn map_core_schema_paths() -> Vec<PathBuf> {
@@ -90,13 +59,42 @@ pub fn build_core_schema_content_set() -> Result<ContentSet, HolonError> {
 /// never depend on the removed lazy LocalHolonSpace creation path.
 pub fn build_core_schema_bootstrap_content_set() -> Result<ContentSet, HolonError> {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
-    let files_to_load = CORE_SCHEMA_BOOTSTRAP_FILENAMES
+    let bundle_directory = repo_root.join("generated/core-schema-bootstrap");
+    let manifest_path = bundle_directory.join("manifest.json");
+    let manifest: CoreSchemaBootstrapManifest =
+        serde_json::from_slice(&fs::read(&manifest_path).map_err(|error| {
+            HolonError::Misc(format!(
+                "failed to read bootstrap manifest {}: {error}",
+                manifest_path.display()
+            ))
+        })?)
+        .map_err(|error| {
+            HolonError::Misc(format!(
+                "failed to parse bootstrap manifest {}: {error}",
+                manifest_path.display()
+            ))
+        })?;
+
+    if manifest.imports.is_empty() {
+        return Err(HolonError::Misc("Core Schema bootstrap manifest has no imports".to_string()));
+    }
+
+    let files_to_load = manifest
+        .imports
         .iter()
-        .map(|filename| {
-            read_file_data(
-                &repo_root.join("generated/core-schema-bootstrap/imports").join(filename),
-                "Core Schema bootstrap import",
-            )
+        .map(|import| {
+            let relative_path = Path::new(&import.path);
+            if relative_path.is_absolute()
+                || relative_path
+                    .components()
+                    .any(|component| !matches!(component, Component::Normal(_)))
+            {
+                return Err(HolonError::Misc(format!(
+                    "Core Schema bootstrap manifest contains unsafe import path {}",
+                    import.path
+                )));
+            }
+            read_file_data(&bundle_directory.join(relative_path), "Core Schema bootstrap import")
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(ContentSet { files_to_load })

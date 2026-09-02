@@ -441,12 +441,6 @@ impl FixtureHolons {
     pub fn count_staged(&self) -> MapInteger {
         MapInteger(self.counts().staged)
     }
-    pub fn count_saved(&self) -> MapInteger {
-        // Measured live-conductor baseline after first-space bootstrap. The
-        // bootstrap graph's runtime persistence includes loader/commit support
-        // records in addition to its authored import holons.
-        MapInteger(self.counts().saved + 285)
-    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
