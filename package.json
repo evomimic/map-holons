@@ -33,8 +33,8 @@
 
     "sweetest": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && npm run sweet:test",
     "sweetest:nocapture": "RUST_LOG=${RUST_LOG:-warn} WASM_LOG=${WASM_LOG:-warn} npm run build:happ && npm run build:probes -w map-happ && npm run check:happ-artifacts && npm run sweet:test:nocapture",
-    "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml",
-    "sweet:test:nocapture": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --nocapture",
+    "sweet:test": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --test-threads=1",
+    "sweet:test:nocapture": "cargo test --manifest-path tests/sweetests/Cargo.toml -- --test-threads=1 --nocapture",
     "check:happ-artifacts": "cargo run --manifest-path tools/happ-artifact-audit/Cargo.toml -- --manifest happ/coordinator-surface.toml --dna happ/workdir/map_holons.dna --happ happ/workdir/map-holons.happ --probe-wasm happ/target/wasm32-unknown-unknown/release/holons_test_probes.wasm --deny-production-test-only",
     "map-schema": "cargo run --manifest-path tools/map-schema/Cargo.toml --",
     "map-schema:decompile": "cargo run --manifest-path tools/map-schema/Cargo.toml -- decompile",

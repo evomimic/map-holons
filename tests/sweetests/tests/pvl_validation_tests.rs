@@ -11,13 +11,12 @@ use core_types::{
     CanonicalKey, DeleteSmartLinkOutcome, HolonId, HolonWriteRequest, PreparedSmartLink,
     PutSmartLinkOutcome, StoredHolonNode,
 };
-use hdi::prelude::Path;
 use holochain::prelude::{ActionHash, Record};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     assert_commit_rejected_with_message, assert_commit_rejected_with_pvl,
-    assert_preflight_rejected_with_pvl, bootstrap_local_holon_space, setup_probe_enabled_conductor,
-    setup_test_conductor,
+    assert_preflight_rejected_with_pvl, assert_unanchored_ordinary_session_is_rejected,
+    setup_probe_enabled_conductor, setup_test_conductor,
 };
 use holons_test::MockConductorConfig;
 use integrity_core_types::{HolonNodeModel, LocalId, RelationshipName};
@@ -51,12 +50,6 @@ struct NonCanonicalBaseInput {
 struct RootIndexUpdateTargetInput {
     link_type: RootIndexLinkType,
     target_id: LocalId,
-}
-
-#[derive(Debug, Serialize)]
-struct GetPathInput {
-    path: Path,
-    link_type: RootIndexLinkType,
 }
 
 fn node(title: &str) -> HolonNodeModel {
@@ -258,39 +251,9 @@ async fn valid_root_version_and_smartlink_create_delete_are_accepted() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn local_holon_space_bootstrap_creates_reuses_and_deletes_the_canonical_link() {
+async fn unanchored_ordinary_session_requires_a_persisted_local_holon_space() {
     let backend = setup_test_conductor().await;
-    let first = bootstrap_local_holon_space(&backend).await;
-    let first_local_id = match &first {
-        HolonId::Local(local_id) => local_id.clone(),
-        HolonId::External(_) => panic!("LocalHolonSpace bootstrap returned an external id"),
-    };
-
-    let indexed: Option<Record> = backend
-        .conductor
-        .call(
-            &backend.cell.zome(ZOME),
-            "get_holon_node_by_path",
-            GetPathInput {
-                path: Path::from("local_holon_space"),
-                link_type: RootIndexLinkType::LocalHolonSpace,
-            },
-        )
-        .await;
-    assert_eq!(
-        indexed
-            .expect("bootstrap must create the canonical LocalHolonSpace path link")
-            .action_address(),
-        &action_hash(&first_local_id)
-    );
-
-    let second = bootstrap_local_holon_space(&backend).await;
-    assert_eq!(second, first, "a second unanchored session must discover the existing space");
-
-    let _: ActionHash = backend
-        .conductor
-        .call(&backend.cell.zome(ZOME), "delete_holon_node", action_hash(&first_local_id))
-        .await;
+    assert_unanchored_ordinary_session_is_rejected(&backend).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
