@@ -1,5 +1,5 @@
 use std::sync::{Arc, RwLock};
-use tracing::debug;
+use tracing::{debug, info};
 
 use super::{holon_cache::HolonCache, Holon};
 use crate::core_shared_objects::transactions::TransactionContext;
@@ -38,10 +38,12 @@ impl HolonCacheAccess for HolonCacheManager {
     ) -> Result<Arc<RwLock<Holon>>, HolonError> {
         // Attempt to retrieve the holon from the cache
         if let Some(cached) = self.cache.get(holon_id) {
+            info!("[PERF-674] holon cache hit");
             debug!("Holon {:?} retrieved from cache.", holon_id);
             return Ok(cached.clone());
         }
         // If not found, resolve it from the HolonService
+        info!("[PERF-674] holon cache miss");
         debug!("Holon with HolonId {:?} not in cache. Fetching using HolonService.", holon_id);
         let holon = self.holon_service.fetch_holon_internal(context, holon_id)?;
         let arc_holon = Arc::new(RwLock::new(holon));

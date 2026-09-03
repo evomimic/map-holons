@@ -41,6 +41,28 @@ pub enum CommitOutcome {
 
 type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCollection>>)>;
 
+/// Temporary aggregate timings for locating relationship-commit hot spots.
+///
+/// These are intentionally local to one commit invocation: guest state must not
+/// outlive the Wasm call, and the measurements must not alter commit behavior.
+#[derive(Default)]
+struct CommitPerformanceMetrics {
+    inverse_resolution_count: usize,
+    inverse_resolution_micros: i64,
+    smartlink_persist_count: usize,
+    smartlink_persist_micros: i64,
+}
+
+fn performance_timestamp_micros() -> Option<i64> {
+    sys_time().ok().map(|timestamp| timestamp.as_micros())
+}
+
+fn record_elapsed_micros(started_at: Option<i64>, total: &mut i64) {
+    if let (Some(started_at), Some(completed_at)) = (started_at, performance_timestamp_micros()) {
+        *total += completed_at.saturating_sub(started_at);
+    }
+}
+
 /// Captures the committed source selected for relationship persistence.
 ///
 /// Relationship SmartLinks are anchored to the committed source selected in Pass 1.
@@ -254,6 +276,7 @@ pub fn commit(
     // This context is deliberately narrower than TransactionContext: it represents only the
     // bounded relationship write set for this commit invocation.
     let mut smartlink_write_context = SmartLinkWriteContext::default();
+    let mut performance_metrics = CommitPerformanceMetrics::default();
 
     for staged_reference in staged_references {
         let rc_holon = staged_reference.get_holon_to_commit(context)?;
@@ -313,6 +336,7 @@ pub fn commit(
             // Resolve descriptor metadata before locking the staged collection.
             // `holon_descriptor()` reads `DescribedBy`, which may be the same
             // collection currently being committed.
+            let inverse_resolution_started_at = performance_timestamp_micros();
             let inverse_name = match resolve_inverse_relationship_name(
                 &relationship_source.source_reference,
                 &name,
@@ -323,6 +347,11 @@ pub fn commit(
                     break;
                 }
             };
+            performance_metrics.inverse_resolution_count += 1;
+            record_elapsed_micros(
+                inverse_resolution_started_at,
+                &mut performance_metrics.inverse_resolution_micros,
+            );
 
             let holon_collection = holon_collection_rc.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
@@ -337,6 +366,7 @@ pub fn commit(
                 inverse_name,
                 &holon_collection,
                 &mut smartlink_write_context,
+                &mut performance_metrics,
             ) {
                 first_error = Some(err);
                 break;
@@ -373,6 +403,13 @@ pub fn commit(
     };
 
     info!("Commit completed: all staged holons processed and commit response constructed.");
+    info!(
+        "[PERF-674] relationship commit: inverse_resolutions={} inverse_resolution_ms={} smartlink_persists={} smartlink_persist_ms={}",
+        performance_metrics.inverse_resolution_count,
+        performance_metrics.inverse_resolution_micros / 1_000,
+        performance_metrics.smartlink_persist_count,
+        performance_metrics.smartlink_persist_micros / 1_000,
+    );
     log_commit_response(&final_status, stage_count, &saved_ids, abandoned_count, failed_count);
 
     // Done — return the CommitResponse holon reference
@@ -552,6 +589,7 @@ fn commit_relationship(
     inverse_name: RelationshipName,
     collection: &HolonCollection,
     smartlink_write_context: &mut SmartLinkWriteContext,
+    performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     collection.is_accessible(AccessType::Commit)?;
 
@@ -561,6 +599,7 @@ fn commit_relationship(
         inverse_name,
         collection,
         smartlink_write_context,
+        performance_metrics,
     )?;
 
     Ok(())
@@ -589,6 +628,7 @@ fn save_smartlinks_for_collection(
     inverse_name: RelationshipName,
     collection: &HolonCollection,
     smartlink_write_context: &mut SmartLinkWriteContext,
+    performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     let source_id = source.source_local_id();
     debug!(
@@ -675,7 +715,7 @@ fn save_smartlinks_for_collection(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, name.0 .0, source_id, forward_smartlink.target_id
         );
-        persist_smartlink(smartlink_write_context, forward_smartlink)?;
+        persist_smartlink(smartlink_write_context, forward_smartlink, performance_metrics)?;
 
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
@@ -691,7 +731,7 @@ fn save_smartlinks_for_collection(
             "saving inverse smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, inverse_name.0 .0, resolved_target.target_local_id, source_id
         );
-        persist_smartlink(smartlink_write_context, inverse_smartlink)?;
+        persist_smartlink(smartlink_write_context, inverse_smartlink, performance_metrics)?;
     }
 
     Ok(())
@@ -720,12 +760,18 @@ fn save_smartlinks_for_collection(
 fn persist_smartlink(
     smartlink_write_context: &mut SmartLinkWriteContext,
     prepared: PreparedSmartLink,
+    performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     let source_id = prepared.source_id.clone();
     let target_id = prepared.target_id.clone();
     let relationship_name = prepared.relationship_name.clone();
 
-    match put_smartlink_cached(smartlink_write_context, prepared)? {
+    let started_at = performance_timestamp_micros();
+    let outcome = put_smartlink_cached(smartlink_write_context, prepared);
+    performance_metrics.smartlink_persist_count += 1;
+    record_elapsed_micros(started_at, &mut performance_metrics.smartlink_persist_micros);
+
+    match outcome? {
         PutSmartLinkOutcome::Inserted(_) | PutSmartLinkOutcome::AlreadyPresent(_) => Ok(()),
         PutSmartLinkOutcome::Conflict(existing) => Err(HolonError::CommitFailure(format!(
             "SmartLink conflict: a live link {existing:?} already shares the insertion identity \

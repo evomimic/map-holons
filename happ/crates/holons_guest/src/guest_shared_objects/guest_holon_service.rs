@@ -258,12 +258,21 @@ impl HolonServiceApi for GuestHolonService {
         holon_id: &HolonId,
     ) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
-
-        match get_holon(&local_id)? {
+        let started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
+        let result = match get_holon(&local_id)? {
             Some(stored) => Ok(Holon::Saved(saved_holon_from_stored(stored))),
             // No holon_node fetched for the specified holon_id
             None => Err(HolonError::HolonNotFound(local_id.to_string())),
+        };
+
+        if let (Some(started_at), Ok(completed_at)) = (started_at, sys_time()) {
+            info!(
+                "[PERF-674] persisted holon fetch: elapsed_ms={}",
+                completed_at.as_micros().saturating_sub(started_at) / 1_000,
+            );
         }
+
+        result
     }
 
     fn fetch_related_holons_internal(
