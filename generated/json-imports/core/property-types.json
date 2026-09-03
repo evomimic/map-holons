@@ -398,6 +398,45 @@
       ]
     },
     {
+      "key": "InstanceDeletionAllowed.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "InstanceDeletionAllowed",
+        "TypeNamePlural": "InstanceDeletionAllowed",
+        "DisplayName": "instanceDeletionAllowed",
+        "DisplayNamePlural": "instanceDeletionAllowed",
+        "Description": "Controls whether instances described by a holon type may be deleted. A false declaration is restrictive through the describing type's Extends lineage.",
+        "IsValueRequired": true,
+        "DefaultValue": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "IsValueRequired.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
@@ -431,6 +470,44 @@
           "target": [
             {
               "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonSpaceName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "HolonSpaceName",
+        "TypeNamePlural": "HolonSpaceNames",
+        "DisplayName": "holonSpaceName",
+        "DisplayNamePlural": "holonSpaceNames",
+        "Description": "The stable semantic name of a HolonSpace.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         }

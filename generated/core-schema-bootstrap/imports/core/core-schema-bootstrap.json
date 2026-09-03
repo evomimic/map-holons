@@ -1,0 +1,23 @@
+{
+  "holons": [
+    {
+      "key": "MAP.CoreSchemaSpace",
+      "type": "HolonSpace.HolonType",
+      "properties": {
+        "DisplayName": "MAP Core Schema Space",
+        "Description": "The stewarding HolonSpace for the initial MAP Core Schema release.",
+        "HolonSpaceName": "MAP.CoreSchemaSpace"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

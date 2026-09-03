@@ -6,6 +6,8 @@ use map_commands_runtime::{ExecutionPolicy, Runtime};
 use map_commands_wire::{MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire};
 use tauri::{command, State};
 
+use crate::setup::core_schema_bootstrap::CoreSchemaBootstrapGate;
+
 /// Tauri-managed state wrapper for the MAP Commands runtime.
 ///
 /// Initially `None` until Holochain setup completes and the Runtime
@@ -16,13 +18,22 @@ pub type RuntimeState = RwLock<Option<Runtime>>;
 pub async fn dispatch_map_command(
     request: MapIpcRequest,
     runtime_state: State<'_, RuntimeState>,
+    bootstrap_gate: State<'_, CoreSchemaBootstrapGate>,
 ) -> Result<MapIpcResponse, ()> {
     tracing::debug!("[TAURI COMMAND] 'dispatch_map_command' invoked");
 
     let request_id = request.request_id;
-
-    let result =
-        dispatch_inner(&request_id, request.command, request.options, &runtime_state).await;
+    let result = bootstrap_gate.ensure_ready().and_then(|()| {
+        // Keep the gate check outside the async execution helper so its unit
+        // tests remain focused on binding and runtime routing.
+        Ok(())
+    });
+    let result = match result {
+        Ok(()) => {
+            dispatch_inner(&request_id, request.command, request.options, &runtime_state).await
+        }
+        Err(error) => Err(error),
+    };
 
     Ok(wrap_response(request_id, result))
 }

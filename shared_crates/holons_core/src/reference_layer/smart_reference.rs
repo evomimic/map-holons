@@ -3,7 +3,7 @@ use std::{
     fmt,
     sync::{Arc, RwLock},
 };
-use tracing::{info, trace};
+use tracing::trace;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
 use crate::core_shared_objects::transactions::{TransactionContextHandle, TxId};
@@ -319,7 +319,7 @@ impl ReadableHolonImpl for SmartReference {
             }
         }
 
-        info!("unable to get value for {:?} property from smart_property_values. Fetching rc_holon from HolonsCache", property_name);
+        trace!("unable to get value for {:?} property from smart_property_values. Fetching rc_holon from HolonsCache", property_name);
 
         self.is_accessible(AccessType::Read)?;
 

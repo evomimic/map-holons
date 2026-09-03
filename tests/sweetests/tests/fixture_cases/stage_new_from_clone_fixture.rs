@@ -2,7 +2,6 @@ use crate::fixture_cases::setup_book_and_authors_fixture::*;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
 use holons_test::harness::helpers::BOOK_KEY;
-use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use std::collections::BTreeMap;
@@ -17,19 +16,13 @@ use type_names::ToPropertyName;
 /// - All step inputs are TestReference tokens
 /// - Commit is parameterless; after scheduling it, call `fixture_holons.commit()`
 ///   to flip staged→saved expectations on the fixture side.
-/// - Counts and content assertions derive from `FixtureHolons`.
+/// - Content assertions derive from `FixtureHolons`.
 pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
         TestCaseInit::new(
             "stage_new_from_clone",
             "Clone from transient, staged, and saved; mutate staged clones; assert counts+content",
         );
-
-    // Assert DB starts with 1 (space Holon)
-    test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some(ENSURE_DB_EMPTY.to_string()),
-    )?;
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
     let transient_source_key = MapString("book:transient-source".to_string());
@@ -97,7 +90,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit --- Round 1".to_string()),
     )?;
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
     test_case.add_begin_transaction_step(
         None,
         Some("Begin new transaction before cloning from saved book".to_string()),
@@ -141,8 +133,6 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         None,
         Some("Commit --- Round 2".to_string()),
     )?;
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
-
     // MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
 

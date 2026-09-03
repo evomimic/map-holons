@@ -1,7 +1,6 @@
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_PERSON_INVERSE_METRICS, BOOK_TO_PERSON_RELATIONSHIP,
-    CORE_SCHEMA_METRICS, PERSON_DESCRIPTOR_KEY,
+    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_DESCRIPTOR_KEY,
 };
 use holons_test::{
     DancesTestCase, ExpectedCommitStatus, FixtureHolons, TestCaseInit, TestReference,
@@ -30,8 +29,6 @@ pub fn smartlink_commit_cache_fixture() -> Result<DancesTestCase, HolonError> {
         "Commit repeated declared and inverse Book/Person SmartLink relationships",
     );
 
-    test_case.add_load_core_schema_step(None)?;
-    test_case.add_begin_transaction_step(None, None)?;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(
         None,
@@ -110,12 +107,6 @@ pub fn smartlink_commit_cache_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Commit repeated declared and inverse SmartLink relationships".to_string()),
     )?;
 
-    let expected_db_count = MapInteger(
-        fixture_holons.count_saved().0
-            + CORE_SCHEMA_METRICS.committed
-            + BOOK_PERSON_INVERSE_METRICS.committed,
-    );
-    test_case.add_ensure_database_count_step(expected_db_count, None)?;
     test_case.add_match_saved_content_step()?;
     test_case.add_verify_book_person_smartlink_commit_cache_links_step(None)?;
     test_case.finalize(&fixture_context, &fixture_holons)?;

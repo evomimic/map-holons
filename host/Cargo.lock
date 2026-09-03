@@ -25,6 +25,7 @@ dependencies = [
  "serde",
  "serde_json",
  "session_receptor",
+ "sha2 0.10.9",
  "tauri",
  "tauri-build",
  "tauri-plugin-fs",

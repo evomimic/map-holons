@@ -540,10 +540,9 @@ impl DancesTestCase {
     /// The returned token is valid as a **relationship target** and as a
     /// read-only source. Its snapshot is a key-only stub stamped with
     /// [`SAVED_LOOKUP_STUB_MARKER`]: saved-content comparison matches it by key
-    /// only and never recurses into its graph, it contributes to no fixture
-    /// counts (`count_saved()` / `EnsureDatabaseCount` are unaffected — the
-    /// holon is already covered by schema-load totals), and `MatchSavedContent`
-    /// skips it.
+    /// only and never recurses into its graph, it is excluded from
+    /// `MatchSavedContent`, and it cannot be mistaken for fixture-authored
+    /// persisted content.
     ///
     /// `stub_reference` should come from
     /// `fixture_context.mutation().new_holon(Some(key))?` with the same `key`.

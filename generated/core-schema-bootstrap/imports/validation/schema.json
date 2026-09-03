@@ -1,0 +1,446 @@
+{
+  "meta": {
+    "export_mode": "design-seed",
+    "generated_at": "2026-08-10",
+    "generator": "MAP validation architecture design seed",
+    "load_with": [
+      "../core/root.json",
+      "../core/concrete-value-types.json",
+      "../core/abstract-value-types.json",
+      "../core/property-types.json",
+      "../core/relationship-types.json",
+      "../core/operator-types.json",
+      "../core/validation.json"
+    ],
+    "source_files": [
+      "docs/core/validation/validation-schema-design-spec.md",
+      "docs/core/validation/validation-arch.md",
+      "docs/core/validation/validation-impl-plan.md"
+    ]
+  },
+  "holons": [
+    {
+      "key": "MAP Validation Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Validation Schema-v0.1.0",
+        "Description": "One-way Core-dependent extension for validation implementations, results, Validate, and non-Commit rule families."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommandValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "CommandValidationRule",
+        "TypeNamePlural": "CommandValidationRules",
+        "DisplayName": "Command Validation Rule",
+        "DisplayNamePlural": "Command Validation Rules",
+        "Description": "ValidationRule family for command invocation validation rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DanceValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "DanceValidationRule",
+        "TypeNamePlural": "DanceValidationRules",
+        "DisplayName": "Dance Validation Rule",
+        "DisplayNamePlural": "Dance Validation Rules",
+        "Description": "ValidationRule family for dance invocation validation rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AgreementValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "AgreementValidationRule",
+        "TypeNamePlural": "AgreementValidationRules",
+        "DisplayName": "Agreement Validation Rule",
+        "DisplayNamePlural": "Agreement Validation Rules",
+        "Description": "ValidationRule family for agreement, trust, role, and policy validation rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Validate.OperatorType",
+      "type": "MetaOperatorType.MetaHolonType",
+      "properties": {
+        "TypeName": "Validate",
+        "TypeNamePlural": "ValidateOperators",
+        "DisplayName": "Validate",
+        "DisplayNamePlural": "Validate Operators",
+        "Description": "Local operator contract for evaluating a ValidationRule in a validation context. Initial execution is wrapper-based and does not require generic operator or Dance dispatch.",
+        "Arity": 1,
+        "OperatorCategory": "Equality"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValidationRule.HolonType)-[AffordsOperator]->(OperatorType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AffordsOperator",
+        "TypeNamePlural": "AffordsOperatorRelationships",
+        "DisplayName": "AffordsOperator Relationship",
+        "DisplayNamePlural": "AffordsOperator Relationships",
+        "Description": "Links a ValidationRule family descriptor to the local operator descriptors available for rules in that family.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(OperatorType.HolonType)-[ValidationRuleAffordedBy]->(ValidationRule.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ValidationRuleAffordedBy",
+        "TypeNamePlural": "ValidationRuleAffordedByRelationships",
+        "DisplayName": "ValidationRuleAffordedBy Relationship",
+        "DisplayNamePlural": "ValidationRuleAffordedBy Relationships",
+        "Description": "Inverse of AffordsOperator for ValidationRule family descriptors.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "OperatorType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationImplementation.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValidationImplementation",
+        "TypeNamePlural": "ValidationImplementations",
+        "DisplayName": "Validation Implementation",
+        "DisplayNamePlural": "Validation Implementations",
+        "Description": "Descriptor for holons that bind a ValidationRule to executable validation behavior. Dynamic implementation selection is deferred."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationRuleSet.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValidationRuleSet",
+        "TypeNamePlural": "ValidationRuleSets",
+        "DisplayName": "Validation Rule Set",
+        "DisplayNamePlural": "Validation Rule Sets",
+        "Description": "Descriptor for named compositions of validation rules. Rule-set expansion is deferred until individual rule dispatch is stable."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationResult.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValidationResult",
+        "TypeNamePlural": "ValidationResults",
+        "DisplayName": "Validation Result",
+        "DisplayNamePlural": "Validation Results",
+        "Description": "Descriptor for durable validation result evidence. Persisted result policy is deferred."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

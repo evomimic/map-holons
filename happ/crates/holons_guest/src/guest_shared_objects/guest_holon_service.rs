@@ -22,7 +22,7 @@ use crate::persistence_layer::{
     delete_holon_node, expand_all_from_source, expand_from_source, get_all_holon_ids, get_holon,
     index_local_holon_space, persist_holon, saved_holon_from_stored,
 };
-use base_types::MapString;
+use base_types::{BaseValue, MapString};
 use core_types::{HolonError, HolonId, HolonWriteRequest, SmartLink};
 use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
@@ -35,6 +35,9 @@ use holons_core::{
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
 use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
+use type_names::CorePropertyTypeName;
+
+const CORE_SCHEMA_SPACE_KEY: &str = "MAP.CoreSchemaSpace";
 
 pub struct GuestHolonService;
 
@@ -174,6 +177,10 @@ impl HolonServiceApi for GuestHolonService {
     ) -> Result<TransientReference, HolonError> {
         // Commit the staged holons provided by TransactionContext.
         let commit_response = commit_functions::commit(context, &staged_references)?;
+
+        if context.is_bootstrap_provisioning() {
+            self.complete_core_schema_bootstrap(context, staged_references, &commit_response)?;
+        }
         // Stage-clear policy is owned by TransactionContext.
         Ok(commit_response)
     }
@@ -251,12 +258,21 @@ impl HolonServiceApi for GuestHolonService {
         holon_id: &HolonId,
     ) -> Result<Holon, HolonError> {
         let local_id = Self::ensure_id_is_local(holon_id)?;
-
-        match get_holon(&local_id)? {
+        let started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
+        let result = match get_holon(&local_id)? {
             Some(stored) => Ok(Holon::Saved(saved_holon_from_stored(stored))),
             // No holon_node fetched for the specified holon_id
             None => Err(HolonError::HolonNotFound(local_id.to_string())),
+        };
+
+        if let (Some(started_at), Ok(completed_at)) = (started_at, sys_time()) {
+            info!(
+                "[PERF-674] persisted holon fetch: elapsed_ms={}",
+                completed_at.as_micros().saturating_sub(started_at) / 1_000,
+            );
         }
+
+        result
     }
 
     fn fetch_related_holons_internal(
@@ -313,6 +329,49 @@ impl HolonServiceApi for GuestHolonService {
         context: &Arc<TransactionContext>,
     ) -> Result<HolonReference, HolonError> {
         self.ensure_local_holon_space(context)
+    }
+}
+
+impl GuestHolonService {
+    /// Completes the one exceptional infrastructure action permitted to the
+    /// bootstrap transaction after normal two-pass Commit has succeeded.
+    fn complete_core_schema_bootstrap(
+        &self,
+        context: &Arc<TransactionContext>,
+        staged_references: &[StagedReference],
+        commit_response: &TransientReference,
+    ) -> Result<(), HolonError> {
+        let status =
+            match commit_response.property_value(CorePropertyTypeName::CommitRequestStatus)? {
+                Some(BaseValue::StringValue(value)) => value.0,
+                Some(other) => {
+                    return Err(HolonError::CommitFailure(format!(
+                        "Core Schema bootstrap commit returned a non-string status: {other:?}"
+                    )));
+                }
+                None => String::new(),
+            };
+        if status != "Complete" {
+            return Err(HolonError::CommitFailure(
+                "Core Schema bootstrap commit did not complete".to_string(),
+            ));
+        }
+
+        let space = staged_references
+            .iter()
+            .find(|reference| {
+                reference.key().ok().flatten().is_some_and(|key| key.0 == CORE_SCHEMA_SPACE_KEY)
+            })
+            .ok_or_else(|| {
+                HolonError::CommitFailure(
+                    "Core Schema bootstrap did not stage MAP.CoreSchemaSpace".to_string(),
+                )
+            })?;
+        let space_id = space.holon_id()?.local_id().clone();
+
+        index_local_holon_space(&space_id)?;
+        context.set_space_holon_id(HolonId::Local(space_id))?;
+        Ok(())
     }
 }
 

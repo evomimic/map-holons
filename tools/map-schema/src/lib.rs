@@ -1048,3 +1048,4 @@ mod tests {
         Ok(())
     }
 }
+pub mod bootstrap_bundle;

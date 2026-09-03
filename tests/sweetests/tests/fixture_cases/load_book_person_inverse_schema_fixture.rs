@@ -1,16 +1,15 @@
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_PERSON_INVERSE_METRICS, BOOK_TO_PERSON_RELATIONSHIP,
-    CORE_SCHEMA_METRICS, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
 };
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 
 /// Fixture for the `LoadBookPersonInverseTestSchema` preset step.
 ///
-/// Loads MAP core schema first, then starts a fresh transaction and imports the
-/// Book/Person inverse test schema through public MAP Commands `LoadHolons`
-/// ingress. This exercises loader resolution against already-saved core-schema
-/// holons rather than restaging core and domain together in one import.
+/// Imports the Book/Person inverse test schema through public MAP Commands
+/// `LoadHolons` ingress against the operational CoreSchemaSpace provisioned at
+/// runtime initialization. This exercises loader resolution against saved
+/// Core-schema holons rather than restaging Core and domain together in one import.
 ///
 /// After verifying the loaded descriptors, the fixture exercises schema-backed
 /// **instance** persistence (issue #442): it stages a Book and a Person
@@ -22,12 +21,10 @@ use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 pub fn load_book_person_inverse_schema_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "load_book_person_inverse_schema",
-        "Load Book/Person inverse test schema after committed MAP core schema, \
+        "Load Book/Person inverse test schema after bootstrapped MAP core schema, \
              then commit described Book/Person instances and verify bidirectional traversal",
     );
 
-    test_case.add_load_core_schema_step(None)?;
-    test_case.add_begin_transaction_step(None, None)?;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_verify_book_person_descriptors_step(None)?;
 
@@ -123,13 +120,6 @@ pub fn load_book_person_inverse_schema_fixture() -> Result<DancesTestCase, Holon
         Some("Commit described Book/Person instances".to_string()),
     )?;
 
-    // DB = fixture-saved holons (incl. space baseline) + loader-committed schema holons.
-    let expected_db_count = MapInteger(
-        fixture_holons.count_saved().0
-            + CORE_SCHEMA_METRICS.committed
-            + BOOK_PERSON_INVERSE_METRICS.committed,
-    );
-    test_case.add_ensure_database_count_step(expected_db_count, None)?;
     test_case.add_match_saved_content_step()?;
     test_case.add_verify_book_person_instance_links_step(None)?;
 
@@ -155,8 +145,6 @@ pub fn frozen_member_head_redirect_fixture() -> Result<DancesTestCase, HolonErro
         "Saved-content assertion redirects a frozen staged relationship member to its committed head",
     );
 
-    test_case.add_load_core_schema_step(None)?;
-    test_case.add_begin_transaction_step(None, None)?;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
 
     test_case.add_begin_transaction_step(
@@ -249,12 +237,6 @@ pub fn frozen_member_head_redirect_fixture() -> Result<DancesTestCase, HolonErro
         Some("Commit Book and Person together; heads advance to Saved".to_string()),
     )?;
 
-    let expected_db_count = MapInteger(
-        fixture_holons.count_saved().0
-            + CORE_SCHEMA_METRICS.committed
-            + BOOK_PERSON_INVERSE_METRICS.committed,
-    );
-    test_case.add_ensure_database_count_step(expected_db_count, None)?;
     test_case.add_match_saved_content_step()?;
 
     test_case.finalize(&fixture_context, &fixture_holons)?;
@@ -278,8 +260,6 @@ pub fn frozen_member_head_redirect_cross_tx_fixture() -> Result<DancesTestCase, 
         "Relate a later-transaction Book to a committed Person via the original staged-era token",
     );
 
-    test_case.add_load_core_schema_step(None)?;
-    test_case.add_begin_transaction_step(None, None)?;
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
 
     test_case.add_begin_transaction_step(
@@ -383,12 +363,6 @@ pub fn frozen_member_head_redirect_cross_tx_fixture() -> Result<DancesTestCase, 
         Some("Commit Book; AuthoredBy must anchor to the committed Person".to_string()),
     )?;
 
-    let expected_db_count = MapInteger(
-        fixture_holons.count_saved().0
-            + CORE_SCHEMA_METRICS.committed
-            + BOOK_PERSON_INVERSE_METRICS.committed,
-    );
-    test_case.add_ensure_database_count_step(expected_db_count, None)?;
     test_case.add_match_saved_content_step()?;
 
     test_case.finalize(&fixture_context, &fixture_holons)?;

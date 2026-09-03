@@ -37,7 +37,10 @@
 			"icons/icon.icns",
 			"icons/icon.ico"
 		],
-		"resources": ["resources/bootstrap-import.schema.json"],
+		"resources": [
+			"resources/bootstrap-import.schema.json",
+			"resources/core-schema-bootstrap"
+		],
 		"externalBin": [],
 		"copyright": "",
 		"category": "DeveloperTool",

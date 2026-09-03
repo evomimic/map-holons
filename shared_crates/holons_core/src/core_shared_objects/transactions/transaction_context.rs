@@ -47,6 +47,9 @@ pub struct TransactionContext {
     /// prevents external request mutations from racing in-flight commit ingress.
     host_commit_in_progress: AtomicBool,
 
+    /// Explicit host-authorized exception for the first CoreSchemaSpace load.
+    bootstrap_provisioning: AtomicBool,
+
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
@@ -68,6 +71,7 @@ impl TransactionContext {
             tx_id,
             lifecycle_state: AtomicU8::new(TransactionLifecycleState::Open.as_u8()),
             host_commit_in_progress: AtomicBool::new(false),
+            bootstrap_provisioning: AtomicBool::new(false),
             space_manager,
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
@@ -86,6 +90,18 @@ impl TransactionContext {
     /// Returns the transaction id.
     pub fn tx_id(&self) -> TxId {
         self.tx_id
+    }
+
+    /// Marks this context as the internal first-space provisioning transaction.
+    /// Conductora is the only authorized caller; ordinary command ingress must
+    /// never enable this mode.
+    pub fn enable_bootstrap_provisioning(&self) {
+        self.bootstrap_provisioning.store(true, Ordering::Release);
+    }
+
+    /// Returns whether this context is the internal bootstrap transaction.
+    pub fn is_bootstrap_provisioning(&self) -> bool {
+        self.bootstrap_provisioning.load(Ordering::Acquire)
     }
 
     /// Returns the current lifecycle state for this transaction.

@@ -131,7 +131,8 @@ holon MetaHolonType.MetaTypeDescriptor {
   relationships {
     InstanceProperties -> [
       AllowsAdditionalProperties.PropertyType,
-      AllowsAdditionalRelationships.PropertyType
+      AllowsAdditionalRelationships.PropertyType,
+      InstanceDeletionAllowed.PropertyType
     ]
     InstanceRelationships -> [
       (HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType),
@@ -235,7 +236,9 @@ holon Schema.HolonType {
 
 holon HolonSpace.HolonType {
   type MetaHolonType.MetaTypeDescriptor
+  instance_keyrule HolonSpaceNameRule.FormatRule
   extends HolonType.TypeDescriptor
+  InstanceDeletionAllowed false
   header {
     description: "Describes holon spaces as containers for holons and as the boundary that affords transaction and query services over a cohesive schema scope."
     display_name: "Holon Space"
@@ -243,6 +246,11 @@ holon HolonSpace.HolonType {
     plural: "HolonSpaces"
   }
   relationships {
+    InstanceProperties -> [
+      HolonSpaceName.PropertyType,
+      DisplayName.PropertyType,
+      Description.PropertyType
+    ]
     InstanceRelationships -> [
       (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)
     ]

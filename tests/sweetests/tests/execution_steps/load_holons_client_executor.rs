@@ -1,6 +1,7 @@
 use core_types::ContentSet;
 use holons_prelude::prelude::*;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
+use serde_json::Value;
 use tracing::info;
 
 use holons_test::{ExpectedLoadStatus, TestExecutionState};
@@ -21,6 +22,37 @@ fn read_string_property(reference: &TransientReference, property: CorePropertyTy
         Ok(None) => panic!("Property {:?} missing on response holon", property),
         Err(err) => panic!("Failed to read {:?} from response holon: {:?}", property, err),
     }
+}
+
+/// Derives the loader topology from the exact JSON artifacts supplied to the
+/// public ingress. This keeps the loader response assertions coupled to the
+/// input under test, rather than to a hand-maintained schema total.
+fn expected_content_set_topology(content_set: &ContentSet) -> (i64, i64) {
+    let loader_holons = content_set
+        .files_to_load
+        .iter()
+        .map(|file| {
+            let document: Value =
+                serde_json::from_str(&file.raw_contents).unwrap_or_else(|error| {
+                    panic!(
+                        "loader success fixture contains invalid JSON in {}: {error}",
+                        file.filename
+                    )
+                });
+            let holons = document.get("holons").and_then(Value::as_array).unwrap_or_else(|| {
+                panic!(
+                    "loader success fixture {} must contain a top-level holons array",
+                    file.filename
+                )
+            });
+            i64::try_from(holons.len()).expect("loader holon count exceeds i64")
+        })
+        .sum();
+
+    (
+        loader_holons,
+        i64::try_from(content_set.files_to_load.len()).expect("bundle count exceeds i64"),
+    )
 }
 
 /// Execute public LoadHolons ingress end-to-end: dispatch MAP command,
@@ -154,17 +186,13 @@ pub async fn execute_load_holons_client(
     }
 }
 
-/// Execute a successful package load where the topology is the assertion. The
-/// validation package has a fixed holon count, while its link count is an
-/// implementation detail of generated descriptor relationships; requiring it
-/// to be positive catches a relationship-free import without fossilizing that
-/// internal count.
+/// Execute a successful package load and assert that its response reports the
+/// topology of the exact source artifacts supplied to the loader.
 pub async fn execute_load_holons_client_expect_success(
     test_state: &mut TestExecutionState,
     content_set: ContentSet,
-    expected_holons: i64,
-    expected_bundles: i64,
 ) {
+    let (expected_holons, expected_bundles) = expected_content_set_topology(&content_set);
     let context = test_state.context();
     let command = MapCommand::Transaction(TransactionCommand {
         context: context.clone(),

@@ -441,9 +441,6 @@ impl FixtureHolons {
     pub fn count_staged(&self) -> MapInteger {
         MapInteger(self.counts().staged)
     }
-    pub fn count_saved(&self) -> MapInteger {
-        MapInteger(self.counts().saved + 1) // Accounts for initial LocalHolonSpace
-    }
 }
 
 #[derive(Debug, Clone, Copy, Default)]

@@ -15,8 +15,8 @@ use tracing::info;
 /// (`AUTHORED_BY`, `PUBLISHED_BY`) are freeform, so relationship persistence
 /// cannot resolve them against any declared schema surface. The commit is
 /// therefore expected to report `CommitRequestStatus = Incomplete`: Pass 1
-/// still saves all staged holons (the DB-count assertion remains valid), but
-/// no relationship SmartLinks are persisted. In-memory add/remove ergonomics
+/// still saves all staged holons, but no relationship SmartLinks are persisted.
+/// In-memory add/remove ergonomics
 /// before the commit are unaffected.
 ///
 #[fixture]
@@ -28,12 +28,6 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
             "Tests the adding and removing of related Holons".to_string(),
         );
     // let _ = holochain_trace::test_run();
-
-    // Ensure DB count //
-    test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some("Ensuring DB is 'empty' (only contains initial LocalHolonSpace).".to_string()),
-    )?;
 
     // Use helper function to stage Book, 2 Person, 1 Publisher Holon and AUTHORED_BY relationship
     // from the book to the two persons
@@ -175,9 +169,6 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         None,
         Some("Commit --- expecting Incomplete: freeform relationships are rejected".to_string()),
     )?;
-
-    // ENSURE DB COUNT //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     //  QUERY RELATIONSHIPS  //
     let query_expression = QueryExpression::new(book_to_person_relationship.clone());

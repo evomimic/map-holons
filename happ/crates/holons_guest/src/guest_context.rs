@@ -22,7 +22,10 @@ use tracing::{
 /// - A space manager configured with **guest-specific routing policies**.
 /// - An implicit transaction opened via the per-space `TransactionManager`.
 ///
-/// This function also ensures that a HolonSpace Holon exists in the local DHT.
+/// This function deliberately does not create a local HolonSpace. Ordinary
+/// transactions must arrive with an existing local space; the dance adapter
+/// permits an explicitly marked bootstrap-provisioning transaction to remain
+/// unbound until the CoreSchemaSpace has been committed.
 ///
 /// # Arguments
 /// * `transient_holons` - The `SerializableHolonPool` containing transient holons from the session_state state.
@@ -34,11 +37,8 @@ use tracing::{
 /// * `Err(HolonError)` - If opening the default transaction fails.
 ///
 /// # Errors
-/// This function returns an error if it fails to ensure that a **HolonSpace Holon** exists.
-/// Errors may occur if:
-/// - The DHT lookup for the HolonSpace Holon fails.
-/// - There are issues retrieving holons from persistent storage.
-/// - The creation of a new HolonSpace Holon encounters a failure.
+/// This function returns an error if it cannot create or hydrate the transaction
+/// context from the transport session state.
 pub fn init_guest_context(
     transient_holons: SerializableHolonPool,
     staged_holons: SerializableHolonPool,
@@ -53,8 +53,9 @@ pub fn init_guest_context(
 
     // Step 2: Create the HolonSpaceManager with guest routing policy.
     //
-    // NOTE: `local_space_holon_id` may be `None` if the caller did not provide one
-    // in SessionState; in that case the guest will ensure/create it later during ingress.
+    // A missing local-space id is represented faithfully here. The dance adapter
+    // rejects it for ordinary transactions and accepts it only for the
+    // host-authorized bootstrap-provisioning transaction.
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         guest_holon_service,

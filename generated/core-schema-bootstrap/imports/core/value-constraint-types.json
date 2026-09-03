@@ -1,0 +1,311 @@
+{
+  "meta": {
+    "export_mode": "by-file",
+    "generated_at": "2026-07-21T14:08:14",
+    "generator": "MAP Airtable CSV to MAP JSON Python Script",
+    "load_with": [
+      "root.json",
+      "abstract-value-types.json",
+      "concrete-value-types.json",
+      "keyrules.json"
+    ],
+    "source_files": [
+      "map-core-schema-value-constraint-types.csv"
+    ]
+  },
+  "holons": [
+    {
+      "key": "StringLengthConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "StringLengthConstraint",
+        "TypeNamePlural": "StringLengthConstraints",
+        "DisplayName": "String Length Constraint",
+        "DisplayNamePlural": "String Length Constraints",
+        "Description": "Constrains the Unicode grapheme-cluster length of a string value to a configured range."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Minimum.PropertyType"
+            },
+            {
+              "$ref": "Maximum.PropertyType"
+            },
+            {
+              "$ref": "MinimumIsInclusive.PropertyType"
+            },
+            {
+              "$ref": "MaximumIsInclusive.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "StringValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesLengthConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "BytesLengthConstraint",
+        "TypeNamePlural": "BytesLengthConstraints",
+        "DisplayName": "Bytes Length Constraint",
+        "DisplayNamePlural": "Bytes Length Constraints",
+        "Description": "Constrains the byte length of a bytes value to a configured range."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Minimum.PropertyType"
+            },
+            {
+              "$ref": "Maximum.PropertyType"
+            },
+            {
+              "$ref": "MinimumIsInclusive.PropertyType"
+            },
+            {
+              "$ref": "MaximumIsInclusive.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "BytesValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NumericRangeConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "NumericRangeConstraint",
+        "TypeNamePlural": "NumericRangeConstraints",
+        "DisplayName": "Numeric Range Constraint",
+        "DisplayNamePlural": "Numeric Range Constraints",
+        "Description": "Constrains an integer value to a configured inclusive range."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Minimum.PropertyType"
+            },
+            {
+              "$ref": "Maximum.PropertyType"
+            },
+            {
+              "$ref": "MinimumIsInclusive.PropertyType"
+            },
+            {
+              "$ref": "MaximumIsInclusive.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "IntegerValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ItemCountConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "ItemCountConstraint",
+        "TypeNamePlural": "ItemCountConstraints",
+        "DisplayName": "Item Count Constraint",
+        "DisplayNamePlural": "Item Count Constraints",
+        "Description": "Constrains the number of items in a value array to a configured inclusive range."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Minimum.PropertyType"
+            },
+            {
+              "$ref": "Maximum.PropertyType"
+            },
+            {
+              "$ref": "MinimumIsInclusive.PropertyType"
+            },
+            {
+              "$ref": "MaximumIsInclusive.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "ValueArrayValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UniqueItemsConstraint.ConstraintType",
+      "type": "MetaConstraintType.MetaHolonType",
+      "properties": {
+        "TypeName": "UniqueItemsConstraint",
+        "TypeNamePlural": "UniqueItemsConstraints",
+        "DisplayName": "Unique Items Constraint",
+        "DisplayNamePlural": "Unique Items Constraints",
+        "Description": "Requires value arrays to contain no duplicate items."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ConstraintType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ApplicableToDescriptorTypes",
+          "target": [
+            {
+              "$ref": "ValueArrayValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

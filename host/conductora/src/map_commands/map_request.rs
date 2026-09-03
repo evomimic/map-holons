@@ -4,12 +4,16 @@ use core_types::HolonError;
 use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
 use tauri::{command, State};
 
+use crate::setup::core_schema_bootstrap::CoreSchemaBootstrapGate;
+
 #[command]
 pub async fn map_request(
     map_request: MapRequestWire,
     receptor_factory: State<'_, DeprecatedReceptorFactory>,
+    bootstrap_gate: State<'_, CoreSchemaBootstrapGate>,
 ) -> Result<MapResponseWire, HolonError> {
     tracing::debug!("[TAURI COMMAND] 'map_request' command invoked for space: {:?}", map_request);
+    bootstrap_gate.ensure_ready()?;
     // a map_request is currently using "holochain" receptor type only
     let receptor = receptor_factory.get_default_receptor_by_type(&ReceptorType::Holochain)?;
     let context = receptor.transaction_context()?;

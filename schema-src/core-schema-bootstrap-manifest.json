@@ -1,0 +1,14 @@
+{
+  "release_identity": "MAP Core Schema-v0.0.7",
+  "core_schema_key": "MAP Core Schema-v0.0.7",
+  "core_schema_space_key": "MAP.CoreSchemaSpace",
+  "packages": [
+    { "name": "core", "import_directory": "core" },
+    { "name": "validation", "import_directory": "validation" },
+    { "name": "dance", "import_directory": "dance" },
+    { "name": "commands", "import_directory": "commands" },
+    { "name": "query", "import_directory": "query" },
+    { "name": "query-dance", "import_directory": "query-dance" },
+    { "name": "dahn", "import_directory": "dahn" }
+  ]
+}

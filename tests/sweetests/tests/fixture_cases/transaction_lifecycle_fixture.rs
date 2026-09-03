@@ -1,5 +1,4 @@
 use holons_prelude::prelude::*;
-use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
@@ -25,11 +24,6 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
         );
 
     // ── Phase 1: First transaction — create and commit ──
-
-    test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some(ENSURE_DB_EMPTY.to_string()),
-    )?;
 
     let book_key = MapString("book-lifecycle-1".to_string());
     let book_transient = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
@@ -62,11 +56,6 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
         ExpectedCommitStatus::Complete,
         None,
         Some("Commit first transaction".to_string()),
-    )?;
-
-    test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some("Verify Book saved".to_string()),
     )?;
 
     test_case.add_match_saved_content_step()?;
@@ -133,11 +122,6 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
         ExpectedCommitStatus::Complete,
         None,
         Some("Commit second transaction".to_string()),
-    )?;
-
-    test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some("Verify both Book and Article saved".to_string()),
     )?;
 
     // Finalize

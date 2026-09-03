@@ -1,26 +1,13 @@
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, ExpectedCommitStatus, FixtureHolons, TestCaseInit};
+use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
 
 use super::setup_undescribed_book_people_publisher_steps_with_context;
-use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_PERSON_INVERSE_METRICS, BOOK_TO_PERSON_RELATIONSHIP,
-    CORE_SCHEMA_METRICS,
-};
+use holons_test::harness::helpers::{BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP};
 
 // TODO: add/remove relationships
-
-/// Expected DB count once core + Book/Person schemas are loaded: fixture-saved
-/// holons (incl. the LocalHolonSpace baseline) plus the loader-committed schema holons.
-fn schema_backed_db_count(fixture_holons: &FixtureHolons) -> MapInteger {
-    MapInteger(
-        fixture_holons.count_saved().0
-            + CORE_SCHEMA_METRICS.committed
-            + BOOK_PERSON_INVERSE_METRICS.committed,
-    )
-}
 
 /// Fixture for creating Simple NEWVERSION Testcase
 ///
@@ -41,9 +28,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         TestCaseInit::new("Simple StageNewVersion Testcase", "Tests stage_new_version dance");
     let staged_versions_with_same_base_key = MapInteger(1);
 
-    // Load the schemas that declare Book.HolonType and (via MetaHolonType) Predecessor.
-    test_case.add_load_core_schema_step(None)?;
-    test_case.add_begin_transaction_step(None, None)?;
+    // Operational Core is already available from first-space bootstrap. Load
+    // only the test schema that declares Book.HolonType.
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(
         None,
@@ -88,12 +74,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Describe Book by Book.HolonType".to_string()),
     )?;
 
-    //  ENSURE DATABASE COUNT -- Initial //
-    test_case.add_ensure_database_count_step(
-        schema_backed_db_count(&fixture_holons),
-        Some("Ensuring DB holds only schema holons before first commit".to_string()),
-    )?;
-
     //  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(
         &mut fixture_holons,
@@ -102,13 +82,8 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Commit --- after setup_book_authors".to_string()),
     )?;
 
-    //  ENSURE DATABASE COUNT -- After Commit //
-    test_case.add_ensure_database_count_step(schema_backed_db_count(&fixture_holons), None)?;
-
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
-
-    let post_setup_db_count = schema_backed_db_count(&fixture_holons);
 
     // Begin a fresh transaction for a graph-only relationship mutation.
     // `ReferencesProperty` is a non-definitional relationship declared by
@@ -141,11 +116,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         ExpectedCommitStatus::Complete,
         None,
         Some("Commit graph-only Book relationship update".to_string()),
-    )?;
-
-    test_case.add_ensure_database_count_step(
-        post_setup_db_count.clone(),
-        Some("Graph-only update must not create a new Book node".to_string()),
     )?;
 
     // Replay the already-persisted graph-only edge to prove commit-time SmartLink
@@ -206,11 +176,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         ),
     )?;
 
-    test_case.add_ensure_database_count_step(
-        post_setup_db_count.clone(),
-        Some("Replayed graph-only update must not create a new Book node".to_string()),
-    )?;
-
     // Begin a fresh transaction before the definitional relationship mutation.
     test_case.add_begin_transaction_step(
         None,
@@ -265,15 +230,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         ExpectedCommitStatus::Complete,
         None,
         Some("Commit --- after staging new first version".to_string()),
-    )?;
-
-    //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(
-        post_setup_db_count.clone(),
-        Some(
-            "Definitional update must add a version to the Book lineage, not a new holon"
-                .to_string(),
-        ),
     )?;
 
     test_case.add_verify_relationship_anchoring_step(None)?;

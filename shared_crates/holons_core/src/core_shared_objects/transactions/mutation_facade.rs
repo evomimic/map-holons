@@ -3,7 +3,7 @@ use super::{
     HolonServiceApi, HolonStagingBehavior, TransactionContext, TransactionContextHandle,
     TransientHolonBehavior,
 };
-use crate::{HolonReference, SmartReference, StagedReference, TransientReference};
+use crate::{HolonReference, ReadableHolon, SmartReference, StagedReference, TransientReference};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId};
 use std::sync::Arc;
@@ -155,6 +155,17 @@ impl MutationFacade {
     ///
     pub fn delete_holon(&self, local_id: LocalId) -> Result<(), HolonError> {
         self.context.assert_allowed(TransactionOperation::MutateState)?;
+
+        let target = SmartReference::new_from_id(
+            self.context.context_handle(),
+            HolonId::Local(local_id.clone()),
+        );
+        if !target.holon_descriptor()?.instance_deletion_allowed()? {
+            return Err(HolonError::DeletionNotAllowed(
+                "instances of this holon type are durable anchors".to_string(),
+            ));
+        }
+
         self.holon_service.delete_holon_internal(&self.context, &local_id)
     }
 }

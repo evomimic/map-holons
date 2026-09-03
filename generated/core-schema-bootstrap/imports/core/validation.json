@@ -1,0 +1,3183 @@
+{
+  "meta": {
+    "export_mode": "design-seed",
+    "generated_at": "2026-08-23",
+    "generator": "MAP validation architecture design seed",
+    "load_with": [
+      "root.json",
+      "concrete-value-types.json",
+      "abstract-value-types.json",
+      "property-types.json",
+      "relationship-types.json"
+    ],
+    "source_files": [
+      "docs/core/validation/commit-validation-design-spec.md",
+      "docs/core/validation/validation-schema-design-spec.md"
+    ]
+  },
+  "holons": [
+    {
+      "key": "ValidationLevel.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ValidationLevel",
+        "TypeNamePlural": "ValidationLevels",
+        "DisplayName": "Validation Level",
+        "DisplayNamePlural": "Validation Levels",
+        "Description": "Validator level at which a ValidationRule is evaluated."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Holon"
+            },
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Property"
+            },
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Value"
+            },
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Relationship"
+            },
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Transaction"
+            },
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Command"
+            },
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Dance"
+            },
+            {
+              "$ref": "ValidationLevel.MapEnumValueType.Agreement"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Holon",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Holon",
+        "DisplayName": "Holon",
+        "Description": "Validation over a holon and its descriptor-level instance contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Property",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Property",
+        "DisplayName": "Property",
+        "Description": "Validation over a populated or required property member."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Value",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Value",
+        "DisplayName": "Value",
+        "Description": "Validation over a property value and its selected ValueType descriptor."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Relationship",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Relationship",
+        "DisplayName": "Relationship",
+        "Description": "Validation over relationship descriptors or relationship occurrences."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Transaction",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Transaction",
+        "DisplayName": "Transaction",
+        "Description": "Validation over a staged transaction and available graph snapshot."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Command",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Command",
+        "DisplayName": "Command",
+        "Description": "Validation over command invocation contracts and preconditions."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Dance",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Dance",
+        "DisplayName": "Dance",
+        "Description": "Validation over dance invocation contracts and preconditions."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.MapEnumValueType.Agreement",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Agreement",
+        "DisplayName": "Agreement",
+        "Description": "Validation over agreement, role, trust, or policy commitments."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ValidationSeverity",
+        "TypeNamePlural": "ValidationSeverities",
+        "DisplayName": "Validation Severity",
+        "DisplayNamePlural": "Validation Severities",
+        "Description": "Default severity emitted when a ValidationRule fails."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "ValidationSeverity.MapEnumValueType.Info"
+            },
+            {
+              "$ref": "ValidationSeverity.MapEnumValueType.Warning"
+            },
+            {
+              "$ref": "ValidationSeverity.MapEnumValueType.Error"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType.Info",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Info",
+        "DisplayName": "Info",
+        "Description": "Informational validation result."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType.Warning",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Warning",
+        "DisplayName": "Warning",
+        "Description": "Non-blocking warning validation result."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationSeverity.MapEnumValueType.Error",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Error",
+        "DisplayName": "Error",
+        "Description": "Blocking error validation result when selected by a commit-oriented profile."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationBlockingBehavior.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ValidationBlockingBehavior",
+        "TypeNamePlural": "ValidationBlockingBehaviors",
+        "DisplayName": "Validation Blocking Behavior",
+        "DisplayNamePlural": "Validation Blocking Behaviors",
+        "Description": "Minimum operation-blocking behavior for a ValidationRule."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "ValidationBlockingBehavior.MapEnumValueType.Advisory"
+            },
+            {
+              "$ref": "ValidationBlockingBehavior.MapEnumValueType.CommitBlocking"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationBlockingBehavior.MapEnumValueType.Advisory",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Advisory",
+        "DisplayName": "Advisory",
+        "Description": "The rule may report results without blocking commit."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationBlockingBehavior.MapEnumValueType.CommitBlocking",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "CommitBlocking",
+        "DisplayName": "Commit Blocking",
+        "Description": "The rule blocks commit when it fails in a commit-oriented validation profile."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationDeterminismClass.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ValidationDeterminismClass",
+        "TypeNamePlural": "ValidationDeterminismClasses",
+        "DisplayName": "Validation Determinism Class",
+        "DisplayNamePlural": "Validation Determinism Classes",
+        "Description": "Determinism classification for validation-rule execution."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "ValidationDeterminismClass.MapEnumValueType.Deterministic"
+            },
+            {
+              "$ref": "ValidationDeterminismClass.MapEnumValueType.Contextual"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationDeterminismClass.MapEnumValueType.Deterministic",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Deterministic",
+        "DisplayName": "Deterministic",
+        "Description": "The rule can produce reproducible results with the declared context."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationDeterminismClass.MapEnumValueType.Contextual",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Contextual",
+        "DisplayName": "Contextual",
+        "Description": "The rule depends on local runtime, profile, or snapshot context."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationLevel.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValidationLevel",
+        "TypeNamePlural": "ValidationLevels",
+        "DisplayName": "validation_level",
+        "DisplayNamePlural": "validation_levels",
+        "Description": "Validator level at which a ValidationRule operates.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ValidationLevel.MapEnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DefaultSeverity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DefaultSeverity",
+        "TypeNamePlural": "DefaultSeverities",
+        "DisplayName": "default_severity",
+        "DisplayNamePlural": "default_severities",
+        "Description": "Default severity emitted by a failing ValidationRule.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ValidationSeverity.MapEnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MinimumBlockingBehavior.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MinimumBlockingBehavior",
+        "TypeNamePlural": "MinimumBlockingBehaviors",
+        "DisplayName": "minimum_blocking_behavior",
+        "DisplayNamePlural": "minimum_blocking_behaviors",
+        "Description": "Weakest blocking behavior a binding or profile may apply to a ValidationRule.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ValidationBlockingBehavior.MapEnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DeterminismClass.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DeterminismClass",
+        "TypeNamePlural": "DeterminismClasses",
+        "DisplayName": "determinism_class",
+        "DisplayNamePlural": "determinism_classes",
+        "Description": "Determinism class for the ValidationRule implementation contract.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "ValidationDeterminismClass.MapEnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SemanticAuthority.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SemanticAuthority",
+        "TypeNamePlural": "SemanticAuthorities",
+        "DisplayName": "semantic_authority",
+        "DisplayNamePlural": "semantic_authorities",
+        "Description": "Stable reference to the descriptor-semantics rule family or normative source that defines the ValidationRule meaning.",
+        "IsValueRequired": false
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationRuleDescription.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValidationRuleDescription",
+        "TypeNamePlural": "ValidationRuleDescriptions",
+        "DisplayName": "validation_rule_description",
+        "DisplayNamePlural": "validation_rule_descriptions",
+        "Description": "Human-readable ValidationRule description.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaValidationRule.MetaHolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaValidationRule",
+        "TypeNamePlural": "MetaValidationRules",
+        "DisplayName": "Meta Validation Rule",
+        "DisplayNamePlural": "Meta Validation Rules",
+        "Description": "Meta-type describing ValidationRule family descriptor holons. It narrows local operator affordance to validation-rule descriptors."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MetaHolonType.MetaTypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "ValidationRule",
+        "TypeNamePlural": "ValidationRules",
+        "DisplayName": "Validation Rule",
+        "DisplayNamePlural": "Validation Rules",
+        "Description": "Abstract root for first-class validation rule holons.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Rule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ValidationLevel.PropertyType"
+            },
+            {
+              "$ref": "DefaultSeverity.PropertyType"
+            },
+            {
+              "$ref": "MinimumBlockingBehavior.PropertyType"
+            },
+            {
+              "$ref": "DeterminismClass.PropertyType"
+            },
+            {
+              "$ref": "SemanticAuthority.PropertyType"
+            },
+            {
+              "$ref": "ValidationRuleDescription.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "HolonValidationRule",
+        "TypeNamePlural": "HolonValidationRules",
+        "DisplayName": "Holon Validation Rule",
+        "DisplayNamePlural": "Holon Validation Rules",
+        "Description": "ValidationRule family for rules evaluated over holons and their descriptor-level contracts.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertyValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "PropertyValidationRule",
+        "TypeNamePlural": "PropertyValidationRules",
+        "DisplayName": "Property Validation Rule",
+        "DisplayNamePlural": "Property Validation Rules",
+        "Description": "ValidationRule family for rules evaluated over property descriptors, required properties, and populated property members.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValueValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "ValueValidationRule",
+        "TypeNamePlural": "ValueValidationRules",
+        "DisplayName": "Value Validation Rule",
+        "DisplayNamePlural": "Value Validation Rules",
+        "Description": "ValidationRule family for rules evaluated over property values and their selected ValueType descriptors.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StringValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "StringValidationRule",
+        "TypeNamePlural": "StringValidationRules",
+        "DisplayName": "String Validation Rule",
+        "DisplayNamePlural": "String Validation Rules",
+        "Description": "ValidationRule family for string value rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "IntegerValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "IntegerValidationRule",
+        "TypeNamePlural": "IntegerValidationRules",
+        "DisplayName": "Integer Validation Rule",
+        "DisplayNamePlural": "Integer Validation Rules",
+        "Description": "ValidationRule family for integer value rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BooleanValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "BooleanValidationRule",
+        "TypeNamePlural": "BooleanValidationRules",
+        "DisplayName": "Boolean Validation Rule",
+        "DisplayNamePlural": "Boolean Validation Rules",
+        "Description": "ValidationRule family for boolean value rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumValueValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "EnumValueValidationRule",
+        "TypeNamePlural": "EnumValueValidationRules",
+        "DisplayName": "Enum Value Validation Rule",
+        "DisplayNamePlural": "Enum Value Validation Rules",
+        "Description": "ValidationRule family for enum value and enum variant membership rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "BytesValidationRule",
+        "TypeNamePlural": "BytesValidationRules",
+        "DisplayName": "Bytes Validation Rule",
+        "DisplayNamePlural": "Bytes Validation Rules",
+        "Description": "ValidationRule family for bytes value rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValueArrayValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "ValueArrayValidationRule",
+        "TypeNamePlural": "ValueArrayValidationRules",
+        "DisplayName": "Value Array Validation Rule",
+        "DisplayNamePlural": "Value Array Validation Rules",
+        "Description": "ValidationRule family for value-array and collection value rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValueValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "RelationshipValidationRule",
+        "TypeNamePlural": "RelationshipValidationRules",
+        "DisplayName": "Relationship Validation Rule",
+        "DisplayNamePlural": "Relationship Validation Rules",
+        "Description": "ValidationRule family for relationship descriptor and relationship occurrence rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TransactionValidationRule.HolonType",
+      "type": "MetaValidationRule.MetaHolonType",
+      "properties": {
+        "TypeName": "TransactionValidationRule",
+        "TypeNamePlural": "TransactionValidationRules",
+        "DisplayName": "Transaction Validation Rule",
+        "DisplayNamePlural": "Transaction Validation Rules",
+        "Description": "ValidationRule family for staged transaction rules.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(TypeDescriptor)-[ValidationBindings]->(ValidationRule.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ValidationBindings",
+        "TypeNamePlural": "ValidationBindings",
+        "DisplayName": "Validation Bindings",
+        "DisplayNamePlural": "Validation Bindings Relationships",
+        "Description": "Additive, definitional Commit-validation commitments declared by a governed type.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDescriptor)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ValidationBindingFor",
+        "TypeNamePlural": "ValidationBindingFors",
+        "DisplayName": "Validation Binding For",
+        "DisplayNamePlural": "Validation Binding For Relationships",
+        "Description": "Inverse of ValidationBindings from a validation rule to governed types that bind it.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ValidationRule.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AtMostOneDirectParent.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-STRUCT-002",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A holon has at most one direct Extends parent."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AcyclicExtendsLineage.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-STRUCT-003",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A descriptor Extends lineage must be acyclic."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-STRUCT-004",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A parented descriptor lineage must terminate at TypeDescriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UniqueTypeDescriptorRoot.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-STRUCT-005",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "TypeDescriptor is the unique root of the descriptor hierarchy."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SchemaDependenciesAcyclic.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-SCHEMA-001",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Versioned schema dependency relationships must be acyclic."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CrossSchemaDependenciesDeclared.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-SCHEMA-002",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every cross-schema reference must have a direct schema dependency declaration."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CoreAccumulatorsAreAdditive.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-SCHEMA-003",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Core contract, behavior, and operator accumulator relationships must declare Additive inheritance."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LocalInstanceKindAnchorDesignation.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KIND-001",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Instance TypeKind anchor designation is local and singular."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InstanceKindAnchorsAreAbstract.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KIND-002",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every Instance TypeKind anchor must be abstract."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TypeDescriptorRootKindException.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KIND-003",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "TypeDescriptor is the only descriptor root that lacks an Instance TypeKind anchor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DescribingCategoryCompatibility.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KIND-004",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every describing type must belong to the required describing category."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DescriptorMetaTypeCorrespondence.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KIND-005",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Descriptor holons, and only descriptor holons, must use meta-type describers."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NoInheritedMemberRedeclaration.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CONTRACT-001",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A descriptor must not redundantly redeclare an inherited member."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UniqueSemanticMemberNames.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CONTRACT-002",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Effective semantic member names must be unique within each namespace."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "WellFormedEffectiveMemberDefinitions.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CONTRACT-003",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every effective member definition must be well formed."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ContractMemberKindCompatibility.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CONTRACT-004",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every effective contract member must have the required instance kind."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InheritedValueConstraintNonRelaxation.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CONSTRAINT-001",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A ValueType subtype must not relax a value constraint inherited through its Extends lineage."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DefaultsRequireRequiredProperties.ValidationRule",
+      "type": "PropertyValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-DEFAULT-001",
+        "ValidationLevel": "Property",
+        "ValidationRuleDescription": "Only required properties may declare defaults."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DefaultValueConformance.ValidationRule",
+      "type": "PropertyValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-DEFAULT-002",
+        "ValidationLevel": "Property",
+        "ValidationRuleDescription": "Every declared default value must conform to its effective value definition."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InverseEndpointCorrespondence.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-REL-002",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "Inverse relationship endpoints must correspond to declared relationship endpoints."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DirectionalDeletionDeclarations.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-REL-003",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "Both relationship directions must declare valid deletion semantics."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EffectiveKeyRuleSelection.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KEY-001",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every holon type must resolve exactly one effective instance key rule."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "KeyRuleTargetCompatibility.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KEY-002",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "The selected key rule target must be compatible with and executable for the descriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExplicitKeylessBaseline.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KEY-003",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "The keyless root must be explicit and key-rule inheritance must use Override semantics."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumMemberNamesUnique.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-ENUM-001",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "Enum member names must be unique within each effective enum definition."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AbstractMemberMinimumEnforcement.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CONFORM-002",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Minimum enforcement for abstract descriptors is member-specific."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UniquePropertyMemberBinding.ValidationRule",
+      "type": "PropertyValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-BIND-001",
+        "ValidationLevel": "Property",
+        "ValidationRuleDescription": "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipOccurrenceGrouping.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-OCC-001",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "Relationship occurrences must be grouped by resolved relationship descriptor identity."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "AdditionalRelationshipPolicy.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-OCC-004",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "Every unbound relationship must be permitted by the effective additional-relationship policy."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExplicitKeylessness.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KEY-004",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A keyless holon must carry no semantic key."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "KeyPresenceAndValue.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-KEY-005",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A keyed new holon must carry exactly the computed semantic key."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConcreteDescribingType.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CONFORM-001",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A runtime holon must be described by a concrete descriptor that can describe instances."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NoUndescribedProperties.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-PROP-003",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "Every unbound property must be permitted by the effective additional-property policy."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RequiredPropertyPresence.ValidationRule",
+      "type": "PropertyValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-PROP-001",
+        "ValidationLevel": "Property",
+        "ValidationRuleDescription": "A property declared required by the effective descriptor contract must be present."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertyValueConformance.ValidationRule",
+      "type": "PropertyValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-PROP-002",
+        "ValidationLevel": "Property",
+        "ValidationRuleDescription": "A populated property value must conform to the selected ValueType descriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BaseValueKindMatchesString.ValidationRule",
+      "type": "StringValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "Built-in value-dispatch rule",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "A value governed by a StringValueType descriptor must use the string BaseValue representation."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StringLength.ValidationRule",
+      "type": "StringValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "String constraint semantics; Unicode extended grapheme cluster counting",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "A string value must satisfy the min and max length constraints declared by its StringValueType descriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BaseValueKindMatchesInteger.ValidationRule",
+      "type": "IntegerValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "Built-in value-dispatch rule",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "A value governed by an IntegerValueType descriptor must use the integer BaseValue representation."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "IntegerRange.ValidationRule",
+      "type": "IntegerValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "Integer constraint semantics",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "An integer value must satisfy the min and max constraints declared by its IntegerValueType descriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BaseValueKindMatchesBoolean.ValidationRule",
+      "type": "BooleanValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "Built-in value-dispatch rule",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "A value governed by a BooleanValueType descriptor must use the boolean BaseValue representation."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BaseValueKindMatchesEnum.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "Built-in value-dispatch rule",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "A value governed by an EnumValueType descriptor must use the enum BaseValue representation."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumTokenMembership.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-ENUM-002",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "An enum value token must match one of the effective enum variants admitted by the EnumValueType descriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumTokenNonRetroactivity.ValidationRule",
+      "type": "EnumValueValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Contextual",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-ENUM-003",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "Enum token changes must never rewrite or alias persisted enum values."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BaseValueKindMatchesBytes.ValidationRule",
+      "type": "BytesValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "Built-in value-dispatch rule",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "A value governed by a BytesValueType descriptor must use the bytes BaseValue representation."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesLength.ValidationRule",
+      "type": "BytesValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "Bytes constraint semantics",
+        "ValidationLevel": "Value",
+        "ValidationRuleDescription": "A bytes value must satisfy the min and max length constraints declared by its BytesValueType descriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipOccurrenceBinding.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-BIND-002",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "A populated relationship name must bind uniquely to a relationship descriptor admitted by the effective contract."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipEndpointCompatibility.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-OCC-002",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "A relationship occurrence endpoint must be compatible with the effective source and target descriptors."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipCollectionPolicy.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-OCC-003",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "A relationship occurrence collection must honor ordering and duplicate policies declared by the relationship descriptor."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipCardinality.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Contextual",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-CARD-001",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "A relationship occurrence set must satisfy descriptor cardinality where the validation context supplies the required transaction or graph snapshot."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipDescriptorPairing.ValidationRule",
+      "type": "RelationshipValidationRule.HolonType",
+      "properties": {
+        "DefaultSeverity": "Error",
+        "DeterminismClass": "Deterministic",
+        "MinimumBlockingBehavior": "CommitBlocking",
+        "SemanticAuthority": "DS-REL-001",
+        "ValidationLevel": "Relationship",
+        "ValidationRuleDescription": "Declared and inverse relationship descriptor pairing must be bijective."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

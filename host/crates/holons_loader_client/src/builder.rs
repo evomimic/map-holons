@@ -104,7 +104,7 @@ pub struct RawRelationshipSpec {
 /// to the provided `HolonLoadSet` via the `Contains` relationship.
 ///
 /// Responsibilities:
-/// - Determine the bundle key (from `RawLoaderMeta.bundle_key` or filename).
+/// - Determine the bundle key (from `RawLoaderMeta.bundle_key` or import path).
 /// - Create a new transient `HolonLoaderBundle`.
 /// - Populate bundle metadata properties (including `Filename`).
 /// - Attach the bundle to the `HolonLoadSet` with `Contains`.
@@ -275,6 +275,11 @@ pub fn attach_described_by_relationship(
 }
 
 /// Derive the bundle key for an import file, honoring explicit overrides when present.
+///
+/// The default includes every normal path component rather than only the
+/// basename. A ContentSet can legitimately contain several `schema.json`
+/// files from separate packages, and loader bundle identity must not collapse
+/// those inputs.
 fn derive_bundle_key(import_file_path: &Path, raw_meta: &Option<RawLoaderMeta>) -> String {
     if let Some(meta) = raw_meta {
         if let Some(bundle_key) = meta.bundle_key.as_ref() {
@@ -285,10 +290,32 @@ fn derive_bundle_key(import_file_path: &Path, raw_meta: &Option<RawLoaderMeta>) 
         }
     }
 
-    let filename =
-        import_file_path.file_name().and_then(|name| name.to_str()).unwrap_or("ImportFile");
+    let path_identity = import_file_path
+        .components()
+        .filter_map(|component| match component {
+            std::path::Component::Normal(component) => component.to_str(),
+            _ => None,
+        })
+        .map(normalize_bundle_key_component)
+        .collect::<Vec<_>>()
+        .join("__");
+    let path_identity =
+        if path_identity.is_empty() { "ImportFile".to_string() } else { path_identity };
 
-    format!("Bundle.{filename}")
+    format!("Bundle.{path_identity}")
+}
+
+fn normalize_bundle_key_component(component: &str) -> String {
+    component
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '.' | '-' | '_') {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
 
 /// Convert a `Path` to an owned UTF-8 string suitable for holon properties.
@@ -483,6 +510,33 @@ mod tests {
     use serde_json::json;
     use std::collections::BTreeSet;
     use std::{fs, path::PathBuf};
+
+    #[test]
+    fn default_bundle_keys_distinguish_same_basename_in_different_packages() {
+        let metadata = None;
+
+        assert_eq!(
+            derive_bundle_key(Path::new("imports/validation/schema.json"), &metadata),
+            "Bundle.imports__validation__schema.json"
+        );
+        assert_eq!(
+            derive_bundle_key(Path::new("imports/query/schema.json"), &metadata),
+            "Bundle.imports__query__schema.json"
+        );
+    }
+
+    #[test]
+    fn explicit_bundle_key_still_overrides_path_identity() {
+        let metadata = Some(RawLoaderMeta {
+            bundle_key: Some("Bundle.Custom".to_string()),
+            extra: HashMap::new(),
+        });
+
+        assert_eq!(
+            derive_bundle_key(Path::new("imports/query/schema.json"), &metadata),
+            "Bundle.Custom"
+        );
+    }
 
     #[derive(Debug, Deserialize)]
     struct TargetWrapper {

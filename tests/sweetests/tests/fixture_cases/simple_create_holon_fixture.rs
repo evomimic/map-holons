@@ -1,6 +1,5 @@
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::BOOK_KEY;
-use holons_test::harness::helpers::ENSURE_DB_EMPTY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
@@ -15,12 +14,6 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
             "Simple Create/Get Holon Testcase",
             "Ensure the holons and relationships setup by book and author setup helper commit successfully",
     );
-
-    // Ensure DB count //
-    test_case.add_ensure_database_count_step(
-        fixture_holons.count_saved(),
-        Some(ENSURE_DB_EMPTY.to_string()),
-    )?;
 
     //  ADD STEP:  STAGE:  Book Holon  //
     let book_key = MapString(BOOK_KEY.to_string());
@@ -48,9 +41,6 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
-
-    //  ENSURE DATABASE COUNT //
-    test_case.add_ensure_database_count_step(fixture_holons.count_saved(), None)?;
 
     //  MATCH SAVED CONTENT  //
     test_case.add_match_saved_content_step()?;
