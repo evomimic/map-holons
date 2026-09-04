@@ -153,7 +153,7 @@ impl GuestHolonService {
         context: &Arc<TransactionContext>,
         smartlink: &SmartLink,
     ) -> Result<(Option<MapString>, HolonReference), HolonError> {
-        let (key, smart_property_values) = smartlink_reference_properties(smartlink)?;
+        let (key, smart_property_values) = smartlink_reference_properties(smartlink);
 
         let reference =
             self.mint_smart_reference(context, smartlink.target_id.clone(), smart_property_values)?;
@@ -170,35 +170,20 @@ impl GuestHolonService {
 /// A keyless SmartLink keeps an absent `Key` property.
 fn smartlink_reference_properties(
     smartlink: &SmartLink,
-) -> Result<(Option<MapString>, Option<PropertyMap>), HolonError> {
+) -> (Option<MapString>, Option<PropertyMap>) {
     let key = (!smartlink.canonical_key.as_str().is_empty())
         .then(|| MapString(smartlink.canonical_key.as_str().to_string()));
 
     let mut smart_property_values = smartlink.target_property_values.clone();
     if let Some(key) = &key {
         let key_property_name = CorePropertyTypeName::Key.as_property_name();
-        match smart_property_values.get(&key_property_name) {
-            Some(BaseValue::StringValue(existing_key)) if existing_key == key => {}
-            Some(existing_value) => {
-                return Err(HolonError::InvalidWireFormat {
-                    wire_type: "SmartLink".to_string(),
-                    reason: format!(
-                        "decoded target_property_values Key {:?} conflicts with canonical_key {:?}",
-                        existing_value, key
-                    ),
-                });
-            }
-            None => {
-                smart_property_values
-                    .insert(key_property_name, BaseValue::StringValue(key.clone()));
-            }
-        }
+        smart_property_values.insert(key_property_name, BaseValue::StringValue(key.clone()));
     }
 
     let smart_property_values =
         (!smart_property_values.is_empty()).then_some(smart_property_values);
 
-    Ok((key, smart_property_values))
+    (key, smart_property_values)
 }
 
 impl HolonServiceApi for GuestHolonService {
@@ -442,8 +427,7 @@ mod tests {
     #[test]
     fn smartlink_reference_properties_adds_canonical_key_to_cached_properties() {
         let (key, properties) =
-            smartlink_reference_properties(&smartlink("book-1", PropertyMap::new()))
-                .expect("materialization properties should be valid");
+            smartlink_reference_properties(&smartlink("book-1", PropertyMap::new()));
 
         assert_eq!(key, Some(MapString("book-1".to_string())));
         assert_eq!(
@@ -464,8 +448,7 @@ mod tests {
         );
 
         let (_, properties) =
-            smartlink_reference_properties(&smartlink("book-1", target_properties))
-                .expect("materialization properties should be valid");
+            smartlink_reference_properties(&smartlink("book-1", target_properties));
         let properties = properties.expect("keyed SmartLink should produce cached properties");
 
         assert_eq!(
@@ -480,24 +463,9 @@ mod tests {
 
     #[test]
     fn smartlink_reference_properties_keeps_keyless_smartlinks_keyless() {
-        let (key, properties) = smartlink_reference_properties(&smartlink("", PropertyMap::new()))
-            .expect("materialization properties should be valid");
+        let (key, properties) = smartlink_reference_properties(&smartlink("", PropertyMap::new()));
 
         assert_eq!(key, None);
         assert_eq!(properties, None);
-    }
-
-    #[test]
-    fn smartlink_reference_properties_rejects_conflicting_cached_key() {
-        let mut target_properties = PropertyMap::new();
-        target_properties.insert(
-            CorePropertyTypeName::Key.as_property_name(),
-            BaseValue::StringValue(MapString("other-book".to_string())),
-        );
-
-        let error = smartlink_reference_properties(&smartlink("book-1", target_properties))
-            .expect_err("conflicting cached Key must be rejected");
-
-        assert!(matches!(error, HolonError::InvalidWireFormat { .. }));
     }
 }
