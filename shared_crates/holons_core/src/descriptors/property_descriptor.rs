@@ -27,15 +27,13 @@ impl PropertyDescriptor {
 
     /// Returns the runtime property name declared by this descriptor.
     pub fn property_name(&self) -> Result<PropertyName, HolonError> {
-        Ok(PropertyName(accessor_helpers::require_string(
-            &self.holon,
-            CorePropertyTypeName::PropertyName,
-        )?))
+        Ok(PropertyName(self.header().type_name()?))
     }
 
-    /// Returns whether instances must provide this property.
+    /// Resolves whether instances must provide this property, including inherited
+    /// requiredness and the descriptor-defined Schema 2 default.
     pub fn is_required(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(&self.holon, CorePropertyTypeName::IsRequired)
+        self.effective_is_value_required()
     }
 
     /// Returns the value descriptor reached through the required `ValueType` relationship.
@@ -218,16 +216,13 @@ mod tests {
         let context = build_context();
         let value_type =
             new_descriptor_holon(&context, "string-value-type", "StringValueType", "Value")?;
-        let mut holon =
-            new_descriptor_holon(&context, "title-property", "TitleProperty", "Property")?;
-        holon
-            .with_property_value(CorePropertyTypeName::PropertyName, "title")?
-            .with_property_value(CorePropertyTypeName::IsRequired, true)?;
+        let mut holon = new_descriptor_holon(&context, "title-property", "Title", "Property")?;
+        holon.with_property_value(CorePropertyTypeName::IsValueRequired, true)?;
         holon.add_related_holons(CoreRelationshipTypeName::ValueType, vec![value_type.into()])?;
 
         let descriptor = PropertyDescriptor::from_holon(holon.into());
 
-        assert_eq!(descriptor.property_name()?.to_string(), "title");
+        assert_eq!(descriptor.property_name()?.to_string(), "Title");
         assert!(descriptor.is_required()?);
         assert_eq!(
             descriptor.value_type()?.header().type_name()?,
@@ -238,66 +233,15 @@ mod tests {
     }
 
     #[test]
-    fn property_name_errors_when_required_field_is_missing() -> Result<(), HolonError> {
+    fn property_name_errors_when_type_name_is_missing() -> Result<(), HolonError> {
         let context = build_context();
-        let holon = new_descriptor_holon(
-            &context,
-            "missing-property-name",
-            "MissingPropertyName",
-            "Property",
-        )?;
-        let descriptor = PropertyDescriptor::from_holon(holon.into());
+        let descriptor = PropertyDescriptor::from_holon(
+            new_test_holon(&context, "property-without-type-name")?.into(),
+        );
 
         assert!(matches!(
             descriptor.property_name(),
-            Err(HolonError::EmptyField(field)) if field == "PropertyName"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn property_name_errors_when_required_field_has_wrong_type() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut holon =
-            new_descriptor_holon(&context, "wrong-property-name", "WrongPropertyName", "Property")?;
-        holon.with_property_value(CorePropertyTypeName::PropertyName, true)?;
-        let descriptor = PropertyDescriptor::from_holon(holon.into());
-
-        assert!(matches!(
-            descriptor.property_name(),
-            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "String"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn is_required_errors_when_required_field_is_missing() -> Result<(), HolonError> {
-        let context = build_context();
-        let holon =
-            new_descriptor_holon(&context, "missing-is-required", "MissingIsRequired", "Property")?;
-        let descriptor = PropertyDescriptor::from_holon(holon.into());
-
-        assert!(matches!(
-            descriptor.is_required(),
-            Err(HolonError::EmptyField(field)) if field == "IsRequired"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn is_required_errors_when_required_field_has_wrong_type() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut holon =
-            new_descriptor_holon(&context, "wrong-is-required", "WrongIsRequired", "Property")?;
-        holon.with_property_value(CorePropertyTypeName::IsRequired, "not-a-boolean")?;
-        let descriptor = PropertyDescriptor::from_holon(holon.into());
-
-        assert!(matches!(
-            descriptor.is_required(),
-            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"
+            Err(HolonError::EmptyField(field)) if field == "TypeName"
         ));
 
         Ok(())

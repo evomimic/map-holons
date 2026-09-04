@@ -39,7 +39,7 @@
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "3396a3d3c4894d3fc02f0b968fe1ec892ecf39e38f47c46ca1ec737658d725e9"
+      "sha256": "0083eab04f4ade5c1abf8be0ebcab9663b3a11f64f03cead9adc7704a0cb1461"
     },
     {
       "path": "imports/core/keyrules.json",
@@ -67,7 +67,7 @@
     },
     {
       "path": "imports/core/validation.json",
-      "sha256": "4e2d2ec90380f5cab902a67804ef03866eeddd1c15128743f47e9396ff0734dd"
+      "sha256": "e4b9443eb9a0ff186ef795513f4c340d1b28127f7fe96624c05b218a4b607047"
     },
     {
       "path": "imports/core/value-constraint-types.json",
@@ -708,10 +708,6 @@
       "type": "MetaValueType.MetaTypeDescriptor"
     },
     {
-      "key": "BytesLength.ValidationRule",
-      "type": "BytesValidationRule.HolonType"
-    },
-    {
       "key": "BytesLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
     },
@@ -816,10 +812,6 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
-      "key": "CoreAccumulatorsAreAdditive.ValidationRule",
-      "type": "HolonValidationRule.HolonType"
-    },
-    {
       "key": "CrossSchemaDependenciesDeclared.ValidationRule",
       "type": "HolonValidationRule.HolonType"
     },
@@ -902,10 +894,6 @@
     {
       "key": "DeclaredRelationshipType.RelationshipType",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
-    },
-    {
-      "key": "DefaultSeverity.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "DefaultValue.PropertyType",
@@ -1228,10 +1216,6 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
-      "key": "IntegerRange.ValidationRule",
-      "type": "IntegerValidationRule.HolonType"
-    },
-    {
       "key": "IntegerValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
     },
@@ -1536,10 +1520,6 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
-      "key": "MinimumBlockingBehavior.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor"
-    },
-    {
       "key": "MinimumIsInclusive.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -1700,10 +1680,6 @@
       "type": "MetaCommandType.MetaHolonType"
     },
     {
-      "key": "RelationshipCardinality.ValidationRule",
-      "type": "RelationshipValidationRule.HolonType"
-    },
-    {
       "key": "RelationshipCollectionPolicy.ValidationRule",
       "type": "RelationshipValidationRule.HolonType"
     },
@@ -1852,10 +1828,6 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
-      "key": "StringLength.ValidationRule",
-      "type": "StringValidationRule.HolonType"
-    },
-    {
       "key": "StringLengthConstraint.ConstraintType",
       "type": "MetaConstraintType.MetaHolonType"
     },
@@ -1930,18 +1902,6 @@
     {
       "key": "Validate.OperatorType",
       "type": "MetaOperatorType.MetaHolonType"
-    },
-    {
-      "key": "ValidationBlockingBehavior.MapEnumValueType",
-      "type": "MetaEnumValueType.MetaValueType"
-    },
-    {
-      "key": "ValidationBlockingBehavior.MapEnumValueType.Advisory",
-      "type": "MetaEnumVariantValueType.MetaValueType"
-    },
-    {
-      "key": "ValidationBlockingBehavior.MapEnumValueType.CommitBlocking",
-      "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
       "key": "ValidationDeterminismClass.MapEnumValueType",

@@ -45,16 +45,6 @@ impl DeclaredRelationshipDescriptor {
         accessor_helpers::relationship_allows_duplicates(&self.holon)
     }
 
-    /// Returns the minimum number of targets permitted by this relationship.
-    pub fn min_cardinality(&self) -> Result<i64, HolonError> {
-        accessor_helpers::relationship_min_cardinality(&self.holon)
-    }
-
-    /// Returns the maximum number of targets permitted by this relationship.
-    pub fn max_cardinality(&self) -> Result<i64, HolonError> {
-        accessor_helpers::relationship_max_cardinality(&self.holon)
-    }
-
     /// Returns the optional deletion semantic declared by this relationship, when populated.
     pub fn deletion_semantic(&self) -> Result<Option<MapString>, HolonError> {
         accessor_helpers::relationship_deletion_semantic(&self.holon)

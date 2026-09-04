@@ -1,14 +1,10 @@
-use crate::descriptors::accessor_helpers::descriptor_label;
-use crate::descriptors::value_descriptor_subtypes::constraints::{
-    resolve_integer_constraints, IntegerConstraintValidation,
-};
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     require_supported_operator, supported_operators, supports_operator, type_name_is,
     unsupported_operator, value_kind_mismatch,
 };
 use crate::descriptors::{Descriptor, OperatorDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
-use base_types::BaseValue;
+use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
 
 /// Semantic wrapper for integer value descriptors.
@@ -27,19 +23,15 @@ impl IntegerValueDescriptor {
         TypeHeader::new(&self.holon)
     }
 
-    /// Validates that a runtime value is an integer and satisfies descriptor constraints.
+    /// Validates that a runtime value uses the integer representation.
     pub fn is_valid(&self, value: &BaseValue) -> Result<(), HolonError> {
-        let integer_value = match value {
-            BaseValue::IntegerValue(value) => value.0,
-            other => return Err(value_kind_mismatch(&self.holon, "Integer", other)),
-        };
-
-        let label = descriptor_label(&self.holon);
-        for constraint in resolve_integer_constraints(&self.holon)? {
-            constraint.is_valid(integer_value, &label)?;
+        match value.kind() {
+            BaseValueKind::Integer => Ok(()),
+            BaseValueKind::String
+            | BaseValueKind::Boolean
+            | BaseValueKind::Enum
+            | BaseValueKind::Bytes => Err(value_kind_mismatch(&self.holon, "Integer", value)),
         }
-
-        Ok(())
     }
 
     /// Returns operators afforded by this value descriptor across inheritance.
@@ -104,25 +96,13 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{
-        build_context, core_holon_type_name, core_value_type_name, new_descriptor_holon,
-    };
-    use crate::reference_layer::{TransientReference, WritableHolon};
+    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::reference_layer::WritableHolon;
     use base_types::{MapInteger, MapString};
-    use type_names::{
-        CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
-    };
+    use type_names::CoreRelationshipTypeName;
 
     fn integer_value(value: i64) -> BaseValue {
         BaseValue::IntegerValue(MapInteger(value))
-    }
-
-    fn add_extends(
-        child: &mut TransientReference,
-        parent: &TransientReference,
-    ) -> Result<(), HolonError> {
-        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone().into()])?;
-        Ok(())
     }
 
     #[test]
@@ -154,213 +134,6 @@ mod tests {
             Err(HolonError::ValueKindMismatch { expected, found, .. })
                 if expected == "Integer" && found == "String"
         ));
-        Ok(())
-    }
-
-    #[test]
-    fn is_valid_enforces_integer_constraints() -> Result<(), HolonError> {
-        let context = build_context();
-        let family = new_descriptor_holon(
-            &context,
-            "integer-constraint-family",
-            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
-            "Holon",
-        )?;
-        let mut minimum = new_descriptor_holon(
-            &context,
-            "minimum",
-            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
-            "Holon",
-        )?;
-        minimum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
-        add_extends(&mut minimum, &family)?;
-        let mut maximum = new_descriptor_holon(
-            &context,
-            "maximum",
-            &core_holon_type_name(CoreHolonTypeName::MaximumValue),
-            "Holon",
-        )?;
-        maximum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 10_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
-        add_extends(&mut maximum, &family)?;
-        let mut value = new_descriptor_holon(
-            &context,
-            "integer-value",
-            &core_value_type_name(CoreValueTypeName::IntegerValueType),
-            "Value",
-        )?;
-        value.add_related_holons(
-            CoreRelationshipTypeName::Constraints,
-            vec![minimum.into(), maximum.into()],
-        )?;
-
-        let descriptor = IntegerValueDescriptor::from_holon(value.into());
-
-        assert!(descriptor.is_valid(&integer_value(7)).is_ok());
-        assert!(matches!(
-            descriptor.is_valid(&integer_value(4)),
-            Err(HolonError::IntegerOutOfRange { value: 4, min: Some(5), .. })
-        ));
-        assert!(matches!(
-            descriptor.is_valid(&integer_value(11)),
-            Err(HolonError::IntegerOutOfRange { value: 11, max: Some(10), .. })
-        ));
-        Ok(())
-    }
-
-    #[test]
-    fn is_valid_enforces_inherited_integer_constraints() -> Result<(), HolonError> {
-        let context = build_context();
-        let family = new_descriptor_holon(
-            &context,
-            "integer-constraint-family",
-            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
-            "Holon",
-        )?;
-        let mut minimum = new_descriptor_holon(
-            &context,
-            "minimum",
-            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
-            "Holon",
-        )?;
-        minimum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
-        add_extends(&mut minimum, &family)?;
-        let mut parent =
-            new_descriptor_holon(&context, "parent-value", "ParentIntegerValueType", "Value")?;
-        parent.add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
-        let mut child =
-            new_descriptor_holon(&context, "child-value", "ChildIntegerValueType", "Value")?;
-        add_extends(&mut child, &parent)?;
-
-        let descriptor = IntegerValueDescriptor::from_holon(child.into());
-
-        assert!(matches!(
-            descriptor.is_valid(&integer_value(4)),
-            Err(HolonError::IntegerOutOfRange { value: 4, min: Some(5), .. })
-        ));
-        Ok(())
-    }
-
-    #[test]
-    fn is_valid_honors_exclusive_integer_bounds() -> Result<(), HolonError> {
-        let context = build_context();
-        let family = new_descriptor_holon(
-            &context,
-            "integer-constraint-family",
-            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
-            "Holon",
-        )?;
-        let mut minimum = new_descriptor_holon(
-            &context,
-            "exclusive-minimum",
-            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
-            "Holon",
-        )?;
-        minimum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, false)?;
-        add_extends(&mut minimum, &family)?;
-        let mut maximum = new_descriptor_holon(
-            &context,
-            "exclusive-maximum",
-            &core_holon_type_name(CoreHolonTypeName::MaximumValue),
-            "Holon",
-        )?;
-        maximum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 10_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, false)?;
-        add_extends(&mut maximum, &family)?;
-        let mut value = new_descriptor_holon(
-            &context,
-            "integer-value",
-            &core_value_type_name(CoreValueTypeName::IntegerValueType),
-            "Value",
-        )?;
-        value.add_related_holons(
-            CoreRelationshipTypeName::Constraints,
-            vec![minimum.into(), maximum.into()],
-        )?;
-
-        let descriptor = IntegerValueDescriptor::from_holon(value.into());
-
-        assert!(matches!(
-            descriptor.is_valid(&integer_value(5)),
-            Err(HolonError::IntegerOutOfRange { value: 5, min: Some(5), min_inclusive: false, .. })
-        ));
-        assert!(descriptor.is_valid(&integer_value(6)).is_ok());
-        assert!(descriptor.is_valid(&integer_value(9)).is_ok());
-        assert!(matches!(
-            descriptor.is_valid(&integer_value(10)),
-            Err(HolonError::IntegerOutOfRange {
-                value: 10,
-                max: Some(10),
-                max_inclusive: false,
-                ..
-            })
-        ));
-        Ok(())
-    }
-
-    #[test]
-    fn is_valid_composes_inherited_and_local_integer_constraints() -> Result<(), HolonError> {
-        let context = build_context();
-        let family = new_descriptor_holon(
-            &context,
-            "integer-constraint-family",
-            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
-            "Holon",
-        )?;
-        let mut inherited_minimum = new_descriptor_holon(
-            &context,
-            "inherited-minimum",
-            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
-            "Holon",
-        )?;
-        inherited_minimum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
-        add_extends(&mut inherited_minimum, &family)?;
-        let mut local_minimum = new_descriptor_holon(
-            &context,
-            "local-minimum",
-            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
-            "Holon",
-        )?;
-        local_minimum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 10_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
-        add_extends(&mut local_minimum, &family)?;
-
-        let mut parent = new_descriptor_holon(
-            &context,
-            "parent-value",
-            &core_value_type_name(CoreValueTypeName::IntegerValueType),
-            "Value",
-        )?;
-        parent.add_related_holons(
-            CoreRelationshipTypeName::Constraints,
-            vec![inherited_minimum.into()],
-        )?;
-        let mut child =
-            new_descriptor_holon(&context, "child-value", "ConstrainedIntegerValueType", "Value")?;
-        add_extends(&mut child, &parent)?;
-        child.add_related_holons(
-            CoreRelationshipTypeName::Constraints,
-            vec![local_minimum.into()],
-        )?;
-
-        let descriptor = IntegerValueDescriptor::from_holon(child.into());
-
-        assert!(matches!(
-            descriptor.is_valid(&integer_value(7)),
-            Err(HolonError::IntegerOutOfRange { value: 7, min: Some(10), .. })
-        ));
-        assert!(descriptor.is_valid(&integer_value(10)).is_ok());
         Ok(())
     }
 

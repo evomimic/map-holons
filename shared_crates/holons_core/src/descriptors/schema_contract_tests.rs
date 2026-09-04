@@ -42,7 +42,6 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
     let property = new_property_descriptor_holon(
         &context,
         "title-property",
-        "TitleProperty",
         "Title",
         true,
         HolonReference::from(&value_type),
@@ -103,8 +102,8 @@ fn descriptor_wrappers_compose_over_minimal_schema_shaped_graph() -> Result<(), 
     )?;
 
     let book_descriptor = HolonDescriptor::from_holon(book.into());
-    let title_property = book_descriptor
-        .get_property_by_name(PropertyName(MapString("TitleProperty".to_string())))?;
+    let title_property =
+        book_descriptor.get_property_by_name(PropertyName(MapString("Title".to_string())))?;
     let declared_relationship = book_descriptor
         .get_relationship_by_name(RelationshipName(MapString("AuthoredBy".to_string())))?
         .try_into_declared_relationship_descriptor()?;

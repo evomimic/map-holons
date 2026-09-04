@@ -14,6 +14,6 @@
 //! These types are portable between guest-side and client-side environments
 //! and are designed for serialization, hashing, and consistent formatting.
 
-pub mod base_types;
+pub mod base_value_types;
 
-pub use base_types::*;
+pub use base_value_types::*;

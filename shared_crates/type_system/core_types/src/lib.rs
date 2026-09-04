@@ -9,7 +9,7 @@
 //! - **Semantic Names**: such as `PropertyName`, `RelationshipName`, and `SchemaName`
 //! - **Identifiers**: such as `LocalId`, `ExternalId`, and `HolonId`
 //! - **Structural Types**: like `PropertyMap`, `RelationshipMap`
-//! - **Type Classifiers**: such as `ValueType` and `TypeKind`
+//! - **Runtime Values**: `BaseValue` and its exhaustive `BaseValueKind` discriminant
 //!
 //! These types define the shape and meaning of data in MAP holons and descriptors,
 //! and are shared across guest and client implementations.
@@ -18,15 +18,13 @@ pub mod holon_storage;
 pub mod ids;
 pub mod loader_content;
 pub mod smartlink;
-pub mod type_kinds;
 
 pub use holon_storage::*;
 pub use ids::*;
 pub use loader_content::*;
 pub use smartlink::*;
-pub use type_kinds::*;
 
-pub use base_types::BaseValue;
+pub use base_types::{BaseValue, BaseValueKind};
 
 //Re-export selected integrity_core_types at the root.
 // Prefer explicit lists over globs to keep the API curated and stable.

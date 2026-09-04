@@ -40,16 +40,6 @@ impl RelationshipDescriptor {
         accessor_helpers::relationship_allows_duplicates(&self.holon)
     }
 
-    /// Returns the minimum number of targets permitted by this relationship.
-    pub fn min_cardinality(&self) -> Result<i64, HolonError> {
-        accessor_helpers::relationship_min_cardinality(&self.holon)
-    }
-
-    /// Returns the maximum number of targets permitted by this relationship.
-    pub fn max_cardinality(&self) -> Result<i64, HolonError> {
-        accessor_helpers::relationship_max_cardinality(&self.holon)
-    }
-
     /// Returns the optional deletion semantic declared by this relationship, when populated.
     pub fn deletion_semantic(&self) -> Result<Option<MapString>, HolonError> {
         accessor_helpers::relationship_deletion_semantic(&self.holon)
@@ -149,8 +139,6 @@ mod tests {
             .with_property_value(CorePropertyTypeName::IsDefinitional, true)?
             .with_property_value(CorePropertyTypeName::IsOrdered, false)?
             .with_property_value(CorePropertyTypeName::AllowsDuplicates, false)?
-            .with_property_value(CorePropertyTypeName::MinCardinality, 1_i64)?
-            .with_property_value(CorePropertyTypeName::MaxCardinality, 3_i64)?
             .with_property_value(CorePropertyTypeName::DeletionSemantic, "Block")?;
         holon.add_related_holons(CoreRelationshipTypeName::SourceType, vec![source_type.into()])?;
         holon.add_related_holons(CoreRelationshipTypeName::TargetType, vec![target_type.into()])?;
@@ -160,8 +148,6 @@ mod tests {
         assert!(descriptor.is_definitional()?);
         assert!(!descriptor.is_ordered()?);
         assert!(!descriptor.allows_duplicates()?);
-        assert_eq!(descriptor.min_cardinality()?, 1);
-        assert_eq!(descriptor.max_cardinality()?, 3);
         assert_eq!(descriptor.deletion_semantic()?, Some(MapString("Block".to_string())));
         assert_eq!(descriptor.base_relationship_name()?.to_string(), "WrittenBy");
         assert_eq!(descriptor.source_type()?.header().type_name()?, MapString("Book".to_string()));
@@ -230,56 +216,6 @@ mod tests {
         assert!(matches!(
             descriptor.allows_duplicates(),
             Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn cardinality_accessors_error_when_required_fields_are_missing() -> Result<(), HolonError> {
-        let context = build_context();
-        let holon = new_descriptor_holon(
-            &context,
-            "relationship-missing-cardinalities",
-            "MissingCardinalities",
-            "Relationship",
-        )?;
-        let descriptor = RelationshipDescriptor::from_holon(holon.into());
-
-        assert!(matches!(
-            descriptor.min_cardinality(),
-            Err(HolonError::EmptyField(field)) if field == "MinCardinality"
-        ));
-        assert!(matches!(
-            descriptor.max_cardinality(),
-            Err(HolonError::EmptyField(field)) if field == "MaxCardinality"
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn cardinality_accessors_error_when_required_fields_have_wrong_type() -> Result<(), HolonError>
-    {
-        let context = build_context();
-        let mut holon = new_descriptor_holon(
-            &context,
-            "relationship-wrong-cardinalities",
-            "WrongCardinalities",
-            "Relationship",
-        )?;
-        holon
-            .with_property_value(CorePropertyTypeName::MinCardinality, "not-an-integer")?
-            .with_property_value(CorePropertyTypeName::MaxCardinality, "not-an-integer")?;
-        let descriptor = RelationshipDescriptor::from_holon(holon.into());
-
-        assert!(matches!(
-            descriptor.min_cardinality(),
-            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Integer"
-        ));
-        assert!(matches!(
-            descriptor.max_cardinality(),
-            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Integer"
         ));
 
         Ok(())

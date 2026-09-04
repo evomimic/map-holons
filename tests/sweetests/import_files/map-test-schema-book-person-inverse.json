@@ -37,7 +37,6 @@
         "display_name": "Book",
         "display_name_plural": "Books",
         "description": "A book.",
-        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -78,7 +77,6 @@
         "display_name": "Person",
         "display_name_plural": "People",
         "description": "A person.",
-        "instance_type_kind": "TypeKind.Holon",
         "is_abstract_type": false,
         "allows_additional_properties": false,
         "allows_additional_relationships": false
@@ -113,7 +111,6 @@
         "display_name": "AuthoredBy",
         "display_name_plural": "AuthoredBy Relationships",
         "description": "Defines the author of a book.",
-        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": true,
         "is_ordered": false,
@@ -163,7 +160,6 @@
         "display_name": "Authors",
         "display_name_plural": "Authors Relationships",
         "description": "Specifies a book that a Person has authored.  Inverse of AuthoredBy.",
-        "instance_type_kind": "TypeKind.Relationship",
         "is_abstract_type": false,
         "is_definitional": false,
         "is_ordered": false,
@@ -207,7 +203,6 @@
         "display_name": "Name",
         "display_name_plural": "Names",
         "description": "Proper name.",
-        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [
@@ -240,7 +235,6 @@
         "display_name": "Title",
         "display_name_plural": "Title",
         "description": "A title.",
-        "instance_type_kind": "TypeKind.Property",
         "is_abstract_type": false
       },
       "relationships": [

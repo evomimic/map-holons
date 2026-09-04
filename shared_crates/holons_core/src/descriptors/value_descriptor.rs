@@ -12,7 +12,7 @@ use crate::descriptors::{
     StringValueDescriptor, TypeHeader, ValueArrayDescriptor,
 };
 use crate::reference_layer::HolonReference;
-use base_types::BaseValue;
+use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
 use type_names::{CoreOperatorTypeName, ToOperatorName};
 
@@ -40,17 +40,22 @@ impl ValueDescriptor {
     /// Validates a runtime value against this descriptor's semantic value kind.
     pub fn is_valid(&self, value: &BaseValue) -> Result<(), HolonError> {
         match self.value_kind()? {
-            ValueKind::Integer => {
+            ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => {
                 IntegerValueDescriptor::from_holon(self.holon.clone()).is_valid(value)
             }
-            ValueKind::String => {
+            ValueDescriptorKind::BaseValue(BaseValueKind::String) => {
                 StringValueDescriptor::from_holon(self.holon.clone()).is_valid(value)
             }
-            ValueKind::Boolean => self.validate_boolean(value),
-            ValueKind::Enum => EnumValueDescriptor::from_holon(self.holon.clone()).is_valid(value),
-            ValueKind::Bytes => self.validate_bytes(value),
-            ValueKind::Array => Err(self.value_kind_mismatch("Array", value)),
-            ValueKind::Other(found) => Err(self.wrong_value_kind(found)),
+            ValueDescriptorKind::BaseValue(BaseValueKind::Boolean) => self.validate_boolean(value),
+            ValueDescriptorKind::BaseValue(BaseValueKind::Enum) => {
+                EnumValueDescriptor::from_holon(self.holon.clone()).is_valid(value)
+            }
+            ValueDescriptorKind::BaseValue(BaseValueKind::Bytes) => self.validate_bytes(value),
+            ValueDescriptorKind::AnyBaseValue => Ok(()),
+            ValueDescriptorKind::ValueArray => {
+                Err(HolonError::NotImplemented("ValueArray validation".to_string()))
+            }
+            ValueDescriptorKind::Unsupported(found) => Err(self.wrong_value_kind(found)),
         }
     }
 
@@ -126,7 +131,7 @@ impl ValueDescriptor {
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
         let value_kind = self.value_kind()?;
-        if let ValueKind::Other(found) = value_kind {
+        if let ValueDescriptorKind::Unsupported(found) = value_kind {
             return Err(self.wrong_value_kind(found));
         }
 
@@ -135,27 +140,34 @@ impl ValueDescriptor {
         }
 
         match value_kind {
-            ValueKind::Integer => {
+            ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => {
                 IntegerValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
             }
-            ValueKind::String => {
+            ValueDescriptorKind::BaseValue(BaseValueKind::String) => {
                 StringValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
             }
-            ValueKind::Boolean => self.apply_boolean_operator(op, lhs, rhs),
-            ValueKind::Enum => {
+            ValueDescriptorKind::BaseValue(BaseValueKind::Boolean) => {
+                self.apply_boolean_operator(op, lhs, rhs)
+            }
+            ValueDescriptorKind::BaseValue(BaseValueKind::Enum) => {
                 EnumValueDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
             }
-            ValueKind::Bytes => self.apply_bytes_operator(op, lhs, rhs),
-            ValueKind::Array => {
+            ValueDescriptorKind::BaseValue(BaseValueKind::Bytes) => {
+                self.apply_bytes_operator(op, lhs, rhs)
+            }
+            ValueDescriptorKind::AnyBaseValue => self.unsupported_operator(op),
+            ValueDescriptorKind::ValueArray => {
                 // Array execution is explicitly deferred; arrays may expose
                 // affordances structurally before they have runtime semantics.
                 ValueArrayDescriptor::from_holon(self.holon.clone()).apply_operator(op, lhs, rhs)
             }
-            ValueKind::Other(_) => unreachable!("Other returns before affordance checks"),
+            ValueDescriptorKind::Unsupported(_) => {
+                unreachable!("Unsupported returns before affordance checks")
+            }
         }
     }
 
-    fn value_kind(&self) -> Result<ValueKind, HolonError> {
+    fn value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
         let mut first_type_name = None;
 
         for ancestor in walk_extends_chain(&self.holon) {
@@ -166,30 +178,49 @@ impl ValueDescriptor {
             }
 
             match type_name.0.as_str() {
-                "IntegerValueType" => return Ok(ValueKind::Integer),
-                "StringValueType" => return Ok(ValueKind::String),
-                "BooleanValueType" => return Ok(ValueKind::Boolean),
-                "EnumValueType" => return Ok(ValueKind::Enum),
-                "BytesValueType" => return Ok(ValueKind::Bytes),
-                "ValueArrayValueType" => return Ok(ValueKind::Array),
+                "IntegerValueType" => {
+                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Integer))
+                }
+                "StringValueType" => {
+                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::String))
+                }
+                "BooleanValueType" => {
+                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Boolean))
+                }
+                "EnumValueType" => return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Enum)),
+                "BytesValueType" => {
+                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Bytes))
+                }
+                // Transitional exception: the graph does not yet expose an identity-based
+                // representation discriminator. Do not copy or generalize this projection.
+                "BaseValueValueType" => return Ok(ValueDescriptorKind::AnyBaseValue),
+                "ValueArrayValueType" => return Ok(ValueDescriptorKind::ValueArray),
                 _ => {}
             }
         }
 
-        Ok(ValueKind::Other(first_type_name.unwrap_or_else(|| "unknown".to_string())))
+        Ok(ValueDescriptorKind::Unsupported(
+            first_type_name.unwrap_or_else(|| "unknown".to_string()),
+        ))
     }
 
     fn validate_boolean(&self, value: &BaseValue) -> Result<(), HolonError> {
-        match value {
-            BaseValue::BooleanValue(_) => Ok(()),
-            other => Err(self.value_kind_mismatch("Boolean", other)),
+        match value.kind() {
+            BaseValueKind::Boolean => Ok(()),
+            BaseValueKind::String
+            | BaseValueKind::Integer
+            | BaseValueKind::Enum
+            | BaseValueKind::Bytes => Err(self.value_kind_mismatch("Boolean", value)),
         }
     }
 
     fn validate_bytes(&self, value: &BaseValue) -> Result<(), HolonError> {
-        match value {
-            BaseValue::BytesValue(_) => Ok(()),
-            other => Err(self.value_kind_mismatch("Bytes", other)),
+        match value.kind() {
+            BaseValueKind::Bytes => Ok(()),
+            BaseValueKind::String
+            | BaseValueKind::Boolean
+            | BaseValueKind::Integer
+            | BaseValueKind::Enum => Err(self.value_kind_mismatch("Bytes", value)),
         }
     }
 
@@ -245,7 +276,7 @@ impl ValueDescriptor {
 
     fn wrong_value_kind(&self, found: String) -> HolonError {
         HolonError::WrongDescriptorKind {
-            expected: "IntegerValueType, StringValueType, BooleanValueType, BytesValueType, EnumValueType, or ValueArrayValueType".to_string(),
+            expected: "IntegerValueType, StringValueType, BooleanValueType, BytesValueType, EnumValueType, BaseValueValueType, or ValueArrayValueType".to_string(),
             found,
             descriptor: accessor_helpers::descriptor_label(&self.holon),
         }
@@ -253,14 +284,11 @@ impl ValueDescriptor {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum ValueKind {
-    Integer,
-    String,
-    Boolean,
-    Enum,
-    Bytes,
-    Array,
-    Other(String),
+enum ValueDescriptorKind {
+    BaseValue(BaseValueKind),
+    AnyBaseValue,
+    ValueArray,
+    Unsupported(String),
 }
 
 impl From<HolonReference> for ValueDescriptor {
@@ -285,15 +313,11 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{
-        build_context, core_holon_type_name, core_value_type_name, new_descriptor_holon,
-    };
+    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
     use crate::reference_layer::WritableHolon;
     use base_types::{MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
     use core_types::HolonError;
-    use type_names::{
-        CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
-    };
+    use type_names::CoreRelationshipTypeName;
 
     #[test]
     fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {
@@ -331,76 +355,6 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_dispatches_integer_constraint_failures() -> Result<(), HolonError> {
-        let context = build_context();
-        let family = new_descriptor_holon(
-            &context,
-            "integer-constraint-family",
-            &core_holon_type_name(CoreHolonTypeName::IntegerValueConstraint),
-            "Holon",
-        )?;
-        let mut minimum = new_descriptor_holon(
-            &context,
-            "minimum",
-            &core_holon_type_name(CoreHolonTypeName::MinimumValue),
-            "Holon",
-        )?;
-        minimum
-            .with_property_value(CorePropertyTypeName::ConstraintIntegerValue, 5_i64)?
-            .with_property_value(CorePropertyTypeName::ConstraintIsInclusive, true)?;
-        minimum.add_related_holons(CoreRelationshipTypeName::Extends, vec![family.into()])?;
-        let mut value = new_descriptor_holon(
-            &context,
-            "integer-value",
-            &core_value_type_name(CoreValueTypeName::IntegerValueType),
-            "Value",
-        )?;
-        value.add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
-
-        let descriptor = ValueDescriptor::from_holon(value.into());
-
-        assert!(matches!(
-            descriptor.is_valid(&BaseValue::IntegerValue(MapInteger(4))),
-            Err(HolonError::IntegerOutOfRange { value: 4, min: Some(5), .. })
-        ));
-        Ok(())
-    }
-
-    #[test]
-    fn is_valid_dispatches_string_constraint_failures() -> Result<(), HolonError> {
-        let context = build_context();
-        let family = new_descriptor_holon(
-            &context,
-            "string-constraint-family",
-            &core_holon_type_name(CoreHolonTypeName::StringValueConstraint),
-            "Holon",
-        )?;
-        let mut minimum = new_descriptor_holon(
-            &context,
-            "minimum",
-            &core_holon_type_name(CoreHolonTypeName::MinimumLength),
-            "Holon",
-        )?;
-        minimum.with_property_value(CorePropertyTypeName::ConstraintLength, 3_i64)?;
-        minimum.add_related_holons(CoreRelationshipTypeName::Extends, vec![family.into()])?;
-        let mut value = new_descriptor_holon(
-            &context,
-            "string-value",
-            &core_value_type_name(CoreValueTypeName::StringValueType),
-            "Value",
-        )?;
-        value.add_related_holons(CoreRelationshipTypeName::Constraints, vec![minimum.into()])?;
-
-        let descriptor = ValueDescriptor::from_holon(value.into());
-
-        assert!(matches!(
-            descriptor.is_valid(&BaseValue::StringValue(MapString("hi".to_string()))),
-            Err(HolonError::StringLengthOutOfRange { length: 2, min: Some(3), .. })
-        ));
-        Ok(())
-    }
-
-    #[test]
     fn is_valid_handles_boolean_inline() -> Result<(), HolonError> {
         let context = build_context();
         let boolean = ValueDescriptor::from_holon(
@@ -429,6 +383,44 @@ mod tests {
             bytes.is_valid(&BaseValue::StringValue(MapString("010203".to_string()))),
             Err(HolonError::ValueKindMismatch { expected, found, .. })
                 if expected == "Bytes" && found == "String"
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn base_value_value_type_accepts_every_base_value_kind() -> Result<(), HolonError> {
+        let context = build_context();
+        let descriptor = ValueDescriptor::from_holon(
+            new_descriptor_holon(&context, "base-value-type", "BaseValueValueType", "Value")?
+                .into(),
+        );
+        let values = [
+            BaseValue::StringValue(MapString("value".to_string())),
+            BaseValue::BooleanValue(MapBoolean(true)),
+            BaseValue::IntegerValue(MapInteger(42)),
+            BaseValue::EnumValue(MapEnumValue(MapString("Member".to_string()))),
+            BaseValue::BytesValue(MapBytes(vec![1, 2, 3])),
+        ];
+
+        for value in values {
+            descriptor.is_valid(&value)?;
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn value_array_validation_is_explicitly_deferred() -> Result<(), HolonError> {
+        let context = build_context();
+        let descriptor = ValueDescriptor::from_holon(
+            new_descriptor_holon(&context, "value-array-type", "ValueArrayValueType", "Value")?
+                .into(),
+        );
+
+        assert!(matches!(
+            descriptor.is_valid(&BaseValue::StringValue(MapString("item".to_string()))),
+            Err(HolonError::NotImplemented(message)) if message == "ValueArray validation"
         ));
 
         Ok(())

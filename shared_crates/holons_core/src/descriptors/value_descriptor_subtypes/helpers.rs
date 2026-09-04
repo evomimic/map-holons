@@ -5,16 +5,6 @@ use base_types::BaseValue;
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 
-fn base_value_kind(value: &BaseValue) -> &'static str {
-    match value {
-        BaseValue::StringValue(_) => "String",
-        BaseValue::BooleanValue(_) => "Boolean",
-        BaseValue::IntegerValue(_) => "Integer",
-        BaseValue::EnumValue(_) => "Enum",
-        BaseValue::BytesValue(_) => "Bytes",
-    }
-}
-
 pub(crate) fn value_type_name(holon: &HolonReference) -> Result<String, HolonError> {
     Ok(TypeHeader::new(holon).type_name()?.to_string())
 }
@@ -26,7 +16,7 @@ pub(crate) fn value_kind_mismatch(
 ) -> HolonError {
     HolonError::ValueKindMismatch {
         expected: expected.to_string(),
-        found: base_value_kind(found).to_string(),
+        found: found.kind().to_string(),
         descriptor: accessor_helpers::descriptor_label(holon),
     }
 }

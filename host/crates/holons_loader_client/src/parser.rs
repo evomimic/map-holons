@@ -565,9 +565,6 @@ mod tests {
                 {{
                   "key": "(BookType)-[Authors]->(PersonType)",
                   "type": "TypeDescriptor.HolonType",
-                  "properties": {{
-                    "instance_type_kind": "TypeKind.Relationship"
-                  }},
                   "relationships": [
                     {{ "name": "Extends", "target": {{ "$ref": "DeclaredRelationshipType" }} }}
                     {declared_relationships}
@@ -576,9 +573,6 @@ mod tests {
                 {{
                   "key": "(PersonType)-[AuthoredBy]->(BookType)",
                   "type": "TypeDescriptor.HolonType",
-                  "properties": {{
-                    "instance_type_kind": "TypeKind.Relationship"
-                  }},
                   "relationships": [
                     {{ "name": "Extends", "target": {{ "$ref": "InverseRelationshipType" }} }}
                     {inverse_relationships}
@@ -595,9 +589,6 @@ mod tests {
             {
               "key": "(BookType)-[Authors]->(PersonType)",
               "type": "TypeDescriptor.HolonType",
-              "properties": {
-                "instance_type_kind": "TypeKind.Relationship"
-              },
               "relationships": [
                 { "name": "Extends", "target": { "$ref": "DeclaredRelationshipType" } },
                 {
@@ -611,9 +602,6 @@ mod tests {
             {
               "key": "(BookType)-[Editors]->(PersonType)",
               "type": "TypeDescriptor.HolonType",
-              "properties": {
-                "instance_type_kind": "TypeKind.Relationship"
-              },
               "relationships": [
                 { "name": "Extends", "target": { "$ref": "DeclaredRelationshipType" } },
                 {
@@ -627,9 +615,6 @@ mod tests {
             {
               "key": "(PersonType)-[AuthoredBy]->(BookType)",
               "type": "TypeDescriptor.HolonType",
-              "properties": {
-                "instance_type_kind": "TypeKind.Relationship"
-              },
               "relationships": [
                 { "name": "Extends", "target": { "$ref": "InverseRelationshipType" } }
               ]

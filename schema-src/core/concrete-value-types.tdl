@@ -25,9 +25,6 @@ value MapStringValueType.StringValueType {
     display_plural: "MapStringValueTypes"
     plural: "MapStringValueTypes"
   }
-  relationships {
-    Constraints -> Length16k.StringLengthConstraint
-  }
 }
 
 value MapIntegerValueType.IntegerValueType {

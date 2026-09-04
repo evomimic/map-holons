@@ -5,12 +5,10 @@ use crate::reference_layer::{
     HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
 };
 use base_types::MapString;
-use core_types::{BaseTypeKind, HolonError, HolonId, LocalId, RelationshipName, TypeKind};
+use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use std::any::Any;
 use std::sync::Arc;
-use type_names::{
-    CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
-};
+use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
 // Minimal fail-fast holon service for descriptor unit tests.
 //
@@ -120,50 +118,17 @@ pub(crate) fn core_holon_type_name(core_holon_type_name: CoreHolonTypeName) -> S
     core_holon_type_name.as_holon_name().to_string()
 }
 
-/// Returns the canonical schema name for a core value type.
-pub(crate) fn core_value_type_name(core_value_type_name: CoreValueTypeName) -> String {
-    core_value_type_name.as_value_name().to_string()
-}
-
-/// Creates a transient descriptor holon with the shared header properties.
-pub(crate) trait TestTypeKindInput {
-    fn as_type_kind_schema_key(&self) -> String;
-}
-
-impl TestTypeKindInput for TypeKind {
-    fn as_type_kind_schema_key(&self) -> String {
-        self.as_schema_key()
-    }
-}
-
-impl TestTypeKindInput for &str {
-    fn as_type_kind_schema_key(&self) -> String {
-        match *self {
-            "Holon" => TypeKind::Holon.as_schema_key(),
-            "Property" => TypeKind::Property.as_schema_key(),
-            "Relationship" => TypeKind::Relationship.as_schema_key(),
-            "EnumVariant" => TypeKind::EnumVariant.as_schema_key(),
-            // Existing descriptor tests use this shorthand for generic value descriptors.
-            "Value" => TypeKind::Value(BaseTypeKind::String).as_schema_key(),
-            other => other.to_string(),
-        }
-    }
-}
-
+/// Creates a transient descriptor holon with the shared local header properties.
 pub(crate) fn new_descriptor_holon(
     context: &Arc<TransactionContext>,
     key: &str,
     type_name: &str,
-    type_kind: impl TestTypeKindInput,
+    _descriptor_family: &str,
 ) -> Result<TransientReference, HolonError> {
     let mut descriptor = new_test_holon(context, key)?;
     descriptor
         .with_property_value(CorePropertyTypeName::TypeName, type_name)?
-        .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-        .with_property_value(
-            CorePropertyTypeName::InstanceTypeKind,
-            type_kind.as_type_kind_schema_key(),
-        )?;
+        .with_property_value(CorePropertyTypeName::IsAbstractType, false)?;
     Ok(descriptor)
 }
 
@@ -173,7 +138,7 @@ pub(crate) fn new_holon_type_descriptor(
     key: &str,
     type_name: &str,
 ) -> Result<TransientReference, HolonError> {
-    let mut descriptor = new_descriptor_holon(context, key, type_name, TypeKind::Holon)?;
+    let mut descriptor = new_descriptor_holon(context, key, type_name, "Holon")?;
     descriptor
         .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
         .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
@@ -185,14 +150,11 @@ pub(crate) fn new_property_descriptor_holon(
     context: &Arc<TransactionContext>,
     key: &str,
     type_name: &str,
-    property_name: &str,
     is_required: bool,
     value_type: HolonReference,
 ) -> Result<TransientReference, HolonError> {
-    let mut descriptor = new_descriptor_holon(context, key, type_name, TypeKind::Property)?;
-    descriptor
-        .with_property_value(CorePropertyTypeName::PropertyName, property_name)?
-        .with_property_value(CorePropertyTypeName::IsRequired, is_required)?;
+    let mut descriptor = new_descriptor_holon(context, key, type_name, "Property")?;
+    descriptor.with_property_value(CorePropertyTypeName::IsValueRequired, is_required)?;
     descriptor.add_related_holons(CoreRelationshipTypeName::ValueType, vec![value_type])?;
     Ok(descriptor)
 }
@@ -205,13 +167,11 @@ pub(crate) fn new_relationship_descriptor_holon(
     source_type: HolonReference,
     target_type: HolonReference,
 ) -> Result<TransientReference, HolonError> {
-    let mut descriptor = new_descriptor_holon(context, key, type_name, TypeKind::Relationship)?;
+    let mut descriptor = new_descriptor_holon(context, key, type_name, "Relationship")?;
     descriptor
         .with_property_value(CorePropertyTypeName::IsDefinitional, false)?
         .with_property_value(CorePropertyTypeName::IsOrdered, false)?
-        .with_property_value(CorePropertyTypeName::AllowsDuplicates, false)?
-        .with_property_value(CorePropertyTypeName::MinCardinality, 0_i64)?
-        .with_property_value(CorePropertyTypeName::MaxCardinality, 1_i64)?;
+        .with_property_value(CorePropertyTypeName::AllowsDuplicates, false)?;
     descriptor.add_related_holons(CoreRelationshipTypeName::SourceType, vec![source_type])?;
     descriptor.add_related_holons(CoreRelationshipTypeName::TargetType, vec![target_type])?;
     Ok(descriptor)
@@ -228,7 +188,7 @@ pub(crate) fn new_declared_relationship_type_descriptor(
         context,
         key,
         &core_holon_type_name(CoreHolonTypeName::DeclaredRelationshipType),
-        TypeKind::Relationship,
+        "Relationship",
     )
 }
 
