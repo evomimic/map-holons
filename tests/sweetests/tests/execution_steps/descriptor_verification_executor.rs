@@ -1,8 +1,9 @@
-use core_types::{HolonId, TypeKind};
+use core_types::HolonId;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::{
     DanceDescriptor, DeclaredRelationshipDescriptor, HolonDescriptor, OperatorCategory,
-    OperatorDescriptor, RelationshipDescriptor, ValueDescriptor,
+    OperatorDescriptor, PropertyDescriptor, RelationshipDescriptor, ValueArrayDescriptor,
+    ValueDescriptor,
 };
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
@@ -256,7 +257,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
     let projection = find_holon_by_key(holons, "Projection.HolonType");
 
     let mut query_response_type =
-        new_descriptor_holon(&context, "query-response-type", "QueryResponseType", TypeKind::Holon)
+        new_descriptor_holon(&context, "query-response-type", "QueryResponseType", "Holon")
             .expect("query response type");
     query_response_type
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_response_type.clone()])
@@ -265,13 +266,9 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .add_related_holons(CoreRelationshipTypeName::ResponseBody, vec![projection.clone()])
         .expect("QueryResponseType response body");
 
-    let mut inspect_response_type = new_descriptor_holon(
-        &context,
-        "inspect-response-type",
-        "InspectResponseType",
-        TypeKind::Holon,
-    )
-    .expect("inspect response type");
+    let mut inspect_response_type =
+        new_descriptor_holon(&context, "inspect-response-type", "InspectResponseType", "Holon")
+            .expect("inspect response type");
     inspect_response_type
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_response_type.clone()])
         .expect("InspectResponseType extends DanceResponseType");
@@ -280,8 +277,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("InspectResponseType response body");
 
     let mut query_dance =
-        new_descriptor_holon(&context, "query-dance-type", "Query", TypeKind::Holon)
-            .expect("Query dance");
+        new_descriptor_holon(&context, "query-dance-type", "Query", "Holon").expect("Query dance");
     query_dance
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
         .expect("Query extends DanceType");
@@ -296,7 +292,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("Query response");
 
     let mut inspect_dance =
-        new_descriptor_holon(&context, "inspect-dance-type", "Inspect", TypeKind::Holon)
+        new_descriptor_holon(&context, "inspect-dance-type", "Inspect", "Holon")
             .expect("Inspect dance");
     inspect_dance
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![dance_type.clone()])
@@ -312,7 +308,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("Inspect response");
 
     let mut parent_owner =
-        new_descriptor_holon(&context, "dance-parent-owner", "DanceParentOwner", TypeKind::Holon)
+        new_descriptor_holon(&context, "dance-parent-owner", "DanceParentOwner", "Holon")
             .expect("dance parent owner");
     parent_owner
         .add_related_holons(CoreRelationshipTypeName::Extends, vec![holon_type.clone()])
@@ -325,7 +321,7 @@ async fn assert_loaded_schema_backed_dance_discovery(
         .expect("DanceParentOwner affords Query");
 
     let mut child_owner =
-        new_descriptor_holon(&context, "dance-child-owner", "DanceChildOwner", TypeKind::Holon)
+        new_descriptor_holon(&context, "dance-child-owner", "DanceChildOwner", "Holon")
             .expect("dance child owner");
     child_owner
         .add_related_holons(
@@ -496,6 +492,59 @@ pub async fn execute_verify_core_schema_value_semantics(state: &mut TestExecutio
         equals.operator_category().expect("EqualsOperator operator_category"),
         OperatorCategory::Equality
     );
+
+    let map_string = ValueDescriptor::from_holon(find_holon_by_key(
+        &holons,
+        "MapStringValueType.StringValueType",
+    ));
+    map_string
+        .is_valid(&BaseValue::StringValue(MapString("canonical string".to_string())))
+        .expect("MapStringValueType must accept its canonical string representation");
+
+    let any_base_value =
+        ValueDescriptor::from_holon(find_holon_by_key(&holons, "BaseValueValueType.ValueType"));
+    for value in [
+        BaseValue::StringValue(MapString("value".to_string())),
+        BaseValue::BooleanValue(MapBoolean(true)),
+        BaseValue::IntegerValue(MapInteger(42)),
+        BaseValue::EnumValue(MapEnumValue(MapString("Member".to_string()))),
+        BaseValue::BytesValue(MapBytes(vec![1, 2, 3])),
+    ] {
+        any_base_value
+            .is_valid(&value)
+            .unwrap_or_else(|error| panic!("BaseValueValueType rejected {value:?}: {error:?}"));
+    }
+    assert!(matches!(
+        any_base_value.apply_operator(
+            &equals,
+            &BaseValue::IntegerValue(MapInteger(1)),
+            &BaseValue::IntegerValue(MapInteger(1)),
+        ),
+        Err(HolonError::UnsupportedOperator { .. })
+    ));
+
+    let value_array_holon = find_holon_by_key(&holons, "ValueArrayValueType.ValueType");
+    let value_array = ValueDescriptor::from_holon(value_array_holon.clone());
+    assert!(matches!(
+        value_array.is_valid(&BaseValue::StringValue(MapString("item".to_string()))),
+        Err(HolonError::NotImplemented(message)) if message == "ValueArray validation"
+    ));
+    assert!(matches!(
+        ValueArrayDescriptor::from_holon(value_array_holon).apply_operator(
+            &equals,
+            &BaseValue::StringValue(MapString("left".to_string())),
+            &BaseValue::StringValue(MapString("right".to_string())),
+        ),
+        Err(HolonError::UnsupportedOperator { .. })
+    ));
+
+    let type_name_property =
+        PropertyDescriptor::from_holon(find_holon_by_key(&holons, "TypeName.PropertyType"));
+    assert_eq!(
+        type_name_property.property_name().expect("TypeName property name"),
+        PropertyName(MapString("TypeName".to_string()))
+    );
+    assert!(type_name_property.is_required().expect("TypeName requiredness"));
 
     let integer =
         ValueDescriptor::from_holon(find_holon_by_key(&holons, "IntegerValueType.ValueType"));
@@ -907,13 +956,12 @@ fn new_descriptor_holon(
     context: &Arc<TransactionContext>,
     key: &str,
     type_name: &str,
-    type_kind: TypeKind,
+    _descriptor_family: &str,
 ) -> Result<TransientReference, HolonError> {
     let mut descriptor = context.mutation().new_holon(Some(MapString(key.to_string())))?;
     descriptor
         .with_property_value(CorePropertyTypeName::TypeName, type_name)?
         .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-        .with_property_value(CorePropertyTypeName::InstanceTypeKind, type_kind.as_schema_key())?
         .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
         .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
     Ok(descriptor)

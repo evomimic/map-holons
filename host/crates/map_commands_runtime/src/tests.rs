@@ -48,7 +48,6 @@ impl HolonServiceApi for TestHolonService {
             context.mutation().new_holon(Some(MapString::from("commit-response")))?;
         response.with_property_value("TypeName", "CommitResponseType")?;
         response.with_property_value("IsAbstractType", false)?;
-        response.with_property_value("InstanceTypeKind", "Holon")?;
         response.with_property_value("CommitRequestStatus", "Complete")?;
         Ok(response)
     }
@@ -151,7 +150,6 @@ fn minimally_described_transient(
     descriptor
         .with_property_value("TypeName", "ReadableType")
         .and_then(|descriptor| descriptor.with_property_value("IsAbstractType", false))
-        .and_then(|descriptor| descriptor.with_property_value("InstanceTypeKind", "Holon"))
         .and_then(|descriptor| descriptor.with_property_value("AllowsAdditionalProperties", false))
         .and_then(|descriptor| {
             descriptor.with_property_value("AllowsAdditionalRelationships", false)

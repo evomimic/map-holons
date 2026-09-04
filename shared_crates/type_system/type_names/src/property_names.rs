@@ -77,9 +77,6 @@ pub enum CorePropertyTypeName {
     CommitRequestStatus,
     CommitsAttempted,
     Context,
-    ConstraintIntegerValue,
-    ConstraintIsInclusive,
-    ConstraintLength,
     DanceDescription,
     DanceDiagnosticSeverity,
     DanceName,
@@ -100,7 +97,6 @@ pub enum CorePropertyTypeName {
     HolonSpaceName,
     HolonsStaged,
     InstanceDeletionAllowed,
-    InstanceTypeKind,
     IsAbstractType,
     IsDefinitional,
     IsOrdered,
@@ -114,8 +110,6 @@ pub enum CorePropertyTypeName {
     MapBytes,
     MapInteger,
     MapString,
-    MaxCardinality,
-    MinCardinality,
     OperatorCategory,
     ProxyKey,
     ProxyId,
@@ -175,8 +169,8 @@ mod tests {
     #[test]
     fn test_to_property_name_str_and_string() {
         assert_eq!(
-            PropertyName(MapString("InstanceTypeKind".to_string())),
-            "instance_type_kind".to_property_name() // canonicalized
+            PropertyName(MapString("IsValueRequired".to_string())),
+            "is_value_required".to_property_name() // canonicalized
         );
         assert_eq!(
             PropertyName(MapString("AlreadyCanonical".to_string())),

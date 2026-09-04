@@ -123,35 +123,6 @@ enum ValidationSeverity.MapEnumValueType {
   }
 }
 
-enum ValidationBlockingBehavior.MapEnumValueType {
-  type MetaEnumValueType.MetaValueType
-  extends MapEnumValueType.EnumValueType
-  header {
-    description: "Minimum operation-blocking behavior for a ValidationRule."
-    display_name: "Validation Blocking Behavior"
-    display_plural: "Validation Blocking Behaviors"
-    plural: "ValidationBlockingBehaviors"
-  }
-  variants {
-    variant Advisory {
-      type MetaEnumVariantValueType.MetaValueType
-      extends MapEnumVariantValueType.EnumVariantValueType
-      header {
-        description: "The rule may report results without blocking commit."
-        display_name: "Advisory"
-      }
-    }
-    variant CommitBlocking {
-      type MetaEnumVariantValueType.MetaValueType
-      extends MapEnumVariantValueType.EnumVariantValueType
-      header {
-        description: "The rule blocks commit when it fails in a commit-oriented validation profile."
-        display_name: "Commit Blocking"
-      }
-    }
-  }
-}
-
 enum ValidationDeterminismClass.MapEnumValueType {
   type MetaEnumValueType.MetaValueType
   extends MapEnumValueType.EnumValueType
@@ -191,32 +162,6 @@ property ValidationLevel.PropertyType {
     display_name: "validation_level"
     display_plural: "validation_levels"
     plural: "ValidationLevels"
-  }
-}
-
-property DefaultSeverity.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value ValidationSeverity.MapEnumValueType
-  IsValueRequired true
-  header {
-    description: "Default severity emitted by a failing ValidationRule."
-    display_name: "default_severity"
-    display_plural: "default_severities"
-    plural: "DefaultSeverities"
-  }
-}
-
-property MinimumBlockingBehavior.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value ValidationBlockingBehavior.MapEnumValueType
-  IsValueRequired true
-  header {
-    description: "Weakest blocking behavior a binding or profile may apply to a ValidationRule."
-    display_name: "minimum_blocking_behavior"
-    display_plural: "minimum_blocking_behaviors"
-    plural: "MinimumBlockingBehaviors"
   }
 }
 
@@ -282,8 +227,6 @@ abstract holon ValidationRule.HolonType {
   relationships {
     InstanceProperties -> [
       ValidationLevel.PropertyType,
-      DefaultSeverity.PropertyType,
-      MinimumBlockingBehavior.PropertyType,
       DeterminismClass.PropertyType,
       SemanticAuthority.PropertyType,
       ValidationRuleDescription.PropertyType
@@ -451,8 +394,6 @@ inverse relationship (ValidationRule.HolonType)-[ValidationBindingFor]->(TypeDes
 instance AtMostOneDirectParent.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-002"
   ValidationRuleDescription "A holon has at most one direct Extends parent."
@@ -462,8 +403,6 @@ instance AtMostOneDirectParent.ValidationRule {
 instance AcyclicExtendsLineage.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-003"
   ValidationRuleDescription "A descriptor Extends lineage must be acyclic."
@@ -473,8 +412,6 @@ instance AcyclicExtendsLineage.ValidationRule {
 instance ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-004"
   ValidationRuleDescription "A parented descriptor lineage must terminate at TypeDescriptor."
@@ -484,8 +421,6 @@ instance ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule {
 instance UniqueTypeDescriptorRoot.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-STRUCT-005"
   ValidationRuleDescription "TypeDescriptor is the unique root of the descriptor hierarchy."
@@ -495,8 +430,6 @@ instance UniqueTypeDescriptorRoot.ValidationRule {
 instance SchemaDependenciesAcyclic.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-SCHEMA-001"
   ValidationRuleDescription "Versioned schema dependency relationships must be acyclic."
@@ -506,30 +439,15 @@ instance SchemaDependenciesAcyclic.ValidationRule {
 instance CrossSchemaDependenciesDeclared.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-SCHEMA-002"
   ValidationRuleDescription "Every cross-schema reference must have a direct schema dependency declaration."
   rule_of "MAP Core Schema-v0.0.7"
 }
 
-instance CoreAccumulatorsAreAdditive.ValidationRule {
-  type HolonValidationRule.HolonType
-  ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
-  DeterminismClass Deterministic
-  SemanticAuthority "DS-SCHEMA-003"
-  ValidationRuleDescription "Core contract, behavior, and operator accumulator relationships must declare Additive inheritance."
-  rule_of "MAP Core Schema-v0.0.7"
-}
-
 instance LocalInstanceKindAnchorDesignation.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-001"
   ValidationRuleDescription "Instance TypeKind anchor designation is local and singular."
@@ -539,8 +457,6 @@ instance LocalInstanceKindAnchorDesignation.ValidationRule {
 instance InstanceKindAnchorsAreAbstract.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-002"
   ValidationRuleDescription "Every Instance TypeKind anchor must be abstract."
@@ -550,8 +466,6 @@ instance InstanceKindAnchorsAreAbstract.ValidationRule {
 instance TypeDescriptorRootKindException.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-003"
   ValidationRuleDescription "TypeDescriptor is the only descriptor root that lacks an Instance TypeKind anchor."
@@ -561,8 +475,6 @@ instance TypeDescriptorRootKindException.ValidationRule {
 instance DescribingCategoryCompatibility.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-004"
   ValidationRuleDescription "Every describing type must belong to the required describing category."
@@ -572,8 +484,6 @@ instance DescribingCategoryCompatibility.ValidationRule {
 instance DescriptorMetaTypeCorrespondence.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KIND-005"
   ValidationRuleDescription "Descriptor holons, and only descriptor holons, must use meta-type describers."
@@ -583,8 +493,6 @@ instance DescriptorMetaTypeCorrespondence.ValidationRule {
 instance NoInheritedMemberRedeclaration.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-001"
   ValidationRuleDescription "A descriptor must not redundantly redeclare an inherited member."
@@ -594,8 +502,6 @@ instance NoInheritedMemberRedeclaration.ValidationRule {
 instance UniqueSemanticMemberNames.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-002"
   ValidationRuleDescription "Effective semantic member names must be unique within each namespace."
@@ -605,8 +511,6 @@ instance UniqueSemanticMemberNames.ValidationRule {
 instance WellFormedEffectiveMemberDefinitions.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-003"
   ValidationRuleDescription "Every effective member definition must be well formed."
@@ -616,8 +520,6 @@ instance WellFormedEffectiveMemberDefinitions.ValidationRule {
 instance ContractMemberKindCompatibility.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONTRACT-004"
   ValidationRuleDescription "Every effective contract member must have the required instance kind."
@@ -627,8 +529,6 @@ instance ContractMemberKindCompatibility.ValidationRule {
 instance InheritedValueConstraintNonRelaxation.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONSTRAINT-001"
   ValidationRuleDescription "A ValueType subtype must not relax a value constraint inherited through its Extends lineage."
@@ -638,8 +538,6 @@ instance InheritedValueConstraintNonRelaxation.ValidationRule {
 instance DefaultsRequireRequiredProperties.ValidationRule {
   type PropertyValidationRule.HolonType
   ValidationLevel Property
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-001"
   ValidationRuleDescription "Only required properties may declare defaults."
@@ -649,8 +547,6 @@ instance DefaultsRequireRequiredProperties.ValidationRule {
 instance DefaultValueConformance.ValidationRule {
   type PropertyValidationRule.HolonType
   ValidationLevel Property
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-DEFAULT-002"
   ValidationRuleDescription "Every declared default value must conform to its effective value definition."
@@ -660,8 +556,6 @@ instance DefaultValueConformance.ValidationRule {
 instance InverseEndpointCorrespondence.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-REL-002"
   ValidationRuleDescription "Inverse relationship endpoints must correspond to declared relationship endpoints."
@@ -671,8 +565,6 @@ instance InverseEndpointCorrespondence.ValidationRule {
 instance DirectionalDeletionDeclarations.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-REL-003"
   ValidationRuleDescription "Both relationship directions must declare valid deletion semantics."
@@ -682,8 +574,6 @@ instance DirectionalDeletionDeclarations.ValidationRule {
 instance EffectiveKeyRuleSelection.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-001"
   ValidationRuleDescription "Every holon type must resolve exactly one effective instance key rule."
@@ -693,8 +583,6 @@ instance EffectiveKeyRuleSelection.ValidationRule {
 instance KeyRuleTargetCompatibility.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-002"
   ValidationRuleDescription "The selected key rule target must be compatible with and executable for the descriptor."
@@ -704,8 +592,6 @@ instance KeyRuleTargetCompatibility.ValidationRule {
 instance ExplicitKeylessBaseline.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-003"
   ValidationRuleDescription "The keyless root must be explicit and key-rule inheritance must use Override semantics."
@@ -715,8 +601,6 @@ instance ExplicitKeylessBaseline.ValidationRule {
 instance EnumMemberNamesUnique.ValidationRule {
   type EnumValueValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-ENUM-001"
   ValidationRuleDescription "Enum member names must be unique within each effective enum definition."
@@ -726,8 +610,6 @@ instance EnumMemberNamesUnique.ValidationRule {
 instance AbstractMemberMinimumEnforcement.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONFORM-002"
   ValidationRuleDescription "Minimum enforcement for abstract descriptors is member-specific."
@@ -737,8 +619,6 @@ instance AbstractMemberMinimumEnforcement.ValidationRule {
 instance UniquePropertyMemberBinding.ValidationRule {
   type PropertyValidationRule.HolonType
   ValidationLevel Property
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-BIND-001"
   ValidationRuleDescription "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."
@@ -748,8 +628,6 @@ instance UniquePropertyMemberBinding.ValidationRule {
 instance RelationshipOccurrenceGrouping.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-001"
   ValidationRuleDescription "Relationship occurrences must be grouped by resolved relationship descriptor identity."
@@ -759,8 +637,6 @@ instance RelationshipOccurrenceGrouping.ValidationRule {
 instance AdditionalRelationshipPolicy.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-004"
   ValidationRuleDescription "Every unbound relationship must be permitted by the effective additional-relationship policy."
@@ -770,8 +646,6 @@ instance AdditionalRelationshipPolicy.ValidationRule {
 instance ExplicitKeylessness.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-004"
   ValidationRuleDescription "A keyless holon must carry no semantic key."
@@ -781,8 +655,6 @@ instance ExplicitKeylessness.ValidationRule {
 instance KeyPresenceAndValue.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-KEY-005"
   ValidationRuleDescription "A keyed new holon must carry exactly the computed semantic key."
@@ -792,8 +664,6 @@ instance KeyPresenceAndValue.ValidationRule {
 instance ConcreteDescribingType.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONFORM-001"
   ValidationRuleDescription "A runtime holon must be described by a concrete descriptor that can describe instances."
@@ -803,8 +673,6 @@ instance ConcreteDescribingType.ValidationRule {
 instance NoUndescribedProperties.ValidationRule {
   type HolonValidationRule.HolonType
   ValidationLevel Holon
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-003"
   ValidationRuleDescription "Every unbound property must be permitted by the effective additional-property policy."
@@ -814,8 +682,6 @@ instance NoUndescribedProperties.ValidationRule {
 instance RequiredPropertyPresence.ValidationRule {
   type PropertyValidationRule.HolonType
   ValidationLevel Property
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-001"
   ValidationRuleDescription "A property declared required by the effective descriptor contract must be present."
@@ -825,8 +691,6 @@ instance RequiredPropertyPresence.ValidationRule {
 instance PropertyValueConformance.ValidationRule {
   type PropertyValidationRule.HolonType
   ValidationLevel Property
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-002"
   ValidationRuleDescription "A populated property value must conform to the selected ValueType descriptor."
@@ -836,52 +700,24 @@ instance PropertyValueConformance.ValidationRule {
 instance BaseValueKindMatchesString.ValidationRule {
   type StringValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by a StringValueType descriptor must use the string BaseValue representation."
   rule_of "MAP Core Schema-v0.0.7"
 }
 
-instance StringLength.ValidationRule {
-  type StringValidationRule.HolonType
-  ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
-  DeterminismClass Deterministic
-  SemanticAuthority "String constraint semantics; Unicode extended grapheme cluster counting"
-  ValidationRuleDescription "A string value must satisfy the min and max length constraints declared by its StringValueType descriptor."
-  rule_of "MAP Core Schema-v0.0.7"
-}
-
 instance BaseValueKindMatchesInteger.ValidationRule {
   type IntegerValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by an IntegerValueType descriptor must use the integer BaseValue representation."
   rule_of "MAP Core Schema-v0.0.7"
 }
 
-instance IntegerRange.ValidationRule {
-  type IntegerValidationRule.HolonType
-  ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
-  DeterminismClass Deterministic
-  SemanticAuthority "Integer constraint semantics"
-  ValidationRuleDescription "An integer value must satisfy the min and max constraints declared by its IntegerValueType descriptor."
-  rule_of "MAP Core Schema-v0.0.7"
-}
-
 instance BaseValueKindMatchesBoolean.ValidationRule {
   type BooleanValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by a BooleanValueType descriptor must use the boolean BaseValue representation."
@@ -891,8 +727,6 @@ instance BaseValueKindMatchesBoolean.ValidationRule {
 instance BaseValueKindMatchesEnum.ValidationRule {
   type EnumValueValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by an EnumValueType descriptor must use the enum BaseValue representation."
@@ -902,8 +736,6 @@ instance BaseValueKindMatchesEnum.ValidationRule {
 instance EnumTokenMembership.ValidationRule {
   type EnumValueValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-ENUM-002"
   ValidationRuleDescription "An enum value token must match one of the effective enum variants admitted by the EnumValueType descriptor."
@@ -913,8 +745,6 @@ instance EnumTokenMembership.ValidationRule {
 instance EnumTokenNonRetroactivity.ValidationRule {
   type EnumValueValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Contextual
   SemanticAuthority "DS-ENUM-003"
   ValidationRuleDescription "Enum token changes must never rewrite or alias persisted enum values."
@@ -924,30 +754,15 @@ instance EnumTokenNonRetroactivity.ValidationRule {
 instance BaseValueKindMatchesBytes.ValidationRule {
   type BytesValidationRule.HolonType
   ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "Built-in value-dispatch rule"
   ValidationRuleDescription "A value governed by a BytesValueType descriptor must use the bytes BaseValue representation."
   rule_of "MAP Core Schema-v0.0.7"
 }
 
-instance BytesLength.ValidationRule {
-  type BytesValidationRule.HolonType
-  ValidationLevel Value
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
-  DeterminismClass Deterministic
-  SemanticAuthority "Bytes constraint semantics"
-  ValidationRuleDescription "A bytes value must satisfy the min and max length constraints declared by its BytesValueType descriptor."
-  rule_of "MAP Core Schema-v0.0.7"
-}
-
 instance RelationshipOccurrenceBinding.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-BIND-002"
   ValidationRuleDescription "A populated relationship name must bind uniquely to a relationship descriptor admitted by the effective contract."
@@ -957,8 +772,6 @@ instance RelationshipOccurrenceBinding.ValidationRule {
 instance RelationshipEndpointCompatibility.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-002"
   ValidationRuleDescription "A relationship occurrence endpoint must be compatible with the effective source and target descriptors."
@@ -968,30 +781,15 @@ instance RelationshipEndpointCompatibility.ValidationRule {
 instance RelationshipCollectionPolicy.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-OCC-003"
   ValidationRuleDescription "A relationship occurrence collection must honor ordering and duplicate policies declared by the relationship descriptor."
   rule_of "MAP Core Schema-v0.0.7"
 }
 
-instance RelationshipCardinality.ValidationRule {
-  type RelationshipValidationRule.HolonType
-  ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
-  DeterminismClass Contextual
-  SemanticAuthority "DS-CARD-001"
-  ValidationRuleDescription "A relationship occurrence set must satisfy descriptor cardinality where the validation context supplies the required transaction or graph snapshot."
-  rule_of "MAP Core Schema-v0.0.7"
-}
-
 instance RelationshipDescriptorPairing.ValidationRule {
   type RelationshipValidationRule.HolonType
   ValidationLevel Relationship
-  DefaultSeverity Error
-  MinimumBlockingBehavior CommitBlocking
   DeterminismClass Deterministic
   SemanticAuthority "DS-REL-001"
   ValidationRuleDescription "Declared and inverse relationship descriptor pairing must be bijective."

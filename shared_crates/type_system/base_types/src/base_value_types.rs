@@ -91,6 +91,28 @@ pub enum BaseValue {
     BytesValue(MapBytes),
 }
 
+/// Payload-free discriminant for every runtime [`BaseValue`] representation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum BaseValueKind {
+    String,
+    Boolean,
+    Integer,
+    Enum,
+    Bytes,
+}
+
+impl fmt::Display for BaseValueKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::String => write!(f, "String"),
+            Self::Boolean => write!(f, "Boolean"),
+            Self::Integer => write!(f, "Integer"),
+            Self::Enum => write!(f, "Enum"),
+            Self::Bytes => write!(f, "Bytes"),
+        }
+    }
+}
+
 impl fmt::Display for BaseValue {
     /// Displays the `BaseValue` in a variant-specific format.
     ///
@@ -111,6 +133,17 @@ impl fmt::Display for BaseValue {
 }
 
 impl BaseValue {
+    /// Returns the payload-free representation kind of this value.
+    pub fn kind(&self) -> BaseValueKind {
+        match self {
+            Self::StringValue(_) => BaseValueKind::String,
+            Self::BooleanValue(_) => BaseValueKind::Boolean,
+            Self::IntegerValue(_) => BaseValueKind::Integer,
+            Self::EnumValue(_) => BaseValueKind::Enum,
+            Self::BytesValue(_) => BaseValueKind::Bytes,
+        }
+    }
+
     /// Convert any `BaseValue` to raw bytes (big-endian for integers).
     pub fn into_bytes(&self) -> MapBytes {
         match self {
@@ -119,6 +152,31 @@ impl BaseValue {
             Self::IntegerValue(map_int) => MapBytes(map_int.0.to_be_bytes().to_vec()),
             Self::EnumValue(map_enum) => MapBytes(map_enum.0 .0.clone().into_bytes()),
             Self::BytesValue(map_bytes) => map_bytes.clone(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod base_value_kind_tests {
+    use super::*;
+
+    #[test]
+    fn kind_and_display_cover_every_base_value_representation() {
+        let cases = [
+            (BaseValue::StringValue(MapString("value".into())), BaseValueKind::String, "String"),
+            (BaseValue::BooleanValue(MapBoolean(true)), BaseValueKind::Boolean, "Boolean"),
+            (BaseValue::IntegerValue(MapInteger(42)), BaseValueKind::Integer, "Integer"),
+            (
+                BaseValue::EnumValue(MapEnumValue(MapString("Member".into()))),
+                BaseValueKind::Enum,
+                "Enum",
+            ),
+            (BaseValue::BytesValue(MapBytes(vec![1, 2, 3])), BaseValueKind::Bytes, "Bytes"),
+        ];
+
+        for (value, expected_kind, expected_display) in cases {
+            assert_eq!(value.kind(), expected_kind);
+            assert_eq!(expected_kind.to_string(), expected_display);
         }
     }
 }

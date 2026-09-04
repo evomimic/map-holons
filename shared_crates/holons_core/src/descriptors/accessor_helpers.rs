@@ -211,16 +211,6 @@ pub(crate) fn relationship_allows_duplicates(holon: &HolonReference) -> Result<b
     require_bool(holon, CorePropertyTypeName::AllowsDuplicates)
 }
 
-/// Returns the minimum number of targets permitted by a relationship.
-pub(crate) fn relationship_min_cardinality(holon: &HolonReference) -> Result<i64, HolonError> {
-    require_integer(holon, CorePropertyTypeName::MinCardinality)
-}
-
-/// Returns the maximum number of targets permitted by a relationship.
-pub(crate) fn relationship_max_cardinality(holon: &HolonReference) -> Result<i64, HolonError> {
-    require_integer(holon, CorePropertyTypeName::MaxCardinality)
-}
-
 /// Returns the optional deletion semantic declared by a relationship, when populated.
 pub(crate) fn relationship_deletion_semantic(
     holon: &HolonReference,

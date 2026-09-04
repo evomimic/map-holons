@@ -519,124 +519,6 @@
       ]
     },
     {
-      "key": "ValidationBlockingBehavior.MapEnumValueType",
-      "type": "MetaEnumValueType.MetaValueType",
-      "properties": {
-        "TypeName": "ValidationBlockingBehavior",
-        "TypeNamePlural": "ValidationBlockingBehaviors",
-        "DisplayName": "Validation Blocking Behavior",
-        "DisplayNamePlural": "Validation Blocking Behaviors",
-        "Description": "Minimum operation-blocking behavior for a ValidationRule."
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "MapEnumValueType.EnumValueType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "Variants",
-          "target": [
-            {
-              "$ref": "ValidationBlockingBehavior.MapEnumValueType.Advisory"
-            },
-            {
-              "$ref": "ValidationBlockingBehavior.MapEnumValueType.CommitBlocking"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "ValidationBlockingBehavior.MapEnumValueType.Advisory",
-      "type": "MetaEnumVariantValueType.MetaValueType",
-      "properties": {
-        "TypeName": "Advisory",
-        "DisplayName": "Advisory",
-        "Description": "The rule may report results without blocking commit."
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "ValidationBlockingBehavior.MapEnumValueType.CommitBlocking",
-      "type": "MetaEnumVariantValueType.MetaValueType",
-      "properties": {
-        "TypeName": "CommitBlocking",
-        "DisplayName": "Commit Blocking",
-        "Description": "The rule blocks commit when it fails in a commit-oriented validation profile."
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "ValidationDeterminismClass.MapEnumValueType",
       "type": "MetaEnumValueType.MetaValueType",
       "properties": {
@@ -787,98 +669,6 @@
           "target": [
             {
               "$ref": "ValidationLevel.MapEnumValueType"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "DefaultSeverity.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor",
-      "properties": {
-        "TypeName": "DefaultSeverity",
-        "TypeNamePlural": "DefaultSeverities",
-        "DisplayName": "default_severity",
-        "DisplayNamePlural": "default_severities",
-        "Description": "Default severity emitted by a failing ValidationRule.",
-        "IsValueRequired": true
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "PropertyType.TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "ValueType",
-          "target": [
-            {
-              "$ref": "ValidationSeverity.MapEnumValueType"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "MinimumBlockingBehavior.PropertyType",
-      "type": "MetaPropertyType.MetaTypeDescriptor",
-      "properties": {
-        "TypeName": "MinimumBlockingBehavior",
-        "TypeNamePlural": "MinimumBlockingBehaviors",
-        "DisplayName": "minimum_blocking_behavior",
-        "DisplayNamePlural": "minimum_blocking_behaviors",
-        "Description": "Weakest blocking behavior a binding or profile may apply to a ValidationRule.",
-        "IsValueRequired": true
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "PropertyType.TypeDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "ValueType",
-          "target": [
-            {
-              "$ref": "ValidationBlockingBehavior.MapEnumValueType"
             }
           ]
         },
@@ -1100,12 +890,6 @@
           "target": [
             {
               "$ref": "ValidationLevel.PropertyType"
-            },
-            {
-              "$ref": "DefaultSeverity.PropertyType"
-            },
-            {
-              "$ref": "MinimumBlockingBehavior.PropertyType"
             },
             {
               "$ref": "DeterminismClass.PropertyType"
@@ -1683,9 +1467,7 @@
       "key": "AtMostOneDirectParent.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-STRUCT-002",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A holon has at most one direct Extends parent."
@@ -1713,9 +1495,7 @@
       "key": "AcyclicExtendsLineage.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-STRUCT-003",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A descriptor Extends lineage must be acyclic."
@@ -1743,9 +1523,7 @@
       "key": "ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-STRUCT-004",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A parented descriptor lineage must terminate at TypeDescriptor."
@@ -1773,9 +1551,7 @@
       "key": "UniqueTypeDescriptorRoot.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-STRUCT-005",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "TypeDescriptor is the unique root of the descriptor hierarchy."
@@ -1803,9 +1579,7 @@
       "key": "SchemaDependenciesAcyclic.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-SCHEMA-001",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Versioned schema dependency relationships must be acyclic."
@@ -1833,9 +1607,7 @@
       "key": "CrossSchemaDependenciesDeclared.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-SCHEMA-002",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every cross-schema reference must have a direct schema dependency declaration."
@@ -1860,42 +1632,10 @@
       ]
     },
     {
-      "key": "CoreAccumulatorsAreAdditive.ValidationRule",
-      "type": "HolonValidationRule.HolonType",
-      "properties": {
-        "DefaultSeverity": "Error",
-        "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
-        "SemanticAuthority": "DS-SCHEMA-003",
-        "ValidationLevel": "Holon",
-        "ValidationRuleDescription": "Core contract, behavior, and operator accumulator relationships must declare Additive inheritance."
-      },
-      "relationships": [
-        {
-          "name": "RuleOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "LocalInstanceKindAnchorDesignation.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KIND-001",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Instance TypeKind anchor designation is local and singular."
@@ -1923,9 +1663,7 @@
       "key": "InstanceKindAnchorsAreAbstract.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KIND-002",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every Instance TypeKind anchor must be abstract."
@@ -1953,9 +1691,7 @@
       "key": "TypeDescriptorRootKindException.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KIND-003",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "TypeDescriptor is the only descriptor root that lacks an Instance TypeKind anchor."
@@ -1983,9 +1719,7 @@
       "key": "DescribingCategoryCompatibility.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KIND-004",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every describing type must belong to the required describing category."
@@ -2013,9 +1747,7 @@
       "key": "DescriptorMetaTypeCorrespondence.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KIND-005",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Descriptor holons, and only descriptor holons, must use meta-type describers."
@@ -2043,9 +1775,7 @@
       "key": "NoInheritedMemberRedeclaration.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-CONTRACT-001",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A descriptor must not redundantly redeclare an inherited member."
@@ -2073,9 +1803,7 @@
       "key": "UniqueSemanticMemberNames.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-CONTRACT-002",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Effective semantic member names must be unique within each namespace."
@@ -2103,9 +1831,7 @@
       "key": "WellFormedEffectiveMemberDefinitions.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-CONTRACT-003",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every effective member definition must be well formed."
@@ -2133,9 +1859,7 @@
       "key": "ContractMemberKindCompatibility.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-CONTRACT-004",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every effective contract member must have the required instance kind."
@@ -2163,9 +1887,7 @@
       "key": "InheritedValueConstraintNonRelaxation.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-CONSTRAINT-001",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A ValueType subtype must not relax a value constraint inherited through its Extends lineage."
@@ -2193,9 +1915,7 @@
       "key": "DefaultsRequireRequiredProperties.ValidationRule",
       "type": "PropertyValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-DEFAULT-001",
         "ValidationLevel": "Property",
         "ValidationRuleDescription": "Only required properties may declare defaults."
@@ -2223,9 +1943,7 @@
       "key": "DefaultValueConformance.ValidationRule",
       "type": "PropertyValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-DEFAULT-002",
         "ValidationLevel": "Property",
         "ValidationRuleDescription": "Every declared default value must conform to its effective value definition."
@@ -2253,9 +1971,7 @@
       "key": "InverseEndpointCorrespondence.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-REL-002",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "Inverse relationship endpoints must correspond to declared relationship endpoints."
@@ -2283,9 +1999,7 @@
       "key": "DirectionalDeletionDeclarations.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-REL-003",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "Both relationship directions must declare valid deletion semantics."
@@ -2313,9 +2027,7 @@
       "key": "EffectiveKeyRuleSelection.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KEY-001",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every holon type must resolve exactly one effective instance key rule."
@@ -2343,9 +2055,7 @@
       "key": "KeyRuleTargetCompatibility.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KEY-002",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "The selected key rule target must be compatible with and executable for the descriptor."
@@ -2373,9 +2083,7 @@
       "key": "ExplicitKeylessBaseline.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KEY-003",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "The keyless root must be explicit and key-rule inheritance must use Override semantics."
@@ -2403,9 +2111,7 @@
       "key": "EnumMemberNamesUnique.ValidationRule",
       "type": "EnumValueValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-ENUM-001",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "Enum member names must be unique within each effective enum definition."
@@ -2433,9 +2139,7 @@
       "key": "AbstractMemberMinimumEnforcement.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-CONFORM-002",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Minimum enforcement for abstract descriptors is member-specific."
@@ -2463,9 +2167,7 @@
       "key": "UniquePropertyMemberBinding.ValidationRule",
       "type": "PropertyValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-BIND-001",
         "ValidationLevel": "Property",
         "ValidationRuleDescription": "Every declared property name must bind uniquely to a property descriptor admitted by the effective contract."
@@ -2493,9 +2195,7 @@
       "key": "RelationshipOccurrenceGrouping.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-OCC-001",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "Relationship occurrences must be grouped by resolved relationship descriptor identity."
@@ -2523,9 +2223,7 @@
       "key": "AdditionalRelationshipPolicy.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-OCC-004",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "Every unbound relationship must be permitted by the effective additional-relationship policy."
@@ -2553,9 +2251,7 @@
       "key": "ExplicitKeylessness.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KEY-004",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A keyless holon must carry no semantic key."
@@ -2583,9 +2279,7 @@
       "key": "KeyPresenceAndValue.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-KEY-005",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A keyed new holon must carry exactly the computed semantic key."
@@ -2613,9 +2307,7 @@
       "key": "ConcreteDescribingType.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-CONFORM-001",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "A runtime holon must be described by a concrete descriptor that can describe instances."
@@ -2643,9 +2335,7 @@
       "key": "NoUndescribedProperties.ValidationRule",
       "type": "HolonValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-PROP-003",
         "ValidationLevel": "Holon",
         "ValidationRuleDescription": "Every unbound property must be permitted by the effective additional-property policy."
@@ -2673,9 +2363,7 @@
       "key": "RequiredPropertyPresence.ValidationRule",
       "type": "PropertyValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-PROP-001",
         "ValidationLevel": "Property",
         "ValidationRuleDescription": "A property declared required by the effective descriptor contract must be present."
@@ -2703,9 +2391,7 @@
       "key": "PropertyValueConformance.ValidationRule",
       "type": "PropertyValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-PROP-002",
         "ValidationLevel": "Property",
         "ValidationRuleDescription": "A populated property value must conform to the selected ValueType descriptor."
@@ -2733,9 +2419,7 @@
       "key": "BaseValueKindMatchesString.ValidationRule",
       "type": "StringValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "Built-in value-dispatch rule",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "A value governed by a StringValueType descriptor must use the string BaseValue representation."
@@ -2760,42 +2444,10 @@
       ]
     },
     {
-      "key": "StringLength.ValidationRule",
-      "type": "StringValidationRule.HolonType",
-      "properties": {
-        "DefaultSeverity": "Error",
-        "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
-        "SemanticAuthority": "String constraint semantics; Unicode extended grapheme cluster counting",
-        "ValidationLevel": "Value",
-        "ValidationRuleDescription": "A string value must satisfy the min and max length constraints declared by its StringValueType descriptor."
-      },
-      "relationships": [
-        {
-          "name": "RuleOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "BaseValueKindMatchesInteger.ValidationRule",
       "type": "IntegerValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "Built-in value-dispatch rule",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "A value governed by an IntegerValueType descriptor must use the integer BaseValue representation."
@@ -2820,42 +2472,10 @@
       ]
     },
     {
-      "key": "IntegerRange.ValidationRule",
-      "type": "IntegerValidationRule.HolonType",
-      "properties": {
-        "DefaultSeverity": "Error",
-        "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
-        "SemanticAuthority": "Integer constraint semantics",
-        "ValidationLevel": "Value",
-        "ValidationRuleDescription": "An integer value must satisfy the min and max constraints declared by its IntegerValueType descriptor."
-      },
-      "relationships": [
-        {
-          "name": "RuleOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "BaseValueKindMatchesBoolean.ValidationRule",
       "type": "BooleanValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "Built-in value-dispatch rule",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "A value governed by a BooleanValueType descriptor must use the boolean BaseValue representation."
@@ -2883,9 +2503,7 @@
       "key": "BaseValueKindMatchesEnum.ValidationRule",
       "type": "EnumValueValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "Built-in value-dispatch rule",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "A value governed by an EnumValueType descriptor must use the enum BaseValue representation."
@@ -2913,9 +2531,7 @@
       "key": "EnumTokenMembership.ValidationRule",
       "type": "EnumValueValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-ENUM-002",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "An enum value token must match one of the effective enum variants admitted by the EnumValueType descriptor."
@@ -2943,9 +2559,7 @@
       "key": "EnumTokenNonRetroactivity.ValidationRule",
       "type": "EnumValueValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Contextual",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-ENUM-003",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "Enum token changes must never rewrite or alias persisted enum values."
@@ -2973,9 +2587,7 @@
       "key": "BaseValueKindMatchesBytes.ValidationRule",
       "type": "BytesValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "Built-in value-dispatch rule",
         "ValidationLevel": "Value",
         "ValidationRuleDescription": "A value governed by a BytesValueType descriptor must use the bytes BaseValue representation."
@@ -3000,42 +2612,10 @@
       ]
     },
     {
-      "key": "BytesLength.ValidationRule",
-      "type": "BytesValidationRule.HolonType",
-      "properties": {
-        "DefaultSeverity": "Error",
-        "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
-        "SemanticAuthority": "Bytes constraint semantics",
-        "ValidationLevel": "Value",
-        "ValidationRuleDescription": "A bytes value must satisfy the min and max length constraints declared by its BytesValueType descriptor."
-      },
-      "relationships": [
-        {
-          "name": "RuleOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "RelationshipOccurrenceBinding.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-BIND-002",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "A populated relationship name must bind uniquely to a relationship descriptor admitted by the effective contract."
@@ -3063,9 +2643,7 @@
       "key": "RelationshipEndpointCompatibility.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-OCC-002",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "A relationship occurrence endpoint must be compatible with the effective source and target descriptors."
@@ -3093,9 +2671,7 @@
       "key": "RelationshipCollectionPolicy.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-OCC-003",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "A relationship occurrence collection must honor ordering and duplicate policies declared by the relationship descriptor."
@@ -3120,42 +2696,10 @@
       ]
     },
     {
-      "key": "RelationshipCardinality.ValidationRule",
-      "type": "RelationshipValidationRule.HolonType",
-      "properties": {
-        "DefaultSeverity": "Error",
-        "DeterminismClass": "Contextual",
-        "MinimumBlockingBehavior": "CommitBlocking",
-        "SemanticAuthority": "DS-CARD-001",
-        "ValidationLevel": "Relationship",
-        "ValidationRuleDescription": "A relationship occurrence set must satisfy descriptor cardinality where the validation context supplies the required transaction or graph snapshot."
-      },
-      "relationships": [
-        {
-          "name": "RuleOf",
-          "target": [
-            {
-              "$ref": "MAP Core Schema-v0.0.7"
-            }
-          ]
-        },
-        {
-          "name": "OwnedBy",
-          "target": [
-            {
-              "$ref": "MAP.CoreSchemaSpace"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "RelationshipDescriptorPairing.ValidationRule",
       "type": "RelationshipValidationRule.HolonType",
       "properties": {
-        "DefaultSeverity": "Error",
         "DeterminismClass": "Deterministic",
-        "MinimumBlockingBehavior": "CommitBlocking",
         "SemanticAuthority": "DS-REL-001",
         "ValidationLevel": "Relationship",
         "ValidationRuleDescription": "Declared and inverse relationship descriptor pairing must be bijective."

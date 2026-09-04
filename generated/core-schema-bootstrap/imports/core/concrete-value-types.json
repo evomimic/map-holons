@@ -68,14 +68,6 @@
           ]
         },
         {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "Length16k.StringLengthConstraint"
-            }
-          ]
-        },
-        {
           "name": "OwnedBy",
           "target": [
             {

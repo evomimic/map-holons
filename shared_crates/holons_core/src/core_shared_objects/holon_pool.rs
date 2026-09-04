@@ -164,15 +164,15 @@ impl HolonPool {
     /// - Includes all versioned keys whose string starts with `"<base_key>__"`.
     ///
     /// Examples:
-    /// - base `"TypeKind"` matches:
-    ///     - `"TypeKind"`
-    ///     - `"TypeKind__7_transient"`, `"TypeKind__8_transient"`, ...
-    /// - base `"TypeKind.Property"` matches:
-    ///     - `"TypeKind.Property__12_transient"`, ...
-    /// - base `"TypeKind"` does **not** match `"TypeKind.Property__..."`.
+    /// - base `"Book"` matches:
+    ///     - `"Book"`
+    ///     - `"Book__7_transient"`, `"Book__8_transient"`, ...
+    /// - base `"Book.Edition"` matches:
+    ///     - `"Book.Edition__12_transient"`, ...
+    /// - base `"Book"` does **not** match `"Book.Edition__..."`.
     pub fn get_ids_by_base_key(&self, key: &MapString) -> Result<Vec<&TemporaryId>, HolonError> {
         // Prefix that delimits the version section of the key.
-        // This prevents collisions like "TypeKind" vs "TypeKind.Property".
+        // This prevents collisions like "Book" vs "Book.Edition".
         let versioned_prefix = format!("{}__", key.0);
         let start = MapString(versioned_prefix.clone());
 

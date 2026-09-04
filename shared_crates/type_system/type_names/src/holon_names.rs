@@ -61,7 +61,6 @@ impl ToDanceName for &DanceName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreHolonTypeName {
-    BytesValueConstraint,
     Collection,
     CommandType,
     CommitResponseType,
@@ -75,19 +74,11 @@ pub enum CoreHolonTypeName {
     HolonLoadError,
     HolonSpace,
     HolonType,
-    IntegerValueConstraint,
     InverseRelationshipType,
-    MaximumLength,
-    MaximumValue,
-    MinimumLength,
-    MinimumValue,
     Projection,
     Schema,
-    StringValueConstraint,
     Transaction,
     TypeDescriptor,
-    ValueArrayConstraint,
-    ValueConstraintType,
 }
 
 impl CoreHolonTypeName {

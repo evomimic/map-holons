@@ -408,7 +408,7 @@ mod tests {
     use crate::reference_layer::{ReadableHolon, WritableHolon};
     use crate::TransientReference;
     use base_types::MapString;
-    use core_types::{HolonError, PropertyName, RelationshipName, TypeKind};
+    use core_types::{HolonError, PropertyName, RelationshipName};
     use std::sync::Arc;
     use type_names::{
         CommandName, CoreCommandTypeName, CoreHolonTypeName, CorePropertyTypeName,
@@ -424,11 +424,7 @@ mod tests {
         let mut descriptor = new_test_holon(context, key)?;
         descriptor
             .with_property_value(CorePropertyTypeName::TypeName, type_name)?
-            .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-            .with_property_value(
-                CorePropertyTypeName::InstanceTypeKind,
-                TypeKind::Holon.as_schema_key(),
-            )?;
+            .with_property_value(CorePropertyTypeName::IsAbstractType, false)?;
         Ok(descriptor)
     }
 
