@@ -153,16 +153,37 @@ impl GuestHolonService {
         context: &Arc<TransactionContext>,
         smartlink: &SmartLink,
     ) -> Result<(Option<MapString>, HolonReference), HolonError> {
-        let key = (!smartlink.canonical_key.as_str().is_empty())
-            .then(|| MapString(smartlink.canonical_key.as_str().to_string()));
-        let smart_property_values = (!smartlink.target_property_values.is_empty())
-            .then(|| smartlink.target_property_values.clone());
+        let (key, smart_property_values) = smartlink_reference_properties(smartlink);
 
         let reference =
             self.mint_smart_reference(context, smartlink.target_id.clone(), smart_property_values)?;
 
         Ok((key, reference))
     }
+}
+
+/// Produces the key and cached target properties for a SmartReference materialized from a
+/// decoded SmartLink.
+///
+/// The canonical key is structurally authoritative SmartLink data. Carry it as the cached `Key`
+/// property so the materialized SmartReference can answer `key()` without hydrating its target.
+/// A keyless SmartLink keeps an absent `Key` property.
+fn smartlink_reference_properties(
+    smartlink: &SmartLink,
+) -> (Option<MapString>, Option<PropertyMap>) {
+    let key = (!smartlink.canonical_key.as_str().is_empty())
+        .then(|| MapString(smartlink.canonical_key.as_str().to_string()));
+
+    let mut smart_property_values = smartlink.target_property_values.clone();
+    if let Some(key) = &key {
+        let key_property_name = CorePropertyTypeName::Key.as_property_name();
+        smart_property_values.insert(key_property_name, BaseValue::StringValue(key.clone()));
+    }
+
+    let smart_property_values =
+        (!smart_property_values.is_empty()).then_some(smart_property_values);
+
+    (key, smart_property_values)
 }
 
 impl HolonServiceApi for GuestHolonService {
@@ -378,5 +399,73 @@ impl GuestHolonService {
 impl fmt::Debug for GuestHolonService {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GuestHolonService").finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core_types::{CanonicalKey, SmartLinkId, HOLOCHAIN_ACTION_HASH_BYTES};
+
+    fn local_id(seed: u8) -> LocalId {
+        LocalId(vec![seed; HOLOCHAIN_ACTION_HASH_BYTES])
+    }
+
+    fn smartlink(canonical_key: &str, target_property_values: PropertyMap) -> SmartLink {
+        SmartLink {
+            smartlink_id: SmartLinkId(local_id(1)),
+            source_id: local_id(2),
+            target_id: HolonId::Local(local_id(3)),
+            relationship_name: RelationshipName(MapString("Related".to_string())),
+            canonical_key: CanonicalKey::new(canonical_key).expect("test canonical key is valid"),
+            occurrence_id: None,
+            relationship_property_values: PropertyMap::new(),
+            target_property_values,
+        }
+    }
+
+    #[test]
+    fn smartlink_reference_properties_adds_canonical_key_to_cached_properties() {
+        let (key, properties) =
+            smartlink_reference_properties(&smartlink("book-1", PropertyMap::new()));
+
+        assert_eq!(key, Some(MapString("book-1".to_string())));
+        assert_eq!(
+            properties
+                .expect("keyed SmartLink should produce cached properties")
+                .get(&CorePropertyTypeName::Key.as_property_name()),
+            Some(&BaseValue::StringValue(MapString("book-1".to_string())))
+        );
+    }
+
+    #[test]
+    fn smartlink_reference_properties_preserves_cached_target_properties() {
+        let title_property = PropertyName(MapString("Title".to_string()));
+        let mut target_properties = PropertyMap::new();
+        target_properties.insert(
+            title_property.clone(),
+            BaseValue::StringValue(MapString("The Book".to_string())),
+        );
+
+        let (_, properties) =
+            smartlink_reference_properties(&smartlink("book-1", target_properties));
+        let properties = properties.expect("keyed SmartLink should produce cached properties");
+
+        assert_eq!(
+            properties.get(&title_property),
+            Some(&BaseValue::StringValue(MapString("The Book".to_string())))
+        );
+        assert_eq!(
+            properties.get(&CorePropertyTypeName::Key.as_property_name()),
+            Some(&BaseValue::StringValue(MapString("book-1".to_string())))
+        );
+    }
+
+    #[test]
+    fn smartlink_reference_properties_keeps_keyless_smartlinks_keyless() {
+        let (key, properties) = smartlink_reference_properties(&smartlink("", PropertyMap::new()));
+
+        assert_eq!(key, None);
+        assert_eq!(properties, None);
     }
 }
