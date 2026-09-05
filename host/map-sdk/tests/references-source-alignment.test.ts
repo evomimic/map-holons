@@ -13,6 +13,58 @@ import {
 // ===========================================
 
 describe('source-aligned holon wire guards', () => {
+  it('accepts semantic findings separately from operational errors and rejects malformed findings', () => {
+    const finding = {
+      kind: { RuleViolation: { code: 'DS-PROP-001' } },
+      rule_key: 'required-property',
+      severity: 'Error',
+      subject: { Property: { holon_identity: 'subject', name: 'Name' } },
+      descriptor_identity: 'Name.PropertyType',
+      message: 'Supply Name',
+    };
+    const staged = {
+      version: 1, holon_state: 'Mutable', staged_state: 'ForCreate',
+      validation_state: 'Invalid', property_map: {},
+      staged_relationships: { map: {} }, original_id: null,
+      errors: [{ NotImplemented: 'persistence' }],
+    };
+    expect(isStagedHolonWire(staged)).toBe(true);
+    expect(isStagedHolonWire({ ...staged, validation_findings: [] })).toBe(true);
+    expect(isStagedHolonWire({ ...staged, validation_findings: [finding] })).toBe(true);
+    // Rust unit variants serialize as strings; struct variants use external tags.
+    for (const kind of [
+      'NoDescriptor', 'UnsupportedValidationRule', 'UnresolvedLocalDependency',
+      'RelationshipCoordinationRequired', { RuleViolation: { code: 'DS-PROP-001' } },
+      { UnsupportedConstraintType: { constraint_identity: 'constraint', constraint_type_identity: 'type' } },
+    ]) {
+      for (const subject of [
+        'Transaction', { Holon: { holon_identity: 'subject' } },
+        { Property: { holon_identity: 'subject', name: 'Name' } },
+        { Value: { holon_identity: 'subject', property: 'Name' } },
+        { Relationship: { source_identity: 'source', name: 'RelatedTo', target_identity: 'target' } },
+      ]) {
+        for (const severity of ['Info', 'Warning', 'Error']) {
+          expect(isStagedHolonWire({
+            ...staged,
+            validation_findings: [{ ...finding, kind, subject, severity, rule_key: null, descriptor_identity: null }],
+          })).toBe(true);
+        }
+      }
+    }
+    for (const invalid of [
+      null, {}, { ...finding, severity: 'Fatal' },
+      { ...finding, kind: { RuleViolation: { code: 1 } } },
+      { ...finding, subject: { Property: { holon_identity: 'subject' } } },
+      { ...finding, descriptor_identity: {} }, { ...finding, rule_key: 1 },
+      { ...finding, message: null },
+    ]) {
+      expect(isStagedHolonWire({ ...staged, validation_findings: [invalid] })).toBe(false);
+    }
+    expect(isStagedHolonWire({ ...staged, validation_findings: null })).toBe(false);
+    expect(isStagedHolonWire({ ...staged, validation_findings: staged.errors })).toBe(false);
+    expect(isStagedHolonWire({ ...staged, errors: [finding] })).toBe(false);
+  });
+
   it('accepts SavedState variants declared in Rust SavedState', () => {
     // Mirrors shared_crates/holons_core/src/core_shared_objects/holon/state.rs.
     expect(isSavedState('Fetched')).toBe(true);

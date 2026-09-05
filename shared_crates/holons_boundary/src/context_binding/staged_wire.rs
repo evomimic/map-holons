@@ -1,6 +1,6 @@
 use crate::context_binding::staged_relationship_wire::StagedRelationshipMapWire;
 use base_types::MapInteger;
-use core_types::{HolonError, LocalId, PropertyMap, RelationshipName};
+use core_types::{CommitValidationViolation, HolonError, LocalId, PropertyMap, RelationshipName};
 use holons_core::core_shared_objects::holon::{HolonState, StagedState, ValidationState};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::core_shared_objects::StagedHolon;
@@ -14,6 +14,8 @@ pub struct StagedHolonWire {
     holon_state: HolonState,
     staged_state: StagedState,
     validation_state: ValidationState,
+    #[serde(default)]
+    validation_findings: Vec<CommitValidationViolation>,
     property_map: PropertyMap,
     staged_relationships: StagedRelationshipMapWire,
     original_id: Option<LocalId>,
@@ -32,6 +34,7 @@ impl StagedHolonWire {
             self.holon_state,
             self.staged_state,
             self.validation_state,
+            self.validation_findings,
             self.property_map,
             self.staged_relationships.bind(context)?,
             self.original_id,
@@ -49,6 +52,7 @@ impl StagedHolonWire {
             self.holon_state,
             self.staged_state,
             self.validation_state,
+            self.validation_findings,
             self.property_map,
             self.staged_relationships.rebind(context)?,
             self.original_id,
@@ -66,6 +70,7 @@ impl From<&StagedHolon> for StagedHolonWire {
             holon_state: value.holon_state().clone(),
             staged_state: value.staged_state().clone(),
             validation_state: value.validation_state().clone(),
+            validation_findings: value.validation_findings().to_vec(),
             property_map: value.property_map().clone(),
             staged_relationships: StagedRelationshipMapWire::from(value.staged_relationships()),
             original_id: value.original_id_ref().cloned(),
@@ -82,6 +87,115 @@ mod tests {
     use base_types::MapString;
     use core_types::RelationshipName;
     use holons_core::core_shared_objects::WriteableHolonState;
+
+    #[derive(Debug)]
+    struct UnusedHolonService;
+
+    impl holons_core::HolonServiceApi for UnusedHolonService {
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+        fn commit_internal(
+            &self,
+            _: &Arc<TransactionContext>,
+            _: &[holons_core::StagedReference],
+        ) -> Result<holons_core::TransientReference, HolonError> {
+            panic!("wire binding must not access persistence")
+        }
+        fn delete_holon_internal(
+            &self,
+            _: &Arc<TransactionContext>,
+            _: &LocalId,
+        ) -> Result<(), HolonError> {
+            panic!("wire binding must not access persistence")
+        }
+        fn fetch_all_related_holons_internal(
+            &self,
+            _: &Arc<TransactionContext>,
+            _: &core_types::HolonId,
+        ) -> Result<holons_core::RelationshipMap, HolonError> {
+            panic!("wire binding must not access persistence")
+        }
+        fn fetch_holon_internal(
+            &self,
+            _: &Arc<TransactionContext>,
+            _: &core_types::HolonId,
+        ) -> Result<holons_core::core_shared_objects::Holon, HolonError> {
+            panic!("wire binding must not access persistence")
+        }
+        fn fetch_related_holons_internal(
+            &self,
+            _: &Arc<TransactionContext>,
+            _: &core_types::HolonId,
+            _: &RelationshipName,
+        ) -> Result<holons_core::HolonCollection, HolonError> {
+            panic!("wire binding must not access persistence")
+        }
+        fn get_all_holons_internal(
+            &self,
+            _: &Arc<TransactionContext>,
+        ) -> Result<holons_core::HolonCollection, HolonError> {
+            panic!("wire binding must not access persistence")
+        }
+        fn load_holons_internal(
+            &self,
+            _: &Arc<TransactionContext>,
+            _: holons_core::TransientReference,
+        ) -> Result<holons_core::TransientReference, HolonError> {
+            panic!("wire binding must not access persistence")
+        }
+    }
+
+    #[test]
+    fn validation_findings_round_trip_and_default_when_absent() -> Result<(), HolonError> {
+        use core_types::{
+            CommitValidationViolationKind, ValidationSeverity, ValidationSubjectPath,
+        };
+        use holons_core::core_shared_objects::{
+            space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+        };
+
+        let space = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(UnusedHolonService),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = space.get_transaction_manager().open_new_transaction(Arc::clone(&space))?;
+        let mut staged = StagedHolon::new_for_create();
+        staged.add_error(HolonError::NotImplemented("persistence".into()))?;
+        staged.replace_validation_outcome(
+            ValidationState::Invalid,
+            vec![CommitValidationViolation {
+                kind: CommitValidationViolationKind::RuleViolation { code: "DS-PROP-001".into() },
+                rule_key: Some("required-property".into()),
+                severity: ValidationSeverity::Error,
+                subject: ValidationSubjectPath::Property {
+                    holon_identity: "subject".into(),
+                    name: "Name".into(),
+                },
+                descriptor_identity: Some("Name.PropertyType".into()),
+                message: "Supply Name".into(),
+            }],
+        )?;
+        let mut json = serde_json::to_value(StagedHolonWire::from(&staged)).unwrap();
+        assert_eq!(
+            json["validation_findings"][0]["kind"],
+            serde_json::json!({"RuleViolation": {"code": "DS-PROP-001"}})
+        );
+        assert_eq!(json["errors"], serde_json::json!([{"NotImplemented": "persistence"}]));
+        let wire: StagedHolonWire = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(wire.clone().bind(&context)?, staged);
+        assert_eq!(wire.rebind(&context)?, staged);
+
+        json.as_object_mut().unwrap().remove("validation_findings");
+        let legacy: StagedHolonWire = serde_json::from_value(json).unwrap();
+        let rebound = legacy.bind(&context)?;
+        assert!(rebound.validation_findings().is_empty());
+        assert_eq!(rebound.validation_state(), staged.validation_state());
+        assert_eq!(rebound.errors(), staged.errors());
+        Ok(())
+    }
 
     /// Regression guard (issue #515): relationship-mutation intent
     /// (`touched_relationship_names`) is transaction-scoped staged state that must

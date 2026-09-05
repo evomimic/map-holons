@@ -12,8 +12,8 @@ use crate::{
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap, PropertyName, PropertyValue,
-    RelationshipName,
+    CommitValidationViolation, HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap,
+    PropertyName, PropertyValue, RelationshipName,
 };
 use type_names::CorePropertyTypeName;
 
@@ -31,6 +31,7 @@ pub struct StagedHolon {
     holon_state: HolonState,   // Mutable or Immutable
     staged_state: StagedState, // ForCreate, update states, Abandoned, or Committed
     validation_state: ValidationState,
+    validation_findings: Vec<CommitValidationViolation>,
     property_map: PropertyMap, // Self-describing property data
     staged_relationships: StagedRelationshipMap,
     /// The lineage inherited from the holon this was cloned from, if any. Carried through staging
@@ -61,6 +62,7 @@ impl StagedHolon {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
+            validation_findings: Vec::new(),
             property_map: PropertyMap::new(),
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
@@ -79,6 +81,7 @@ impl StagedHolon {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
+            validation_findings: Vec::new(),
             property_map: model.properties,
             staged_relationships,
             original_id: model.original_id,
@@ -103,6 +106,7 @@ impl StagedHolon {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForUpdate,
             validation_state: ValidationState::ValidationRequired,
+            validation_findings: Vec::new(),
             property_map: model.properties,
             staged_relationships,
             original_id: model.original_id,
@@ -119,6 +123,7 @@ impl StagedHolon {
         holon_state: HolonState,
         staged_state: StagedState,
         validation_state: ValidationState,
+        validation_findings: Vec<CommitValidationViolation>,
         property_map: PropertyMap,
         staged_relationships: StagedRelationshipMap,
         original_id: Option<LocalId>,
@@ -131,6 +136,7 @@ impl StagedHolon {
             holon_state,
             staged_state,
             validation_state,
+            validation_findings,
             property_map,
             staged_relationships,
             original_id,
@@ -224,6 +230,34 @@ impl StagedHolon {
 
     pub fn validation_state(&self) -> &ValidationState {
         &self.validation_state
+    }
+
+    /// Semantic findings from the most recent validation pass.
+    pub fn validation_findings(&self) -> &[CommitValidationViolation] {
+        &self.validation_findings
+    }
+
+    /// Replaces a live staged holon's validation outcome without changing operational errors.
+    ///
+    /// State and findings are installed together under exclusive mutable access so new
+    /// findings cannot be observed under a stale validation state. Abandoned and committed
+    /// holons reject replacement without changing either part of the outcome.
+    pub fn replace_validation_outcome(
+        &mut self,
+        state: ValidationState,
+        findings: Vec<CommitValidationViolation>,
+    ) -> Result<(), HolonError> {
+        self.is_accessible(AccessType::Commit)?;
+        // Immutable accessibility permits Commit even after the staged lifecycle has ended.
+        if matches!(self.staged_state, StagedState::Abandoned | StagedState::Committed(_)) {
+            return Err(HolonError::NotAccessible(
+                AccessType::Commit.to_string(),
+                self.staged_state.to_string(),
+            ));
+        }
+        self.validation_state = state;
+        self.validation_findings = findings;
+        Ok(())
     }
 
     pub fn property_map(&self) -> &PropertyMap {
@@ -628,6 +662,64 @@ mod tests {
 
     use super::*;
 
+    fn finding() -> CommitValidationViolation {
+        CommitValidationViolation {
+            kind: core_types::CommitValidationViolationKind::NoDescriptor,
+            rule_key: None,
+            severity: core_types::ValidationSeverity::Error,
+            subject: core_types::ValidationSubjectPath::Holon { holon_identity: "subject".into() },
+            descriptor_identity: None,
+            message: "Attach a governing descriptor".into(),
+        }
+    }
+
+    #[test]
+    fn validation_outcome_replaces_findings_and_preserves_operational_errors(
+    ) -> Result<(), HolonError> {
+        for state in [
+            StagedState::ForCreate,
+            StagedState::ForUpdate,
+            StagedState::ForUpdateGraphOnly,
+            StagedState::ForUpdateNewVersion,
+        ] {
+            for holon_state in [HolonState::Mutable, HolonState::Immutable] {
+                let mut staged = StagedHolon::new_for_create();
+                staged.staged_state = state.clone();
+                staged.holon_state = holon_state;
+                let error = HolonError::NotImplemented("persistence".into());
+                staged.add_error(error.clone())?;
+                staged.replace_validation_outcome(ValidationState::Invalid, vec![finding()])?;
+                assert_eq!(staged.validation_state(), &ValidationState::Invalid);
+                assert_eq!(staged.validation_findings(), &[finding()]);
+                staged.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+                assert_eq!(staged.validation_state(), &ValidationState::Validated);
+                assert!(staged.validation_findings().is_empty());
+                assert_eq!(staged.errors(), &[error]);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn validation_outcome_rejects_terminal_states_without_mutation() -> Result<(), HolonError> {
+        for state in [StagedState::Abandoned, StagedState::Committed(LocalId(vec![1]))] {
+            for holon_state in [HolonState::Mutable, HolonState::Immutable] {
+                let mut staged = StagedHolon::new_for_create();
+                staged.replace_validation_outcome(ValidationState::Invalid, vec![finding()])?;
+                staged.add_error(HolonError::NotImplemented("persistence".into()))?;
+                staged.staged_state = state.clone();
+                staged.holon_state = holon_state;
+                let before = staged.clone();
+                assert!(matches!(
+                    staged.replace_validation_outcome(ValidationState::Validated, Vec::new()),
+                    Err(HolonError::NotAccessible(..))
+                ));
+                assert_eq!(staged, before);
+            }
+        }
+        Ok(())
+    }
+
     #[test]
     fn instantiate_and_modify() {
         // Initialize default Holon
@@ -637,6 +729,7 @@ mod tests {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
+            validation_findings: Vec::new(),
             property_map: BTreeMap::new(),
             staged_relationships: StagedRelationshipMap::new_empty(),
             original_id: None,
@@ -718,6 +811,7 @@ mod tests {
             holon_state: HolonState::Mutable,
             staged_state: StagedState::ForCreate,
             validation_state: ValidationState::ValidationRequired,
+            validation_findings: Vec::new(),
             property_map: BTreeMap::new(),
             staged_relationships: StagedRelationshipMap { map: BTreeMap::new() },
             original_id: None,
@@ -808,6 +902,7 @@ mod tests {
             HolonState::Mutable,
             StagedState::ForUpdateGraphOnly,
             ValidationState::ValidationRequired,
+            Vec::new(),
             PropertyMap::new(),
             StagedRelationshipMap { map: relationships },
             None,

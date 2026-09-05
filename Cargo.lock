@@ -1032,6 +1032,7 @@ dependencies = [
  "base_types",
  "integrity_core_types",
  "serde",
+ "serde_json",
  "uuid 1.21.0",
 ]
 
