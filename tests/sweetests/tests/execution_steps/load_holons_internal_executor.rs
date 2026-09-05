@@ -238,9 +238,16 @@ pub async fn execute_load_holons_internal(
         expect_links_created.0, actual_links_created
     );
     assert_eq!(
-        actual_error_count, expect_errors.0,
-        "Expected ErrorCount={}, got {}",
-        expect_errors.0, actual_error_count
+        actual_error_count,
+        expect_errors.0,
+        "Expected ErrorCount={}, got {} (staged={}, committed={}, links={}, status={})\n{}",
+        expect_errors.0,
+        actual_error_count,
+        actual_staged,
+        actual_committed,
+        actual_links_created,
+        actual_status,
+        dump_error_holons_from_response(test_state, &response_reference)
     );
     assert_eq!(
         actual_total_bundles, expect_total_bundles.0,
