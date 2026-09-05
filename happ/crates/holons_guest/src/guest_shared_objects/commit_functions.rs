@@ -1,7 +1,9 @@
 use hdk::prelude::*;
 use std::sync::{Arc, RwLock};
 
-use crate::persistence_layer::{persist_holon, put_smartlink_cached, SmartLinkWriteContext};
+use crate::persistence_layer::{
+    get_holon, persist_holon, put_smartlink_cached, SmartLinkWriteContext,
+};
 use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
 
 use holons_core::{
@@ -9,7 +11,7 @@ use holons_core::{
         holon::state::{AccessType, StagedState},
         Holon, HolonCollection, ReadableHolonState, StagedHolon, WriteableHolonState,
     },
-    descriptors::resolve_inverse_relationship_name,
+    descriptors::{resolve_inverse_relationship_name, TargetBinding},
     reference_layer::ReadableHolon,
     HolonReference, SmartReference, StagedReference, WritableHolon,
 };
@@ -610,6 +612,23 @@ struct ResolvedRelationshipTarget {
     target_key: Option<MapString>,
 }
 
+/// Resolves the physical SmartLink target selected by a completed descriptor binding.
+///
+/// Storage remains descriptor-agnostic: relationship commit resolves a lineage root before
+/// constructing `PreparedSmartLink`, so a lineage-bound occurrence can never be represented by
+/// a descendant-targeted link.
+fn materialize_target_binding(
+    target_id: &LocalId,
+    binding: TargetBinding,
+) -> Result<LocalId, HolonError> {
+    match binding {
+        TargetBinding::Version => Ok(target_id.clone()),
+        TargetBinding::Lineage => get_holon(target_id)?
+            .ok_or_else(|| HolonError::HolonNotFound(target_id.to_string()))
+            .map(|stored| stored.version_metadata.lineage_root().as_local_id().clone()),
+    }
+}
+
 /// Creates local forward and inverse SmartLinks for each member in `collection`.
 ///
 /// Current behavior is fail-fast at the collection level: if any member cannot
@@ -630,6 +649,13 @@ fn save_smartlinks_for_collection(
     smartlink_write_context: &mut SmartLinkWriteContext,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
+    let relationship_descriptor = source
+        .source_reference
+        .holon_descriptor()?
+        .get_relationship_by_name(name.clone())?
+        .try_into_declared_relationship_descriptor()?;
+    let forward_binding = relationship_descriptor.target_binding()?;
+    let inverse_binding = relationship_descriptor.required_inverse()?.target_binding()?;
     let source_id = source.source_local_id();
     debug!(
         "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
@@ -701,9 +727,11 @@ fn save_smartlinks_for_collection(
         // emits set-style links today. That is a coordinator choice, not a storage
         // limitation: storage persists supplied occurrences as distinct identities
         // (Storage SL3). Assigning and pairing them is deferred coordinator work.
+        let forward_target_id =
+            materialize_target_binding(&resolved_target.target_local_id, forward_binding)?;
         let forward_smartlink = PreparedSmartLink {
             source_id: source_id.clone(),
-            target_id: HolonId::Local(resolved_target.target_local_id.clone()),
+            target_id: HolonId::Local(forward_target_id),
             relationship_name: name.clone(),
             canonical_key: canonical_key_from_optional_key(resolved_target.target_key.clone())?,
             occurrence_id: None,
@@ -717,9 +745,10 @@ fn save_smartlinks_for_collection(
         );
         persist_smartlink(smartlink_write_context, forward_smartlink, performance_metrics)?;
 
+        let inverse_target_id = materialize_target_binding(source_id, inverse_binding)?;
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
-            target_id: HolonId::Local(source_id.clone()),
+            target_id: HolonId::Local(inverse_target_id),
             relationship_name: inverse_name.clone(),
             canonical_key: inverse_canonical_key.clone(),
             occurrence_id: None,

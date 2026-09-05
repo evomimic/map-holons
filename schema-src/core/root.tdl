@@ -178,6 +178,7 @@ abstract holon MetaRelationshipType.MetaTypeDescriptor {
       IsOrdered.PropertyType,
       AllowsDuplicates.PropertyType,
       DeletionSemantic.PropertyType,
+      TargetBinding.PropertyType,
     ]
     InstanceRelationships -> [
       (RelationshipType.TypeDescriptor)-[SourceType]->(HolonType.TypeDescriptor),

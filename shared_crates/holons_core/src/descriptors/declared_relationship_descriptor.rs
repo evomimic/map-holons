@@ -1,5 +1,6 @@
 use crate::descriptors::{
-    accessor_helpers, Descriptor, HolonDescriptor, InverseRelationshipDescriptor, TypeHeader,
+    accessor_helpers, Descriptor, HolonDescriptor, InverseRelationshipDescriptor, TargetBinding,
+    TypeHeader,
 };
 use crate::reference_layer::HolonReference;
 use base_types::MapString;
@@ -43,6 +44,17 @@ impl DeclaredRelationshipDescriptor {
     /// Returns whether repeated target references are allowed.
     pub fn allows_duplicates(&self) -> Result<bool, HolonError> {
         accessor_helpers::relationship_allows_duplicates(&self.holon)
+    }
+
+    /// Returns the completed physical-target binding for this relationship direction.
+    pub fn target_binding(&self) -> Result<TargetBinding, HolonError> {
+        match accessor_helpers::relationship_target_binding(&self.holon)?.0.as_str() {
+            "Version" => Ok(TargetBinding::Version),
+            "Lineage" => Ok(TargetBinding::Lineage),
+            other => Err(HolonError::InvalidParameter(format!(
+                "Relationship descriptor has invalid TargetBinding enum value {other:?}"
+            ))),
+        }
     }
 
     /// Returns the optional deletion semantic declared by this relationship, when populated.

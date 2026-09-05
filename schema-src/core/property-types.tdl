@@ -64,6 +64,20 @@ property DeletionSemantic.PropertyType {
   }
 }
 
+property TargetBinding.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value TargetBinding.MapEnumValueType
+  IsValueRequired true
+  DefaultValue Version
+  header {
+    description: "Selects whether a relationship occurrence targets an exact version or its lineage root."
+    display_name: "target_binding"
+    display_plural: "target_bindings"
+    plural: "TargetBindings"
+  }
+}
+
 
 property Description.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor

@@ -39,7 +39,7 @@
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "0083eab04f4ade5c1abf8be0ebcab9663b3a11f64f03cead9adc7704a0cb1461"
+      "sha256": "d8ddc537af7f5c29c9f06826b2a9f74952eb8f3d8664ed96638fea7b71304b6a"
     },
     {
       "path": "imports/core/keyrules.json",
@@ -55,15 +55,15 @@
     },
     {
       "path": "imports/core/property-types.json",
-      "sha256": "5e4178738e78ca908b03f0bbec21ace657e6169b89fe4d3656304bedfdcc8422"
+      "sha256": "c698b4fa867b5528d39ce0237552c67c3567de191343500934439c33ce52dd63"
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "c2447bad66757a27ffb1426082907a2b7f505da7653e500211722c5468bc6568"
+      "sha256": "ddfb2ce736a2bdd45449d01459620cad1eeffdcd0ef3cbaf3a66ebf9cdcb048b"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "a1b98219a63eb9e2788ea6b0bef34eca911577672eb3120c997caa6004f93b49"
+      "sha256": "b6eb7cfbab178703d203d49ea8460e9cc03afec5500230e3f732fc5388b7d852"
     },
     {
       "path": "imports/core/validation.json",
@@ -1842,6 +1842,22 @@
     {
       "key": "Summarize.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "TargetBinding.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType"
+    },
+    {
+      "key": "TargetBinding.MapEnumValueType.Lineage",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "TargetBinding.MapEnumValueType.Version",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "TargetBinding.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "TemplateString.PropertyType",
