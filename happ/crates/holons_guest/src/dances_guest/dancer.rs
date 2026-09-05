@@ -47,6 +47,8 @@ impl Dancer {
             .insert("fetch_all_related_holons", fetch_all_related_holons_dance as DanceFunction);
         dispatch_table.insert("get_all_holons", get_all_holons_dance as DanceFunction);
         dispatch_table.insert("get_holon_by_id", get_holon_by_id_dance as DanceFunction);
+        dispatch_table
+            .insert("get_saved_holon_by_key", get_saved_holon_by_key_dance as DanceFunction);
         dispatch_table.insert("load_holons", load_holons_dance as DanceFunction);
         dispatch_table.insert("query_relationships", query_relationships_dance as DanceFunction);
         // Add more functions (in alphabetical order) as needed
@@ -98,18 +100,17 @@ fn process_dispatch_result(dispatch_result: Result<ResponseBody, HolonError>) ->
         Ok(body) => DanceResponse {
             status_code: ResponseStatusCode::OK,
             description: MapString("Success".to_string()),
+            error: None,
             body,
             descriptor: None,
         },
-        Err(error) => {
-            let error_message = extract_error_message(&error);
-            DanceResponse {
-                status_code: ResponseStatusCode::from(error),
-                description: MapString(error_message),
-                body: ResponseBody::None,
-                descriptor: None,
-            }
-        }
+        Err(error) => DanceResponse {
+            status_code: ResponseStatusCode::from(error.clone()),
+            description: MapString(extract_error_message(&error)),
+            error: Some(error),
+            body: ResponseBody::None,
+            descriptor: None,
+        },
     }
 }
 

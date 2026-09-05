@@ -616,6 +616,7 @@ fn sample_dance_response() -> DanceResponseWire {
     DanceResponseWire {
         status_code: ResponseStatusCode::OK,
         description: map_string("legacy compatibility dance completed"),
+        error: None,
         body: ResponseBodyWire::NodeCollection(sample_node_collection()),
         descriptor: Some(smart_reference(41, local_holon_id(&[151, 152, 153]), None)),
     }

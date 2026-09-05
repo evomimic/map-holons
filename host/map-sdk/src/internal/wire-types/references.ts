@@ -203,6 +203,7 @@ export type RequestBodyWire =
   | { TargetHolons: [RelationshipName, HolonReferenceWire[]] }
   | { TransientReference: TransientReferenceWire }
   | { HolonId: HolonId }
+  | { Key: MapString }
   | { ParameterValues: PropertyMap }
   | { StagedRef: StagedReferenceWire }
   // Deprecated compatibility branch retained only for old-world query dance flows.
@@ -257,6 +258,7 @@ export type ResponseBodyWire =
 export interface DanceResponseWire {
   status_code: ResponseStatusCode;
   description: MapString;
+  error?: HolonErrorWire;
   body: ResponseBodyWire;
   descriptor: HolonReferenceWire | null;
 }
@@ -272,6 +274,11 @@ export type ValidationErrorWire =
   | { DescriptorError: string }
   | { WasmError: string }
   | { JsonSchemaError: string };
+
+export type LineageIntegrityReasonWire =
+  | 'CycleDetected'
+  | { InvalidSuccessorTarget: { target: LocalId } }
+  | { MalformedSuccessorLink: { detail: string } };
 
 export type PvlFieldWire =
   | 'PropertyName'
@@ -438,6 +445,20 @@ export type HolonErrorWire =
   | { FailedToAcquireLock: string }
   | { HashConversion: [string, string] }
   | { HolonNotFound: string }
+  | {
+      MultipleLineageHeads: {
+        key: MapString;
+        lineage_roots: LocalId[];
+        head_ids: LocalId[];
+      };
+    }
+  | {
+      LineageIntegrityError: {
+        key: MapString;
+        lineage_root: LocalId;
+        reason: LineageIntegrityReasonWire;
+      };
+    }
   | { IndexOutOfRange: string }
   | { InvalidHolonReference: string }
   | { InvalidWireFormat: { wire_type: string; reason: string } }
@@ -1020,6 +1041,26 @@ export function isPvlViolationWire(value: unknown): value is PvlViolationWire {
   );
 }
 
+export function isLineageIntegrityReasonWire(
+  value: unknown,
+): value is LineageIntegrityReasonWire {
+  return (
+    value === 'CycleDetected' ||
+    isTaggedValue(
+      value,
+      'InvalidSuccessorTarget',
+      (candidate): candidate is { target: LocalId } =>
+        isRecord(candidate) && isLocalId(candidate['target']),
+    ) ||
+    isTaggedValue(
+      value,
+      'MalformedSuccessorLink',
+      (candidate): candidate is { detail: string } =>
+        isRecord(candidate) && isString(candidate['detail']),
+    )
+  );
+}
+
 export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
   return (
     isTaggedValue(value, 'CacheError', isString) ||
@@ -1048,6 +1089,30 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
     isTaggedValue(value, 'FailedToAcquireLock', isString) ||
     isTaggedValue(value, 'HashConversion', isStringPair) ||
     isTaggedValue(value, 'HolonNotFound', isString) ||
+    isTaggedValue(
+      value,
+      'MultipleLineageHeads',
+      (candidate): candidate is { key: MapString; lineage_roots: LocalId[]; head_ids: LocalId[] } =>
+        isRecord(candidate) &&
+        isString(candidate['key']) &&
+        Array.isArray(candidate['lineage_roots']) &&
+        candidate['lineage_roots'].every(isLocalId) &&
+        Array.isArray(candidate['head_ids']) &&
+        candidate['head_ids'].every(isLocalId),
+    ) ||
+    isTaggedValue(
+      value,
+      'LineageIntegrityError',
+      (candidate): candidate is {
+        key: MapString;
+        lineage_root: LocalId;
+        reason: LineageIntegrityReasonWire;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['key']) &&
+        isLocalId(candidate['lineage_root']) &&
+        isLineageIntegrityReasonWire(candidate['reason']),
+    ) ||
     isTaggedValue(value, 'IndexOutOfRange', isString) ||
     isTaggedValue(value, 'InvalidHolonReference', isString) ||
     isTaggedValue(
@@ -1226,6 +1291,7 @@ export function isRequestBodyWire(value: unknown): value is RequestBodyWire {
     ) ||
     isTaggedValue(value, 'TransientReference', isTransientReferenceWire) ||
     isTaggedValue(value, 'HolonId', isHolonId) ||
+    isTaggedValue(value, 'Key', isString) ||
     isTaggedValue(value, 'ParameterValues', isPropertyMap) ||
     isTaggedValue(value, 'StagedRef', isStagedReferenceWire) ||
     isTaggedValue(value, 'QueryExpression', isQueryExpression)
@@ -1275,6 +1341,7 @@ export function isDanceResponseWire(value: unknown): value is DanceResponseWire 
     isRecord(value) &&
     isResponseStatusCode(value['status_code']) &&
     isString(value['description']) &&
+    (value['error'] === undefined || isHolonErrorWire(value['error'])) &&
     isResponseBodyWire(value['body']) &&
     isNullable(value['descriptor'], isHolonReferenceWire)
   );

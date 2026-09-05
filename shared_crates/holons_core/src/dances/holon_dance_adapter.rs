@@ -138,6 +138,18 @@ pub fn get_holon_by_id_dance(
     Ok(ResponseBody::Holon(holon))
 }
 
+/// Resolves an exact key in the current persisted holon space to its sole visible lineage head.
+pub fn get_saved_holon_by_key_dance(
+    context: &Arc<TransactionContext>,
+    request: DanceRequest,
+) -> Result<ResponseBody, HolonError> {
+    let RequestBody::Key(key) = request.body else {
+        return Err(HolonError::InvalidParameter("RequestBody variant must be Key".to_string()));
+    };
+
+    Ok(ResponseBody::HolonReference(context.lookup().get_saved_holon_by_key(&key)?.into()))
+}
+
 /// Executes the `"load_holons"` dance (guest side).
 ///
 /// This adapter validates the request and delegates Holon loading to the

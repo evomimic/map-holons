@@ -1,6 +1,5 @@
 use holons_prelude::prelude::*;
 use holons_test::{ExecutionHandle, ExecutionReference, TestExecutionState, TestReference};
-use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use tracing::info;
 
 /// Resolves a holon committed outside the fixture's ledger (e.g. a
@@ -24,20 +23,9 @@ pub async fn execute_lookup_saved_holon_by_key(
 
     let context = state.context();
 
-    let command = MapCommand::Transaction(TransactionCommand {
-        context: context.clone(),
-        action: TransactionAction::GetAllHolons,
-    });
-    let result = state.dispatch_command(command, "lookup_saved_holon_by_key").await.unwrap_or_else(
-        |error| panic!("lookup_saved_holon_by_key: get_all_holons failed: {error:?}"),
-    );
-    let holons = match result {
-        MapResult::Collection(collection) => collection,
-        other => panic!("lookup_saved_holon_by_key: expected Collection, got {other:?}"),
-    };
-
-    match holons.get_by_key(&key) {
-        Ok(Some(holon_reference)) => {
+    match context.lookup().get_saved_holon_by_key(&key) {
+        Ok(reference) => {
+            let holon_reference = HolonReference::Smart(reference);
             assert!(
                 expected_error.is_none(),
                 "lookup_saved_holon_by_key: expected failure {:?} but found saved holon with key '{}'",
@@ -61,23 +49,15 @@ pub async fn execute_lookup_saved_holon_by_key(
             state.record(&step_token, execution_reference).unwrap();
             info!("Success! lookup_saved_holon_by_key resolved key '{}'", key.0);
         }
-        Ok(None) => {
-            assert_eq!(
-                Some(HolonErrorKind::HolonNotFound),
-                expected_error,
-                "lookup_saved_holon_by_key: no saved holon found for key '{}'",
-                key.0
-            );
-            info!("Success! lookup_saved_holon_by_key failed as expected for key '{}'", key.0);
-        }
-        Err(e) => {
-            let actual = HolonErrorKind::from(&e);
+        Err(error) => {
+            let actual = HolonErrorKind::from(&error);
             assert_eq!(
                 Some(actual),
                 expected_error,
                 "lookup_saved_holon_by_key: unexpected error {:?}",
-                e
+                error
             );
+            info!("Success! lookup_saved_holon_by_key failed as expected for key '{}'", key.0);
         }
     }
 }

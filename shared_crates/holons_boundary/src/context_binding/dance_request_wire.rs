@@ -39,6 +39,7 @@ pub enum RequestBodyWire {
     TargetHolons(RelationshipName, Vec<HolonReferenceWire>),
     TransientReference(TransientReferenceWire),
     HolonId(HolonId),
+    Key(MapString),
     ParameterValues(PropertyMap),
     StagedRef(StagedReferenceWire),
     QueryExpression(QueryExpression),
@@ -158,6 +159,7 @@ impl RequestBodyWire {
                 Ok(RequestBody::TransientReference(w.bind(context)?))
             }
             RequestBodyWire::HolonId(id) => Ok(RequestBody::HolonId(id)),
+            RequestBodyWire::Key(key) => Ok(RequestBody::Key(key)),
             RequestBodyWire::ParameterValues(p) => Ok(RequestBody::ParameterValues(p)),
             RequestBodyWire::StagedRef(w) => Ok(RequestBody::StagedRef(w.bind(context)?)),
             RequestBodyWire::QueryExpression(q) => Ok(RequestBody::QueryExpression(q)),
@@ -187,6 +189,8 @@ impl RequestBodyWire {
             }
 
             RequestBodyWire::HolonId(holon_id) => format!("  HolonId: {:?}", holon_id),
+
+            RequestBodyWire::Key(key) => format!("  Key: {:?}", key),
 
             RequestBodyWire::ParameterValues(parameters) => {
                 format!("  ParameterValues: keys={:?}", parameters.keys().collect::<Vec<_>>())
@@ -249,6 +253,7 @@ impl From<&RequestBody> for RequestBodyWire {
                 RequestBodyWire::TransientReference(TransientReferenceWire::from(reference))
             }
             RequestBody::HolonId(holon_id) => RequestBodyWire::HolonId(holon_id.clone()),
+            RequestBody::Key(key) => RequestBodyWire::Key(key.clone()),
             RequestBody::ParameterValues(parameters) => {
                 RequestBodyWire::ParameterValues(parameters.clone())
             }

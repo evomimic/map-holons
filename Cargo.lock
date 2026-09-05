@@ -860,6 +860,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 name = "client_shared_types"
 version = "0.1.0"
 dependencies = [
+ "base_types",
  "core_types",
  "holons_boundary",
  "holons_core",
@@ -3435,6 +3436,7 @@ dependencies = [
  "holons_loader",
  "integrity_core_types",
  "serde",
+ "sha2 0.10.9",
  "shared_validation",
  "tracing",
  "type_names",

@@ -39,7 +39,10 @@ impl DeprecatedHolochainReceptor {
     }
 
     fn is_read_only_request(request_name: &str) -> bool {
-        matches!(request_name, "get_all_holons" | "get_holon_by_id" | "query_relationships")
+        matches!(
+            request_name,
+            "get_all_holons" | "get_holon_by_id" | "get_saved_holon_by_key" | "query_relationships"
+        )
     }
 
     pub fn new(base: DeprecatedBaseReceptor) -> Self {
@@ -176,6 +179,7 @@ mod tests {
     fn read_only_route_classification_includes_supported_reads() {
         assert!(DeprecatedHolochainReceptor::is_read_only_request("get_all_holons"));
         assert!(DeprecatedHolochainReceptor::is_read_only_request("get_holon_by_id"));
+        assert!(DeprecatedHolochainReceptor::is_read_only_request("get_saved_holon_by_key"));
         assert!(DeprecatedHolochainReceptor::is_read_only_request("query_relationships"));
     }
 
