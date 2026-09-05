@@ -168,6 +168,45 @@
       ]
     },
     {
+      "key": "TargetBinding.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "TargetBinding",
+        "TypeNamePlural": "TargetBindings",
+        "DisplayName": "target_binding",
+        "DisplayNamePlural": "target_bindings",
+        "Description": "Selects whether a relationship occurrence targets an exact version or its lineage root.",
+        "IsValueRequired": true,
+        "DefaultValue": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "TargetBinding.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "Description.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {

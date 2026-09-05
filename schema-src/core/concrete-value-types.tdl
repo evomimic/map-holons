@@ -108,6 +108,27 @@ enum DeletionSemantic.MapEnumValueType {
   }
 }
 
+enum TargetBinding.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Selects whether a relationship occurrence physically targets one immutable version or the root of its lineage."
+    display_name: "TargetBinding"
+    display_plural: "TargetBindings"
+    plural: "TargetBindings"
+  }
+  variants {
+    variant Version {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+    }
+    variant Lineage {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+    }
+  }
+}
+
 enum CollectionType.MapEnumValueType {
   type MetaEnumValueType.MetaValueType
   extends MapEnumValueType.EnumValueType

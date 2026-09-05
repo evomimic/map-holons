@@ -17,6 +17,8 @@ use std::sync::Arc;
 pub struct DanceResponseWire {
     pub status_code: ResponseStatusCode,
     pub description: MapString,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<HolonError>,
     pub body: ResponseBodyWire,
     pub descriptor: Option<HolonReferenceWire>,
 }
@@ -38,6 +40,7 @@ impl DanceResponseWire {
         Ok(DanceResponse {
             status_code: self.status_code,
             description: self.description,
+            error: self.error,
             body: self.body.bind(context)?,
             descriptor: match self.descriptor {
                 None => None,
@@ -119,6 +122,7 @@ impl From<&DanceResponse> for DanceResponseWire {
         Self {
             status_code: response.status_code.clone(),
             description: response.description.clone(),
+            error: response.error.clone(),
             body: ResponseBodyWire::from(&response.body),
             descriptor: response.descriptor.as_ref().map(HolonReferenceWire::from),
         }
@@ -143,5 +147,33 @@ impl From<&ResponseBody> for ResponseBodyWire {
                 ResponseBodyWire::NodeCollection(NodeCollectionWire::from(node_collection))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core_types::{LineageIntegrityReason, LocalId};
+
+    #[test]
+    fn serializes_and_restores_structured_lineage_errors() {
+        let error = HolonError::LineageIntegrityError {
+            key: MapString("book-1".to_string()),
+            lineage_root: LocalId(vec![1; 39]),
+            reason: LineageIntegrityReason::CycleDetected,
+        };
+        let wire = DanceResponseWire {
+            status_code: ResponseStatusCode::Conflict,
+            description: MapString(error.to_string()),
+            error: Some(error.clone()),
+            body: ResponseBodyWire::None,
+            descriptor: None,
+        };
+
+        let encoded = serde_json::to_string(&wire).expect("response wire must serialize");
+        let decoded: DanceResponseWire =
+            serde_json::from_str(&encoded).expect("response wire must deserialize");
+
+        assert_eq!(decoded.error, Some(error));
     }
 }

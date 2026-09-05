@@ -459,6 +459,9 @@
             },
             {
               "$ref": "DeletionSemantic.PropertyType"
+            },
+            {
+              "$ref": "TargetBinding.PropertyType"
             }
           ]
         },

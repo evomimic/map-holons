@@ -1,12 +1,12 @@
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{
     fmt,
     sync::{Arc, RwLock},
 };
 
 use hdk::prelude::*;
-use holons_core::core_shared_objects::SavedHolon;
+use holons_core::core_shared_objects::{ReadableHolonState, SavedHolon};
 use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_core::RelationshipMap;
 use holons_guest_integrity::type_conversions::{
@@ -19,11 +19,11 @@ use holons_guest_integrity::{
 use crate::get_holon_by_path;
 use crate::guest_shared_objects::commit_functions;
 use crate::persistence_layer::{
-    delete_holon_node, expand_all_from_source, expand_from_source, get_all_holon_ids, get_holon,
-    index_local_holon_space, persist_holon, saved_holon_from_stored,
+    delete_holon_node, expand_all_from_source, expand_from_source, expand_from_source_by_key,
+    get_all_holon_ids, get_holon, index_local_holon_space, persist_holon, saved_holon_from_stored,
 };
 use base_types::{BaseValue, MapString};
-use core_types::{HolonError, HolonId, HolonWriteRequest, SmartLink};
+use core_types::{CanonicalKey, HolonError, HolonId, HolonWriteRequest, KeyMatch, SmartLink};
 use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
     core_shared_objects::{transactions::TransactionContext, Holon, HolonCollection},
@@ -34,8 +34,10 @@ use holons_core::{
 };
 use holons_integrity::LinkTypes;
 use holons_loader::HolonLoaderController;
-use integrity_core_types::{LocalId, PropertyMap, PropertyName, RelationshipName};
-use type_names::CorePropertyTypeName;
+use integrity_core_types::{
+    LineageIntegrityReason, LocalId, PropertyMap, PropertyName, RelationshipName,
+};
+use type_names::{CorePropertyTypeName, CoreRelationshipTypeName};
 
 const CORE_SCHEMA_SPACE_KEY: &str = "MAP.CoreSchemaSpace";
 
@@ -159,6 +161,163 @@ impl GuestHolonService {
             self.mint_smart_reference(context, smartlink.target_id.clone(), smart_property_values)?;
 
         Ok((key, reference))
+    }
+
+    fn get_lineage_roots_by_key(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        let space = context.get_space_holon()?.ok_or_else(|| {
+            HolonError::InvalidState("saved-holon lookup requires a persisted HolonSpace".into())
+        })?;
+        let space_id = space.holon_id()?.local_id().clone();
+        let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
+        let canonical_key = CanonicalKey::new(key.0.clone())?;
+        let links = expand_from_source_by_key(&space_id, &owns, KeyMatch::Exact(canonical_key))?;
+
+        if links.is_empty() {
+            return Err(HolonError::HolonNotFound(key.to_string()));
+        }
+
+        let mut roots = HashSet::new();
+        for link in links {
+            let HolonId::Local(target) = link.target_id else {
+                return Err(HolonError::InvalidHolonReference(
+                    "keyed Owns SmartLink target must be local".to_string(),
+                ));
+            };
+            roots.insert(target);
+        }
+
+        let mut roots: Vec<_> = roots.into_iter().collect();
+        roots.sort_by(|left, right| left.0.cmp(&right.0));
+        Ok(roots)
+    }
+
+    fn get_lineage_heads(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+        lineage_root: &LocalId,
+        start: &LocalId,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        fn traverse(
+            holon_service: &GuestHolonService,
+            context: &Arc<TransactionContext>,
+            key: &MapString,
+            lineage_root: &LocalId,
+            current: LocalId,
+            visited: &mut HashSet<LocalId>,
+            active_path: &mut HashSet<LocalId>,
+            heads: &mut Vec<LocalId>,
+        ) -> Result<(), HolonError> {
+            if !active_path.insert(current.clone()) {
+                return Err(HolonError::LineageIntegrityError {
+                    key: key.clone(),
+                    lineage_root: lineage_root.clone(),
+                    reason: LineageIntegrityReason::CycleDetected,
+                });
+            }
+
+            let successors = holon_service.expand_smartlinks_from_source_internal(
+                context,
+                &current,
+                &CoreRelationshipTypeName::Successor.as_relationship_name(),
+            )?;
+            if successors.is_empty() {
+                heads.push(current.clone());
+            } else {
+                for successor in successors {
+                    let HolonId::Local(target) = successor.target_id else {
+                        return Err(HolonError::LineageIntegrityError {
+                            key: key.clone(),
+                            lineage_root: lineage_root.clone(),
+                            reason: LineageIntegrityReason::MalformedSuccessorLink {
+                                detail: "Successor SmartLink target must be local".to_string(),
+                            },
+                        });
+                    };
+                    if active_path.contains(&target) {
+                        return Err(HolonError::LineageIntegrityError {
+                            key: key.clone(),
+                            lineage_root: lineage_root.clone(),
+                            reason: LineageIntegrityReason::CycleDetected,
+                        });
+                    }
+                    if visited.contains(&target) {
+                        continue;
+                    }
+                    let stored =
+                        get_holon(&target)?.ok_or_else(|| HolonError::LineageIntegrityError {
+                            key: key.clone(),
+                            lineage_root: lineage_root.clone(),
+                            reason: LineageIntegrityReason::InvalidSuccessorTarget {
+                                target: target.clone(),
+                            },
+                        })?;
+                    if stored.version_metadata.lineage_root().as_local_id() != lineage_root {
+                        return Err(HolonError::LineageIntegrityError {
+                            key: key.clone(),
+                            lineage_root: lineage_root.clone(),
+                            reason: LineageIntegrityReason::InvalidSuccessorTarget { target },
+                        });
+                    }
+                    traverse(
+                        holon_service,
+                        context,
+                        key,
+                        lineage_root,
+                        target.clone(),
+                        visited,
+                        active_path,
+                        heads,
+                    )?;
+                }
+            }
+
+            active_path.remove(&current);
+            visited.insert(current);
+            Ok(())
+        }
+
+        let mut visited = HashSet::new();
+        let mut active_path = HashSet::new();
+        let mut heads = Vec::new();
+        traverse(
+            self,
+            context,
+            key,
+            lineage_root,
+            start.clone(),
+            &mut visited,
+            &mut active_path,
+            &mut heads,
+        )?;
+        Ok(heads)
+    }
+
+    fn get_lineage_heads_by_key(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<Vec<LocalId>, HolonError> {
+        let lineage_roots = self.get_lineage_roots_by_key(context, key)?;
+        let mut heads = HashSet::new();
+
+        for lineage_root in lineage_roots {
+            for head in self.get_lineage_heads(context, key, &lineage_root, &lineage_root)? {
+                let stored =
+                    get_holon(&head)?.ok_or_else(|| HolonError::HolonNotFound(head.to_string()))?;
+                if saved_holon_from_stored(stored).key() == Some(key.clone()) {
+                    heads.insert(head);
+                }
+            }
+        }
+
+        let mut heads: Vec<_> = heads.into_iter().collect();
+        heads.sort_by(|left, right| left.0.cmp(&right.0));
+        Ok(heads)
     }
 }
 
@@ -331,6 +490,61 @@ impl HolonServiceApi for GuestHolonService {
         collection.add_references(holon_references)?;
 
         Ok(collection)
+    }
+
+    fn expand_smartlinks_from_source_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        source_id: &LocalId,
+        relationship_name: &RelationshipName,
+    ) -> Result<Vec<SmartLink>, HolonError> {
+        expand_from_source(source_id, relationship_name)
+    }
+
+    fn expand_smartlinks_from_source_by_key_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        source_id: &LocalId,
+        relationship_name: &RelationshipName,
+        key_match: KeyMatch,
+    ) -> Result<Vec<SmartLink>, HolonError> {
+        expand_from_source_by_key(source_id, relationship_name, key_match)
+    }
+
+    fn get_saved_holon_by_key_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<SmartReference, HolonError> {
+        let heads = self.get_lineage_heads_by_key(context, key)?;
+        if heads.is_empty() {
+            return Err(HolonError::HolonNotFound(key.to_string()));
+        }
+        let [head] = heads.as_slice() else {
+            let mut lineage_roots = heads
+                .iter()
+                .map(|head| {
+                    get_holon(head)
+                        .and_then(|stored| {
+                            stored.ok_or_else(|| HolonError::HolonNotFound(head.to_string()))
+                        })
+                        .map(|stored| stored.version_metadata.lineage_root().into_local_id())
+                })
+                .collect::<Result<HashSet<_>, _>>()?
+                .into_iter()
+                .collect::<Vec<_>>();
+            lineage_roots.sort_by(|left, right| left.0.cmp(&right.0));
+            return Err(HolonError::MultipleLineageHeads {
+                key: key.clone(),
+                lineage_roots,
+                head_ids: heads,
+            });
+        };
+
+        Ok(SmartReference::new_from_id(
+            TransactionContextHandle::new(Arc::clone(context)),
+            HolonId::Local(head.clone()),
+        ))
     }
 
     /// Execute a Holon import from a `HolonLoadSet`.

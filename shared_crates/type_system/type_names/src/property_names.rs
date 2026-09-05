@@ -120,6 +120,7 @@ pub enum CorePropertyTypeName {
     StartUtf8ByteOffset,
     TotalBundles,
     TotalLoaderHolons,
+    TargetBinding,
     Type,
     TypeName,
     TypeNamePlural,

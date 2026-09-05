@@ -1,9 +1,9 @@
-use super::{HolonReference, TransientReference};
+use super::{HolonReference, SmartReference, TransientReference};
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::RelationshipMap;
 use crate::StagedReference;
-use core_types::{HolonError, HolonId, LocalId, RelationshipName};
+use core_types::{HolonError, HolonId, KeyMatch, LocalId, RelationshipName, SmartLink};
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -64,6 +64,36 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         &self,
         context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError>;
+
+    /// Expands generic SmartLinks from one local source and relationship.
+    fn expand_smartlinks_from_source_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _source_id: &LocalId,
+        _relationship_name: &RelationshipName,
+    ) -> Result<Vec<SmartLink>, HolonError> {
+        Err(HolonError::NotImplemented("expand_smartlinks_from_source_internal".to_string()))
+    }
+
+    /// Expands generic SmartLinks from one local source, filtered by canonical key.
+    fn expand_smartlinks_from_source_by_key_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _source_id: &LocalId,
+        _relationship_name: &RelationshipName,
+        _key_match: KeyMatch,
+    ) -> Result<Vec<SmartLink>, HolonError> {
+        Err(HolonError::NotImplemented("expand_smartlinks_from_source_by_key_internal".to_string()))
+    }
+
+    /// Resolves an exact key in the current space to its sole visible saved lineage head.
+    fn get_saved_holon_by_key_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _key: &base_types::MapString,
+    ) -> Result<SmartReference, HolonError> {
+        Err(HolonError::NotImplemented("get_saved_holon_by_key_internal".to_string()))
+    }
 
     /// Execute a Holon Loader import using a HolonLoadSet (transient) reference.
     /// Returns a transient reference to a HolonLoadResponse holon.

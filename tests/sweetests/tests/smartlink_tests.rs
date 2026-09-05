@@ -208,6 +208,55 @@ async fn expand_modes() {
     assert!(empty.is_err(), "StartsWith(\"\") must be rejected");
 }
 
+/// Key discovery is index metadata on the lineage-bound `Owns` relationship.
+///
+/// The initial occurrence is set-style. A later key for the same lineage root
+/// uses a stable occurrence identity so both exact key entries coexist without
+/// asking storage to understand relationship descriptors or materializing an
+/// inverse index link.
+#[tokio::test(flavor = "multi_thread")]
+async fn keyed_owns_index_entries_share_root_without_inverse() {
+    let backend = setup_test_conductor().await;
+    let zome = backend.cell.zome(ZOME);
+    let space = new_endpoint(&backend).await;
+    let lineage_root = new_endpoint(&backend).await;
+
+    let initial: PutSmartLinkOutcome = backend
+        .conductor
+        .call(&zome, "smartlink_put", prepared(&space, &lineage_root, "Owns", "lineage.A"))
+        .await;
+    assert!(matches!(initial, PutSmartLinkOutcome::Inserted(_)));
+
+    let changed_key = prepared_with_occurrence(&space, &lineage_root, "Owns", "lineage.B", occ(42));
+    let changed: PutSmartLinkOutcome =
+        backend.conductor.call(&zome, "smartlink_put", changed_key.clone()).await;
+    let changed_id = match changed {
+        PutSmartLinkOutcome::Inserted(id) => id,
+        other => panic!("expected Inserted, got {other:?}"),
+    };
+
+    let replay: PutSmartLinkOutcome =
+        backend.conductor.call(&zome, "smartlink_put", changed_key).await;
+    assert_eq!(replay, PutSmartLinkOutcome::AlreadyPresent(changed_id));
+
+    for indexed_key in ["lineage.A", "lineage.B"] {
+        let links: Vec<SmartLink> = backend
+            .conductor
+            .call(
+                &zome,
+                "smartlink_expand_by_key",
+                (space.clone(), rel("Owns"), KeyMatch::Exact(key(indexed_key))),
+            )
+            .await;
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].target_id, HolonId::Local(lineage_root.clone()));
+    }
+
+    let root_outgoing: Vec<SmartLink> =
+        backend.conductor.call(&zome, "smartlink_expand_all", lineage_root.clone()).await;
+    assert!(root_outgoing.is_empty(), "index entries must not create inverse links");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn delete_idempotent_and_leaves_siblings() {
     let backend = setup_test_conductor().await;

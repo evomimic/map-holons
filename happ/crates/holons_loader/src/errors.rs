@@ -178,7 +178,7 @@ fn populate_error_fields(
 
 /// Descriptor resolution (best-effort):
 /// 1) Staged (Nursery) lookup by key "HolonLoadError.HolonErrorType"
-/// 2) Saved fallback via get_all_holons() + get_by_key()
+/// 2) Saved fallback via the exact-key lineage-head lookup.
 fn resolve_holon_error_type_descriptor(
     context: &Arc<TransactionContext>,
 ) -> Result<HolonReference, HolonError> {
@@ -206,14 +206,13 @@ fn resolve_holon_error_type_descriptor(
         _ => { /* fall through to saved fallback */ }
     }
 
-    // 2) Saved fallback: single pass over the saved index by key
-    let saved_collection = context.lookup().get_all_holons()?;
-    match saved_collection.get_by_key(&key) {
-        Ok(Some(reference)) => Ok(reference),
-        Ok(None) => Err(HolonError::HolonNotFound(format!(
+    // 2) Saved fallback: exact keyed lookup yields the sole visible lineage head.
+    match context.lookup().get_saved_holon_by_key(&key) {
+        Ok(reference) => Ok(HolonReference::Smart(reference)),
+        Err(HolonError::HolonNotFound(_)) => Err(HolonError::HolonNotFound(format!(
             "HolonErrorType descriptor not found by key '{}'",
             key.0
         ))),
-        Err(e) => Err(e),
+        Err(error) => Err(error),
     }
 }

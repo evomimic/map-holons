@@ -119,9 +119,8 @@ impl ConductorDanceCaller for HolochainConductorClient {
             )
             .await;
 
-        let Ok(extern_io) = result else {
-            return Err(HolonError::ConductorError("Zome call failed".into()));
-        };
+        let extern_io = result
+            .map_err(|error| HolonError::ConductorError(format!("Zome call failed: {error:?}")))?;
 
         match ExternIO::decode::<DanceResponseEnvelope>(&extern_io) {
             Ok(decoded) => Ok(decoded),
@@ -139,6 +138,7 @@ fn server_error_response_wire(msg: String) -> DanceResponseEnvelope {
     let response = DanceResponseWire {
         status_code: ResponseStatusCode::ServerError,
         description: MapString(msg),
+        error: None,
         body: ResponseBodyWire::None,
         descriptor: None,
     };

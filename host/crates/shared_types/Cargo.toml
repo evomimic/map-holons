@@ -14,4 +14,5 @@ serde_bytes = "*"
 # MAP Dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }
 core_types = { path = "../../../shared_crates/type_system/core_types" }
+base_types = { path = "../../../shared_crates/type_system/base_types" }
 holons_boundary = { path = "../../../shared_crates/holons_boundary" }

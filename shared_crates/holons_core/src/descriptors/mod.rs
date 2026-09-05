@@ -42,7 +42,7 @@ pub use key_rule_descriptor::KeyRuleDescriptor;
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
-pub use relationship_descriptor::RelationshipDescriptor;
+pub use relationship_descriptor::{RelationshipDescriptor, TargetBinding};
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
 pub use value_descriptor::ValueDescriptor;

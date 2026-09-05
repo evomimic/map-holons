@@ -1090,6 +1090,7 @@ checksum = "c3e64b0cc0439b12df2fa678eae89a1c56a529fd067a9115f7827f1fffd22b32"
 name = "client_shared_types"
 version = "0.1.0"
 dependencies = [
+ "base_types",
  "core_types",
  "holons_boundary",
  "holons_core",

@@ -1,4 +1,5 @@
 use crate::holon_space::HolonSpace;
+use base_types::MapString;
 use core_types::{ContentSet, HolonError, HolonId, PropertyMap, RelationshipName};
 use holons_boundary::{
     DanceTypeWire, HolonReferenceWire, HolonWire, StagedReferenceWire, TransientReferenceWire,
@@ -24,6 +25,7 @@ pub enum MapRequestBody {
     TargetHolons(RelationshipName, Vec<HolonReference>),
     TransientReference(TransientReference),
     HolonId(HolonId),
+    Key(MapString),
     ParameterValues(PropertyMap),
     StagedRef(StagedReference),
     QueryExpression(QueryExpression),
@@ -38,6 +40,7 @@ pub enum MapRequestBodyWire {
     TargetHolons(RelationshipName, Vec<HolonReferenceWire>),
     TransientReference(TransientReferenceWire),
     HolonId(HolonId),
+    Key(MapString),
     ParameterValues(PropertyMap),
     StagedRef(StagedReferenceWire),
     QueryExpression(QueryExpression),
@@ -142,6 +145,7 @@ impl MapRequestBodyWire {
                 Ok(MapRequestBody::TransientReference(wire.bind(context)?))
             }
             MapRequestBodyWire::HolonId(id) => Ok(MapRequestBody::HolonId(id)),
+            MapRequestBodyWire::Key(key) => Ok(MapRequestBody::Key(key)),
             MapRequestBodyWire::ParameterValues(values) => {
                 Ok(MapRequestBody::ParameterValues(values))
             }
@@ -182,6 +186,7 @@ impl From<&MapRequestBody> for MapRequestBodyWire {
                 MapRequestBodyWire::TransientReference(TransientReferenceWire::from(reference))
             }
             MapRequestBody::HolonId(id) => MapRequestBodyWire::HolonId(id.clone()),
+            MapRequestBody::Key(key) => MapRequestBodyWire::Key(key.clone()),
             MapRequestBody::ParameterValues(values) => {
                 MapRequestBodyWire::ParameterValues(values.clone())
             }

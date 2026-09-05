@@ -302,6 +302,96 @@
       ]
     },
     {
+      "key": "TargetBinding.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "TargetBinding",
+        "TypeNamePlural": "TargetBindings",
+        "DisplayName": "TargetBinding",
+        "DisplayNamePlural": "TargetBindings",
+        "Description": "Selects whether a relationship occurrence physically targets one immutable version or the root of its lineage."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "TargetBinding.MapEnumValueType.Version"
+            },
+            {
+              "$ref": "TargetBinding.MapEnumValueType.Lineage"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TargetBinding.MapEnumValueType.Version",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Version"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TargetBinding.MapEnumValueType.Lineage",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Lineage"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "CollectionType.MapEnumValueType",
       "type": "MetaEnumValueType.MetaValueType",
       "properties": {

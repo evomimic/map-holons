@@ -490,7 +490,8 @@
         "DisplayName": "OwnedBy",
         "DisplayNamePlural": "OwnedBy Relationships",
         "Description": "Identifies the current holon space that owns a holon; infrastructure supplies this relationship.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Version"
       },
       "relationships": [
         {
@@ -552,7 +553,8 @@
         "DisplayName": "Owns",
         "DisplayNamePlural": "Owns Relationships",
         "Description": "Inverse of OwnedBy, from a holon space to the holons it owns.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "TargetBinding": "Lineage"
       },
       "relationships": [
         {

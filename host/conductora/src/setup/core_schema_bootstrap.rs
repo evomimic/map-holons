@@ -298,4 +298,24 @@ mod tests {
         fs::remove_dir_all(directory)?;
         Ok(())
     }
+
+    #[test]
+    fn packaged_bundle_matches_the_generated_bootstrap_bundle() -> anyhow::Result<()> {
+        let repository_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let generated_bundle = repository_root.join("generated/core-schema-bootstrap");
+        let packaged_bundle = Path::new(env!("CARGO_MANIFEST_DIR")).join(BUNDLE_DIRECTORY);
+
+        assert_eq!(
+            fs::read(generated_bundle.join(MANIFEST_FILENAME))?,
+            fs::read(packaged_bundle.join(MANIFEST_FILENAME))?,
+            "Conductora's packaged bootstrap manifest must be refreshed from the generated bundle"
+        );
+        assert_eq!(
+            bootstrap_content_set_from_directory(&generated_bundle)?.files_to_load,
+            bootstrap_content_set_from_directory(&packaged_bundle)?.files_to_load,
+            "Conductora's packaged bootstrap imports must match the generated bundle"
+        );
+
+        Ok(())
+    }
 }

@@ -744,6 +744,7 @@ dependencies = [
  "holons_loader",
  "integrity_core_types",
  "serde",
+ "sha2",
  "shared_validation",
  "tracing",
  "type_names",

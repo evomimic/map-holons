@@ -39,6 +39,7 @@ pub enum RequestBody {
     TargetHolons(RelationshipName, Vec<HolonReference>),
     TransientReference(TransientReference),
     HolonId(HolonId),
+    Key(MapString),
     ParameterValues(PropertyMap),
     StagedRef(StagedReference),
     QueryExpression(QueryExpression),
@@ -80,6 +81,7 @@ impl RequestBody {
                 relationship_name, holons
             ),
             RequestBody::HolonId(holon_id) => format!("  HolonId: {:?}", holon_id),
+            RequestBody::Key(key) => format!("  Key: {:?}", key),
 
             _ => format!("{:#?}", self), // Use full debug for other response bodies
         }

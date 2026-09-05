@@ -14,6 +14,13 @@ pub struct RelationshipDescriptor {
     holon: HolonReference,
 }
 
+/// Physical target semantics selected by a completed relationship descriptor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetBinding {
+    Version,
+    Lineage,
+}
+
 impl RelationshipDescriptor {
     /// Wraps an already-resolved descriptor holon reference.
     pub fn from_holon(holon: HolonReference) -> Self {
@@ -38,6 +45,17 @@ impl RelationshipDescriptor {
     /// Returns whether repeated target references are allowed.
     pub fn allows_duplicates(&self) -> Result<bool, HolonError> {
         accessor_helpers::relationship_allows_duplicates(&self.holon)
+    }
+
+    /// Returns the completed physical-target binding declared for this direction.
+    pub fn target_binding(&self) -> Result<TargetBinding, HolonError> {
+        match accessor_helpers::relationship_target_binding(&self.holon)?.0.as_str() {
+            "Version" => Ok(TargetBinding::Version),
+            "Lineage" => Ok(TargetBinding::Lineage),
+            other => Err(HolonError::InvalidParameter(format!(
+                "Relationship descriptor has invalid TargetBinding enum value {other:?}"
+            ))),
+        }
     }
 
     /// Returns the optional deletion semantic declared by this relationship, when populated.
