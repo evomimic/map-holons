@@ -130,6 +130,33 @@ export type ValidationState =
   | 'Validated'
   | 'Invalid';
 
+/** Identity-only semantic findings, matching Rust's default serde enum encoding. */
+export type CommitValidationViolationKindWire =
+  | 'NoDescriptor'
+  | 'UnsupportedValidationRule'
+  | { UnsupportedConstraintType: { constraint_identity: string; constraint_type_identity: string } }
+  | { RuleViolation: { code: string } }
+  | 'UnresolvedLocalDependency'
+  | 'RelationshipCoordinationRequired';
+
+export type ValidationSubjectPathWire =
+  | { Holon: { holon_identity: string } }
+  | { Property: { holon_identity: string; name: string } }
+  | { Value: { holon_identity: string; property: string } }
+  | { Relationship: { source_identity: string; name: string; target_identity: string } }
+  | 'Transaction';
+
+export type ValidationSeverityWire = 'Info' | 'Warning' | 'Error';
+
+export interface CommitValidationViolationWire {
+  kind: CommitValidationViolationKindWire;
+  rule_key: string | null;
+  severity: ValidationSeverityWire;
+  subject: ValidationSubjectPathWire;
+  descriptor_identity: string | null;
+  message: string;
+}
+
 // `Committed` is the only tuple-like staged payload variant used here.
 export type StagedState =
   | 'Abandoned'
@@ -161,6 +188,7 @@ export interface StagedHolonWire {
   holon_state: HolonState;
   staged_state: StagedState;
   validation_state: ValidationState;
+  validation_findings?: CommitValidationViolationWire[];
   property_map: PropertyMap;
   staged_relationships: StagedRelationshipMapWire;
   original_id: LocalId | null;
@@ -1158,6 +1186,9 @@ export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
     isHolonState(value['holon_state']) &&
     isStagedState(value['staged_state']) &&
     isValidationState(value['validation_state']) &&
+    (value['validation_findings'] === undefined ||
+      (Array.isArray(value['validation_findings']) &&
+        value['validation_findings'].every(isCommitValidationViolationWire))) &&
     isPropertyMap(value['property_map']) &&
     isStagedRelationshipMapWire(value['staged_relationships']) &&
     isNullable(value['original_id'], isLocalId) &&
@@ -1168,6 +1199,95 @@ export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
         value['touched_relationship_names'].every(isString))) &&
     Array.isArray(value['errors']) &&
     value['errors'].every(isHolonErrorWire)
+  );
+}
+
+export function isCommitValidationViolationKindWire(
+  value: unknown,
+): value is CommitValidationViolationKindWire {
+  return (
+    value === 'NoDescriptor' ||
+    value === 'UnsupportedValidationRule' ||
+    value === 'UnresolvedLocalDependency' ||
+    value === 'RelationshipCoordinationRequired' ||
+    isTaggedValue(
+      value,
+      'UnsupportedConstraintType',
+      (candidate): candidate is {
+        constraint_identity: string;
+        constraint_type_identity: string;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['constraint_identity']) &&
+        isString(candidate['constraint_type_identity']),
+    ) ||
+    isTaggedValue(
+      value,
+      'RuleViolation',
+      (candidate): candidate is { code: string } =>
+        isRecord(candidate) && isString(candidate['code']),
+    )
+  );
+}
+
+export function isValidationSubjectPathWire(
+  value: unknown,
+): value is ValidationSubjectPathWire {
+  return (
+    value === 'Transaction' ||
+    isTaggedValue(
+      value,
+      'Holon',
+      (candidate): candidate is { holon_identity: string } =>
+        isRecord(candidate) && isString(candidate['holon_identity']),
+    ) ||
+    isTaggedValue(
+      value,
+      'Property',
+      (candidate): candidate is { holon_identity: string; name: string } =>
+        isRecord(candidate) &&
+        isString(candidate['holon_identity']) &&
+        isString(candidate['name']),
+    ) ||
+    isTaggedValue(
+      value,
+      'Value',
+      (candidate): candidate is { holon_identity: string; property: string } =>
+        isRecord(candidate) &&
+        isString(candidate['holon_identity']) &&
+        isString(candidate['property']),
+    ) ||
+    isTaggedValue(
+      value,
+      'Relationship',
+      (candidate): candidate is {
+        source_identity: string;
+        name: string;
+        target_identity: string;
+      } =>
+        isRecord(candidate) &&
+        isString(candidate['source_identity']) &&
+        isString(candidate['name']) &&
+        isString(candidate['target_identity']),
+    )
+  );
+}
+
+export function isValidationSeverityWire(value: unknown): value is ValidationSeverityWire {
+  return value === 'Info' || value === 'Warning' || value === 'Error';
+}
+
+export function isCommitValidationViolationWire(
+  value: unknown,
+): value is CommitValidationViolationWire {
+  return (
+    isRecord(value) &&
+    isCommitValidationViolationKindWire(value['kind']) &&
+    isNullable(value['rule_key'], isString) &&
+    isValidationSeverityWire(value['severity']) &&
+    isValidationSubjectPathWire(value['subject']) &&
+    isNullable(value['descriptor_identity'], isString) &&
+    isString(value['message'])
   );
 }
 

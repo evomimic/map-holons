@@ -154,7 +154,7 @@ mod tests {
     use super::*;
     use crate::descriptors::test_support::new_test_holon;
     use crate::descriptors::test_support::{build_context, new_descriptor_holon};
-    use crate::reference_layer::{ReadableHolon, WritableHolon};
+    use crate::reference_layer::{CompletionOutcome, ReadableHolon, WritableHolon};
     use base_types::MapString;
     use core_types::HolonError;
     use type_names::CoreRelationshipTypeName;
@@ -178,12 +178,12 @@ mod tests {
     }
 
     #[test]
-    fn populate_defaults_errors_for_an_undescribed_holon() -> Result<(), HolonError> {
+    fn populate_defaults_defers_for_an_undescribed_holon() -> Result<(), HolonError> {
         let context = build_context();
         let mut holon = new_test_holon(&context, "undescribed-instance")?;
         holon.with_property_value("Authored", "preserved")?;
 
-        assert!(matches!(holon.populate_defaults(), Err(HolonError::MissingDescribedBy { .. })));
+        assert_eq!(holon.populate_defaults()?, CompletionOutcome::DeferredNoDescriptor);
 
         assert!(matches!(
             holon.property_value("Authored")?,
@@ -208,6 +208,103 @@ mod tests {
             Err(HolonError::MultipleDescribedBy { count: 2, .. })
         ));
 
+        Ok(())
+    }
+
+    #[test]
+    fn completion_preserves_progress_and_retries_nested_descriptor_deferral(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut deferred = new_descriptor_holon(&context, "deferred", "Deferred", "Property")?;
+        deferred.with_property_value(CorePropertyTypeName::DefaultValue, true)?;
+        let mut required = new_descriptor_holon(&context, "required", "Required", "Property")?;
+        required
+            .with_property_value(CorePropertyTypeName::IsValueRequired, true)?
+            .with_property_value(CorePropertyTypeName::DefaultValue, false)?;
+        let mut optional = new_descriptor_holon(&context, "optional", "Optional", "Property")?;
+        optional
+            .with_property_value(CorePropertyTypeName::IsValueRequired, false)?
+            .with_property_value(CorePropertyTypeName::DefaultValue, true)?;
+        let mut descriptor = new_descriptor_holon(&context, "contract", "Contract", "Holon")?;
+        descriptor.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![deferred.clone().into(), required.into(), optional.into()],
+        )?;
+        let mut target = new_test_holon(&context, "target")?;
+        target.with_descriptor(descriptor.into())?;
+
+        assert_eq!(target.populate_defaults()?, CompletionOutcome::DeferredNoDescriptor);
+        assert_eq!(
+            target.property_value("Required")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+        );
+        assert_eq!(target.property_value("Deferred")?, None);
+        assert_eq!(target.property_value("Optional")?, None);
+
+        let mut required_definition =
+            new_descriptor_holon(&context, "required-definition", "IsValueRequired", "Property")?;
+        required_definition.with_property_value(CorePropertyTypeName::DefaultValue, true)?;
+        let mut meta_property =
+            new_descriptor_holon(&context, "meta-property", "MetaProperty", "Holon")?;
+        meta_property.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![required_definition.into()],
+        )?;
+        deferred.with_descriptor(meta_property.into())?;
+        target.with_property_value("Required", true)?;
+
+        assert_eq!(target.populate_defaults()?, CompletionOutcome::Completed);
+        assert_eq!(target.populate_defaults()?, CompletionOutcome::Completed);
+        assert_eq!(
+            target.property_value("Required")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(true)))
+        );
+        assert_eq!(
+            target.property_value("Deferred")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(true)))
+        );
+        assert_eq!(target.property_value("Optional")?, None);
+        Ok(())
+    }
+
+    #[test]
+    fn construction_completes_clones_and_staging_without_changing_source() -> Result<(), HolonError>
+    {
+        let context = build_context();
+        let mut property = new_descriptor_holon(&context, "enabled", "Enabled", "Property")?;
+        property
+            .with_property_value(CorePropertyTypeName::IsValueRequired, true)?
+            .with_property_value(CorePropertyTypeName::DefaultValue, false)?;
+        let property = context.mutation().stage_new_holon(property)?;
+        let mut descriptor = new_descriptor_holon(&context, "contract", "Contract", "Holon")?;
+        descriptor.add_related_holons(
+            CoreRelationshipTypeName::InstanceProperties,
+            vec![property.into()],
+        )?;
+        let descriptor = context.mutation().stage_new_holon(descriptor)?;
+        let mut source = new_test_holon(&context, "source")?;
+        source.with_descriptor(descriptor.into())?;
+        source.with_property_value("Authored", "preserved")?;
+
+        let transient_clone = source.clone_holon()?;
+        let mut clone_source = context.mutation().stage_new_holon(source.clone())?;
+        assert_eq!(
+            clone_source.property_value("Enabled")?,
+            Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+        );
+        clone_source.remove_property_value("Enabled")?;
+        let staged_clone = context
+            .mutation()
+            .stage_new_from_clone(clone_source.clone().into(), MapString("independent".into()))?;
+        for completed in [HolonReference::from(transient_clone), staged_clone.into()] {
+            assert_eq!(
+                completed.property_value("Enabled")?,
+                Some(BaseValue::BooleanValue(base_types::MapBoolean(false)))
+            );
+            assert_eq!(completed.property_value("Authored")?, source.property_value("Authored")?);
+        }
+        assert_eq!(source.property_value("Enabled")?, None);
+        assert_eq!(clone_source.property_value("Enabled")?, None);
         Ok(())
     }
 

@@ -191,7 +191,9 @@ impl HolonStagingBehavior for Nursery {
         let staged_holon =
             StagedHolon::new_from_clone_model(transient_reference.holon_clone_model()?)?;
         let new_id = self.stage_holon(staged_holon)?;
-        self.to_validated_staged_reference(&new_id)
+        let mut staged_reference = self.to_validated_staged_reference(&new_id)?;
+        staged_reference.populate_defaults()?;
+        Ok(staged_reference)
     }
 
     /// Stage a new holon by cloning an existing holon, with a new key and
@@ -234,12 +236,21 @@ impl HolonStagingBehavior for Nursery {
             }
         };
 
+        // Snapshot the persisted properties before cloning. `clone_holon` runs construction
+        // completion on the clone (see `SmartReference::clone_holon_impl`), so this is the
+        // last point at which the pre-completion state is observable.
+        let source_properties = current_version.into_model()?.property_map;
         // Clone through the reference layer so cached persisted relationships are preserved.
         let cloned_transient = current_version.clone_holon()?;
-        let staged_holon = StagedHolon::new_for_update_from_clone_model(
-            cloned_transient.holon_clone_model()?,
-            source_local_id,
-        )?;
+        let clone_model = cloned_transient.holon_clone_model()?;
+        let completion_changed_properties = clone_model.properties != source_properties;
+        let mut staged_holon =
+            StagedHolon::new_for_update_from_clone_model(clone_model, source_local_id)?;
+        // Defaults added to the clone are explicit content changes. A graph-only
+        // commit would reuse the saved node and silently discard those additions.
+        if completion_changed_properties {
+            staged_holon.note_property_mutation()?;
+        }
 
         let new_id = self.stage_holon(staged_holon)?;
         let mut staged_reference = self.to_validated_staged_reference(&new_id)?;
@@ -343,6 +354,7 @@ mod tests {
         source_id: LocalId,
         source_holon: SavedHolon,
         source_predecessor_id: Option<LocalId>,
+        described: bool,
     }
 
     impl HolonServiceApi for StageVersionTestService {
@@ -385,6 +397,28 @@ mod tests {
                     relationships.insert(
                         CoreRelationshipTypeName::Predecessor.to_relationship_name(),
                         Arc::new(RwLock::new(predecessor_collection)),
+                    );
+                }
+
+                if self.described {
+                    use crate::descriptors::test_support::new_descriptor_holon;
+                    let mut property =
+                        new_descriptor_holon(context, "enabled", "Enabled", "Property")?;
+                    property.with_property_value(CorePropertyTypeName::IsValueRequired, true)?;
+                    property.with_property_value(CorePropertyTypeName::DefaultValue, false)?;
+                    let property = context.mutation().stage_new_holon(property)?;
+                    let mut descriptor =
+                        new_descriptor_holon(context, "contract", "Contract", "Holon")?;
+                    descriptor.add_related_holons(
+                        CoreRelationshipTypeName::InstanceProperties,
+                        vec![property.into()],
+                    )?;
+                    let descriptor = context.mutation().stage_new_holon(descriptor)?;
+                    let mut collection = HolonCollection::new_existing();
+                    collection.add_references(vec![descriptor.into()])?;
+                    relationships.insert(
+                        CoreRelationshipTypeName::DescribedBy.to_relationship_name(),
+                        Arc::new(RwLock::new(collection)),
                     );
                 }
 
@@ -435,9 +469,14 @@ mod tests {
         source_id: LocalId,
         source_holon: SavedHolon,
         source_predecessor_id: Option<LocalId>,
+        described: bool,
     ) -> Arc<TransactionContext> {
-        let holon_service: Arc<dyn HolonServiceApi> =
-            Arc::new(StageVersionTestService { source_id, source_holon, source_predecessor_id });
+        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(StageVersionTestService {
+            source_id,
+            source_holon,
+            source_predecessor_id,
+            described,
+        });
         let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
             None,
             holon_service,
@@ -449,6 +488,66 @@ mod tests {
             .get_transaction_manager()
             .open_new_transaction(Arc::clone(&space_manager))
             .expect("test transaction should open")
+    }
+
+    #[test]
+    fn saved_clone_completion_preserves_history_and_classifies_content_changes(
+    ) -> Result<(), HolonError> {
+        for authored in [None, Some(true)] {
+            let source_id = LocalId(vec![4, 5, 6]);
+            let mut properties = PropertyMap::new();
+            properties.insert(
+                CorePropertyTypeName::Key.as_property_name(),
+                BaseValue::StringValue(MapString("saved-source".into())),
+            );
+            if let Some(value) = authored {
+                properties.insert(
+                    PropertyName(MapString("Enabled".into())),
+                    BaseValue::BooleanValue(base_types::MapBoolean(value)),
+                );
+            }
+            let source =
+                SavedHolon::new(source_id.clone(), properties.clone(), None, MapInteger(1));
+            let context = stage_version_test_context(source_id.clone(), source, None, true);
+            let saved =
+                SmartReference::new_from_id(context.context_handle(), HolonId::Local(source_id));
+            let cloned = saved.clone_holon()?;
+            assert_eq!(
+                cloned.property_value("Enabled")?,
+                Some(BaseValue::BooleanValue(base_types::MapBoolean(authored.unwrap_or(false))))
+            );
+            assert_eq!(saved.into_model()?.property_map, properties);
+
+            let independent = context
+                .mutation()
+                .stage_new_from_clone(saved.clone().into(), MapString("independent".into()))?;
+            assert_eq!(independent.property_value("Enabled")?, cloned.property_value("Enabled")?);
+            assert_eq!(saved.into_model()?.property_map, properties);
+
+            let staged = context.mutation().stage_new_version(saved.clone())?;
+            let expected_state = if authored.is_some() {
+                StagedState::ForUpdate
+            } else {
+                StagedState::ForUpdateNewVersion
+            };
+            assert!(staged.is_in_state(&context, expected_state)?);
+            assert_eq!(staged.property_value("Enabled")?, cloned.property_value("Enabled")?);
+            // Check the lifecycle consequence of a subsequent non-definitional edit.
+            let rc_holon = staged.get_holon_to_commit(&context)?;
+            let mut holon = rc_holon.write().unwrap();
+            let Holon::Staged(holon) = &mut *holon else { panic!("expected staged update") };
+            holon.note_relationship_mutation(false)?;
+            assert_eq!(
+                holon.get_staged_state(),
+                if authored.is_some() {
+                    StagedState::ForUpdateGraphOnly
+                } else {
+                    StagedState::ForUpdateNewVersion
+                }
+            );
+            assert_eq!(saved.into_model()?.property_map, properties);
+        }
+        Ok(())
     }
 
     #[test]
@@ -468,6 +567,7 @@ mod tests {
             source_id.clone(),
             source_holon,
             Some(LocalId(vec![9, 8, 7])),
+            false,
         );
         let current_version = SmartReference::new_from_id(
             context.context_handle(),

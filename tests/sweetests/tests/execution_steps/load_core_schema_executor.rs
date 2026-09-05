@@ -1,8 +1,9 @@
 use holons_test::harness::helpers::{
-    build_core_schema_content_set, build_generated_commands_schema_content_set,
-    build_generated_core_schema_content_set, build_generated_dance_schema_content_set,
-    build_generated_query_dance_schema_content_set, build_generated_query_schema_content_set,
-    build_generated_validation_schema_content_set,
+    assert_descriptor_completion, build_core_schema_content_set,
+    build_generated_commands_schema_content_set, build_generated_core_schema_content_set,
+    build_generated_dance_schema_content_set, build_generated_query_dance_schema_content_set,
+    build_generated_query_schema_content_set, build_generated_validation_schema_content_set,
+    expected_descriptor_keys,
 };
 use holons_test::TestExecutionState;
 
@@ -12,7 +13,9 @@ pub async fn execute_load_core_schema(test_state: &mut TestExecutionState) {
     let content_set = build_core_schema_content_set()
         .unwrap_or_else(|error| panic!("failed to build MAP core schema ContentSet: {error:?}"));
 
+    let descriptor_keys = expected_descriptor_keys(&content_set);
     execute_load_holons_client_expect_success(test_state, content_set).await;
+    assert_descriptor_completion(&test_state.context(), descriptor_keys);
 }
 
 /// Loads the validation-owned generated package after Core has committed.
@@ -21,7 +24,9 @@ pub async fn execute_load_generated_validation_schema(test_state: &mut TestExecu
         panic!("failed to build generated validation schema ContentSet: {error:?}")
     });
 
+    let descriptor_keys = expected_descriptor_keys(&content_set);
     execute_load_holons_client_expect_success(test_state, content_set).await;
+    assert_descriptor_completion(&test_state.context(), descriptor_keys);
 }
 
 /// Loads the Dance package after Core has committed.
@@ -62,5 +67,7 @@ pub async fn execute_load_generated_core_schema(test_state: &mut TestExecutionSt
         panic!("failed to build generated Schema 2.0 core ContentSet: {error:?}")
     });
 
+    let descriptor_keys = expected_descriptor_keys(&content_set);
     execute_load_holons_client_expect_success(test_state, content_set).await;
+    assert_descriptor_completion(&test_state.context(), descriptor_keys);
 }

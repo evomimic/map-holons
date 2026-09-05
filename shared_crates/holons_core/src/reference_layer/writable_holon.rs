@@ -5,6 +5,15 @@ use base_types::ToBaseValue;
 use core_types::HolonError;
 use type_names::{relationship_names::ToRelationshipName, ToPropertyName};
 
+/// Whether construction defaults could be fully resolved during this pass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompletionOutcome {
+    /// All applicable defaults were considered; this does not establish validity.
+    Completed,
+    /// A governing descriptor is not attached yet; retry after reference resolution.
+    DeferredNoDescriptor,
+}
+
 /// Public façade for write operations (ergonomic + complete).
 ///
 /// Accepts any types implementing [`ToRelationshipName`] or [`ToPropertyName`].
@@ -17,18 +26,32 @@ pub trait WritableHolon: WritableHolonImpl {
     /// Populates applicable effective defaults without overwriting authored
     /// values.
     ///
-    /// The receiver must have exactly one `DescribedBy` target so completion
-    /// can resolve its effective instance-property contract. Callers that
-    /// construct a holon in stages must attach that target before completion.
-    fn populate_defaults(&mut self) -> Result<(), HolonError>
+    /// Missing descriptors, including those needed by property descriptors, defer
+    /// completion while preserving progress on other properties. All other errors
+    /// propagate. Retrying after reference resolution is safe and idempotent.
+    fn populate_defaults(&mut self) -> Result<CompletionOutcome, HolonError>
     where
         Self: ReadableHolon,
     {
-        let properties = self.available_properties()?;
+        let properties =
+            match self.holon_descriptor().and_then(|descriptor| descriptor.instance_properties()) {
+                Ok(properties) => properties,
+                Err(HolonError::MissingDescribedBy { .. }) => {
+                    return Ok(CompletionOutcome::DeferredNoDescriptor);
+                }
+                Err(error) => return Err(error),
+            };
+        let mut outcome = CompletionOutcome::Completed;
         for property in properties {
-            property.populate_default_if_required_and_absent(self)?;
+            match property.populate_default_if_required_and_absent(self) {
+                Ok(()) => {}
+                Err(HolonError::MissingDescribedBy { .. }) => {
+                    outcome = CompletionOutcome::DeferredNoDescriptor;
+                }
+                Err(error) => return Err(error),
+            }
         }
-        Ok(())
+        Ok(outcome)
     }
 
     /// Adds one or more related holons under the given relationship.

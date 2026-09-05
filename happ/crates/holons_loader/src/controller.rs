@@ -315,14 +315,27 @@ impl HolonLoaderController {
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // DEFAULT POPULATION: complete only the exact nursery-staged set.
+        // DEFAULT POPULATION: retry construction completion after Pass-2 resolution
+        // over the exact nursery-staged set.
         // ─────────────────────────────────────────────────────────────────────
         let mut population_errors = Vec::new();
+        let mut deferred_count = 0;
         for mut staged_holon in context.staged_references()? {
             let source_loader_key = staged_holon.key()?;
-            if let Err(error) = staged_holon.populate_defaults() {
-                population_errors.push(ErrorWithContext { error, source_loader_key });
+            match staged_holon.populate_defaults() {
+                Ok(CompletionOutcome::Completed) => {}
+                Ok(CompletionOutcome::DeferredNoDescriptor) => deferred_count += 1,
+                Err(error) => {
+                    population_errors.push(ErrorWithContext { error, source_loader_key });
+                }
             }
+        }
+
+        if deferred_count > 0 {
+            warn!(
+                "Default population deferred for {} staged holon(s) with unresolved descriptors",
+                deferred_count
+            );
         }
 
         if !population_errors.is_empty() {

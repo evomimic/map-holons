@@ -1,4 +1,5 @@
 use super::create_test_dance_initiator;
+use super::descriptor_completion::{assert_descriptor_completion, expected_descriptor_keys};
 use crate::{build_core_schema_bootstrap_content_set, init_tracing, DancesTestCase};
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
@@ -110,17 +111,19 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
         elapsed_ms = bootstrap_content_started.elapsed().as_millis(),
         "sweettest runtime: CoreSchemaSpace bootstrap inputs ready"
     );
+    let descriptor_keys = expected_descriptor_keys(&bootstrap_content_set);
     let bootstrap_load_started = Instant::now();
     runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
-                context: bootstrap_context,
+                context: bootstrap_context.clone(),
                 action: TransactionAction::LoadHolons { content_set: bootstrap_content_set },
             }),
             ExecutionPolicy::default(),
         )
         .await
         .expect("failed to load Core Schema bootstrap bundle");
+    assert_descriptor_completion(&bootstrap_context, descriptor_keys);
     info!(
         elapsed_ms = bootstrap_load_started.elapsed().as_millis(),
         "sweettest runtime: CoreSchemaSpace bootstrap load complete"
