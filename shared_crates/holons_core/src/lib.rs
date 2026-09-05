@@ -28,9 +28,9 @@ pub use descriptors::{
     TypeHeader, ValueDescriptor,
 };
 pub use reference_layer::{
-    Divergence, EquivalenceOutcome, EquivalenceResolver, HolonCollectionApi, HolonReference,
-    HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior, NoOpResolver, NodeResolution,
-    ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior, TransientReference,
-    WritableHolon,
+    CompletionOutcome, Divergence, EquivalenceOutcome, EquivalenceResolver, HolonCollectionApi,
+    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior, NoOpResolver,
+    NodeResolution, ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior,
+    TransientReference, WritableHolon,
 };
 // pub use utils::*;

@@ -6,14 +6,14 @@
 //!
 //! Scope: loader-controller behavior only — empty bundles, undescribed loader holons,
 //! duplicate-key failure, response metrics, error holons, and `LoadCommitStatus`.
-//! Loader holons must be described before the loader can complete descriptor-aware
-//! default population or relationship resolution.
+//! Missing descriptors defer default population without blocking commit. Named
+//! relationship endpoints resolve independently of descriptor-aware validation.
 //!
 //! ## Fixture Progression (combined)
 //!
 //! 1. **Empty bundle** → `UnprocessableEntity`; no loader holons commit
-//! 2. **Nodes-only undescribed bundle** → staged, then skipped during default population
-//! 3. **Undescribed relationship bundle** → relationship staged, then skipped during default population
+//! 2. **Nodes-only undescribed bundle** → default population deferred; all nodes commit
+//! 3. **Undescribed relationship bundle** → nodes commit; inverse resolution fails; `Incomplete`
 //! 4. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; no loader holons commit
 //!
 //! ### Why a single fixture?
@@ -73,7 +73,7 @@ fn build_empty_bundle(
 
 /// Build a HolonLoaderBundle with **N minimal undescribed LoaderHolons (nodes only)**.
 /// Each member is created with its **instance key string**; no relationship references.
-/// This exercises Pass-1 staging followed by default-population failure.
+/// This exercises Pass-1 staging followed by deferred completion and successful node commit.
 fn build_nodes_only_bundle(
     context: &Arc<TransactionContext>,
     bundle_key: &str,
@@ -197,9 +197,9 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
          2) Load a HolonLoadSet containing a single empty HolonLoaderBundle and assert the\n\
             loader short-circuits cleanly (no holons staged/committed, DB unchanged),\n\
          3) Load a nodes-only HolonLoadSet (Book/Person/Publisher LoaderHolons, no relationships)\n\
-            and assert undescribed holons are staged, rejected during default population, and not committed,\n\
+            and assert undescribed holons commit with default population deferred and no errors,\n\
          4) Load an undescribed relationship HolonLoadSet and assert relationship resolution stages the link\n\
-            before default population skips commit,\n\
+            before node commit succeeds but inverse resolution reports one error and Incomplete,\n\
          5) Load a multi-bundle HolonLoadSet where two different bundles each contain a\n\
             LoaderHolon with the same Key but different filenames and byte offsets, and assert\n\
             the loader reports a duplicate-key error, skips commit (HolonsCommitted = 0),\n\
@@ -223,7 +223,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(0), // total_loader_holons
         ExpectedLoadStatus::Skipped,
     )?;
-    // C) Nodes-only undescribed bundle -> staged, then rejected before commit.
+    // C) Nodes-only undescribed bundle -> completion deferred; all nodes commit.
     let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
     let (nodes_bundle, n_nodes) =
         build_nodes_only_bundle(&fixture_context, "Bundle.NodesOnly.1", nodes_only_keys)?;
@@ -235,20 +235,21 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_holons_internal_step(
         nodes_set,
         MapInteger(n_nodes as i64), // holons_staged
-        MapInteger(0),              // holons_committed
+        MapInteger(n_nodes as i64), // holons_committed
         MapInteger(0),              // links_created
-        MapInteger(n_nodes as i64), // errors_encountered (MissingDescribedBy per staged holon)
+        MapInteger(0),              // errors_encountered (completion deferred)
         MapInteger(1),              // total_bundles
         MapInteger(n_nodes as i64), // total_loader_holons
-        ExpectedLoadStatus::Skipped,
+        ExpectedLoadStatus::Complete,
     )?;
     test_case.add_begin_transaction_step(
         None,
         Some("Begin new transaction before declared-link load".to_string()),
     )?;
 
-    // D) Named relationships on undescribed holons can still be resolved and
-    // staged, but default population rejects the staged holons before commit.
+    // D) Named endpoints resolve and nodes commit, but persisting AuthoredBy
+    // requires a source descriptor to resolve its inverse. Commit records one
+    // MissingDescribedBy error for the source and reports Incomplete.
     let (declared_bundle, node_count, _links_created) = build_declared_links_bundle(
         &fixture_context,
         "Bundle.DeclaredLink.1",
@@ -264,12 +265,12 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_holons_internal_step(
         declared_set,
         MapInteger(node_count as i64), // holons_staged
-        MapInteger(0),                 // holons_committed
+        MapInteger(node_count as i64), // holons_committed
         MapInteger(1),                 // relationship resolved and staged
-        MapInteger(node_count as i64), // MissingDescribedBy per staged holon
+        MapInteger(1),                 // source inverse resolution: MissingDescribedBy
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
-        ExpectedLoadStatus::Skipped,
+        ExpectedLoadStatus::Incomplete,
     )?;
     test_case.add_begin_transaction_step(
         None,

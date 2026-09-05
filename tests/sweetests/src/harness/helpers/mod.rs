@@ -1,6 +1,7 @@
 pub mod book_person_inverse_schema;
 pub mod constants;
 pub mod core_schema;
+pub mod descriptor_completion;
 pub mod expected_test_result;
 pub mod mock_conductor;
 pub mod pvl_validation;
@@ -10,6 +11,7 @@ pub mod tracing_utils;
 pub use book_person_inverse_schema::*;
 pub use constants::*;
 pub use core_schema::*;
+pub use descriptor_completion::*;
 pub use expected_test_result::*;
 pub use mock_conductor::*;
 pub use pvl_validation::*;

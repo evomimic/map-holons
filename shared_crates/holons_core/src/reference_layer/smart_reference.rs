@@ -164,20 +164,21 @@ impl fmt::Display for SmartReference {
 impl ReadableHolonImpl for SmartReference {
     fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
         self.is_accessible(AccessType::Clone)?;
-        let rc_holon = self.get_rc_holon()?;
-        let borrowed_holon = rc_holon.read().map_err(|e| {
-            HolonError::FailedToAcquireLock(format!(
-                "Failed to acquire read lock on holon for clone_holon_impl: {}",
-                e
-            ))
-        })?;
+        let clone_model = {
+            let rc_holon = self.get_rc_holon()?;
+            let borrowed_holon = rc_holon.read().map_err(|e| {
+                HolonError::FailedToAcquireLock(format!(
+                    "Failed to acquire read lock on holon for clone_holon_impl: {}",
+                    e
+                ))
+            })?;
+            borrowed_holon.holon_clone_model()
+        };
 
-        // HolonCloneModel for SavedHolon will have 'None' for relationships, as populating its RelationshipMap
-        // is deferred to the reference layer, because context is needed that is only available in reference layer.
-        let mut cloned_holon_transient_reference = self
-            .context_handle
-            .context()
-            .new_transient_from_clone_model(borrowed_holon.holon_clone_model())?;
+        // Saved clone models omit relationships; the bound reference resolves
+        // them after releasing the source lock, including self-describing edges.
+        let mut cloned_holon_transient_reference =
+            self.context_handle.context().new_transient_from_clone_model(clone_model)?;
 
         let relationships = self.all_related_holons()?;
         let transient_relationships = relationships.clone_for_new_source()?;
@@ -196,6 +197,14 @@ impl ReadableHolonImpl for SmartReference {
 
             cloned_holon_transient_reference.add_related_holons(name, members)?;
         }
+
+        // Saved clone models omit relationships, so completion must wait until
+        // the full relationship map (including DescribedBy) has been attached.
+        // `Nursery::stage_new_version` depends on completion happening here: it
+        // classifies a staged update by diffing this clone against the persisted
+        // properties, so removing this call would silently leave saved clones
+        // incomplete and suppress that content-change classification.
+        cloned_holon_transient_reference.populate_defaults()?;
 
         Ok(cloned_holon_transient_reference)
     }

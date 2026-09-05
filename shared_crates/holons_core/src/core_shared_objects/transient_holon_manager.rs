@@ -16,7 +16,7 @@ use crate::{
         transient_manager_access_internal::TransientManagerAccessInternal,
         ReadableRelationship, TransientManagerAccess, TransientRelationshipMap,
     },
-    reference_layer::{TransientHolonBehavior, TransientReference},
+    reference_layer::{TransientHolonBehavior, TransientReference, WritableHolon},
 };
 use base_types::{BaseValue, MapInteger, MapString};
 use core_types::{HolonError, PropertyMap, TemporaryId};
@@ -179,7 +179,8 @@ impl TransientHolonBehavior for TransientHolonManager {
             holon_clone_model.original_id,
         );
 
-        let transient_reference = self.add_new_holon(holon)?;
+        let mut transient_reference = self.add_new_holon(holon)?;
+        transient_reference.populate_defaults()?;
 
         Ok(transient_reference)
     }
