@@ -3,6 +3,16 @@ use thiserror::Error;
 
 use crate::pvl_error::PvlViolation;
 use crate::validation_error::ValidationError;
+use crate::LocalId;
+use base_types::MapString;
+
+/// Explains why a visible `Successor` traversal cannot represent a valid lineage.
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub enum LineageIntegrityReason {
+    CycleDetected,
+    InvalidSuccessorTarget { target: LocalId },
+    MalformedSuccessorLink { detail: String },
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error, Eq, PartialEq)]
 pub enum HolonError {
@@ -40,6 +50,12 @@ pub enum HolonError {
     HashConversion(String, String),
     #[error("Holon not found: {0}")]
     HolonNotFound(String),
+    #[error(
+        "Multiple visible lineage heads for key {key} at roots {lineage_roots:?}: {head_ids:?}"
+    )]
+    MultipleLineageHeads { key: MapString, lineage_roots: Vec<LocalId>, head_ids: Vec<LocalId> },
+    #[error("Lineage integrity error for key {key} at root {lineage_root:?}: {reason:?}")]
+    LineageIntegrityError { key: MapString, lineage_root: LocalId, reason: LineageIntegrityReason },
     #[error("Index {0} into Holons Vector is Out of Range")]
     IndexOutOfRange(String),
     #[error(
@@ -196,6 +212,8 @@ pub enum HolonErrorKind {
     FailedToAcquireLock,
     HashConversion,
     HolonNotFound,
+    MultipleLineageHeads,
+    LineageIntegrityError,
     IndexOutOfRange,
     IntegerOutOfRange,
     InvalidHolonReference,
@@ -260,6 +278,8 @@ impl From<&HolonError> for HolonErrorKind {
             HolonError::FailedToAcquireLock(_) => Self::FailedToAcquireLock,
             HolonError::HashConversion(_, _) => Self::HashConversion,
             HolonError::HolonNotFound(_) => Self::HolonNotFound,
+            HolonError::MultipleLineageHeads { .. } => Self::MultipleLineageHeads,
+            HolonError::LineageIntegrityError { .. } => Self::LineageIntegrityError,
             HolonError::IndexOutOfRange(_) => Self::IndexOutOfRange,
             HolonError::IntegerOutOfRange { .. } => Self::IntegerOutOfRange,
             HolonError::InvalidHolonReference(_) => Self::InvalidHolonReference,

@@ -29,6 +29,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         let response_wire = DanceResponseWire {
             status_code,
             description: MapString("Invalid Request".to_string()),
+            error: None,
             body: ResponseBodyWire::None,
             descriptor: None,
         };
@@ -86,8 +87,9 @@ fn create_error_response_envelope(
     let error_message = format!("Dance adapter failure: {}", error);
 
     let response_wire = DanceResponseWire {
-        status_code: ResponseStatusCode::from(error),
+        status_code: ResponseStatusCode::from(error.clone()),
         description: MapString(error_message),
+        error: Some(error),
         body: ResponseBodyWire::None,
         descriptor: None,
     };

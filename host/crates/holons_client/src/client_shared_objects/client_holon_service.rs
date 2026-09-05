@@ -34,6 +34,7 @@
 
 #![allow(unused_variables)]
 
+use base_types::MapString;
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
 use holons_core::core_shared_objects::transactions::{
@@ -277,6 +278,32 @@ impl HolonServiceApi for ClientHolonService {
             ResponseBody::HolonCollection(collection) => Ok(collection),
             other => Err(HolonError::InvalidParameter(format!(
                 "GetAllHolons: expected ResponseBody::HolonCollection, got {:?}",
+                other
+            ))),
+        }
+    }
+
+    fn get_saved_holon_by_key_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<SmartReference, HolonError> {
+        let request =
+            holon_dance_builders::build_get_saved_holon_by_key_dance_request(key.clone())?;
+        let response =
+            run_future_synchronously(async move { context.initiate_dance(request).await })?;
+
+        if response.status_code != ResponseStatusCode::OK {
+            if let Some(error) = response.error {
+                return Err(error);
+            }
+            return Err(map_dance_error("GetSavedHolonByKey", &response));
+        }
+
+        match response.body {
+            ResponseBody::HolonReference(HolonReference::Smart(reference)) => Ok(reference),
+            other => Err(HolonError::InvalidParameter(format!(
+                "GetSavedHolonByKey: expected SmartReference, got {:?}",
                 other
             ))),
         }

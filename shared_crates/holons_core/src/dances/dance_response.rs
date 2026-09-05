@@ -18,6 +18,8 @@ use std::fmt;
 pub struct DanceResponse {
     pub status_code: ResponseStatusCode,
     pub description: MapString,
+    /// The original domain error, retained across the dance boundary when present.
+    pub error: Option<HolonError>,
     pub body: ResponseBody,
     pub descriptor: Option<HolonReference>, // space_id+holon_id of DanceDescriptor
 }
@@ -61,7 +63,7 @@ impl DanceResponse {
         body: ResponseBody,
         descriptor: Option<HolonReference>,
     ) -> DanceResponse {
-        DanceResponse { status_code, description, body, descriptor }
+        DanceResponse { status_code, description, error: None, body, descriptor }
     }
 
     /// Annotates this response with a local processing error (e.g. envelope hydration failure).
@@ -81,6 +83,7 @@ impl DanceResponse {
 
         // Update the status code
         self.status_code = new_code;
+        self.error = Some(error);
 
         // Append to or initialize description
         if self.description.0.is_empty() {
@@ -101,6 +104,7 @@ impl DanceResponse {
         Self {
             status_code: ResponseStatusCode::from(error.clone()),
             description: MapString(error.to_string()),
+            error: Some(error),
             body: ResponseBody::None,
             descriptor: None,
         }
@@ -196,6 +200,8 @@ impl From<HolonError> for ResponseStatusCode {
             HolonError::TransactionAlreadyCommitted { .. } => ResponseStatusCode::Conflict,
             HolonError::TransactionCommitInProgress { .. } => ResponseStatusCode::Conflict,
             HolonError::TransactionNotOpen { .. } => ResponseStatusCode::Conflict,
+            HolonError::MultipleLineageHeads { .. } => ResponseStatusCode::Conflict,
+            HolonError::LineageIntegrityError { .. } => ResponseStatusCode::Conflict,
 
             // 400-ish (client supplied invalid input / malformed request)
             HolonError::EmptyField(_) => ResponseStatusCode::BadRequest,

@@ -157,6 +157,7 @@ relationship (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType) {
   extends DeclaredRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
   target HolonSpace.HolonType
+  TargetBinding Version
   deletion_semantic Block
   header {
     description: "Identifies the current holon space that owns a holon; infrastructure supplies this relationship."
@@ -171,6 +172,7 @@ inverse relationship (HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor) {
   extends InverseRelationshipType.RelationshipType
   source HolonSpace.HolonType
   target HolonType.TypeDescriptor
+  TargetBinding Lineage
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }

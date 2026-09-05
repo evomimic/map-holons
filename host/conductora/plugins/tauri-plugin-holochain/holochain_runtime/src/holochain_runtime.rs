@@ -124,7 +124,12 @@ impl HolochainRuntime {
         let app_websocket_auth =
             self.get_app_websocket_auth(&app_id, allowed_origins.clone()).await?;
 
-        let config = Arc::new(WebsocketConfig::CLIENT_DEFAULT);
+        // Core-schema bootstrap is a single zome call that can legitimately take longer
+        // than the websocket client's one-minute default on a fresh conductor.
+        // Keep this aligned with the admin websocket timeout above.
+        let mut config = WebsocketConfig::CLIENT_DEFAULT;
+        config.default_request_timeout = std::time::Duration::new(60 * 5, 0);
+        let config = Arc::new(config);
         let mut request = ConnectRequest::new(SocketAddr::new(
             Ipv4Addr::LOCALHOST.into(),
             app_websocket_auth.app_websocket_port,

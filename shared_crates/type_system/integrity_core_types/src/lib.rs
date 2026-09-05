@@ -7,7 +7,7 @@ pub mod relationship;
 pub mod timestamp;
 pub mod validation_error;
 
-pub use holon_error::{HolonError, HolonErrorKind, SchemaInvalidityKind};
+pub use holon_error::{HolonError, HolonErrorKind, LineageIntegrityReason, SchemaInvalidityKind};
 pub use holon_node_model::*;
 pub use id::*;
 pub use property::*;

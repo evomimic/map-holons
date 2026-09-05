@@ -1,7 +1,13 @@
 use hdk::prelude::*;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashSet,
+    sync::{Arc, RwLock},
+};
 
-use crate::persistence_layer::{persist_holon, put_smartlink_cached, SmartLinkWriteContext};
+use crate::persistence_layer::{
+    expand_from_source_by_key, get_holon, persist_holon, put_smartlink_cached,
+    SmartLinkWriteContext,
+};
 use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
 
 use holons_core::{
@@ -9,18 +15,19 @@ use holons_core::{
         holon::state::{AccessType, StagedState},
         Holon, HolonCollection, ReadableHolonState, StagedHolon, WriteableHolonState,
     },
-    descriptors::resolve_inverse_relationship_name,
+    descriptors::{resolve_inverse_relationship_name, TargetBinding},
     reference_layer::ReadableHolon,
     HolonReference, SmartReference, StagedReference, WritableHolon,
 };
 
 use base_types::MapString;
-use core_types::{CanonicalKey, HolonError, HolonId};
+use core_types::{CanonicalKey, HolonError, HolonId, KeyMatch, OccurrenceId};
 use holons_core::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle,
 };
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{short_hex, LocalId, PropertyMap, RelationshipName};
+use sha2::{Digest, Sha256};
 pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
 pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
 pub use type_names::{
@@ -32,7 +39,10 @@ pub use type_names::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommitOutcome {
     /// The holon was successfully persisted (created or updated).
-    Saved,
+    Saved {
+        /// Whether this commit published a new immutable version that may establish a key.
+        establishes_key_index_entry: bool,
+    },
     /// The holon was explicitly marked as abandoned and skipped.
     Abandoned,
     /// No persistence action was required (already committed or unchanged).
@@ -51,6 +61,16 @@ struct CommitPerformanceMetrics {
     inverse_resolution_micros: i64,
     smartlink_persist_count: usize,
     smartlink_persist_micros: i64,
+}
+
+/// Tracks `(lineage root, key)` entries already observed during this commit.
+///
+/// This avoids a repeated DHT query when a transaction creates several versions of
+/// one lineage, while the exact keyed lookup below preserves idempotence across
+/// transactions and concurrent writers.
+#[derive(Default)]
+struct KeyIndexMaintenance {
+    observed_entries: HashSet<(LocalId, MapString)>,
 }
 
 fn performance_timestamp_micros() -> Option<i64> {
@@ -197,6 +217,7 @@ pub fn commit(
     // Outcome tallies, kept beyond the Pass 1 scope so the commit response can be summarized at
     // every exit — including the incomplete early return, which is the case most worth seeing.
     let mut saved_ids: Vec<LocalId> = Vec::new();
+    let mut key_index_source_ids: HashSet<LocalId> = HashSet::new();
     let mut abandoned_count = 0_usize;
     let mut failed_count = 0_usize;
 
@@ -214,12 +235,15 @@ pub fn commit(
             trace!("Committing {:?}", staged_reference.temporary_id());
 
             match commit_holon(staged_reference, context) {
-                Ok(CommitOutcome::Saved) => {
+                Ok(CommitOutcome::Saved { establishes_key_index_entry }) => {
                     let holon_id = staged_reference.holon_id()?;
                     let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
                         HolonError::HolonNotFound("Committed holon has no key".into())
                     })?;
                     saved_ids.push(holon_id.local_id().clone());
+                    if establishes_key_index_entry {
+                        key_index_source_ids.insert(holon_id.local_id().clone());
+                    }
                     let saved_reference = HolonReference::smart_with_key(
                         transaction_handle.clone(),
                         holon_id,
@@ -277,6 +301,8 @@ pub fn commit(
     // bounded relationship write set for this commit invocation.
     let mut smartlink_write_context = SmartLinkWriteContext::default();
     let mut performance_metrics = CommitPerformanceMetrics::default();
+    let owns_index_space_id = resolve_owns_index_space_id(context, staged_references)?;
+    let mut key_index_maintenance = KeyIndexMaintenance::default();
 
     for staged_reference in staged_references {
         let rc_holon = staged_reference.get_holon_to_commit(context)?;
@@ -370,6 +396,20 @@ pub fn commit(
             ) {
                 first_error = Some(err);
                 break;
+            }
+        }
+
+        if first_error.is_none()
+            && key_index_source_ids.contains(relationship_source.source_local_id())
+        {
+            if let Err(error) = maintain_owns_key_index(
+                &relationship_source,
+                &owns_index_space_id,
+                &mut key_index_maintenance,
+                &mut smartlink_write_context,
+                &mut performance_metrics,
+            ) {
+                first_error = Some(error);
             }
         }
 
@@ -488,7 +528,7 @@ fn commit_holon(
                 );
 
                 staged_holon.to_committed(stored.version_metadata.version_id)?;
-                Ok(CommitOutcome::Saved)
+                Ok(CommitOutcome::Saved { establishes_key_index_entry: true })
             }
 
             // === GRAPH-ONLY UPDATE ==========================================================
@@ -502,7 +542,7 @@ fn commit_holon(
                 );
 
                 staged_holon.to_committed(source_id)?;
-                Ok(CommitOutcome::Saved)
+                Ok(CommitOutcome::Saved { establishes_key_index_entry: false })
             }
 
             // === VERSION-PRODUCING UPDATE ==================================================
@@ -538,7 +578,7 @@ fn commit_holon(
                 }
 
                 staged_holon.to_committed(new_local_id)?;
-                Ok(CommitOutcome::Saved)
+                Ok(CommitOutcome::Saved { establishes_key_index_entry: true })
             }
 
             // === ABANDONED HOLON ============================================================
@@ -610,6 +650,135 @@ struct ResolvedRelationshipTarget {
     target_key: Option<MapString>,
 }
 
+/// Returns the key-index entry established by this committed version.
+///
+/// A lineage root establishes the set-style `Owns` materialization. A successor
+/// establishes an index entry only when its key differs from its predecessor.
+fn key_index_entry(
+    source: &RelationshipCommitSource,
+) -> Result<Option<(MapString, bool)>, HolonError> {
+    let Some(key) = source.source_key.clone() else {
+        return Ok(None);
+    };
+
+    let Some(predecessor) = source.source_reference.predecessor()? else {
+        return Ok(Some((key, true)));
+    };
+
+    if predecessor.key()? == Some(key.clone()) {
+        Ok(None)
+    } else {
+        Ok(Some((key, false)))
+    }
+}
+
+/// Resolves the owning space for keyed `Owns` index maintenance.
+///
+/// Ordinary commits use the persisted local space. Bootstrap is the sole
+/// exception: its space becomes local only after Commit succeeds, so the
+/// already-committed staged CoreSchemaSpace is used as the anchor source.
+fn resolve_owns_index_space_id(
+    context: &Arc<TransactionContext>,
+    staged_references: &[StagedReference],
+) -> Result<LocalId, HolonError> {
+    if let Some(space) = context.get_space_holon()? {
+        return Ok(space.holon_id()?.local_id().clone());
+    }
+
+    if context.is_bootstrap_provisioning() {
+        return staged_references
+            .iter()
+            .find(|reference| {
+                reference.key().ok().flatten().is_some_and(|key| key.0 == "MAP.CoreSchemaSpace")
+            })
+            .ok_or_else(|| {
+                HolonError::InvalidState(
+                    "Core Schema bootstrap did not commit MAP.CoreSchemaSpace".to_string(),
+                )
+            })?
+            .holon_id()
+            .map(|id| id.local_id().clone());
+    }
+
+    Err(HolonError::InvalidState(
+        "keyed Owns index maintenance requires a persisted HolonSpace".to_string(),
+    ))
+}
+
+/// Produces the deterministic occurrence identity of an additional keyed `Owns` index entry.
+///
+/// The root's ordinary `Owns` materialization remains occurrence-free. Each distinct
+/// successor key needs a second physical SmartLink to the same root, so it uses a stable
+/// occurrence identity derived solely from that canonical key. Storage remains
+/// descriptor-agnostic; this is a coordinator-level indexing decision.
+fn owns_key_index_occurrence_id(key: &MapString) -> OccurrenceId {
+    let mut hasher = Sha256::new();
+    hasher.update(b"map-holons:owns-key-index:v1\0");
+    hasher.update(key.0.as_bytes());
+    let digest = hasher.finalize();
+    let mut bytes = [0_u8; 16];
+    bytes.copy_from_slice(&digest[..16]);
+    OccurrenceId(bytes)
+}
+
+/// Ensures the keyed `Owns` discovery entry for a newly established lineage key.
+///
+/// This runs after semantic relationship persistence. It intentionally writes only the
+/// space-to-root index direction: no inverse relationship is materialized for index metadata.
+fn maintain_owns_key_index(
+    source: &RelationshipCommitSource,
+    space_id: &LocalId,
+    maintenance: &mut KeyIndexMaintenance,
+    smartlink_write_context: &mut SmartLinkWriteContext,
+    performance_metrics: &mut CommitPerformanceMetrics,
+) -> Result<(), HolonError> {
+    let Some((key, is_lineage_root)) = key_index_entry(source)? else {
+        return Ok(());
+    };
+
+    let lineage_root =
+        materialize_target_binding(source.source_local_id(), TargetBinding::Lineage)?;
+    if !maintenance.observed_entries.insert((lineage_root.clone(), key.clone())) {
+        return Ok(());
+    }
+
+    let canonical_key = CanonicalKey::new(key.0.clone())?;
+    let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
+    let existing =
+        expand_from_source_by_key(space_id, &owns, KeyMatch::Exact(canonical_key.clone()))?;
+    if existing.into_iter().any(|link| link.target_id == HolonId::Local(lineage_root.clone())) {
+        return Ok(());
+    }
+
+    let keyed_owns = PreparedSmartLink {
+        source_id: space_id.clone(),
+        target_id: HolonId::Local(lineage_root),
+        relationship_name: owns,
+        canonical_key,
+        occurrence_id: (!is_lineage_root).then(|| owns_key_index_occurrence_id(&key)),
+        relationship_property_values: PropertyMap::new(),
+        target_property_cache_candidates: Vec::new(),
+    };
+    persist_smartlink(smartlink_write_context, keyed_owns, performance_metrics)
+}
+
+/// Resolves the physical SmartLink target selected by a completed descriptor binding.
+///
+/// Storage remains descriptor-agnostic: relationship commit resolves a lineage root before
+/// constructing `PreparedSmartLink`, so a lineage-bound occurrence can never be represented by
+/// a descendant-targeted link.
+fn materialize_target_binding(
+    target_id: &LocalId,
+    binding: TargetBinding,
+) -> Result<LocalId, HolonError> {
+    match binding {
+        TargetBinding::Version => Ok(target_id.clone()),
+        TargetBinding::Lineage => get_holon(target_id)?
+            .ok_or_else(|| HolonError::HolonNotFound(target_id.to_string()))
+            .map(|stored| stored.version_metadata.lineage_root().as_local_id().clone()),
+    }
+}
+
 /// Creates local forward and inverse SmartLinks for each member in `collection`.
 ///
 /// Current behavior is fail-fast at the collection level: if any member cannot
@@ -630,6 +799,13 @@ fn save_smartlinks_for_collection(
     smartlink_write_context: &mut SmartLinkWriteContext,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
+    let relationship_descriptor = source
+        .source_reference
+        .holon_descriptor()?
+        .get_relationship_by_name(name.clone())?
+        .try_into_declared_relationship_descriptor()?;
+    let forward_binding = relationship_descriptor.target_binding()?;
+    let inverse_binding = relationship_descriptor.required_inverse()?.target_binding()?;
     let source_id = source.source_local_id();
     debug!(
         "Calling commit on each HOLON_REFERENCE in the collection for [source_id {:?}]->{:#?}.",
@@ -701,9 +877,11 @@ fn save_smartlinks_for_collection(
         // emits set-style links today. That is a coordinator choice, not a storage
         // limitation: storage persists supplied occurrences as distinct identities
         // (Storage SL3). Assigning and pairing them is deferred coordinator work.
+        let forward_target_id =
+            materialize_target_binding(&resolved_target.target_local_id, forward_binding)?;
         let forward_smartlink = PreparedSmartLink {
             source_id: source_id.clone(),
-            target_id: HolonId::Local(resolved_target.target_local_id.clone()),
+            target_id: HolonId::Local(forward_target_id),
             relationship_name: name.clone(),
             canonical_key: canonical_key_from_optional_key(resolved_target.target_key.clone())?,
             occurrence_id: None,
@@ -717,9 +895,10 @@ fn save_smartlinks_for_collection(
         );
         persist_smartlink(smartlink_write_context, forward_smartlink, performance_metrics)?;
 
+        let inverse_target_id = materialize_target_binding(source_id, inverse_binding)?;
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
-            target_id: HolonId::Local(source_id.clone()),
+            target_id: HolonId::Local(inverse_target_id),
             relationship_name: inverse_name.clone(),
             canonical_key: inverse_canonical_key.clone(),
             occurrence_id: None,
@@ -803,4 +982,18 @@ fn require_local_target(
 
 fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKey, HolonError> {
     CanonicalKey::new(key.map_or_else(String::new, |value| value.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn owns_key_index_occurrence_is_stable_per_key_and_distinct_between_keys() {
+        let alpha = MapString("lineage.alpha".to_string());
+        let beta = MapString("lineage.beta".to_string());
+
+        assert_eq!(owns_key_index_occurrence_id(&alpha), owns_key_index_occurrence_id(&alpha));
+        assert_ne!(owns_key_index_occurrence_id(&alpha), owns_key_index_occurrence_id(&beta));
+    }
 }

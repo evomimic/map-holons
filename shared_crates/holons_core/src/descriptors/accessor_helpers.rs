@@ -211,6 +211,11 @@ pub(crate) fn relationship_allows_duplicates(holon: &HolonReference) -> Result<b
     require_bool(holon, CorePropertyTypeName::AllowsDuplicates)
 }
 
+/// Returns the completed target-binding enum value for a relationship descriptor.
+pub(crate) fn relationship_target_binding(holon: &HolonReference) -> Result<MapString, HolonError> {
+    require_enum_string(holon, CorePropertyTypeName::TargetBinding)
+}
+
 /// Returns the optional deletion semantic declared by a relationship, when populated.
 pub(crate) fn relationship_deletion_semantic(
     holon: &HolonReference,

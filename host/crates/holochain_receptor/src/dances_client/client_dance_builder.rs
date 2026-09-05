@@ -4,7 +4,7 @@ use client_shared_types::map_request::{MapRequest, MapRequestBody};
 use core_types::{HolonError, PropertyMap, PropertyName};
 use holon_dance_builders::{
     build_commit_dance_request, build_get_all_holons_dance_request,
-    build_get_holon_by_id_dance_request,
+    build_get_holon_by_id_dance_request, build_get_saved_holon_by_key_dance_request,
 };
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::DanceRequest;
@@ -17,6 +17,7 @@ const PERMITTED_OPS: &[&str] = &[
     "delete_holon",
     "get_all_holons",
     "get_holon_by_id",
+    "get_saved_holon_by_key",
     "load_holons",
     "query_relationships",
 ];
@@ -37,6 +38,7 @@ impl ClientDanceBuilder {
             "delete_holon" => Self::delete_holon_dance(context, request),
             "get_all_holons" => Self::get_all_holons_dance(),
             "get_holon_by_id" => Self::get_holon_by_id_dance(context, request),
+            "get_saved_holon_by_key" => Self::get_saved_holon_by_key_dance(context, request),
             "load_holons" => Self::load_holons_dance(context, request),
             "query_relationships" => Self::query_relationships_dance(context, request),
             _ => Err(HolonError::NotImplemented(format!("Operation '{}' not found", request.name))),
@@ -84,6 +86,18 @@ impl ClientDanceBuilder {
                     "Missing HolonId in request body for get_holon_by_id".into(),
                 ))
             }
+        }
+    }
+
+    pub fn get_saved_holon_by_key_dance(
+        _context: &Arc<TransactionContext>,
+        request: &MapRequest,
+    ) -> Result<DanceRequest, HolonError> {
+        match &request.body {
+            MapRequestBody::Key(key) => build_get_saved_holon_by_key_dance_request(key.clone()),
+            _ => Err(HolonError::InvalidParameter(
+                "Missing Key in request body for get_saved_holon_by_key".into(),
+            )),
         }
     }
     pub fn load_holons_dance(

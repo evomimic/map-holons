@@ -29,8 +29,9 @@ pub use base_types::{BaseValue, BaseValueKind};
 //Re-export selected integrity_core_types at the root.
 // Prefer explicit lists over globs to keep the API curated and stable.
 pub use integrity_core_types::{
-    HolonError, HolonNodeModel, LocalId, PersistenceAgentId, PersistenceTimestamp, PropertyMap,
-    PropertyName, PropertyValue, RelationshipName, SchemaInvalidityKind, ValidationError,
+    HolonError, HolonNodeModel, LineageIntegrityReason, LocalId, PersistenceAgentId,
+    PersistenceTimestamp, PropertyMap, PropertyName, PropertyValue, RelationshipName,
+    SchemaInvalidityKind, ValidationError,
 };
 
 // #[cfg(test)]

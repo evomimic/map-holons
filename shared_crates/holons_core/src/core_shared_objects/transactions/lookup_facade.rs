@@ -1,6 +1,6 @@
 use super::transaction_context::TransactionOperation;
 use super::{HolonServiceApi, HolonStagingBehavior, TransactionContext, TransientHolonBehavior};
-use crate::{HolonCollection, StagedReference, TransientReference};
+use crate::{HolonCollection, SmartReference, StagedReference, TransientReference};
 use base_types::MapString;
 use core_types::HolonError;
 use std::sync::Arc;
@@ -18,6 +18,12 @@ impl LookupFacade {
     pub fn get_all_holons(&self) -> Result<HolonCollection, HolonError> {
         self.context.assert_allowed(TransactionOperation::ReadState)?;
         self.holon_service.get_all_holons_internal(&self.context)
+    }
+
+    /// Resolves an exact key in the current persisted holon space to its sole visible head.
+    pub fn get_saved_holon_by_key(&self, key: &MapString) -> Result<SmartReference, HolonError> {
+        self.context.assert_allowed(TransactionOperation::ReadState)?;
+        self.holon_service.get_saved_holon_by_key_internal(&self.context, key)
     }
 
     /// Convenience method for retrieving a single StagedReference for a base key, when the caller expects there to only be one.

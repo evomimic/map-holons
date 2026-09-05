@@ -21,7 +21,6 @@
 // - Instance relationships must be authored in declared orientation
 
 use std::collections::HashSet;
-use std::rc::Rc;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -56,47 +55,14 @@ struct DeclaredRelationshipWrite {
     edge_keys: Vec<RelationshipEdgeKey>,
 }
 
-/// Per-run resolver state. Holds data we want to compute once and reuse.
-/// Start small (just the saved index), but this scales well if we add
-/// metrics, feature flags, or lazy fetches later.
-///
-/// Note: saved local-key fallback is currently implemented by lazily caching
-/// `get_all_holons()` on the first staged miss because targeted saved lookup
-/// by key does not exist yet. Replace this cache once saved key lookup is available.
-pub struct ResolverState {
-    /// Interim snapshot of *saved* holons for key-based fallback lookups.
-    /// We fetch it at most once per resolver run.
-    saved_index: Option<Rc<HolonCollection>>,
-}
+/// Per-run resolver state reserved for future resolver-local policy and metrics.
+#[derive(Debug, Default)]
+pub struct ResolverState;
 
 impl ResolverState {
     /// Create a fresh state with no pre-fetched saved index.
-    /// Use `ensure_saved_index(...)` to populate it on demand.
     pub fn new() -> Self {
-        Self { saved_index: None }
-    }
-
-    /// Ensure we have a saved holon index available.
-    /// If already present, this is a no-op. Otherwise, it fetches all saved holons
-    /// once via the TransactionContext and stores the collection for this resolver run.
-    ///
-    /// This is an interim implementation until the lookup layer supports targeted
-    /// saved lookup by key.
-    pub fn ensure_saved_index(
-        &mut self,
-        context: &Arc<TransactionContext>,
-    ) -> Result<(), HolonError> {
-        if self.saved_index.is_some() {
-            return Ok(());
-        }
-        let collection = context.lookup().get_all_holons()?;
-        self.saved_index = Some(Rc::new(collection));
-        Ok(())
-    }
-
-    /// Get a reference to the saved index, if present.
-    pub fn saved_index(&self) -> Option<&Rc<HolonCollection>> {
-        self.saved_index.as_ref()
+        Self
     }
 }
 
@@ -545,11 +511,9 @@ impl LoaderRefResolver {
     /// 2. (Future) `holon_id` → saved holon by ID
     /// 3. (Future) `proxy_key`/`proxy_id` → external holon via proxy
     ///
-    /// Note: the saved fallback currently uses a lazily populated per-run snapshot
-    /// of all saved holons because targeted saved lookup by key is not available yet.
     fn resolve_loader_holon_reference(
         context: &Arc<TransactionContext>,
-        resolver_state: &mut ResolverState,
+        _resolver_state: &mut ResolverState,
         loader_ref: &HolonReference,
     ) -> Result<HolonReference, HolonError> {
         // Property names from LoaderHolonReference schema
@@ -580,27 +544,15 @@ impl LoaderRefResolver {
                 }
             }
 
-            // Interim saved fallback: fetch all saved holons once on the first staged miss,
-            // then reuse that snapshot until targeted saved lookup by key exists.
-            if resolver_state.saved_index().is_none() {
-                debug!(
-                    "Staged miss for holon key '{}'; fetching saved holons via get_all_holons()",
-                    key.0
-                );
-                resolver_state.ensure_saved_index(context)?;
-            }
-
-            if let Some(saved_collection) = resolver_state.saved_index() {
-                match saved_collection.get_by_key(&key) {
-                    Ok(Some(saved_reference)) => {
-                        debug!("[resolver]   → FOUND saved holon for key='{}'", key.0);
-                        return Ok(saved_reference);
-                    }
-                    Ok(None) => {
-                        debug!("[resolver]   → NO saved holon for key='{}'", key.0);
-                    }
-                    Err(error) => return Err(error),
+            match context.lookup().get_saved_holon_by_key(&key) {
+                Ok(saved_reference) => {
+                    debug!("[resolver]   → FOUND saved holon for key='{}'", key.0);
+                    return Ok(HolonReference::Smart(saved_reference));
                 }
+                Err(HolonError::HolonNotFound(_)) => {
+                    debug!("[resolver]   → NO saved holon for key='{}'", key.0);
+                }
+                Err(error) => return Err(error),
             }
 
             // Key was present, but neither staged nor saved lookup found a match yet → deferrable.
