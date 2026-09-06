@@ -10,8 +10,9 @@
 //! a holon is now addressed by the `Create` that began its lineage, and subsequent versions are
 //! updates rooted at it. See `core_types::holon_storage` for the intended vocabulary.
 
+use core_types::HolonError;
 use hdk::prelude::*;
-use holons_guest_integrity::LOCAL_HOLON_SPACE_PATH;
+use holons_guest_integrity::type_conversions::holon_error_from_wasm_error;
 use holons_integrity::*;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,23 +21,13 @@ pub struct GetPathInput {
     pub link_type: LinkTypes,
 }
 
-#[hdk_extern]
-pub fn delete_holon_node(original_holon_node_hash: ActionHash) -> ExternResult<ActionHash> {
-    // delete links to Local Holon Space
-    let local_space_path = Path::from(LOCAL_HOLON_SPACE_PATH);
-    let base_address = local_space_path.path_entry_hash()?;
-    let links_query = LinkQuery::try_new(base_address, LinkTypes::LocalHolonSpace)?;
-    let links = get_links(links_query, GetStrategy::default())?;
-
-    for link in links {
-        if let Some(hash) = link.target.into_action_hash() {
-            if hash == original_holon_node_hash {
-                delete_link(link.create_link_hash, GetOptions::default())?;
-            }
-        }
-    }
-
-    delete_entry(original_holon_node_hash)
+/// Authors MAP's native deletion event for one exact structural head.
+///
+/// Eligibility is decided by the guest lifecycle service. This storage primitive deliberately
+/// does not retract SmartLinks, ownership/index records, or local-space anchors: those are
+/// immutable historical facts, while the resulting Delete action controls active discovery.
+pub fn delete_holon_node(action_hash: ActionHash) -> Result<ActionHash, HolonError> {
+    delete_entry(action_hash).map_err(holon_error_from_wasm_error)
 }
 
 #[hdk_extern]

@@ -60,6 +60,38 @@ impl StagedRefAccessKey {
 }
 
 impl StagedReference {
+    /// Ensures a described staged holon has its version-bound `OwnedBy` relationship to the
+    /// transaction's current HolonSpace.
+    ///
+    /// Undescribed creates intentionally remain relationless: commit cannot resolve an inverse
+    /// for relationship content without a source descriptor. This method is also called when a
+    /// descriptor is attached after staging, so ordinary creates receive ownership before commit.
+    pub(crate) fn ensure_current_space_ownership(&mut self) -> Result<(), HolonError> {
+        let source = HolonReference::Staged(self.clone());
+        match source.holon_descriptor() {
+            Ok(_) => {}
+            Err(HolonError::MissingDescribedBy { .. }) => return Ok(()),
+            Err(error) => return Err(error),
+        }
+
+        let Some(space) = self.context_handle.context().get_space_holon()? else {
+            return Ok(());
+        };
+        let space_id = space.holon_id()?;
+        let owned_by = source.related_holons(CoreRelationshipTypeName::OwnedBy)?;
+        let has_current_space = owned_by
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+            .get_members()
+            .iter()
+            .any(|owner| owner.holon_id().is_ok_and(|owner_id| owner_id == space_id));
+
+        if !has_current_space {
+            self.add_related_holons_ungoverned(CoreRelationshipTypeName::OwnedBy, vec![space])?;
+        }
+        Ok(())
+    }
+
     /// Marks the underlying StagedHolon that is referenced as 'Abandoned'
     ///
     /// Prevents a commit from taking place and restricts Holon to read-only access.
@@ -822,6 +854,8 @@ impl WritableHolonImpl for StagedReference {
             CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
             vec![descriptor_reference],
         )?;
+
+        self.ensure_current_space_ownership()?;
 
         Ok(())
     }

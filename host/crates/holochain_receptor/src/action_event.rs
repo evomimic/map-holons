@@ -165,12 +165,12 @@ mod tests {
     fn link_deleted_sets_link_type() {
         let zs = HolonsZomeSignal::LinkDeleted {
             action_id: id(0xEE),
-            link_type: "AllHolonNodes".to_string(),
+            link_type: "SmartLink".to_string(),
             timestamp: ts(),
         };
         let e = to_action_event(&zs);
         assert_eq!(e.mutation_kind, MutationKind::LinkDeleted);
-        assert_eq!(e.link_type.as_deref(), Some("AllHolonNodes"));
+        assert_eq!(e.link_type.as_deref(), Some("SmartLink"));
     }
 
     #[test]

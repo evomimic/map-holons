@@ -52,7 +52,8 @@ impl MutationFacade {
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
         self.context.assert_allowed(TransactionOperation::MutateState)?;
-        let staged_reference = self.staging_service.stage_new_holon(transient_reference)?;
+        let mut staged_reference = self.staging_service.stage_new_holon(transient_reference)?;
+        staged_reference.ensure_current_space_ownership()?;
 
         Ok(staged_reference)
     }
@@ -88,7 +89,10 @@ impl MutationFacade {
                 "Must use stage_new_holon for staging from a TransientReference".to_string(),
             ));
         }
-        self.staging_service.stage_new_from_clone(original_holon, new_key)
+        let mut staged_reference =
+            self.staging_service.stage_new_from_clone(original_holon, new_key)?;
+        staged_reference.ensure_current_space_ownership()?;
+        Ok(staged_reference)
     }
 
     /// Stages a new holon as a version of the current holon.

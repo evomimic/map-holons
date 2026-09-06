@@ -1,6 +1,5 @@
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
-use integrity_core_types::HolonErrorKind;
 use rstest::*;
 use std::collections::BTreeMap;
 
@@ -17,7 +16,7 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
         fixture_bindings: _fixture_bindings,
     } = TestCaseInit::new(
         "DeleteHolon Testcase",
-        "Tests delete_holon dance, matches expected response, in the OK case confirms get_holon_by_id returns NotFound error response for the given holon_to_delete ID.",
+        "Tests native Delete-based holon retirement: the original remains historically resolvable, and a repeat delete succeeds as an idempotent no-op.",
     );
 
     // Deletion is descriptor-governed. Load the test-only Book descriptor,
@@ -83,12 +82,14 @@ pub fn delete_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // ADD STEP: DELETE HOLON - Valid //
     test_case.add_delete_holon_step(&mut fixture_holons, staged_token.clone(), None, None)?;
 
-    // ADD STEP: DELETE HOLON - Invalid //
+    // A native Delete preserves the original record for historical resolution. A repeat must
+    // not create another Delete action, but it succeeds because the requested inactive state
+    // has already been achieved.
     test_case.add_delete_holon_step(
         &mut fixture_holons,
         staged_token,
-        Some(HolonErrorKind::HolonNotFound),
-        Some("Attempting invalid delete...".to_string()),
+        None,
+        Some("Repeat delete is an idempotent no-op".to_string()),
     )?;
 
     // Finalize

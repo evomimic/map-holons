@@ -5,8 +5,7 @@ use holochain::conductor::CellError;
 use holochain::core::ribosome::error::RibosomeError;
 use holochain::prelude::AgentPubKey;
 use holochain::prelude::{
-    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, Record, WasmHash, ZomeError,
-    ZomeName,
+    CoordinatorZomeDef, CoordinatorZomes, DnaDef, DnaHash, DnaWasm, WasmHash, ZomeError, ZomeName,
 };
 use holochain::sweettest::{
     SweetAgents, SweetCell, SweetConductor, SweetConductorConfig, SweetDnaFile,
@@ -292,11 +291,6 @@ pub async fn setup_probe_enabled_conductor() -> Arc<MockConductorConfig> {
         installed_dna_hash,
         "rehashing the effective updated DNA definition must preserve production DNA identity"
     );
-
-    let _: Vec<Record> = conductor
-        .call_fallible(&cell.zome(PRODUCTION_COORDINATOR_ZOME), "get_all_holon_nodes", ())
-        .await
-        .expect("the production holons coordinator must remain callable after augmentation");
 
     let agent_hash = holochain_agent.into_inner();
     let agent = AgentPubKey::from_raw_39(agent_hash);

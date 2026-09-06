@@ -5,7 +5,6 @@ use shared_validation::pvl_limits_v1::MAX_HOLON_NODE_BYTES;
 
 const HOLON_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
 const HOLON_ZOME_INDEX: ZomeIndex = ZomeIndex(0);
-const ALL_HOLON_NODES_LINK_TYPE: LinkType = LinkType(LinkTypes::AllHolonNodes as u8);
 const LOCAL_HOLON_SPACE_LINK_TYPE: LinkType = LinkType(LinkTypes::LocalHolonSpace as u8);
 const SMARTLINK_LINK_TYPE: LinkType = LinkType(LinkTypes::SmartLink as u8);
 
@@ -258,7 +257,7 @@ fn zome_info() -> ZomeInfo {
             // flattening and StoreRecord delete dispatch.
             links: ScopedZomeTypes(vec![(
                 HOLON_ZOME_INDEX,
-                vec![ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE],
+                vec![LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE],
             )]),
         },
     )
@@ -419,12 +418,8 @@ fn create_link(link_type: LinkType, tag: LinkTag) -> CreateLink {
 }
 
 fn infrastructure_create_link(link_type: LinkType) -> CreateLink {
-    let path = if link_type == ALL_HOLON_NODES_LINK_TYPE {
-        ALL_HOLON_NODES_PATH
-    } else {
-        assert_eq!(link_type, LOCAL_HOLON_SPACE_LINK_TYPE);
-        LOCAL_HOLON_SPACE_PATH
-    };
+    assert_eq!(link_type, LOCAL_HOLON_SPACE_LINK_TYPE);
+    let path = LOCAL_HOLON_SPACE_PATH;
     let mut create = create_link(link_type, LinkTag::new(Vec::new()));
     create.base_address = Path::from(path).path_entry_hash().expect("path hashing is local").into();
     create
@@ -508,7 +503,7 @@ fn both_smartlink_create_forms_use_no_dependencies() {
 #[test]
 fn infrastructure_create_forms_pin_their_structural_dependency_counts() {
     for form in [CreateLinkOpForm::RegisterCreateLink, CreateLinkOpForm::StoreRecord] {
-        for link_type in [ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE] {
+        for link_type in [LOCAL_HOLON_SPACE_LINK_TYPE] {
             install_infrastructure_create_target(1);
             assert_eq!(
                 validate(create_link_op(form, infrastructure_create_link(link_type))),
@@ -521,7 +516,7 @@ fn infrastructure_create_forms_pin_their_structural_dependency_counts() {
 
 #[test]
 fn every_register_delete_link_form_uses_no_dependencies() {
-    for link_type in [ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
+    for link_type in [LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
         let mut mock = MockHdi::new();
         mock.expect_must_get_action().times(0);
         mock.expect_must_get_valid_record().times(0);
@@ -536,18 +531,14 @@ fn every_register_delete_link_form_uses_no_dependencies() {
                 infrastructure_create_link(link_type)
             },
         ));
-        let expected = if link_type == ALL_HOLON_NODES_LINK_TYPE {
-            ValidateCallbackResult::Invalid("AllHolonNodes links cannot be deleted".into())
-        } else {
-            ValidateCallbackResult::Valid
-        };
+        let expected = ValidateCallbackResult::Valid;
         assert_eq!(result, Ok(expected), "RegisterDeleteLink did not dispatch type {link_type:?}");
     }
 }
 
 #[test]
 fn every_store_record_delete_link_form_uses_one_action_dependency() {
-    for link_type in [ALL_HOLON_NODES_LINK_TYPE, LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
+    for link_type in [LOCAL_HOLON_SPACE_LINK_TYPE, SMARTLINK_LINK_TYPE] {
         let create = if link_type == SMARTLINK_LINK_TYPE {
             create_link(link_type, valid_smartlink_tag())
         } else {
@@ -564,11 +555,7 @@ fn every_store_record_delete_link_form_uses_one_action_dependency() {
         set_hdi(mock);
 
         let result = validate(delete_link_op(DeleteLinkOpForm::StoreRecord, create));
-        let expected = if link_type == ALL_HOLON_NODES_LINK_TYPE {
-            ValidateCallbackResult::Invalid("AllHolonNodes links cannot be deleted".into())
-        } else {
-            ValidateCallbackResult::Valid
-        };
+        let expected = ValidateCallbackResult::Valid;
         assert_eq!(
             result,
             Ok(expected),
@@ -655,25 +642,6 @@ fn store_record_link_delete_rejects_a_non_create_target_with_map_pvl_2004() {
     );
 }
 
-#[test]
-fn store_record_delete_dispatches_a_different_scoped_link_type() {
-    let create = create_link(ALL_HOLON_NODES_LINK_TYPE, valid_smartlink_tag());
-    let mut mock = MockHdi::new();
-    mock.expect_must_get_action()
-        .times(1)
-        .return_once(move |_| Ok(signed_action(Action::CreateLink(create))));
-    mock.expect_must_get_valid_record().times(0);
-    mock.expect_zome_info().times(1).return_once(|_| Ok(zome_info()));
-    set_hdi(mock);
-
-    assert_eq!(
-        validate(Op::StoreRecord(StoreRecord {
-            record: Record::new(signed_action(Action::DeleteLink(delete_link())), None),
-        })),
-        Ok(ValidateCallbackResult::Invalid("AllHolonNodes links cannot be deleted".into()))
-    );
-}
-
 fn assert_dependency_failure_stays_outer(operation: Op, marker: &str) {
     let error = validate(operation)
         .expect_err("dependency unavailability must not become a completed validation verdict");
@@ -721,7 +689,7 @@ fn dependency_failures_remain_outer_across_callback_adapter_routes() {
     assert_dependency_failure_stays_outer(
         create_link_op(
             CreateLinkOpForm::RegisterCreateLink,
-            infrastructure_create_link(ALL_HOLON_NODES_LINK_TYPE),
+            infrastructure_create_link(LOCAL_HOLON_SPACE_LINK_TYPE),
         ),
         "infrastructure dependency unavailable",
     );

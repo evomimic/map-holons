@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::persistence_layer::{
-    expand_from_source_by_key, get_holon, persist_holon, put_smartlink_cached,
+    expand_from_source, expand_from_source_by_key, get_holon, persist_holon, put_smartlink_cached,
     SmartLinkWriteContext,
 };
 use core_types::{HolonWriteRequest, PreparedSmartLink, PutSmartLinkOutcome};
@@ -896,6 +896,20 @@ fn save_smartlinks_for_collection(
         persist_smartlink(smartlink_write_context, forward_smartlink, performance_metrics)?;
 
         let inverse_target_id = materialize_target_binding(source_id, inverse_binding)?;
+        // A version-bound forward relationship can map to one lineage-bound inverse
+        // membership. The physical inverse must therefore be deduplicated by its normalized
+        // `(source, relationship, lineage-root)` identity, before a canonical key from a later
+        // version can collide with the already-established occurrence-free membership.
+        if inverse_binding == TargetBinding::Lineage
+            && expand_from_source(&resolved_target.target_local_id, &inverse_name)?.into_iter().any(
+                |link| {
+                    link.target_id == HolonId::Local(inverse_target_id.clone())
+                        && link.occurrence_id.is_none()
+                },
+            )
+        {
+            continue;
+        }
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
             target_id: HolonId::Local(inverse_target_id),

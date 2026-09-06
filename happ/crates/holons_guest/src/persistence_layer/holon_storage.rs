@@ -12,11 +12,6 @@
 //! deliberately absent — they are later storage work, and folding them in here would make an
 //! exact read ambiguous.
 //!
-//! One deliberate non-decision, recorded so it is not mistaken for an oversight: `PublishRoot`
-//! indexes the new holon under `AllHolonNodes`; `PublishVersion` does not. The lineage root is
-//! already indexed, and one index entry per version would make a get-all return every version of
-//! every holon as a separate top-level result.
-//!
 //! Versions are authored as native root-addressed Holochain updates and nothing else: Holochain's
 //! own update graph already records that an update happened, so there is no parallel link index
 //! to keep in step with it.
@@ -27,8 +22,8 @@ use core_types::{
 };
 use hdk::prelude::*;
 use holochain_serialized_bytes::encode;
-use holons_guest_integrity::{type_conversions::*, HolonNode, ALL_HOLON_NODES_PATH};
-use holons_integrity::{EntryTypes, LinkTypes};
+use holons_guest_integrity::{type_conversions::*, HolonNode};
+use holons_integrity::EntryTypes;
 use integrity_core_types::{short_hex, HolonNodeModel, LocalId};
 use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
 
@@ -36,19 +31,46 @@ use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
 // Read: exact-version retrieval
 // ---------------------------------------------------------------------------
 
-/// Returns the exact persisted version named by `local_id`, or `None` when it is absent.
+/// Returns the exact persisted version named by `local_id`, including one subsequently targeted
+/// by a visible native Holochain Delete action.
 ///
-/// Reads the exact record — never the head of its lineage. A record that exists but cannot be
-/// classified fails rather than reporting absence: see `decode_stored_holon_node`.
+/// Exact/version-bound MAP resolution is historical. Current visibility is decided above storage
+/// by lineage-head selection, so it must not be conflated with Holochain's retraction facts.
 pub fn get_holon(local_id: &LocalId) -> Result<Option<StoredHolonNode>, HolonError> {
     let action_hash = try_action_hash_from_local_id(local_id)?;
-    let Some(record) =
-        get(action_hash, GetOptions::default()).map_err(holon_error_from_wasm_error)?
+    let Some(details) =
+        get_details(action_hash, GetOptions::default()).map_err(holon_error_from_wasm_error)?
     else {
         return Ok(None);
     };
-
+    let Details::Record(details) = details else {
+        return Err(HolonError::InvalidWireFormat {
+            wire_type: "HolonNodeRecord".into(),
+            reason: "expected record details for exact HolonNode action".into(),
+        });
+    };
+    let record = details.record;
     Ok(Some(decode_stored_holon_node(&record)?))
+}
+
+/// Returns whether an exact holon version has a visible native Holochain Delete action.
+///
+/// This is a retraction fact for active-head selection, not a storage-level filter on exact
+/// historical reads. A missing record is reported separately from an undeleted record.
+pub fn has_visible_holon_delete(local_id: &LocalId) -> Result<Option<bool>, HolonError> {
+    let action_hash = try_action_hash_from_local_id(local_id)?;
+    let Some(details) =
+        get_details(action_hash, GetOptions::default()).map_err(holon_error_from_wasm_error)?
+    else {
+        return Ok(None);
+    };
+    let Details::Record(details) = details else {
+        return Err(HolonError::InvalidWireFormat {
+            wire_type: "HolonNodeRecord".into(),
+            reason: "expected record details for exact HolonNode action".into(),
+        });
+    };
+    Ok(Some(!details.deletes.is_empty()))
 }
 
 /// Returns one positional slot per requested id, preserving order and duplicates.
@@ -61,26 +83,7 @@ pub fn get_holons(local_ids: &[LocalId]) -> Result<Vec<Option<StoredHolonNode>>,
         return Ok(Vec::new());
     }
 
-    let get_inputs = local_ids
-        .iter()
-        .map(|local_id| {
-            Ok(GetInput::new(
-                try_action_hash_from_local_id(local_id)?.into(),
-                GetOptions::default(),
-            ))
-        })
-        .collect::<Result<Vec<GetInput>, HolonError>>()?;
-
-    // The host answers a batched get positionally: one slot per input, in order, `None` for
-    // anything it could not find. That is exactly the contract this function owes its callers,
-    // so the slots are mapped through rather than flattened.
-    let records =
-        HDK.with(|hdk| hdk.borrow().get(get_inputs)).map_err(holon_error_from_wasm_error)?;
-
-    records
-        .into_iter()
-        .map(|slot| slot.map(|record| decode_stored_holon_node(&record)).transpose())
-        .collect()
+    local_ids.iter().map(get_holon).collect()
 }
 
 /// Returns version metadata for `action_hash`, or `None` when the record is absent or is not a
@@ -93,11 +96,15 @@ pub fn get_holons(local_ids: &[LocalId]) -> Result<Vec<Option<StoredHolonNode>>,
 pub fn try_version_metadata_for_action(
     action_hash: &ActionHash,
 ) -> Result<Option<VersionMetadata>, HolonError> {
-    let Some(record) =
-        get(action_hash.clone(), GetOptions::default()).map_err(holon_error_from_wasm_error)?
+    let Some(details) = get_details(action_hash.clone(), GetOptions::default())
+        .map_err(holon_error_from_wasm_error)?
     else {
         return Ok(None);
     };
+    let Details::Record(details) = details else {
+        return Ok(None);
+    };
+    let record = details.record;
 
     match classify_record(&record)? {
         RecordClassification::NotAHolonNode => Ok(None),
@@ -127,8 +134,6 @@ pub fn persist_holon(request: HolonWriteRequest) -> Result<StoredHolonNode, Holo
             let action_hash =
                 create_entry(&EntryTypes::HolonNode(HolonNode::from(holon_node.clone())))
                     .map_err(holon_error_from_wasm_error)?;
-
-            index_under_all_holon_nodes(&action_hash)?;
 
             let version_metadata = VersionMetadata::root(local_id_from_action_hash(action_hash));
             debug!(
@@ -316,17 +321,6 @@ fn resolve_lineage_root_for_predecessors(
     resolve_shared_lineage_root(&predecessors).inspect_err(|error| {
         warn!("persist_holon: PublishVersion rejected — {}", error);
     })
-}
-
-/// Adds the new holon to the space-wide holon index.
-fn index_under_all_holon_nodes(action_hash: &ActionHash) -> Result<(), HolonError> {
-    let path = Path::from(ALL_HOLON_NODES_PATH);
-    let base = path.path_entry_hash().map_err(holon_error_from_wasm_error)?;
-
-    create_link(base, action_hash.clone(), LinkTypes::AllHolonNodes, ())
-        .map_err(holon_error_from_wasm_error)?;
-
-    Ok(())
 }
 
 #[cfg(test)]

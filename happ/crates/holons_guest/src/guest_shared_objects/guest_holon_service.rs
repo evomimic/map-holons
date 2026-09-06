@@ -9,9 +9,7 @@ use hdk::prelude::*;
 use holons_core::core_shared_objects::{ReadableHolonState, SavedHolon};
 use holons_core::reference_layer::{ReadableHolon, TransientReference};
 use holons_core::RelationshipMap;
-use holons_guest_integrity::type_conversions::{
-    holon_error_from_wasm_error, try_action_hash_from_local_id,
-};
+use holons_guest_integrity::type_conversions::try_action_hash_from_local_id;
 use holons_guest_integrity::{
     LOCAL_HOLON_SPACE_DESCRIPTION, LOCAL_HOLON_SPACE_NAME, LOCAL_HOLON_SPACE_PATH,
 };
@@ -20,7 +18,8 @@ use crate::get_holon_by_path;
 use crate::guest_shared_objects::commit_functions;
 use crate::persistence_layer::{
     delete_holon_node, expand_all_from_source, expand_from_source, expand_from_source_by_key,
-    get_all_holon_ids, get_holon, index_local_holon_space, persist_holon, saved_holon_from_stored,
+    get_holon, has_visible_holon_delete, index_local_holon_space, persist_holon,
+    saved_holon_from_stored,
 };
 use base_types::{BaseValue, MapString};
 use core_types::{CanonicalKey, HolonError, HolonId, HolonWriteRequest, KeyMatch, SmartLink};
@@ -143,6 +142,25 @@ impl GuestHolonService {
         };
 
         Ok(HolonReference::Smart(smart))
+    }
+
+    /// Returns whether an exact persisted version still has a visible successor.
+    fn has_visible_successor(&self, local_id: &LocalId) -> Result<bool, HolonError> {
+        let successors = expand_from_source(
+            local_id,
+            &CoreRelationshipTypeName::Successor.as_relationship_name(),
+        )?;
+        for successor in successors {
+            let HolonId::Local(successor_id) = successor.target_id else {
+                return Err(HolonError::InvalidHolonReference(
+                    "Successor SmartLink target must be local".to_string(),
+                ));
+            };
+            if get_holon(&successor_id)?.is_some() {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     /// Mints the runtime reference for one decoded SmartLink, paired with its optional key.
@@ -307,6 +325,9 @@ impl GuestHolonService {
 
         for lineage_root in lineage_roots {
             for head in self.get_lineage_heads(context, key, &lineage_root, &lineage_root)? {
+                if has_visible_holon_delete(&head)? == Some(true) {
+                    continue;
+                }
                 let stored =
                     get_holon(&head)?.ok_or_else(|| HolonError::HolonNotFound(head.to_string()))?;
                 if saved_holon_from_stored(stored).key() == Some(key.clone()) {
@@ -370,13 +391,22 @@ impl HolonServiceApi for GuestHolonService {
         _context: &Arc<TransactionContext>,
         local_id: &LocalId,
     ) -> Result<(), HolonError> {
-        // Confirm the id names a real holon node before authoring a delete against it.
-        let _stored = get_holon(local_id)?
+        // Exact storage reads remain historical, including a version with a visible Delete.
+        get_holon(local_id)?
             .ok_or_else(|| HolonError::HolonNotFound(format!("at id: {:?}", local_id.0)))?;
-        // holon.is_deletable()?;
-        delete_holon_node(try_action_hash_from_local_id(&local_id)?)
-            .map(|_| ()) // Convert ActionHash to ()
-            .map_err(|e| holon_error_from_wasm_error(e))
+
+        if self.has_visible_successor(local_id)? {
+            return Err(HolonError::InvalidState(
+                "cannot delete a non-head holon version with visible successors".to_string(),
+            ));
+        }
+        if has_visible_holon_delete(local_id)? == Some(true) {
+            // The requested state has already been achieved. Do not create a second native
+            // Delete action for a retry, but report success so DeleteHolon remains idempotent.
+            return Ok(());
+        }
+
+        delete_holon_node(try_action_hash_from_local_id(local_id)?).map(|_| ())
     }
 
     fn fetch_all_related_holons_internal(
@@ -482,10 +512,42 @@ impl HolonServiceApi for GuestHolonService {
         context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         let mut collection = HolonCollection::new_existing();
-        let holon_ids = get_all_holon_ids()?;
+        let space = context.get_space_holon()?.ok_or_else(|| {
+            HolonError::InvalidState("whole-space lookup requires a persisted HolonSpace".into())
+        })?;
+        let space_id = space.holon_id()?.local_id().clone();
+        let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
+        let mut lineage_roots = HashSet::new();
+        for link in expand_from_source(&space_id, &owns)? {
+            let HolonId::Local(target_id) = link.target_id else {
+                return Err(HolonError::InvalidHolonReference(
+                    "Owns SmartLink target must be local".to_string(),
+                ));
+            };
+            if target_id != space_id {
+                lineage_roots.insert(target_id);
+            }
+        }
+
+        let traversal_key = MapString("<GetAllHolons>".to_string());
+        let mut holon_ids = Vec::new();
+        for lineage_root in lineage_roots {
+            let structural_heads =
+                self.get_lineage_heads(context, &traversal_key, &lineage_root, &lineage_root)?;
+            let has_active_head = structural_heads
+                .into_iter()
+                .map(|head| has_visible_holon_delete(&head))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .any(|deleted| deleted == Some(false));
+            if has_active_head {
+                holon_ids.push(lineage_root);
+            }
+        }
+        holon_ids.sort_by(|left, right| left.0.cmp(&right.0));
         let mut holon_references = Vec::new();
         for id in holon_ids {
-            holon_references.push(self.mint_smart_reference(context, id, None)?);
+            holon_references.push(self.mint_smart_reference(context, HolonId::Local(id), None)?);
         }
         collection.add_references(holon_references)?;
 

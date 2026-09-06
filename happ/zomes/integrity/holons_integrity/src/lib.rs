@@ -24,7 +24,6 @@ pub enum EntryTypes {
 #[derive(Serialize, Deserialize)]
 #[hdk_link_types]
 pub enum LinkTypes {
-    AllHolonNodes,
     LocalHolonSpace,
     SmartLink,
 }
@@ -125,9 +124,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     &target_address,
                     &tag,
                 )?)),
-                LinkTypes::AllHolonNodes => Ok(fixed_callback_result(
-                    validate_all_holon_nodes_create(&base_address, &target_address, &tag)?,
-                )),
                 LinkTypes::LocalHolonSpace => Ok(fixed_callback_result(
                     validate_local_holon_space_create(&base_address, &target_address, &tag)?,
                 )),
@@ -136,9 +132,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
         FlatOp::RegisterDeleteLink { link_type, original_action, .. } => match link_type {
             LinkTypes::SmartLink => {
                 Ok(pvl_callback_result(validate_smartlink_delete(&original_action)?))
-            }
-            LinkTypes::AllHolonNodes => {
-                Ok(fixed_callback_result(validate_all_holon_nodes_delete(&original_action)?))
             }
             LinkTypes::LocalHolonSpace => {
                 Ok(fixed_callback_result(validate_local_holon_space_delete(&original_action)?))
@@ -169,9 +162,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         &target_address,
                         &tag,
                     )?)),
-                    LinkTypes::AllHolonNodes => Ok(fixed_callback_result(
-                        validate_all_holon_nodes_create(&base_address, &target_address, &tag)?,
-                    )),
                     LinkTypes::LocalHolonSpace => Ok(fixed_callback_result(
                         validate_local_holon_space_create(&base_address, &target_address, &tag)?,
                     )),
@@ -192,9 +182,6 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 match link_type {
                     LinkTypes::SmartLink => {
                         Ok(pvl_callback_result(validate_smartlink_delete(&create_link)?))
-                    }
-                    LinkTypes::AllHolonNodes => {
-                        Ok(fixed_callback_result(validate_all_holon_nodes_delete(&create_link)?))
                     }
                     LinkTypes::LocalHolonSpace => {
                         Ok(fixed_callback_result(validate_local_holon_space_delete(&create_link)?))
