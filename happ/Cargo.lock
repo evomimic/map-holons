@@ -743,9 +743,9 @@ dependencies = [
  "holons_integrity",
  "holons_loader",
  "integrity_core_types",
+ "pvl_validation",
  "serde",
  "sha2",
- "shared_validation",
  "tracing",
  "type_names",
 ]
@@ -760,8 +760,8 @@ dependencies = [
  "holochain_serialized_bytes",
  "integrity_core_types",
  "mockall",
+ "pvl_validation",
  "serde",
- "shared_validation",
 ]
 
 [[package]]
@@ -773,8 +773,8 @@ dependencies = [
  "holons_guest_integrity",
  "integrity_core_types",
  "mockall",
+ "pvl_validation",
  "serde",
- "shared_validation",
 ]
 
 [[package]]
@@ -1041,6 +1041,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pvl_validation"
+version = "0.1.0"
+dependencies = [
+ "core_types",
+ "integrity_core_types",
+]
+
+[[package]]
 name = "quick_cache"
 version = "0.6.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1211,14 +1219,6 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
-]
-
-[[package]]
-name = "shared_validation"
-version = "0.1.0"
-dependencies = [
- "core_types",
- "integrity_core_types",
 ]
 
 [[package]]

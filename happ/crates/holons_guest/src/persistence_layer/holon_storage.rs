@@ -25,7 +25,7 @@ use holochain_serialized_bytes::encode;
 use holons_guest_integrity::{type_conversions::*, HolonNode};
 use holons_integrity::EntryTypes;
 use integrity_core_types::{short_hex, HolonNodeModel, LocalId};
-use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
+use pvl_validation::{validate_holon_node_decoded, validate_holon_node_size};
 
 // ---------------------------------------------------------------------------
 // Read: exact-version retrieval

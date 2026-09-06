@@ -1,5 +1,5 @@
 [package]
-name = "shared_validation"
+name = "pvl_validation"
 version = "0.1.0"
 edition = "2021"
 

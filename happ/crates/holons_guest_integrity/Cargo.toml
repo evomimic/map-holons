@@ -25,8 +25,8 @@ holochain_serialized_bytes = "*"
 [dependencies.integrity_core_types]
 path = "../../../shared_crates/type_system/integrity_core_types"
 
-[dependencies.shared_validation]
-path = "../../../shared_crates/shared_validation"
+[dependencies.pvl_validation]
+path = "../../../shared_crates/pvl_validation"
 
 [dev-dependencies]
 mockall = "0.13"

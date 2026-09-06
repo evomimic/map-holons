@@ -1,7 +1,7 @@
 //! Action-only target classification shared by Holochain-aware adapters.
 
 use hdi::prelude::*;
-use shared_validation::{LifecycleTarget, TargetActionKind, TargetEntryKind};
+use pvl_validation::{LifecycleTarget, TargetActionKind, TargetEntryKind};
 
 /// Projects a resolved action into the closed lifecycle model without reading entry content.
 ///
