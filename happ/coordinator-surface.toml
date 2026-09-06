@@ -104,20 +104,6 @@ rationale = "Scaffolded path-based Record lookup retained for the legacy coordin
 
 [[export]]
 zome = "holons"
-symbol = "delete_holon_node"
-exposure_kind = "zome_call"
-classification = "legacy_ingress"
-rationale = "Scaffolded raw HolonNode deletion ingress retained for the legacy coordinator surface."
-
-[[export]]
-zome = "holons"
-symbol = "get_all_holon_nodes"
-exposure_kind = "zome_call"
-classification = "legacy_ingress"
-rationale = "Scaffolded enumeration ingress over the AllHolonNodes infrastructure link."
-
-[[export]]
-zome = "holons"
 symbol = "get_original_holon_node"
 exposure_kind = "zome_call"
 classification = "legacy_ingress"
@@ -164,13 +150,6 @@ symbol = "holon_storage_author_create_for_test"
 exposure_kind = "zome_call"
 classification = "test_only"
 rationale = "Test probe that authors a HolonNode Create without canonical coordinator preflight."
-
-[[export]]
-zome = "holons_test_probes"
-symbol = "all_holon_nodes_delete_for_test"
-exposure_kind = "zome_call"
-classification = "test_only"
-rationale = "Test probe that derives the canonical AllHolonNodes topology from a persisted root target and attempts deletion to exercise AllHolonNodesDelete."
 
 [[export]]
 zome = "holons_test_probes"

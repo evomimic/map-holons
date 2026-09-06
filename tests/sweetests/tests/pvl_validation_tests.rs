@@ -11,7 +11,7 @@ use core_types::{
     CanonicalKey, DeleteSmartLinkOutcome, HolonId, HolonWriteRequest, PreparedSmartLink,
     PutSmartLinkOutcome, StoredHolonNode,
 };
-use holochain::prelude::{ActionHash, Record};
+use holochain::prelude::ActionHash;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     assert_commit_rejected_with_message, assert_commit_rejected_with_pvl,
@@ -30,12 +30,9 @@ const EXPECTED_EMPTY_RELATIONSHIP_REJECTION: &str = "MAP-PVL-2101: relationship 
 const EXPECTED_MALFORMED_SMARTLINK_REJECTION: &str =
     "MAP-PVL-2001: malformed SmartLink (invalid discriminant at TagHeader)";
 
-// These serde mirrors are pinned to the closed probe inputs in `holons_test_probes`. The root-index
-// enum also serializes compatibly with the same-named production `LinkTypes` variants for the
-// retained path getter used by the bootstrap assertion.
+// These serde mirrors are pinned to the closed probe inputs in `holons_test_probes`.
 #[derive(Clone, Copy, Debug, Serialize)]
 enum RootIndexLinkType {
-    AllHolonNodes,
     LocalHolonSpace,
 }
 
@@ -257,27 +254,13 @@ async fn unanchored_ordinary_session_requires_a_persisted_local_holon_space() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn canonical_all_holon_nodes_creation_uses_production_persistence() {
-    let backend = setup_test_conductor().await;
-    let root = publish_root(&backend, "all-index-target").await;
-    let indexed: Vec<Record> =
-        backend.conductor.call(&backend.cell.zome(ZOME), "get_all_holon_nodes", ()).await;
-
-    assert!(
-        indexed.iter().any(|record| record.action_address() == &action_hash(root.version_id())),
-        "PublishRoot must add the persisted lineage root to AllHolonNodes"
-    );
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn integrity_rejects_noncanonical_infrastructure_bases() {
     let backend = setup_probe_enabled_conductor().await;
     let target = publish_root(&backend, "target").await;
 
-    for (link_type, link_name, canonical_path) in [
-        (RootIndexLinkType::AllHolonNodes, "AllHolonNodes", "all_holon_nodes"),
-        (RootIndexLinkType::LocalHolonSpace, "LocalHolonSpace", "local_holon_space"),
-    ] {
+    for (link_type, link_name, canonical_path) in
+        [(RootIndexLinkType::LocalHolonSpace, "LocalHolonSpace", "local_holon_space")]
+    {
         let result = backend
             .conductor
             .call_fallible::<_, LocalId>(
@@ -303,10 +286,7 @@ async fn integrity_rejects_update_targets_for_root_infrastructure_indexes() {
     let root = publish_root(&backend, "root").await;
     let version = publish_version(&backend, "version", root.version_id().clone()).await;
 
-    for (link_type, link_name) in [
-        (RootIndexLinkType::AllHolonNodes, "AllHolonNodes"),
-        (RootIndexLinkType::LocalHolonSpace, "LocalHolonSpace"),
-    ] {
+    for (link_type, link_name) in [(RootIndexLinkType::LocalHolonSpace, "LocalHolonSpace")] {
         let result = backend
             .conductor
             .call_fallible::<_, LocalId>(
@@ -320,20 +300,4 @@ async fn integrity_rejects_update_targets_for_root_infrastructure_indexes() {
             &format!("{link_name} links must target a HolonNode lineage-root Create action"),
         );
     }
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn all_holon_nodes_delete_is_rejected() {
-    let backend = setup_probe_enabled_conductor().await;
-    let target = publish_root(&backend, "target").await;
-
-    let result = backend
-        .conductor
-        .call_fallible::<_, LocalId>(
-            &backend.cell.zome(PROBE_ZOME),
-            "all_holon_nodes_delete_for_test",
-            target.version_id().clone(),
-        )
-        .await;
-    assert_commit_rejected_with_message(result, "AllHolonNodes links cannot be deleted");
 }

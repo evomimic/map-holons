@@ -283,13 +283,13 @@ mod tests {
     fn link_deleted_decodes_with_correct_fields() {
         match roundtrip(HolonsZomeSignal::LinkDeleted {
             action_id: action_id(0xEF),
-            link_type: "AllHolonNodes".to_string(),
+            link_type: "SmartLink".to_string(),
             timestamp: ts(),
         }) {
             HostSignal::Holons {
                 signal: HolonsZomeSignal::LinkDeleted { link_type, .. }, ..
             } => {
-                assert_eq!(link_type, "AllHolonNodes");
+                assert_eq!(link_type, "SmartLink");
             }
             other => panic!("expected LinkDeleted, got {:?}", other),
         }

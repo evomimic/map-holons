@@ -3,8 +3,7 @@
 //! This is an internal storage operation, not a coordinator API: the canonical path, link type, and
 //! empty tag are fixed here so no caller can select infrastructure topology.
 //!
-//! The sibling `AllHolonNodes` infrastructure index remains owned by
-//! `persist_holon(PublishRoot)` in `holon_storage`.
+//! Ordinary whole-space discovery is represented by semantic `Owns` SmartLinks.
 
 use core_types::HolonError;
 use hdk::prelude::*;

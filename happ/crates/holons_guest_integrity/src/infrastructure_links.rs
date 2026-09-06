@@ -11,7 +11,7 @@ use hdi::prelude::*;
 use shared_validation::{TargetActionKind, TargetEntryKind};
 
 use crate::action_target::classify_target;
-use crate::holon_node::{ALL_HOLON_NODES_PATH, LOCAL_HOLON_SPACE_PATH};
+use crate::holon_node::LOCAL_HOLON_SPACE_PATH;
 use crate::holon_node_envelope::HOLON_NODE_ENTRY_DEF_INDEX;
 
 /// A completed fixed-policy verdict for an infrastructure link.
@@ -24,7 +24,6 @@ pub enum InfrastructureLinkRejection {
     NonEmptyTag { link_name: &'static str },
     NonActionTarget { link_name: &'static str },
     NonRootHolonNodeTarget { link_name: &'static str },
-    AllHolonNodesDelete,
 }
 
 impl fmt::Display for InfrastructureLinkRejection {
@@ -44,39 +43,8 @@ impl fmt::Display for InfrastructureLinkRejection {
                 formatter,
                 "{link_name} links must target a HolonNode lineage-root Create action"
             ),
-            Self::AllHolonNodesDelete => {
-                formatter.write_str("AllHolonNodes links cannot be deleted")
-            }
         }
     }
-}
-
-/// Validates a whole-space index link to one `HolonNode` lineage root.
-///
-/// Peers author infrastructure links directly, independently of any local coordinator API, so the
-/// canonical base and lineage-root target are DHT invariants rather than guards on one local
-/// ingress. The index represents each lineage once, so accepting an `Update` would admit arbitrary
-/// versions into an index whose readers expect roots.
-pub fn validate_all_holon_nodes_create(
-    base_address: &AnyLinkableHash,
-    target_address: &AnyLinkableHash,
-    tag: &LinkTag,
-) -> ExternResult<Result<(), InfrastructureLinkRejection>> {
-    validate_root_index_create(
-        "AllHolonNodes",
-        ALL_HOLON_NODES_PATH,
-        base_address,
-        target_address,
-        tag,
-    )
-}
-
-pub fn validate_all_holon_nodes_delete(
-    _original_action: &CreateLink,
-) -> ExternResult<Result<(), InfrastructureLinkRejection>> {
-    // The whole-space index remains authoritative until Storage SL5 retires it. Consequently,
-    // deleted lineages can leave stale index membership during this intentionally temporary era.
-    Ok(Err(InfrastructureLinkRejection::AllHolonNodesDelete))
 }
 
 /// Validates the bootstrap path link to the designated local-space lineage root.
@@ -268,7 +236,7 @@ mod tests {
             timestamp: Timestamp::from_micros(1),
             action_seq: 1,
             prev_action: action_hash(1),
-            base_address: canonical_base(ALL_HOLON_NODES_PATH),
+            base_address: canonical_base(LOCAL_HOLON_SPACE_PATH),
             target_address: action_hash(2).into(),
             zome_index: HOLON_ZOME_INDEX,
             link_type: LinkType(0),
@@ -283,11 +251,8 @@ mod tests {
         &LinkTag,
     ) -> ExternResult<Result<(), InfrastructureLinkRejection>>;
 
-    fn active_indexes() -> [(&'static str, &'static str, CreateValidator); 2] {
-        [
-            ("AllHolonNodes", ALL_HOLON_NODES_PATH, validate_all_holon_nodes_create),
-            ("LocalHolonSpace", LOCAL_HOLON_SPACE_PATH, validate_local_holon_space_create),
-        ]
+    fn active_indexes() -> [(&'static str, &'static str, CreateValidator); 1] {
+        [("LocalHolonSpace", LOCAL_HOLON_SPACE_PATH, validate_local_holon_space_create)]
     }
 
     #[test]
@@ -401,8 +366,8 @@ mod tests {
         mock.expect_zome_info().times(0);
         set_hdi(mock);
 
-        let error = validate_all_holon_nodes_create(
-            &canonical_base(ALL_HOLON_NODES_PATH),
+        let error = validate_local_holon_space_create(
+            &canonical_base(LOCAL_HOLON_SPACE_PATH),
             &action_hash(9).into(),
             &LinkTag::new(Vec::new()),
         )
@@ -417,10 +382,5 @@ mod tests {
 
         set_hdi(no_dependency_mock());
         assert_eq!(validate_local_holon_space_delete(&original), Ok(Ok(())));
-        set_hdi(no_dependency_mock());
-        assert_eq!(
-            validate_all_holon_nodes_delete(&original),
-            Ok(Err(InfrastructureLinkRejection::AllHolonNodesDelete))
-        );
     }
 }
