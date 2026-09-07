@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::descriptors::inheritance::walk_extends_chain;
+use crate::descriptors::inheritance::equals_or_extends;
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     supported_operators as collect_supported_operators,
     supports_operator as descriptor_supports_operator,
@@ -39,7 +39,7 @@ impl ValueDescriptor {
 
     /// Validates a runtime value against this descriptor's semantic value kind.
     pub fn is_valid(&self, value: &BaseValue) -> Result<(), HolonError> {
-        match self.value_kind()? {
+        match self.resolved_value_kind()? {
             ValueDescriptorKind::BaseValue(BaseValueKind::Integer) => {
                 IntegerValueDescriptor::from_holon(self.holon.clone()).is_valid(value)
             }
@@ -130,7 +130,7 @@ impl ValueDescriptor {
         lhs: &BaseValue,
         rhs: &BaseValue,
     ) -> Result<bool, HolonError> {
-        let value_kind = self.value_kind()?;
+        let value_kind = self.resolved_value_kind()?;
         if let ValueDescriptorKind::Unsupported(found) = value_kind {
             return Err(self.wrong_value_kind(found));
         }
@@ -167,41 +167,28 @@ impl ValueDescriptor {
         }
     }
 
-    fn value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
-        let mut first_type_name = None;
-
-        for ancestor in walk_extends_chain(&self.holon) {
-            let ancestor = ancestor?;
-            let type_name = TypeHeader::new(&ancestor).type_name()?;
-            if first_type_name.is_none() {
-                first_type_name = Some(type_name.to_string());
-            }
-
-            match type_name.0.as_str() {
-                "IntegerValueType" => {
-                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Integer))
-                }
-                "StringValueType" => {
-                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::String))
-                }
-                "BooleanValueType" => {
-                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Boolean))
-                }
-                "EnumValueType" => return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Enum)),
-                "BytesValueType" => {
-                    return Ok(ValueDescriptorKind::BaseValue(BaseValueKind::Bytes))
-                }
-                // Transitional exception: the graph does not yet expose an identity-based
-                // representation discriminator. Do not copy or generalize this projection.
-                "BaseValueValueType" => return Ok(ValueDescriptorKind::AnyBaseValue),
-                "ValueArrayValueType" => return Ok(ValueDescriptorKind::ValueArray),
-                _ => {}
+    /// Classifies native representation without executing configured constraints.
+    ///
+    /// Specific native families take precedence over the catch-all base-value
+    /// family. Type names are used only in the unsupported-kind diagnostic,
+    /// never to select a family.
+    /// Reuse the same roots throughout one pass over an unchanged schema snapshot.
+    pub fn value_kind(
+        &self,
+        roots: &super::ResolvedValueTypeRoots,
+    ) -> Result<ValueDescriptorKind, HolonError> {
+        super::resolved_descriptor_roots::assert_same_transaction(&self.holon, &roots.context)?;
+        for (root, kind) in &roots.families {
+            if equals_or_extends(&self.holon, root)? {
+                return Ok(kind.clone());
             }
         }
+        Ok(ValueDescriptorKind::Unsupported(self.header().type_name()?.to_string()))
+    }
 
-        Ok(ValueDescriptorKind::Unsupported(
-            first_type_name.unwrap_or_else(|| "unknown".to_string()),
-        ))
+    /// Existing one-off operations resolve through their already-bound transaction.
+    fn resolved_value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
+        self.value_kind(&super::ResolvedValueTypeRoots::resolve(&self.holon.bound_context())?)
     }
 
     fn validate_boolean(&self, value: &BaseValue) -> Result<(), HolonError> {
@@ -283,11 +270,16 @@ impl ValueDescriptor {
     }
 }
 
+/// Native representation classified independently of configured constraints.
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum ValueDescriptorKind {
+pub enum ValueDescriptorKind {
+    /// One of the five scalar representations supported by `BaseValue`.
     BaseValue(BaseValueKind),
+    /// Accepts any native `BaseValue` representation.
     AnyBaseValue,
+    /// Array representation, whose execution semantics remain deferred.
     ValueArray,
+    /// No supported family root occurs in the lineage; carries a diagnostic label.
     Unsupported(String),
 }
 
@@ -313,11 +305,117 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::core_shared_objects::transactions::TransactionContext;
+    use crate::descriptors::test_support;
+    use crate::reference_layer::TransientReference;
     use crate::reference_layer::WritableHolon;
     use base_types::{MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
     use core_types::HolonError;
+    use std::sync::Arc;
     use type_names::CoreRelationshipTypeName;
+
+    // Existing dispatch fixtures now extend actual canonical identities. A matching
+    // TypeName alone must no longer grant native representation semantics.
+    fn build_context() -> Arc<TransactionContext> {
+        let context = test_support::build_context();
+        for name in [
+            "StringValueType",
+            "IntegerValueType",
+            "BooleanValueType",
+            "BytesValueType",
+            "EnumValueType",
+            "BaseValueValueType",
+            "ValueArrayValueType",
+        ] {
+            let root = test_support::new_descriptor_holon(
+                &context,
+                &format!("{name}.ValueType"),
+                name,
+                "Value",
+            )
+            .unwrap();
+            context.mutation().stage_new_holon(root).unwrap();
+        }
+        context
+    }
+
+    fn new_descriptor_holon(
+        context: &Arc<TransactionContext>,
+        key: &str,
+        type_name: &str,
+        kind: &str,
+    ) -> Result<TransientReference, HolonError> {
+        let mut holon = test_support::new_descriptor_holon(context, key, type_name, kind)?;
+        if let Ok(root) = context
+            .lookup()
+            .get_staged_holon_by_base_key(&MapString(format!("{type_name}.ValueType")))
+        {
+            holon.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+        }
+        Ok(holon)
+    }
+
+    #[test]
+    fn value_kind_uses_family_identity_for_every_representation() -> Result<(), HolonError> {
+        let context = build_context();
+        let roots = super::super::ResolvedValueTypeRoots::resolve(&context)?;
+        for (root, expected) in &roots.families {
+            assert_eq!(ValueDescriptor::from_holon(root.clone()).value_kind(&roots)?, *expected);
+
+            let mut child = test_support::new_descriptor_holon(
+                &context,
+                &format!("child-{}", root.reference_id_string()),
+                "UnrelatedDisplayName",
+                "Value",
+            )?;
+            child.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.clone()])?;
+            assert_eq!(ValueDescriptor::from_holon(child.into()).value_kind(&roots)?, *expected);
+        }
+
+        // A same-named impostor has no relationship to the resolved canonical root.
+        let impostor =
+            test_support::new_descriptor_holon(&context, "impostor", "StringValueType", "Value")?;
+        assert_eq!(
+            ValueDescriptor::from_holon(impostor.into()).value_kind(&roots)?,
+            ValueDescriptorKind::Unsupported("StringValueType".into())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn value_kind_is_independent_of_enum_membership_and_constraints() -> Result<(), HolonError> {
+        let context = build_context();
+        let roots = super::super::ResolvedValueTypeRoots::resolve(&context)?;
+        let mut value =
+            new_descriptor_holon(&context, "enum-without-variants", "EnumValueType", "Value")?;
+        let constraint = test_support::new_test_holon(&context, "unsupported-constraint")?;
+        value.add_related_holons(CoreRelationshipTypeName::Constraints, vec![constraint.into()])?;
+        assert_eq!(
+            ValueDescriptor::from_holon(value.into()).value_kind(&roots)?,
+            ValueDescriptorKind::BaseValue(BaseValueKind::Enum)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn value_kind_rejects_foreign_transactions_and_broken_lineages() -> Result<(), HolonError> {
+        let context = build_context();
+        let roots = super::super::ResolvedValueTypeRoots::resolve(&context)?;
+        let foreign_context = build_context();
+        let foreign =
+            new_descriptor_holon(&foreign_context, "foreign", "StringValueType", "Value")?;
+        assert!(matches!(
+            ValueDescriptor::from_holon(foreign.into()).value_kind(&roots),
+            Err(HolonError::CrossTransactionReference { .. })
+        ));
+        let mut cycle = test_support::new_descriptor_holon(&context, "cycle", "Cycle", "Value")?;
+        cycle.add_related_holons(CoreRelationshipTypeName::Extends, vec![(&cycle).into()])?;
+        assert!(matches!(
+            ValueDescriptor::from_holon(cycle.into()).value_kind(&roots),
+            Err(HolonError::CyclicExtends { .. })
+        ));
+        Ok(())
+    }
 
     #[test]
     fn wraps_reference_and_exposes_shared_header() -> Result<(), HolonError> {

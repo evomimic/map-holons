@@ -28,8 +28,10 @@ pub(crate) enum InheritanceRule {
 /// target. Collection policy, duplicate diagnostics, and cardinality are
 /// intentionally evaluated by the consuming descriptor semantics.
 #[derive(Clone, Debug)]
-pub(crate) struct EffectiveRelationshipMember {
+pub struct EffectiveRelationshipMember {
+    /// Target contributed by the declaring descriptor.
     pub member: HolonReference,
+    /// Descriptor on which this relationship occurrence was authored.
     pub declared_on: HolonReference,
 }
 
@@ -87,7 +89,7 @@ pub fn ancestors(start: &HolonReference) -> Result<Vec<HolonReference>, HolonErr
 /// Returns true when `candidate` is `anchor` or inherits from it through `Extends`.
 ///
 /// Compatibility is based on reference identity, not descriptor names.
-pub(crate) fn equals_or_extends(
+pub fn equals_or_extends(
     candidate: &HolonReference,
     anchor: &HolonReference,
 ) -> Result<bool, HolonError> {
@@ -151,13 +153,13 @@ pub fn classify_relationship_direction(
 }
 
 /// Resolves relationship targets across a descriptor's effective inheritance
-/// chain using the MAP kernel's canonical [`InheritanceRule`].
+/// chain using the MAP kernel's canonical inheritance policy.
 ///
 /// Additive contributions are ancestor-before-local and intentionally retain
 /// duplicate targets and their provenance. Override currently applies only to
 /// the singular `InstanceKeyRule` relationship: the nearest non-empty local
 /// target set wins.
-pub(crate) fn effective_relationship_members(
+pub fn effective_relationship_targets(
     start: &HolonReference,
     relationship_name: CoreRelationshipTypeName,
 ) -> Result<Vec<EffectiveRelationshipMember>, HolonError> {
@@ -543,7 +545,7 @@ mod tests {
     }
 
     #[test]
-    fn effective_relationship_members_adds_ancestor_contributions_before_local_and_preserves_provenance(
+    fn effective_relationship_targets_adds_ancestor_contributions_before_local_and_preserves_provenance(
     ) -> Result<(), HolonError> {
         let context = build_context();
         let member_a = new_test_holon(&context, "member-a")?;
@@ -568,7 +570,7 @@ mod tests {
             vec![member_c.clone().into(), member_b.clone().into()],
         )?;
 
-        let members = effective_relationship_members(
+        let members = effective_relationship_targets(
             &HolonReference::from(&leaf),
             CoreRelationshipTypeName::InstanceProperties,
         )?;
@@ -590,7 +592,43 @@ mod tests {
     }
 
     #[test]
-    fn effective_relationship_members_uses_local_fallback() -> Result<(), HolonError> {
+    fn family_root_commitments_reach_descendants_with_provenance() -> Result<(), HolonError> {
+        let context = build_context();
+        let rule = new_test_holon(&context, "root-rule")?;
+        let local_rule = new_test_holon(&context, "local-rule")?;
+        let constraint = new_test_holon(&context, "root-constraint")?;
+        let mut root = new_test_holon(&context, "family-root")?;
+        let mut middle = new_test_holon(&context, "family-middle")?;
+        let mut leaf = new_test_holon(&context, "family-leaf")?;
+        root.add_related_holons(
+            CoreRelationshipTypeName::ValidationBindings,
+            vec![(&rule).into()],
+        )?;
+        root.add_related_holons(CoreRelationshipTypeName::Constraints, vec![(&constraint).into()])?;
+        middle.add_related_holons(CoreRelationshipTypeName::Extends, vec![(&root).into()])?;
+        middle.add_related_holons(
+            CoreRelationshipTypeName::ValidationBindings,
+            vec![(&local_rule).into()],
+        )?;
+        leaf.add_related_holons(CoreRelationshipTypeName::Extends, vec![(&middle).into()])?;
+        let descriptor = crate::descriptors::HolonDescriptor::from_holon((&leaf).into());
+        let bindings = descriptor.effective_validation_bindings()?;
+        assert_eq!(bindings.len(), 2);
+        assert_eq!(bindings[0].member, (&rule).into());
+        assert_eq!(bindings[0].declared_on, (&root).into());
+        assert_eq!(bindings[1].member, (&local_rule).into());
+        assert_eq!(bindings[1].declared_on, (&middle).into());
+        let constraints = descriptor.effective_constraints()?;
+        assert_eq!(constraints.len(), 1);
+        assert_eq!(constraints[0].member, (&constraint).into());
+        assert_eq!(constraints[0].declared_on, (&root).into());
+        assert!(equals_or_extends(&(&leaf).into(), &(&root).into())?);
+        assert!(!equals_or_extends(&(&root).into(), &(&leaf).into())?);
+        Ok(())
+    }
+
+    #[test]
+    fn effective_relationship_targets_uses_local_fallback() -> Result<(), HolonError> {
         let context = build_context();
         let parent_member = new_test_holon(&context, "parent-member")?;
         let local_member = new_test_holon(&context, "local-member")?;
@@ -604,7 +642,7 @@ mod tests {
             vec![local_member.clone().into()],
         )?;
 
-        let members = effective_relationship_members(
+        let members = effective_relationship_targets(
             &HolonReference::from(&child),
             CoreRelationshipTypeName::Variants,
         )?;
@@ -614,7 +652,7 @@ mod tests {
     }
 
     #[test]
-    fn effective_relationship_members_uses_nearest_populated_override() -> Result<(), HolonError> {
+    fn effective_relationship_targets_uses_nearest_populated_override() -> Result<(), HolonError> {
         let context = build_context();
         let root_rule = new_test_holon(&context, "root-rule")?;
         let parent_rule = new_test_holon(&context, "parent-rule")?;
@@ -629,7 +667,7 @@ mod tests {
         child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone().into()])?;
 
         assert_eq!(
-            effective_relationship_members(
+            effective_relationship_targets(
                 &HolonReference::from(&child),
                 CoreRelationshipTypeName::InstanceKeyRule
             )?[0]
@@ -642,7 +680,7 @@ mod tests {
             vec![parent_rule.clone().into()],
         )?;
         assert_eq!(
-            effective_relationship_members(
+            effective_relationship_targets(
                 &HolonReference::from(&child),
                 CoreRelationshipTypeName::InstanceKeyRule
             )?[0]

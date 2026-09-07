@@ -251,6 +251,11 @@ impl StagedReference {
         self.context_handle.tx_id()
     }
 
+    /// Internal access for descriptor bootstrap lookup through the bound transaction.
+    pub(crate) fn bound_context(&self) -> Arc<TransactionContext> {
+        self.context_handle.context()
+    }
+
     // Simple string representations for errors/logging
     pub fn reference_kind_string(&self) -> String {
         "StagedReference".to_string()

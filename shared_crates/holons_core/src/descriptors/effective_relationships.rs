@@ -37,7 +37,7 @@
 use std::collections::HashSet;
 
 use crate::descriptors::{
-    accessor_helpers, inheritance::effective_relationship_members, inheritance::equals_or_extends,
+    accessor_helpers, inheritance::effective_relationship_targets, inheritance::equals_or_extends,
     DeclaredRelationshipDescriptor, Descriptor, HolonDescriptor, InverseRelationshipDescriptor,
     RelationshipDescriptor, RelationshipDirection,
 };
@@ -77,7 +77,7 @@ struct CandidateSet {
 pub(crate) fn effective_declared_relationships(
     endpoint: &HolonDescriptor,
 ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
-    let members = effective_relationship_members(
+    let members = effective_relationship_targets(
         endpoint.holon(),
         CoreRelationshipTypeName::InstanceRelationships,
     )?;
@@ -304,7 +304,7 @@ fn collect_inverse_candidates(
     // Inverse relationships whose SourceType is this type, discovered through
     // the materialized TargetOf index on the declared relationship's target.
     let target_of_members =
-        effective_relationship_members(endpoint.holon(), CoreRelationshipTypeName::TargetOf)?;
+        effective_relationship_targets(endpoint.holon(), CoreRelationshipTypeName::TargetOf)?;
     for member in &target_of_members {
         let declared = DeclaredRelationshipDescriptor::try_from_holon(member.member.clone())?;
         if !target_endpoint_is_compatible(endpoint, &declared)? {

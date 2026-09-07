@@ -1,7 +1,9 @@
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::core_shared_objects::transactions::{TransactionContextHandle, TxId};
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -125,6 +127,15 @@ impl HolonReference {
             HolonReference::Smart(smart_reference) => smart_reference.tx_id(),
             HolonReference::Staged(staged_reference) => staged_reference.tx_id(),
             HolonReference::Transient(transient_reference) => transient_reference.tx_id(),
+        }
+    }
+
+    /// Keeps bootstrap lookup bound to the reference without exposing context plumbing.
+    pub(crate) fn bound_context(&self) -> Arc<TransactionContext> {
+        match self {
+            Self::Smart(reference) => reference.bound_context(),
+            Self::Staged(reference) => reference.bound_context(),
+            Self::Transient(reference) => reference.bound_context(),
         }
     }
 

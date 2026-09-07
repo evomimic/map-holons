@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::descriptors::{
     accessor_helpers, effective_relationships,
-    inheritance::{effective_relationship_members, walk_extends_chain},
+    inheritance::{effective_relationship_targets, walk_extends_chain},
     CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor,
     InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor, QualifiedRelationship,
     RelationshipDescriptor, TypeHeader,
@@ -31,6 +31,22 @@ impl HolonDescriptor {
     /// Projects the shared descriptor header view for this descriptor holon.
     pub fn header(&self) -> TypeHeader<'_> {
         TypeHeader::new(&self.holon)
+    }
+
+    /// Returns inherited constraint occurrences with their declaring descriptors.
+    /// Ancestor contributions precede local contributions; duplicates remain visible.
+    pub fn effective_constraints(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Constraints)
+    }
+
+    /// Returns inherited validation commitments with their declaring descriptors.
+    /// Provenance lets callers assess binding placement before dispatching a rule.
+    pub fn effective_validation_bindings(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::ValidationBindings)
     }
 
     /// Returns whether instances may carry properties beyond the descriptor declaration.
@@ -92,7 +108,7 @@ impl HolonDescriptor {
 
     /// Returns effective command descriptors across this descriptor's inheritance chain.
     pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, CoreRelationshipTypeName::AffordsCommand).map(
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::AffordsCommand).map(
             |members| {
                 members
                     .into_iter()
@@ -104,7 +120,7 @@ impl HolonDescriptor {
 
     /// Returns effective dance descriptors across this descriptor's inheritance chain.
     pub fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, CoreRelationshipTypeName::AffordsDance).map(
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::AffordsDance).map(
             |members| {
                 members
                     .into_iter()
@@ -325,7 +341,7 @@ impl HolonDescriptor {
     /// Resolves the effective key rule for instances of this descriptor.
     pub fn effective_key_rule(&self) -> Result<KeyRuleDescriptor, HolonError> {
         let members =
-            effective_relationship_members(&self.holon, CoreRelationshipTypeName::InstanceKeyRule)?;
+            effective_relationship_targets(&self.holon, CoreRelationshipTypeName::InstanceKeyRule)?;
         let rule = match members.as_slice() {
             [] => {
                 return Err(HolonError::NoEffectiveKeyRule {
@@ -367,7 +383,7 @@ impl HolonDescriptor {
         &self,
         relationship_name: CoreRelationshipTypeName,
     ) -> Result<Vec<PropertyDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, relationship_name).map(|members| {
+        effective_relationship_targets(&self.holon, relationship_name).map(|members| {
             members
                 .into_iter()
                 .map(|member| PropertyDescriptor::from_holon(member.member))
@@ -379,7 +395,7 @@ impl HolonDescriptor {
         &self,
         relationship_name: CoreRelationshipTypeName,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, relationship_name).map(|members| {
+        effective_relationship_targets(&self.holon, relationship_name).map(|members| {
             members
                 .into_iter()
                 .map(|member| RelationshipDescriptor::from_holon(member.member))

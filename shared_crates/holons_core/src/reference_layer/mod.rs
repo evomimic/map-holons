@@ -11,6 +11,8 @@ mod space_manager_behavior;
 pub mod staged_reference;
 pub mod transient_holon_behavior;
 pub mod transient_reference;
+#[cfg(test)]
+mod undescribed_properties_tests;
 pub mod writable_holon;
 pub(crate) mod writable_impl;
 
