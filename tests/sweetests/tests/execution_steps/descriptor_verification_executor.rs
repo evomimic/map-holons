@@ -25,7 +25,9 @@ use map_commands_contract::{MapCommand, MapResult, TransactionAction, Transactio
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
 use tracing::info;
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, DanceName};
+use type_names::{
+    CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName, DanceName,
+};
 
 /// Verifies representative foundational descriptor access over loaded MAP core schema data.
 pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionState) {
@@ -760,24 +762,10 @@ pub async fn execute_verify_book_person_smartlink_commit_cache_links(
     info!("verified repeated Book/Person SmartLink traversal");
 }
 
-/// Verifies the persisted anchoring rules after the stage-new-version
-/// fixture has exercised both update modes:
-/// - graph-only mutation: Book --Properties--> Title.PropertyType is anchored to
-///   the existing Book node, with no new Book node created for that commit.
-///   The fixture replays this edge in a second graph-only commit, so exactly one
-///   forward and one inverse link must remain (issue #516 duplicate suppression).
-/// - version-producing mutation: Book --AuthoredBy--> Person is anchored to the
-///   new Book version, and lineage is persisted bidirectionally through
-///   Predecessor/Successor.
-///
-/// A version-producing commit publishes a version of the Book lineage rather than a
-/// second Book, so get-all surfaces the lineage root only (Storage SL2, issue #607).
-/// The new version is therefore reached by traversing `Successor` from the root, which
-/// also proves the lineage is navigable rather than merely present.
 /// Verifies the Core-owned ValidationBindings contract and its inverse descriptor.
 ///
-/// No binding occurrence is active in VAL0b. This verifies the authored relationship
-/// descriptor pair itself: forward and inverse traversal, plus both declared endpoints.
+/// Checks the descriptor pair and all seven C1 family-root occurrences, including
+/// the ValidationBindingFor inverses materialized by Commit.
 pub async fn execute_verify_validation_bindings_descriptor_contract(
     state: &mut TestExecutionState,
 ) {
@@ -822,8 +810,50 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
             .to_string(),
         "ValidationBindings"
     );
+
+    let expected_bindings = [
+        ("PropertyType.TypeDescriptor", CoreValidationRuleName::RequiredPropertyPresence),
+        ("HolonType.TypeDescriptor", CoreValidationRuleName::NoUndescribedProperties),
+        ("StringValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesString),
+        ("IntegerValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesInteger),
+        ("BooleanValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBoolean),
+        ("BytesValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBytes),
+        ("EnumValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesEnum),
+    ];
+    for (descriptor_key, rule_name) in expected_bindings {
+        let rule_key = rule_name.as_str();
+        let descriptor = find_holon_by_key(&holons, descriptor_key);
+        let rule = find_holon_by_key(&holons, rule_key);
+        assert_exact_related_keys(&descriptor, "ValidationBindings", &[rule_key]);
+        assert_exact_related_keys(&rule, "ValidationBindingFor", &[descriptor_key]);
+    }
+    assert_exact_related_keys(
+        &find_holon_by_key(&holons, "TypeDescriptor"),
+        "ValidationBindings",
+        &[],
+    );
+    let occurrence_count: usize = holons
+        .get_members()
+        .iter()
+        .map(|holon| related_holon_members(holon, "ValidationBindings").len())
+        .sum();
+    assert_eq!(occurrence_count, expected_bindings.len(), "expected only seven local bindings");
 }
 
+/// Verifies the persisted anchoring rules after the stage-new-version
+/// fixture has exercised both update modes:
+/// - graph-only mutation: Book --Properties--> Title.PropertyType is anchored to
+///   the existing Book node, with no new Book node created for that commit.
+///   The fixture replays this edge in a second graph-only commit, so exactly one
+///   forward and one inverse link must remain (issue #516 duplicate suppression).
+/// - version-producing mutation: Book --AuthoredBy--> Person is anchored to the
+///   new Book version, and lineage is persisted bidirectionally through
+///   Predecessor/Successor.
+///
+/// A version-producing commit publishes a version of the Book lineage rather than a
+/// second Book, so get-all surfaces the lineage root only (Storage SL2, issue #607).
+/// The new version is therefore reached by traversing `Successor` from the root, which
+/// also proves the lineage is navigable rather than merely present.
 pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_relationship_anchoring").await;
 

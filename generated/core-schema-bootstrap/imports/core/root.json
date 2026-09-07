@@ -113,6 +113,14 @@
           ]
         },
         {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "NoUndescribedProperties.ValidationRule"
+            }
+          ]
+        },
+        {
           "name": "OwnedBy",
           "target": [
             {
@@ -148,6 +156,14 @@
           "target": [
             {
               "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "RequiredPropertyPresence.ValidationRule"
             }
           ]
         },
@@ -337,9 +353,6 @@
             },
             {
               "$ref": "IsAbstractType.PropertyType"
-            },
-            {
-              "$ref": "SchemaName.PropertyType"
             }
           ]
         },
