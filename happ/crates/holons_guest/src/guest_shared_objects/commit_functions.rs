@@ -1,6 +1,6 @@
 use hdk::prelude::*;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
 };
 
@@ -57,10 +57,43 @@ type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCol
 /// outlive the Wasm call, and the measurements must not alter commit behavior.
 #[derive(Default)]
 struct CommitPerformanceMetrics {
+    commit_pass_1_micros: i64,
+    commit_pass_2_micros: i64,
+    holon_persist_count: usize,
+    holon_persist_micros: i64,
     inverse_resolution_count: usize,
     inverse_resolution_micros: i64,
     smartlink_persist_count: usize,
     smartlink_persist_micros: i64,
+    smartlink_expansion_count: usize,
+    smartlink_expansion_micros: i64,
+    smartlink_expansion_links: usize,
+    smartlink_action_create_count: usize,
+    smartlink_action_create_micros: i64,
+    semantic_forward_attempt_count: usize,
+    semantic_inverse_attempt_count: usize,
+    keyed_owns_index_attempt_count: usize,
+    smartlink_inserted_count: usize,
+    smartlink_already_present_count: usize,
+    owns_key_lookup_count: usize,
+    owns_key_lookup_micros: i64,
+    owns_key_lookup_links: usize,
+    lineage_target_materialization_count: usize,
+    lineage_target_materialization_micros: i64,
+    exact_historical_read_count: usize,
+    exact_historical_read_micros: i64,
+    inverse_dedup_expansion_count: usize,
+    inverse_dedup_expansion_micros: i64,
+    inverse_dedup_candidate_count: usize,
+    inverse_dedup_membership_check_count: usize,
+    inverse_dedup_skip_count: usize,
+}
+
+#[derive(Clone, Copy)]
+enum SmartLinkWriteCategory {
+    SemanticForward,
+    SemanticInverse,
+    KeyedOwnsIndex,
 }
 
 /// Tracks `(lineage root, key)` entries already observed during this commit.
@@ -71,6 +104,66 @@ struct CommitPerformanceMetrics {
 #[derive(Default)]
 struct KeyIndexMaintenance {
     observed_entries: HashSet<(LocalId, MapString)>,
+}
+
+/// Tracks occurrence-free inverse members observed within one commit invocation.
+///
+/// A lineage-bound inverse can collapse several version-bound forward links into
+/// one membership. Each inverse `(source, relationship)` bucket is loaded once
+/// from storage so pre-existing memberships remain authoritative; successful
+/// writes are then recorded locally to avoid rescanning the growing bucket.
+#[derive(Default)]
+struct InverseDedupContext {
+    members_by_bucket: HashMap<(LocalId, RelationshipName), HashSet<LocalId>>,
+}
+
+impl InverseDedupContext {
+    fn contains_or_load(
+        &mut self,
+        inverse_source_id: &LocalId,
+        inverse_name: &RelationshipName,
+        inverse_target_id: &LocalId,
+        performance_metrics: &mut CommitPerformanceMetrics,
+    ) -> Result<bool, HolonError> {
+        let bucket_key = (inverse_source_id.clone(), inverse_name.clone());
+
+        if !self.members_by_bucket.contains_key(&bucket_key) {
+            let dedup_started_at = performance_timestamp_micros();
+            let existing_inverse_links = expand_from_source(inverse_source_id, inverse_name)?;
+            performance_metrics.inverse_dedup_expansion_count += 1;
+            performance_metrics.inverse_dedup_candidate_count += existing_inverse_links.len();
+            record_elapsed_micros(
+                dedup_started_at,
+                &mut performance_metrics.inverse_dedup_expansion_micros,
+            );
+
+            let members = existing_inverse_links
+                .into_iter()
+                .filter_map(|link| match (link.target_id, link.occurrence_id) {
+                    (HolonId::Local(target_id), None) => Some(target_id),
+                    _ => None,
+                })
+                .collect();
+            self.members_by_bucket.insert(bucket_key.clone(), members);
+        }
+
+        performance_metrics.inverse_dedup_membership_check_count += 1;
+        Ok(self
+            .members_by_bucket
+            .get(&bucket_key)
+            .is_some_and(|members| members.contains(inverse_target_id)))
+    }
+
+    fn record_successful_write(
+        &mut self,
+        inverse_source_id: &LocalId,
+        inverse_name: &RelationshipName,
+        inverse_target_id: LocalId,
+    ) {
+        let bucket_key = (inverse_source_id.clone(), inverse_name.clone());
+        let members = self.members_by_bucket.entry(bucket_key).or_default();
+        members.insert(inverse_target_id);
+    }
 }
 
 fn performance_timestamp_micros() -> Option<i64> {
@@ -221,8 +314,11 @@ pub fn commit(
     let mut abandoned_count = 0_usize;
     let mut failed_count = 0_usize;
 
+    let mut performance_metrics = CommitPerformanceMetrics::default();
+
     // === FIRST PASS: Commit Staged Holons ===
     {
+        let pass_started_at = performance_timestamp_micros();
         info!("\n\nStarting FIRST PASS... commit staged holons...");
 
         let mut saved_holons: Vec<HolonReference> = Vec::new();
@@ -234,7 +330,7 @@ pub fn commit(
 
             trace!("Committing {:?}", staged_reference.temporary_id());
 
-            match commit_holon(staged_reference, context) {
+            match commit_holon(staged_reference, context, &mut performance_metrics) {
                 Ok(CommitOutcome::Saved { establishes_key_index_entry }) => {
                     let holon_id = staged_reference.holon_id()?;
                     let key_string: MapString = staged_reference.key()?.ok_or_else(|| {
@@ -274,6 +370,7 @@ pub fn commit(
         // Attach results to the CommitResponse holon
         response_reference.add_related_holons(SavedHolons, saved_holons)?;
         response_reference.add_related_holons(AbandonedHolons, abandoned_holons)?;
+        record_elapsed_micros(pass_started_at, &mut performance_metrics.commit_pass_1_micros);
     }
 
     // Check if Pass 1 ended with an incomplete status
@@ -300,9 +397,10 @@ pub fn commit(
     // This context is deliberately narrower than TransactionContext: it represents only the
     // bounded relationship write set for this commit invocation.
     let mut smartlink_write_context = SmartLinkWriteContext::default();
-    let mut performance_metrics = CommitPerformanceMetrics::default();
+    let pass_started_at = performance_timestamp_micros();
     let owns_index_space_id = resolve_owns_index_space_id(context, staged_references)?;
     let mut key_index_maintenance = KeyIndexMaintenance::default();
+    let mut inverse_dedup_context = InverseDedupContext::default();
 
     for staged_reference in staged_references {
         let rc_holon = staged_reference.get_holon_to_commit(context)?;
@@ -392,6 +490,7 @@ pub fn commit(
                 inverse_name,
                 &holon_collection,
                 &mut smartlink_write_context,
+                &mut inverse_dedup_context,
                 &mut performance_metrics,
             ) {
                 first_error = Some(err);
@@ -437,6 +536,7 @@ pub fn commit(
     }
 
     // Pass 2 can downgrade the status, so read it back rather than assuming "Complete".
+    record_elapsed_micros(pass_started_at, &mut performance_metrics.commit_pass_2_micros);
     let final_status = match response_reference.property_value(CommitRequestStatus)? {
         Some(status_value) => (&status_value).into(),
         None => "Unknown".to_string(),
@@ -444,11 +544,37 @@ pub fn commit(
 
     info!("Commit completed: all staged holons processed and commit response constructed.");
     info!(
-        "[PERF-674] relationship commit: inverse_resolutions={} inverse_resolution_ms={} smartlink_persists={} smartlink_persist_ms={}",
+        "[PERF-688] guest_commit: pass_1_ms={} pass_2_ms={} holon_persists={} holon_persist_ms={} inverse_resolutions={} inverse_resolution_ms={} smartlink_attempts={} smartlink_total_ms={} smartlink_expansions={} smartlink_expansion_ms={} smartlink_expansion_links={} smartlink_action_creates={} smartlink_action_create_ms={} semantic_forward_attempts={} semantic_inverse_attempts={} keyed_owns_index_attempts={} smartlink_inserted={} smartlink_already_present={} owns_key_lookups={} owns_key_lookup_ms={} owns_key_lookup_links={} lineage_target_materializations={} lineage_target_materialization_ms={} exact_historical_get_details_calls={} exact_historical_batch_requests=0 exact_historical_read_ms={} inverse_dedup_expansions={} inverse_dedup_expansion_ms={} inverse_dedup_candidates={} inverse_dedup_membership_checks={} inverse_dedup_skips={}",
+        performance_metrics.commit_pass_1_micros / 1_000,
+        performance_metrics.commit_pass_2_micros / 1_000,
+        performance_metrics.holon_persist_count,
+        performance_metrics.holon_persist_micros / 1_000,
         performance_metrics.inverse_resolution_count,
         performance_metrics.inverse_resolution_micros / 1_000,
         performance_metrics.smartlink_persist_count,
         performance_metrics.smartlink_persist_micros / 1_000,
+        performance_metrics.smartlink_expansion_count,
+        performance_metrics.smartlink_expansion_micros / 1_000,
+        performance_metrics.smartlink_expansion_links,
+        performance_metrics.smartlink_action_create_count,
+        performance_metrics.smartlink_action_create_micros / 1_000,
+        performance_metrics.semantic_forward_attempt_count,
+        performance_metrics.semantic_inverse_attempt_count,
+        performance_metrics.keyed_owns_index_attempt_count,
+        performance_metrics.smartlink_inserted_count,
+        performance_metrics.smartlink_already_present_count,
+        performance_metrics.owns_key_lookup_count,
+        performance_metrics.owns_key_lookup_micros / 1_000,
+        performance_metrics.owns_key_lookup_links,
+        performance_metrics.lineage_target_materialization_count,
+        performance_metrics.lineage_target_materialization_micros / 1_000,
+        performance_metrics.exact_historical_read_count,
+        performance_metrics.exact_historical_read_micros / 1_000,
+        performance_metrics.inverse_dedup_expansion_count,
+        performance_metrics.inverse_dedup_expansion_micros / 1_000,
+        performance_metrics.inverse_dedup_candidate_count,
+        performance_metrics.inverse_dedup_membership_check_count,
+        performance_metrics.inverse_dedup_skip_count,
     );
     log_commit_response(&final_status, stage_count, &saved_ids, abandoned_count, failed_count);
 
@@ -500,6 +626,7 @@ fn log_commit_response(
 fn commit_holon(
     staged_reference: &StagedReference,
     context: &Arc<TransactionContext>,
+    performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<CommitOutcome, HolonError> {
     // Resolve the staged holon from the pool
     let rc_holon = staged_reference.get_holon_to_commit(context)?;
@@ -518,9 +645,15 @@ fn commit_holon(
             StagedState::ForCreate => {
                 trace!("StagedState::ForCreate — publishing a new HolonNode lineage");
                 staged_holon.prepare_full_relationship_commit_scope()?;
+                let persist_started_at = performance_timestamp_micros();
                 let stored = persist_holon(HolonWriteRequest::PublishRoot {
                     holon_node: staged_holon.into_node_model(),
                 })?;
+                performance_metrics.holon_persist_count += 1;
+                record_elapsed_micros(
+                    persist_started_at,
+                    &mut performance_metrics.holon_persist_micros,
+                );
 
                 info!(
                     "Committed root (Create): version_id={} lineage=self",
@@ -553,10 +686,16 @@ fn commit_holon(
                 // Storage decides how a version is written: it resolves the lineage this
                 // predecessor belongs to and roots the new version there. Immediate-predecessor
                 // ordering is not carried by the node — it is staged below as a SmartLink.
+                let persist_started_at = performance_timestamp_micros();
                 let stored = persist_holon(HolonWriteRequest::PublishVersion {
                     holon_node: staged_holon.into_node_model(),
                     predecessor_ids: vec![predecessor_id.clone()],
                 })?;
+                performance_metrics.holon_persist_count += 1;
+                record_elapsed_micros(
+                    persist_started_at,
+                    &mut performance_metrics.holon_persist_micros,
+                );
 
                 // The lineage is logged alongside the predecessor precisely because they differ
                 // once a lineage is more than one version deep: the new version is rooted at the
@@ -629,6 +768,7 @@ fn commit_relationship(
     inverse_name: RelationshipName,
     collection: &HolonCollection,
     smartlink_write_context: &mut SmartLinkWriteContext,
+    inverse_dedup_context: &mut InverseDedupContext,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     collection.is_accessible(AccessType::Commit)?;
@@ -639,6 +779,7 @@ fn commit_relationship(
         inverse_name,
         collection,
         smartlink_write_context,
+        inverse_dedup_context,
         performance_metrics,
     )?;
 
@@ -736,16 +877,23 @@ fn maintain_owns_key_index(
         return Ok(());
     };
 
-    let lineage_root =
-        materialize_target_binding(source.source_local_id(), TargetBinding::Lineage)?;
+    let lineage_root = materialize_target_binding(
+        source.source_local_id(),
+        TargetBinding::Lineage,
+        performance_metrics,
+    )?;
     if !maintenance.observed_entries.insert((lineage_root.clone(), key.clone())) {
         return Ok(());
     }
 
     let canonical_key = CanonicalKey::new(key.0.clone())?;
     let owns = CoreRelationshipTypeName::Owns.as_relationship_name();
+    let lookup_started_at = performance_timestamp_micros();
     let existing =
         expand_from_source_by_key(space_id, &owns, KeyMatch::Exact(canonical_key.clone()))?;
+    performance_metrics.owns_key_lookup_count += 1;
+    performance_metrics.owns_key_lookup_links += existing.len();
+    record_elapsed_micros(lookup_started_at, &mut performance_metrics.owns_key_lookup_micros);
     if existing.into_iter().any(|link| link.target_id == HolonId::Local(lineage_root.clone())) {
         return Ok(());
     }
@@ -759,7 +907,12 @@ fn maintain_owns_key_index(
         relationship_property_values: PropertyMap::new(),
         target_property_cache_candidates: Vec::new(),
     };
-    persist_smartlink(smartlink_write_context, keyed_owns, performance_metrics)
+    persist_smartlink(
+        smartlink_write_context,
+        keyed_owns,
+        SmartLinkWriteCategory::KeyedOwnsIndex,
+        performance_metrics,
+    )
 }
 
 /// Resolves the physical SmartLink target selected by a completed descriptor binding.
@@ -770,12 +923,27 @@ fn maintain_owns_key_index(
 fn materialize_target_binding(
     target_id: &LocalId,
     binding: TargetBinding,
+    performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<LocalId, HolonError> {
     match binding {
         TargetBinding::Version => Ok(target_id.clone()),
-        TargetBinding::Lineage => get_holon(target_id)?
-            .ok_or_else(|| HolonError::HolonNotFound(target_id.to_string()))
-            .map(|stored| stored.version_metadata.lineage_root().as_local_id().clone()),
+        TargetBinding::Lineage => {
+            let started_at = performance_timestamp_micros();
+            let stored = get_holon(target_id)?;
+            performance_metrics.lineage_target_materialization_count += 1;
+            performance_metrics.exact_historical_read_count += 1;
+            record_elapsed_micros(
+                started_at,
+                &mut performance_metrics.lineage_target_materialization_micros,
+            );
+            record_elapsed_micros(
+                started_at,
+                &mut performance_metrics.exact_historical_read_micros,
+            );
+            stored
+                .ok_or_else(|| HolonError::HolonNotFound(target_id.to_string()))
+                .map(|stored| stored.version_metadata.lineage_root().as_local_id().clone())
+        }
     }
 }
 
@@ -797,6 +965,7 @@ fn save_smartlinks_for_collection(
     inverse_name: RelationshipName,
     collection: &HolonCollection,
     smartlink_write_context: &mut SmartLinkWriteContext,
+    inverse_dedup_context: &mut InverseDedupContext,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     let relationship_descriptor = source
@@ -877,8 +1046,11 @@ fn save_smartlinks_for_collection(
         // emits set-style links today. That is a coordinator choice, not a storage
         // limitation: storage persists supplied occurrences as distinct identities
         // (Storage SL3). Assigning and pairing them is deferred coordinator work.
-        let forward_target_id =
-            materialize_target_binding(&resolved_target.target_local_id, forward_binding)?;
+        let forward_target_id = materialize_target_binding(
+            &resolved_target.target_local_id,
+            forward_binding,
+            performance_metrics,
+        )?;
         let forward_smartlink = PreparedSmartLink {
             source_id: source_id.clone(),
             target_id: HolonId::Local(forward_target_id),
@@ -893,26 +1065,33 @@ fn save_smartlinks_for_collection(
             "saving smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, name.0 .0, source_id, forward_smartlink.target_id
         );
-        persist_smartlink(smartlink_write_context, forward_smartlink, performance_metrics)?;
+        persist_smartlink(
+            smartlink_write_context,
+            forward_smartlink,
+            SmartLinkWriteCategory::SemanticForward,
+            performance_metrics,
+        )?;
 
-        let inverse_target_id = materialize_target_binding(source_id, inverse_binding)?;
+        let inverse_target_id =
+            materialize_target_binding(source_id, inverse_binding, performance_metrics)?;
         // A version-bound forward relationship can map to one lineage-bound inverse
         // membership. The physical inverse must therefore be deduplicated by its normalized
-        // `(source, relationship, lineage-root)` identity, before a canonical key from a later
-        // version can collide with the already-established occurrence-free membership.
-        if inverse_binding == TargetBinding::Lineage
-            && expand_from_source(&resolved_target.target_local_id, &inverse_name)?.into_iter().any(
-                |link| {
-                    link.target_id == HolonId::Local(inverse_target_id.clone())
-                        && link.occurrence_id.is_none()
-                },
-            )
-        {
-            continue;
+        // `(source, relationship, lineage-root)` identity. Load each storage bucket once, then
+        // retain successful writes locally so later members do not rescan the growing bucket.
+        if inverse_binding == TargetBinding::Lineage {
+            if inverse_dedup_context.contains_or_load(
+                &resolved_target.target_local_id,
+                &inverse_name,
+                &inverse_target_id,
+                performance_metrics,
+            )? {
+                performance_metrics.inverse_dedup_skip_count += 1;
+                continue;
+            }
         }
         let inverse_smartlink = PreparedSmartLink {
             source_id: resolved_target.target_local_id.clone(),
-            target_id: HolonId::Local(inverse_target_id),
+            target_id: HolonId::Local(inverse_target_id.clone()),
             relationship_name: inverse_name.clone(),
             canonical_key: inverse_canonical_key.clone(),
             occurrence_id: None,
@@ -924,7 +1103,19 @@ fn save_smartlinks_for_collection(
             "saving inverse smartlink (idx={}): relationship={:?}, source={:?}, target={:?}",
             target_index, inverse_name.0 .0, resolved_target.target_local_id, source_id
         );
-        persist_smartlink(smartlink_write_context, inverse_smartlink, performance_metrics)?;
+        persist_smartlink(
+            smartlink_write_context,
+            inverse_smartlink,
+            SmartLinkWriteCategory::SemanticInverse,
+            performance_metrics,
+        )?;
+        if inverse_binding == TargetBinding::Lineage {
+            inverse_dedup_context.record_successful_write(
+                &resolved_target.target_local_id,
+                &inverse_name,
+                inverse_target_id,
+            );
+        }
     }
 
     Ok(())
@@ -953,6 +1144,7 @@ fn save_smartlinks_for_collection(
 fn persist_smartlink(
     smartlink_write_context: &mut SmartLinkWriteContext,
     prepared: PreparedSmartLink,
+    category: SmartLinkWriteCategory,
     performance_metrics: &mut CommitPerformanceMetrics,
 ) -> Result<(), HolonError> {
     let source_id = prepared.source_id.clone();
@@ -960,12 +1152,42 @@ fn persist_smartlink(
     let relationship_name = prepared.relationship_name.clone();
 
     let started_at = performance_timestamp_micros();
-    let outcome = put_smartlink_cached(smartlink_write_context, prepared);
+    let result = put_smartlink_cached(smartlink_write_context, prepared);
     performance_metrics.smartlink_persist_count += 1;
     record_elapsed_micros(started_at, &mut performance_metrics.smartlink_persist_micros);
+    match category {
+        SmartLinkWriteCategory::SemanticForward => {
+            performance_metrics.semantic_forward_attempt_count += 1
+        }
+        SmartLinkWriteCategory::SemanticInverse => {
+            performance_metrics.semantic_inverse_attempt_count += 1
+        }
+        SmartLinkWriteCategory::KeyedOwnsIndex => {
+            performance_metrics.keyed_owns_index_attempt_count += 1
+        }
+    }
 
-    match outcome? {
-        PutSmartLinkOutcome::Inserted(_) | PutSmartLinkOutcome::AlreadyPresent(_) => Ok(()),
+    let result = result?;
+    if let Some(expansion_micros) = result.expansion_micros {
+        performance_metrics.smartlink_expansion_count += 1;
+        performance_metrics.smartlink_expansion_micros += expansion_micros;
+        performance_metrics.smartlink_expansion_links +=
+            result.expanded_link_count.unwrap_or_default();
+    }
+    if let Some(action_create_micros) = result.action_create_micros {
+        performance_metrics.smartlink_action_create_count += 1;
+        performance_metrics.smartlink_action_create_micros += action_create_micros;
+    }
+
+    match result.outcome {
+        PutSmartLinkOutcome::Inserted(_) => {
+            performance_metrics.smartlink_inserted_count += 1;
+            Ok(())
+        }
+        PutSmartLinkOutcome::AlreadyPresent(_) => {
+            performance_metrics.smartlink_already_present_count += 1;
+            Ok(())
+        }
         PutSmartLinkOutcome::Conflict(existing) => Err(HolonError::CommitFailure(format!(
             "SmartLink conflict: a live link {existing:?} already shares the insertion identity \
              (source={source_id:?}, target={target_id:?}, relationship={relationship_name:?}) \

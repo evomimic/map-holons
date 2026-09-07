@@ -1,6 +1,6 @@
 use std::sync::Once;
 use tracing::warn;
-use tracing_subscriber::{filter::LevelFilter, fmt, EnvFilter};
+use tracing_subscriber::{filter::LevelFilter, fmt, fmt::format::FmtSpan, EnvFilter};
 
 static INIT: Once = Once::new();
 const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::WARN;
@@ -13,9 +13,19 @@ pub fn init_tracing() {
             EnvFilter::default().add_directive(DEFAULT_LOG_LEVEL.into())
         });
 
+        let subscriber = fmt().with_env_filter(filter.clone()).with_target(true).with_test_writer();
+        let emit_span_closes = std::env::var_os("MAP_HOLONS_TRACE_SPAN_CLOSES").is_some();
+
+        // Existing Holochain workflow spans report busy and idle time on close.
+        // Keep them opt-in because full Sweettest runs can create substantial output.
+        let init_result = if emit_span_closes {
+            subscriber.with_span_events(FmtSpan::CLOSE).try_init()
+        } else {
+            subscriber.try_init()
+        };
+
         // Initialize tracing subscriber.
-        match fmt().with_env_filter(filter.clone()).with_target(true).with_test_writer().try_init()
-        {
+        match init_result {
             Ok(_) => {
                 // Derive a readable level summary
                 let level = filter.max_level_hint().unwrap_or(DEFAULT_LOG_LEVEL);

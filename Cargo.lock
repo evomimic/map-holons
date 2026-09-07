@@ -3475,6 +3475,7 @@ name = "holons_loader"
 version = "0.1.0"
 dependencies = [
  "core_types",
+ "hdk",
  "holons_core",
  "holons_prelude",
  "tracing",

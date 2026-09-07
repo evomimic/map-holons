@@ -62,8 +62,8 @@ impl DanceEnvelopeTransport for MockConductorConfig {
 
         if is_load_holons {
             info!(
-                elapsed_ms = started.elapsed().as_millis(),
-                "sweettest transport: load_holons conductor call complete"
+                "[PERF-688] sweettest_transport: conductor_call_ms={}",
+                started.elapsed().as_millis(),
             );
         }
 

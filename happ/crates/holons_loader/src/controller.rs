@@ -10,6 +10,7 @@
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
+use hdk::prelude::sys_time;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -77,6 +78,7 @@ impl HolonLoaderController {
         context: &Arc<TransactionContext>,
         set_reference: TransientReference, // -> HolonLoadSet
     ) -> Result<TransientReference, HolonError> {
+        let load_started_at = performance_timestamp_micros();
         // let run_id = Uuid::new_v4();
         // info!("HolonLoaderController::load_set - start run_id={run_id}");
         let run_id = 1; // Temporary fixed run_id until we wire in Uuid
@@ -118,6 +120,7 @@ impl HolonLoaderController {
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_set - pass1_stage_all_bundles");
 
+        let pass_1_started_at = performance_timestamp_micros();
         let mut total_loader_holons = 0;
         let mut total_holons_staged = 0;
         let mut merged_queued_relationship_references: Vec<TransientReference> = Vec::new();
@@ -269,16 +272,21 @@ impl HolonLoaderController {
             return Ok(response_reference);
         }
 
+        let pass_1_micros = elapsed_micros(pass_1_started_at);
+
         // ─────────────────────────────────────────────────────────────────────
         // PASS 2: resolve queued references and write declared links (across the set)
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_set - pass2_resolve_all");
 
+        let queued_relationship_count = merged_queued_relationship_references.len();
+        let pass_2_started_at = performance_timestamp_micros();
         let ResolverOutcome { links_created, errors: resolver_errors } =
             LoaderRefResolver::resolve_relationships(
                 context,
                 merged_queued_relationship_references,
             )?;
+        let pass_2_micros = elapsed_micros(pass_2_started_at);
 
         // SHORT-CIRCUIT CASE 3:
         // If Pass 2 produced any errors, build the response now and return (skip commit).
@@ -318,6 +326,7 @@ impl HolonLoaderController {
         // DEFAULT POPULATION: retry construction completion after Pass-2 resolution
         // over the exact nursery-staged set.
         // ─────────────────────────────────────────────────────────────────────
+        let default_population_started_at = performance_timestamp_micros();
         let mut population_errors = Vec::new();
         let mut deferred_count = 0;
         for mut staged_holon in context.staged_references()? {
@@ -363,13 +372,16 @@ impl HolonLoaderController {
             )?;
             return Ok(response_reference);
         }
+        let default_population_micros = elapsed_micros(default_population_started_at);
 
         // ─────────────────────────────────────────────────────────────────────
         // COMMIT: persist all staged holons (only if both phases succeeded)
         // ─────────────────────────────────────────────────────────────────────
         info!("HolonLoaderController::load_set - commit");
 
+        let guest_commit_started_at = performance_timestamp_micros();
         let commit_response = context.commit()?;
+        let guest_commit_micros = elapsed_micros(guest_commit_started_at);
         // Commit status is driven by the explicit CommitRequestStatus property emitted by
         // commit() (authoritative), while counts are retained for summary/diagnostics.
         let commit_status_value = commit_response
@@ -460,6 +472,19 @@ impl HolonLoaderController {
             commit_error_holons,
         )?;
 
+        info!(
+            "[PERF-688] loader: total_ms={} bundles={} loader_holons={} staged_holons={} queued_relationships={} pass_1_ms={} pass_2_ms={} links_created={} default_population_ms={} guest_commit_ms={}",
+            elapsed_micros(load_started_at) / 1_000,
+            total_bundles,
+            total_loader_holons,
+            total_holons_staged,
+            queued_relationship_count,
+            pass_1_micros / 1_000,
+            pass_2_micros / 1_000,
+            links_created,
+            default_population_micros / 1_000,
+            guest_commit_micros / 1_000,
+        );
         debug!("HolonLoaderController::load_set - done");
         Ok(response_reference)
     }
@@ -741,4 +766,15 @@ impl HolonLoaderController {
 
         Ok(response_reference)
     }
+}
+
+fn performance_timestamp_micros() -> Option<i64> {
+    sys_time().ok().map(|timestamp| timestamp.as_micros())
+}
+
+fn elapsed_micros(started_at: Option<i64>) -> i64 {
+    started_at
+        .zip(performance_timestamp_micros())
+        .map(|(started_at, completed_at)| completed_at.saturating_sub(started_at))
+        .unwrap_or_default()
 }
