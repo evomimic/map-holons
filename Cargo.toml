@@ -19,6 +19,7 @@ members = [
     "shared_crates/holon_dance_builders",
     "shared_crates/map_schema_semantic",
     "shared_crates/holons_core",
+    "shared_crates/holons_validation",
     "shared_crates/holons_prelude",
     "shared_crates/pvl_validation",
     "shared_crates/json_schema_validation",
@@ -57,6 +58,7 @@ map_commands_runtime = { path = "host/crates/map_commands_runtime" }
 holon_dance_builders = { path = "shared_crates/holon_dance_builders" }
 map_schema_semantic = { path = "shared_crates/map_schema_semantic" }
 holons_core = { path = "shared_crates/holons_core" }
+holons_validation = { path = "shared_crates/holons_validation" }
 holons_prelude = { path = "shared_crates/holons_prelude" }
 pvl_validation = { path = "shared_crates/pvl_validation" }
 json_schema_validation = { path = "shared_crates/json_schema_validation" }

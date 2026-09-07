@@ -7,6 +7,37 @@ use base_types::{BaseValue, MapString};
 use core_types::{HolonError, RelationshipName};
 use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToPropertyName};
 
+/// Resolves a descriptor-definition property self-first through its `Extends` lineage.
+///
+/// This reads `L(descriptor)`, not the `L(D(H))` contract selecting instance members.
+/// Absence permits inheritance; a populated value (including false) overrides ancestors.
+/// Read and lineage failures remain errors rather than being mistaken for absence.
+pub(crate) fn effective_property_value<T: ToPropertyName>(
+    descriptor: &HolonReference,
+    property_name: T,
+) -> Result<Option<BaseValue>, HolonError> {
+    let name = property_name.to_property_name();
+    for ancestor in walk_extends_chain(descriptor) {
+        if let Some(value) = ancestor?.property_value(&name)? {
+            return Ok(Some(value));
+        }
+    }
+    Ok(None)
+}
+
+/// Reads an inherited additional-member policy, closing the contract when absent.
+/// Malformed Boolean values and operational failures do not silently become false.
+pub(crate) fn additional_member_policy(
+    descriptor: &HolonReference,
+    property_name: CorePropertyTypeName,
+) -> Result<bool, HolonError> {
+    match effective_property_value(descriptor, property_name)? {
+        Some(BaseValue::BooleanValue(value)) => Ok(value.0),
+        Some(other) => Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into())),
+        None => Ok(false),
+    }
+}
+
 /// Returns a required string property from a descriptor holon.
 pub(crate) fn require_string<T: ToPropertyName>(
     holon: &HolonReference,

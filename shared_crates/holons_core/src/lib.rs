@@ -23,8 +23,8 @@ pub use core_shared_objects::{
 pub use core_types::HolonError;
 pub use descriptors::{
     ancestors, classify_relationship_direction, effective_relationship_declaration,
-    effective_relationship_targets, equals_or_extends, walk_extends_chain, Descriptor,
-    EffectiveRelationshipMember, ExtendsIter, HolonDescriptor, HolonSpaceDescriptor,
+    effective_relationship_targets, equals_or_extends, resolve_core_descriptor, walk_extends_chain,
+    Descriptor, EffectiveRelationshipMember, ExtendsIter, HolonDescriptor, HolonSpaceDescriptor,
     PropertyDescriptor, RelationshipDescriptor, RelationshipDirection, ResolvedValueTypeRoots,
     TransactionDescriptor, TypeHeader, UniversalDescriptorContract, ValueDescriptor,
     ValueDescriptorKind,

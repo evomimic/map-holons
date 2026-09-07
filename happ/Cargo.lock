@@ -742,6 +742,7 @@ dependencies = [
  "holons_guest_integrity",
  "holons_integrity",
  "holons_loader",
+ "holons_validation",
  "integrity_core_types",
  "pvl_validation",
  "serde",
@@ -809,6 +810,16 @@ dependencies = [
  "holons_integrity",
  "integrity_core_types",
  "serde",
+]
+
+[[package]]
+name = "holons_validation"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+ "type_names",
 ]
 
 [[package]]

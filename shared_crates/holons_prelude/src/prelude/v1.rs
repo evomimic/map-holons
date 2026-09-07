@@ -61,7 +61,7 @@ pub use holons_core::{
     PropertyDescriptor, RelationshipDescriptor, RelationshipDirection, ResolvedValueTypeRoots,
     TransactionDescriptor, TypeHeader, UniversalDescriptorContract, ValueDescriptor,
     ValueDescriptorKind, ancestors, classify_relationship_direction,
-    effective_relationship_targets, equals_or_extends, walk_extends_chain,
+    effective_relationship_targets, equals_or_extends, resolve_core_descriptor, walk_extends_chain,
 };
 
 pub use type_names::{

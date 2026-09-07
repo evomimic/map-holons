@@ -40,8 +40,14 @@ impl ResolvedValueTypeRoots {
     }
 }
 
-/// Resolve names only at the snapshot boundary; semantic comparisons use identity.
-pub(super) fn resolve_core_descriptor(
+/// Resolves a canonical Core schema key through the transaction lookup façade.
+///
+/// Staged definitions take precedence; only `HolonNotFound` permits saved lookup.
+/// Duplicate-key and operational failures propagate unchanged. This resolves schema
+/// identities (including rule holons), without asserting a particular descriptor kind.
+/// Resolve at the pass boundary and compare the resulting bound references by identity;
+/// do not reuse them across transactions or schema mutations.
+pub fn resolve_core_descriptor(
     context: &Arc<TransactionContext>,
     key: &str,
 ) -> Result<HolonReference, HolonError> {

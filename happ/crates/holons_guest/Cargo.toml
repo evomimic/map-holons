@@ -54,3 +54,7 @@ path = "../holons_loader"
 
 [dependencies.holons_boundary]
 path = "../../../shared_crates/holons_boundary"
+
+# Compile the descriptor-aware validator for WASM before Commit adopts it in VAL-C1b.
+[dependencies.holons_validation]
+path = "../../../shared_crates/holons_validation"

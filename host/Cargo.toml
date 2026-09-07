@@ -21,6 +21,7 @@ integrity_core_types = { path = "../shared_crates/type_system/integrity_core_typ
 type_names = { path = "../shared_crates/type_system/type_names" }
 
 holons_core = { path = "../shared_crates/holons_core" }
+holons_validation = { path = "../shared_crates/holons_validation" }
 holons_boundary = { path = "../shared_crates/holons_boundary" }
 holons_prelude = { path = "../shared_crates/holons_prelude" }
 holon_dance_builders = { path = "../shared_crates/holon_dance_builders" }
