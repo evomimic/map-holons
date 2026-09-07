@@ -1,6 +1,8 @@
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY,
+    BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY,
+    PERSON_DESCRIPTOR_KEY,
 };
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 
@@ -55,32 +57,38 @@ pub fn load_book_person_inverse_schema_fixture() -> Result<DancesTestCase, Holon
     )?;
 
     // Book instance with the schema-declared Title property.
-    let book_source =
-        fixture_context.mutation().new_holon(Some(MapString(BOOK_KEY.to_string())))?;
+    let book_source = fixture_context
+        .mutation()
+        .new_holon(Some(MapString(BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY.to_string())))?;
     let mut book_properties = PropertyMap::new();
-    book_properties
-        .insert("Title".to_property_name(), MapString(BOOK_KEY.to_string()).to_base_value());
+    book_properties.insert(
+        "Title".to_property_name(),
+        MapString(BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY.to_string()).to_base_value(),
+    );
     let book_token = test_case.add_new_holon_step(
         &mut fixture_holons,
         book_source,
         book_properties,
-        Some(MapString(BOOK_KEY.to_string())),
+        Some(MapString(BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY.to_string())),
         None,
         None,
     )?;
     let book_token = test_case.add_stage_holon_step(&mut fixture_holons, book_token, None, None)?;
 
     // Person instance with the schema-declared Name property.
-    let person_source =
-        fixture_context.mutation().new_holon(Some(MapString(PERSON_1_KEY.to_string())))?;
+    let person_source = fixture_context
+        .mutation()
+        .new_holon(Some(MapString(BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY.to_string())))?;
     let mut person_properties = PropertyMap::new();
-    person_properties
-        .insert("Name".to_property_name(), MapString(PERSON_1_KEY.to_string()).to_base_value());
+    person_properties.insert(
+        "Name".to_property_name(),
+        MapString(BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY.to_string()).to_base_value(),
+    );
     let person_token = test_case.add_new_holon_step(
         &mut fixture_holons,
         person_source,
         person_properties,
-        Some(MapString(PERSON_1_KEY.to_string())),
+        Some(MapString(BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY.to_string())),
         None,
         None,
     )?;

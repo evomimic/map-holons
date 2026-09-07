@@ -8,14 +8,16 @@ use holons_core::descriptors::{
 use holons_core::reference_layer::{HolonReference, TransientReference, WritableHolon};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, BOOK_TO_PERSON_RELATIONSHIP_KEY,
-    CORE_HAS_INVERSE_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY,
-    CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY, CORE_INVERSE_OF_RELATIONSHIP_KEY,
-    CORE_PREDECESSOR_RELATIONSHIP_KEY, DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY,
-    DELETION_SEMANTIC_CASCADE_KEY, DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY,
-    OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY, OPERATOR_CATEGORY_ORDERING_KEY,
-    PERSON_1_KEY, PERSON_DESCRIPTOR_KEY, PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY,
-    PERSON_TO_BOOK_REL_INVERSE, SCHEMA_TYPE_KEY, VARIANTS_RELATIONSHIP,
+    BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY,
+    BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY, BOOK_TO_PERSON_RELATIONSHIP,
+    BOOK_TO_PERSON_RELATIONSHIP_KEY, CORE_HAS_INVERSE_RELATIONSHIP_KEY,
+    CORE_INSTANCE_PROPERTIES_RELATIONSHIP_KEY, CORE_INSTANCE_PROPERTY_FOR_RELATIONSHIP_KEY,
+    CORE_INVERSE_OF_RELATIONSHIP_KEY, CORE_PREDECESSOR_RELATIONSHIP_KEY,
+    DELETION_SEMANTIC_ALLOW_KEY, DELETION_SEMANTIC_BLOCK_KEY, DELETION_SEMANTIC_CASCADE_KEY,
+    DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY, OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY,
+    OPERATOR_CATEGORY_ORDERING_KEY, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
+    PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE, SCHEMA_TYPE_KEY,
+    VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
 use integrity_core_types::LocalId;
@@ -702,20 +704,32 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
 pub async fn execute_verify_book_person_instance_links(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_book_person_instance_links").await;
 
-    let book = find_holon_by_key(&holons, BOOK_KEY);
-    let person = find_holon_by_key(&holons, PERSON_1_KEY);
+    let book = find_holon_by_key(&holons, BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY);
+    let person = find_holon_by_key(&holons, BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY);
     let book_type = find_holon_by_key(&holons, BOOK_DESCRIPTOR_KEY);
     let person_type = find_holon_by_key(&holons, PERSON_DESCRIPTOR_KEY);
 
     // Forward declared edges persisted from the staged relationships.
-    assert_contains(&related_holon_keys(&book, BOOK_TO_PERSON_RELATIONSHIP), PERSON_1_KEY);
+    assert_contains(
+        &related_holon_keys(&book, BOOK_TO_PERSON_RELATIONSHIP),
+        BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY,
+    );
     assert_contains(&related_holon_keys(&book, "DescribedBy"), BOOK_DESCRIPTOR_KEY);
     assert_contains(&related_holon_keys(&person, "DescribedBy"), PERSON_DESCRIPTOR_KEY);
 
     // Inverse edges materialized on the targets by commit Pass 2.
-    assert_contains(&related_holon_keys(&person, PERSON_TO_BOOK_REL_INVERSE), BOOK_KEY);
-    assert_contains(&related_holon_keys(&book_type, "Instances"), BOOK_KEY);
-    assert_contains(&related_holon_keys(&person_type, "Instances"), PERSON_1_KEY);
+    assert_contains(
+        &related_holon_keys(&person, PERSON_TO_BOOK_REL_INVERSE),
+        BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY,
+    );
+    assert_contains(
+        &related_holon_keys(&book_type, "Instances"),
+        BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY,
+    );
+    assert_contains(
+        &related_holon_keys(&person_type, "Instances"),
+        BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY,
+    );
 
     info!("verified bidirectional Book/Person instance SmartLink traversal");
 }
