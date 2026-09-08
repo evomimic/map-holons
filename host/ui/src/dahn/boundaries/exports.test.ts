@@ -10,6 +10,8 @@ describe('DAHN export surface', () => {
     expect(dahn.DefaultThemeRegistry).toBeDefined();
     expect(dahn.registerBuiltInVisualizers).toBeDefined();
     expect(dahn.DahnHolonView).toBeDefined();
+    expect(dahn.DefaultVisualizerImplementationRuntime).toBeDefined();
+    expect(dahn.DahnImplementationResolutionError).toBeDefined();
   });
 
   it('does not leak obvious transport-facing concepts through the DAHN root export surface', () => {

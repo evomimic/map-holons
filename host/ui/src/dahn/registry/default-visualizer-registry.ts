@@ -3,6 +3,10 @@ import type { VisualizerRegistry } from './visualizer-registry';
 
 export class DefaultVisualizerRegistry implements VisualizerRegistry {
   private readonly definitions = new Map<string, VisualizerDefinition>();
+  private readonly definitionsByImplementationKey = new Map<
+    string,
+    VisualizerDefinition
+  >();
   private readonly loadedIds = new Set<string>();
   private readonly pendingLoads = new Map<string, Promise<VisualizerDefinition>>();
 
@@ -14,11 +18,33 @@ export class DefaultVisualizerRegistry implements VisualizerRegistry {
       );
     }
 
+    if (definition.implementationKey !== undefined) {
+      const existingByKey = this.definitionsByImplementationKey.get(
+        definition.implementationKey,
+      );
+      if (existingByKey !== undefined && existingByKey !== definition) {
+        throw new Error(
+          `Visualizer implementation key '${definition.implementationKey}' is already registered`,
+        );
+      }
+    }
+
     this.definitions.set(definition.id, definition);
+
+    if (definition.implementationKey !== undefined) {
+      this.definitionsByImplementationKey.set(
+        definition.implementationKey,
+        definition,
+      );
+    }
   }
 
   get(id: string): VisualizerDefinition | undefined {
     return this.definitions.get(id);
+  }
+
+  getByImplementationKey(key: string): VisualizerDefinition | undefined {
+    return this.definitionsByImplementationKey.get(key);
   }
 
   list(): VisualizerDefinition[] {
@@ -56,5 +82,14 @@ export class DefaultVisualizerRegistry implements VisualizerRegistry {
     } finally {
       this.pendingLoads.delete(id);
     }
+  }
+
+  async ensureImplementationLoaded(key: string): Promise<VisualizerDefinition> {
+    const definition = this.getByImplementationKey(key);
+    if (definition === undefined) {
+      throw new Error(`Unknown visualizer implementation key '${key}'`);
+    }
+
+    return this.ensureLoaded(definition.id);
   }
 }
