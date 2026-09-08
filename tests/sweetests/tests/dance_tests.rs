@@ -21,7 +21,6 @@ mod execution_steps;
 mod fixture_cases;
 
 use rstest::*;
-
 use tracing::{
     // error,
     info,
@@ -86,23 +85,11 @@ use holons_test::harness::prelude::{DanceTestStep, DancesTestCase};
 
 use holons_test::harness::helpers::init_test_runtime;
 
-use holons_prelude::prelude::*;
+use map_commands_contract::{MapCommand, MapResult, SpaceCommand};
+use map_commands_runtime::ExecutionPolicy;
 
-/// This function accepts a DanceTestCase created by the test fixture for that case.
-/// It iterates through the vector of DanceTestSteps defined within that DanceTestCase.
-/// For each step, this function invokes the test execution functions created for that kind of
-/// DanceTestStep.
-///
-/// Prior to initiating the test case, the following initialization is performed:
-/// 1. Set up a mock Conductor
-/// 2. Initialize a ClientHolonsContext, injecting the ConductorConfig for the created Conductor
-///
-/// This function maintains the following TestState that allows the test steps to be linked together.
-/// * the Context's Nursery will hold the Holons staged during the course of the test case
-/// * session_state : SessionState
-/// * created_holons -- a BTree of Holons indexed by their key that is incrementally extended as
-/// staged holons are committed.
-/// It can be used to drive update/delete of those holons.
+/// Dance Sweettests share a bootstrapped runtime within each suite. Every
+/// scenario still receives its own transaction and fixture execution registry.
 ///
 /// To selectively run JUST THE TESTS in this file, use:
 ///      cargo test -p dances --test dance_tests
@@ -110,45 +97,107 @@ use holons_prelude::prelude::*;
 ///      set WASM_LOG to enable guest-side (i.e., zome code) tracing
 ///
 #[rstest]
-#[case::simple_undescribed_create_holon_test(simple_create_holon_fixture())]
-#[case::delete_holon(delete_holon_fixture())]
-#[case::simple_abandon_staged_changes_test(simple_abandon_staged_changes_fixture())]
-#[case::simple_add_remove_properties_test(simple_add_remove_properties_fixture())]
-#[case::simple_add_related_holon_test(simple_add_remove_related_holons_fixture())]
-#[case::ergonomic_add_remove_properties_test(ergonomic_add_remove_properties_fixture())]
-#[case::ergonomic_add_remove_related_holons_test(ergonomic_add_remove_related_holons_fixture())]
-#[case::stage_new_from_clone_test(stage_new_from_clone_fixture())]
-#[case::stage_new_version_test(stage_new_version_fixture())]
-#[case::load_holons_internal_test(loader_incremental_fixture())]
-#[case::transaction_lifecycle_test(transaction_lifecycle_fixture())]
-#[case::bootstrap_operational_schema_test(bootstrap_operational_schema_fixture())]
-#[case::load_book_person_inverse_schema_test(load_book_person_inverse_schema_fixture())]
-#[case::smartlink_commit_cache_test(smartlink_commit_cache_fixture())]
-#[case::frozen_member_head_redirect_test(frozen_member_head_redirect_fixture())]
-#[case::frozen_member_head_redirect_cross_tx_test(frozen_member_head_redirect_cross_tx_fixture())]
-#[case::cross_transaction_staged_target_diagnostic_test(
-    cross_transaction_staged_target_diagnostic_fixture()
-)]
+#[case::pristine_bootstrap_and_loader(pristine_bootstrap_and_loader_suite())]
+#[case::runtime_behavior_matrix(runtime_behavior_matrix_suite())]
 #[tokio::test(flavor = "multi_thread")]
-async fn rstest_dance_tests(#[case] input: Result<DancesTestCase, HolonError>) {
-    run_dance_test_case(input.unwrap()).await;
+async fn rstest_dance_test_suites(#[case] suite: DanceTestSuite) {
+    run_dance_test_suite(suite).await;
 }
 
-/// Drives a finalized `DancesTestCase` through runtime setup and step execution.
-async fn run_dance_test_case(mut test_case: DancesTestCase) {
+struct DanceTestSuite {
+    name: &'static str,
+    test_cases: Vec<DancesTestCase>,
+}
+
+fn pristine_bootstrap_and_loader_suite() -> DanceTestSuite {
+    DanceTestSuite {
+        name: "pristine_bootstrap_and_loader",
+        test_cases: vec![
+            bootstrap_operational_schema_fixture().unwrap(),
+            loader_incremental_fixture().unwrap(),
+        ],
+    }
+}
+
+fn runtime_behavior_matrix_suite() -> DanceTestSuite {
+    DanceTestSuite {
+        name: "runtime_behavior_matrix",
+        test_cases: vec![
+            load_book_person_inverse_schema_fixture().unwrap(),
+            stage_new_version_fixture().unwrap(),
+            simple_create_holon_fixture().unwrap(),
+            simple_abandon_staged_changes_fixture().unwrap(),
+            simple_add_remove_properties_fixture().unwrap(),
+            simple_add_remove_related_holons_fixture().unwrap(),
+            ergonomic_add_remove_properties_fixture().unwrap(),
+            ergonomic_add_remove_related_holons_fixture().unwrap(),
+            stage_new_from_clone_fixture().unwrap(),
+            transaction_lifecycle_fixture().unwrap(),
+            smartlink_commit_cache_fixture().unwrap(),
+            delete_holon_fixture().unwrap(),
+            frozen_member_head_redirect_fixture().unwrap(),
+            frozen_member_head_redirect_cross_tx_fixture().unwrap(),
+            cross_transaction_staged_target_diagnostic_fixture().unwrap(),
+        ],
+    }
+}
+
+/// Boots one fresh runtime, then executes each finalized scenario through its own
+/// transaction and execution registry. Scenario fixtures remain declarative and
+/// self-contained; only the immutable Core Schema bootstrap is amortized.
+async fn run_dance_test_suite(test_suite: DanceTestSuite) {
+    assert!(!test_suite.test_cases.is_empty(), "a Dance test suite needs at least one scenario");
+    info!("Starting Dance test suite: {}", test_suite.name);
+
+    let mut bootstrap_case = DancesTestCase::default();
+    let (runtime, initial_tx_id) = init_test_runtime(&mut bootstrap_case).await;
+    let mut book_person_schema_loaded = false;
+
+    for (scenario_index, test_case) in test_suite.test_cases.into_iter().enumerate() {
+        let tx_id = if scenario_index == 0 {
+            initial_tx_id.clone()
+        } else {
+            let result = runtime
+                .execute_command(
+                    MapCommand::Space(SpaceCommand::BeginTransaction),
+                    ExecutionPolicy::default(),
+                )
+                .await
+                .expect("failed to begin a scenario transaction");
+            match result {
+                MapResult::TransactionCreated { tx_id } => tx_id,
+                other => panic!("expected TransactionCreated, got {other:?}"),
+            }
+        };
+
+        let fixture_transient_holons = test_case.test_session_state.get_transient_holons().clone();
+        let fixture_head_index = test_case.test_session_state.fixture_head_index().clone();
+        let mut test_execution_state = TestExecutionState::new(
+            runtime.clone(),
+            tx_id.clone(),
+            fixture_transient_holons,
+            fixture_head_index,
+        );
+        test_execution_state
+            .activate_transaction(tx_id)
+            .expect("failed to import scenario fixture holons");
+        run_dance_test_case(test_case, &mut test_execution_state, &mut book_person_schema_loaded)
+            .await;
+    }
+}
+
+/// Drives a finalized `DancesTestCase` through step execution in an initialized runtime.
+async fn run_dance_test_case(
+    test_case: DancesTestCase,
+    mut test_execution_state: &mut TestExecutionState,
+    book_person_schema_loaded: &mut bool,
+) {
     // The heavy lifting for this test is in the test data set creation.
 
     assert!(
         test_case.is_finalized(),
         "DancesTestCase must be finalized before execution. Call test_case.finalize(&fixture_context, &fixture_holons) in the fixture."
     );
-    // Initialize runtime and execution state
-    let fixture_transient_holons = test_case.test_session_state.get_transient_holons().clone();
-    let fixture_head_index = test_case.test_session_state.fixture_head_index().clone();
-    let (runtime, tx_id) = init_test_runtime(&mut test_case).await;
-    let mut test_execution_state =
-        TestExecutionState::new(runtime, tx_id, fixture_transient_holons, fixture_head_index);
-
     info!("\n\n{TEST_CLIENT_PREFIX} ******* STARTING {} TEST CASE WITH {} TEST STEPS ***************************", test_case.name, test_case.steps.len());
     info!("\n   Test Case Description: {}", test_case.description);
 
@@ -257,7 +306,12 @@ async fn run_dance_test_case(mut test_case: DancesTestCase) {
                 execute_load_generated_query_dance_schema(&mut test_execution_state).await
             }
             DanceTestStep::LoadBookPersonInverseTestSchema { .. } => {
-                execute_load_book_person_inverse_test_schema(&mut test_execution_state).await
+                if *book_person_schema_loaded {
+                    info!("Book/Person inverse test schema is already available in this suite");
+                } else {
+                    execute_load_book_person_inverse_test_schema(&mut test_execution_state).await;
+                    *book_person_schema_loaded = true;
+                }
             }
             DanceTestStep::LoadInverseOrientedBookPersonInstancesExpectFailure { .. } => {
                 execute_load_inverse_oriented_book_person_instances_expect_failure(

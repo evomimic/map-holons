@@ -25,6 +25,10 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
+        "Book.AbandonStagedChanges",
+        "Person.AbandonStagedChanges.1",
+        "Person.AbandonStagedChanges.2",
+        "Publisher.AbandonStagedChanges",
     )?;
 
     let person_1_staged_token =
@@ -69,7 +73,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
 
     //  STAGE:  Abandoned Holon1 (H4)  //
-    let abandoned_holon_1_key = MapString("Abandon1".to_string());
+    let abandoned_holon_1_key = MapString("AbandonStagedChanges.Candidate1".to_string());
     let abandoned_holon_1_transient_reference =
         fixture_context.mutation().new_holon(Some(abandoned_holon_1_key.clone()))?;
 
@@ -94,7 +98,7 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
     )?;
 
     //  STAGE:  Abandoned Holon2 (H5)  //
-    let abandoned_holon_2_key = MapString("Abandon2".to_string());
+    let abandoned_holon_2_key = MapString("AbandonStagedChanges.Candidate2".to_string());
     let abandoned_holon_2_transient_reference =
         fixture_context.mutation().new_holon(Some(abandoned_holon_2_key.clone()))?;
     // Mint

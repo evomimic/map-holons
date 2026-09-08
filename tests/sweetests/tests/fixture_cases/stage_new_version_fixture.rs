@@ -5,7 +5,10 @@ use rstest::*;
 // use tracing::debug;
 
 use super::setup_undescribed_book_people_publisher_steps_with_context;
-use holons_test::harness::helpers::{BOOK_DESCRIPTOR_KEY, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP};
+use holons_test::harness::helpers::{
+    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP, STAGE_NEW_VERSION_BOOK_KEY,
+    STAGE_NEW_VERSION_PERSON_1_KEY,
+};
 
 // TODO: add/remove relationships
 
@@ -42,6 +45,10 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
+        STAGE_NEW_VERSION_BOOK_KEY,
+        STAGE_NEW_VERSION_PERSON_1_KEY,
+        "Person.StageNewVersion.2",
+        "Publisher.StageNewVersion",
     )?;
 
     let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
@@ -193,8 +200,10 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Add properties
     let mut expected_clone_properties = PropertyMap::new();
-    expected_clone_properties
-        .insert("Key".to_property_name(), MapString(BOOK_KEY.to_string()).to_base_value());
+    expected_clone_properties.insert(
+        "Key".to_property_name(),
+        MapString(STAGE_NEW_VERSION_BOOK_KEY.to_string()).to_base_value(),
+    );
     expected_clone_properties.insert(
         "Description".to_property_name(),
         "This is a different description".to_base_value(),

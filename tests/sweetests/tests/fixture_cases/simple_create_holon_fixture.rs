@@ -1,5 +1,4 @@
 use holons_prelude::prelude::*;
-use holons_test::harness::helpers::BOOK_KEY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
@@ -16,11 +15,11 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     );
 
     //  ADD STEP:  STAGE:  Book Holon  //
-    let book_key = MapString(BOOK_KEY.to_string());
+    let book_key = MapString("Book.SimpleCreate".to_string());
     let book_transient_reference = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
 
     let mut properties = BTreeMap::new();
-    properties.insert("title".to_property_name(), BOOK_KEY.to_base_value());
+    properties.insert("title".to_property_name(), book_key.clone().to_base_value());
     properties.insert("description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
     // Mint
     let book_step_token = test_case.add_new_holon_step(

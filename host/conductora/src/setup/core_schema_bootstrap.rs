@@ -238,7 +238,23 @@ fn sha256_hex(bytes: &[u8]) -> String {
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEMP_DIRECTORY_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+    fn temporary_bundle_directory() -> anyhow::Result<std::path::PathBuf> {
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+        let sequence = TEMP_DIRECTORY_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let directory = std::env::temp_dir().join(format!(
+            "conductora-bootstrap-{}-{}-{}",
+            std::process::id(),
+            timestamp,
+            sequence
+        ));
+        fs::create_dir_all(&directory)?;
+        Ok(directory)
+    }
 
     #[test]
     fn gate_rejects_ingress_until_marked_ready() {
@@ -260,8 +276,7 @@ mod tests {
 
     #[test]
     fn bundle_reader_accepts_manifest_selected_imports() -> anyhow::Result<()> {
-        let suffix = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
-        let directory = std::env::temp_dir().join(format!("conductora-bootstrap-{suffix}"));
+        let directory = temporary_bundle_directory()?;
         let imports = directory.join("imports");
         fs::create_dir_all(&imports)?;
         let contents = "{\"holons\":[]}";
@@ -284,8 +299,7 @@ mod tests {
 
     #[test]
     fn bundle_reader_rejects_digest_mismatch() -> anyhow::Result<()> {
-        let suffix = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
-        let directory = std::env::temp_dir().join(format!("conductora-bootstrap-{suffix}"));
+        let directory = temporary_bundle_directory()?;
         let imports = directory.join("imports");
         fs::create_dir_all(&imports)?;
         fs::write(imports.join("core.json"), "{\"holons\":[]}")?;
@@ -296,6 +310,18 @@ mod tests {
 
         assert!(bootstrap_content_set_from_directory(&directory).is_err());
         fs::remove_dir_all(directory)?;
+        Ok(())
+    }
+
+    #[test]
+    fn bundle_reader_test_directories_are_unique() -> anyhow::Result<()> {
+        let first = temporary_bundle_directory()?;
+        let second = temporary_bundle_directory()?;
+
+        assert_ne!(first, second);
+
+        fs::remove_dir_all(first)?;
+        fs::remove_dir_all(second)?;
         Ok(())
     }
 

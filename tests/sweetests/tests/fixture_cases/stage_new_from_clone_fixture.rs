@@ -1,7 +1,6 @@
 use crate::fixture_cases::setup_book_and_authors_fixture::*;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
-use holons_test::harness::helpers::BOOK_KEY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use std::collections::BTreeMap;
@@ -25,7 +24,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         );
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
-    let transient_source_key = MapString("book:transient-source".to_string());
+    let transient_source_key = MapString("Book.StageNewFromClone.TransientSource".to_string());
     let transient_source =
         fixture_context.mutation().new_holon(Some(transient_source_key.clone()))?;
     // Mint transient source token
@@ -53,10 +52,13 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
+        "Book.StageNewFromClone.Source",
+        "Person.StageNewFromClone.1",
+        "Person.StageNewFromClone.2",
+        "Publisher.StageNewFromClone",
     )?;
 
-    let _book_key = MapString(BOOK_KEY.to_string());
-    let from_staged_key = MapString("book:clone:from-staged".to_string());
+    let from_staged_key = MapString("Book.StageNewFromClone.FromStaged".to_string());
     let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
 
     //  Stage New From Clone  //
@@ -96,9 +98,9 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ── PHASE C — Clone FROM SAVED  ───────────────
-    // At this point, BOOK_KEY’s token (and any staged tokens included in the commit)
+    // At this point, the source Book token (and any staged tokens included in the commit)
     // have state == Saved inside `fixture_holons`.
-    let from_saved_key = MapString("book:clone:from-saved".to_string());
+    let from_saved_key = MapString("Book.StageNewFromClone.FromSaved".to_string());
 
     //  Stage New From Clone  //
     let clone_from_saved_staged = test_case.add_stage_new_from_clone_step(

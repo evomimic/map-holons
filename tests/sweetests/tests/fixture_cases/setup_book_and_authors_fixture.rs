@@ -3,9 +3,7 @@ use holons_test::{DancesTestCase, FixtureBindings, FixtureHolons};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use holons_test::harness::helpers::{
-    BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_1_KEY, PERSON_2_KEY, PUBLISHER_KEY,
-};
+use holons_test::harness::helpers::BOOK_TO_PERSON_RELATIONSHIP;
 
 /// Adds undescribed, freeform Book/Person/Publisher holons to `test_case`.
 ///
@@ -15,10 +13,7 @@ use holons_test::harness::helpers::{
 /// exercise property or lifecycle behavior without graph state.
 ///
 /// Specifically, this function adds test steps that will stage:
-/// * Book holon with `BOOK_KEY` Title
-/// * Person holon with `PERSON_1_KEY`
-/// * Person holon with `PERSON_2_KEY`
-/// * Publisher holon with `PUBLISHER_KEY`
+/// * Book, two Person, and Publisher holons with caller-supplied unique keys
 ///
 /// The Nursery within the supplied context is used as the test data setup area.
 ///
@@ -29,17 +24,21 @@ pub fn setup_undescribed_book_people_publisher_steps_with_context<'a>(
     test_case: &mut DancesTestCase,
     fixture_holons: &mut FixtureHolons,
     bindings: &'a mut FixtureBindings,
+    book_key: &str,
+    person_1_key: &str,
+    person_2_key: &str,
+    publisher_key: &str,
 ) -> Result<&'a mut FixtureBindings, HolonError> {
     //  STAGE:  Book Holon  //
     //
     // Create fresh holon
     let book_label = MapString("Book".to_string());
-    let book_key = MapString(BOOK_KEY.to_string());
+    let book_key = MapString(book_key.to_string());
     let book_transient_reference = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
 
     // Mint
     let mut book_properties = BTreeMap::new();
-    book_properties.insert("Title".to_property_name(), BOOK_KEY.to_base_value());
+    book_properties.insert("Title".to_property_name(), book_key.clone().to_base_value());
     book_properties.insert("Description".to_property_name(), "Why is there so much chaos and suffering in the world today? Are we sliding towards dystopia and perhaps extinction, or is there hope for a better future?".to_base_value());
 
     let book_transient_token = test_case.add_new_holon_step(
@@ -63,7 +62,7 @@ pub fn setup_undescribed_book_people_publisher_steps_with_context<'a>(
     //
     // Create
     let person_1_label = MapString("Person1".to_string());
-    let person_1_key = MapString(PERSON_1_KEY.to_string());
+    let person_1_key = MapString(person_1_key.to_string());
     let person_1_transient_reference =
         fixture_context.mutation().new_holon(Some(person_1_key.clone()))?;
 
@@ -92,7 +91,7 @@ pub fn setup_undescribed_book_people_publisher_steps_with_context<'a>(
     //
     // Create
     let person_2_label = MapString("Person2".to_string());
-    let person_2_key = MapString(PERSON_2_KEY.to_string());
+    let person_2_key = MapString(person_2_key.to_string());
     let person_2_transient_reference =
         fixture_context.mutation().new_holon(Some(person_2_key.clone()))?;
 
@@ -121,12 +120,12 @@ pub fn setup_undescribed_book_people_publisher_steps_with_context<'a>(
     //
     // Create
     let publisher_label = MapString("Publisher".to_string());
-    let publisher_key = MapString(PUBLISHER_KEY.to_string());
+    let publisher_key = MapString(publisher_key.to_string());
     let publisher_transient_reference =
         fixture_context.mutation().new_holon(Some(publisher_key.clone()))?;
 
     let mut publisher_properties = BTreeMap::new();
-    publisher_properties.insert("name".to_property_name(), PUBLISHER_KEY.to_base_value());
+    publisher_properties.insert("name".to_property_name(), publisher_key.clone().to_base_value());
     publisher_properties.insert(
         "Description".to_property_name(),
         "We publish Holons for testing purposes".to_base_value(),
@@ -166,12 +165,20 @@ pub fn setup_undescribed_book_author_steps_with_context<'a>(
     test_case: &mut DancesTestCase,
     fixture_holons: &mut FixtureHolons,
     bindings: &'a mut FixtureBindings,
+    book_key: &str,
+    person_1_key: &str,
+    person_2_key: &str,
+    publisher_key: &str,
 ) -> Result<&'a mut FixtureBindings, HolonError> {
     setup_undescribed_book_people_publisher_steps_with_context(
         fixture_context,
         test_case,
         fixture_holons,
         bindings,
+        book_key,
+        person_1_key,
+        person_2_key,
+        publisher_key,
     )?;
 
     // Set relationship

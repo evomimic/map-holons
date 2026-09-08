@@ -36,6 +36,10 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
+        "Book.SimpleRelationships",
+        "Person.SimpleRelationships.1",
+        "Person.SimpleRelationships.2",
+        "Publisher.SimpleRelationships",
     )?;
     info!("fixture: book and author setup complete.");
 
@@ -56,8 +60,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     // Company -> HOST -> Website  //
     //
     let host_relationship = "HOST".to_relationship_name();
-    let company_key = MapString("COMPANY_KEY".to_string());
-    let website_key = MapString("WEBSITE_KEY".to_string());
+    let company_key = MapString("Company.SimpleRelationships".to_string());
+    let website_key = MapString("Website.SimpleRelationships".to_string());
     // Create transient references
     let company_transient_reference =
         fixture_context.mutation().new_holon(Some(company_key.clone()))?;
@@ -108,7 +112,7 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
 
     // -- Again ADD STEP -- //
     let again_relationship = "AGAIN".to_relationship_name();
-    let example_key = MapString("EXAMPLE_KEY".to_string());
+    let example_key = MapString("Example.SimpleRelationships".to_string());
     // Create example
     let example_transient_reference =
         fixture_context.mutation().new_holon(Some(example_key.clone()))?;
