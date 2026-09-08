@@ -24,6 +24,10 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     let is_load_holons = dance_name.0 == "load_holons";
     let total_started_at = performance_timestamp_micros();
 
+    if is_load_holons {
+        info!("[PERF-688] guest_dance_adapter: load_holons_entered");
+    }
+
     info!("\n\n\n***********************  Entered dance_adapter() with {}", request.summarize());
 
     // ---- ingress validation ----
@@ -97,6 +101,10 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
     }
 
     info!("\n======== RETURNING FROM {:?} Dance with {:?}", dance_name.0, response_wire,);
+
+    if is_load_holons {
+        info!("[PERF-688] guest_dance_adapter: load_holons_returning");
+    }
 
     Ok(DanceResponseEnvelope { response: response_wire, session: response_session })
 }

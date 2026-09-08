@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 
 use holochain_types::prelude::{FunctionName, ZomeName};
 use serde_bytes::ByteBuf;
@@ -88,6 +91,8 @@ impl ConductorDanceCaller for HolochainConductorClient {
         &self,
         request: DanceRequestEnvelope,
     ) -> Result<DanceResponseEnvelope, HolonError> {
+        let is_load_holons = request.request.dance_name.0.as_str() == "load_holons";
+
         // --- Serialize request ---
         let payload: ExternIO = match ExternIO::encode(request) {
             Ok(p) => p,
@@ -110,6 +115,10 @@ impl ConductorDanceCaller for HolochainConductorClient {
         };
 
         // --- Make zome call ---
+        let zome_call_started_at = Instant::now();
+        if is_load_holons {
+            tracing::info!("[PERF-688] conductor_zome_call: load_holons_started");
+        }
         let result = app_ws
             .call_zome(
                 ZomeCallTarget::RoleName(self.rolename.clone()),
@@ -118,6 +127,13 @@ impl ConductorDanceCaller for HolochainConductorClient {
                 payload,
             )
             .await;
+        if is_load_holons {
+            tracing::info!(
+                "[PERF-688] conductor_zome_call: load_holons_returned_ms={} success={}",
+                zome_call_started_at.elapsed().as_millis(),
+                result.is_ok(),
+            );
+        }
 
         let extern_io = result
             .map_err(|error| HolonError::ConductorError(format!("Zome call failed: {error:?}")))?;

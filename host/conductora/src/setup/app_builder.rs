@@ -1,5 +1,6 @@
 use anyhow::Context;
 use std::sync::RwLock;
+use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
@@ -102,21 +103,52 @@ impl AppBuilder {
 
             tauri::async_runtime::spawn(async move {
                 let startup_result = async {
+                    let startup_started_at = Instant::now();
+                    let setup_started_at = Instant::now();
                     SetupManager::apply_setups(&handle, &storage_cfg, &runtime_selection)
                         .await
                         .context("apply_setups failed")?;
+                    tracing::info!(
+                        "[PERF-688] conductora_startup: provider_setup_ms={}",
+                        setup_started_at.elapsed().as_millis(),
+                    );
+
+                    let receptor_config_started_at = Instant::now();
                     AppBuilder::load_receptor_configs(&handle)
                         .await
                         .context("load_receptor_configs failed")?;
+                    tracing::info!(
+                        "[PERF-688] conductora_startup: receptor_config_ms={}",
+                        receptor_config_started_at.elapsed().as_millis(),
+                    );
+
+                    let runtime_started_at = Instant::now();
                     if !runtime::init_from_state(&handle) {
                         anyhow::bail!("MAP Commands runtime initialization failed");
                     }
+                    tracing::info!(
+                        "[PERF-688] conductora_startup: runtime_init_ms={}",
+                        runtime_started_at.elapsed().as_millis(),
+                    );
+
+                    let bootstrap_started_at = Instant::now();
                     ensure_core_schema_space(&handle)
                         .await
                         .context("ensure_core_schema_space failed")?;
+                    tracing::info!(
+                        "[PERF-688] conductora_startup: core_schema_bootstrap_ms={}",
+                        bootstrap_started_at.elapsed().as_millis(),
+                    );
+
+                    let window_started_at = Instant::now();
                     SetupManager::create_window(&handle, &storage_cfg, &runtime_selection)
                         .await
                         .context("create_window failed")?;
+                    tracing::info!(
+                        "[PERF-688] conductora_startup: window_creation_ms={} total_ms={}",
+                        window_started_at.elapsed().as_millis(),
+                        startup_started_at.elapsed().as_millis(),
+                    );
                     handle
                         .emit(STARTUP_READY_EVENT, ())
                         .context("failed to emit startup ready event")?;

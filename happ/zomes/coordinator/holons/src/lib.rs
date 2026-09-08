@@ -56,42 +56,11 @@ fn signal_action(action: SignedActionHashed) -> ExternResult<()> {
     let action_id = local_id_from_action_hash(action_hash.clone());
     let timestamp = PersistenceTimestamp(action.hashed.content.timestamp().0);
     match action.hashed.content.clone() {
-        Action::CreateLink(create_link) => {
-            if let Ok(Some(link_type)) =
-                LinkTypes::from_type(create_link.zome_index, create_link.link_type)
-            {
-                emit_signal(Signal::LinkCreated {
-                    action_id,
-                    link_type: format!("{:?}", link_type),
-                    timestamp,
-                })?;
-            }
-            Ok(())
-        }
-        Action::DeleteLink(delete_link) => {
-            let record = get(delete_link.link_add_address.clone(), GetOptions::default())?.ok_or(
-                wasm_error!(WasmErrorInner::Guest("Failed to fetch CreateLink action".to_string())),
-            )?;
-            match record.action() {
-                Action::CreateLink(create_link) => {
-                    if let Ok(Some(link_type)) =
-                        LinkTypes::from_type(create_link.zome_index, create_link.link_type)
-                    {
-                        emit_signal(Signal::LinkDeleted {
-                            action_id,
-                            link_type: format!("{:?}", link_type),
-                            timestamp,
-                        })?;
-                    }
-                    Ok(())
-                }
-                _ => {
-                    return Err(wasm_error!(WasmErrorInner::Guest(
-                        "Create Link should exist".to_string()
-                    )));
-                }
-            }
-        }
+        // SmartLink mutations are intentionally not signalled individually. Bulk commits can
+        // contain thousands of links, and the initial notification foundation has no consumer
+        // that can use a link action hash for targeted invalidation. A future batched
+        // relationship-notification contract can reintroduce this at commit granularity.
+        Action::CreateLink(_) | Action::DeleteLink(_) => Ok(()),
         Action::Create(_create) => {
             if let Ok(Some(EntryTypes::HolonNode(_))) = get_entry_for_action(&action_hash) {
                 // A freshly created holon's permanent identity is its own create hash.
