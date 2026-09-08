@@ -20,6 +20,8 @@ export type {
   VisualizerContext,
   VisualizerDefinition,
   VisualizerElement,
+  VisualizerImplementationResolution,
+  VisualizerImplementationRuntimeKind,
   VisualizerTargetRule,
 } from './contracts/visualizers';
 export { DomCanvas } from './canvas/dom-canvas';
@@ -35,6 +37,13 @@ export { Phase0Selector } from './selector/phase0-selector';
 export { DefaultDahnRuntime } from './runtime/default-dahn-runtime';
 export type { DahnRuntime } from './runtime/dahn-runtime';
 export {
+  DefaultVisualizerImplementationRuntime,
+} from './runtime/visualizer-implementation-runtime';
+export type {
+  VisualizerImplementationRuntime,
+} from './runtime/visualizer-implementation-runtime';
+export {
+  DahnImplementationResolutionError,
   DahnNotImplementedError,
   DahnRuntimeError,
 } from './runtime/runtime-errors';

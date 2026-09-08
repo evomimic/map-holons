@@ -8,9 +8,17 @@ describe('registerBuiltInVisualizers', () => {
 
     registerBuiltInVisualizers(registry);
 
-    expect(registry.get('holon-node')).toBeDefined();
+    expect(
+      registry.getByImplementationKey('dahn.space-navigator'),
+    ).toMatchObject({ id: 'space-navigator' });
+    expect(
+      registry.getByImplementationKey('dahn.generic-holon-node'),
+    ).toMatchObject({ id: 'holon-node' });
+    expect(
+      registry.getByImplementationKey('dahn.table-collection'),
+    ).toMatchObject({ id: 'table-collection' });
     expect(registry.get('action-menu')).toBeDefined();
     expect(registry.get('debug')).toBeDefined();
-    expect(registry.list()).toHaveLength(3);
+    expect(registry.list()).toHaveLength(5);
   });
 });

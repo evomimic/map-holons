@@ -3,6 +3,7 @@ import type { CanvasApi } from './canvas';
 import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
+import type { HolonReference } from '../deps';
 
 /**
  * Minimal target classification metadata for Phase 0. Definitions stay local
@@ -11,6 +12,8 @@ import type { DahnTheme } from './themes';
  */
 export interface VisualizerTargetRule {
   kind:
+    | 'canvas'
+    | 'collection'
     | 'holon-node'
     | 'action'
     | 'property'
@@ -22,12 +25,34 @@ export interface VisualizerTargetRule {
  * Runtime/local representation of a visualizer descriptor.
  */
 export interface VisualizerDefinition {
+  /**
+   * Local executable-registry identity. This is not a MAP semantic identity.
+   */
   id: string;
+  /**
+   * Stable MAP implementation key, when this definition realizes a bundled
+   * VisualizerImplementation Holon.
+   */
+  implementationKey?: string;
   displayName: string;
   version: string;
   componentTag: string;
   supportedTargets: VisualizerTargetRule[];
   load: () => Promise<void>;
+}
+
+/** Execution runtimes currently described by the DAHN schema. */
+export type VisualizerImplementationRuntimeKind = 'TypeScript' | 'Rust';
+
+/**
+ * A Rust-selected realization request. The resolver trusts this pairing and
+ * only maps the supplied implementation key to locally executable code.
+ */
+export interface VisualizerImplementationResolution {
+  selectedVisualizer: HolonReference;
+  implementation: HolonReference;
+  runtime: VisualizerImplementationRuntimeKind;
+  implementationKey?: string;
 }
 
 /**

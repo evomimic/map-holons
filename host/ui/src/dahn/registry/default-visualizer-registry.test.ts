@@ -42,6 +42,66 @@ describe('DefaultVisualizerRegistry', () => {
     ).toThrow(/already registered/);
   });
 
+  it('indexes executable definitions by implementation key without replacing their local ids', async () => {
+    const registry = new DefaultVisualizerRegistry();
+    const definition = {
+      id: 'local-node-definition',
+      implementationKey: 'dahn.generic-holon-node',
+      displayName: 'Holon Node',
+      version: '0.0.0',
+      componentTag: 'test-implementation-key-visualizer',
+      supportedTargets: [{ kind: 'holon-node' as const }],
+      load: async () => {
+        class TestVisualizer extends HTMLElement {}
+        if (
+          customElements.get('test-implementation-key-visualizer') ===
+          undefined
+        ) {
+          customElements.define(
+            'test-implementation-key-visualizer',
+            TestVisualizer,
+          );
+        }
+      },
+    };
+
+    registry.register(definition);
+
+    expect(registry.get('local-node-definition')).toBe(definition);
+    expect(registry.getByImplementationKey('dahn.generic-holon-node')).toBe(
+      definition,
+    );
+    await expect(
+      registry.ensureImplementationLoaded('dahn.generic-holon-node'),
+    ).resolves.toBe(definition);
+  });
+
+  it('rejects duplicate implementation keys for different definitions', () => {
+    const registry = new DefaultVisualizerRegistry();
+    registry.register({
+      id: 'first-definition',
+      implementationKey: 'dahn.space-navigator',
+      displayName: 'First',
+      version: '0.0.0',
+      componentTag: 'test-first-implementation-key-visualizer',
+      supportedTargets: [{ kind: 'canvas' }],
+      load: async () => {},
+    });
+
+    expect(() =>
+      registry.register({
+        id: 'second-definition',
+        implementationKey: 'dahn.space-navigator',
+        displayName: 'Second',
+        version: '0.0.0',
+        componentTag: 'test-second-implementation-key-visualizer',
+        supportedTargets: [{ kind: 'canvas' }],
+        load: async () => {},
+      }),
+    ).toThrow(/implementation key.*already registered/);
+    expect(registry.get('second-definition')).toBeUndefined();
+  });
+
   it('loads definitions idempotently', async () => {
     const registry = new DefaultVisualizerRegistry();
     const load = vi.fn(async () => {
