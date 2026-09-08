@@ -1,6 +1,6 @@
 ---
 name: map-issue-grounder
-description: "Use this skill when the user wants a GitHub Enhancement Issue generated for a specific MAP or map-holons workplan task, track item, PR unit, or wave-plan unit. Trigger on requests to ground a workplan task into an issue, turn a roadmap/spec/implementation-plan item into a GitHub enhancement, or generate, refine, or review a repository-grounded enhancement issue for MAP implementation work. This skill performs Phase 4 repository-grounded issue generation: prompt for copied DevDocs roadmap/spec inputs, inspect the map-holons repository, use the repository's .github/ISSUE_TEMPLATE/enhancement.md template, and produce an implementation-ready Enhancement Issue grounded in existing code."
+description: "Use this skill when the user wants a GitHub Enhancement Issue generated for a specific MAP or map-holons workplan task, track item, PR unit, or wave-plan unit. Trigger on requests to ground a workplan task into an issue, turn a roadmap/spec/implementation-plan item into a GitHub enhancement, or generate, refine, or review a repository-grounded enhancement issue for MAP implementation work. This skill performs Phase 4 repository-grounded issue generation: inspect authoritative DevDocs in situ, inspect the map-holons repository, use the repository's .github/ISSUE_TEMPLATE/enhancement.md template, and produce an implementation-ready Enhancement Issue grounded in existing code."
 ---
 
 # MAP Issue Grounder
@@ -22,7 +22,7 @@ Prefer this skill when the user is asking for a GitHub enhancement issue tied to
 
 ## Core posture
 
-Use DevDocs artifacts as architectural intent, but do not treat them as sufficient for implementation. Ground every issue in repository reality:
+Use `map-dev-docs` in situ as the authoritative source for architectural intent. Do not copy DevDocs specs, plans, or roadmaps into `map-holons`, and do not treat any copied local version as authoritative. Ground every issue in repository reality:
 
 - existing modules, types, APIs, tests, naming conventions, and architectural boundaries
 - current transaction, staging, versioning, validation, dance, command, query, and SDK patterns
@@ -33,31 +33,25 @@ Do not invent repository structures. If code context is missing, explicitly mark
 
 ## Required source artifacts
 
-Before generating the issue, ensure the working context includes these artifacts in the `map-holons` repository:
+Before generating the issue, inspect these artifacts in the authoritative `map-dev-docs` checkout and the code repository:
 
-1. The latest overall workplan copied from `map-dev-docs`:
-   - source: `roadmap/desc-driven-impl-plan.md`
-   - destination: `map-holons/docs/roadmap/desc-driven-impl-plan.md`
+1. The latest overall workplan in `map-dev-docs`:
+   - `docs/roadmap/desc-driven-impl-plan.md`
 2. The target PR selection from that workplan:
    - track name or identifier
    - PR/unit identifier or title
-3. The latest track-specific design spec copied from `map-dev-docs` into an appropriate `map-holons/docs/...` location.
-4. The latest track-specific implementation plan copied from `map-dev-docs` into an appropriate `map-holons/docs/...` location.
+3. The latest track-specific design spec in `map-dev-docs`.
+4. The latest track-specific implementation plan in `map-dev-docs`.
 5. The enhancement issue template from the code repository:
    - `.github/ISSUE_TEMPLATE/enhancement.md`
 
-If any required artifact is missing, prompt the user to copy or identify it before continuing. Do not substitute a generic issue format for the enhancement template.
+If the `map-dev-docs` checkout or a required artifact cannot be located, ask the user to identify its path or provide its content before continuing. Do not substitute a generic issue format for the enhancement template.
 
 ## Workflow
 
-### 1. Prompt for the latest overall workplan
+### 1. Inspect the latest overall workplan in situ
 
-Ask the user to copy the latest overall workplan from `map-dev-docs` into `map-holons`:
-
-- Copy `map-dev-docs/roadmap/desc-driven-impl-plan.md`
-- To `map-holons/docs/roadmap/desc-driven-impl-plan.md`
-
-Then inspect `map-holons/docs/roadmap/desc-driven-impl-plan.md`.
+Locate and inspect `map-dev-docs/docs/roadmap/desc-driven-impl-plan.md` in the authoritative DevDocs checkout.
 
 Use this file to understand:
 
@@ -86,22 +80,11 @@ Then extract from the workplan:
 
 Preserve the PR boundary. Do not silently expand scope beyond the selected workplan unit.
 
-### 3. Prompt for latest track-specific spec and implementation plan
+### 3. Inspect the latest track-specific spec and implementation plan in situ
 
-Based on the selected track, ask the user to copy the latest relevant DevDocs files into the `map-holons` repository.
+Based on the selected track, locate and inspect the latest relevant DevDocs design/specification and implementation-plan files in `map-dev-docs`.
 
-Ask for both:
-
-- the latest design/specification file for the selected track
-- the latest implementation-plan file for the selected track
-
-The exact destination may vary by repository convention, but prefer a location under `map-holons/docs/` that preserves enough path context to identify the source and track, such as:
-
-- `docs/specs/<track>/...`
-- `docs/roadmap/<track>/...`
-- `docs/devdocs-imports/<track>/...`
-
-After the user copies the files, inspect them and identify their paths in the issue's source/context sections according to the enhancement template.
+Record their authoritative paths in the issue's source/context sections according to the enhancement template. If either cannot be located, ask the user to identify it; do not request a copy into `map-holons`.
 
 ### 4. Load the enhancement issue template
 
@@ -219,9 +202,9 @@ When recommending a split, provide the smallest coherent sequence of issues and 
 
 The highest-value output is not a generic issue. The highest-value output records the discovered fit between:
 
-- what the copied DevDocs roadmap says this PR should do
-- what the copied track spec says should exist
-- what the copied implementation plan expects
+- what the authoritative DevDocs roadmap says this PR should do
+- what the authoritative track spec says should exist
+- what the authoritative implementation plan expects
 - what the `map-holons` codebase already supports
 - what must be added now
 - what should be deferred

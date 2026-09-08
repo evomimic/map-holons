@@ -53,8 +53,10 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
 use std::sync::{Arc, RwLock};
+use std::time::Instant;
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
+use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService;
@@ -315,11 +317,15 @@ impl HolonServiceApi for ClientHolonService {
         set: TransientReference, // HolonLoadSet type
     ) -> Result<TransientReference, HolonError> {
         // 1) Build the dance request for the loader.
+        let request_started_at = Instant::now();
         let request = holon_dance_builders::build_load_holons_dance_request(set)?;
+        let request_millis = request_started_at.elapsed().as_millis();
 
         // 2) Bridge async → sync (ClientHolonService is synchronous)
+        let dance_started_at = Instant::now();
         let response =
             run_future_synchronously(async move { context.initiate_dance(request).await })?;
+        let dance_millis = dance_started_at.elapsed().as_millis();
 
         // 3) Check the status
         if response.status_code != ResponseStatusCode::OK {
@@ -331,7 +337,14 @@ impl HolonServiceApi for ClientHolonService {
 
         // 4) Extract the returned holon
         match response.body {
-            ResponseBody::HolonReference(HolonReference::Transient(tref)) => Ok(tref),
+            ResponseBody::HolonReference(HolonReference::Transient(tref)) => {
+                info!(
+                    "[PERF-688] loader_dance_client: request_build_ms={} initiate_dance_round_trip_ms={}",
+                    request_millis,
+                    dance_millis,
+                );
+                Ok(tref)
+            }
             ResponseBody::HolonReference(other) => Err(HolonError::InvalidParameter(format!(
                 "LoadHolons: expected TransientReference, got {:?}",
                 other

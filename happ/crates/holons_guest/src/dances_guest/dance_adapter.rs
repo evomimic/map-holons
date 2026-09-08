@@ -21,10 +21,17 @@ use holons_core::{
 pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceResponseEnvelope> {
     let DanceRequestEnvelope { request, session } = envelope;
     let dance_name = request.dance_name.clone();
+    let is_load_holons = dance_name.0 == "load_holons";
+    let total_started_at = performance_timestamp_micros();
+
+    if is_load_holons {
+        info!("[PERF-688] guest_dance_adapter: load_holons_entered");
+    }
 
     info!("\n\n\n***********************  Entered dance_adapter() with {}", request.summarize());
 
     // ---- ingress validation ----
+    let validation_started_at = performance_timestamp_micros();
     if let Err(status_code) = validate_request(&request) {
         let response_wire = DanceResponseWire {
             status_code,
@@ -36,6 +43,7 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
 
         return Ok(DanceResponseEnvelope { response: response_wire, session });
     }
+    let validation_micros = elapsed_micros(validation_started_at);
 
     // ---- context hydration ----
     let session_state = match session.as_ref() {
@@ -49,29 +57,67 @@ pub fn dance_adapter(envelope: DanceRequestEnvelope) -> ExternResult<DanceRespon
         }
     };
 
+    let hydration_started_at = performance_timestamp_micros();
     let context = match initialize_context_from_session_state(session_state) {
         Ok(ctx) => ctx,
         Err(error) => return Ok(create_error_response_envelope(error, session)),
     };
+    let hydration_micros = elapsed_micros(hydration_started_at);
 
     // ---- bind wire -> runtime ----
+    let request_binding_started_at = performance_timestamp_micros();
     let bound_request = match request.bind(&context) {
         Ok(bound) => bound,
         Err(error) => return Ok(create_error_response_envelope(error, session)),
     };
+    let request_binding_micros = elapsed_micros(request_binding_started_at);
 
     // ---- dispatch ----
+    let dispatch_started_at = performance_timestamp_micros();
     let response_runtime = dispatch_dance(&context, bound_request);
+    let dispatch_micros = elapsed_micros(dispatch_started_at);
 
     // ---- project runtime -> wire ----
+    let response_projection_started_at = performance_timestamp_micros();
     let response_wire = DanceResponseWire::from(&response_runtime);
+    let response_projection_micros = elapsed_micros(response_projection_started_at);
 
     // ---- export session state ----
+    let session_export_started_at = performance_timestamp_micros();
     let response_session = restore_session_state_from_context(&context);
+    let session_export_micros = elapsed_micros(session_export_started_at);
+
+    if is_load_holons {
+        info!(
+            "[PERF-688] guest_dance_adapter: validation_ms={} hydration_ms={} request_binding_ms={} dispatch_ms={} response_projection_ms={} session_export_ms={} total_ms={}",
+            validation_micros / 1_000,
+            hydration_micros / 1_000,
+            request_binding_micros / 1_000,
+            dispatch_micros / 1_000,
+            response_projection_micros / 1_000,
+            session_export_micros / 1_000,
+            elapsed_micros(total_started_at) / 1_000,
+        );
+    }
 
     info!("\n======== RETURNING FROM {:?} Dance with {:?}", dance_name.0, response_wire,);
 
+    if is_load_holons {
+        info!("[PERF-688] guest_dance_adapter: load_holons_returning");
+    }
+
     Ok(DanceResponseEnvelope { response: response_wire, session: response_session })
+}
+
+fn performance_timestamp_micros() -> Option<i64> {
+    sys_time().ok().map(|timestamp| timestamp.as_micros())
+}
+
+fn elapsed_micros(started_at: Option<i64>) -> i64 {
+    started_at
+        .zip(performance_timestamp_micros())
+        .map(|(started_at, completed_at)| completed_at.saturating_sub(started_at))
+        .unwrap_or_default()
 }
 
 /// Backward-compatible extern name until host config is fully switched.

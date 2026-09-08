@@ -267,22 +267,62 @@ pub fn put_smartlink(prepared: PreparedSmartLink) -> Result<PutSmartLinkOutcome,
 pub(crate) fn put_smartlink_cached(
     context: &mut SmartLinkWriteContext,
     prepared: PreparedSmartLink,
-) -> Result<PutSmartLinkOutcome, HolonError> {
+) -> Result<CachedPutSmartLinkOutcome, HolonError> {
     // Preserve standalone preflight precedence even when a matching identity is already cached.
     let validated_tag = prepare_validated_smartlink_tag(&prepared)?;
     let bucket_key = SmartLinkBucketKey::from_prepared(&prepared);
     let identity = SmartLinkIdentity::from_prepared(&prepared);
+    let cache_miss = !context.buckets.contains_key(&bucket_key);
+    let expansion_started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
     let bucket = context.bucket_for(bucket_key, || {
         expand_from_source(&prepared.source_id, &prepared.relationship_name)
     })?;
+    let expansion_micros = cache_miss.then(|| {
+        sys_time()
+            .ok()
+            .map(|completed_at| {
+                completed_at
+                    .as_micros()
+                    .saturating_sub(expansion_started_at.unwrap_or(completed_at.as_micros()))
+            })
+            .unwrap_or_default()
+    });
+    let expanded_link_count = cache_miss.then_some(bucket.identities.len());
 
     if let Some(existing) = bucket.identities.get(&identity) {
-        return Ok(existing.outcome_for(&prepared));
+        return Ok(CachedPutSmartLinkOutcome {
+            outcome: existing.outcome_for(&prepared),
+            expansion_micros,
+            expanded_link_count,
+            action_create_micros: None,
+        });
     }
 
+    let action_create_started_at = sys_time().ok().map(|timestamp| timestamp.as_micros());
     let smartlink_id = create_prepared_smartlink(&prepared, validated_tag)?;
     bucket.insert(identity, CachedSmartLink::from_inserted(&prepared, smartlink_id.clone()));
-    Ok(PutSmartLinkOutcome::Inserted(smartlink_id))
+    let action_create_micros = sys_time()
+        .ok()
+        .zip(action_create_started_at)
+        .map(|(completed_at, started_at)| completed_at.as_micros().saturating_sub(started_at));
+    Ok(CachedPutSmartLinkOutcome {
+        outcome: PutSmartLinkOutcome::Inserted(smartlink_id),
+        expansion_micros,
+        expanded_link_count,
+        action_create_micros,
+    })
+}
+
+/// Per-call timing and cache information for commit's bounded SmartLink write context.
+///
+/// This remains crate-private because the public storage API deliberately exposes only its
+/// semantic insertion outcome. Commit uses it to attribute bootstrap work without changing
+/// storage behavior or publishing a second write surface.
+pub(crate) struct CachedPutSmartLinkOutcome {
+    pub(crate) outcome: PutSmartLinkOutcome,
+    pub(crate) expansion_micros: Option<i64>,
+    pub(crate) expanded_link_count: Option<usize>,
+    pub(crate) action_create_micros: Option<i64>,
 }
 
 // ---------------------------------------------------------------------------

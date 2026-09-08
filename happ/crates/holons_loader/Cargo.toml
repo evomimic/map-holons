@@ -11,6 +11,7 @@ crate-type = ["rlib"]
 holons_prelude = { workspace = true }
 core_types = { workspace = true }
 tracing = { workspace = true }
+hdk = "0.6"
 
 [dev-dependencies]
 holons_core = { workspace = true }

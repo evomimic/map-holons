@@ -22,7 +22,8 @@ use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::TransientReference;
 use holons_core::HolonReference;
 use std::sync::Arc;
-use tracing::debug;
+use std::time::Instant;
+use tracing::{debug, info};
 
 /// Primary entry point for the host-side Holon Loader.
 ///
@@ -54,6 +55,7 @@ pub async fn load_holons_from_files(
     context: Arc<TransactionContext>,
     content_set: ContentSet,
 ) -> Result<TransientReference, HolonError> {
+    let load_started_at = Instant::now();
     debug!("[loader-client] start load_holons_from_files");
     // Guard against missing content; this is almost certainly a caller bug.
     if content_set.files_to_load.is_empty() {
@@ -68,6 +70,7 @@ pub async fn load_holons_from_files(
     // a UI-provided identifier).
     let load_set_key: Option<MapString> = Some(MapString("HolonLoadSet".to_string()));
 
+    let parse_started_at = Instant::now();
     let load_set_reference: HolonReference =
         match parse_files_into_load_set(&context, load_set_key, &content_set) {
             Ok(reference) => reference,
@@ -76,6 +79,7 @@ pub async fn load_holons_from_files(
                 return Err(error);
             }
         };
+    let parse_millis = parse_started_at.elapsed().as_millis();
 
     // Phase 2: Ensure we have a transient reference to the HolonLoadSet.
     //
@@ -97,8 +101,17 @@ pub async fn load_holons_from_files(
     // builds the dance request, calls into the guest, and
     // returns a `TransientReference` to the `HolonLoadResponse` holon.
     debug!("[loader-client] invoking load_holons dance");
+    let dance_started_at = Instant::now();
     let response_reference = context.load_holons_and_commit(load_set_transient)?;
+    let dance_millis = dance_started_at.elapsed().as_millis();
     debug!("[loader-client] load_holons dance returned");
+    info!(
+        "[PERF-688] loader_client: files={} parse_and_prepare_ms={} dance_round_trip_ms={} total_ms={}",
+        content_set.files_to_load.len(),
+        parse_millis,
+        dance_millis,
+        load_started_at.elapsed().as_millis(),
+    );
 
     Ok(response_reference)
 }

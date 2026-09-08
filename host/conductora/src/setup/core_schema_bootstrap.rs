@@ -11,7 +11,9 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::{Component, Path};
 use std::sync::RwLock;
+use std::time::Instant;
 use tauri::{AppHandle, Manager};
+use tracing::info;
 
 use crate::runtime::RuntimeState;
 
@@ -133,6 +135,7 @@ pub fn packaged_bootstrap_content_set(handle: &AppHandle) -> anyhow::Result<Cont
 /// Conductora ingress is opened. This is intentionally called directly from
 /// startup, never through a Tauri command.
 pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<()> {
+    let bootstrap_started_at = Instant::now();
     let gate = handle
         .try_state::<CoreSchemaBootstrapGate>()
         .ok_or_else(|| anyhow::anyhow!("CoreSchemaBootstrapGate is not managed"))?;
@@ -150,11 +153,14 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<()> 
         return Ok(());
     }
 
+    let input_started_at = Instant::now();
     let content_set = packaged_bootstrap_content_set(handle)?;
+    let input_millis = input_started_at.elapsed().as_millis();
     let tx_id = runtime.session().begin_transaction().await?;
     let context = runtime.session().get_transaction(&tx_id)?;
     context.enable_bootstrap_provisioning();
 
+    let load_started_at = Instant::now();
     let result = runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
@@ -164,6 +170,7 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<()> 
             ExecutionPolicy::default(),
         )
         .await;
+    let load_millis = load_started_at.elapsed().as_millis();
     runtime.session().archive_transaction(&tx_id)?;
     result?;
 
@@ -174,6 +181,12 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<()> 
     }
 
     gate.mark_ready()?;
+    info!(
+        "[PERF-688] conductora_bootstrap: input_ms={} load_and_commit_ms={} total_ms={}",
+        input_millis,
+        load_millis,
+        bootstrap_started_at.elapsed().as_millis(),
+    );
     Ok(())
 }
 

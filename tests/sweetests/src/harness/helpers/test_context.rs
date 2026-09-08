@@ -107,11 +107,11 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     let bootstrap_content_started = Instant::now();
     let bootstrap_content_set = build_core_schema_bootstrap_content_set()
         .expect("failed to build Core Schema bootstrap ContentSet");
-    info!(
-        elapsed_ms = bootstrap_content_started.elapsed().as_millis(),
-        "sweettest runtime: CoreSchemaSpace bootstrap inputs ready"
-    );
     let descriptor_keys = expected_descriptor_keys(&bootstrap_content_set);
+    info!(
+        "[PERF-688] sweettest_bootstrap: input_and_expectation_ms={}",
+        bootstrap_content_started.elapsed().as_millis(),
+    );
     let bootstrap_load_started = Instant::now();
     runtime
         .execute_command(
@@ -123,10 +123,15 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
         )
         .await
         .expect("failed to load Core Schema bootstrap bundle");
+    info!(
+        "[PERF-688] sweettest_bootstrap: guest_load_and_commit_ms={}",
+        bootstrap_load_started.elapsed().as_millis(),
+    );
+    let bootstrap_verification_started = Instant::now();
     assert_descriptor_completion(&bootstrap_context, descriptor_keys);
     info!(
-        elapsed_ms = bootstrap_load_started.elapsed().as_millis(),
-        "sweettest runtime: CoreSchemaSpace bootstrap load complete"
+        "[PERF-688] sweettest_bootstrap: post_commit_verification_ms={}",
+        bootstrap_verification_started.elapsed().as_millis(),
     );
     runtime
         .session()

@@ -35,16 +35,16 @@ impl HolochainSetup {
             tracing::error!("[HOLOCHAIN SETUP] Failed to load happ bundle: {}", e);
             anyhow::anyhow!("Failed to load happ bundle: {}", e)
         })?;
-        tracing::debug!(
-            "[HOLOCHAIN SETUP] happ bundle loaded in {:.1}s",
-            t_setup.elapsed().as_secs_f64()
+        tracing::info!(
+            "[PERF-688] holochain_setup: happ_bundle_ms={}",
+            t_setup.elapsed().as_millis(),
         );
 
         let t_admin = std::time::Instant::now();
         let admin_ws = handle.holochain()?.admin_websocket().await?;
-        tracing::debug!(
-            "[HOLOCHAIN SETUP] Admin websocket obtained in {:.1}s",
-            t_admin.elapsed().as_secs_f64()
+        tracing::info!(
+            "[PERF-688] holochain_setup: admin_websocket_ms={}",
+            t_admin.elapsed().as_millis(),
         );
 
         let installed_apps = admin_ws
@@ -70,15 +70,15 @@ impl HolochainSetup {
                 .await?;
         }
         tracing::info!(
-            "[HOLOCHAIN SETUP] App install/update done in {:.1}s",
-            t_install.elapsed().as_secs_f64()
+            "[PERF-688] holochain_setup: app_install_or_update_ms={}",
+            t_install.elapsed().as_millis(),
         );
 
         let t_appws = std::time::Instant::now();
         let app_ws = handle.holochain()?.app_websocket(app_id.clone()).await?;
-        tracing::debug!(
-            "[HOLOCHAIN SETUP] App websocket obtained in {:.1}s",
-            t_appws.elapsed().as_secs_f64()
+        tracing::info!(
+            "[PERF-688] holochain_setup: app_websocket_ms={}",
+            t_appws.elapsed().as_millis(),
         );
 
         let cell_details = hc_cfg
@@ -128,10 +128,7 @@ impl HolochainSetup {
         let (receptor_cfg, _client) =
             Self::build_receptor(app_ws, admin_ws, name, hc_cfg, cell0).await?;
         register_receptor(&handle, receptor_cfg).await?;
-        tracing::info!(
-            "[HOLOCHAIN SETUP] Total setup time: {:.1}s",
-            t_setup.elapsed().as_secs_f64()
-        );
+        tracing::info!("[PERF-688] holochain_setup: total_ms={}", t_setup.elapsed().as_millis(),);
 
         Ok(())
     }
