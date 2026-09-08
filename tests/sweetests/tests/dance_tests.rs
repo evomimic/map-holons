@@ -123,8 +123,8 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
     DanceTestSuite {
         name: "runtime_behavior_matrix",
         test_cases: vec![
-            stage_new_version_fixture().unwrap(),
             load_book_person_inverse_schema_fixture().unwrap(),
+            stage_new_version_fixture().unwrap(),
             simple_create_holon_fixture().unwrap(),
             simple_abandon_staged_changes_fixture().unwrap(),
             simple_add_remove_properties_fixture().unwrap(),
