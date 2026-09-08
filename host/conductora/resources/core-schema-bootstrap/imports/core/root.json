@@ -99,6 +99,14 @@
           ]
         },
         {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Key.PropertyType"
+            }
+          ]
+        },
+        {
           "name": "InstanceRelationships",
           "target": [
             {

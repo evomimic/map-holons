@@ -74,9 +74,9 @@ pub(crate) fn optional_string<T: ToPropertyName>(
 
 /// Returns a required enum value name from a descriptor holon.
 ///
-/// The loader currently materializes schema enum properties as string values,
-/// while direct descriptor tests may build them as `EnumValue`. Both carry the
-/// same canonical enum value name; parsing remains the caller's responsibility.
+/// Loader inputs carry enum tokens as strings until post-resolution materialization.
+/// Bootstrap descriptor navigation must accept both those tokens and native
+/// `EnumValue` values; parsing remains the caller's responsibility.
 pub(crate) fn require_enum_string<T: ToPropertyName>(
     holon: &HolonReference,
     property_name: T,

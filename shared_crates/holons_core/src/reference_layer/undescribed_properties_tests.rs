@@ -45,6 +45,7 @@ fn undescribed_properties_use_the_same_effective_contract_in_every_phase() -> Re
         (4, properties(&[("Key", "key-property"), ("TypeName", "Key")])),
         (5, properties(&[("Key", "title-property"), ("TypeName", "Title")])),
         (6, properties(&[("Key", "optional-property"), ("TypeName", "Optional")])),
+        (7, properties(&[("Title", "Keyless example")])),
     ]
     .into_iter()
     .map(|(value, properties)| {
@@ -53,6 +54,7 @@ fn undescribed_properties_use_the_same_effective_contract_in_every_phase() -> Re
     .collect();
     let relationships = HashMap::from([
         ((id(1), CoreRelationshipTypeName::DescribedBy.to_relationship_name()), vec![id(2)]),
+        ((id(7), CoreRelationshipTypeName::DescribedBy.to_relationship_name()), vec![id(2)]),
         ((id(2), CoreRelationshipTypeName::Extends.to_relationship_name()), vec![id(3)]),
         (
             (id(2), CoreRelationshipTypeName::InstanceProperties.to_relationship_name()),
@@ -76,6 +78,9 @@ fn undescribed_properties_use_the_same_effective_contract_in_every_phase() -> Re
     assert_eq!(smart.undescribed_property_names()?, expected);
     assert_eq!(HolonReference::from(transient).undescribed_property_names()?, expected);
     assert_eq!(HolonReference::from(staged).undescribed_property_names()?, expected);
+    let keyless = HolonReference::smart_from_id(context.context_handle(), id(7));
+    assert_eq!(keyless.key()?, None);
+    assert!(keyless.undescribed_property_names()?.is_empty());
     Ok(())
 }
 

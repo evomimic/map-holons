@@ -34,6 +34,7 @@ abstract holon HolonType.TypeDescriptor {
   }
   relationships {
     ValidationBindings -> NoUndescribedProperties.ValidationRule
+    InstanceProperties -> Key.PropertyType
     InstanceRelationships -> [
       (HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor),
       (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType),

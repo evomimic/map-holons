@@ -39,7 +39,7 @@
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "d8ddc537af7f5c29c9f06826b2a9f74952eb8f3d8664ed96638fea7b71304b6a"
+      "sha256": "312919fbb05750ededc4d34b451898cb225ca55cee845f74fa4a7387b7e4fdc1"
     },
     {
       "path": "imports/core/keyrules.json",
@@ -47,7 +47,7 @@
     },
     {
       "path": "imports/core/loader-types.json",
-      "sha256": "adb06688e396c9055780fd60418c1f623eed1316720bf4f9abda0078a22562ea"
+      "sha256": "29822c6b691406e67644e8337d8278e2d488bfb20d6178ad5b079142c5a6b72c"
     },
     {
       "path": "imports/core/operator-types.json",
@@ -63,7 +63,7 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "dcc6cca09c43489af48aabbcef45b3da702d7912849a9c4700a1db6294cdd513"
+      "sha256": "c43193f9963e890a4a11736ab8f788e4d6356e6c20c395f5f4fa11ae1c09da31"
     },
     {
       "path": "imports/core/validation.json",
@@ -83,7 +83,7 @@
     },
     {
       "path": "imports/commands/schema.json",
-      "sha256": "413715652d1b8d7b36abaf3d50fc098fb5b2a34f5d64a8a14a07d72b659266ba"
+      "sha256": "6c14a80a01dfb3df50e3414e38c911b56a78b90b1cda253778bac54d8d962607"
     },
     {
       "path": "imports/query/schema.json",

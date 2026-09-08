@@ -54,7 +54,16 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
     );
 
     let instance_property_names = property_type_names(holon_type_descriptor.instance_properties());
-    assert!(instance_property_names.is_empty());
+    assert_eq!(instance_property_names, vec!["Key".to_string()]);
+    assert!(!holon_type_descriptor
+        .get_property_by_name(CorePropertyTypeName::Key)
+        .expect("inherited Key descriptor")
+        .is_required()
+        .expect("Key requiredness"));
+    assert_contains(
+        &related_holon_keys(&find_holon_by_key(&holons, "Key.PropertyType"), "InstancePropertyFor"),
+        HOLON_TYPE_KEY,
+    );
 
     let instance_relationship_names =
         relationship_base_names(holon_type_descriptor.instance_relationships());
@@ -623,8 +632,9 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         .expect("Book allows_additional_relationships"));
 
     let instance_property_names = property_type_names(book_descriptor.instance_properties());
+    assert_contains(&instance_property_names, "Key"); // inherited from HolonType.TypeDescriptor
     assert_contains(&instance_property_names, "Title");
-    assert_eq!(instance_property_names.len(), 1);
+    assert_eq!(instance_property_names.len(), 2);
 
     let instance_relationship_names =
         relationship_base_names(book_descriptor.instance_relationships());
@@ -934,6 +944,14 @@ pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionStat
 }
 
 async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> HolonCollection {
+    loaded_holons_with_context(state, step_name).await.1
+}
+
+/// Keeps run-scoped descriptor anchors and returned subjects in the same assertion transaction.
+pub(super) async fn loaded_holons_with_context(
+    state: &mut TestExecutionState,
+    step_name: &str,
+) -> (Arc<TransactionContext>, HolonCollection) {
     let context = state.open_assertion_context(step_name).await.unwrap_or_else(|error| {
         panic!("{step_name}: failed to open assertion transaction: {error:?}")
     });
@@ -948,7 +966,7 @@ async fn loaded_holons(state: &mut TestExecutionState, step_name: &str) -> Holon
         .unwrap_or_else(|error| panic!("{step_name}: get_all_holons failed: {error:?}"));
 
     match result {
-        MapResult::Collection(collection) => collection,
+        MapResult::Collection(collection) => (context, collection),
         other => panic!("{step_name}: expected Collection, got {other:?}"),
     }
 }

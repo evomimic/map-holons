@@ -72,6 +72,9 @@ path = "../../shared_crates/holon_dance_builders"
 [dependencies.holons_core]
 path = "../../shared_crates/holons_core"
 
+[dependencies.holons_validation]
+path = "../../shared_crates/holons_validation"
+
 [dependencies.holons_boundary]
 path = "../../shared_crates/holons_boundary"
 

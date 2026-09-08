@@ -16,7 +16,8 @@
       "key": "MAP Commands Schema-v0.1.0",
       "type": "Schema.HolonType",
       "properties": {
-        "SchemaName": "MAP Commands Schema-v0.1.0"
+        "SchemaName": "MAP Commands Schema-v0.1.0",
+        "Description": "Schema defining MAP command types and their payload and affordance contracts."
       },
       "relationships": [
         {
