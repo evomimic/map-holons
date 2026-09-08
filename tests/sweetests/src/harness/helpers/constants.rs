@@ -16,6 +16,8 @@ pub const PUBLISHER_KEY: &str = "Publishing Company";
 /// collide with legacy fixtures that intentionally use the generic Book/Person keys.
 pub const BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY: &str = "Book.InverseSchema.Instance";
 pub const BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY: &str = "Person.InverseSchema.Instance";
+pub const STAGE_NEW_VERSION_BOOK_KEY: &str = "Book.StageNewVersion";
+pub const STAGE_NEW_VERSION_PERSON_1_KEY: &str = "Person.StageNewVersion.1";
 pub const BOOK_TO_PERSON_RELATIONSHIP: &str = "AuthoredBy";
 pub const PUBLISHED_BY: &str = "PublishedBy";
 pub const EDITOR_FOR: &str = "EditorFor";

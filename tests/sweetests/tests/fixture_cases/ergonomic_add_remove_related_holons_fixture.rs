@@ -1,8 +1,7 @@
 use holons_core::{core_shared_objects::holon::EssentialRelationshipMap, CollectionState};
 use holons_prelude::prelude::*;
 use holons_test::{
-    DancesTestCase, TestCaseInit, BOOK_KEY, BOOK_TO_PERSON_RELATIONSHIP, EDITOR_FOR, PERSON_1_KEY,
-    PERSON_2_KEY, PUBLISHED_BY, PUBLISHER_KEY,
+    DancesTestCase, TestCaseInit, BOOK_TO_PERSON_RELATIONSHIP, EDITOR_FOR, PUBLISHED_BY,
 };
 use pretty_assertions::assert_eq;
 use rstest::*;
@@ -25,11 +24,11 @@ pub fn ergonomic_add_remove_related_holons_fixture() -> Result<DancesTestCase, H
 
     // === TRANSIENT === //
     //
-    let book_key = MapString(BOOK_KEY.to_string());
-    let person_1_key = MapString(PERSON_1_KEY.to_string());
-    let person_2_key = MapString(PERSON_2_KEY.to_string());
-    let publisher_key = MapString(PUBLISHER_KEY.to_string());
-    let descriptor_key = MapString("DESCRIPTOR_KEY".to_string());
+    let book_key = MapString("Book.ErgonomicRelationships".to_string());
+    let person_1_key = MapString("Person.ErgonomicRelationships.1".to_string());
+    let person_2_key = MapString("Person.ErgonomicRelationships.2".to_string());
+    let publisher_key = MapString("Publisher.ErgonomicRelationships".to_string());
+    let descriptor_key = MapString("Descriptor.ErgonomicRelationships".to_string());
     let mut book_transient_reference =
         fixture_context.mutation().new_holon(Some(book_key.clone()))?;
     let person_1_transient_reference =

@@ -17,7 +17,7 @@ use holons_test::harness::helpers::{
     DELETION_SEMANTIC_KEY, HOLON_TYPE_KEY, OPERATOR_CATEGORY_EQUALITY_KEY, OPERATOR_CATEGORY_KEY,
     OPERATOR_CATEGORY_ORDERING_KEY, PERSON_1_KEY, PERSON_DESCRIPTOR_KEY,
     PERSON_TO_BOOK_RELATIONSHIP_INVERSE_KEY, PERSON_TO_BOOK_REL_INVERSE, SCHEMA_TYPE_KEY,
-    VARIANTS_RELATIONSHIP,
+    STAGE_NEW_VERSION_BOOK_KEY, STAGE_NEW_VERSION_PERSON_1_KEY, VARIANTS_RELATIONSHIP,
 };
 use holons_test::TestExecutionState;
 use integrity_core_types::LocalId;
@@ -827,7 +827,7 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
 pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionState) {
     let holons = loaded_holons(state, "verify_relationship_anchoring").await;
 
-    let books = find_holons_by_key(&holons, BOOK_KEY);
+    let books = find_holons_by_key(&holons, STAGE_NEW_VERSION_BOOK_KEY);
     assert_eq!(
         books.len(),
         1,
@@ -838,7 +838,7 @@ pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionStat
     let original_book = books[0].clone();
     assert_eq!(
         string_property(&original_book, "Title").as_deref(),
-        Some(BOOK_KEY),
+        Some(STAGE_NEW_VERSION_BOOK_KEY),
         "expected the enumerated Book node to be the lineage root, with its original title"
     );
 
@@ -859,7 +859,7 @@ pub async fn execute_verify_relationship_anchoring(state: &mut TestExecutionStat
     let new_book_id = local_id(&new_book);
     assert_ne!(original_book_id, new_book_id, "new version must have a distinct LocalId");
 
-    let person = find_holon_by_key(&holons, PERSON_1_KEY);
+    let person = find_holon_by_key(&holons, STAGE_NEW_VERSION_PERSON_1_KEY);
     let person_id = local_id(&person);
     let title_property = find_holon_by_key(&holons, "Title.PropertyType");
     let title_property_id = local_id(&title_property);

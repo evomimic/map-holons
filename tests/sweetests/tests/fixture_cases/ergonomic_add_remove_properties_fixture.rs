@@ -32,7 +32,7 @@ pub fn ergonomic_add_remove_properties_fixture() -> Result<DancesTestCase, Holon
     // === TRANSIENT === //
 
     // -- ADD -- //
-    let book_key = MapString("BOOK_KEY".to_string());
+    let book_key = MapString("Book.ErgonomicProperties".to_string());
     let mut book_transient_reference =
         fixture_context.mutation().new_holon(Some(book_key.clone()))?;
     book_transient_reference.with_property_value("Description", "This is a book description")?;

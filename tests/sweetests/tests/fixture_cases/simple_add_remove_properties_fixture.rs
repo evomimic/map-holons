@@ -4,7 +4,6 @@ use holons_prelude::prelude::*;
 use rstest::*;
 use std::collections::BTreeMap;
 
-use holons_test::harness::helpers::BOOK_KEY;
 use type_names::ToPropertyName;
 
 use super::setup_undescribed_book_people_publisher_steps_with_context;
@@ -31,6 +30,10 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
         &mut test_case,
         &mut fixture_holons,
         &mut fixture_bindings,
+        "Book.SimpleProperties",
+        "Person.SimpleProperties.1",
+        "Person.SimpleProperties.2",
+        "Publisher.SimpleProperties",
     )?;
 
     // == //
@@ -38,7 +41,7 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     // -- ADD STEP -- //
 
     // EXAMPLE (Transient) //
-    let example_key = MapString("EXAMPLE_KEY".to_string());
+    let example_key = MapString("Example.SimpleProperties".to_string());
     let example_transient_reference =
         fixture_context.mutation().new_holon(Some(example_key.clone()))?;
     // Mint
@@ -68,12 +71,11 @@ pub fn simple_add_remove_properties_fixture() -> Result<DancesTestCase, HolonErr
     )?;
 
     // BOOK (Staged) //
-    let _book_key = MapString(BOOK_KEY.to_string());
     let book_step_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
     // Add
     let mut book_properties = PropertyMap::new();
     book_properties.insert("Description".to_property_name(), "Changed description".to_base_value());
-    book_properties.insert("Title".to_property_name(), BOOK_KEY.to_base_value());
+    book_properties.insert("Title".to_property_name(), "Book.SimpleProperties".to_base_value());
     book_properties
         .insert("NewProperty".to_property_name(), "This is another property".to_base_value());
     book_properties.insert("Int".to_property_name(), 42.to_base_value());
