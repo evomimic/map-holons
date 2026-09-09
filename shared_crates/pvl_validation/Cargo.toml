@@ -1,12 +1,9 @@
 [package]
-name = "shared_validation"
+name = "pvl_validation"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-
-#serde = { version = "1", features = ["derive"] }
-#thiserror = "2"
 
 
 [dependencies.integrity_core_types]
@@ -18,5 +15,3 @@ path = "../type_system/core_types"
 [dev-dependencies.base_types]
 path = "../type_system/base_types"
 
-#[dependencies.holons_core]
-#path = "../holons_core"

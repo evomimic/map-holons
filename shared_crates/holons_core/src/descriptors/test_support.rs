@@ -1,21 +1,28 @@
+use crate::core_shared_objects::holon::SavedHolon;
 use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection, RelationshipMap, ServiceRoutingPolicy};
 use crate::reference_layer::{
     HolonReference, HolonServiceApi, StagedReference, TransientReference, WritableHolon,
 };
+use crate::HolonCollectionApi;
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
 use std::any::Any;
+use std::collections::HashMap;
 use std::sync::Arc;
 use type_names::{CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName};
 
 // Minimal fail-fast holon service for descriptor unit tests.
 //
-// Descriptor runtime tests stay entirely in-memory in this phase, so any call
-// that would cross into the real holon service is a test bug.
-#[derive(Debug)]
-struct TestHolonService;
+// Descriptor runtime tests stay entirely in-memory. Explicit saved snapshots
+// support reference-layer reads; other service operations fail rather than
+// accidentally crossing into production storage.
+#[derive(Debug, Default)]
+struct TestHolonService {
+    saved_holons: HashMap<HolonId, SavedHolon>,
+    saved_relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+}
 
 fn unreachable_in_descriptor_tests<T>() -> Result<T, HolonError> {
     Err(HolonError::NotImplemented("TestHolonService".to_string()))
@@ -53,18 +60,36 @@ impl HolonServiceApi for TestHolonService {
     fn fetch_holon_internal(
         &self,
         _context: &Arc<TransactionContext>,
-        _id: &HolonId,
+        id: &HolonId,
     ) -> Result<Holon, HolonError> {
-        unreachable_in_descriptor_tests()
+        self.saved_holons
+            .get(id)
+            .cloned()
+            .map(Holon::Saved)
+            .ok_or_else(|| HolonError::HolonNotFound(format!("test saved holon: {id:?}")))
     }
 
     fn fetch_related_holons_internal(
         &self,
-        _context: &Arc<TransactionContext>,
-        _source_id: &HolonId,
-        _relationship_name: &RelationshipName,
+        context: &Arc<TransactionContext>,
+        source_id: &HolonId,
+        relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
-        unreachable_in_descriptor_tests()
+        if !self.saved_holons.contains_key(source_id) {
+            return unreachable_in_descriptor_tests();
+        }
+        let mut collection = HolonCollection::new_transient();
+        if let Some(targets) =
+            self.saved_relationships.get(&(source_id.clone(), relationship_name.clone()))
+        {
+            collection.add_references(
+                targets
+                    .iter()
+                    .map(|id| HolonReference::smart_from_id(context.context_handle(), id.clone()))
+                    .collect(),
+            )?;
+        }
+        Ok(collection)
     }
 
     fn get_all_holons_internal(
@@ -72,6 +97,30 @@ impl HolonServiceApi for TestHolonService {
         _context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError> {
         unreachable_in_descriptor_tests()
+    }
+
+    fn get_saved_holon_by_key_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        key: &MapString,
+    ) -> Result<crate::SmartReference, HolonError> {
+        use type_names::ToPropertyName;
+        let property_name = CorePropertyTypeName::Key.to_property_name();
+        let matches: Vec<_> = self
+            .saved_holons
+            .iter()
+            .filter(|(_, holon)| {
+                holon.property_map().get(&property_name)
+                    == Some(&base_types::BaseValue::StringValue(key.clone()))
+            })
+            .collect();
+        match matches.as_slice() {
+            [(id, _)] => {
+                Ok(crate::SmartReference::new_from_id(context.context_handle(), (*id).clone()))
+            }
+            [] => Err(HolonError::HolonNotFound(key.to_string())),
+            _ => Err(HolonError::DuplicateError("saved fixture key".into(), key.to_string())),
+        }
     }
 
     fn load_holons_internal(
@@ -88,7 +137,21 @@ impl HolonServiceApi for TestHolonService {
 /// This mirrors the transaction-context test harness so descriptor tests can
 /// stage transient and staged holons without involving host or guest services.
 pub(crate) fn build_context() -> Arc<TransactionContext> {
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
+    build_context_with_saved_holons(Vec::new(), HashMap::new())
+}
+
+/// Supplies persisted snapshots through the service boundary for smart-reference tests.
+/// Production storage and reference-layer cache behavior remain outside this fixture.
+pub(crate) fn build_context_with_saved_holons(
+    holons: Vec<SavedHolon>,
+    relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+) -> Arc<TransactionContext> {
+    let saved_holons = holons
+        .into_iter()
+        .map(|holon| (HolonId::Local(holon.get_local_id().unwrap()), holon))
+        .collect();
+    let holon_service: Arc<dyn HolonServiceApi> =
+        Arc::new(TestHolonService { saved_holons, saved_relationships: relationships });
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         holon_service,

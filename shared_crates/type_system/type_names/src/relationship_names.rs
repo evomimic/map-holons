@@ -122,6 +122,7 @@ pub enum CoreRelationshipTypeName {
     TransactionModelAffordedBy,
     ValidationRuleAffordedBy,
     ValidationBindings,
+    ValidationBindingFor,
     ValueType,
     ValueTypeAffordedBy,
     ValueTypeFor,
@@ -142,6 +143,10 @@ mod tests {
 
     #[test]
     fn test_variant_string_conversion() {
+        assert_eq!(
+            CoreRelationshipTypeName::ValidationBindingFor.as_relationship_name().to_string(),
+            "ValidationBindingFor"
+        );
         assert_eq!(
             RelationshipName(MapString("ComponentOf".to_string())),
             CoreRelationshipTypeName::ComponentOf.as_relationship_name()

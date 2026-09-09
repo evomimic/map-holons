@@ -123,6 +123,11 @@ impl TransientReference {
         self.context_handle.tx_id()
     }
 
+    /// Internal access for descriptor bootstrap lookup through the bound transaction.
+    pub(crate) fn bound_context(&self) -> Arc<TransactionContext> {
+        self.context_handle.context()
+    }
+
     /// ⚠️ Returns a snapshot of the raw property map of this holon.
     ///
     /// Intended **only** for the holon loader, specifically for LoaderHolons whose

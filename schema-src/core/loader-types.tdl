@@ -20,7 +20,6 @@ holon LoaderHolon.HolonType {
   }
   relationships {
     InstanceProperties -> [
-      Key.PropertyType,
       LoaderHolonKey.PropertyType
     ]
     InstanceRelationships -> (LoaderHolon.HolonType)-[HasRelationshipReference]->(LoaderRelationshipReference.HolonType)

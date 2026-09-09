@@ -3,7 +3,7 @@
 use hdi::prelude::*;
 use holochain_serialized_bytes::{decode, encode};
 use integrity_core_types::{HolonNodeModel, PvlMalformedReason, PvlViolation};
-use shared_validation::{validate_holon_node_decoded, validate_holon_node_size};
+use pvl_validation::{validate_holon_node_decoded, validate_holon_node_size};
 
 use crate::HolonNode;
 
@@ -130,9 +130,9 @@ mod tests {
     use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
     use holochain_serialized_bytes::UnsafeBytes;
     use integrity_core_types::{PropertyMap, PropertyName};
+    use pvl_validation::pvl_limits_v1::{MAX_HOLON_NODE_BYTES, MAX_PROPERTY_COUNT};
     use serde::ser::{SerializeMap, SerializeStruct};
     use serde::Serialize;
-    use shared_validation::pvl_limits_v1::{MAX_HOLON_NODE_BYTES, MAX_PROPERTY_COUNT};
 
     use super::*;
 

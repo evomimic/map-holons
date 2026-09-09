@@ -6,7 +6,7 @@
 //! completes the contract by parsing the bytes as the exact Holochain hash type.
 //!
 //! Keeping those responsibilities separate makes these helpers reusable by
-//! coordinator preflight while preserving `shared_validation` as a WASM-safe,
+//! coordinator preflight while preserving `pvl_validation` as a WASM-safe,
 //! substrate-independent crate.
 //!
 //! No persisted HolonNode field currently uses these rules: the entry body carries semantic

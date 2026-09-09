@@ -1,7 +1,7 @@
 //! Holochain adapter for descriptor-independent `HolonNode` lifecycle validation.
 //!
 //! This module resolves the action named by an update or delete and projects
-//! only the facts needed by `shared_validation`. Target entry content is never
+//! only the facts needed by `pvl_validation`. Target entry content is never
 //! requested or decoded: the action already carries both its lifecycle kind and
 //! its entry type.
 //!
@@ -12,7 +12,7 @@
 
 use hdi::prelude::*;
 use integrity_core_types::PvlViolation;
-use shared_validation::{validate_delete_target, validate_update_target};
+use pvl_validation::{validate_delete_target, validate_update_target};
 
 use crate::action_target::classify_target;
 use crate::holon_node_envelope::HOLON_NODE_ENTRY_DEF_INDEX;
@@ -62,7 +62,7 @@ pub fn validate_holon_node_delete_target(
 mod tests {
     use integrity_core_types::PvlViolation;
     use mockall::mock;
-    use shared_validation::{
+    use pvl_validation::{
         TargetEntryKind, CREATE_ACTION_KIND, CREATE_OR_UPDATE_ACTION_KIND, HOLON_NODE_ENTRY_KIND,
         OTHER_ACTION_KIND, OTHER_APP_ENTRY_KIND, UPDATE_ACTION_KIND,
     };

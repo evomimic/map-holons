@@ -1,0 +1,11 @@
+[package]
+name = "holons_validation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+holons_core = { path = "../holons_core" }
+core_types = { path = "../type_system/core_types" }
+type_names = { path = "../type_system/type_names" }
+# MAP string/newtype construction at lookup and fixture boundaries.
+base_types = { path = "../type_system/base_types" }

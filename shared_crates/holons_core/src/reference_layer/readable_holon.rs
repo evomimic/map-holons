@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use super::{HolonReference, TransientReference};
@@ -14,7 +15,7 @@ use crate::{
     RelationshipMap,
 };
 use base_types::MapString;
-use core_types::{HolonError, HolonId, HolonNodeModel, PropertyValue};
+use core_types::{HolonError, HolonId, HolonNodeModel, PropertyName, PropertyValue};
 use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 use type_names::ToPropertyName;
 use type_names::{ToCommandName, ToDanceName};
@@ -208,6 +209,27 @@ pub trait ReadableHolon: ReadableHolonImpl {
     #[inline]
     fn available_properties(&self) -> Result<Vec<PropertyDescriptor>, HolonError> {
         self.holon_descriptor()?.instance_properties()
+    }
+
+    /// Returns populated property names absent from this holon's effective contract.
+    ///
+    /// Resolves the complete descriptor contract even when no properties are populated,
+    /// so an unavailable or ambiguous descriptor remains an error. Results follow
+    /// property-name order; the raw property map stays inside the reference layer.
+    ///
+    /// ```compile_fail
+    /// use holons_core::{HolonReference, ReadableHolon};
+    /// fn raw_properties(holon: &HolonReference) {
+    ///     holon.property_map_impl(); // The implementation trait is private.
+    /// }
+    /// ```
+    fn undescribed_property_names(&self) -> Result<Vec<PropertyName>, HolonError> {
+        let described = self
+            .available_properties()?
+            .into_iter()
+            .map(|property| property.property_name())
+            .collect::<Result<HashSet<_>, _>>()?;
+        Ok(self.property_map_impl()?.into_keys().filter(|name| !described.contains(name)).collect())
     }
 
     #[inline]

@@ -123,6 +123,7 @@ abstract value StringValueType.ValueType {
     plural: "StringValueTypes"
   }
   relationships {
+    ValidationBindings -> BaseValueKindMatchesString.ValidationRule
     AffordsOperator -> [
       EqualsOperator.OperatorType,
       LessThanOperator.OperatorType
@@ -140,6 +141,7 @@ abstract value IntegerValueType.ValueType {
     plural: "IntegerValueTypes"
   }
   relationships {
+    ValidationBindings -> BaseValueKindMatchesInteger.ValidationRule
     AffordsOperator -> [
       EqualsOperator.OperatorType,
       LessThanOperator.OperatorType
@@ -157,6 +159,7 @@ abstract value BooleanValueType.ValueType {
     plural: "BooleanValueTypes"
   }
   relationships {
+    ValidationBindings -> BaseValueKindMatchesBoolean.ValidationRule
     AffordsOperator -> EqualsOperator.OperatorType
   }
 }
@@ -170,6 +173,9 @@ abstract value BytesValueType.ValueType {
     display_plural: "Bytes Value Types"
     plural: "BytesValueTypes"
   }
+  relationships {
+    ValidationBindings -> BaseValueKindMatchesBytes.ValidationRule
+  }
 }
 
 abstract enum EnumValueType.ValueType {
@@ -182,6 +188,7 @@ abstract enum EnumValueType.ValueType {
     plural: "EnumValueTypes"
   }
   relationships {
+    ValidationBindings -> BaseValueKindMatchesEnum.ValidationRule
     AffordsOperator -> EqualsOperator.OperatorType
   }
 }

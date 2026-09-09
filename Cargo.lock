@@ -3435,10 +3435,11 @@ dependencies = [
  "holons_guest_integrity",
  "holons_integrity",
  "holons_loader",
+ "holons_validation",
  "integrity_core_types",
+ "pvl_validation",
  "serde",
  "sha2 0.10.9",
- "shared_validation",
  "tracing",
  "type_names",
 ]
@@ -3453,8 +3454,8 @@ dependencies = [
  "holochain_serialized_bytes",
  "integrity_core_types",
  "mockall",
+ "pvl_validation",
  "serde",
- "shared_validation",
 ]
 
 [[package]]
@@ -3466,8 +3467,8 @@ dependencies = [
  "holons_guest_integrity",
  "integrity_core_types",
  "mockall",
+ "pvl_validation",
  "serde",
- "shared_validation",
 ]
 
 [[package]]
@@ -3526,6 +3527,7 @@ dependencies = [
  "holons_loader_client",
  "holons_prelude",
  "holons_trust_channel",
+ "holons_validation",
  "integrity_core_types",
  "map_commands_contract",
  "map_commands_runtime",
@@ -3553,6 +3555,16 @@ dependencies = [
  "holons_boundary",
  "holons_core",
  "tracing",
+]
+
+[[package]]
+name = "holons_validation"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+ "type_names",
 ]
 
 [[package]]
@@ -6106,6 +6118,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pvl_validation"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "integrity_core_types",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7535,15 +7556,6 @@ checksum = "f6c99835bad52957e7aa241d3975ed17c1e5f8c92026377d117a606f36b84b16"
 dependencies = [
  "bytes",
  "memmap2",
-]
-
-[[package]]
-name = "shared_validation"
-version = "0.1.0"
-dependencies = [
- "base_types",
- "core_types",
- "integrity_core_types",
 ]
 
 [[package]]

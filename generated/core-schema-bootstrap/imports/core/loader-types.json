@@ -46,9 +46,6 @@
           "name": "InstanceProperties",
           "target": [
             {
-              "$ref": "Key.PropertyType"
-            },
-            {
               "$ref": "LoaderHolonKey.PropertyType"
             }
           ]

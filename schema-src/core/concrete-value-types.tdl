@@ -121,10 +121,18 @@ enum TargetBinding.MapEnumValueType {
     variant Version {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Binds a relationship target to one immutable holon version."
+        display_name: "Version"
+      }
     }
     variant Lineage {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Binds a relationship target to the root of a holon lineage."
+        display_name: "Lineage"
+      }
     }
   }
 }

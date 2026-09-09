@@ -371,6 +371,19 @@ impl DancesTestCase {
         Ok(())
     }
 
+    /// Declares a report-only check of every manifest-selected canonical holon.
+    pub fn add_verify_schema_validation_conformance_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            "Verify report-only validation conformance of the canonical schema corpus".to_string()
+        });
+        self.steps.push(DanceTestStep::VerifySchemaValidationConformance { description });
+        Ok(())
+    }
+
     pub fn add_load_holons_internal_step(
         &mut self,
         set: TransientReference,

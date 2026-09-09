@@ -13,6 +13,7 @@ members = [
 [workspace.dependencies]
 #holons = { path = "zomes/coordinator/holons" }
 holons_core = { path = "../shared_crates/holons_core" }
+holons_validation = { path = "../shared_crates/holons_validation" }
 core_types = { path = "../shared_crates/type_system/core_types" }
 holons_integrity = { path = "zomes/integrity/holons_integrity" }
 holons_guest = { path = "crates/holons_guest" }

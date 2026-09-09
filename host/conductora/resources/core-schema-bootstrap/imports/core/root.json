@@ -99,6 +99,14 @@
           ]
         },
         {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "Key.PropertyType"
+            }
+          ]
+        },
+        {
           "name": "InstanceRelationships",
           "target": [
             {
@@ -109,6 +117,14 @@
             },
             {
               "$ref": "(HolonType.TypeDescriptor)-[Predecessor]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "NoUndescribedProperties.ValidationRule"
             }
           ]
         },
@@ -148,6 +164,14 @@
           "target": [
             {
               "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "RequiredPropertyPresence.ValidationRule"
             }
           ]
         },
@@ -337,9 +361,6 @@
             },
             {
               "$ref": "IsAbstractType.PropertyType"
-            },
-            {
-              "$ref": "SchemaName.PropertyType"
             }
           ]
         },
