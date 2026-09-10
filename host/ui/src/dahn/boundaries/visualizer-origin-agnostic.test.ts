@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DefaultVisualizerRegistry } from '../registry/default-visualizer-registry';
-import { Phase0Selector } from '../selector/phase0-selector';
 import type {
-  CanvasDescriptor,
-  DahnTarget,
-  HolonViewAccess,
-  SelectorInput,
   VisualizerDefinition,
 } from '../index';
-
-const canvas: CanvasDescriptor = {
-  id: 'dahn-origin-agnostic',
-  slots: ['primary'],
-};
 
 function makeDefinition(
   id: string,
@@ -47,32 +37,6 @@ describe('DAHN visualizer origin-agnostic seams', () => {
     registry.register(definition);
 
     expect(registry.get('holon-node')).toBe(definition);
-  });
-
-  it('keeps selector output independent from component tag and origin metadata', () => {
-    const selector = new Phase0Selector();
-    const target = { reference: {} } as DahnTarget;
-    const input: SelectorInput = {
-      target,
-      holon: {} as HolonViewAccess,
-      actions: [{ id: 'open', kind: 'action', label: 'Open' }],
-      availableVisualizers: [
-        makeDefinition('holon-node', 'visualizer-from-i-space', {
-          signedBundleId: 'bundle-a',
-        }),
-        makeDefinition('action-menu', 'visualizer-from-integration-hub', {
-          trustChannelId: 'trust-channel-2',
-        }),
-      ],
-      canvas,
-    };
-
-    expect(selector.select(input)).toEqual({
-      visualizers: [
-        { visualizerId: 'holon-node', target, slot: 'primary' },
-        { visualizerId: 'action-menu', target, slot: 'primary' },
-      ],
-    });
   });
 
   it('treats load as an activation seam rather than a URL contract', async () => {

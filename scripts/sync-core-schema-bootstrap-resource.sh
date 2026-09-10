@@ -11,4 +11,5 @@ if [[ ! -f "${generated_bundle}/manifest.json" ]]; then
 fi
 
 mkdir -p "${packaged_bundle}"
+rm -rf "${packaged_bundle}/imports"
 cp -R "${generated_bundle}/." "${packaged_bundle}/"

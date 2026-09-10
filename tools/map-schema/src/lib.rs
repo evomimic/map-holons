@@ -153,7 +153,11 @@ fn collect_json_files(root: &Path, current: &Path, files: &mut Vec<DiscoveredFil
         let path = entry.path();
         if path.is_dir() {
             collect_json_files(root, &path, files)?;
-        } else if path.extension().and_then(|ext| ext.to_str()) == Some("json") {
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("json")
+            && path.file_name().and_then(|name| name.to_str()) != Some("core-schema-bootstrap.json")
+        {
+            // This adjacent generated bootstrap configuration is consumed by
+            // Conductora, not the Holon Loader's schema-import path.
             files.push(DiscoveredFile {
                 source_path: path.clone(),
                 relative_path: path.strip_prefix(root).map(Path::to_path_buf).unwrap_or_else(

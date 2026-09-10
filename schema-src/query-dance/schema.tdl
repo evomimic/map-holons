@@ -49,6 +49,7 @@ holon QueryDance.DanceType {
   type MetaDanceType.MetaHolonType
   extends DanceType.HolonType
   DanceDescription "Adapts a Dance invocation onto direct execution of a Query."
+  RequiredExecutionContext ContainerLocal
   header {
     description: "Dance adapter for Query execution. It does not define the Query engine or bind a DanceImplementation."
     display_name: "Query Dance"

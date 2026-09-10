@@ -108,6 +108,9 @@
           "target": [
             {
               "$ref": "DanceDescription.PropertyType"
+            },
+            {
+              "$ref": "RequiredExecutionContext.PropertyType"
             }
           ]
         },
@@ -381,7 +384,8 @@
         "DisplayName": "Load Holons Dance",
         "DisplayNamePlural": "Load Holons Dances",
         "Description": "Concrete standalone dance type for the holon data loader.",
-        "DanceDescription": "Loads a transient HolonLoadSet, stages and commits valid imported holons, and returns a transient HolonLoadResponse."
+        "DanceDescription": "Loads a transient HolonLoadSet, stages and commits valid imported holons, and returns a transient HolonLoadResponse.",
+        "RequiredExecutionContext": "SpaceAuthoritative"
       },
       "relationships": [
         {
@@ -2085,6 +2089,53 @@
       ]
     },
     {
+      "key": "RequiredExecutionContext.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "RequiredExecutionContext",
+        "TypeNamePlural": "RequiredExecutionContexts",
+        "DisplayName": "required_execution_context",
+        "DisplayNamePlural": "required_execution_contexts",
+        "Description": "Declarative execution context required by a DanceType, independent of ingress, routing, and implementation placement. Concrete DanceTypes default to SpaceAuthoritative at authoring time; ContainerLocal and HostAuthoritative must be explicit.",
+        "IsValueRequired": true,
+        "DefaultValue": "SpaceAuthoritative"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "RequiredExecutionContext.MapEnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "InvocationSource.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor",
       "properties": {
@@ -2805,6 +2856,156 @@
         "DisplayName": "Internal",
         "DisplayNamePlural": "Internals",
         "Description": "Invocation originated from trusted internal runtime code."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RequiredExecutionContext.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "RequiredExecutionContext",
+        "TypeNamePlural": "RequiredExecutionContexts",
+        "DisplayName": "Required Execution Context",
+        "DisplayNamePlural": "Required Execution Contexts",
+        "Description": "Execution context required by a DanceType contract."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "RequiredExecutionContext.MapEnumValueType.ContainerLocal"
+            },
+            {
+              "$ref": "RequiredExecutionContext.MapEnumValueType.HostAuthoritative"
+            },
+            {
+              "$ref": "RequiredExecutionContext.MapEnumValueType.SpaceAuthoritative"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RequiredExecutionContext.MapEnumValueType.ContainerLocal",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "ContainerLocal"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RequiredExecutionContext.MapEnumValueType.HostAuthoritative",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "HostAuthoritative"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RequiredExecutionContext.MapEnumValueType.SpaceAuthoritative",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "SpaceAuthoritative"
       },
       "relationships": [
         {

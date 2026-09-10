@@ -3,13 +3,14 @@ import { buildRequest } from '../request-context';
 import {
   expectCollection, expectDanceResponse, expectNone, expectRedoComplete,
   expectRedoToMarkerComplete, expectReference, expectReferences, expectUndoComplete,
-  expectUndoToMarkerComplete, expectValue,
+  expectUndoToMarkerComplete, expectValue, expectVisualizerSelection,
 } from '../result-decoders';
 import { invokeMapCommand, unwrapMapResponse } from '../transport';
 import type {
   BaseValue, ContentSet, DanceRequestWire, DanceV2InvocationWire, DanceResponseWire,
   HolonCollectionWire, HolonId, HolonReferenceWire, LocalId, MapResultWire,
   SmartReferenceWire, TransactionActionWire, TransientReferenceWire, TxId,
+  VisualizerSelectionRequestWire, VisualizerSelectionWire,
 } from '../wire-types';
 
 // ===========================================
@@ -55,6 +56,18 @@ export function commit(
   txId: TxId,
 ): Promise<HolonReferenceWire> {
   return runTransactionCommand(txId, 'Commit', expectReference);
+}
+
+/**
+ * Retrieves verified bytes for an opaque artifact capability issued by a
+ * materialization Dance in this transaction.
+ */
+export function fetchArtifact(
+  txId: TxId,
+  handle: string,
+  options?: RequestOptionsOverrides,
+): Promise<BaseValue> {
+  return runTransactionCommand(txId, { FetchArtifact: { handle } }, expectValue, options);
 }
 
 /**
@@ -396,4 +409,18 @@ export function danceV2(
   options?: RequestOptionsOverrides,
 ): Promise<HolonReferenceWire> {
   return runTransactionCommand(txId, { DanceV2: invocation }, expectReference, options);
+}
+
+/** Requests a semantic Visualizer selection from the Rust DAHN boundary. */
+export function selectVisualizer(
+  txId: TxId,
+  request: VisualizerSelectionRequestWire,
+  options?: RequestOptionsOverrides,
+): Promise<VisualizerSelectionWire> {
+  return runTransactionCommand(
+    txId,
+    { SelectVisualizer: request },
+    expectVisualizerSelection,
+    options,
+  );
 }

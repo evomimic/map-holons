@@ -323,6 +323,24 @@ impl TransactionContext {
         self.get_holon_service().ensure_local_holon_space_internal(self)
     }
 
+    /// Materializes the executable artifact for a selected Visualizer through
+    /// the execution-context-specific Holon service.
+    pub fn materialize_visualizer(
+        self: &Arc<Self>,
+        visualizer: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        self.get_holon_service().materialize_visualizer_internal(self, visualizer)
+    }
+
+    /// Retrieves verified artifact bytes for an opaque capability issued to
+    /// this transaction by a materialization operation.
+    pub fn fetch_artifact(
+        self: &Arc<Self>,
+        handle: &base_types::MapString,
+    ) -> Result<base_types::MapBytes, HolonError> {
+        self.get_holon_service().fetch_artifact_internal(self, handle)
+    }
+
     // ---------------------------------------------------------------------
     // Host Commit Ingress Guard
     // ---------------------------------------------------------------------

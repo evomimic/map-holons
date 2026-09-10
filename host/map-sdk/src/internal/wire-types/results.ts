@@ -13,12 +13,30 @@ import {
   isNumber,
   isRecord,
 } from './references';
+import type { VisualizerKindWire } from './commands';
 
 export type RelationshipDirectionWire = 'Declared' | 'Inverse';
 
 export interface QualifiedRelationshipWire {
   descriptor: HolonReferenceWire;
   direction: RelationshipDirectionWire;
+}
+
+export interface VisualizerSelectionWire {
+  selected: HolonReferenceWire;
+  requested_kind: VisualizerKindWire;
+  alternatives_available: boolean;
+}
+
+function isVisualizerSelectionWire(value: unknown): value is VisualizerSelectionWire {
+  return isRecord(value) && isHolonReferenceWire(value['selected']) &&
+    (value['requested_kind'] === 'Canvas' ||
+      value['requested_kind'] === 'Node' ||
+      value['requested_kind'] === 'Collection' ||
+      value['requested_kind'] === 'Properties' ||
+      value['requested_kind'] === 'Value' ||
+      value['requested_kind'] === 'Action') &&
+    typeof value['alternatives_available'] === 'boolean';
 }
 
 function isQualifiedRelationshipWire(
@@ -50,6 +68,7 @@ export type MapResultWire =
   | 'RedoToMarkerComplete'
   | { TransactionCreated: { tx_id: number } }
   | { Reference: HolonReferenceWire }
+  | { VisualizerSelection: VisualizerSelectionWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { QualifiedRelationships: QualifiedRelationshipWire[] }
@@ -72,6 +91,7 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
       isRecord(value.TransactionCreated) &&
       isNumber(value.TransactionCreated['tx_id'])) ||
     (hasSingleKey(value, 'Reference') && isHolonReferenceWire(value.Reference)) ||
+    (hasSingleKey(value, 'VisualizerSelection') && isVisualizerSelectionWire(value.VisualizerSelection)) ||
     (hasSingleKey(value, 'References') &&
       Array.isArray(value.References) &&
       value.References.every(isHolonReferenceWire)) ||

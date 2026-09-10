@@ -17,9 +17,38 @@ import {
 } from './references';
 import {
   type ContentSet,
+  extractBytes,
   extractNumber,
   type SmartReference,
 } from './types';
+
+/** DAHN-wide classification of a required Visualizer. */
+export type VisualizerKind =
+  | 'canvas'
+  | 'node'
+  | 'collection'
+  | 'properties'
+  | 'value'
+  | 'action';
+
+/**
+ * A visualization request submitted to the Rust-owned DAHN Selector Function.
+ *
+ * This SDK ingress currently supports Holon-backed subjects. The request form
+ * intentionally leaves room for future Slot, semantic-context, and non-Holon
+ * subject inputs without making TypeScript a second selector authority.
+ */
+export interface VisualizerSelectionRequest {
+  subject: HolonReference;
+  requestedKind: VisualizerKind;
+}
+
+/** Rust-selected semantic Visualizer reference for a visualization request. */
+export interface VisualizerSelection {
+  selected: HolonReference;
+  requestedKind: VisualizerKind;
+  alternativesAvailable: boolean;
+}
 
 // ===========================================
 // Public Map Transaction
@@ -189,12 +218,41 @@ export class MapTransaction {
     return extractNumber(value);
   }
 
+  /**
+   * Consumes an opaque artifact capability issued by a materialization Dance
+   * in this transaction and returns its verified bytes.
+   */
+  async fetchArtifact(handle: string): Promise<Uint8Array> {
+    const value = await internalTransaction.fetchArtifact(txIdFor(this), handle);
+    return Uint8Array.from(extractBytes(value));
+  }
+
   async danceV2(invocation: HolonReference): Promise<HolonReference> {
     const txId = txIdFor(this);
     const wireRef = await internalTransaction.danceV2(txId, {
       invocation: unwrapHolonReference(invocation),
     });
     return createHolonReference(txId, wireRef);
+  }
+
+  /**
+   * Submits a visualization request. Rust selects the concrete Visualizer;
+   * TypeScript may only materialize and render that selected identity.
+   */
+  async selectVisualizer(request: VisualizerSelectionRequest): Promise<VisualizerSelection> {
+    const txId = txIdFor(this);
+    const wire = await internalTransaction.selectVisualizer(
+      txId,
+      {
+        subject: unwrapHolonReference(request.subject),
+        requested_kind: toVisualizerKindWire(request.requestedKind),
+      },
+    );
+    return {
+      selected: createHolonReference(txId, wire.selected),
+      requestedKind: wire.requested_kind.toLowerCase() as VisualizerKind,
+      alternativesAvailable: wire.alternatives_available,
+    };
   }
 
 }
@@ -216,6 +274,22 @@ function toSmartReferenceWire(
     holon_id: currentVersion.holonId,
     smart_property_values: currentVersion.smartPropertyValues ?? null,
   };
+}
+
+function toVisualizerKindWire(kind: VisualizerKind):
+  | 'Canvas'
+  | 'Node'
+  | 'Collection'
+  | 'Properties'
+  | 'Value'
+  | 'Action' {
+  return `${kind[0].toUpperCase()}${kind.slice(1)}` as
+    | 'Canvas'
+    | 'Node'
+    | 'Collection'
+    | 'Properties'
+    | 'Value'
+    | 'Action';
 }
 
 async function withHolonNotFoundAsNull<T>(

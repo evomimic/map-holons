@@ -9,19 +9,12 @@ export type {
   HolonViewContext,
 } from './contracts/holon-view';
 export { DahnHolonView } from './map-adapter/dahn-holon-view';
-export type {
-  SelectorFunction,
-  SelectorInput,
-  SelectorOutput,
-} from './contracts/selector';
 export type { DahnTarget } from './contracts/targets';
 export type { DahnTheme } from './contracts/themes';
 export type {
   VisualizerContext,
   VisualizerDefinition,
   VisualizerElement,
-  VisualizerImplementationResolution,
-  VisualizerImplementationRuntimeKind,
   VisualizerTargetRule,
 } from './contracts/visualizers';
 export { DomCanvas } from './canvas/dom-canvas';
@@ -29,25 +22,25 @@ export { createCanvasRoot } from './canvas/create-canvas-root';
 export {
   DefaultVisualizerRegistry,
 } from './registry/default-visualizer-registry';
-export {
-  registerBuiltInVisualizers,
-} from './registry/register-builtins';
 export type { VisualizerRegistry } from './registry/visualizer-registry';
-export { Phase0Selector } from './selector/phase0-selector';
 export { DefaultDahnRuntime } from './runtime/default-dahn-runtime';
 export type { DahnRuntime } from './runtime/dahn-runtime';
 export {
-  DefaultVisualizerImplementationRuntime,
-} from './runtime/visualizer-implementation-runtime';
+  MaterializedVisualizerCache,
+} from './runtime/materialized-visualizer-cache';
 export type {
-  VisualizerImplementationRuntime,
-} from './runtime/visualizer-implementation-runtime';
+  MaterializedVisualizerModule,
+  VisualizerMaterializer,
+} from './runtime/materialized-visualizer-cache';
+export { MaterializedVisualizerRuntime } from './runtime/materialized-visualizer-runtime';
+export type {
+  VisualizerModuleExports,
+  VisualizerModuleImporter,
+} from './runtime/materialized-visualizer-runtime';
 export {
-  DahnImplementationResolutionError,
   DahnNotImplementedError,
   DahnRuntimeError,
 } from './runtime/runtime-errors';
 export { applyTheme } from './themes/apply-theme';
 export { DEFAULT_DAHN_THEME } from './themes/default-theme';
 export { DefaultThemeRegistry } from './themes/theme-registry';
-export { BUILTIN_VISUALIZER_DEFINITIONS } from './visualizers/builtins';

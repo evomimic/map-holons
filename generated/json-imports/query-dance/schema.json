@@ -126,7 +126,8 @@
         "DisplayName": "Query Dance",
         "DisplayNamePlural": "Query Dances",
         "Description": "Dance adapter for Query execution. It does not define the Query engine or bind a DanceImplementation.",
-        "DanceDescription": "Adapts a Dance invocation onto direct execution of a Query."
+        "DanceDescription": "Adapts a Dance invocation onto direct execution of a Query.",
+        "RequiredExecutionContext": "ContainerLocal"
       },
       "relationships": [
         {

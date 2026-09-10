@@ -297,7 +297,16 @@ mod tests {
 
         assert_eq!(
             selected_packages,
-            vec!["core", "validation", "dance", "commands", "query", "query-dance", "dahn"]
+            vec![
+                "core",
+                "validation",
+                "dance",
+                "dancer",
+                "commands",
+                "query",
+                "query-dance",
+                "dahn",
+            ]
         );
         assert!(!selected_packages.contains(&"test"));
         assert!(!selected_packages.contains(&"space-navigator"));

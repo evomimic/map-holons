@@ -8,10 +8,6 @@ import type {
   DahnTheme,
   HolonViewAccess,
   HolonViewContext,
-  Phase0Selector,
-  SelectorFunction,
-  SelectorInput,
-  SelectorOutput,
   VisualizerContext,
   VisualizerDefinition,
   VisualizerElement,
@@ -42,18 +38,6 @@ const canvasDescriptor: CanvasDescriptor = {
   slots: ['primary'],
 };
 
-const selectorInput: SelectorInput = {
-  target,
-  holon: holonAccess,
-  actions,
-  availableVisualizers: [],
-  canvas: canvasDescriptor,
-};
-
-const selectorOutput: SelectorOutput = {
-  visualizers: [],
-};
-
 const visualizerDefinition: VisualizerDefinition = {
   id: 'holon-node',
   displayName: 'Holon Node',
@@ -77,14 +61,7 @@ visualizerElement.setContext(visualizerContext);
 
 const runtime: DahnRuntime = new DefaultDahnRuntime();
 void runtime;
-void selectorInput;
-void selectorOutput;
 void visualizerDefinition;
 
 declare const holonViewContext: HolonViewContext;
-declare const selector: SelectorFunction;
-declare const phase0Selector: Phase0Selector;
-
 void holonViewContext;
-void selector;
-void phase0Selector;

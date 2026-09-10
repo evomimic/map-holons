@@ -40,6 +40,18 @@ There is no “mixed” execution context. Boundaries are strict by design.
 **Important:**  
 The root workspace is *never* a build target. Builds must always be run from `happ/` or `host/`.
 
+### House Troupe semantic packages
+
+`house-troupe/` is a peer-level source-tree boundary for semantic resources of
+MAP-stewarded Dancers that ship with the standard MAP experience. It is not a
+Cargo workspace, a build target, or a fourth execution context.
+
+House Troupe membership is a stewardship and distribution designation, not a
+runtime semantic relationship or a special Dancer type. A package such as
+`house-troupe/space-navigator/` contains separately loadable semantic
+resources. Its executable implementation remains under the workspace in which
+that implementation runs—currently `host/` for Space Navigator.
+
 The hApp workspace has two coordinator build targets with deliberately different artifact
 boundaries: `holons` is packaged into the production DNA and hApp, while
 `holons_test_probes` is built only as a loose Sweettest artifact. The authoritative rules for
@@ -187,7 +199,48 @@ This makes MSRV changes **explicit, auditable, and reversible**.
 
 ---
 
-## 7. Conductora’s Role in the Architecture
+## 7. Holonic Wrappers
+
+MAP's durable domain state is holonic. When a concept is represented by a
+`HolonType`, its mutable semantic state belongs in the described holon's
+properties and relationships, not in fields of a native Rust struct.
+
+A Rust wrapper for such a type is a thin, transaction-bound domain view:
+
+```text
+Domain wrapper
+  -> HolonReference
+  -> ReadableHolon accessors
+  -> WritableHolon mutators
+```
+
+The wrapper validates or constructs its `HolonReference`, keeps that reference
+private, and exposes domain-named accessors and mutators. Accessors resolve
+state through `ReadableHolon`; mutators update it through `WritableHolon`.
+The wrapper must not cache or duplicate persisted holon state in native fields,
+retain a separate transaction context, or serialize its bound reference across
+a transport boundary.
+
+`DanceInvocation`, `DanceDescriptor`, and `DanceImplementation` are examples
+of reference-backed wrappers. A domain wrapper for a `Visualizer` or
+`MaterializedVisualizer` would follow the same pattern: its source, format,
+entrypoint, and other semantic state remain properties of the encapsulated
+holon.
+
+This pattern does not make every Rust struct a wrapper. The following may hold
+native operational state when they do not model durable `HolonType` semantics:
+
+* host service implementations and adapters;
+* wire types at transport boundaries;
+* ephemeral request, response, and execution aggregates; and
+* infrastructure handles such as caches, channels, paths, or clients.
+
+Those types must not become a second source of truth for a holon's domain
+state. Before adding a field to a Rust type, ask whether it describes the
+durable semantic state of a `HolonType`. If it does, model it on the holon and
+expose it through a Holonic Wrapper instead.
+
+## 8. Conductora’s Role in the Architecture
 
 Conductora is a **host-side command and integration subsystem**.
 
@@ -202,7 +255,7 @@ Conductura never runs inside WASM and should always be treated as host infrastru
 
 ---
 
-## 8. Tests as a First-Class Architectural Layer
+## 9. Tests as a First-Class Architectural Layer
 
 The `tests/` directory mirrors real execution contexts rather than bypassing them.
 
@@ -216,7 +269,7 @@ Tests do not relax architectural constraints — they enforce them.
 
 ---
 
-## 9. Build Discipline (Non-Negotiable Rules)
+## 10. Build Discipline (Non-Negotiable Rules)
 
 To preserve isolation and reproducibility:
 
@@ -235,7 +288,7 @@ source-controlled surface manifest and artifact audit rather than restating it h
 
 ---
 
-## 10. One-Sentence Summary for Developers
+## 11. One-Sentence Summary for Developers
 
 If you’re unsure where code belongs, ask:
 

@@ -32,7 +32,7 @@ holon MetaDanceType.MetaHolonType {
     plural: "MetaDanceTypes"
   }
   relationships {
-    InstanceProperties -> DanceDescription.PropertyType
+    InstanceProperties -> [DanceDescription.PropertyType, RequiredExecutionContext.PropertyType]
     InstanceRelationships -> [
       (DanceType.HolonType)-[RequestType]->(HolonType.TypeDescriptor),
       (DanceType.HolonType)-[Response]->(DanceResponseType.HolonType),
@@ -123,6 +123,7 @@ holon LoadHolons.DanceType {
   type MetaDanceType.MetaHolonType
   extends DanceType.HolonType
   DanceDescription "Loads a transient HolonLoadSet, stages and commits valid imported holons, and returns a transient HolonLoadResponse."
+  RequiredExecutionContext SpaceAuthoritative
   header {
     description: "Concrete standalone dance type for the holon data loader."
     display_name: "Load Holons Dance"
@@ -607,6 +608,20 @@ property DanceDescription.PropertyType {
   }
 }
 
+property RequiredExecutionContext.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value RequiredExecutionContext.MapEnumValueType
+  IsValueRequired true
+  DefaultValue SpaceAuthoritative
+  header {
+    description: "Declarative execution context required by a DanceType, independent of ingress, routing, and implementation placement. Concrete DanceTypes default to SpaceAuthoritative at authoring time; ContainerLocal and HostAuthoritative must be explicit."
+    display_name: "required_execution_context"
+    display_plural: "required_execution_contexts"
+    plural: "RequiredExecutionContexts"
+  }
+}
+
 
 property InvocationSource.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
@@ -818,6 +833,31 @@ enum InvocationSource.MapEnumValueType {
         display_plural: "Internals"
         plural: "Internals"
       }
+    }
+  }
+}
+
+enum RequiredExecutionContext.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Execution context required by a DanceType contract."
+    display_name: "Required Execution Context"
+    display_plural: "Required Execution Contexts"
+    plural: "RequiredExecutionContexts"
+  }
+  variants {
+    variant ContainerLocal {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+    }
+    variant HostAuthoritative {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+    }
+    variant SpaceAuthoritative {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
     }
   }
 }

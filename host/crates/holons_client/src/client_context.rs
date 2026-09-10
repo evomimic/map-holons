@@ -14,7 +14,7 @@ use std::sync::Arc;
 ///
 /// This function sets up:
 /// - A default `HolonServiceApi` implementation (`ClientHolonService`).
-/// - A space manager configured with client-specific routing policies.
+/// - A space manager configured with the current local routing policy.
 /// - An implicit transaction opened via the per-space `TransactionManager`.
 /// - Injects the optional `DanceInitiator` for conductor calls.
 ///
@@ -36,8 +36,17 @@ pub fn init_client_context(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<Tr
 /// Same construction as `init_client_context()` but returns the space manager
 /// directly, leaving transaction lifecycle to the caller (e.g., `RuntimeSession`).
 pub fn init_client_runtime(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<HolonSpaceManager> {
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+    init_client_runtime_with_holon_service(
+        initiator,
+        Arc::new(ClientHolonService::development_default()),
+    )
+}
 
+/// Initializes a client runtime with the supplied context-specific Holon service.
+pub fn init_client_runtime_with_holon_service(
+    initiator: Option<Arc<dyn DanceInitiator>>,
+    holon_service: Arc<dyn HolonServiceApi>,
+) -> Arc<HolonSpaceManager> {
     Arc::new(HolonSpaceManager::new_with_managers(
         initiator,
         holon_service,

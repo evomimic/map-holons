@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use holons_client::{init_client_runtime, SessionReceptor}; //, receptor_factory};
+use holons_client::{
+    init_client_runtime_with_holon_service, ClientHolonService, DahnMaterializer, SessionReceptor,
+}; //, receptor_factory};
+use holons_core::HolonServiceApi;
 use map_commands_runtime::{Runtime, RuntimeSession};
 use tauri::{AppHandle, Manager};
 
@@ -37,7 +40,16 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
         return false;
     };
 
-    let space_manager = init_client_runtime(Some(initiator));
+    let artifact_root = handle
+        .path()
+        .resource_dir()
+        .map(|root| root.join("resources/dahn-visualizers"))
+        .unwrap_or_else(|_| {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/dahn-visualizers")
+        });
+    let holon_service: Arc<dyn HolonServiceApi> =
+        Arc::new(ClientHolonService::new(DahnMaterializer::new(artifact_root)));
+    let space_manager = init_client_runtime_with_holon_service(Some(initiator), holon_service);
 
     let session_receptor =
         handle.try_state::<SessionReceptorState>().and_then(|state| state.read().ok()?.clone());

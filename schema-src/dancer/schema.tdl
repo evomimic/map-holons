@@ -1,0 +1,122 @@
+schema "MAP Dancer Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Dance Schema-v0.1.0"
+  header {
+    description: "Generic MAP semantics for Dancers, their offered Dances, declared semantic dependencies, and the descriptor-driven activation affordance. Concrete Dancers and House Troupe packaging remain outside this package."
+  }
+}
+
+holon Dancer.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Generic software-agent holon that offers a coherent set of Dances and declares the semantic resources it requires. It is independent of executable runtime, artifact, and distribution technology."
+    display_name: "Dancer"
+    display_plural: "Dancers"
+    plural: "Dancers"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (Dancer.HolonType)-[OffersDance]->(DanceType.HolonType),
+      (Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor)
+    ]
+  }
+}
+
+holon ActivateDancerResponse.DanceResponseType {
+  type MetaDanceResponseType.MetaHolonType
+  extends DanceResponseType.HolonType
+  header {
+    description: "Successful response for activation of a Dancer. The initial response carries no implementation-specific body."
+    display_name: "Activate Dancer Response"
+    display_plural: "Activate Dancer Responses"
+    plural: "ActivateDancerResponses"
+  }
+}
+
+holon ActivateDancer.DanceType {
+  type MetaDanceType.MetaHolonType
+  extends DanceType.HolonType
+  DanceDescription "Makes a Dancer's declared capabilities available in the current MAP environment."
+  RequiredExecutionContext ContainerLocal
+  header {
+    description: "Generic Dancer lifecycle Dance. Activation is semantic availability, not a commitment to a particular schema-loading or executable-loading mechanism."
+    display_name: "Activate Dancer"
+    display_plural: "Activate Dancer Dances"
+    plural: "ActivateDancerDances"
+  }
+  relationships {
+    Response -> ActivateDancerResponse.DanceResponseType
+    DanceAffordedBy -> Dancer.HolonType
+  }
+}
+
+def relationship (Dancer.HolonType)-[OffersDance]->(DanceType.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> OfferedByDancer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Dancer.HolonType
+  target DanceType.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Declares one Dance in a Dancer's derived Repertory."
+    display_name: "Offers Dance"
+    display_plural: "Offers Dance Relationships"
+    plural: "OffersDanceRelationships"
+  }
+}
+
+inverse relationship (DanceType.HolonType)-[OfferedByDancer]->(Dancer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source DanceType.HolonType
+  target Dancer.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of OffersDance, identifying Dancers that offer a Dance."
+    display_name: "Offered By Dancer"
+    display_plural: "Offered By Dancer Relationships"
+    plural: "OfferedByDancerRelationships"
+  }
+}
+
+def relationship (Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> RequiredByDancer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Dancer.HolonType
+  target HolonType.TypeDescriptor
+  deletion_semantic Allow
+  header {
+    description: "Declares a semantically identifiable resource required by a Dancer."
+    display_name: "Requires"
+    display_plural: "Requires Relationships"
+    plural: "RequiresRelationships"
+  }
+}
+
+inverse relationship (HolonType.TypeDescriptor)-[RequiredByDancer]->(Dancer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonType.TypeDescriptor
+  target Dancer.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of Requires, identifying Dancers that declare a semantic resource as required."
+    display_name: "Required By Dancer"
+    display_plural: "Required By Dancer Relationships"
+    plural: "RequiredByDancerRelationships"
+  }
+}

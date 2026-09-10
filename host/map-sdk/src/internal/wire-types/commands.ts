@@ -50,6 +50,27 @@ export interface ContentSet {
   files_to_load: FileData[];
 }
 
+/** DAHN-wide classification requested from the Rust Selector Function. */
+export type VisualizerKindWire =
+  | 'Canvas'
+  | 'Node'
+  | 'Collection'
+  | 'Properties'
+  | 'Value'
+  | 'Action';
+
+/**
+ * Current Holon-backed wire ingress for a visualization request.
+ *
+ * The request remains intentionally broader than a kind-to-implementation
+ * lookup. Rust owns concrete selection; later requests can add subject forms,
+ * Slot context, and other policy inputs without changing that authority.
+ */
+export interface VisualizerSelectionRequestWire {
+  subject: HolonReferenceWire;
+  requested_kind: VisualizerKindWire;
+}
+
 /**
  * Flat transaction action enum mirroring Rust `TransactionActionWire`.
  *
@@ -74,6 +95,8 @@ export type TransactionActionWire =
   // foundation for new command-surface work.
   | { Dance: DanceRequestWire }
   | { DanceV2: DanceV2InvocationWire }
+  | { SelectVisualizer: VisualizerSelectionRequestWire }
+  | { FetchArtifact: { handle: string } }
   | 'GetAllHolons'
   | { GetStagedHolonByBaseKey: { key: string } }
   // Deliberate exception: duplicate-base-key staging lookup stays
@@ -257,6 +280,15 @@ export function isTransactionActionWire(
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
     (hasSingleKey(value, 'DanceV2') &&
       isDanceV2InvocationWire(value.DanceV2)) ||
+    (hasSingleKey(value, 'SelectVisualizer') &&
+      isRecord(value.SelectVisualizer) &&
+      isHolonReferenceWire(value.SelectVisualizer['subject']) &&
+      (value.SelectVisualizer['requested_kind'] === 'Canvas' ||
+        value.SelectVisualizer['requested_kind'] === 'Node' ||
+        value.SelectVisualizer['requested_kind'] === 'Collection' ||
+        value.SelectVisualizer['requested_kind'] === 'Properties' ||
+        value.SelectVisualizer['requested_kind'] === 'Value' ||
+        value.SelectVisualizer['requested_kind'] === 'Action')) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&
       isStringFieldObject(value.GetStagedHolonByBaseKey, 'key')) ||
     (hasSingleKey(value, 'GetStagedHolonsByBaseKey') &&

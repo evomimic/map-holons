@@ -3,6 +3,7 @@ use crate::descriptors::{
     accessor_helpers, DanceResponseDescriptor, Descriptor, HolonDescriptor, TypeHeader,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
+use base_types::BaseValue;
 use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 use type_names::{DanceName, ToDanceName};
@@ -23,6 +24,24 @@ impl DanceDescriptor {
 
     pub fn dance_name(&self) -> Result<DanceName, HolonError> {
         Ok(self.header().type_name()?.to_dance_name())
+    }
+
+    /// Returns the execution context required by this Dance's contract.
+    pub fn required_execution_context(
+        &self,
+    ) -> Result<crate::dances::RequiredExecutionContext, HolonError> {
+        match self.holon.property_value("RequiredExecutionContext")? {
+            Some(BaseValue::EnumValue(value)) => {
+                crate::dances::RequiredExecutionContext::parse(&value.0)
+            }
+            Some(BaseValue::StringValue(value)) => {
+                crate::dances::RequiredExecutionContext::parse(&value)
+            }
+            Some(other) => {
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Enum".to_string()))
+            }
+            None => Err(HolonError::EmptyField("RequiredExecutionContext".to_string())),
+        }
     }
 
     pub fn input_type(&self) -> Result<Option<HolonDescriptor>, HolonError> {
@@ -105,6 +124,20 @@ mod tests {
 
         assert_eq!(descriptor.dance_name()?, type_names::DanceName(MapString("Query".to_string())));
 
+        Ok(())
+    }
+
+    #[test]
+    fn required_execution_context_reads_descriptor_contract_metadata() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut holon = new_descriptor_holon(&context, "materialize", "Dance", "Holon")?;
+        holon.with_property_value("RequiredExecutionContext", "HostAuthoritative")?;
+
+        let descriptor = DanceDescriptor::from_holon(holon.into());
+        assert_eq!(
+            descriptor.required_execution_context()?,
+            crate::dances::RequiredExecutionContext::HostAuthoritative
+        );
         Ok(())
     }
 

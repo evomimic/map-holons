@@ -52,6 +52,18 @@ impl ToRelationshipName for &CoreRelationshipTypeName {
     }
 }
 
+impl ToRelationshipName for DahnRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.as_relationship_name()
+    }
+}
+
+impl ToRelationshipName for &DahnRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.clone().as_relationship_name()
+    }
+}
+
 impl ToRelationshipName for RelationshipName {
     fn to_relationship_name(self) -> RelationshipName {
         self // pass-through unchanged
@@ -133,6 +145,19 @@ impl CoreRelationshipTypeName {
     pub fn as_relationship_name(&self) -> RelationshipName {
         let pascal = format!("{self:?}").to_case(Case::UpperCamel);
         RelationshipName(MapString(pascal))
+    }
+}
+
+/// Canonical DAHN relationship type names.
+#[derive(Debug, Clone, VariantNames)]
+pub enum DahnRelationshipTypeName {
+    ImplementedBy,
+}
+
+impl DahnRelationshipTypeName {
+    /// Canonical relationship name in ClassCase (UpperCamel).
+    pub fn as_relationship_name(&self) -> RelationshipName {
+        RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
     }
 }
 

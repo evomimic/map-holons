@@ -7,6 +7,7 @@ import type {
   HolonReferenceWire,
   MapResultWire,
   QualifiedRelationshipWire,
+  VisualizerSelectionWire,
   TxId,
 } from './wire-types';
 
@@ -107,6 +108,13 @@ export function expectReference(result: MapResultWire): HolonReferenceWire {
   }
 
   throw unexpectedResultVariant('Reference', result);
+}
+
+export function expectVisualizerSelection(result: MapResultWire): VisualizerSelectionWire {
+  if (typeof result === 'object' && result !== null && 'VisualizerSelection' in result) {
+    return result.VisualizerSelection;
+  }
+  throw unexpectedResultVariant('VisualizerSelection', result);
 }
 
 /**

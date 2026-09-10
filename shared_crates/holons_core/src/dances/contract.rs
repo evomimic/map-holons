@@ -94,9 +94,12 @@ impl DanceRequestState {
 
 pub type DanceParameters = DanceRequestState;
 
-/// Execution context attached to a dance invocation.
+/// Ingress metadata attached to a Dance invocation.
+///
+/// This records how an invocation entered the runtime; it does not determine
+/// the selected implementation's execution context or its routing.
 #[derive(Debug, Clone)]
-pub struct DanceContext {
+pub struct DanceInvocationContext {
     /// Records which ingress surface initiated the dance.
     pub invocation_source: InvocationSource,
     /// Optional capability reference associated with the invocation.
@@ -105,7 +108,7 @@ pub struct DanceContext {
     pub affording_type_ref: Option<HolonReference>,
 }
 
-impl DanceContext {
+impl DanceInvocationContext {
     pub fn new(
         invocation_source: InvocationSource,
         capability_ref: Option<HolonReference>,
@@ -127,7 +130,7 @@ impl DanceContext {
     }
 }
 
-/// Identifies which runtime surface initiated the invocation.
+/// Identifies which ingress surface initiated the invocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InvocationSource {
     /// The invocation entered through the host command surface.
@@ -138,9 +141,30 @@ pub enum InvocationSource {
     Internal,
 }
 
+/// Declarative execution context required by a resolved DanceType contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RequiredExecutionContext {
+    ContainerLocal,
+    HostAuthoritative,
+    SpaceAuthoritative,
+}
+
+impl RequiredExecutionContext {
+    pub(crate) fn parse(value: &MapString) -> Result<Self, HolonError> {
+        match value.0.as_str() {
+            "ContainerLocal" => Ok(Self::ContainerLocal),
+            "HostAuthoritative" => Ok(Self::HostAuthoritative),
+            "SpaceAuthoritative" => Ok(Self::SpaceAuthoritative),
+            other => Err(HolonError::InvalidParameter(format!(
+                "Unsupported RequiredExecutionContext value: {other}"
+            ))),
+        }
+    }
+}
+
 pub type DanceInvocationSource = InvocationSource;
 
-/// Resolved invocation context assembled for execution.
+/// Resolved invocation contract assembled for execution.
 ///
 /// Binding follows the typed invocation reference, resolves the descriptor
 /// relationships needed for execution, and keeps them together so the executor
@@ -153,6 +177,7 @@ pub struct BoundDanceInvocation {
     affording_holon: Option<HolonReference>,
     affording_holon_descriptor: Option<HolonDescriptor>,
     invocation_source: Option<InvocationSource>,
+    required_execution_context: RequiredExecutionContext,
 }
 
 impl BoundDanceInvocation {
@@ -194,6 +219,11 @@ impl BoundDanceInvocation {
     /// Returns the invocation source if it was recorded on the invocation holon.
     pub fn invocation_source(&self) -> Option<InvocationSource> {
         self.invocation_source
+    }
+
+    /// Returns the execution context required by the resolved DanceType.
+    pub fn required_execution_context(&self) -> RequiredExecutionContext {
+        self.required_execution_context
     }
 }
 
@@ -294,7 +324,7 @@ impl DanceInvocation {
         }
     }
 
-    /// Resolves the descriptor-backed execution context needed by the executor.
+    /// Resolves the descriptor-backed contract needed by the executor.
     pub fn bind(self) -> Result<BoundDanceInvocation, HolonError> {
         let affording_holon = self.affording_holon()?;
         let affording_holon =
@@ -304,11 +334,13 @@ impl DanceInvocation {
             })?;
         let affording_holon_descriptor = affording_holon.holon_descriptor()?;
         let dance_descriptor = affording_holon.get_dance_by_name(self.dance_name()?)?;
+        let required_execution_context = dance_descriptor.required_execution_context()?;
         let request_type = dance_descriptor.input_type()?;
 
         Ok(BoundDanceInvocation {
             request: self.request()?,
             invocation_source: self.invocation_source()?,
+            required_execution_context,
             invocation: self,
             dance_descriptor,
             request_type,
@@ -545,8 +577,9 @@ impl DanceEvent {
 #[cfg(test)]
 mod tests {
     use super::{
-        DanceContext, DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent, DanceIdentity,
-        DanceOutcome, DanceRequestState, DanceResult, DeleteHolonParameters, InvocationSource,
+        DanceDiagnostic, DanceDiagnosticSeverity, DanceEvent, DanceIdentity,
+        DanceInvocationContext, DanceOutcome, DanceRequestState, DanceResult,
+        DeleteHolonParameters, InvocationSource,
     };
     use crate::descriptors::test_support::{build_context, new_test_holon};
     use crate::reference_layer::{ReadableHolon, WritableHolon};
@@ -588,11 +621,17 @@ mod tests {
     #[test]
     fn context_helpers_select_expected_invocation_source() {
         assert_eq!(
-            DanceContext::client_command().invocation_source,
+            DanceInvocationContext::client_command().invocation_source,
             InvocationSource::ClientCommand
         );
-        assert_eq!(DanceContext::trust_channel().invocation_source, InvocationSource::TrustChannel);
-        assert_eq!(DanceContext::internal().invocation_source, InvocationSource::Internal);
+        assert_eq!(
+            DanceInvocationContext::trust_channel().invocation_source,
+            InvocationSource::TrustChannel
+        );
+        assert_eq!(
+            DanceInvocationContext::internal().invocation_source,
+            InvocationSource::Internal
+        );
     }
 
     #[test]

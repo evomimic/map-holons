@@ -3391,6 +3391,7 @@ dependencies = [
  "client_shared_types",
  "core_types",
  "futures-executor",
+ "hex",
  "holochain_receptor",
  "holon_dance_builders",
  "holons_boundary",
@@ -3399,8 +3400,11 @@ dependencies = [
  "serde",
  "serde_bytes",
  "session_receptor",
+ "sha2 0.10.9",
  "tokio",
  "tracing",
+ "type_names",
+ "uuid 1.21.0",
 ]
 
 [[package]]

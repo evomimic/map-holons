@@ -7,6 +7,7 @@ pub enum CoreValueTypeName {
     DanceDiagnosticSeverity,
     IntegerValueType,
     InvocationSource,
+    RequiredExecutionContext,
     MapBytesValueType,
     MapEnumValueType,
     MapValueArrayType,

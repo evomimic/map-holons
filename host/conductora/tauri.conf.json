@@ -39,7 +39,9 @@
 		],
 		"resources": [
 			"resources/bootstrap-import.schema.json",
-			"resources/core-schema-bootstrap"
+			"resources/core-schema-bootstrap",
+			"resources/house-troupe",
+			"resources/dahn-visualizers"
 		],
 		"externalBin": [],
 		"copyright": "",

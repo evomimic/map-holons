@@ -1,3 +1,4 @@
+use super::VisualizerKind;
 use base_types::BaseValue;
 use core_types::HolonId;
 use holons_core::core_shared_objects::transactions::TxId;
@@ -55,6 +56,10 @@ pub enum MapResult {
     /// Returns a holon reference.
     Reference(HolonReference),
 
+    /// Semantic DAHN selection. The references identify Visualizer holons;
+    /// executable artifacts are deliberately absent from this result.
+    VisualizerSelection(VisualizerSelection),
+
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///
     /// General plural command results should prefer `Collection(HolonCollection)`.
@@ -74,4 +79,11 @@ pub enum MapResult {
 
     /// Transitional dance-result exception retained for legacy and in-flight dance paths.
     DanceResponse(DanceResponse),
+}
+
+#[derive(Debug)]
+pub struct VisualizerSelection {
+    pub selected: HolonReference,
+    pub requested_kind: VisualizerKind,
+    pub alternatives_available: bool,
 }

@@ -124,6 +124,12 @@ pub enum CoreDanceImplementationName {
     LoadHolons,
 }
 
+/// Canonical implementation names for DAHN dances with native service operations.
+#[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
+pub enum DahnDanceImplementationName {
+    LocalMaterializeVisualizer,
+}
+
 impl CoreCommandTypeName {
     /// Canonical command type name in ClassCase (UpperCamel).
     pub fn as_command_name(&self) -> CommandName {
@@ -138,6 +144,12 @@ impl CoreDanceImplementationName {
     pub fn as_command_name(&self) -> CommandName {
         let command_name = format!("{self:?}").to_case(Case::UpperCamel);
         CommandName(MapString(command_name))
+    }
+}
+
+impl DahnDanceImplementationName {
+    pub fn as_implementation_name(&self) -> MapString {
+        MapString(format!("{self:?}").to_case(Case::UpperCamel))
     }
 }
 
