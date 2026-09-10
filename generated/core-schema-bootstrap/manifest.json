@@ -87,11 +87,11 @@
     },
     {
       "path": "imports/dancer/schema.json",
-      "sha256": "d29e6e098c82891a3d7bd37a476e17223d830fea32b5bbdde018843e835d560c"
+      "sha256": "8631b30f13b52db3197e5e4926cf3a4b0b4b8b3bf418d4370ecfbf8451cb4dbc"
     },
     {
       "path": "imports/commands/schema.json",
-      "sha256": "413715652d1b8d7b36abaf3d50fc098fb5b2a34f5d64a8a14a07d72b659266ba"
+      "sha256": "5a9998bc2f70b5593c12e1c57b0495bacb8c35d3597bace4a1ec2b5b3f035917"
     },
     {
       "path": "imports/query/schema.json",
@@ -672,6 +672,10 @@
       "type": "MetaDanceType.MetaHolonType"
     },
     {
+      "key": "ActivateDancerRequest.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "ActivateDancerResponse.DanceResponseType",
       "type": "MetaDanceResponseType.MetaHolonType"
     },
@@ -936,6 +940,10 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "DancerPackageIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "DeclaredRelationshipType.RelationshipType",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -1133,6 +1141,10 @@
     },
     {
       "key": "GetRelatedHolons.CommandType",
+      "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "GetSavedHolonByBaseKey.CommandType",
       "type": "MetaCommandType.MetaHolonType"
     },
     {
@@ -1388,6 +1400,10 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "LocalActivateDancer.DanceImplementation",
+      "type": "DanceImplementation.HolonType"
+    },
+    {
       "key": "LocalInstanceKindAnchorDesignation.ValidationRule",
       "type": "HolonValidationRule.HolonType"
     },
@@ -1426,6 +1442,10 @@
     {
       "key": "MAP.CoreSchemaSpace",
       "type": "HolonSpace.HolonType"
+    },
+    {
+      "key": "MAP.DancerActivator",
+      "type": "Dancer.HolonType"
     },
     {
       "key": "MapBoolean.PropertyType",

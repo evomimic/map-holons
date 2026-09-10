@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use holons_client::{
-    init_client_runtime_with_holon_service, ClientHolonService, DahnMaterializer, SessionReceptor,
+    init_client_runtime_with_holon_service, ClientHolonService, DahnMaterializer,
+    DancerPackageCatalog, SessionReceptor,
 }; //, receptor_factory};
 use holons_core::HolonServiceApi;
 use map_commands_runtime::{Runtime, RuntimeSession};
@@ -47,8 +48,19 @@ pub fn init_from_state(handle: &AppHandle) -> bool {
         .unwrap_or_else(|_| {
             std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/dahn-visualizers")
         });
-    let holon_service: Arc<dyn HolonServiceApi> =
-        Arc::new(ClientHolonService::new(DahnMaterializer::new(artifact_root)));
+    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService::new(
+        DahnMaterializer::new(artifact_root),
+        DancerPackageCatalog::new(
+            handle
+                .path()
+                .resource_dir()
+                .map(|root| root.join("resources/house-troupe"))
+                .unwrap_or_else(|_| {
+                    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                        .join("resources/house-troupe")
+                }),
+        ),
+    ));
     let space_manager = init_client_runtime_with_holon_service(Some(initiator), holon_service);
 
     let session_receptor =

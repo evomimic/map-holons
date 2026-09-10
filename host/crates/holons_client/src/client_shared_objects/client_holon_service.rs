@@ -58,20 +58,27 @@ use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 use tracing::info;
 
-use super::DahnMaterializer;
+use super::{DahnMaterializer, DancerPackageCatalog};
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService {
     dahn_materializer: DahnMaterializer,
+    dancer_package_catalog: DancerPackageCatalog,
 }
 
 impl ClientHolonService {
-    pub fn new(dahn_materializer: DahnMaterializer) -> Self {
-        Self { dahn_materializer }
+    pub fn new(
+        dahn_materializer: DahnMaterializer,
+        dancer_package_catalog: DancerPackageCatalog,
+    ) -> Self {
+        Self { dahn_materializer, dancer_package_catalog }
     }
 
     pub fn development_default() -> Self {
-        Self::new(DahnMaterializer::development_default())
+        Self::new(
+            DahnMaterializer::development_default(),
+            DancerPackageCatalog::development_default(),
+        )
     }
 }
 
@@ -313,6 +320,14 @@ impl HolonServiceApi for ClientHolonService {
         handle: &MapString,
     ) -> Result<MapBytes, HolonError> {
         self.dahn_materializer.fetch_artifact(context, handle)
+    }
+
+    fn activate_dancer_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        package_identity: &MapString,
+    ) -> Result<(), HolonError> {
+        self.dancer_package_catalog.activate(context, package_identity)
     }
 
     fn get_saved_holon_by_key_internal(

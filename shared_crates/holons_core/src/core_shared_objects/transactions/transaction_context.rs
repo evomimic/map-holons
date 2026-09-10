@@ -341,6 +341,26 @@ impl TransactionContext {
         self.get_holon_service().fetch_artifact_internal(self, handle)
     }
 
+    /// Activates one semantically identified Dancer package through the
+    /// context-specific Holon service strategy.
+    pub fn activate_dancer(
+        self: &Arc<Self>,
+        package_identity: &base_types::MapString,
+    ) -> Result<(), HolonError> {
+        self.get_holon_service().activate_dancer_internal(self, package_identity)
+    }
+
+    /// Opens an isolated transaction in the same MAP space for a host-owned
+    /// lifecycle operation. The caller's transaction remains open so its
+    /// Dance response can be constructed after the isolated operation commits.
+    pub fn open_isolated_transaction(
+        self: &Arc<Self>,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        self.space_manager
+            .get_transaction_manager()
+            .open_new_transaction(Arc::clone(&self.space_manager))
+    }
+
     // ---------------------------------------------------------------------
     // Host Commit Ingress Guard
     // ---------------------------------------------------------------------

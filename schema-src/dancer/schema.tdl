@@ -34,11 +34,25 @@ holon ActivateDancerResponse.DanceResponseType {
   }
 }
 
+holon ActivateDancerRequest.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Transient request projection identifying the locally available Dancer package to activate. The identity is semantic and does not expose a filesystem location or package implementation detail."
+    display_name: "Activate Dancer Request"
+    display_plural: "Activate Dancer Requests"
+    plural: "ActivateDancerRequests"
+  }
+  relationships {
+    InstanceProperties -> DancerPackageIdentity.PropertyType
+  }
+}
+
 holon ActivateDancer.DanceType {
   type MetaDanceType.MetaHolonType
   extends DanceType.HolonType
   DanceDescription "Makes a Dancer's declared capabilities available in the current MAP environment."
-  RequiredExecutionContext ContainerLocal
+  RequiredExecutionContext HostAuthoritative
   header {
     description: "Generic Dancer lifecycle Dance. Activation is semantic availability, not a commitment to a particular schema-loading or executable-loading mechanism."
     display_name: "Activate Dancer"
@@ -46,8 +60,40 @@ holon ActivateDancer.DanceType {
     plural: "ActivateDancerDances"
   }
   relationships {
+    RequestType -> ActivateDancerRequest.Projection
     Response -> ActivateDancerResponse.DanceResponseType
     DanceAffordedBy -> Dancer.HolonType
+  }
+}
+
+// This is a generic resident Dancer, not a House Troupe member. It supplies
+// the affordance needed to activate a package before that package's own Dancer
+// instance exists in the current MAP space.
+instance MAP.DancerActivator {
+  type Dancer.HolonType
+  relationships {
+    OffersDance -> ActivateDancer.DanceType
+  }
+}
+
+instance LocalActivateDancer.DanceImplementation {
+  type DanceImplementation.HolonType
+  ImplementationName "LocalActivateDancer"
+  relationships {
+    ForDance -> ActivateDancer.DanceType
+  }
+}
+
+property DancerPackageIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Stable semantic identity of a Dancer package requested for activation. Host package catalogs resolve this value without exposing package paths."
+    display_name: "dancer_package_identity"
+    display_plural: "dancer_package_identities"
+    plural: "DancerPackageIdentities"
   }
 }
 

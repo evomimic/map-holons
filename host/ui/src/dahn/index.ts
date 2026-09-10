@@ -9,6 +9,7 @@ export type {
   HolonViewContext,
 } from './contracts/holon-view';
 export { DahnHolonView } from './map-adapter/dahn-holon-view';
+export { SdkVisualizerMaterializer } from './map-adapter/sdk-visualizer-materializer';
 export type { DahnTarget } from './contracts/targets';
 export type { DahnTheme } from './contracts/themes';
 export type {

@@ -76,6 +76,11 @@ pub enum TransactionActionWire {
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
+    /// `get_saved_holon_by_key(key)` → `SmartReference`
+    GetSavedHolonByBaseKey {
+        key: MapString,
+    },
+
     /// `get_staged_holon_by_base_key(key)` → `StagedReference`
     GetStagedHolonByBaseKey {
         key: MapString,
@@ -236,6 +241,9 @@ impl TransactionActionWire {
             }
             // Lookup actions — no context binding needed
             TransactionActionWire::GetAllHolons => Ok(TransactionAction::GetAllHolons),
+            TransactionActionWire::GetSavedHolonByBaseKey { key } => {
+                Ok(TransactionAction::GetSavedHolonByBaseKey { key })
+            }
             TransactionActionWire::GetStagedHolonByBaseKey { key } => {
                 Ok(TransactionAction::GetStagedHolonByBaseKey { key })
             }

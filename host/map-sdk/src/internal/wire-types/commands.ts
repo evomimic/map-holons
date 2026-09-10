@@ -98,6 +98,7 @@ export type TransactionActionWire =
   | { SelectVisualizer: VisualizerSelectionRequestWire }
   | { FetchArtifact: { handle: string } }
   | 'GetAllHolons'
+  | { GetSavedHolonByBaseKey: { key: string } }
   | { GetStagedHolonByBaseKey: { key: string } }
   // Deliberate exception: duplicate-base-key staging lookup stays
   // reference-shaped rather than using HolonCollection.

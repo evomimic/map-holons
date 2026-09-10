@@ -90,6 +90,16 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         Err(HolonError::NotImplemented("fetch_artifact_internal".to_string()))
     }
 
+    /// Activates the named Dancer package through this execution context's
+    /// package catalog and loader strategy.
+    fn activate_dancer_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _package_identity: &MapString,
+    ) -> Result<(), HolonError> {
+        Err(HolonError::NotImplemented("activate_dancer_internal".to_string()))
+    }
+
     /// Expands generic SmartLinks from one local source and relationship.
     fn expand_smartlinks_from_source_internal(
         &self,

@@ -63,6 +63,9 @@ pub enum TransactionAction {
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
+    /// `get_saved_holon_by_key(key)` → `SmartReference`
+    GetSavedHolonByBaseKey { key: MapString },
+
     /// `get_staged_holon_by_base_key(key)` → `StagedReference`
     GetStagedHolonByBaseKey { key: MapString },
 
@@ -161,6 +164,7 @@ impl TransactionAction {
             }
             // Lookups
             TransactionAction::GetAllHolons
+            | TransactionAction::GetSavedHolonByBaseKey { .. }
             | TransactionAction::GetStagedHolonByBaseKey { .. }
             | TransactionAction::GetStagedHolonsByBaseKey { .. }
             | TransactionAction::GetStagedHolonByVersionedKey { .. }
@@ -194,6 +198,7 @@ impl TransactionAction {
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
             TransactionAction::FetchArtifact { .. } => "fetch_artifact",
             TransactionAction::GetAllHolons => "get_all_holons",
+            TransactionAction::GetSavedHolonByBaseKey { .. } => "get_saved_holon_by_base_key",
             TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
             TransactionAction::GetStagedHolonsByBaseKey { .. } => "get_staged_holons_by_base_key",
             TransactionAction::GetStagedHolonByVersionedKey { .. } => {

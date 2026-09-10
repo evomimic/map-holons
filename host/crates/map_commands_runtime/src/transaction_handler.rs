@@ -61,6 +61,10 @@ pub async fn handle_transaction(
             let collection = context.lookup().get_all_holons()?;
             Ok(MapResult::Collection(collection))
         }
+        TransactionAction::GetSavedHolonByBaseKey { key } => {
+            let saved = context.lookup().get_saved_holon_by_key(&key)?;
+            Ok(MapResult::Reference(HolonReference::Smart(saved)))
+        }
         TransactionAction::GetStagedHolonByBaseKey { key } => {
             let staged = context.lookup().get_staged_holon_by_base_key(&key)?;
             Ok(MapResult::Reference(HolonReference::Staged(staged)))

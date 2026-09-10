@@ -17,6 +17,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 sha2 = "0.10"
 uuid = { version = "1", features = ["v4"] }
 hex = "0.4"
+serde_json = "1.0"
 
 # MAP Dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }
@@ -29,5 +30,6 @@ type_names = { path = "../../../shared_crates/type_system/type_names" }
 client_shared_types = {path = "../shared_types"}
 holochain_receptor = { path = "../holochain_receptor" }
 session_receptor = { path = "../session_receptor" }
+holons_loader_client = { path = "../holons_loader_client" }
 #local_receptors = { path = "../local_receptors" }
 #holons_receptor = { path = "../holons_receptor" }

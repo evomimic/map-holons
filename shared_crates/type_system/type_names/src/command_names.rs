@@ -100,6 +100,7 @@ pub enum CoreCommandTypeName {
     LoadHolons,
     Dance,
     GetAllHolons,
+    GetSavedHolonByBaseKey,
     GetStagedHolonByBaseKey,
     GetStagedHolonsByBaseKey,
     GetStagedHolonByVersionedKey,
@@ -130,6 +131,12 @@ pub enum DahnDanceImplementationName {
     LocalMaterializeVisualizer,
 }
 
+/// Canonical implementation names for generic Dancer lifecycle dances.
+#[derive(Debug, Clone, PartialEq, Eq, VariantNames)]
+pub enum DancerDanceImplementationName {
+    LocalActivateDancer,
+}
+
 impl CoreCommandTypeName {
     /// Canonical command type name in ClassCase (UpperCamel).
     pub fn as_command_name(&self) -> CommandName {
@@ -148,6 +155,12 @@ impl CoreDanceImplementationName {
 }
 
 impl DahnDanceImplementationName {
+    pub fn as_implementation_name(&self) -> MapString {
+        MapString(format!("{self:?}").to_case(Case::UpperCamel))
+    }
+}
+
+impl DancerDanceImplementationName {
     pub fn as_implementation_name(&self) -> MapString {
         MapString(format!("{self:?}").to_case(Case::UpperCamel))
     }
@@ -186,6 +199,7 @@ mod tests {
             CoreCommandTypeName::LoadHolons,
             CoreCommandTypeName::Dance,
             CoreCommandTypeName::GetAllHolons,
+            CoreCommandTypeName::GetSavedHolonByBaseKey,
             CoreCommandTypeName::GetStagedHolonByBaseKey,
             CoreCommandTypeName::GetStagedHolonsByBaseKey,
             CoreCommandTypeName::GetStagedHolonByVersionedKey,

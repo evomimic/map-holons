@@ -9,6 +9,7 @@ use crate::reference_layer::{HolonReference, ReadableHolon};
 use base_types::{BaseValue, MapString};
 use type_names::{
     CoreDanceImplementationName, CoreRelationshipTypeName, DahnDanceImplementationName,
+    DancerDanceImplementationName,
 };
 
 /// Runtime wrapper for a dance implementation holon.
@@ -64,6 +65,12 @@ impl DanceImplementation {
             == DahnDanceImplementationName::LocalMaterializeVisualizer.as_implementation_name()
         {
             return implementations::materialize_visualizer::invoke(context, bound_invocation);
+        }
+
+        if implementation_name
+            == DancerDanceImplementationName::LocalActivateDancer.as_implementation_name()
+        {
+            return implementations::activate_dancer::invoke(context, bound_invocation);
         }
 
         Err(HolonError::NotImplemented(format!(

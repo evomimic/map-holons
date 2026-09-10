@@ -1126,6 +1126,51 @@
       ]
     },
     {
+      "key": "GetSavedHolonByBaseKey.CommandType",
+      "type": "MetaCommandType.MetaHolonType",
+      "properties": {
+        "TypeName": "GetSavedHolonByBaseKey",
+        "TypeNamePlural": "GetSavedHolonByBaseKeyCommands",
+        "DisplayName": "Get Saved Holon By Base Key Command",
+        "DisplayNamePlural": "Get Saved Holon By Base Key Commands",
+        "Description": "Returns the saved holon matching a specified stable semantic base key."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "CommandType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Commands Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "CommandAffordedBy",
+          "target": [
+            {
+              "$ref": "Transaction.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "GetStagedHolonByBaseKey.CommandType",
       "type": "MetaCommandType.MetaHolonType",
       "properties": {

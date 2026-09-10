@@ -3,6 +3,8 @@ import * as internalTransaction from '../internal/commands/transaction';
 import type {
   HolonId,
   LocalId,
+  PropertyName,
+  RelationshipName,
   SmartReferenceWire,
   TxId,
 } from '../internal';
@@ -19,6 +21,7 @@ import {
   type ContentSet,
   extractBytes,
   extractNumber,
+  extractString,
   type SmartReference,
 } from './types';
 
@@ -48,6 +51,13 @@ export interface VisualizerSelection {
   selected: HolonReference;
   requestedKind: VisualizerKind;
   alternativesAvailable: boolean;
+}
+
+/** Typed metadata returned by the MaterializeVisualizer Dance. */
+export interface MaterializedVisualizer {
+  artifactHandle: string;
+  format: string;
+  entrypoint: string;
 }
 
 // ===========================================
@@ -149,6 +159,14 @@ export class MapTransaction {
     return new HolonCollection(txId, collection);
   }
 
+  async getSavedHolonByBaseKey(key: string): Promise<HolonReference | null> {
+    const txId = txIdFor(this);
+    return withHolonNotFoundAsNull(async () => {
+      const wireRef = await internalTransaction.getSavedHolonByBaseKey(txId, key);
+      return createHolonReference(txId, wireRef);
+    });
+  }
+
   async getStagedHolonByBaseKey(key: string): Promise<HolonReference | null> {
     const txId = txIdFor(this);
     return withHolonNotFoundAsNull(async () => {
@@ -225,6 +243,43 @@ export class MapTransaction {
   async fetchArtifact(handle: string): Promise<Uint8Array> {
     const value = await internalTransaction.fetchArtifact(txIdFor(this), handle);
     return Uint8Array.from(extractBytes(value));
+  }
+
+  /**
+   * Invokes the selected Visualizer's normal MaterializeVisualizer Dance and
+   * projects its transient response body into artifact metadata. Artifact
+   * bytes remain behind the separate one-use capability command.
+   */
+  async materializeVisualizer(
+    selected: HolonReference,
+  ): Promise<MaterializedVisualizer> {
+    const invocationDescriptor = await this.getSavedHolonByBaseKey(
+      'DanceInvocation.HolonType',
+    );
+    if (invocationDescriptor === null) {
+      throw new Error('DanceInvocation descriptor is unavailable');
+    }
+    const invocation = await this.newHolon('materialize-visualizer-invocation');
+    await invocation.withDescriptor(invocationDescriptor);
+    await invocation.withPropertyValue('DanceName' as PropertyName, {
+      StringValue: 'MaterializeVisualizer',
+    });
+    await invocation.addRelatedHolons(
+      'AffordingHolon' as RelationshipName,
+      [selected],
+    );
+    const response = await this.danceV2(invocation);
+    const bodies = await response.relatedHolons('ResponseBody' as RelationshipName);
+    if (bodies.length !== 1) {
+      throw new Error(
+        `MaterializeVisualizer returned ${bodies.length} response bodies; expected one`,
+      );
+    }
+    const body = bodies.members[0];
+    const artifactHandle = await requiredStringProperty(body, 'VisualizerArtifactHandle');
+    const format = await requiredStringProperty(body, 'VisualizerModuleFormat');
+    const entrypoint = await requiredStringProperty(body, 'Entrypoint');
+    return { artifactHandle, format, entrypoint };
   }
 
   async danceV2(invocation: HolonReference): Promise<HolonReference> {
@@ -314,4 +369,15 @@ function txIdFor(transaction: MapTransaction): TxId {
   }
 
   return txId;
+}
+
+async function requiredStringProperty(
+  holon: HolonReference,
+  name: string,
+): Promise<string> {
+  const value = await holon.propertyValue(name as PropertyName);
+  if (value === null) {
+    throw new Error(`MaterializedVisualizer is missing required ${name}`);
+  }
+  return extractString(value);
 }

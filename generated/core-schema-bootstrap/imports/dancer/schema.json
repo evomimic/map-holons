@@ -115,6 +115,51 @@
       ]
     },
     {
+      "key": "ActivateDancerRequest.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ActivateDancerRequest",
+        "TypeNamePlural": "ActivateDancerRequests",
+        "DisplayName": "Activate Dancer Request",
+        "DisplayNamePlural": "Activate Dancer Requests",
+        "Description": "Transient request projection identifying the locally available Dancer package to activate. The identity is semantic and does not expose a filesystem location or package implementation detail."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "DancerPackageIdentity.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "ActivateDancer.DanceType",
       "type": "MetaDanceType.MetaHolonType",
       "properties": {
@@ -124,7 +169,7 @@
         "DisplayNamePlural": "Activate Dancer Dances",
         "Description": "Generic Dancer lifecycle Dance. Activation is semantic availability, not a commitment to a particular schema-loading or executable-loading mechanism.",
         "DanceDescription": "Makes a Dancer's declared capabilities available in the current MAP environment.",
-        "RequiredExecutionContext": "ContainerLocal"
+        "RequiredExecutionContext": "HostAuthoritative"
       },
       "relationships": [
         {
@@ -152,10 +197,112 @@
           ]
         },
         {
+          "name": "RequestType",
+          "target": [
+            {
+              "$ref": "ActivateDancerRequest.Projection"
+            }
+          ]
+        },
+        {
           "name": "Response",
           "target": [
             {
               "$ref": "ActivateDancerResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MAP.DancerActivator",
+      "type": "Dancer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "OffersDance",
+          "target": [
+            {
+              "$ref": "ActivateDancer.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LocalActivateDancer.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "LocalActivateDancer"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "ActivateDancer.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DancerPackageIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DancerPackageIdentity",
+        "TypeNamePlural": "DancerPackageIdentities",
+        "DisplayName": "dancer_package_identity",
+        "DisplayNamePlural": "dancer_package_identities",
+        "Description": "Stable semantic identity of a Dancer package requested for activation. Host package catalogs resolve this value without exposing package paths.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         },

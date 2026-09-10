@@ -16,6 +16,7 @@ export {
 } from './references';
 export { MapTransaction } from './transaction';
 export type {
+  MaterializedVisualizer,
   VisualizerKind,
   VisualizerSelection,
   VisualizerSelectionRequest,

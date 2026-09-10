@@ -110,22 +110,11 @@ impl DahnMaterializer {
         context: &Arc<TransactionContext>,
         handle: &MapString,
     ) -> Result<MapBytes, HolonError> {
-        let issued = self
+        let mut issued_artifacts = self
             .issued_artifacts
             .lock()
-            .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
-            .remove(handle)
-            .ok_or_else(|| {
-                HolonError::InvalidParameter("Unknown or expired artifact handle".into())
-            })?;
-
-        if issued.transaction_id != context.tx_id().value() {
-            return Err(HolonError::InvalidParameter(
-                "Artifact handle was issued to a different transaction".into(),
-            ));
-        }
-
-        Ok(issued.bytes)
+            .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?;
+        consume_issued_artifact(&mut issued_artifacts, context.tx_id().value(), handle)
     }
 
     fn artifact_for(&self, visualizer_key: &MapString) -> Result<PathBuf, HolonError> {
@@ -141,6 +130,30 @@ impl DahnMaterializer {
         };
         Ok(self.artifact_root.join(Path::new(filename)))
     }
+}
+
+/// Validates transaction ownership before consuming a one-use capability.
+///
+/// A caller in another transaction must not be able to invalidate the handle
+/// held by the transaction to which it was issued.
+fn consume_issued_artifact(
+    issued_artifacts: &mut HashMap<MapString, IssuedArtifact>,
+    transaction_id: u64,
+    handle: &MapString,
+) -> Result<MapBytes, HolonError> {
+    let issued = issued_artifacts
+        .get(handle)
+        .ok_or_else(|| HolonError::InvalidParameter("Unknown or expired artifact handle".into()))?;
+
+    if issued.transaction_id != transaction_id {
+        return Err(HolonError::InvalidParameter(
+            "Artifact handle was issued to a different transaction".into(),
+        ));
+    }
+
+    issued_artifacts.remove(handle).map(|issued| issued.bytes).ok_or_else(|| {
+        HolonError::InvalidState("Artifact handle disappeared during consumption".into())
+    })
 }
 
 fn require_single_implementation(
@@ -187,8 +200,9 @@ fn required_string_property<T: ToPropertyName>(
 
 #[cfg(test)]
 mod tests {
-    use super::DahnMaterializer;
-    use base_types::MapString;
+    use super::{consume_issued_artifact, DahnMaterializer, IssuedArtifact};
+    use base_types::{MapBytes, MapString};
+    use std::collections::HashMap;
 
     #[test]
     fn resolves_local_artifacts_from_visualizer_semantic_keys() {
@@ -208,5 +222,23 @@ mod tests {
         let materializer = DahnMaterializer::new("/artifacts".into());
 
         assert!(materializer.artifact_for(&MapString::from("untrusted.visualizer")).is_err());
+    }
+
+    #[test]
+    fn foreign_transaction_cannot_consume_another_transactions_handle() {
+        let handle = MapString::from("artifact:one");
+        let mut issued = HashMap::from([(
+            handle.clone(),
+            IssuedArtifact { transaction_id: 7, bytes: MapBytes(vec![1, 2, 3]) },
+        )]);
+
+        assert!(consume_issued_artifact(&mut issued, 8, &handle).is_err());
+        assert!(issued.contains_key(&handle));
+
+        assert_eq!(
+            consume_issued_artifact(&mut issued, 7, &handle).expect("issuing transaction"),
+            MapBytes(vec![1, 2, 3])
+        );
+        assert!(!issued.contains_key(&handle));
     }
 }

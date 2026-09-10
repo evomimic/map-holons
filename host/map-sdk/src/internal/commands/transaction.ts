@@ -120,6 +120,20 @@ export function newHolon(
   );
 }
 
+/** Resolves one saved holon by its stable semantic key. */
+export function getSavedHolonByBaseKey(
+  txId: TxId,
+  key: string,
+  options?: RequestOptionsOverrides,
+): Promise<HolonReferenceWire> {
+  return runTransactionCommand(
+    txId,
+    { GetSavedHolonByBaseKey: { key } },
+    expectReference,
+    options,
+  );
+}
+
 /**
  * Stage a transient holon as a new staged holon.
  */
