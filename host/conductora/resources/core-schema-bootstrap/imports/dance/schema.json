@@ -2939,7 +2939,11 @@
       "key": "RequiredExecutionContext.MapEnumValueType.ContainerLocal",
       "type": "MetaEnumVariantValueType.MetaValueType",
       "properties": {
-        "TypeName": "ContainerLocal"
+        "TypeName": "ContainerLocal",
+        "TypeNamePlural": "ContainerLocalContexts",
+        "DisplayName": "Container Local",
+        "DisplayNamePlural": "Container Local Contexts",
+        "Description": "Requires execution in the local container that hosts the current runtime."
       },
       "relationships": [
         {
@@ -2972,7 +2976,11 @@
       "key": "RequiredExecutionContext.MapEnumValueType.HostAuthoritative",
       "type": "MetaEnumVariantValueType.MetaValueType",
       "properties": {
-        "TypeName": "HostAuthoritative"
+        "TypeName": "HostAuthoritative",
+        "TypeNamePlural": "HostAuthoritativeContexts",
+        "DisplayName": "Host Authoritative",
+        "DisplayNamePlural": "Host Authoritative Contexts",
+        "Description": "Requires the native host to provide the authoritative implementation."
       },
       "relationships": [
         {
@@ -3005,7 +3013,11 @@
       "key": "RequiredExecutionContext.MapEnumValueType.SpaceAuthoritative",
       "type": "MetaEnumVariantValueType.MetaValueType",
       "properties": {
-        "TypeName": "SpaceAuthoritative"
+        "TypeName": "SpaceAuthoritative",
+        "TypeNamePlural": "SpaceAuthoritativeContexts",
+        "DisplayName": "Space Authoritative",
+        "DisplayNamePlural": "Space Authoritative Contexts",
+        "Description": "Requires the MAP space to provide the authoritative implementation."
       },
       "relationships": [
         {

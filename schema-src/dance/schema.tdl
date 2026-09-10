@@ -850,14 +850,32 @@ enum RequiredExecutionContext.MapEnumValueType {
     variant ContainerLocal {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Requires execution in the local container that hosts the current runtime."
+        display_name: "Container Local"
+        display_plural: "Container Local Contexts"
+        plural: "ContainerLocalContexts"
+      }
     }
     variant HostAuthoritative {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Requires the native host to provide the authoritative implementation."
+        display_name: "Host Authoritative"
+        display_plural: "Host Authoritative Contexts"
+        plural: "HostAuthoritativeContexts"
+      }
     }
     variant SpaceAuthoritative {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Requires the MAP space to provide the authoritative implementation."
+        display_name: "Space Authoritative"
+        display_plural: "Space Authoritative Contexts"
+        plural: "SpaceAuthoritativeContexts"
+      }
     }
   }
 }
