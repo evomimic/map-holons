@@ -91,7 +91,7 @@
     },
     {
       "path": "imports/commands/schema.json",
-      "sha256": "5a9998bc2f70b5593c12e1c57b0495bacb8c35d3597bace4a1ec2b5b3f035917"
+      "sha256": "833f379bd34de02e3295d6459795ca8df1e3acf3fca5097a98682271424e3406"
     },
     {
       "path": "imports/query/schema.json",
