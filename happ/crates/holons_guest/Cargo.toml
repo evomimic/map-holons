@@ -31,8 +31,8 @@ path = "../../../shared_crates/holons_core"
 [dependencies.integrity_core_types]
 path = "../../../shared_crates/type_system/integrity_core_types"
 
-[dependencies.shared_validation]
-path = "../../../shared_crates/shared_validation"
+[dependencies.pvl_validation]
+path = "../../../shared_crates/pvl_validation"
 
 [dependencies.core_types]
 path = "../../../shared_crates/type_system/core_types"
@@ -54,3 +54,7 @@ path = "../holons_loader"
 
 [dependencies.holons_boundary]
 path = "../../../shared_crates/holons_boundary"
+
+# Compile the descriptor-aware validator for WASM before Commit adopts it in VAL-C1b.
+[dependencies.holons_validation]
+path = "../../../shared_crates/holons_validation"

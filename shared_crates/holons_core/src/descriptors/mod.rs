@@ -15,12 +15,14 @@ pub mod operator_category;
 pub mod operator_descriptor;
 pub mod property_descriptor;
 pub mod relationship_descriptor;
+mod resolved_descriptor_roots;
 #[cfg(test)]
 mod schema_contract_tests;
 #[cfg(test)]
 pub(crate) mod test_support;
 pub mod transaction_descriptor;
 pub mod type_header;
+mod universal_descriptor_contract;
 pub mod value_descriptor;
 pub mod value_descriptor_subtypes;
 
@@ -33,8 +35,8 @@ pub use effective_relationships::{effective_relationship_declaration, QualifiedR
 pub use holon_descriptor::HolonDescriptor;
 pub use holon_space_descriptor::HolonSpaceDescriptor;
 pub use inheritance::{
-    ancestors, classify_relationship_direction, walk_extends_chain, ExtendsIter,
-    RelationshipDirection,
+    ancestors, classify_relationship_direction, effective_relationship_targets, equals_or_extends,
+    walk_extends_chain, EffectiveRelationshipMember, ExtendsIter, RelationshipDirection,
 };
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use inverse_resolution::resolve_inverse_relationship_name;
@@ -43,9 +45,11 @@ pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::{RelationshipDescriptor, TargetBinding};
+pub use resolved_descriptor_roots::{resolve_core_descriptor, ResolvedValueTypeRoots};
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
-pub use value_descriptor::ValueDescriptor;
+pub use universal_descriptor_contract::UniversalDescriptorContract;
+pub use value_descriptor::{ValueDescriptor, ValueDescriptorKind};
 pub use value_descriptor_subtypes::{
     EnumValueDescriptor, IntegerValueDescriptor, StringValueDescriptor, ValueArrayDescriptor,
 };

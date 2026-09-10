@@ -1,6 +1,4 @@
-use crate::descriptors::{
-    accessor_helpers, walk_extends_chain, Descriptor, TypeHeader, ValueDescriptor,
-};
+use crate::descriptors::{accessor_helpers, Descriptor, TypeHeader, ValueDescriptor};
 use crate::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
 use base_types::BaseValue;
 use core_types::{HolonError, PropertyName};
@@ -121,12 +119,7 @@ impl PropertyDescriptor {
         &self,
         name: CorePropertyTypeName,
     ) -> Result<Option<BaseValue>, HolonError> {
-        for ancestor in walk_extends_chain(&self.holon) {
-            if let Some(value) = ancestor?.property_value(name.clone())? {
-                return Ok(Some(value));
-            }
-        }
-        Ok(None)
+        accessor_helpers::effective_property_value(&self.holon, name)
     }
 }
 

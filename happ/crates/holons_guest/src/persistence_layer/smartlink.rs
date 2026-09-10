@@ -22,7 +22,7 @@ use hdk::prelude::*;
 use holons_guest_integrity::type_conversions::*;
 use holons_integrity::LinkTypes;
 use integrity_core_types::{LocalId, RelationshipName};
-use shared_validation::validate_smartlink_envelope;
+use pvl_validation::validate_smartlink_envelope;
 use std::collections::HashMap;
 
 /// Commit-local cache for SmartLink identity checks.

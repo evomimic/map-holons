@@ -6,7 +6,9 @@ use std::{
 use tracing::trace;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::core_shared_objects::transactions::{TransactionContextHandle, TxId};
+use crate::core_shared_objects::transactions::{
+    TransactionContext, TransactionContextHandle, TxId,
+};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -67,6 +69,11 @@ impl SmartReference {
     /// Returns the transaction id this reference is bound to.
     pub fn tx_id(&self) -> TxId {
         self.context_handle.tx_id()
+    }
+
+    /// Internal access for descriptor bootstrap lookup through the bound transaction.
+    pub(crate) fn bound_context(&self) -> Arc<TransactionContext> {
+        self.context_handle.context()
     }
 
     /// Returns the persistent holon id for this smart reference.

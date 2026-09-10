@@ -17,6 +17,7 @@ pub mod print_database_executor;
 pub mod query_relationships_executor;
 pub mod remove_properties_executor;
 pub mod remove_related_holon_executor;
+pub mod schema_validation_executor;
 pub mod stage_new_from_clone_executor;
 pub mod stage_new_holon_executor;
 pub mod stage_new_version_executor;

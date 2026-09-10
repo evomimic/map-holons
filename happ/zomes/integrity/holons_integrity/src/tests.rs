@@ -1,7 +1,7 @@
 use super::*;
 use holochain_serialized_bytes::{encode, SerializedBytes, UnsafeBytes};
 use mockall::mock;
-use shared_validation::pvl_limits_v1::MAX_HOLON_NODE_BYTES;
+use pvl_validation::pvl_limits_v1::MAX_HOLON_NODE_BYTES;
 
 const HOLON_ENTRY_DEF_INDEX: EntryDefIndex = EntryDefIndex(0);
 const HOLON_ZOME_INDEX: ZomeIndex = ZomeIndex(0);

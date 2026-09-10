@@ -33,6 +33,8 @@ abstract holon HolonType.TypeDescriptor {
     plural: "HolonTypes"
   }
   relationships {
+    ValidationBindings -> NoUndescribedProperties.ValidationRule
+    InstanceProperties -> Key.PropertyType
     InstanceRelationships -> [
       (HolonType.TypeDescriptor)-[DescribedBy]->(TypeDescriptor),
       (HolonType.TypeDescriptor)-[OwnedBy]->(HolonSpace.HolonType),
@@ -50,6 +52,9 @@ abstract holon PropertyType.TypeDescriptor {
     display_name: "Abstract Property Type"
     display_plural: "Abstract Property Types"
     plural: "PropertyTypes"
+  }
+  relationships {
+    ValidationBindings -> RequiredPropertyPresence.ValidationRule
   }
 }
 
@@ -107,8 +112,7 @@ abstract holon MetaTypeDescriptor.HolonType {
       DisplayNamePlural.PropertyType,
       Description.PropertyType,
       DefinesInstanceTypeKind.PropertyType,
-      IsAbstractType.PropertyType,
-      SchemaName.PropertyType
+      IsAbstractType.PropertyType
     ]
     InstanceRelationships -> [
       (TypeDescriptor)-[ComponentOf]->(Schema.HolonType),

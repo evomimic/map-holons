@@ -39,11 +39,11 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "d3e030caf33737970c769512d597a7b2f97604c86d2b033bc7294806c5ed0e1a"
+      "sha256": "70585cfa4b5c39fc3e3eb1b838ab0685daad93d189c303cbbadf13a16077b33e"
     },
     {
       "path": "imports/core/concrete-value-types.json",
-      "sha256": "d8ddc537af7f5c29c9f06826b2a9f74952eb8f3d8664ed96638fea7b71304b6a"
+      "sha256": "312919fbb05750ededc4d34b451898cb225ca55cee845f74fa4a7387b7e4fdc1"
     },
     {
       "path": "imports/core/keyrules.json",
@@ -51,7 +51,7 @@
     },
     {
       "path": "imports/core/loader-types.json",
-      "sha256": "adb06688e396c9055780fd60418c1f623eed1316720bf4f9abda0078a22562ea"
+      "sha256": "29822c6b691406e67644e8337d8278e2d488bfb20d6178ad5b079142c5a6b72c"
     },
     {
       "path": "imports/core/operator-types.json",
@@ -67,7 +67,7 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "b6eb7cfbab178703d203d49ea8460e9cc03afec5500230e3f732fc5388b7d852"
+      "sha256": "c43193f9963e890a4a11736ab8f788e4d6356e6c20c395f5f4fa11ae1c09da31"
     },
     {
       "path": "imports/core/validation.json",

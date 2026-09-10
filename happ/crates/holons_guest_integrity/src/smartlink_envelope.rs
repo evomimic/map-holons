@@ -10,7 +10,7 @@
 
 use hdi::prelude::*;
 use integrity_core_types::PvlViolation;
-use shared_validation::{
+use pvl_validation::{
     validate_link_delete_target, validate_smartlink_envelope, LinkDeleteTargetKind,
     INVALID_ACTION_HASH_ENCODING, SMARTLINK_BASE_ENDPOINT, SMARTLINK_LINK_TARGET_ENDPOINT,
     SMARTLINK_OUTBOUND_PROXY_ENDPOINT,

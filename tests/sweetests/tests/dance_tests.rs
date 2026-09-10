@@ -58,6 +58,7 @@ use execution_steps::new_holon_executor::execute_new_holon;
 use execution_steps::query_relationships_executor::execute_query_relationships;
 use execution_steps::remove_properties_executor::execute_remove_properties;
 use execution_steps::remove_related_holon_executor::execute_remove_related_holons;
+use execution_steps::schema_validation_executor::execute_verify_schema_validation_conformance;
 use execution_steps::stage_new_from_clone_executor::execute_stage_new_from_clone;
 use execution_steps::stage_new_holon_executor::execute_stage_new_holon;
 use execution_steps::stage_new_version_executor::execute_stage_new_version;
@@ -343,6 +344,9 @@ async fn run_dance_test_case(
             }
             DanceTestStep::VerifyCoreSchemaValueSemantics { .. } => {
                 execute_verify_core_schema_value_semantics(&mut test_execution_state).await
+            }
+            DanceTestStep::VerifySchemaValidationConformance { .. } => {
+                execute_verify_schema_validation_conformance(&mut test_execution_state).await
             }
             DanceTestStep::VerifyValidationBindingsDescriptorContract { .. } => {
                 execute_verify_validation_bindings_descriptor_contract(&mut test_execution_state)

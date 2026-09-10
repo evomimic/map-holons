@@ -345,7 +345,9 @@
       "key": "TargetBinding.MapEnumValueType.Version",
       "type": "MetaEnumVariantValueType.MetaValueType",
       "properties": {
-        "TypeName": "Version"
+        "TypeName": "Version",
+        "DisplayName": "Version",
+        "Description": "Binds a relationship target to one immutable holon version."
       },
       "relationships": [
         {
@@ -370,7 +372,9 @@
       "key": "TargetBinding.MapEnumValueType.Lineage",
       "type": "MetaEnumVariantValueType.MetaValueType",
       "properties": {
-        "TypeName": "Lineage"
+        "TypeName": "Lineage",
+        "DisplayName": "Lineage",
+        "Description": "Binds a relationship target to the root of a holon lineage."
       },
       "relationships": [
         {

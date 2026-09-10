@@ -8,6 +8,9 @@ meta {
 schema "MAP Commands Schema-v0.1.0" {
   depends_on "MAP Core Schema-v0.0.7"
   depends_on "MAP Dance Schema-v0.1.0"
+  header {
+    description: "Schema defining MAP command types and their payload and affordance contracts."
+  }
 }
 
 holon MetaCommandType.MetaHolonType {

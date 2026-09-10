@@ -319,6 +319,14 @@
               "$ref": "LessThanOperator.OperatorType"
             }
           ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "BaseValueKindMatchesString.ValidationRule"
+            }
+          ]
         }
       ]
     },
@@ -360,6 +368,14 @@
               "$ref": "LessThanOperator.OperatorType"
             }
           ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "BaseValueKindMatchesInteger.ValidationRule"
+            }
+          ]
         }
       ]
     },
@@ -398,6 +414,14 @@
               "$ref": "EqualsOperator.OperatorType"
             }
           ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "BaseValueKindMatchesBoolean.ValidationRule"
+            }
+          ]
         }
       ]
     },
@@ -426,6 +450,14 @@
           "target": [
             {
               "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "BaseValueKindMatchesBytes.ValidationRule"
             }
           ]
         }
@@ -464,6 +496,14 @@
           "target": [
             {
               "$ref": "EqualsOperator.OperatorType"
+            }
+          ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "BaseValueKindMatchesEnum.ValidationRule"
             }
           ]
         }

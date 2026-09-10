@@ -23,8 +23,8 @@ hdi = "0.7"
 [dependencies.holons_guest_integrity]
 path = "../../../crates/holons_guest_integrity"
 
-[dependencies.shared_validation]
-path = "../../../../shared_crates/shared_validation"
+[dependencies.pvl_validation]
+path = "../../../../shared_crates/pvl_validation"
 
 [dependencies.integrity_core_types]
 path = "../../../../shared_crates/type_system/integrity_core_types"

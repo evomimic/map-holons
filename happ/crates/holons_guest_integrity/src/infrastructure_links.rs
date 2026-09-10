@@ -8,7 +8,7 @@
 use std::fmt;
 
 use hdi::prelude::*;
-use shared_validation::{TargetActionKind, TargetEntryKind};
+use pvl_validation::{TargetActionKind, TargetEntryKind};
 
 use crate::action_target::classify_target;
 use crate::holon_node::LOCAL_HOLON_SPACE_PATH;

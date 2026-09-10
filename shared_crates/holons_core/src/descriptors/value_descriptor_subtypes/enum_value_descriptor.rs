@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::descriptors::inheritance::effective_relationship_members;
+use crate::descriptors::inheritance::effective_relationship_targets;
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     require_supported_operator, supported_operators, supports_operator, type_name_is,
     unsupported_operator, value_kind_mismatch, value_type_name,
@@ -83,7 +83,7 @@ impl EnumValueDescriptor {
     fn declared_variants(&self) -> Result<HashSet<String>, HolonError> {
         let mut variants = HashSet::new();
         for variant in
-            effective_relationship_members(&self.holon, CoreRelationshipTypeName::Variants)?
+            effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Variants)?
         {
             variants.insert(TypeHeader::new(&variant.member).type_name()?.to_string());
         }

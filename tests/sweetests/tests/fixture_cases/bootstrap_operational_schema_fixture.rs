@@ -25,6 +25,7 @@ pub fn bootstrap_operational_schema_fixture() -> Result<DancesTestCase, HolonErr
     test_case.add_verify_core_schema_command_affordances_step(None)?;
     test_case.add_verify_core_schema_value_semantics_step(None)?;
     test_case.add_verify_validation_bindings_descriptor_contract_step(None)?;
+    test_case.add_verify_schema_validation_conformance_step(None)?;
 
     for descriptor_key in OPERATIONAL_EXTENSION_DESCRIPTOR_KEYS {
         let stub =

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::descriptors::{
     accessor_helpers, effective_relationships,
-    inheritance::{effective_relationship_members, walk_extends_chain},
+    inheritance::{effective_relationship_targets, walk_extends_chain},
     CommandDescriptor, DanceDescriptor, DeclaredRelationshipDescriptor, Descriptor,
     InverseRelationshipDescriptor, KeyRuleDescriptor, PropertyDescriptor, QualifiedRelationship,
     RelationshipDescriptor, TypeHeader,
@@ -33,17 +33,34 @@ impl HolonDescriptor {
         TypeHeader::new(&self.holon)
     }
 
-    /// Returns whether instances may carry properties beyond the descriptor declaration.
+    /// Returns inherited constraint occurrences with their declaring descriptors.
+    /// Ancestor contributions precede local contributions; duplicates remain visible.
+    pub fn effective_constraints(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::Constraints)
+    }
+
+    /// Returns inherited validation commitments with their declaring descriptors.
+    /// Provenance lets callers assess binding placement before dispatching a rule.
+    pub fn effective_validation_bindings(
+        &self,
+    ) -> Result<Vec<super::EffectiveRelationshipMember>, HolonError> {
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::ValidationBindings)
+    }
+
+    /// Returns the nearest inherited additional-property policy, defaulting to false.
     pub fn allows_additional_properties(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(
+        accessor_helpers::additional_member_policy(
             &self.holon,
             CorePropertyTypeName::AllowsAdditionalProperties,
         )
     }
 
-    /// Returns whether instances may carry relationships beyond the descriptor declaration.
+    /// Returns the nearest inherited additional-relationship policy, defaulting to false.
+    /// This descriptor policy is available before Capability 4 adds relationship validation.
     pub fn allows_additional_relationships(&self) -> Result<bool, HolonError> {
-        accessor_helpers::require_bool(
+        accessor_helpers::additional_member_policy(
             &self.holon,
             CorePropertyTypeName::AllowsAdditionalRelationships,
         )
@@ -92,7 +109,7 @@ impl HolonDescriptor {
 
     /// Returns effective command descriptors across this descriptor's inheritance chain.
     pub fn afforded_commands(&self) -> Result<Vec<CommandDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, CoreRelationshipTypeName::AffordsCommand).map(
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::AffordsCommand).map(
             |members| {
                 members
                     .into_iter()
@@ -104,7 +121,7 @@ impl HolonDescriptor {
 
     /// Returns effective dance descriptors across this descriptor's inheritance chain.
     pub fn afforded_dances(&self) -> Result<Vec<DanceDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, CoreRelationshipTypeName::AffordsDance).map(
+        effective_relationship_targets(&self.holon, CoreRelationshipTypeName::AffordsDance).map(
             |members| {
                 members
                     .into_iter()
@@ -325,7 +342,7 @@ impl HolonDescriptor {
     /// Resolves the effective key rule for instances of this descriptor.
     pub fn effective_key_rule(&self) -> Result<KeyRuleDescriptor, HolonError> {
         let members =
-            effective_relationship_members(&self.holon, CoreRelationshipTypeName::InstanceKeyRule)?;
+            effective_relationship_targets(&self.holon, CoreRelationshipTypeName::InstanceKeyRule)?;
         let rule = match members.as_slice() {
             [] => {
                 return Err(HolonError::NoEffectiveKeyRule {
@@ -367,7 +384,7 @@ impl HolonDescriptor {
         &self,
         relationship_name: CoreRelationshipTypeName,
     ) -> Result<Vec<PropertyDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, relationship_name).map(|members| {
+        effective_relationship_targets(&self.holon, relationship_name).map(|members| {
             members
                 .into_iter()
                 .map(|member| PropertyDescriptor::from_holon(member.member))
@@ -379,7 +396,7 @@ impl HolonDescriptor {
         &self,
         relationship_name: CoreRelationshipTypeName,
     ) -> Result<Vec<RelationshipDescriptor>, HolonError> {
-        effective_relationship_members(&self.holon, relationship_name).map(|members| {
+        effective_relationship_targets(&self.holon, relationship_name).map(|members| {
             members
                 .into_iter()
                 .map(|member| RelationshipDescriptor::from_holon(member.member))
@@ -539,23 +556,34 @@ mod tests {
     }
 
     #[test]
-    fn structural_flags_error_when_required_boolean_is_missing() -> Result<(), HolonError> {
+    fn additional_property_policy_defaults_to_false() -> Result<(), HolonError> {
         let context = build_context();
         let mut holon = new_descriptor_holon(&context, "missing-structural-flag", "BookType")?;
         holon.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
 
         let descriptor = HolonDescriptor::from_holon(holon.into());
 
-        assert!(matches!(
-            descriptor.allows_additional_properties(),
-            Err(HolonError::EmptyField(field)) if field == "AllowsAdditionalProperties"
-        ));
+        assert!(!descriptor.allows_additional_properties()?);
 
         Ok(())
     }
 
     #[test]
-    fn structural_flags_error_when_relationship_flag_is_missing() -> Result<(), HolonError> {
+    fn additional_property_policy_inherits_and_allows_local_override() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut parent = new_descriptor_holon(&context, "policy-parent", "Parent")?;
+        parent.with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, true)?;
+        let mut child = new_descriptor_holon(&context, "policy-child", "Child")?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
+        let descriptor = HolonDescriptor::from_holon((&child).into());
+        assert!(descriptor.allows_additional_properties()?);
+        child.with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?;
+        assert!(!descriptor.allows_additional_properties()?);
+        Ok(())
+    }
+
+    #[test]
+    fn additional_relationship_policy_defaults_to_false() -> Result<(), HolonError> {
         let context = build_context();
         let mut holon =
             new_descriptor_holon(&context, "missing-relationship-structural-flag", "BookType")?;
@@ -563,11 +591,33 @@ mod tests {
 
         let descriptor = HolonDescriptor::from_holon(holon.into());
 
-        assert!(matches!(
-            descriptor.allows_additional_relationships(),
-            Err(HolonError::EmptyField(field)) if field == "AllowsAdditionalRelationships"
-        ));
+        assert!(!descriptor.allows_additional_relationships()?);
 
+        Ok(())
+    }
+
+    #[test]
+    fn additional_relationship_policy_inherits_overrides_and_rejects_malformed_values(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut parent = new_descriptor_holon(&context, "relationship-policy-parent", "Parent")?;
+        parent.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
+        let mut child = new_descriptor_holon(&context, "relationship-policy-child", "Child")?;
+        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![(&parent).into()])?;
+        let descriptor = HolonDescriptor::from_holon((&child).into());
+        assert!(descriptor.allows_additional_relationships()?);
+        child.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
+        assert!(!descriptor.allows_additional_relationships()?);
+        child.remove_property_value(CorePropertyTypeName::AllowsAdditionalRelationships)?;
+        parent.with_property_value(
+            CorePropertyTypeName::AllowsAdditionalRelationships,
+            "malformed",
+        )?;
+        assert!(matches!(descriptor.allows_additional_relationships(),
+            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"));
+        // A valid local override wins even when an ancestor's declaration is malformed.
+        child.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
+        assert!(descriptor.allows_additional_relationships()?);
         Ok(())
     }
 
