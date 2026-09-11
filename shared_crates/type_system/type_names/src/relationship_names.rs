@@ -119,6 +119,7 @@ pub enum CoreRelationshipTypeName {
     Request,
     ReferenceSource,
     ReferenceTarget,
+    RejectedHolons,
     Response,
     ResponseBody,
     ResponseBodyFor,
