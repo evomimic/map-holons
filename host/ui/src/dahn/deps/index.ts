@@ -10,3 +10,4 @@ export type {
   RelationshipDescriptorHandle,
   RelationshipName,
 } from './map-sdk';
+export type { MapTransaction } from './map-sdk';

@@ -9,7 +9,9 @@ use holons_boundary::{
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use serde::{Deserialize, Serialize};
 
-use map_commands_contract::{TransactionAction, TransactionCommand};
+use map_commands_contract::{
+    TransactionAction, TransactionCommand, VisualizerKind, VisualizerSelectionRequest,
+};
 
 /// Transaction-scoped wire command.
 ///
@@ -36,13 +38,19 @@ pub enum TransactionActionWire {
     RedoLast,
 
     /// Undoes mutations up to the specified marker.
-    UndoToMarker { marker_id: String },
+    UndoToMarker {
+        marker_id: String,
+    },
 
     /// Redoes mutations up to the specified marker.
-    RedoToMarker { marker_id: String },
+    RedoToMarker {
+        marker_id: String,
+    },
 
     /// Loads holons from uploaded/imported file content.
-    LoadHolons { content_set: ContentSet },
+    LoadHolons {
+        content_set: ContentSet,
+    },
 
     /// Executes the retained legacy dance ingress within this transaction.
     ///
@@ -52,28 +60,53 @@ pub enum TransactionActionWire {
     Dance(DanceRequestWire),
 
     /// Executes the canonical new-world dance ingress within this transaction.
-    DanceV2 { invocation: DanceV2InvocationWire },
+    DanceV2 {
+        invocation: DanceV2InvocationWire,
+    },
+
+    SelectVisualizer(VisualizerSelectionRequestWire),
+
+    /// Fetches verified bytes for an opaque artifact capability issued by a
+    /// materialization Dance in this transaction.
+    FetchArtifact {
+        handle: MapString,
+    },
 
     // ── Lookup actions ───────────────────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
 
+    /// `get_saved_holon_by_key(key)` → `SmartReference`
+    GetSavedHolonByBaseKey {
+        key: MapString,
+    },
+
     /// `get_staged_holon_by_base_key(key)` → `StagedReference`
-    GetStagedHolonByBaseKey { key: MapString },
+    GetStagedHolonByBaseKey {
+        key: MapString,
+    },
 
     /// `get_staged_holons_by_base_key(key)` → `Vec<StagedReference>`
     ///
     /// This remains the deliberate reference-shaped plural exception.
-    GetStagedHolonsByBaseKey { key: MapString },
+    GetStagedHolonsByBaseKey {
+        key: MapString,
+    },
 
     /// `get_staged_holon_by_versioned_key(key)` → `StagedReference`
-    GetStagedHolonByVersionedKey { key: MapString },
+    GetStagedHolonByVersionedKey {
+        key: MapString,
+    },
 
     /// `get_transient_holon_by_base_key(key)` → `TransientReference`
-    GetTransientHolonByBaseKey { key: MapString },
+    GetTransientHolonByBaseKey {
+        key: MapString,
+    },
 
     /// `get_transient_holon_by_versioned_key(key)` → `TransientReference`
-    GetTransientHolonByVersionedKey { key: MapString },
+    GetTransientHolonByVersionedKey {
+        key: MapString,
+    },
 
     /// `staged_count()` → `i64`
     GetStagedCount,
@@ -83,22 +116,82 @@ pub enum TransactionActionWire {
 
     // ── Mutation actions ─────────────────────────────────────────────
     /// `new_holon(key)` → `TransientReference`
-    NewHolon { key: Option<MapString> },
+    NewHolon {
+        key: Option<MapString>,
+    },
 
     /// `stage_new_holon(source)` → `StagedReference`
-    StageNewHolon { source: TransientReferenceWire },
+    StageNewHolon {
+        source: TransientReferenceWire,
+    },
 
     /// `stage_new_from_clone(original, new_key)` → `StagedReference`
-    StageNewFromClone { original: HolonReferenceWire, new_key: MapString },
+    StageNewFromClone {
+        original: HolonReferenceWire,
+        new_key: MapString,
+    },
 
     /// `stage_new_version(current_version)` → `StagedReference`
-    StageNewVersion { current_version: SmartReferenceWire },
+    StageNewVersion {
+        current_version: SmartReferenceWire,
+    },
 
     /// `stage_new_version_from_id(holon_id)` → `StagedReference`
-    StageNewVersionFromId { holon_id: HolonId },
+    StageNewVersionFromId {
+        holon_id: HolonId,
+    },
 
     /// `delete_holon(local_id)` → `()`
-    DeleteHolon { local_id: LocalId },
+    DeleteHolon {
+        local_id: LocalId,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum VisualizerKindWire {
+    Canvas,
+    Node,
+    Collection,
+    Properties,
+    Value,
+    Action,
+}
+
+/// Wire form of the current, Holon-backed selection request ingress.
+///
+/// The wire shape is deliberately request-based even though the current
+/// subjects are Holons. Later selector work may generalize the subject without
+/// reducing the Selector Function to a kind-to-implementation registry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VisualizerSelectionRequestWire {
+    pub subject: HolonReferenceWire,
+    pub requested_kind: VisualizerKindWire,
+}
+
+impl From<VisualizerKindWire> for VisualizerKind {
+    fn from(value: VisualizerKindWire) -> Self {
+        match value {
+            VisualizerKindWire::Canvas => Self::Canvas,
+            VisualizerKindWire::Node => Self::Node,
+            VisualizerKindWire::Collection => Self::Collection,
+            VisualizerKindWire::Properties => Self::Properties,
+            VisualizerKindWire::Value => Self::Value,
+            VisualizerKindWire::Action => Self::Action,
+        }
+    }
+}
+
+impl From<VisualizerKind> for VisualizerKindWire {
+    fn from(value: VisualizerKind) -> Self {
+        match value {
+            VisualizerKind::Canvas => Self::Canvas,
+            VisualizerKind::Node => Self::Node,
+            VisualizerKind::Collection => Self::Collection,
+            VisualizerKind::Properties => Self::Properties,
+            VisualizerKind::Value => Self::Value,
+            VisualizerKind::Action => Self::Action,
+        }
+    }
 }
 
 // ── Binding ─────────────────────────────────────────────────────────
@@ -135,8 +228,22 @@ impl TransactionActionWire {
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
             }
+            TransactionActionWire::SelectVisualizer(request) => {
+                Ok(TransactionAction::SelectVisualizer {
+                    request: VisualizerSelectionRequest {
+                        subject: request.subject.bind(context)?,
+                        requested_kind: request.requested_kind.into(),
+                    },
+                })
+            }
+            TransactionActionWire::FetchArtifact { handle } => {
+                Ok(TransactionAction::FetchArtifact { handle })
+            }
             // Lookup actions — no context binding needed
             TransactionActionWire::GetAllHolons => Ok(TransactionAction::GetAllHolons),
+            TransactionActionWire::GetSavedHolonByBaseKey { key } => {
+                Ok(TransactionAction::GetSavedHolonByBaseKey { key })
+            }
             TransactionActionWire::GetStagedHolonByBaseKey { key } => {
                 Ok(TransactionAction::GetStagedHolonByBaseKey { key })
             }

@@ -499,6 +499,7 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
     for (name, value) in descriptor.literal_properties.iter() {
         holon.property(canonical_property_name(name), literal_to_json(value))?;
     }
+    materialize_dance_execution_context_default(descriptor, &mut holon)?;
 
     if descriptor.is_generic_instance
         && (descriptor.extends.is_some()
@@ -594,6 +595,32 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
 
     assert_relationship_key_consistency(descriptor)?;
     Ok(holon)
+}
+
+/// Materializes the conservative authoring default onto each concrete DanceType.
+///
+/// The runtime intentionally requires this property to be present on resolved
+/// Dance descriptors. Keeping the default in TDL lowering makes an omitted
+/// authoring clause explicit in the loader artifact rather than teaching runtime
+/// readers to reinterpret absent metadata.
+fn materialize_dance_execution_context_default(
+    descriptor: &TdlDescriptor,
+    holon: &mut R6Holon,
+) -> Result<()> {
+    let is_concrete_dance_type = descriptor.kind == DescriptorKind::HolonType
+        && !descriptor.is_abstract
+        && !descriptor
+            .literal_properties
+            .get("IsAbstractType")
+            .and_then(TdlLiteralValue::as_bool)
+            .unwrap_or(false)
+        && descriptor.descriptor_type.as_deref() == Some("MetaDanceType.MetaHolonType");
+
+    if is_concrete_dance_type && !holon.properties.contains_key("RequiredExecutionContext") {
+        holon.property("RequiredExecutionContext", json!("SpaceAuthoritative"))?;
+    }
+
+    Ok(())
 }
 
 fn apply_r6_header(holon: &mut R6Holon, header: Option<&DescriptorHeader>) -> Result<()> {
@@ -2142,7 +2169,7 @@ holon Example.HolonType {
     #[test]
     fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 18);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 19);
 
         let diagnostics = check_inputs(&[fixture_root])?;
 
@@ -2164,8 +2191,8 @@ holon Example.HolonType {
         let parsed = parse_inputs(&[fixture_root.clone()])?;
         let compilation = build_r6_compilation(parsed)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 18);
-        assert_eq!(compilation.files.len(), 18);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 19);
+        assert_eq!(compilation.files.len(), 19);
         assert!(compilation
             .files
             .iter()
@@ -2180,8 +2207,8 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 18);
-        assert_eq!(compiled_files.len(), 18);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 19);
+        assert_eq!(compiled_files.len(), 19);
 
         let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
@@ -2195,7 +2222,8 @@ holon Example.HolonType {
     }
 
     #[test]
-    fn dahn_and_space_navigator_schemas_separate_types_from_bootstrap_holons() -> Result<()> {
+    fn dahn_and_house_troupe_space_navigator_schemas_separate_types_from_package_holons(
+    ) -> Result<()> {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;
 
@@ -2207,7 +2235,7 @@ holon Example.HolonType {
             "CanvasVisualizer.HolonType",
             "NodeVisualizer.HolonType",
             "CollectionVisualizer.HolonType",
-            "PropertyVisualizer.HolonType",
+            "PropertiesVisualizer.HolonType",
             "ValueVisualizer.HolonType",
             "ActionVisualizer.HolonType",
             "GraphVisualizer.HolonType",
@@ -2227,9 +2255,14 @@ holon Example.HolonType {
             assert_eq!(extends["target"][0]["$ref"], "Visualizer.HolonType");
         }
 
-        let space_navigator: Value = serde_json::from_str(&fs::read_to_string(
-            out_dir.join("space-navigator/schema.json"),
-        )?)?;
+        let house_troupe_out_dir = temp_out_dir();
+        let house_troupe_source = fixture_dir()
+            .parent()
+            .expect("repository root")
+            .join("house-troupe/space-navigator/schema");
+        compile_inputs(&[house_troupe_source], &house_troupe_out_dir)?;
+        let space_navigator: Value =
+            serde_json::from_str(&fs::read_to_string(house_troupe_out_dir.join("schema.json"))?)?;
         let space_navigator_holons =
             space_navigator["holons"].as_array().expect("Space Navigator schema holons array");
         let generic_node_visualizer = space_navigator_holons
@@ -2237,7 +2270,7 @@ holon Example.HolonType {
             .find(|holon| {
                 holon["key"].as_str() == Some("GenericHolonNodeVisualizer.NodeVisualizer")
             })
-            .context("Generic Holon Node Visualizer bootstrap holon")?;
+            .context("Generic Holon Node Visualizer package holon")?;
         assert_eq!(generic_node_visualizer["type"], "NodeVisualizer.HolonType");
 
         let relationships = generic_node_visualizer["relationships"]
@@ -2272,11 +2305,7 @@ holon Example.HolonType {
             "dahn.generic-holon-node"
         );
 
-        let layout_type = holons
-            .iter()
-            .find(|holon| holon["key"].as_str() == Some("Layout.HolonType"))
-            .context("Layout descriptor")?;
-        assert_eq!(layout_type["type"], "MetaHolonType.MetaTypeDescriptor");
+        assert!(holons.iter().all(|holon| holon["key"].as_str() != Some("Layout.HolonType")));
         let visualizer_slot_type = holons
             .iter()
             .find(|holon| holon["key"].as_str() == Some("VisualizerSlot.HolonType"))
@@ -2319,7 +2348,7 @@ holon Example.HolonType {
             .iter()
             .find(|holon| holon["key"].as_str() == Some("Visualizer.HolonType"))
             .context("Visualizer descriptor")?;
-        let uses_layout = visualizer_type["relationships"]
+        let has_slot = visualizer_type["relationships"]
             .as_array()
             .and_then(|relationships| {
                 relationships.iter().find(|relationship| {
@@ -2327,13 +2356,65 @@ holon Example.HolonType {
                         && relationship["target"].as_array().is_some_and(|targets| {
                             targets.iter().any(|target| {
                                 target["$ref"]
-                                    == "(Visualizer.HolonType)-[UsesLayout]->(Layout.HolonType)"
+                                    == "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
                             })
                         })
                 })
             })
-            .context("UsesLayout instance contract")?;
-        assert!(!uses_layout["target"].as_array().unwrap().is_empty());
+            .context("HasSlot instance contract")?;
+        assert!(!has_slot["target"].as_array().unwrap().is_empty());
+
+        let visualizer_usage_type = holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("VisualizerUsage.HolonType"))
+            .context("VisualizerUsage descriptor")?;
+        let usage_contract = visualizer_usage_type["relationships"]
+            .as_array()
+            .and_then(|relationships| {
+                relationships.iter().find(|relationship| {
+                    relationship["name"].as_str() == Some("InstanceRelationships")
+                        && relationship["target"].as_array().is_some_and(|targets| {
+                            targets.iter().any(|target| {
+                                target["$ref"]
+                                    == "(VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType)"
+                            }) && targets.iter().any(|target| {
+                                target["$ref"]
+                                    == "(VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)"
+                            })
+                        })
+                })
+            })
+            .context("VisualizerUsage instance contract")?;
+        assert!(!usage_contract["target"].as_array().unwrap().is_empty());
+
+        for (key, expected_inverse) in [
+            (
+                "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)",
+                "(VisualizerSlot.HolonType)-[SlotForVisualizer]->(Visualizer.HolonType)",
+            ),
+            (
+                "(VisualizerUsage.HolonType)-[UsesVisualizer]->(Visualizer.HolonType)",
+                "(Visualizer.HolonType)-[UsedByVisualizerUsage]->(VisualizerUsage.HolonType)",
+            ),
+            (
+                "(VisualizerUsage.HolonType)-[FillsVisualizerSlot]->(VisualizerSlot.HolonType)",
+                "(VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(VisualizerUsage.HolonType)",
+            ),
+        ] {
+            let relationship = holons
+                .iter()
+                .find(|holon| holon["key"].as_str() == Some(key))
+                .with_context(|| format!("{key} descriptor"))?;
+            let has_inverse = relationship["relationships"]
+                .as_array()
+                .and_then(|relationships| {
+                    relationships.iter().find(|relationship| {
+                        relationship["name"].as_str() == Some("HasInverse")
+                    })
+                })
+                .with_context(|| format!("{key} HasInverse relationship"))?;
+            assert_eq!(has_inverse["target"][0]["$ref"], expected_inverse);
+        }
 
         Ok(())
     }
@@ -2575,6 +2656,55 @@ instance Authors.UnresolvedConstraint {
 
         assert_eq!(constraint["properties"]["Minimum"], json!(0));
         assert!(constraint["properties"].get("Maximum").is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn concrete_dance_type_omission_materializes_space_authoritative_context() -> Result<()> {
+        let compiled = compile_input_string(
+            r#"schema Extension.Schema
+
+abstract holon Inspect.DanceType {
+  type MetaDanceType.MetaHolonType
+  extends DanceType.HolonType
+}
+
+holon InspectLocal.DanceType {
+  type MetaDanceType.MetaHolonType
+  extends Inspect.DanceType
+}
+"#,
+            "extension-dance.tdl",
+        )?;
+        let value: Value = serde_json::from_str(&compiled)?;
+        let dance = value["holons"]
+            .as_array()
+            .and_then(|holons| holons.iter().find(|holon| holon["key"] == "InspectLocal.DanceType"))
+            .expect("concrete DanceType");
+
+        assert_eq!(dance["properties"]["RequiredExecutionContext"], "SpaceAuthoritative");
+        Ok(())
+    }
+
+    #[test]
+    fn concrete_dance_types_materialize_explicit_execution_contexts() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+
+        for (path, dance_key, expected_context) in [
+            ("dance/schema.json", "LoadHolons.DanceType", "SpaceAuthoritative"),
+            ("dahn/schema.json", "MaterializeVisualizer.DanceType", "HostAuthoritative"),
+            ("query-dance/schema.json", "QueryDance.DanceType", "ContainerLocal"),
+            ("dancer/schema.json", "ActivateDancer.DanceType", "ContainerLocal"),
+        ] {
+            let schema: Value = serde_json::from_str(&fs::read_to_string(out_dir.join(path))?)?;
+            let dance = schema["holons"]
+                .as_array()
+                .and_then(|holons| holons.iter().find(|holon| holon["key"] == dance_key))
+                .with_context(|| format!("{dance_key} descriptor"))?;
+            assert_eq!(dance["properties"]["RequiredExecutionContext"], expected_context);
+        }
+
         Ok(())
     }
 

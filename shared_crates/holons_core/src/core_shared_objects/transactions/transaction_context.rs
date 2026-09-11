@@ -323,6 +323,44 @@ impl TransactionContext {
         self.get_holon_service().ensure_local_holon_space_internal(self)
     }
 
+    /// Materializes the executable artifact for a selected Visualizer through
+    /// the execution-context-specific Holon service.
+    pub fn materialize_visualizer(
+        self: &Arc<Self>,
+        visualizer: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        self.get_holon_service().materialize_visualizer_internal(self, visualizer)
+    }
+
+    /// Retrieves verified artifact bytes for an opaque capability issued to
+    /// this transaction by a materialization operation.
+    pub fn fetch_artifact(
+        self: &Arc<Self>,
+        handle: &base_types::MapString,
+    ) -> Result<base_types::MapBytes, HolonError> {
+        self.get_holon_service().fetch_artifact_internal(self, handle)
+    }
+
+    /// Activates one semantically identified Dancer package through the
+    /// context-specific Holon service strategy.
+    pub fn activate_dancer(
+        self: &Arc<Self>,
+        package_identity: &base_types::MapString,
+    ) -> Result<(), HolonError> {
+        self.get_holon_service().activate_dancer_internal(self, package_identity)
+    }
+
+    /// Opens an isolated transaction in the same MAP space for a host-owned
+    /// lifecycle operation. The caller's transaction remains open so its
+    /// Dance response can be constructed after the isolated operation commits.
+    pub fn open_isolated_transaction(
+        self: &Arc<Self>,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        self.space_manager
+            .get_transaction_manager()
+            .open_new_transaction(Arc::clone(&self.space_manager))
+    }
+
     // ---------------------------------------------------------------------
     // Host Commit Ingress Guard
     // ---------------------------------------------------------------------

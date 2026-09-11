@@ -28,7 +28,8 @@ pub fn init_fixture_context() -> Arc<TransactionContext> {
     info!("\n ========== Initializing FIXTURE CONTEXT ============");
 
     // Step 1: Create the ClientHolonService
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+    let holon_service: Arc<dyn HolonServiceApi> =
+        Arc::new(ClientHolonService::development_default());
 
     // Step 2: Setup trust channel and Inject DanceInitiator
     // SKIP -- Fixtures cannot initiate dances!
@@ -64,7 +65,8 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     info!("\n ========== Initializing TEST RUNTIME ============");
 
     // Step 1: Create the ClientHolonService
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+    let holon_service: Arc<dyn HolonServiceApi> =
+        Arc::new(ClientHolonService::development_default());
 
     // Step 2: Setup DanceInitiator
     let dance_initiator = create_test_dance_initiator().await;

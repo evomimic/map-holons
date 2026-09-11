@@ -14,6 +14,10 @@ async-trait = "0.1"
 tracing = "0.1"
 futures-executor = "0.3"
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+hex = "0.4"
+serde_json = "1.0"
 
 # MAP Dependencies
 holons_core = { path = "../../../shared_crates/holons_core" }
@@ -22,8 +26,10 @@ core_types = { path = "../../../shared_crates/type_system/core_types" }
 integrity_core_types = { path = "../../../shared_crates/type_system/integrity_core_types" }
 holon_dance_builders = { path = "../../../shared_crates/holon_dance_builders" }
 holons_boundary = { path = "../../../shared_crates/holons_boundary" }
+type_names = { path = "../../../shared_crates/type_system/type_names" }
 client_shared_types = {path = "../shared_types"}
 holochain_receptor = { path = "../holochain_receptor" }
 session_receptor = { path = "../session_receptor" }
+holons_loader_client = { path = "../holons_loader_client" }
 #local_receptors = { path = "../local_receptors" }
 #holons_receptor = { path = "../holons_receptor" }

@@ -151,7 +151,8 @@ async fn create_described_book(runtime: &Runtime) -> LocalId {
 /// Builds a runtime over `backend`, keeping the same conductor handle the test uses for raw probe
 /// and storage extern calls. Mirrors `init_test_runtime`, minus the fixture-transient import.
 async fn runtime_over(backend: Arc<MockConductorConfig>) -> Runtime {
-    let holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+    let holon_service: Arc<dyn HolonServiceApi> =
+        Arc::new(ClientHolonService::development_default());
     let dance_initiator = Arc::new(TrustChannel::new(backend));
 
     let space_manager = Arc::new(HolonSpaceManager::new_with_managers(

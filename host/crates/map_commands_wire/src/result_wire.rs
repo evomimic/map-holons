@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use map_commands_contract::MapResult;
 
+use crate::transaction_wire::VisualizerKindWire;
+
 /// Serializable result variants for MAP Command responses.
 ///
 /// These represent the successful return values from command execution,
@@ -29,10 +31,14 @@ pub enum MapResultWire {
     RedoToMarkerComplete,
 
     /// Returns a new transaction id (from BeginTransaction).
-    TransactionCreated { tx_id: TxId },
+    TransactionCreated {
+        tx_id: TxId,
+    },
 
     /// Returns a holon reference.
     Reference(HolonReferenceWire),
+
+    VisualizerSelection(VisualizerSelectionWire),
 
     /// Deliberate exception for duplicate-base-key staging lookup.
     ///
@@ -53,6 +59,13 @@ pub enum MapResultWire {
 
     /// Transitional dance-result exception retained at the IPC boundary.
     DanceResponse(DanceResponseWire),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct VisualizerSelectionWire {
+    pub selected: HolonReferenceWire,
+    pub requested_kind: VisualizerKindWire,
+    pub alternatives_available: bool,
 }
 
 /// Wire-safe qualified relationship discovery result.
@@ -88,6 +101,13 @@ impl From<MapResult> for MapResultWire {
             MapResult::RedoToMarkerComplete => MapResultWire::RedoToMarkerComplete,
             MapResult::TransactionCreated { tx_id } => MapResultWire::TransactionCreated { tx_id },
             MapResult::Reference(r) => MapResultWire::Reference(HolonReferenceWire::from(&r)),
+            MapResult::VisualizerSelection(selection) => {
+                MapResultWire::VisualizerSelection(VisualizerSelectionWire {
+                    selected: HolonReferenceWire::from(&selection.selected),
+                    requested_kind: selection.requested_kind.into(),
+                    alternatives_available: selection.alternatives_available,
+                })
+            }
             MapResult::References(refs) => {
                 MapResultWire::References(refs.iter().map(HolonReferenceWire::from).collect())
             }

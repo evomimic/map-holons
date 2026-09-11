@@ -52,9 +52,19 @@ pub enum TransactionAction {
     /// Executes the canonical new-world dance ingress within this transaction.
     DanceV2 { invocation: DanceInvocation },
 
+    /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
+    SelectVisualizer { request: VisualizerSelectionRequest },
+
+    /// Retrieves verified bytes for an opaque artifact capability issued by a
+    /// materialization Dance in this transaction.
+    FetchArtifact { handle: MapString },
+
     // ── Lookup actions (LookupFacade) ────────────────────────────────
     /// `get_all_holons()` → `HolonCollection`
     GetAllHolons,
+
+    /// `get_saved_holon_by_key(key)` → `SmartReference`
+    GetSavedHolonByBaseKey { key: MapString },
 
     /// `get_staged_holon_by_base_key(key)` → `StagedReference`
     GetStagedHolonByBaseKey { key: MapString },
@@ -99,6 +109,35 @@ pub enum TransactionAction {
     DeleteHolon { local_id: LocalId },
 }
 
+/// DAHN-wide classification of the Visualizer required by a request.
+///
+/// A kind constrains the class of Visualizer that can satisfy a request; it
+/// is not a local composition Slot and does not imply one implementation per
+/// kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VisualizerKind {
+    Canvas,
+    Node,
+    Collection,
+    Properties,
+    Value,
+    Action,
+}
+
+/// Input to the Rust-owned DAHN Selector Function.
+///
+/// This command ingress currently binds a Holon-backed subject because Node,
+/// Canvas, and Collection are the only bootstrap policies implemented by PR 3.
+/// The selector contract deliberately remains a request rather than a
+/// `VisualizerKind -> Visualizer` lookup: future request subjects may be
+/// collections, property/value context, action affordances, Slots, and richer
+/// runtime context without redesigning the selection boundary.
+#[derive(Debug)]
+pub struct VisualizerSelectionRequest {
+    pub subject: HolonReference,
+    pub requested_kind: VisualizerKind,
+}
+
 impl TransactionAction {
     pub fn policy(&self) -> CommandLifecyclePolicy {
         match self {
@@ -117,8 +156,15 @@ impl TransactionAction {
                     requires_commit_guard: false,
                 }
             }
+            TransactionAction::SelectVisualizer { .. } => {
+                CommandLifecyclePolicy::transaction_read_only()
+            }
+            TransactionAction::FetchArtifact { .. } => {
+                CommandLifecyclePolicy::transaction_read_only()
+            }
             // Lookups
             TransactionAction::GetAllHolons
+            | TransactionAction::GetSavedHolonByBaseKey { .. }
             | TransactionAction::GetStagedHolonByBaseKey { .. }
             | TransactionAction::GetStagedHolonsByBaseKey { .. }
             | TransactionAction::GetStagedHolonByVersionedKey { .. }
@@ -149,7 +195,10 @@ impl TransactionAction {
             TransactionAction::LoadHolons { .. } => "load_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
+            TransactionAction::SelectVisualizer { .. } => "select_visualizer",
+            TransactionAction::FetchArtifact { .. } => "fetch_artifact",
             TransactionAction::GetAllHolons => "get_all_holons",
+            TransactionAction::GetSavedHolonByBaseKey { .. } => "get_saved_holon_by_base_key",
             TransactionAction::GetStagedHolonByBaseKey { .. } => "get_staged_holon_by_base_key",
             TransactionAction::GetStagedHolonsByBaseKey { .. } => "get_staged_holons_by_base_key",
             TransactionAction::GetStagedHolonByVersionedKey { .. } => {

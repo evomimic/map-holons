@@ -6,6 +6,7 @@
     { "name": "core", "import_directory": "core" },
     { "name": "validation", "import_directory": "validation" },
     { "name": "dance", "import_directory": "dance" },
+    { "name": "dancer", "import_directory": "dancer" },
     { "name": "commands", "import_directory": "commands" },
     { "name": "query", "import_directory": "query" },
     { "name": "query-dance", "import_directory": "query-dance" },

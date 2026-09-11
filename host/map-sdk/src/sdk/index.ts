@@ -15,6 +15,12 @@ export {
   TransientHolonReference,
 } from './references';
 export { MapTransaction } from './transaction';
+export type {
+  MaterializedVisualizer,
+  VisualizerKind,
+  VisualizerSelection,
+  VisualizerSelectionRequest,
+} from './transaction';
 export {
   DomainError,
   MalformedResponseError,

@@ -1,0 +1,77 @@
+schema "MAP Space Navigator Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Dance Schema-v0.1.0"
+  depends_on "MAP DAHN Schema-v0.1.0"
+  depends_on "MAP Dancer Schema-v0.1.0"
+  header {
+    description: "House Troupe semantic package for the Space Navigator's statically bundled bootstrap Visualizer Holons and their locally resolvable implementation identities. These static mappings resolve semantic VisualizerImplementation Holons; they do not create TypeScript-only Visualizer identities. The persisted GenericHolonNodeVisualizer key identifies the current HolonInspectorVisualizer presentation strategy. The persisted TableCollectionVisualizer key identifies the current table-oriented Collection presentation strategy; shape-based collection applicability is deferred."
+  }
+}
+
+instance SpaceNavigator.Dancer {
+  type Dancer.HolonType
+  relationships {
+    OffersDance -> MaterializeVisualizer.DanceType
+    Requires -> [
+      "MAP DAHN Schema-v0.1.0",
+      "MAP Space Navigator Schema-v0.1.0"
+    ]
+  }
+}
+
+instance LocalMaterializeVisualizer.DanceImplementation {
+  type DanceImplementation.HolonType
+  ImplementationName "LocalMaterializeVisualizer"
+  relationships {
+    ForDance -> MaterializeVisualizer.DanceType
+  }
+}
+
+instance SpaceNavigator.CanvasVisualizer {
+  type CanvasVisualizer.HolonType
+  relationships {
+    ImplementedBy -> SpaceNavigatorTypeScript.VisualizerImplementation
+  }
+}
+
+instance GenericHolonNodeVisualizer.NodeVisualizer {
+  type NodeVisualizer.HolonType
+  relationships {
+    ImplementedBy -> GenericHolonNodeTypeScript.VisualizerImplementation
+    ApplicableToType -> HolonType.TypeDescriptor
+  }
+}
+
+instance TableCollectionVisualizer.CollectionVisualizer {
+  type CollectionVisualizer.HolonType
+  relationships {
+    ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
+  }
+}
+
+instance SpaceNavigatorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.space-navigator"
+  VisualizerArtifactDigest "sha256:c4b2c02ebe8bf36ed7bd9b4b232011635cd248313622c038a1b3182458a096d9"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance GenericHolonNodeTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.generic-holon-node"
+  VisualizerArtifactDigest "sha256:11bbda5c267e0d459e5052bcedb4d0a7870e1bfeef6cdaec7d3bd537e298d39b"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+instance TableCollectionTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.table-collection"
+  VisualizerArtifactDigest "sha256:5dcc1482113e5a09275fb4f3b0226b93474c12e9524679dcad3409c1ef1cc4da"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}

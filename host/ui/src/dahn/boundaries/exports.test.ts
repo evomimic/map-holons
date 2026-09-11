@@ -5,13 +5,11 @@ describe('DAHN export surface', () => {
   it('exports the expected Wave 0 DAHN runtime seams', () => {
     expect(dahn.DefaultVisualizerRegistry).toBeDefined();
     expect(dahn.DomCanvas).toBeDefined();
-    expect(dahn.Phase0Selector).toBeDefined();
+    expect(dahn.MaterializedVisualizerCache).toBeDefined();
+    expect(dahn.MaterializedVisualizerRuntime).toBeDefined();
     expect(dahn.DEFAULT_DAHN_THEME).toBeDefined();
     expect(dahn.DefaultThemeRegistry).toBeDefined();
-    expect(dahn.registerBuiltInVisualizers).toBeDefined();
     expect(dahn.DahnHolonView).toBeDefined();
-    expect(dahn.DefaultVisualizerImplementationRuntime).toBeDefined();
-    expect(dahn.DahnImplementationResolutionError).toBeDefined();
   });
 
   it('does not leak obvious transport-facing concepts through the DAHN root export surface', () => {

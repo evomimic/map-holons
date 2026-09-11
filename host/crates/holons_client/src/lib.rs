@@ -7,7 +7,9 @@ pub mod deprecated_receptor_factory;
 
 use std::sync::Arc;
 
-pub use client_context::{init_client_context, init_client_runtime};
+pub use client_context::{
+    init_client_context, init_client_runtime, init_client_runtime_with_holon_service,
+};
 pub use client_session::ClientSession;
 pub use client_shared_objects::*;
 use client_shared_types::{MapRequest, MapResponse, SpaceInfo};

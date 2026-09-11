@@ -1,0 +1,10 @@
+{
+  "package_identity": "SpaceNavigator.Dancer",
+  "schema_imports": ["imports/schema.json"],
+  "required_holons": [
+    "SpaceNavigator.Dancer",
+    "SpaceNavigator.CanvasVisualizer",
+    "GenericHolonNodeVisualizer.NodeVisualizer",
+    "TableCollectionVisualizer.CollectionVisualizer"
+  ]
+}

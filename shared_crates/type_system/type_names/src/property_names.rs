@@ -54,6 +54,30 @@ impl ToPropertyName for &CorePropertyTypeName {
     }
 }
 
+impl ToPropertyName for DahnPropertyTypeName {
+    fn to_property_name(self) -> PropertyName {
+        self.as_property_name()
+    }
+}
+
+impl ToPropertyName for &DahnPropertyTypeName {
+    fn to_property_name(self) -> PropertyName {
+        self.clone().as_property_name()
+    }
+}
+
+impl ToPropertyName for DancerPropertyTypeName {
+    fn to_property_name(self) -> PropertyName {
+        self.as_property_name()
+    }
+}
+
+impl ToPropertyName for &DancerPropertyTypeName {
+    fn to_property_name(self) -> PropertyName {
+        self.clone().as_property_name()
+    }
+}
+
 impl ToPropertyName for PropertyName {
     #[inline]
     fn to_property_name(self) -> PropertyName {
@@ -91,6 +115,7 @@ pub enum CorePropertyTypeName {
     ErrorCount,
     ErrorMessage,
     ErrorType,
+    Entrypoint,
     Filename,
     HolonKey,
     HolonId,
@@ -125,6 +150,36 @@ pub enum CorePropertyTypeName {
     TypeName,
     TypeNamePlural,
     HolonsCommitted,
+}
+
+/// Canonical DAHN property type names.
+#[derive(Debug, Clone, VariantNames)]
+pub enum DahnPropertyTypeName {
+    VisualizerArtifactDigest,
+    VisualizerArtifactHandle,
+    VisualizerImplementationKey,
+    VisualizerImplementationRuntime,
+    VisualizerModuleFormat,
+}
+
+/// Canonical Dancer property type names.
+#[derive(Debug, Clone, VariantNames)]
+pub enum DancerPropertyTypeName {
+    DancerPackageIdentity,
+}
+
+impl DahnPropertyTypeName {
+    /// Canonical property name in ClassCase (UpperCamel).
+    pub fn as_property_name(&self) -> PropertyName {
+        PropertyName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
+    }
+}
+
+impl DancerPropertyTypeName {
+    /// Canonical property name in ClassCase (UpperCamel).
+    pub fn as_property_name(&self) -> PropertyName {
+        PropertyName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
+    }
 }
 
 impl CorePropertyTypeName {

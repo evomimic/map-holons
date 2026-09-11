@@ -41,7 +41,8 @@ impl LocalReceptor {
        // let root_space = client.convert_to_holonspace(holon)?;
         let client_handler = Arc::new(client);
 
-        let _holon_service: Arc<dyn HolonServiceApi> = Arc::new(ClientHolonService);
+        let _holon_service: Arc<dyn HolonServiceApi> =
+            Arc::new(ClientHolonService::development_default());
         
         Ok(Self {
             receptor_id: base_receptor.receptor_id.clone(),

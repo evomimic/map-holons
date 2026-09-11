@@ -3,6 +3,7 @@ use crate::core_shared_objects::transactions::TransactionContext;
 use crate::core_shared_objects::{Holon, HolonCollection};
 use crate::RelationshipMap;
 use crate::StagedReference;
+use base_types::{MapBytes, MapString};
 use core_types::{HolonError, HolonId, KeyMatch, LocalId, RelationshipName, SmartLink};
 use std::any::Any;
 use std::fmt::Debug;
@@ -64,6 +65,40 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         &self,
         context: &Arc<TransactionContext>,
     ) -> Result<HolonCollection, HolonError>;
+
+    /// Materializes the executable artifact for a selected Visualizer.
+    ///
+    /// A Host-Authoritative service may satisfy this locally; a service whose
+    /// execution context cannot access the artifact backend leaves it
+    /// unsupported.
+    fn materialize_visualizer_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _visualizer: &HolonReference,
+    ) -> Result<HolonReference, HolonError> {
+        Err(HolonError::NotImplemented("materialize_visualizer_internal".to_string()))
+    }
+
+    /// Retrieves executable artifact bytes for a capability issued by a
+    /// materialization operation. Implementations must treat the handle as
+    /// opaque and enforce its scope before returning content.
+    fn fetch_artifact_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _handle: &MapString,
+    ) -> Result<MapBytes, HolonError> {
+        Err(HolonError::NotImplemented("fetch_artifact_internal".to_string()))
+    }
+
+    /// Activates the named Dancer package through this execution context's
+    /// package catalog and loader strategy.
+    fn activate_dancer_internal(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _package_identity: &MapString,
+    ) -> Result<(), HolonError> {
+        Err(HolonError::NotImplemented("activate_dancer_internal".to_string()))
+    }
 
     /// Expands generic SmartLinks from one local source and relationship.
     fn expand_smartlinks_from_source_internal(

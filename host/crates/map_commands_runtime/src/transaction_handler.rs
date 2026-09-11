@@ -4,6 +4,7 @@ use holons_core::dances::execute_dance_v2;
 use holons_core::HolonReference;
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
+use super::dahn_selector;
 use super::runtime_session::RuntimeSession;
 
 /// Handles transaction-scoped commands.
@@ -45,6 +46,12 @@ pub async fn handle_transaction(
             let response = execute_dance_v2(context, invocation).await?;
             Ok(MapResult::Reference(HolonReference::from(response)))
         }
+        TransactionAction::SelectVisualizer { request } => {
+            Ok(MapResult::VisualizerSelection(dahn_selector::select_visualizer(context, request)?))
+        }
+        TransactionAction::FetchArtifact { handle } => {
+            Ok(MapResult::Value(BaseValue::BytesValue(context.fetch_artifact(&handle)?)))
+        }
         TransactionAction::LoadHolons { content_set } => {
             let response =
                 holons_loader_client::load_holons_from_files(context.clone(), content_set).await?;
@@ -53,6 +60,10 @@ pub async fn handle_transaction(
         TransactionAction::GetAllHolons => {
             let collection = context.lookup().get_all_holons()?;
             Ok(MapResult::Collection(collection))
+        }
+        TransactionAction::GetSavedHolonByBaseKey { key } => {
+            let saved = context.lookup().get_saved_holon_by_key(&key)?;
+            Ok(MapResult::Reference(HolonReference::Smart(saved)))
         }
         TransactionAction::GetStagedHolonByBaseKey { key } => {
             let staged = context.lookup().get_staged_holon_by_base_key(&key)?;

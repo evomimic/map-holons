@@ -373,6 +373,20 @@ holon GetAllHolons.CommandType {
   }
 }
 
+holon GetSavedHolonByBaseKey.CommandType {
+  type MetaCommandType.MetaHolonType
+  extends CommandType.HolonType
+  header {
+    description: "Returns the saved holon matching a specified stable semantic base key."
+    display_name: "Get Saved Holon By Base Key Command"
+    display_plural: "Get Saved Holon By Base Key Commands"
+    plural: "GetSavedHolonByBaseKeyCommands"
+  }
+  relationships {
+    CommandAffordedBy -> Transaction.HolonType
+  }
+}
+
 
 holon GetStagedHolonByBaseKey.CommandType {
   type MetaCommandType.MetaHolonType

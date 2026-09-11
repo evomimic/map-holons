@@ -1,0 +1,586 @@
+{
+  "holons": [
+    {
+      "key": "MAP Dancer Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Dancer Schema-v0.1.0",
+        "Description": "Generic MAP semantics for Dancers, their offered Dances, declared semantic dependencies, and the descriptor-driven activation affordance. Concrete Dancers and House Troupe packaging remain outside this package."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Dancer.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Dancer",
+        "TypeNamePlural": "Dancers",
+        "DisplayName": "Dancer",
+        "DisplayNamePlural": "Dancers",
+        "Description": "Generic software-agent holon that offers a coherent set of Dances and declares the semantic resources it requires. It is independent of executable runtime, artifact, and distribution technology."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Dancer.HolonType)-[OffersDance]->(DanceType.HolonType)"
+            },
+            {
+              "$ref": "(Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActivateDancerResponse.DanceResponseType",
+      "type": "MetaDanceResponseType.MetaHolonType",
+      "properties": {
+        "TypeName": "ActivateDancerResponse",
+        "TypeNamePlural": "ActivateDancerResponses",
+        "DisplayName": "Activate Dancer Response",
+        "DisplayNamePlural": "Activate Dancer Responses",
+        "Description": "Successful response for activation of a Dancer. The initial response carries no implementation-specific body."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceResponseType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActivateDancerRequest.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ActivateDancerRequest",
+        "TypeNamePlural": "ActivateDancerRequests",
+        "DisplayName": "Activate Dancer Request",
+        "DisplayNamePlural": "Activate Dancer Requests",
+        "Description": "Transient request projection identifying the locally available Dancer package to activate. The identity is semantic and does not expose a filesystem location or package implementation detail."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "DancerPackageIdentity.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActivateDancer.DanceType",
+      "type": "MetaDanceType.MetaHolonType",
+      "properties": {
+        "TypeName": "ActivateDancer",
+        "TypeNamePlural": "ActivateDancerDances",
+        "DisplayName": "Activate Dancer",
+        "DisplayNamePlural": "Activate Dancer Dances",
+        "Description": "Generic Dancer lifecycle Dance. Activation is semantic availability, not a commitment to a particular schema-loading or executable-loading mechanism.",
+        "DanceDescription": "Makes a Dancer's declared capabilities available in the current MAP environment.",
+        "RequiredExecutionContext": "HostAuthoritative"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "DanceAffordedBy",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "RequestType",
+          "target": [
+            {
+              "$ref": "ActivateDancerRequest.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Response",
+          "target": [
+            {
+              "$ref": "ActivateDancerResponse.DanceResponseType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MAP.DancerActivator",
+      "type": "Dancer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "OffersDance",
+          "target": [
+            {
+              "$ref": "ActivateDancer.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LocalActivateDancer.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "LocalActivateDancer"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "ActivateDancer.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DancerPackageIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DancerPackageIdentity",
+        "TypeNamePlural": "DancerPackageIdentities",
+        "DisplayName": "dancer_package_identity",
+        "DisplayNamePlural": "dancer_package_identities",
+        "Description": "Stable semantic identity of a Dancer package requested for activation. Host package catalogs resolve this value without exposing package paths.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Dancer.HolonType)-[OffersDance]->(DanceType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OffersDance",
+        "TypeNamePlural": "OffersDanceRelationships",
+        "DisplayName": "Offers Dance",
+        "DisplayNamePlural": "Offers Dance Relationships",
+        "Description": "Declares one Dance in a Dancer's derived Repertory.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DanceType.HolonType)-[OfferedByDancer]->(Dancer.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DanceType.HolonType)-[OfferedByDancer]->(Dancer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OfferedByDancer",
+        "TypeNamePlural": "OfferedByDancerRelationships",
+        "DisplayName": "Offered By Dancer",
+        "DisplayNamePlural": "Offered By Dancer Relationships",
+        "Description": "Inverse of OffersDance, identifying Dancers that offer a Dance.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DanceType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "Requires",
+        "TypeNamePlural": "RequiresRelationships",
+        "DisplayName": "Requires",
+        "DisplayNamePlural": "Requires Relationships",
+        "Description": "Declares a semantically identifiable resource required by a Dancer.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonType.TypeDescriptor)-[RequiredByDancer]->(Dancer.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[RequiredByDancer]->(Dancer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "RequiredByDancer",
+        "TypeNamePlural": "RequiredByDancerRelationships",
+        "DisplayName": "Required By Dancer",
+        "DisplayNamePlural": "Required By Dancer Relationships",
+        "Description": "Inverse of Requires, identifying Dancers that declare a semantic resource as required.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
