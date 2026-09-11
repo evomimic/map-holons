@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use base_types::MapString;
 use core_types::{ContentSet, FileData, HolonError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_core::reference_layer::{ReadableHolon, WritableHolon};
 use serde::Deserialize;
 
 /// Host-owned catalog of locally bundled Dancer packages.
@@ -22,6 +23,14 @@ struct DancerPackageManifest {
     package_identity: String,
     schema_imports: Vec<String>,
     required_holons: Vec<String>,
+    #[serde(default)]
+    offered_theme_keys: Vec<String>,
+}
+
+#[derive(Debug)]
+struct PackageActivationContent {
+    content_set: ContentSet,
+    offered_theme_keys: Vec<MapString>,
 }
 
 impl DancerPackageCatalog {
@@ -58,12 +67,13 @@ impl DancerPackageCatalog {
                 "No locally bundled Dancer package resolves semantic identity `{package_identity}`"
             ))
         })?;
-        let content_set = package_content_set(package_directory, package_identity)?;
+        let package_content = package_content_set(package_directory, package_identity)?;
         let isolated_context = context.open_isolated_transaction()?;
         futures_executor::block_on(holons_loader_client::load_holons_from_files(
             isolated_context,
-            content_set,
+            package_content.content_set,
         ))?;
+        establish_theme_offers(context, package_content.offered_theme_keys)?;
         activated.insert(package_identity.clone());
         Ok(())
     }
@@ -72,7 +82,7 @@ impl DancerPackageCatalog {
 fn package_content_set(
     package_directory: &Path,
     requested_identity: &MapString,
-) -> Result<ContentSet, HolonError> {
+) -> Result<PackageActivationContent, HolonError> {
     let manifest_path = package_directory.join("package.json");
     let manifest: DancerPackageManifest =
         serde_json::from_slice(&std::fs::read(&manifest_path).map_err(|error| {
@@ -124,7 +134,57 @@ fn package_content_set(
         });
     }
 
-    Ok(ContentSet { files_to_load })
+    Ok(PackageActivationContent {
+        content_set: ContentSet { files_to_load },
+        offered_theme_keys: manifest.offered_theme_keys.into_iter().map(MapString::from).collect(),
+    })
+}
+
+/// Stages package-provided Theme offers in the caller's activation transaction.
+/// The offer lives in activation state, not Core bootstrap.
+fn establish_theme_offers(
+    context: &Arc<TransactionContext>,
+    offered_theme_keys: Vec<MapString>,
+) -> Result<(), HolonError> {
+    if offered_theme_keys.is_empty() {
+        return Ok(());
+    }
+
+    let active_space = context.get_space_holon()?.ok_or_else(|| {
+        HolonError::InvalidState(
+            "Dancer activation requires an active HolonSpace before offering Themes".into(),
+        )
+    })?;
+    let active_space_id = active_space.holon_id()?;
+
+    for theme_key in offered_theme_keys {
+        let theme = context.lookup().get_saved_holon_by_key(&theme_key)?;
+        let existing_offers = theme.related_holons("OfferedByHolonSpace")?;
+        let already_offered = {
+            let offers = existing_offers.read().map_err(|error| {
+                HolonError::FailedToAcquireLock(format!(
+                    "failed to read existing Theme offers during activation: {error}"
+                ))
+            })?;
+            let mut found = false;
+            for offer in &*offers {
+                if offer.holon_id()? == active_space_id {
+                    found = true;
+                    break;
+                }
+            }
+            found
+        };
+
+        if already_offered {
+            continue;
+        }
+
+        let mut staged_theme = context.mutation().stage_new_version(theme)?;
+        staged_theme.add_related_holons("OfferedByHolonSpace", vec![active_space.clone()])?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -146,13 +206,19 @@ mod tests {
             .get(&MapString::from("SpaceNavigator.Dancer"))
             .expect("Space Navigator package entry");
 
-        let content_set =
+        let package_content =
             package_content_set(package_directory, &MapString::from("SpaceNavigator.Dancer"))
                 .expect("packaged Space Navigator resources");
 
-        assert_eq!(content_set.files_to_load.len(), 1);
-        assert_eq!(content_set.files_to_load[0].filename, "imports/schema.json");
-        assert!(content_set.files_to_load[0].raw_contents.contains("SpaceNavigator.Dancer"));
+        assert_eq!(package_content.content_set.files_to_load.len(), 1);
+        assert_eq!(package_content.content_set.files_to_load[0].filename, "imports/schema.json");
+        assert!(package_content.content_set.files_to_load[0]
+            .raw_contents
+            .contains("SpaceNavigator.Dancer"));
+        assert_eq!(
+            package_content.offered_theme_keys,
+            vec![MapString::from("SpaceNavigator.DefaultTheme")]
+        );
     }
 
     #[test]
