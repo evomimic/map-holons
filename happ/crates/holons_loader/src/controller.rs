@@ -397,14 +397,12 @@ impl HolonLoaderController {
             }
         };
 
-        // Retrieve commit accounting relationships for summary diagnostics.
+        // SavedHolons counts successful node persistence, not all assessed candidates.
+        // Live candidates may produce NoAction, so these counts need not balance.
         let committed_refs = commit_response
             .related_holons(CoreRelationshipTypeName::SavedHolons.as_relationship_name())?;
-        let abandoned_refs = commit_response
-            .related_holons(CoreRelationshipTypeName::AbandonedHolons.as_relationship_name())?;
 
         let saved_holons: i64 = committed_refs.read().unwrap().get_count().0;
-        let abandoned_holons: i64 = abandoned_refs.read().unwrap().get_count().0;
 
         // Retrieve property CommitsAttempted
         let commits_attempted_val = commit_response
@@ -418,15 +416,6 @@ impl HolonLoaderController {
             None => 0,
         };
 
-        let counts_balanced = (saved_holons + abandoned_holons) == commits_attempted;
-        if matches!(load_commit_status, LoadCommitStatus::Complete) && !counts_balanced {
-            warn!(
-                "CommitRequestStatus is Complete but commit counts do not balance (saved + abandoned = {}, attempts = {})",
-                saved_holons + abandoned_holons,
-                commits_attempted
-            );
-        }
-
         let commit_errors = Self::collect_commit_errors(context)?;
         let commit_error_count = commit_errors.len() as i64;
         let commit_error_holons =
@@ -434,17 +423,13 @@ impl HolonLoaderController {
 
         let summary = if matches!(load_commit_status, LoadCommitStatus::Complete) {
             format!(
-                "Commit successful: {} holons staged; {} committed; {} abandoned; {} attempts.",
-                total_holons_staged, saved_holons, abandoned_holons, commits_attempted
+                "Commit successful: {} holons staged; {} committed; {} attempts.",
+                total_holons_staged, saved_holons, commits_attempted
             )
         } else {
             format!(
-                "Commit incomplete: {} holons staged; {} committed; {} abandoned; {} attempts; {} commit errors.",
-                total_holons_staged,
-                saved_holons,
-                abandoned_holons,
-                commits_attempted,
-                commit_error_count
+                "Commit incomplete: {} holons staged; {} committed; {} attempts; {} commit errors.",
+                total_holons_staged, saved_holons, commits_attempted, commit_error_count
             )
         };
 
