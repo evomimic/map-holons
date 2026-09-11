@@ -5,7 +5,7 @@ use std::{fmt, sync::Arc};
 use tracing::info;
 use type_names::relationship_names::{CoreRelationshipTypeName, ToRelationshipName};
 
-use crate::core_shared_objects::holon::StagedState;
+use crate::core_shared_objects::holon::{StagedState, ValidationState};
 use crate::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle, TxId,
 };
@@ -28,8 +28,8 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
-    HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue,
-    RelationshipName, TemporaryId, ValidationError,
+    CommitValidationViolation, HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName,
+    PropertyValue, RelationshipName, TemporaryId, ValidationError,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -159,6 +159,77 @@ impl StagedReference {
 
         match &*holon {
             Holon::Staged(staged_holon) => Ok(staged_holon.errors().to_vec()),
+            other => Err(HolonError::InvalidType(format!(
+                "StagedReference points to a non-staged holon: {other:?}"
+            ))),
+        }
+    }
+
+    /// Classifies the validation, node-persistence, and `CommitsAttempted` workset.
+    ///
+    /// Pass 2 relationship persistence has separate, wider eligibility: already committed
+    /// entries may still need relationship persistence on retry.
+    pub fn is_live_validation_candidate(&self) -> Result<bool, HolonError> {
+        match self.staged_state()? {
+            StagedState::ForCreate
+            | StagedState::ForUpdate
+            | StagedState::ForUpdateGraphOnly
+            | StagedState::ForUpdateNewVersion => Ok(true),
+            StagedState::Abandoned | StagedState::Committed(_) => Ok(false),
+        }
+    }
+
+    /// Replaces validation state and findings together, preserving operational errors.
+    ///
+    /// The staged holon's lifecycle guard refuses replacement after abandonment or commit.
+    pub fn replace_validation_outcome(
+        &self,
+        state: ValidationState,
+        findings: Vec<CommitValidationViolation>,
+    ) -> Result<(), HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let mut holon = rc_holon.write().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire staged holon write lock for validation outcome: {error}"
+            ))
+        })?;
+
+        match &mut *holon {
+            Holon::Staged(staged_holon) => staged_holon.replace_validation_outcome(state, findings),
+            other => Err(HolonError::InvalidType(format!(
+                "StagedReference points to a non-staged holon: {other:?}"
+            ))),
+        }
+    }
+
+    /// Returns the validation state currently recorded on this staged holon.
+    pub fn validation_state(&self) -> Result<ValidationState, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire staged holon read lock for validation state: {error}"
+            ))
+        })?;
+
+        match &*holon {
+            Holon::Staged(staged_holon) => Ok(staged_holon.validation_state().clone()),
+            other => Err(HolonError::InvalidType(format!(
+                "StagedReference points to a non-staged holon: {other:?}"
+            ))),
+        }
+    }
+
+    /// Returns a snapshot of the findings from this staged holon's latest validation outcome.
+    pub fn validation_findings(&self) -> Result<Vec<CommitValidationViolation>, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire staged holon read lock for validation findings: {error}"
+            ))
+        })?;
+
+        match &*holon {
+            Holon::Staged(staged_holon) => Ok(staged_holon.validation_findings().to_vec()),
             other => Err(HolonError::InvalidType(format!(
                 "StagedReference points to a non-staged holon: {other:?}"
             ))),
@@ -922,7 +993,7 @@ impl Eq for StagedReference {}
 mod tests {
     use super::*;
     use crate::{
-        core_shared_objects::StagedHolon,
+        core_shared_objects::{holon::HolonState, StagedHolon},
         descriptors::test_support::{
             build_context, core_holon_type_name, new_declared_relationship_descriptor_holon,
             new_descriptor_holon, new_holon_type_descriptor, new_relationship_descriptor_holon,
@@ -930,8 +1001,111 @@ mod tests {
         },
         reference_layer::WritableHolon,
     };
-    use core_types::LocalId;
+    use core_types::{
+        CommitValidationViolationKind, LocalId, ValidationSeverity, ValidationSubjectPath,
+    };
     use type_names::{CoreHolonTypeName, CorePropertyTypeName};
+
+    fn validation_finding() -> CommitValidationViolation {
+        CommitValidationViolation {
+            kind: CommitValidationViolationKind::NoDescriptor,
+            rule_key: None,
+            severity: ValidationSeverity::Error,
+            subject: ValidationSubjectPath::Holon { holon_identity: "subject".into() },
+            descriptor_identity: None,
+            message: "Attach a governing descriptor".into(),
+        }
+    }
+
+    fn validation_reference_in_state(
+        context: &Arc<TransactionContext>,
+        staged_state: StagedState,
+        holon_state: HolonState,
+    ) -> Result<StagedReference, HolonError> {
+        let staged = context.mutation().stage_new_holon(new_test_holon(context, "subject")?)?;
+        let rc_holon = staged.get_rc_holon()?;
+        let mut holon = rc_holon.write().expect("test holon lock");
+        let Holon::Staged(original) = &*holon else {
+            unreachable!("stage_new_holon produces a StagedHolon");
+        };
+        // Restore each lifecycle state directly so these facade tests do not depend on
+        // descriptor setup or persistence to exercise the complete state matrix.
+        // Preserve staged content and metadata, including the key indexed by the nursery.
+        let restored = StagedHolon::from_parts(
+            original.version().clone(),
+            holon_state,
+            staged_state,
+            ValidationState::NoDescriptor,
+            vec![validation_finding()],
+            original.property_map().clone(),
+            original.staged_relationships().clone(),
+            original.original_id_ref().cloned(),
+            original.versioned_source_id_ref().cloned(),
+            original.touched_relationship_names().clone(),
+            vec![HolonError::NotImplemented("persistence failure".into())],
+        );
+        *holon = Holon::Staged(restored);
+        Ok(staged)
+    }
+
+    #[test]
+    fn validation_facade_classifies_and_replaces_live_outcomes() -> Result<(), HolonError> {
+        for state in [
+            StagedState::ForCreate,
+            StagedState::ForUpdate,
+            StagedState::ForUpdateGraphOnly,
+            StagedState::ForUpdateNewVersion,
+        ] {
+            for holon_state in [HolonState::Mutable, HolonState::Immutable] {
+                let context = build_context();
+                let staged = validation_reference_in_state(&context, state.clone(), holon_state)?;
+                assert!(staged.is_live_validation_candidate()?);
+                assert_eq!(staged.validation_state()?, ValidationState::NoDescriptor);
+                assert_eq!(staged.validation_findings()?, vec![validation_finding()]);
+
+                staged.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+                assert_eq!(staged.validation_state()?, ValidationState::Validated);
+                assert!(staged.validation_findings()?.is_empty());
+                // A previous successful assessment does not remove a live candidate.
+                assert!(staged.is_live_validation_candidate()?);
+
+                staged.replace_validation_outcome(
+                    ValidationState::Invalid,
+                    vec![validation_finding()],
+                )?;
+                assert_eq!(staged.validation_state()?, ValidationState::Invalid);
+                assert_eq!(staged.validation_findings()?, vec![validation_finding()]);
+                assert_eq!(
+                    staged.commit_errors()?,
+                    vec![HolonError::NotImplemented("persistence failure".into())]
+                );
+                assert_eq!(staged.staged_state()?, state);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn validation_facade_excludes_terminal_states_and_preserves_refused_outcomes(
+    ) -> Result<(), HolonError> {
+        for state in [StagedState::Abandoned, StagedState::Committed(LocalId(vec![1]))] {
+            for holon_state in [HolonState::Mutable, HolonState::Immutable] {
+                let context = build_context();
+                let staged = validation_reference_in_state(&context, state.clone(), holon_state)?;
+                let before = staged.get_rc_holon()?.read().expect("test holon lock").clone();
+
+                assert!(!staged.is_live_validation_candidate()?);
+                assert!(matches!(
+                    staged.replace_validation_outcome(ValidationState::Validated, Vec::new()),
+                    Err(HolonError::NotAccessible(..))
+                ));
+                assert_eq!(staged.validation_state()?, ValidationState::NoDescriptor);
+                assert_eq!(staged.validation_findings()?, vec![validation_finding()]);
+                assert_eq!(*staged.get_rc_holon()?.read().expect("test holon lock"), before);
+            }
+        }
+        Ok(())
+    }
 
     fn force_staged_reference_for_update(
         context: &Arc<TransactionContext>,
