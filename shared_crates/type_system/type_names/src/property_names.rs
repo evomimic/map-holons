@@ -124,6 +124,7 @@ pub enum CorePropertyTypeName {
     Type,
     TypeName,
     TypeNamePlural,
+    ValidationViolationCount,
     HolonsCommitted,
 }
 

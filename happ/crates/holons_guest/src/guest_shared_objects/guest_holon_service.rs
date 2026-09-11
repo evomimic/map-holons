@@ -649,9 +649,12 @@ impl GuestHolonService {
                 None => String::new(),
             };
         if status != "Complete" {
-            return Err(HolonError::CommitFailure(
-                "Core Schema bootstrap commit did not complete".to_string(),
-            ));
+            let message = if status == "Rejected" {
+                "Core Schema bootstrap commit was rejected by semantic validation; inspect staged validation findings".to_string()
+            } else {
+                format!("Core Schema bootstrap commit did not complete (status: {status})")
+            };
+            return Err(HolonError::CommitFailure(message));
         }
 
         let space = staged_references
