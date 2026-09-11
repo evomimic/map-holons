@@ -43,5 +43,5 @@ export {
   DahnRuntimeError,
 } from './runtime/runtime-errors';
 export { applyTheme } from './themes/apply-theme';
-export { DEFAULT_DAHN_THEME } from './themes/default-theme';
-export { DefaultThemeRegistry } from './themes/theme-registry';
+export { Theme } from './themes/theme';
+export { HolonSpaceThemeResolver } from './themes/holon-space-theme-resolver';

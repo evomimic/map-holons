@@ -32,6 +32,18 @@
       "import_directory": "query-dance"
     },
     {
+      "name": "design-tokens",
+      "import_directory": "design-tokens"
+    },
+    {
+      "name": "meta-design-system",
+      "import_directory": "meta-design-system"
+    },
+    {
+      "name": "theme",
+      "import_directory": "theme"
+    },
+    {
       "name": "dahn",
       "import_directory": "dahn"
     }
@@ -102,8 +114,20 @@
       "sha256": "0a498b670725274a7259bb5b5e7eae043d756d21694be58b56de049b54f93ea2"
     },
     {
+      "path": "imports/design-tokens/schema.json",
+      "sha256": "56b09baceef2c7661d869c6345b0dcf6d13c61cfecc6114c3e6ef48caaff9571"
+    },
+    {
+      "path": "imports/meta-design-system/schema.json",
+      "sha256": "ca523d2dbb7cbe9e747f3e393cf29f58cb63a69e068998b17984b8f4db2d6fff"
+    },
+    {
+      "path": "imports/theme/schema.json",
+      "sha256": "6b34e0c0cdd4fcc180063018851b15286703737d518e67364ef2d8bb5a980fa2"
+    },
+    {
       "path": "imports/dahn/schema.json",
-      "sha256": "dbdc2cc872e130ea0f51f28b980c394ae556895bd9f113fada3dc32f2be12c41"
+      "sha256": "9f743ff8d7625473b715e07c12188a8215e3ce13381c5a862b9b767f15d949c0"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -111,6 +135,14 @@
     }
   ],
   "required_holons": [
+    {
+      "key": "(Canvas.HolonType)-[ContainsVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Canvas.HolonType)-[UsesMetaDesignSystem]->(MetaDesignSystem.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
     {
       "key": "(CommandType.HolonType)-[CommandAffordedBy]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
@@ -200,6 +232,26 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(DesignToken.HolonType)-[ConsumedByVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DesignToken.HolonType)-[DefinedByMetaDesignSystem]->(MetaDesignSystem.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DesignToken.HolonType)-[HasDesignTokenType]->(DesignTokenType.ValueType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DesignToken.HolonType)-[HasThemeTokenAssignmentFor]->(ThemeTokenAssignment.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(DesignTokenType.ValueType)-[TypesDesignToken]->(DesignToken.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(EnumValueType.ValueType)-[Variants]->(EnumVariantValueType.ValueType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -270,6 +322,10 @@
     {
       "key": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[OffersTheme]->(Theme.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(HolonSpace.HolonType)-[Owns]->(HolonType.TypeDescriptor)",
@@ -406,6 +462,22 @@
     {
       "key": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[HasTheme]->(Theme.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[SupportsVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[UsedByCanvas]->(Canvas.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(MetaVisualizerType.MetaHolonType)-[AcceptedByVisualizerSlot]->(VisualizerSlot.HolonType)",
@@ -556,6 +628,26 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(Theme.HolonType)-[ForMetaDesignSystem]->(MetaDesignSystem.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Theme.HolonType)-[HasThemeTokenAssignment]->(ThemeTokenAssignment.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Theme.HolonType)-[OfferedByHolonSpace]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ThemeTokenAssignment.HolonType)-[AssignedForTheme]->(Theme.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(ThemeTokenAssignment.HolonType)-[ForDesignToken]->(DesignToken.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(Transaction.HolonType)-[TransactionModelAffordedBy]->(HolonSpace.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -620,11 +712,23 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Visualizer.HolonType)-[ContainedByCanvas]->(Canvas.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -764,6 +868,10 @@
       "type": "MetaBytesValueType.MetaValueType"
     },
     {
+      "key": "Canvas.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "CanvasVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType"
     },
@@ -790,6 +898,10 @@
     {
       "key": "CollectionVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType"
+    },
+    {
+      "key": "Color.DesignTokenType",
+      "type": "MetaStringValueType.MetaValueType"
     },
     {
       "key": "CommandType.HolonType",
@@ -1004,6 +1116,18 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
+      "key": "DesignToken.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DesignTokenName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "DesignTokenType.ValueType",
+      "type": "MetaStringValueType.MetaValueType"
+    },
+    {
       "key": "DeterminismClass.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -1014,6 +1138,10 @@
     {
       "key": "DiagnosticMessage.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Dimension.DesignTokenType",
+      "type": "MetaStringValueType.MetaValueType"
     },
     {
       "key": "DirectionalDeletionDeclarations.ValidationRule",
@@ -1114,6 +1242,14 @@
     {
       "key": "Filename.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "FontFamily.DesignTokenType",
+      "type": "MetaStringValueType.MetaValueType"
+    },
+    {
+      "key": "FontWeight.DesignTokenType",
+      "type": "MetaStringValueType.MetaValueType"
     },
     {
       "key": "FormatRule.KeyRuleType",
@@ -1428,11 +1564,23 @@
       "type": "Schema.HolonType"
     },
     {
+      "key": "MAP Design Tokens Schema-v0.1.0",
+      "type": "Schema.HolonType"
+    },
+    {
+      "key": "MAP Meta Design System Schema-v0.1.0",
+      "type": "Schema.HolonType"
+    },
+    {
       "key": "MAP Query Dance Adapter Schema-v0.1.0",
       "type": "Schema.HolonType"
     },
     {
       "key": "MAP Query Schema-v0.0.2",
+      "type": "Schema.HolonType"
+    },
+    {
+      "key": "MAP Theme Schema-v0.1.0",
       "type": "Schema.HolonType"
     },
     {
@@ -1534,6 +1682,14 @@
     {
       "key": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaDesignSystem.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "MetaDesignSystemName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "MetaEnumValueType.MetaValueType",
@@ -1653,6 +1809,10 @@
     },
     {
       "key": "ParameterName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "PresentationValue.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
@@ -1778,6 +1938,10 @@
     {
       "key": "RelationshipOccurrenceGrouping.ValidationRule",
       "type": "RelationshipValidationRule.HolonType"
+    },
+    {
+      "key": "RelationshipPairRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
       "key": "RelationshipRule.KeyRuleType",
@@ -1936,6 +2100,10 @@
       "type": "MetaStringValueType.MetaValueType"
     },
     {
+      "key": "StrokeStyle.DesignTokenType",
+      "type": "MetaStringValueType.MetaValueType"
+    },
+    {
       "key": "Summarize.CommandType",
       "type": "MetaCommandType.MetaHolonType"
     },
@@ -1958,6 +2126,34 @@
     {
       "key": "TemplateString.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "Theme.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ThemeCompleteDesignTokenCoverage.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ThemeName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ThemeTokenAssignment.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ThemeTokenAssignmentDesignTokenType.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ThemeTokenAssignmentPairRule.RelationshipPairRule",
+      "type": "RelationshipPairRule.KeyRuleType"
+    },
+    {
+      "key": "ThemeTokenAssignmentPairUniqueness.ValidationRule",
+      "type": "HolonValidationRule.HolonType"
     },
     {
       "key": "Transaction.HolonType",

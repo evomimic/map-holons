@@ -6,5 +6,6 @@
     "SpaceNavigator.CanvasVisualizer",
     "GenericHolonNodeVisualizer.NodeVisualizer",
     "TableCollectionVisualizer.CollectionVisualizer"
-  ]
+  ],
+  "offered_theme_keys": ["SpaceNavigator.DefaultTheme"]
 }

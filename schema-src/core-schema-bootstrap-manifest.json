@@ -10,6 +10,9 @@
     { "name": "commands", "import_directory": "commands" },
     { "name": "query", "import_directory": "query" },
     { "name": "query-dance", "import_directory": "query-dance" },
+    { "name": "design-tokens", "import_directory": "design-tokens" },
+    { "name": "meta-design-system", "import_directory": "meta-design-system" },
+    { "name": "theme", "import_directory": "theme" },
     { "name": "dahn", "import_directory": "dahn" }
   ]
 }

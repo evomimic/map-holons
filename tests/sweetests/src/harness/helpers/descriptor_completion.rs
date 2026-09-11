@@ -11,10 +11,16 @@ pub fn expected_descriptor_keys(content_set: &ContentSet) -> BTreeSet<String> {
             .unwrap_or_else(|error| panic!("invalid schema JSON in {}: {error}", file.filename));
         let holons = document["holons"].as_array().expect("schema must contain holons");
         for holon in holons {
-            // In the canonical corpus, descriptor declarations name a Meta* type.
-            // TypeName alone also selects ordinary FormatRule instances, which
-            // do not carry the descriptor flags checked below.
-            if holon["type"].as_str().is_some_and(|name| name.starts_with("Meta")) {
+            // Descriptor-oriented TDL declarations compile with an implicit
+            // ComponentOf edge. This distinguishes them from ordinary instances
+            // whose domain type may itself begin with `Meta` (for example, a
+            // MetaDesignSystem instance).
+            let is_descriptor = holon["relationships"].as_array().is_some_and(|relationships| {
+                relationships
+                    .iter()
+                    .any(|relationship| relationship["name"].as_str() == Some("ComponentOf"))
+            });
+            if is_descriptor {
                 keys.insert(holon["key"].as_str().expect("descriptor must have a key").to_owned());
             }
         }

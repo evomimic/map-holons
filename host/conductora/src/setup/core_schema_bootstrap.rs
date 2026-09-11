@@ -21,8 +21,19 @@ use crate::runtime::RuntimeState;
 // directory (including in dev mode under `target/debug/resources`).
 const BUNDLE_DIRECTORY: &str = "resources/core-schema-bootstrap";
 const MANIFEST_FILENAME: &str = "manifest.json";
-const REQUIRED_BOOTSTRAP_PACKAGES: [&str; 8] =
-    ["core", "validation", "dance", "dancer", "commands", "query", "query-dance", "dahn"];
+const REQUIRED_BOOTSTRAP_PACKAGES: [&str; 11] = [
+    "core",
+    "validation",
+    "dance",
+    "dancer",
+    "commands",
+    "query",
+    "query-dance",
+    "design-tokens",
+    "meta-design-system",
+    "theme",
+    "dahn",
+];
 
 #[derive(Debug, Deserialize)]
 struct BootstrapManifest {
@@ -298,7 +309,7 @@ mod tests {
         fs::write(
             directory.join(MANIFEST_FILENAME),
             format!(
-                "{{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{{\"name\":\"core\",\"import_directory\":\"core\"}},{{\"name\":\"validation\",\"import_directory\":\"validation\"}},{{\"name\":\"dance\",\"import_directory\":\"dance\"}},{{\"name\":\"dancer\",\"import_directory\":\"dancer\"}},{{\"name\":\"commands\",\"import_directory\":\"commands\"}},{{\"name\":\"query\",\"import_directory\":\"query\"}},{{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"}},{{\"name\":\"dahn\",\"import_directory\":\"dahn\"}}],\"imports\":[{{\"path\":\"imports/core.json\",\"sha256\":\"{digest}\"}}]}}"
+                "{{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{{\"name\":\"core\",\"import_directory\":\"core\"}},{{\"name\":\"validation\",\"import_directory\":\"validation\"}},{{\"name\":\"dance\",\"import_directory\":\"dance\"}},{{\"name\":\"dancer\",\"import_directory\":\"dancer\"}},{{\"name\":\"commands\",\"import_directory\":\"commands\"}},{{\"name\":\"query\",\"import_directory\":\"query\"}},{{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"}},{{\"name\":\"design-tokens\",\"import_directory\":\"design-tokens\"}},{{\"name\":\"meta-design-system\",\"import_directory\":\"meta-design-system\"}},{{\"name\":\"theme\",\"import_directory\":\"theme\"}},{{\"name\":\"dahn\",\"import_directory\":\"dahn\"}}],\"imports\":[{{\"path\":\"imports/core.json\",\"sha256\":\"{digest}\"}}]}}"
             ),
         )?;
 
@@ -318,7 +329,7 @@ mod tests {
         fs::write(imports.join("core.json"), "{\"holons\":[]}")?;
         fs::write(
             directory.join(MANIFEST_FILENAME),
-            "{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{\"name\":\"core\",\"import_directory\":\"core\"},{\"name\":\"validation\",\"import_directory\":\"validation\"},{\"name\":\"dance\",\"import_directory\":\"dance\"},{\"name\":\"dancer\",\"import_directory\":\"dancer\"},{\"name\":\"commands\",\"import_directory\":\"commands\"},{\"name\":\"query\",\"import_directory\":\"query\"},{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"},{\"name\":\"dahn\",\"import_directory\":\"dahn\"}],\"imports\":[{\"path\":\"imports/core.json\",\"sha256\":\"invalid\"}]}",
+            "{\"release_identity\":\"MAP Core Schema-v0.0.7\",\"core_schema_key\":\"MAP Core Schema-v0.0.7\",\"core_schema_space_key\":\"MAP.CoreSchemaSpace\",\"packages\":[{\"name\":\"core\",\"import_directory\":\"core\"},{\"name\":\"validation\",\"import_directory\":\"validation\"},{\"name\":\"dance\",\"import_directory\":\"dance\"},{\"name\":\"dancer\",\"import_directory\":\"dancer\"},{\"name\":\"commands\",\"import_directory\":\"commands\"},{\"name\":\"query\",\"import_directory\":\"query\"},{\"name\":\"query-dance\",\"import_directory\":\"query-dance\"},{\"name\":\"design-tokens\",\"import_directory\":\"design-tokens\"},{\"name\":\"meta-design-system\",\"import_directory\":\"meta-design-system\"},{\"name\":\"theme\",\"import_directory\":\"theme\"},{\"name\":\"dahn\",\"import_directory\":\"dahn\"}],\"imports\":[{\"path\":\"imports/core.json\",\"sha256\":\"invalid\"}]}",
         )?;
 
         let error = bootstrap_content_set_from_directory(&directory).expect_err("digest mismatch");
