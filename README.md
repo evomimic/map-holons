@@ -75,10 +75,13 @@ npm run map-schema -- compile schema-src --out-dir generated/json-imports
 Convenience scripts are also available for the core schema workflow:
 
 ```bash
-npm run map-schema:decompile:coreschema
 npm run map-schema:check:coreschema
 npm run map-schema:compile:coreschema
+npm run map-schema:verify:coreschema
 ```
+
+`map-schema:verify:coreschema` checks TDL syntax/lowering, verifies that the checked-in loader
+JSON is fresh, and runs the JSON → TDL → JSON fidelity check using temporary output only.
 
 The Rust crate already builds a `map-schema` binary target, but the repo does not require installing it globally yet. When we want a shell-native command later, the next step is `cargo install --path tools/map-schema`.
 

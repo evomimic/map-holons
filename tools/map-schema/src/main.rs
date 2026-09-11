@@ -2,7 +2,8 @@ use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
     bootstrap_bundle::generate_core_schema_bootstrap_bundle,
-    decompile_input_string, decompile_inputs, roundtrip_json_inputs,
+    decompile_input_string, decompile_inputs, diff_loader_facts, inspect_loader_facts,
+    roundtrip_json_inputs,
     tdl_compiler::{
         check_input_string, check_inputs, compile_input_string, compile_inputs,
         render_check_output, type_definition_counts,
@@ -78,6 +79,21 @@ enum Commands {
         #[arg(long = "json-out")]
         json_out: PathBuf,
     },
+
+    /// Print the deterministic, read-only projection of explicit loader facts as JSON.
+    Inspect {
+        /// Input JSON files or directories containing JSON files.
+        inputs: Vec<PathBuf>,
+    },
+
+    /// Compare two JSON source inputs by normalized explicit loader facts.
+    Diff {
+        /// Left JSON file or directory.
+        left: PathBuf,
+
+        /// Right JSON file or directory.
+        right: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -149,6 +165,15 @@ fn main() -> Result<()> {
                 json_out.display()
             );
         }
+        Commands::Inspect { inputs } => {
+            if inputs.is_empty() {
+                return Err(anyhow!("inspect requires at least one JSON input"));
+            }
+            println!("{}", serde_json::to_string_pretty(&inspect_loader_facts(&inputs)?)?);
+        }
+        Commands::Diff { left, right } => {
+            println!("{}", serde_json::to_string_pretty(&diff_loader_facts(&[left], &[right])?)?);
+        }
     }
 
     Ok(())
@@ -178,6 +203,14 @@ Commands:
       Decompile JSON to scratch TDL, recompile that TDL to canonical JSON,
       and compare deterministic loader-fact signatures.
 
+  inspect JSON_FILE_OR_DIR ...
+      Print deterministic explicit loader facts as JSON for read-only generators,
+      editor integrations, and other source tooling.
+
+  diff LEFT_JSON_FILE_OR_DIR RIGHT_JSON_FILE_OR_DIR
+      Print additions, removals, and changes between normalized explicit loader
+      facts. JSON formatting and object field order do not produce changes.
+
 Common workflows:
   npm run map-schema:check:coreschema
   npm run map-schema:compile:coreschema
@@ -187,6 +220,8 @@ Direct examples:
   cargo run --manifest-path tools/map-schema/Cargo.toml -- check schema-src
   cargo run --manifest-path tools/map-schema/Cargo.toml -- compile schema-src --out-dir generated/json-imports
   cargo run --manifest-path tools/map-schema/Cargo.toml -- roundtrip-json generated/json-imports --tdl-out generated/tdl-decompiled --json-out generated/json-roundtrip
+  cargo run --manifest-path tools/map-schema/Cargo.toml -- inspect generated/json-imports
+  cargo run --manifest-path tools/map-schema/Cargo.toml -- diff before/json-imports after/json-imports
 
 Single-file stdin/stdout mode:
   map-schema decompile < input.json > output.tdl

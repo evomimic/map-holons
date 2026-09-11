@@ -44,6 +44,10 @@ jobs:
         run: |
           nix develop --command bash -c "npm run regen:sdk-fixtures && git diff --exit-code host/map-sdk/tests/fixtures/"
 
+      - name: Verify schema source artifacts and fidelity
+        run: |
+          nix develop --command bash -c "npm run map-schema:verify:coreschema"
+
       - name: Test
         env:
           CARGO_INCREMENTAL: "0"
