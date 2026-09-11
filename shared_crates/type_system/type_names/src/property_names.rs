@@ -143,6 +143,10 @@ mod tests {
     #[test]
     fn test_variant_string_conversion() {
         assert_eq!(
+            PropertyName(MapString("ValidationViolationCount".to_string())),
+            CorePropertyTypeName::ValidationViolationCount.as_property_name()
+        );
+        assert_eq!(
             PropertyName(MapString("AllowsDuplicates".to_string())),
             CorePropertyTypeName::AllowsDuplicates.as_property_name()
         );

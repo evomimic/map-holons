@@ -47,7 +47,7 @@
     },
     {
       "path": "imports/core/loader-types.json",
-      "sha256": "29822c6b691406e67644e8337d8278e2d488bfb20d6178ad5b079142c5a6b72c"
+      "sha256": "4ca4fca7a07c8d9775e88ea11512793c1be094561e1feb10958c5b0964d8a715"
     },
     {
       "path": "imports/core/operator-types.json",
@@ -79,7 +79,7 @@
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "25e6f22354d6c6da04953576a140794165fc3f000063dfa2a3ee6b89ee4ac4a2"
+      "sha256": "8a183e5fc52416f4a6622a2ecb4e310ff1dc03bbd5b6d2a70cf829bce4b13dcb"
     },
     {
       "path": "imports/commands/schema.json",
@@ -112,7 +112,7 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)",
+      "key": "(CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -256,10 +256,6 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
-    },
-    {
       "key": "(HolonType.TypeDescriptor)-[AffordsCommand]->(CommandType.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -314,6 +310,10 @@
     {
       "key": "(HolonType.TypeDescriptor)-[Predecessor]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonType.TypeDescriptor)-[RejectedByCommit]->(CommitResponse.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(HolonType.TypeDescriptor)-[RequestFor]->(DanceInvocation.HolonType)",
@@ -769,6 +769,10 @@
     },
     {
       "key": "CommitRequestStatus.MapEnumValueType.Incomplete",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "CommitRequestStatus.MapEnumValueType.Rejected",
       "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
@@ -1313,6 +1317,10 @@
     },
     {
       "key": "LoadCommitStatus.MapEnumValueType.Incomplete",
+      "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "LoadCommitStatus.MapEnumValueType.Rejected",
       "type": "MetaEnumVariantValueType.MetaValueType"
     },
     {
@@ -2006,6 +2014,10 @@
     {
       "key": "ValidationSeverity.MapEnumValueType.Warning",
       "type": "MetaEnumVariantValueType.MetaValueType"
+    },
+    {
+      "key": "ValidationViolationCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
       "key": "ValueArrayValidationRule.HolonType",

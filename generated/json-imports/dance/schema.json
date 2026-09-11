@@ -288,6 +288,9 @@
               "$ref": "ErrorCount.PropertyType"
             },
             {
+              "$ref": "ValidationViolationCount.PropertyType"
+            },
+            {
               "$ref": "DanceSummary.PropertyType"
             },
             {
@@ -3135,6 +3138,9 @@
             },
             {
               "$ref": "CommitRequestStatus.PropertyType"
+            },
+            {
+              "$ref": "ValidationViolationCount.PropertyType"
             }
           ]
         },
@@ -3145,7 +3151,7 @@
               "$ref": "(CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor)"
             },
             {
-              "$ref": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)"
+              "$ref": "(CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor)"
             }
           ]
         }
@@ -3159,7 +3165,44 @@
         "TypeNamePlural": "CommitsAttempteds",
         "DisplayName": "commits_attempted",
         "DisplayNamePlural": "commits_attempted",
-        "Description": "Number of holons the commit operation attempted to save."
+        "Description": "Number of live staged candidates presented to validation on this commit attempt; excludes abandoned and already committed entries."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ValidationViolationCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ValidationViolationCount",
+        "TypeNamePlural": "ValidationViolationCounts",
+        "DisplayName": "validation_violation_count",
+        "DisplayNamePlural": "validation_violation_counts",
+        "Description": "Number of semantic validation findings in the report that produced this response; 0 when accepted."
       },
       "relationships": [
         {
@@ -3196,7 +3239,7 @@
         "TypeNamePlural": "CommitRequestStatus",
         "DisplayName": "CommitRequestStatus",
         "DisplayNamePlural": "CommitRequestStatus",
-        "Description": "Enum value type for commit request outcomes (Complete, Incomplete)."
+        "Description": "Enum value type for commit request outcomes (Complete, Incomplete, Rejected)."
       },
       "relationships": [
         {
@@ -3223,6 +3266,9 @@
             },
             {
               "$ref": "CommitRequestStatus.MapEnumValueType.Incomplete"
+            },
+            {
+              "$ref": "CommitRequestStatus.MapEnumValueType.Rejected"
             }
           ]
         }
@@ -3236,7 +3282,7 @@
         "TypeNamePlural": "Completes",
         "DisplayName": "Complete",
         "DisplayNamePlural": "Completes",
-        "Description": "All staged holons committed; no staged holons remain."
+        "Description": "Validation accepted and all eligible node and relationship persistence completed."
       },
       "relationships": [
         {
@@ -3265,7 +3311,36 @@
         "TypeNamePlural": "Incompletes",
         "DisplayName": "Incomplete",
         "DisplayNamePlural": "Incompletes",
-        "Description": "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution."
+        "Description": "Operational persistence failed; some writes may have completed and staged entries remain available for retry."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitRequestStatus.MapEnumValueType.Rejected",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Rejected",
+        "TypeNamePlural": "Rejecteds",
+        "DisplayName": "Rejected",
+        "DisplayNamePlural": "Rejecteds",
+        "Description": "Semantic assessment completed and persistence was refused; nothing was written and the transaction remains open."
       },
       "relationships": [
         {
@@ -3294,7 +3369,7 @@
         "TypeNamePlural": "CommitRequestStatuses",
         "DisplayName": "commit_request_status",
         "DisplayNamePlural": "commit_request_statuses",
-        "Description": "Overall status of the commit request (Complete or Incomplete)."
+        "Description": "Overall status of the commit request (Complete, Incomplete, or Rejected)."
       },
       "relationships": [
         {
@@ -3440,14 +3515,14 @@
       ]
     },
     {
-      "key": "(CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)",
+      "key": "(CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "AbandonedHolons",
-        "TypeNamePlural": "AbandonedHolonsRelationships",
-        "DisplayName": "AbandonedHolons Relationship",
-        "DisplayNamePlural": "AbandonedHolons Relationships",
-        "Description": "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors.",
+        "TypeName": "RejectedHolons",
+        "TypeNamePlural": "RejectedHolonsRelationships",
+        "DisplayName": "RejectedHolons Relationship",
+        "DisplayNamePlural": "RejectedHolons Relationships",
+        "Description": "Declared relationship from a rejected CommitResponse to each assessed staged candidate with semantic validation findings.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -3487,7 +3562,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection)"
+              "$ref": "(HolonType.TypeDescriptor)-[RejectedByCommit]->(CommitResponse.Projection)"
             }
           ]
         },
@@ -3502,14 +3577,14 @@
       ]
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection)",
+      "key": "(HolonType.TypeDescriptor)-[RejectedByCommit]->(CommitResponse.Projection)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
-        "TypeName": "AbandonedByCommit",
-        "TypeNamePlural": "AbandonedByCommitRelationships",
-        "DisplayName": "AbandonedByCommit Relationship",
-        "DisplayNamePlural": "AbandonedByCommit Relationships",
-        "Description": "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it.",
+        "TypeName": "RejectedByCommit",
+        "TypeNamePlural": "RejectedByCommitRelationships",
+        "DisplayName": "RejectedByCommit Relationship",
+        "DisplayNamePlural": "RejectedByCommit Relationships",
+        "Description": "Inverse of RejectedHolons. Links a finding-bearing staged candidate to the CommitResponse that rejected persistence.",
         "DeletionSemantic": "Block"
       },
       "relationships": [

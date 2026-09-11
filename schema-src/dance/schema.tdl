@@ -111,6 +111,7 @@ holon HolonLoadResponse.DanceResponseType {
       HolonsStaged.PropertyType,
       HolonsCommitted.PropertyType,
       ErrorCount.PropertyType,
+      ValidationViolationCount.PropertyType,
       DanceSummary.PropertyType,
       LinksCreated.PropertyType,
       LoadCommitStatus.PropertyType
@@ -1062,11 +1063,12 @@ holon CommitResponse.Projection {
   relationships {
     InstanceProperties -> [
       CommitsAttempted.PropertyType,
-      CommitRequestStatus.PropertyType
+      CommitRequestStatus.PropertyType,
+      ValidationViolationCount.PropertyType
     ]
     InstanceRelationships -> [
       (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor),
-      (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor)
+      (CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor)
     ]
   }
 }
@@ -1077,10 +1079,23 @@ property CommitsAttempted.PropertyType {
   extends PropertyType.TypeDescriptor
   value MapIntegerValueType.IntegerValueType
   header {
-    description: "Number of holons the commit operation attempted to save."
+    description: "Number of live staged candidates presented to validation on this commit attempt; excludes abandoned and already committed entries."
     display_name: "commits_attempted"
     display_plural: "commits_attempted"
     plural: "CommitsAttempteds"
+  }
+}
+
+
+property ValidationViolationCount.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  header {
+    description: "Number of semantic validation findings in the report that produced this response; 0 when accepted."
+    display_name: "validation_violation_count"
+    display_plural: "validation_violation_counts"
+    plural: "ValidationViolationCounts"
   }
 }
 
@@ -1089,7 +1104,7 @@ enum CommitRequestStatus.MapEnumValueType {
   type MetaEnumValueType.MetaValueType
   extends MapEnumValueType.EnumValueType
   header {
-    description: "Enum value type for commit request outcomes (Complete, Incomplete)."
+    description: "Enum value type for commit request outcomes (Complete, Incomplete, Rejected)."
     display_name: "CommitRequestStatus"
     display_plural: "CommitRequestStatus"
     plural: "CommitRequestStatus"
@@ -1099,7 +1114,7 @@ enum CommitRequestStatus.MapEnumValueType {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
       header {
-        description: "All staged holons committed; no staged holons remain."
+        description: "Validation accepted and all eligible node and relationship persistence completed."
         display_name: "Complete"
         display_plural: "Completes"
         plural: "Completes"
@@ -1109,10 +1124,20 @@ enum CommitRequestStatus.MapEnumValueType {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType
       header {
-        description: "One or more staged holons could not be committed; some may remain in New or Changed state pending error resolution."
+        description: "Operational persistence failed; some writes may have completed and staged entries remain available for retry."
         display_name: "Incomplete"
         display_plural: "Incompletes"
         plural: "Incompletes"
+      }
+    }
+    variant Rejected {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Semantic assessment completed and persistence was refused; nothing was written and the transaction remains open."
+        display_name: "Rejected"
+        display_plural: "Rejecteds"
+        plural: "Rejecteds"
       }
     }
   }
@@ -1124,7 +1149,7 @@ property CommitRequestStatus.PropertyType {
   extends PropertyType.TypeDescriptor
   value CommitRequestStatus.MapEnumValueType
   header {
-    description: "Overall status of the commit request (Complete or Incomplete)."
+    description: "Overall status of the commit request (Complete, Incomplete, or Rejected)."
     display_name: "commit_request_status"
     display_plural: "commit_request_statuses"
     plural: "CommitRequestStatuses"
@@ -1169,26 +1194,26 @@ inverse relationship (HolonType.TypeDescriptor)-[SavedByCommit]->(CommitResponse
 }
 
 
-relationship (CommitResponse.Projection)-[AbandonedHolons]->(HolonType.TypeDescriptor) {
+relationship (CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
-    HasInverse -> AbandonedByCommit
+    HasInverse -> RejectedByCommit
   }
   extends DeclaredRelationshipType.RelationshipType
   source CommitResponse.Projection
   target HolonType.TypeDescriptor
   deletion_semantic Allow
   header {
-    description: "Declared relationship from a CommitResponse to each holon that was not saved due to validation or commit errors."
-    display_name: "AbandonedHolons Relationship"
-    display_plural: "AbandonedHolons Relationships"
-    plural: "AbandonedHolonsRelationships"
+    description: "Declared relationship from a rejected CommitResponse to each assessed staged candidate with semantic validation findings."
+    display_name: "RejectedHolons Relationship"
+    display_plural: "RejectedHolons Relationships"
+    plural: "RejectedHolonsRelationships"
   }
 }
 
 
-inverse relationship (HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResponse.Projection) {
+inverse relationship (HolonType.TypeDescriptor)-[RejectedByCommit]->(CommitResponse.Projection) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
@@ -1198,9 +1223,9 @@ inverse relationship (HolonType.TypeDescriptor)-[AbandonedByCommit]->(CommitResp
   }
   deletion_semantic Block
   header {
-    description: "Inverse of AbandonedHolons.  Links a holon to a CommitResponse that did not successfully save it."
-    display_name: "AbandonedByCommit Relationship"
-    display_plural: "AbandonedByCommit Relationships"
-    plural: "AbandonedByCommitRelationships"
+    description: "Inverse of RejectedHolons. Links a finding-bearing staged candidate to the CommitResponse that rejected persistence."
+    display_name: "RejectedByCommit Relationship"
+    display_plural: "RejectedByCommit Relationships"
+    plural: "RejectedByCommitRelationships"
   }
 }
