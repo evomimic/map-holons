@@ -40,7 +40,29 @@ Core schema convenience commands:
 npm run map-schema:check:coreschema
 npm run map-schema:compile:coreschema
 npm run map-schema:roundtrip:coreschema
+npm run map-schema:verify:coreschema
 ```
+
+`map-schema:verify:coreschema` is the CI-safe contributor workflow: it checks the TDL corpus,
+ensures `generated/json-imports/` is fresh, and performs the round-trip fidelity check in a
+temporary directory. `schema-src/` and `generated/json-imports/` are checked in; decompiled TDL
+and round-trip JSON are temporary artifacts and must not be committed.
+
+Read-only consumers can inspect or compare normalized explicit loader facts without invoking
+Holon Loading or descriptor semantics:
+
+```sh
+npm run map-schema -- inspect generated/json-imports
+npm run map-schema -- diff path/to/before-imports path/to/after-imports
+```
+
+Both commands emit deterministic JSON. `inspect` is the generator/editor integration surface;
+`diff` reports additions, removals, and replacements to explicit keys, properties, relationships,
+literal values, schema dependencies, and relationship target ordering. Formatting, JSON object
+field order, and generated import metadata are intentionally ignored. Diagnostics remain
+syntax/lowering diagnostics, with source locations included when the parser can provide them;
+neither command resolves references,
+materializes defaults, or runs descriptor validation.
 
 Direct Cargo usage remains available when you want to bypass npm:
 

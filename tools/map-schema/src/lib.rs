@@ -11,7 +11,7 @@ pub mod diagnostics;
 /// TDL parser, checker, and compiler entry points.
 pub mod tdl_compiler;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -121,6 +121,223 @@ pub fn roundtrip_json_inputs(
     }
 
     Ok(RoundTripReport { decompiled_files, compiled_files })
+}
+
+/// Returns a deterministic, read-only projection of explicit loader facts.
+///
+/// This is the supported boundary for source-derived tools such as generators,
+/// editors, and CI. It deliberately contains no resolved references, descriptor
+/// products, populated defaults, or validation results.
+pub fn inspect_loader_facts(inputs: &[PathBuf]) -> Result<LoaderFactProjection> {
+    let project = parse_json_inputs_to_loader_fact_project(inputs)?;
+    Ok(LoaderFactProjection::from_project(&project))
+}
+
+/// Compares normalized explicit loader facts from two JSON source inputs.
+///
+/// A relationship's targets remain an ordered array, so a target reorder is a
+/// change. Properties and relationship names are keyed facts, so their source
+/// spelling and JSON field order do not affect the result.
+pub fn diff_loader_facts(left: &[PathBuf], right: &[PathBuf]) -> Result<LoaderFactDiff> {
+    let left = inspect_loader_facts(left)?;
+    let right = inspect_loader_facts(right)?;
+    Ok(LoaderFactDiff::between(&left, &right))
+}
+
+/// Immutable source-tooling projection derived from `LoaderRefRep` content.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LoaderFactProjection {
+    files: Vec<LoaderFactProjectionFile>,
+}
+
+impl LoaderFactProjection {
+    pub fn files(&self) -> &[LoaderFactProjectionFile] {
+        &self.files
+    }
+
+    fn from_project(project: &LoaderFactProject) -> Self {
+        let files = project
+            .files
+            .iter()
+            .map(|file| {
+                let mut holons = Vec::new();
+                if file.emits_schema_holon {
+                    if let Some(schema_holon) = &file.schema_holon {
+                        holons.push(LoaderFactProjectionHolon::from_holon(schema_holon));
+                    }
+                }
+                holons.extend(file.holons.iter().map(LoaderFactProjectionHolon::from_holon));
+                holons.sort_by(|left, right| left.key.cmp(&right.key));
+                LoaderFactProjectionFile {
+                    path: normalize_relative_path(&file.relative_path),
+                    schema_key: file.schema_key.clone(),
+                    holons,
+                }
+            })
+            .collect();
+        Self { files }
+    }
+}
+
+/// One file's explicit source facts.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LoaderFactProjectionFile {
+    path: String,
+    schema_key: String,
+    holons: Vec<LoaderFactProjectionHolon>,
+}
+
+impl LoaderFactProjectionFile {
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+    pub fn schema_key(&self) -> &str {
+        &self.schema_key
+    }
+    pub fn holons(&self) -> &[LoaderFactProjectionHolon] {
+        &self.holons
+    }
+}
+
+/// One holon's explicit source facts.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LoaderFactProjectionHolon {
+    key: String,
+    descriptor_type: String,
+    properties: BTreeMap<String, Value>,
+    relationships: BTreeMap<String, Vec<String>>,
+}
+
+impl LoaderFactProjectionHolon {
+    fn from_holon(holon: &LoaderFactHolon) -> Self {
+        Self {
+            key: holon.key.clone(),
+            descriptor_type: holon.descriptor_type.clone(),
+            properties: holon.properties.clone(),
+            relationships: holon.relationships.clone(),
+        }
+    }
+
+    pub fn key(&self) -> &str {
+        &self.key
+    }
+    pub fn descriptor_type(&self) -> &str {
+        &self.descriptor_type
+    }
+    pub fn properties(&self) -> &BTreeMap<String, Value> {
+        &self.properties
+    }
+    pub fn relationships(&self) -> &BTreeMap<String, Vec<String>> {
+        &self.relationships
+    }
+}
+
+/// A deterministic semantic diff over explicit loader facts.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LoaderFactDiff {
+    changes: Vec<LoaderFactChange>,
+}
+
+impl LoaderFactDiff {
+    pub fn changes(&self) -> &[LoaderFactChange] {
+        &self.changes
+    }
+    pub fn is_empty(&self) -> bool {
+        self.changes.is_empty()
+    }
+
+    fn between(left: &LoaderFactProjection, right: &LoaderFactProjection) -> Self {
+        let left = flattened_loader_facts(left);
+        let right = flattened_loader_facts(right);
+        let mut paths = left.keys().chain(right.keys()).cloned().collect::<Vec<_>>();
+        paths.sort();
+        paths.dedup();
+        let changes = paths
+            .into_iter()
+            .filter_map(|path| match (left.get(&path), right.get(&path)) {
+                (None, Some(after)) => Some(LoaderFactChange::added(path, after.clone())),
+                (Some(before), None) => Some(LoaderFactChange::removed(path, before.clone())),
+                (Some(before), Some(after)) if before != after => {
+                    Some(LoaderFactChange::changed(path, before.clone(), after.clone()))
+                }
+                _ => None,
+            })
+            .collect();
+        Self { changes }
+    }
+}
+
+/// One explicit loader-fact addition, removal, or replacement.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LoaderFactChange {
+    path: String,
+    kind: LoaderFactChangeKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    after: Option<Value>,
+}
+
+impl LoaderFactChange {
+    fn added(path: String, after: Value) -> Self {
+        Self { path, kind: LoaderFactChangeKind::Added, before: None, after: Some(after) }
+    }
+    fn removed(path: String, before: Value) -> Self {
+        Self { path, kind: LoaderFactChangeKind::Removed, before: Some(before), after: None }
+    }
+    fn changed(path: String, before: Value, after: Value) -> Self {
+        Self { path, kind: LoaderFactChangeKind::Changed, before: Some(before), after: Some(after) }
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+    pub fn kind(&self) -> LoaderFactChangeKind {
+        self.kind
+    }
+    pub fn before(&self) -> Option<&Value> {
+        self.before.as_ref()
+    }
+    pub fn after(&self) -> Option<&Value> {
+        self.after.as_ref()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LoaderFactChangeKind {
+    Added,
+    Removed,
+    Changed,
+}
+
+fn flattened_loader_facts(project: &LoaderFactProjection) -> BTreeMap<String, Value> {
+    let mut facts = BTreeMap::new();
+    for file in &project.files {
+        let file_path = format!("files/{}", file.path);
+        facts.insert(format!("{file_path}/schemaKey"), Value::String(file.schema_key.clone()));
+        for holon in &file.holons {
+            let holon_path = format!("{file_path}/holons/{}", holon.key);
+            facts.insert(holon_path.clone(), Value::Bool(true));
+            facts
+                .insert(format!("{holon_path}/type"), Value::String(holon.descriptor_type.clone()));
+            for (name, value) in &holon.properties {
+                facts.insert(format!("{holon_path}/properties/{name}"), value.clone());
+            }
+            for (name, targets) in &holon.relationships {
+                facts.insert(
+                    format!("{holon_path}/relationships/{name}"),
+                    Value::Array(targets.iter().cloned().map(Value::String).collect()),
+                );
+            }
+        }
+    }
+    facts
 }
 
 #[derive(Debug, Clone)]
@@ -1049,6 +1266,105 @@ mod tests {
         let error = decompile_inputs(&[root_a, root_b], &out_dir).expect_err("duplicate paths");
         assert!(error.to_string().contains("duplicate relative input path `same.json`"));
 
+        Ok(())
+    }
+
+    #[test]
+    fn inspect_exposes_only_normalized_explicit_loader_facts() -> Result<()> {
+        let input_dir = temp_domain_json_dir();
+        write_json_file(
+            &input_dir.join("schema.json"),
+            r#"{
+  "holons": [
+    {
+      "key": "Example.Schema",
+      "type": "Schema.HolonType",
+      "properties": { "schema_name": "Example.Schema" }
+    },
+    {
+      "key": "Example.Type",
+      "type": "TypeDescriptor",
+      "properties": { "description": "An explicit value" },
+      "relationships": [
+        { "name": "ComponentOf", "target": [{ "$ref": "Example.Schema" }] },
+        { "name": "InstanceRelationships", "target": [{ "$ref": "First" }, { "$ref": "Second" }] }
+      ]
+    }
+  ]
+}"#,
+        )?;
+
+        let projection = inspect_loader_facts(&[input_dir])?;
+        let rendered = serde_json::to_value(&projection)?;
+        assert_eq!(rendered["files"][0]["path"], "schema.json");
+        assert!(rendered["files"][0].get("meta").is_none());
+        assert_eq!(
+            rendered["files"][0]["holons"][1]["properties"]["Description"],
+            "An explicit value"
+        );
+        assert_eq!(
+            rendered["files"][0]["holons"][1]["relationships"]["InstanceRelationships"],
+            serde_json::json!(["First", "Second"])
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn diff_reports_explicit_literal_omission_and_relationship_order_changes() -> Result<()> {
+        let left_dir = temp_domain_json_dir();
+        let right_dir = temp_domain_json_dir();
+        let left = r#"{
+  "meta": { "generated_at": "before" },
+  "holons": [
+    { "key": "Example.Schema", "type": "Schema.HolonType", "properties": { "schema_name": "Example.Schema" } },
+    {
+      "key": "Example.Type", "type": "TypeDescriptor",
+      "properties": { "description": "before", "obsolete": true },
+      "relationships": [{ "name": "InstanceRelationships", "target": [{ "$ref": "First" }, { "$ref": "Second" }] }]
+    }
+  ]
+}"#;
+        let right = r#"{
+  "meta": { "generated_at": "after" },
+  "holons": [
+    { "key": "Example.Schema", "type": "Schema.HolonType", "properties": { "schema_name": "Example.Schema" } },
+    {
+      "key": "Example.Type", "type": "TypeDescriptor",
+      "properties": { "description": "after", "introduced": false },
+      "relationships": [{ "name": "InstanceRelationships", "target": [{ "$ref": "Second" }, { "$ref": "First" }] }]
+    },
+    {
+      "key": "Example.Added", "type": "TypeDescriptor"
+    }
+  ]
+}"#;
+        write_json_file(&left_dir.join("schema.json"), left)?;
+        write_json_file(&right_dir.join("schema.json"), right)?;
+
+        let diff = diff_loader_facts(&[left_dir], &[right_dir])?;
+        let rendered = serde_json::to_value(&diff)?;
+        let changes = rendered["changes"].as_array().expect("changes array");
+        assert_eq!(changes.len(), 6, "volatile import metadata must not affect the diff");
+        assert!(changes.iter().any(|change| {
+            change["path"] == "files/schema.json/holons/Example.Added" && change["kind"] == "added"
+        }));
+        assert!(changes.iter().any(|change| {
+            change["path"] == "files/schema.json/holons/Example.Type/properties/Description"
+                && change["kind"] == "changed"
+        }));
+        assert!(changes.iter().any(|change| {
+            change["path"] == "files/schema.json/holons/Example.Type/properties/obsolete"
+                && change["kind"] == "removed"
+        }));
+        assert!(changes.iter().any(|change| {
+            change["path"] == "files/schema.json/holons/Example.Type/properties/introduced"
+                && change["kind"] == "added"
+        }));
+        assert!(changes.iter().any(|change| {
+            change["path"]
+                == "files/schema.json/holons/Example.Type/relationships/InstanceRelationships"
+                && change["kind"] == "changed"
+        }));
         Ok(())
     }
 }
