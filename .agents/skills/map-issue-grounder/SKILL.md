@@ -1,39 +1,34 @@
 ---
 name: map-issue-grounder
-description: "Use this skill when the user wants a GitHub Enhancement Issue generated for a specific MAP or map-holons workplan task, track item, PR unit, or wave-plan unit. Trigger on requests to ground a workplan task into an issue, turn a roadmap/spec/implementation-plan item into a GitHub enhancement, or generate, refine, or review a repository-grounded enhancement issue for MAP implementation work. This skill performs Phase 4 repository-grounded issue generation: inspect authoritative DevDocs in situ, inspect the map-holons repository, use the repository's .github/ISSUE_TEMPLATE/enhancement.md template, and produce an implementation-ready Enhancement Issue grounded in existing code."
+description: "Use this skill for initial authoring of a repository-grounded GitHub Enhancement Issue for a specific MAP or map-holons workplan task, track item, PR unit, or wave-plan unit. Trigger when the user wants to ground a workplan task into an issue, turn a roadmap/spec/implementation-plan item into a GitHub enhancement, or generate an implementation-ready Enhancement Issue grounded in current DevDocs and repository reality. Do not trigger for ordinary review, refinement, clarification, or minor updates to an existing issue definition unless the user explicitly requests a fresh repository-grounding pass. Load this skill at most once per conversation/session; reuse the grounding context already gathered rather than loading the skill and its source artifacts again."
 ---
 
 # MAP Issue Grounder
 
 Generate repository-grounded GitHub Enhancement Issues for MAP implementation work. Treat this as Phase 4 of the MAP development workflow: translate a stabilized DevDocs specification and bounded implementation-plan PR unit into a GitHub issue grounded in the actual `map-holons` repository.
 
-## Trigger phrases
+## Applicability guard
 
-This skill should activate for requests like:
+This skill is for the **initial repository-grounding pass** used to author an implementation-ready issue from a workplan unit.
 
-- "ground this workplan task into an issue"
-- "turn this workplan item into a GitHub enhancement"
-- "generate an enhancement issue for this PR unit"
-- "create a repo-grounded issue for this roadmap task"
-- "refine this enhancement issue against the current repo"
-- "review this enhancement issue against the codebase"
+If the current request is only to review, refine, clarify, or make a minor update to an issue that has already been grounded, **stop here and handle the request directly without loading the source artifacts below**.
 
-Prefer this skill when the user is asking for a GitHub enhancement issue tied to a specific workplan task, not for general issue triage or broad implementation planning.
+If this skill has already been applied during the current conversation/session, **do not load or execute it again**. Reuse the skill guidance and grounding context already gathered. Inspect additional or previously read sources only when the current request requires information not already available, the relevant source material may have changed, or the user explicitly requests fresh repository grounding.
 
 ## Core posture
 
-Use `map-dev-docs` in situ as the authoritative source for architectural intent. Do not copy DevDocs specs, plans, or roadmaps into `map-holons`, and do not treat any copied local version as authoritative. Ground every issue in repository reality:
+Use `map-dev-docs` in situ as the authoritative source for architectural intent. Do not copy DevDocs specs, plans, or roadmaps into `map-holons`, and do not treat any copied local version as authoritative. Ground every initially authored issue in repository reality:
 
 - existing modules, types, APIs, tests, naming conventions, and architectural boundaries
 - current transaction, staging, versioning, validation, dance, command, query, and SDK patterns
 - current gaps between DevDocs intent and implemented substrate
 - the issue structure required by `.github/ISSUE_TEMPLATE/enhancement.md`
 
-Do not invent repository structures. If code context is missing, explicitly mark assumptions and ask for the relevant files or paths. Prefer extending existing patterns over introducing new abstractions.
+Do not invent repository structures. If code context is missing, explicitly mark assumptions and ask for the relevant files or paths when they are necessary to complete the grounding. Prefer extending existing patterns over introducing new abstractions.
 
 ## Required source artifacts
 
-Before generating the issue, inspect these artifacts in the authoritative `map-dev-docs` checkout and the code repository:
+For the initial grounding pass, inspect these artifacts in the authoritative `map-dev-docs` checkout and the code repository:
 
 1. The latest overall workplan in `map-dev-docs`:
    - `docs/roadmap/desc-driven-impl-plan.md`
@@ -44,6 +39,8 @@ Before generating the issue, inspect these artifacts in the authoritative `map-d
 4. The latest track-specific implementation plan in `map-dev-docs`.
 5. The enhancement issue template from the code repository:
    - `.github/ISSUE_TEMPLATE/enhancement.md`
+
+These are requirements for **initial issue grounding**, not for every subsequent review or refinement of the resulting issue.
 
 If the `map-dev-docs` checkout or a required artifact cannot be located, ask the user to identify its path or provide its content before continuing. Do not substitute a generic issue format for the enhancement template.
 
@@ -62,9 +59,11 @@ Use this file to understand:
 - prerequisites and downstream dependents
 - the intended PR boundary for the target issue
 
-### 2. Prompt for target track and PR
+### 2. Identify the target track and PR
 
-Ask the user to specify the target workplan unit:
+Determine the target workplan unit from the user's request and available context.
+
+If it is not already clear, ask the user to specify:
 
 - track name or identifier
 - PR/unit identifier or title
@@ -174,6 +173,8 @@ The issue must be:
 
 Do not include code unless the user asks for implementation details in the issue.
 
+After the initial issue has been grounded, subsequent review and refinement should normally be handled directly without invoking this skill or repeating the complete grounding workflow.
+
 ## Quality rules
 
 - Use the repository's enhancement template, not a generic format.
@@ -185,6 +186,7 @@ Do not include code unless the user asks for implementation details in the issue
 - Separate must-implement-now from should-defer.
 - Prefer current repository patterns over new abstractions.
 - Record assumptions when repository evidence is incomplete.
+- Reuse sufficient context already gathered rather than unnecessarily reloading sources.
 
 ## Split recommendation rule
 
