@@ -1,19 +1,44 @@
 import { describe, expect, it } from 'vitest';
 import { applyTheme } from './apply-theme';
-import { DEFAULT_DAHN_THEME } from './default-theme';
+import type { DahnTheme } from '../contracts/themes';
+
+const THEME: DahnTheme = {
+  themeKey: 'SpaceNavigator.DefaultTheme',
+  themeVersionedKey: 'SpaceNavigator.DefaultTheme@1',
+  metaDesignSystemKey: 'SpaceNavigator.MetaDesignSystem',
+  metaDesignSystemVersionedKey: 'SpaceNavigator.MetaDesignSystem@1',
+  cssCustomProperties: {
+    '--dahn-canvas-surface-background': '#f7f5ef',
+    '--dahn-canvas-text-color': '#1f2933',
+  },
+};
 
 describe('applyTheme', () => {
   it('applies theme tokens as css custom properties', () => {
     const root = document.createElement('div');
 
-    applyTheme(root, DEFAULT_DAHN_THEME);
+    applyTheme(root, THEME);
 
-    expect(root.dataset['dahnThemeId']).toBe(DEFAULT_DAHN_THEME.id);
-    expect(root.style.getPropertyValue('--dahn-color-surface')).toBe(
-      DEFAULT_DAHN_THEME.colorTokens['surface'],
+    expect(root.dataset['dahnThemeKey']).toBe(THEME.themeKey);
+    expect(root.style.getPropertyValue('--dahn-canvas-surface-background')).toBe(
+      THEME.cssCustomProperties['--dahn-canvas-surface-background'],
     );
-    expect(root.style.getPropertyValue('--dahn-type-bodyFont')).toBe(
-      DEFAULT_DAHN_THEME.typographyTokens['bodyFont'],
+    expect(root.style.getPropertyValue('--dahn-canvas-text-color')).toBe(
+      THEME.cssCustomProperties['--dahn-canvas-text-color'],
     );
+  });
+
+  it('removes custom properties absent from an explicitly refreshed Theme', () => {
+    const root = document.createElement('div');
+    applyTheme(root, THEME);
+
+    applyTheme(root, {
+      ...THEME,
+      themeVersionedKey: 'SpaceNavigator.DefaultTheme@2',
+      cssCustomProperties: { '--dahn-canvas-text-color': '#000000' },
+    });
+
+    expect(root.style.getPropertyValue('--dahn-canvas-surface-background')).toBe('');
+    expect(root.style.getPropertyValue('--dahn-canvas-text-color')).toBe('#000000');
   });
 });

@@ -305,6 +305,9 @@ mod tests {
                 "commands",
                 "query",
                 "query-dance",
+                "design-tokens",
+                "meta-design-system",
+                "theme",
                 "dahn",
             ]
         );

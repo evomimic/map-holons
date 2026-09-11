@@ -3,7 +3,18 @@ import { DomCanvas } from './dom-canvas';
 import { DefaultVisualizerRegistry } from '../registry/default-visualizer-registry';
 import type { VisualizerContext, VisualizerElement } from '../contracts/visualizers';
 import type { DahnTarget } from '../contracts/targets';
-import { DEFAULT_DAHN_THEME } from '../themes/default-theme';
+import type { DahnTheme } from '../contracts/themes';
+import type { Theme } from '../themes/theme';
+
+const THEME: DahnTheme = {
+  themeKey: 'SpaceNavigator.DefaultTheme',
+  themeVersionedKey: 'SpaceNavigator.DefaultTheme@1',
+  metaDesignSystemKey: 'SpaceNavigator.MetaDesignSystem',
+  metaDesignSystemVersionedKey: 'SpaceNavigator.MetaDesignSystem@1',
+  cssCustomProperties: {
+    '--dahn-canvas-surface-background': '#f7f5ef',
+  },
+};
 
 class TestCanvasVisualizerElement
   extends HTMLElement
@@ -22,6 +33,27 @@ function createTestCanvasVisualizerElementClass(): typeof TestCanvasVisualizerEl
 }
 
 describe('DomCanvas', () => {
+  it('resolves and applies Theme once during asynchronous canvas initialization', async () => {
+    const container = document.createElement('div');
+    const registry = new DefaultVisualizerRegistry();
+    const toCssCustomProperties = vi.fn(async () => THEME);
+    const resolveTheme = vi.fn(async () => ({
+      toCssCustomProperties,
+    }) as unknown as Theme);
+
+    const canvas = await DomCanvas.create(
+      container,
+      registry,
+      () => ({}) as VisualizerContext,
+      { resolveTheme },
+    );
+
+    await canvas.mountVisualizers([]);
+
+    expect(resolveTheme).toHaveBeenCalledTimes(1);
+    expect(toCssCustomProperties).toHaveBeenCalledTimes(1);
+  });
+
   it('applies theme tokens to the canvas root', () => {
     const container = document.createElement('div');
     const registry = new DefaultVisualizerRegistry();
@@ -31,12 +63,12 @@ describe('DomCanvas', () => {
       () => ({}) as VisualizerContext,
     );
 
-    canvas.setTheme(DEFAULT_DAHN_THEME);
+    canvas.setTheme(THEME);
 
     const root = container.querySelector('[data-dahn-canvas="root"]');
     expect(root).not.toBeNull();
-    expect(root?.style.getPropertyValue('--dahn-color-surface')).toBe(
-      DEFAULT_DAHN_THEME.colorTokens['surface'],
+    expect(root?.style.getPropertyValue('--dahn-canvas-surface-background')).toBe(
+      THEME.cssCustomProperties['--dahn-canvas-surface-background'],
     );
   });
 
@@ -48,7 +80,7 @@ describe('DomCanvas', () => {
       target,
       holon: {} as VisualizerContext['holon'],
       actions: [],
-      theme: DEFAULT_DAHN_THEME,
+      theme: THEME,
       canvas: {} as VisualizerContext['canvas'],
     } as VisualizerContext;
     const resolveContext = vi.fn(() => context);

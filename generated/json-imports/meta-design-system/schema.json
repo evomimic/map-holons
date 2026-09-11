@@ -1,0 +1,224 @@
+{
+  "holons": [
+    {
+      "key": "MAP Meta Design System Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Meta Design System Schema-v0.1.0",
+        "Description": "MAP schema for versioned Meta Design Systems that define reusable semantic DesignToken vocabularies."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP Design Tokens Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaDesignSystem.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaDesignSystem",
+        "TypeNamePlural": "MetaDesignSystems",
+        "DisplayName": "Meta Design System",
+        "DisplayNamePlural": "Meta Design Systems",
+        "Description": "A versioned semantic presentation contract that selects the reusable DesignTokens in its vocabulary. It tells Canvas and Visualizer developers which semantic decisions they may rely on, and Theme developers the complete set they must assign. Multiple MetaDesignSystems may include the same DesignToken, so membership is not token ownership. MetaDesignSystem is a MAP-native composition concept: DTCG standardizes design-token concepts and formats, not a Meta Design System entity. A changed token-role meaning requires a new MetaDesignSystem version."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "MetaDesignSystemName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MetaDesignSystemName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MetaDesignSystemName",
+        "TypeNamePlural": "MetaDesignSystemNames",
+        "DisplayName": "meta_design_system_name",
+        "DisplayNamePlural": "meta_design_system_names",
+        "Description": "Stable semantic name, including version, of a MetaDesignSystem.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DefinesDesignToken",
+        "TypeNamePlural": "DefinesDesignTokenRelationships",
+        "DisplayName": "Defines Design Token",
+        "DisplayNamePlural": "Defines Design Token Relationships",
+        "Description": "Includes a semantic DesignToken in one MetaDesignSystem contract without making the token exclusively owned by that system.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "MetaDesignSystem.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DesignToken.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DesignToken.HolonType)-[DefinedByMetaDesignSystem]->(MetaDesignSystem.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DesignToken.HolonType)-[DefinedByMetaDesignSystem]->(MetaDesignSystem.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "DefinedByMetaDesignSystem",
+        "TypeNamePlural": "DefinedByMetaDesignSystemRelationships",
+        "DisplayName": "Defined By Meta Design System",
+        "DisplayNamePlural": "Defined By Meta Design System Relationships",
+        "Description": "Inverse of DefinesDesignToken. A semantic DesignToken may belong to multiple MetaDesignSystem contracts.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DesignToken.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "MetaDesignSystem.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

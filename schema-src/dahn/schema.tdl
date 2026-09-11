@@ -1,6 +1,8 @@
 schema "MAP DAHN Schema-v0.1.0" {
   depends_on "MAP Core Schema-v0.0.7"
   depends_on "MAP Dance Schema-v0.1.0"
+  depends_on "MAP Design Tokens Schema-v0.1.0"
+  depends_on "MAP Meta Design System Schema-v0.1.0"
   header {
     description: "Non-Core MAP schema for first-class Visualizer Holons, their executable realizations, and type-based applicability. Capability taxonomies, compatibility/release contracts, Visualizer Commons stewardship, and dynamic acquisition are deliberately deferred."
   }
@@ -80,7 +82,26 @@ abstract holon Visualizer.HolonType {
     InstanceRelationships -> [
       (Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType),
       (Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor),
-      (Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)
+      (Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType),
+      (Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType),
+      (Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)
+    ]
+  }
+}
+
+holon Canvas.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "A coherent experience container bound to one MetaDesignSystem. It may contain only Visualizers that support that system."
+    display_name: "Canvas"
+    display_plural: "Canvases"
+    plural: "Canvases"
+  }
+  relationships {
+    InstanceRelationships -> [
+      (Canvas.HolonType)-[UsesMetaDesignSystem]->(MetaDesignSystem.HolonType),
+      (Canvas.HolonType)-[ContainsVisualizer]->(Visualizer.HolonType)
     ]
   }
 }
@@ -518,5 +539,145 @@ enum VisualizerImplementationRuntime.MapEnumValueType {
         plural: "Rust"
       }
     }
+  }
+}
+
+relationship (Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
+    HasInverse -> SupportsVisualizer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target MetaDesignSystem.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Declares every MetaDesignSystem whose complete token contract a Visualizer supports."
+    display_name: "Supports Meta Design System"
+    display_plural: "Supports Meta Design System Relationships"
+    plural: "SupportsMetaDesignSystemRelationships"
+  }
+}
+
+inverse relationship (MetaDesignSystem.HolonType)-[SupportsVisualizer]->(Visualizer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source MetaDesignSystem.HolonType
+  target Visualizer.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of SupportsMetaDesignSystem."
+    display_name: "Supports Visualizer"
+    display_plural: "Supports Visualizer Relationships"
+    plural: "SupportsVisualizerRelationships"
+  }
+}
+
+relationship (Canvas.HolonType)-[UsesMetaDesignSystem]->(MetaDesignSystem.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> UsedByCanvas
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Canvas.HolonType
+  target MetaDesignSystem.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Binds a Canvas to the one MetaDesignSystem that governs all contained Visualizers and Theme selection."
+    display_name: "Uses Meta Design System"
+    display_plural: "Uses Meta Design System Relationships"
+    plural: "UsesMetaDesignSystemRelationships"
+  }
+}
+
+inverse relationship (MetaDesignSystem.HolonType)-[UsedByCanvas]->(Canvas.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source MetaDesignSystem.HolonType
+  target Canvas.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of UsesMetaDesignSystem."
+    display_name: "Used By Canvas"
+    display_plural: "Used By Canvas Relationships"
+    plural: "UsedByCanvasRelationships"
+  }
+}
+
+relationship (Canvas.HolonType)-[ContainsVisualizer]->(Visualizer.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> ContainedByCanvas
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Canvas.HolonType
+  target Visualizer.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Contains a Visualizer whose supported MetaDesignSystems include the Canvas's one UsesMetaDesignSystem target."
+    display_name: "Contains Visualizer"
+    display_plural: "Contains Visualizer Relationships"
+    plural: "ContainsVisualizerRelationships"
+  }
+}
+
+inverse relationship (Visualizer.HolonType)-[ContainedByCanvas]->(Canvas.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target Canvas.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of ContainsVisualizer."
+    display_name: "Contained By Canvas"
+    display_plural: "Contained By Canvas Relationships"
+    plural: "ContainedByCanvasRelationships"
+  }
+}
+
+relationship (Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> ConsumedByVisualizer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Visualizer.HolonType
+  target DesignToken.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Declares the small semantic set of DesignTokens a Visualizer consumes."
+    display_name: "Consumes Design Token"
+    display_plural: "Consumes Design Token Relationships"
+    plural: "ConsumesDesignTokenRelationships"
+  }
+}
+
+inverse relationship (DesignToken.HolonType)-[ConsumedByVisualizer]->(Visualizer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source DesignToken.HolonType
+  target Visualizer.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of ConsumesDesignToken."
+    display_name: "Consumed By Visualizer"
+    display_plural: "Consumed By Visualizer Relationships"
+    plural: "ConsumedByVisualizerRelationships"
   }
 }

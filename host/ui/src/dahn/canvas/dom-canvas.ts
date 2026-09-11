@@ -2,6 +2,7 @@ import type { CanvasApi, VisualizerMountPlan } from '../contracts/canvas';
 import type { VisualizerContext, VisualizerElement } from '../contracts/visualizers';
 import type { VisualizerRegistry } from '../registry/visualizer-registry';
 import { applyTheme } from '../themes/apply-theme';
+import type { Theme } from '../themes/theme';
 import { createCanvasRoot } from './create-canvas-root';
 import type { DahnTheme } from '../contracts/themes';
 import type { DahnTarget } from '../contracts/targets';
@@ -9,6 +10,10 @@ import type { DahnTarget } from '../contracts/targets';
 export type VisualizerContextResolver = (
   target: DahnTarget,
 ) => VisualizerContext;
+
+export interface ThemeResolver {
+  resolveTheme(): Promise<Theme>;
+}
 
 export class DomCanvas implements CanvasApi {
   private readonly root: HTMLDivElement;
@@ -22,6 +27,23 @@ export class DomCanvas implements CanvasApi {
     const parts = createCanvasRoot(container);
     this.root = parts.root;
     this.primarySlot = parts.primarySlot;
+  }
+
+  /**
+   * Creates a canvas and applies one Theme projection during initialization.
+   * Theme lookup is intentionally absent from render and mount paths; callers
+   * explicitly invoke setTheme after a user selection or version refresh.
+   */
+  static async create(
+    container: HTMLElement,
+    registry: VisualizerRegistry,
+    resolveContext: VisualizerContextResolver,
+    themeResolver: ThemeResolver,
+  ): Promise<DomCanvas> {
+    const canvas = new DomCanvas(container, registry, resolveContext);
+    const theme = await themeResolver.resolveTheme();
+    canvas.setTheme(await theme.toCssCustomProperties());
+    return canvas;
   }
 
   async mountVisualizers(plan: VisualizerMountPlan[]): Promise<void> {

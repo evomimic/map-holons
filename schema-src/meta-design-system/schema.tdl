@@ -1,0 +1,70 @@
+schema "MAP Meta Design System Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Design Tokens Schema-v0.1.0"
+  header {
+    description: "MAP schema for versioned Meta Design Systems that define reusable semantic DesignToken vocabularies."
+  }
+}
+
+holon MetaDesignSystem.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "A versioned semantic presentation contract that selects the reusable DesignTokens in its vocabulary. It tells Canvas and Visualizer developers which semantic decisions they may rely on, and Theme developers the complete set they must assign. Multiple MetaDesignSystems may include the same DesignToken, so membership is not token ownership. MetaDesignSystem is a MAP-native composition concept: DTCG standardizes design-token concepts and formats, not a Meta Design System entity. A changed token-role meaning requires a new MetaDesignSystem version."
+    display_name: "Meta Design System"
+    display_plural: "Meta Design Systems"
+    plural: "MetaDesignSystems"
+  }
+  relationships {
+    InstanceProperties -> MetaDesignSystemName.PropertyType
+    InstanceRelationships -> (MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType)
+  }
+}
+
+property MetaDesignSystemName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Stable semantic name, including version, of a MetaDesignSystem."
+    display_name: "meta_design_system_name"
+    display_plural: "meta_design_system_names"
+    plural: "MetaDesignSystemNames"
+  }
+}
+
+relationship (MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> OneOrMore.CardinalityConstraint
+    HasInverse -> DefinedByMetaDesignSystem
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source MetaDesignSystem.HolonType
+  target DesignToken.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Includes a semantic DesignToken in one MetaDesignSystem contract without making the token exclusively owned by that system."
+    display_name: "Defines Design Token"
+    display_plural: "Defines Design Token Relationships"
+    plural: "DefinesDesignTokenRelationships"
+  }
+}
+
+inverse relationship (DesignToken.HolonType)-[DefinedByMetaDesignSystem]->(MetaDesignSystem.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source DesignToken.HolonType
+  target MetaDesignSystem.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of DefinesDesignToken. A semantic DesignToken may belong to multiple MetaDesignSystem contracts."
+    display_name: "Defined By Meta Design System"
+    display_plural: "Defined By Meta Design System Relationships"
+    plural: "DefinedByMetaDesignSystemRelationships"
+  }
+}

@@ -2169,7 +2169,7 @@ holon Example.HolonType {
     #[test]
     fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 19);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 22);
 
         let diagnostics = check_inputs(&[fixture_root])?;
 
@@ -2191,8 +2191,8 @@ holon Example.HolonType {
         let parsed = parse_inputs(&[fixture_root.clone()])?;
         let compilation = build_r6_compilation(parsed)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 19);
-        assert_eq!(compilation.files.len(), 19);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 22);
+        assert_eq!(compilation.files.len(), 22);
         assert!(compilation
             .files
             .iter()
@@ -2207,8 +2207,8 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 19);
-        assert_eq!(compiled_files.len(), 19);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 22);
+        assert_eq!(compiled_files.len(), 22);
 
         let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));
@@ -2304,6 +2304,32 @@ holon Example.HolonType {
             generic_node_implementation["properties"]["VisualizerImplementationKey"],
             "dahn.generic-holon-node"
         );
+
+        let canvas_visualizer = space_navigator_holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("SpaceNavigator.CanvasVisualizer"))
+            .context("Space Navigator Canvas Visualizer package holon")?;
+        let canvas_visualizer_relationships = canvas_visualizer["relationships"]
+            .as_array()
+            .context("Space Navigator Canvas Visualizer relationships")?;
+        let supported_mds = canvas_visualizer_relationships
+            .iter()
+            .find(|relationship| relationship["name"].as_str() == Some("SupportsMetaDesignSystem"))
+            .context("SupportsMetaDesignSystem relationship")?;
+        assert_eq!(supported_mds["target"][0]["$ref"], "SpaceNavigator.MetaDesignSystem");
+
+        let default_theme = space_navigator_holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("SpaceNavigator.DefaultTheme"))
+            .context("Space Navigator default Theme package holon")?;
+        let default_theme_relationships = default_theme["relationships"]
+            .as_array()
+            .context("Space Navigator default Theme relationships")?;
+        let theme_mds = default_theme_relationships
+            .iter()
+            .find(|relationship| relationship["name"].as_str() == Some("ForMetaDesignSystem"))
+            .context("ForMetaDesignSystem relationship")?;
+        assert_eq!(theme_mds["target"][0]["$ref"], "SpaceNavigator.MetaDesignSystem");
 
         assert!(holons.iter().all(|holon| holon["key"].as_str() != Some("Layout.HolonType")));
         let visualizer_slot_type = holons
@@ -2695,7 +2721,7 @@ holon InspectLocal.DanceType {
             ("dance/schema.json", "LoadHolons.DanceType", "SpaceAuthoritative"),
             ("dahn/schema.json", "MaterializeVisualizer.DanceType", "HostAuthoritative"),
             ("query-dance/schema.json", "QueryDance.DanceType", "ContainerLocal"),
-            ("dancer/schema.json", "ActivateDancer.DanceType", "ContainerLocal"),
+            ("dancer/schema.json", "ActivateDancer.DanceType", "HostAuthoritative"),
         ] {
             let schema: Value = serde_json::from_str(&fs::read_to_string(out_dir.join(path))?)?;
             let dance = schema["holons"]

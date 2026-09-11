@@ -7,8 +7,8 @@ describe('DAHN export surface', () => {
     expect(dahn.DomCanvas).toBeDefined();
     expect(dahn.MaterializedVisualizerCache).toBeDefined();
     expect(dahn.MaterializedVisualizerRuntime).toBeDefined();
-    expect(dahn.DEFAULT_DAHN_THEME).toBeDefined();
-    expect(dahn.DefaultThemeRegistry).toBeDefined();
+    expect(dahn.Theme).toBeDefined();
+    expect(dahn.HolonSpaceThemeResolver).toBeDefined();
     expect(dahn.DahnHolonView).toBeDefined();
   });
 

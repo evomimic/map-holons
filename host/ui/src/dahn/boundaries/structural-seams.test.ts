@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { DefaultVisualizerRegistry } from '../registry/default-visualizer-registry';
 import { applyTheme } from '../themes/apply-theme';
-import { DEFAULT_DAHN_THEME } from '../themes/default-theme';
 import type {
+  DahnTheme,
   VisualizerDefinition,
 } from '../index';
+
+const THEME: DahnTheme = {
+  themeKey: 'SpaceNavigator.DefaultTheme',
+  themeVersionedKey: 'SpaceNavigator.DefaultTheme@1',
+  metaDesignSystemKey: 'SpaceNavigator.MetaDesignSystem',
+  metaDesignSystemVersionedKey: 'SpaceNavigator.MetaDesignSystem@1',
+  cssCustomProperties: {
+    '--dahn-canvas-surface-background': '#f7f5ef',
+    '--dahn-canvas-gap': '16px',
+  },
+};
 
 function visualizer(id: string): VisualizerDefinition {
   return {
@@ -33,13 +44,13 @@ describe('DAHN structural seams', () => {
   it('keeps theme application token-based at the DOM root', () => {
     const root = document.createElement('div');
 
-    applyTheme(root, DEFAULT_DAHN_THEME);
+    applyTheme(root, THEME);
 
-    expect(root.style.getPropertyValue('--dahn-color-surface')).toBe(
-      DEFAULT_DAHN_THEME.colorTokens['surface'],
+    expect(root.style.getPropertyValue('--dahn-canvas-surface-background')).toBe(
+      THEME.cssCustomProperties['--dahn-canvas-surface-background'],
     );
-    expect(root.style.getPropertyValue('--dahn-space-gap')).toBe(
-      DEFAULT_DAHN_THEME.spacingTokens['gap'],
+    expect(root.style.getPropertyValue('--dahn-canvas-gap')).toBe(
+      THEME.cssCustomProperties['--dahn-canvas-gap'],
     );
   });
 });

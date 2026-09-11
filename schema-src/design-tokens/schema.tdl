@@ -1,0 +1,135 @@
+schema "MAP Design Tokens Schema-v0.1.0" {
+  depends_on "MAP Core Schema-v0.0.7"
+  header {
+    description: "MAP vocabulary for named semantic DesignTokens and their DTCG-aligned DesignTokenTypes. It intentionally defines neither Meta Design Systems, Themes, aliases, groups, primitive/reference-token layers, nor DTCG serialization."
+  }
+}
+
+holon DesignToken.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "A named semantic presentation decision that is the stable interoperability contract between independently authored Meta Design Systems, Themes, and Visualizers. Its name identifies what is requested, rather than a CSS property or component implementation. A DesignToken has one DesignTokenType but never carries a Theme-specific value, CSS declaration name, alias, or rendering instruction. The term and broad semantics align with the DTCG Design Token concept, but this MAP type does not claim DTCG file-format conformance."
+    display_name: "Design Token"
+    display_plural: "Design Tokens"
+    plural: "DesignTokens"
+  }
+  relationships {
+    InstanceProperties -> DesignTokenName.PropertyType
+    InstanceRelationships -> (DesignToken.HolonType)-[HasDesignTokenType]->(DesignTokenType.ValueType)
+  }
+}
+
+abstract value DesignTokenType.ValueType {
+  type MetaStringValueType.MetaValueType
+  extends MapStringValueType.StringValueType
+  header {
+    description: "An abstract classification of the representation a DesignToken value may have. It is MAP's first-class representation of the DTCG Design Token Type concept, named DesignTokenType to avoid collision with MAP's general Type model. A type constrains values a Theme may assign; it does not define a semantic role, a Meta Design System, or a Theme. This family intentionally contains only classifications required by the current vertical slice and is not a full DTCG type vocabulary."
+    display_name: "Design Token Type"
+    display_plural: "Design Token Types"
+    plural: "DesignTokenTypes"
+  }
+}
+
+value Color.DesignTokenType {
+  type MetaStringValueType.MetaValueType
+  extends DesignTokenType.ValueType
+  header {
+    description: "A DesignTokenType for a color value, corresponding to the DTCG color token type. It constrains a ThemeTokenAssignment to a color representation; the semantic use, such as Surface, Text, or Focus, is defined by the DesignToken instead."
+    display_name: "Color"
+    display_plural: "Colors"
+    plural: "Colors"
+  }
+}
+
+value Dimension.DesignTokenType {
+  type MetaStringValueType.MetaValueType
+  extends DesignTokenType.ValueType
+  header {
+    description: "A DesignTokenType for a dimension value, corresponding to the DTCG dimension token type. It constrains a ThemeTokenAssignment to a length or size representation; spacing, sizing, and other semantic roles remain distinct DesignTokens."
+    display_name: "Dimension"
+    display_plural: "Dimensions"
+    plural: "Dimensions"
+  }
+}
+
+value FontFamily.DesignTokenType {
+  type MetaStringValueType.MetaValueType
+  extends DesignTokenType.ValueType
+  header {
+    description: "A DesignTokenType for a font-family value, corresponding to the DTCG fontFamily token type. It constrains a ThemeTokenAssignment to a typeface family representation without assigning that typography a semantic role."
+    display_name: "Font Family"
+    display_plural: "Font Families"
+    plural: "FontFamilies"
+  }
+}
+
+value FontWeight.DesignTokenType {
+  type MetaStringValueType.MetaValueType
+  extends DesignTokenType.ValueType
+  header {
+    description: "A DesignTokenType for a font-weight value, corresponding to the DTCG fontWeight token type. It constrains a ThemeTokenAssignment to a weight representation without assigning that typography a semantic role."
+    display_name: "Font Weight"
+    display_plural: "Font Weights"
+    plural: "FontWeights"
+  }
+}
+
+value StrokeStyle.DesignTokenType {
+  type MetaStringValueType.MetaValueType
+  extends DesignTokenType.ValueType
+  header {
+    description: "A DesignTokenType for a stroke-style value, corresponding to the DTCG strokeStyle token type. It represents the styling of a stroked or bordered outline; the composite DTCG border token type is deliberately outside this initial vocabulary."
+    display_name: "Stroke Style"
+    display_plural: "Stroke Styles"
+    plural: "StrokeStyles"
+  }
+}
+
+property DesignTokenName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Stable machine-readable semantic name of a DesignToken. Theme projection derives its fixed CSS custom-property name from this identity."
+    display_name: "design_token_name"
+    display_plural: "design_token_names"
+    plural: "DesignTokenNames"
+  }
+}
+
+relationship (DesignToken.HolonType)-[HasDesignTokenType]->(DesignTokenType.ValueType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> TypesDesignToken
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source DesignToken.HolonType
+  target DesignTokenType.ValueType
+  deletion_semantic Allow
+  header {
+    description: "Declares the DTCG-aligned type that constrains values assigned to a DesignToken."
+    display_name: "Has Design Token Type"
+    display_plural: "Has Design Token Type Relationships"
+    plural: "HasDesignTokenTypeRelationships"
+  }
+}
+
+inverse relationship (DesignTokenType.ValueType)-[TypesDesignToken]->(DesignToken.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source DesignTokenType.ValueType
+  target DesignToken.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of HasDesignTokenType."
+    display_name: "Types Design Token"
+    display_plural: "Types Design Token Relationships"
+    plural: "TypesDesignTokenRelationships"
+  }
+}

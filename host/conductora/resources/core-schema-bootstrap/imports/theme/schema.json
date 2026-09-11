@@ -1,0 +1,920 @@
+{
+  "holons": [
+    {
+      "key": "MAP Theme Schema-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Theme Schema-v0.1.0",
+        "Description": "MAP schema for Themes as complete, typed value assignments for one Meta Design System. Theme availability is independent of Dancer identity."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP Design Tokens Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Theme.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Theme",
+        "TypeNamePlural": "Themes",
+        "DisplayName": "Theme",
+        "DisplayNamePlural": "Themes",
+        "Description": "A user-selectable, complete realization of one MetaDesignSystem's DesignToken vocabulary. It assigns concrete typed presentation values through ThemeTokenAssignments for every DesignToken the MetaDesignSystem defines, allowing a runtime to project the Theme once to CSS. Theme selection is person- and space-driven, independent of Dancer or application choice. The notion of a theme and token-value assignment is common design-system practice, but Theme and its relationship semantics are MAP-native rather than DTCG-standardized."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ThemeName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Theme.HolonType)-[ForMetaDesignSystem]->(MetaDesignSystem.HolonType)"
+            },
+            {
+              "$ref": "(Theme.HolonType)-[HasThemeTokenAssignment]->(ThemeTokenAssignment.HolonType)"
+            },
+            {
+              "$ref": "(Theme.HolonType)-[OfferedByHolonSpace]->(HolonSpace.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ThemeTokenAssignment.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ThemeTokenAssignment",
+        "TypeNamePlural": "ThemeTokenAssignments",
+        "DisplayName": "Theme Token Assignment",
+        "DisplayNamePlural": "Theme Token Assignments",
+        "Description": "A MAP-native intersection holon binding one Theme to one DesignToken and the concrete presentation value supplied for it. The ordered (Theme, DesignToken) pair is its semantic key, making one assignment per token explicit and validating complete Theme coverage. Its value is constrained by a DTCG-aligned DesignTokenType, but this holon and its graph representation do not imply DTCG serialization."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceKeyRule",
+          "target": [
+            {
+              "$ref": "ThemeTokenAssignmentPairRule.RelationshipPairRule"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "PresentationValue.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(ThemeTokenAssignment.HolonType)-[ForDesignToken]->(DesignToken.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RelationshipPairRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "RelationshipPairRule",
+        "TypeNamePlural": "RelationshipPairRules",
+        "DisplayName": "Relationship Pair Key Rule",
+        "DisplayNamePlural": "Relationship Pair Key Rules",
+        "Description": "A MAP-specific key-rule strategy for intersection holons whose semantic identity is an ordered pair of relationship targets. It gives such a holon a stable derived identity without requiring an independently authored identifier. It has no DTCG counterpart."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "KeyRuleType.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ThemeTokenAssignmentPairRule.RelationshipPairRule",
+      "type": "RelationshipPairRule.KeyRuleType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ThemeName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ThemeName",
+        "TypeNamePlural": "ThemeNames",
+        "DisplayName": "theme_name",
+        "DisplayNamePlural": "theme_names",
+        "Description": "Stable semantic name of a Theme.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PresentationValue.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PresentationValue",
+        "TypeNamePlural": "PresentationValues",
+        "DisplayName": "presentation_value",
+        "DisplayNamePlural": "presentation_values",
+        "Description": "String-backed value supplied by a ThemeTokenAssignment. It must conform to the assigned DesignToken's DesignTokenType.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Theme.HolonType)-[ForMetaDesignSystem]->(MetaDesignSystem.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ForMetaDesignSystem",
+        "TypeNamePlural": "ForMetaDesignSystemRelationships",
+        "DisplayName": "For Meta Design System",
+        "DisplayNamePlural": "For Meta Design System Relationships",
+        "Description": "Records the one MetaDesignSystem whose complete DesignToken contract a Theme realizes.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "MetaDesignSystem.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(MetaDesignSystem.HolonType)-[HasTheme]->(Theme.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(MetaDesignSystem.HolonType)-[HasTheme]->(Theme.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasTheme",
+        "TypeNamePlural": "HasThemeRelationships",
+        "DisplayName": "Has Theme",
+        "DisplayNamePlural": "Has Theme Relationships",
+        "Description": "Inverse of ForMetaDesignSystem.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "MetaDesignSystem.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Theme.HolonType)-[HasThemeTokenAssignment]->(ThemeTokenAssignment.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasThemeTokenAssignment",
+        "TypeNamePlural": "HasThemeTokenAssignmentRelationships",
+        "DisplayName": "Has Theme Token Assignment",
+        "DisplayNamePlural": "Has Theme Token Assignment Relationships",
+        "Description": "Owns the ThemeTokenAssignments that provide this Theme's complete token values.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ThemeTokenAssignment.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(ThemeTokenAssignment.HolonType)-[AssignedForTheme]->(Theme.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "OneOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ThemeTokenAssignment.HolonType)-[AssignedForTheme]->(Theme.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AssignedForTheme",
+        "TypeNamePlural": "AssignedForThemeRelationships",
+        "DisplayName": "Assigned For Theme",
+        "DisplayNamePlural": "Assigned For Theme Relationships",
+        "Description": "Inverse of HasThemeTokenAssignment. Each assignment belongs to exactly one Theme.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ThemeTokenAssignment.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(ThemeTokenAssignment.HolonType)-[ForDesignToken]->(DesignToken.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ForDesignToken",
+        "TypeNamePlural": "ForDesignTokenRelationships",
+        "DisplayName": "For Design Token",
+        "DisplayNamePlural": "For Design Token Relationships",
+        "Description": "Identifies the DesignToken whose value is supplied by one ThemeTokenAssignment.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ThemeTokenAssignment.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "DesignToken.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(DesignToken.HolonType)-[HasThemeTokenAssignmentFor]->(ThemeTokenAssignment.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(DesignToken.HolonType)-[HasThemeTokenAssignmentFor]->(ThemeTokenAssignment.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasThemeTokenAssignmentFor",
+        "TypeNamePlural": "HasThemeTokenAssignmentForRelationships",
+        "DisplayName": "Has Theme Token Assignment For",
+        "DisplayNamePlural": "Has Theme Token Assignment For Relationships",
+        "Description": "Inverse of ForDesignToken.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "DesignToken.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ThemeTokenAssignment.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Theme.HolonType)-[OfferedByHolonSpace]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OfferedByHolonSpace",
+        "TypeNamePlural": "OfferedByHolonSpaceRelationships",
+        "DisplayName": "Offered By Holon Space",
+        "DisplayNamePlural": "Offered By Holon Space Relationships",
+        "Description": "Associates a Theme with a HolonSpace that offers it for user selection without binding the Theme to any Dancer.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonSpace.HolonType)-[OffersTheme]->(Theme.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[OffersTheme]->(Theme.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "OffersTheme",
+        "TypeNamePlural": "OffersThemeRelationships",
+        "DisplayName": "Offers Theme",
+        "DisplayNamePlural": "Offers Theme Relationships",
+        "Description": "Inverse of OfferedByHolonSpace, exposing Themes offered by a HolonSpace.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Theme.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ThemeTokenAssignmentPairUniqueness.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DeterminismClass": "Deterministic",
+        "SemanticAuthority": "THEME-001",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A Theme may have exactly one ThemeTokenAssignment for each DesignToken."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ThemeTokenAssignmentDesignTokenType.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DeterminismClass": "Deterministic",
+        "SemanticAuthority": "THEME-002",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A ThemeTokenAssignment PresentationValue must conform to its DesignToken's DesignTokenType."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ThemeCompleteDesignTokenCoverage.ValidationRule",
+      "type": "HolonValidationRule.HolonType",
+      "properties": {
+        "DeterminismClass": "Deterministic",
+        "SemanticAuthority": "THEME-003",
+        "ValidationLevel": "Holon",
+        "ValidationRuleDescription": "A Theme must assign exactly one value to every DesignToken defined by its ForMetaDesignSystem target."
+      },
+      "relationships": [
+        {
+          "name": "RuleOf",
+          "target": [
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
