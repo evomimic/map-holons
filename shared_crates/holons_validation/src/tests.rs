@@ -3,7 +3,8 @@ mod fixture;
 
 use base_types::{BaseValue, MapBoolean, MapBytes, MapEnumValue, MapInteger, MapString};
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
-use holons_core::{Descriptor, PropertyDescriptor, ValueDescriptor, WritableHolon};
+use holons_core::core_shared_objects::{holon::ValidationState, Holon};
+use holons_core::{Descriptor, HolonReference, PropertyDescriptor, ValueDescriptor, WritableHolon};
 use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
 use super::*;
@@ -15,6 +16,199 @@ fn property_path(name: &str) -> ValidationSubjectPath {
 
 fn value_path() -> ValidationSubjectPath {
     ValidationSubjectPath::Value { holon_identity: "subject".into(), property: "Title".into() }
+}
+
+#[test]
+fn commit_candidates_replace_all_outcomes_and_accept_corrected_retry() -> Result<(), HolonError> {
+    let fixture = Fixture::new()?;
+    let mut missing_title = fixture.staged_subject("missing-title")?;
+    let mut clean = fixture.staged_subject("clean")?;
+    clean.with_property_value("Title", "present")?;
+    let transient = fixture.context.mutation().new_holon(Some(MapString("undescribed".into())))?;
+    let mut undescribed = fixture.context.mutation().stage_new_holon(transient)?;
+
+    // Seed outcomes contrary to the authored inputs: no prior state may skip reassessment.
+    missing_title.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+    let stale_findings =
+        validate_commit_candidates(&fixture.context, std::slice::from_ref(&undescribed))?
+            .violations;
+    clean.replace_validation_outcome(ValidationState::Invalid, stale_findings)?;
+    undescribed.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+    {
+        let rc_holon = missing_title.get_holon_to_commit(&fixture.context)?;
+        let mut holon = rc_holon.write().expect("test staged holon lock");
+        let Holon::Staged(staged) = &mut *holon else {
+            unreachable!("staged reference must resolve to a staged holon");
+        };
+        staged.add_error(HolonError::NotImplemented("prior persistence failure".into()))?;
+    }
+
+    let candidates = [missing_title.clone(), clean.clone(), undescribed.clone()];
+    let report = validate_commit_candidates(&fixture.context, &candidates)?;
+    assert!(!report.is_accepted());
+    assert_eq!(report.violation_count(), 2);
+    assert_eq!(missing_title.validation_state()?, ValidationState::Invalid);
+    assert_eq!(clean.validation_state()?, ValidationState::Validated);
+    assert!(clean.validation_findings()?.is_empty());
+    assert_eq!(undescribed.validation_state()?, ValidationState::NoDescriptor);
+    assert_eq!(
+        report.violations,
+        [missing_title.validation_findings()?, undescribed.validation_findings()?].concat()
+    );
+    assert!(matches!(
+        &report.violations[0].kind,
+        CommitValidationViolationKind::RuleViolation { code } if code == "DS-PROP-001"
+    ));
+    assert_eq!(
+        report.violations[0].rule_key.as_deref(),
+        Some(CoreValidationRuleName::RequiredPropertyPresence.as_str())
+    );
+    assert_eq!(report.violations[1].kind, CommitValidationViolationKind::NoDescriptor);
+    assert_eq!(
+        missing_title.commit_errors()?,
+        vec![HolonError::NotImplemented("prior persistence failure".into())]
+    );
+
+    missing_title.with_property_value("Title", "corrected")?;
+    undescribed.with_descriptor(fixture.nodes["Contract"].clone())?;
+    undescribed.with_property_value("Title", "now described")?;
+    let report = validate_commit_candidates(&fixture.context, &candidates)?;
+    assert!(report.is_accepted());
+    assert_eq!(report.violation_count(), 0);
+    for candidate in &candidates {
+        assert_eq!(candidate.validation_state()?, ValidationState::Validated);
+        assert!(candidate.validation_findings()?.is_empty());
+    }
+    assert_eq!(
+        missing_title.commit_errors()?,
+        vec![HolonError::NotImplemented("prior persistence failure".into())]
+    );
+    Ok(())
+}
+
+#[test]
+fn commit_candidate_assessment_error_installs_no_partial_outcomes() -> Result<(), HolonError> {
+    let mut fixture = Fixture::new()?;
+    let transient = fixture.context.mutation().new_holon(Some(MapString("first".into())))?;
+    let first = fixture.context.mutation().stage_new_holon(transient)?;
+    let failing = fixture.staged_subject("failing")?;
+    let stale_findings =
+        validate_commit_candidates(&fixture.context, std::slice::from_ref(&first))?.violations;
+    first.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+    failing.replace_validation_outcome(ValidationState::Invalid, stale_findings)?;
+    // The first subject can produce a NoDescriptor finding before the second encounters
+    // an operational descriptor-read failure. Neither prior outcome may be replaced.
+    fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
+    let candidates = [first, failing];
+    let before: Vec<_> = candidates
+        .iter()
+        .map(|candidate| {
+            candidate
+                .get_holon_to_commit(&fixture.context)
+                .map(|holon| holon.read().expect("test staged holon lock").clone())
+        })
+        .collect::<Result<_, HolonError>>()?;
+
+    let validation_context = HolonValidationContext::resolve(&fixture.context)?;
+    let mut collector = ValidationCollector::default();
+    validate_holon(
+        HolonValidationSubject { holon: &HolonReference::from(&candidates[0]) },
+        &validation_context,
+        &mut collector,
+    )?;
+    assert_eq!(collector.into_report().violation_count(), 1);
+    let expected_error = validate_holon(
+        HolonValidationSubject { holon: &HolonReference::from(&candidates[1]) },
+        &validation_context,
+        &mut ValidationCollector::default(),
+    )
+    .expect_err("missing property TypeName prevents reliable assessment");
+
+    assert_eq!(validate_commit_candidates(&fixture.context, &candidates), Err(expected_error));
+    for (candidate, before) in candidates.iter().zip(before) {
+        assert_eq!(
+            *candidate
+                .get_holon_to_commit(&fixture.context)?
+                .read()
+                .expect("test staged holon lock"),
+            before
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn terminal_commit_candidate_is_refused_before_any_outcome_installation() -> Result<(), HolonError>
+{
+    for committed in [false, true] {
+        let fixture = Fixture::new()?;
+        let first = fixture.staged_subject("first")?;
+        first.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+        let terminal = fixture.staged_subject("terminal")?;
+        {
+            let rc_holon = terminal.get_holon_to_commit(&fixture.context)?;
+            let mut holon = rc_holon.write().expect("test staged holon lock");
+            let Holon::Staged(staged) = &mut *holon else {
+                unreachable!("staged reference must resolve to a staged holon");
+            };
+            // Model both terminal lifecycle states without invoking persistence.
+            if committed {
+                staged.to_committed(core_types::LocalId(vec![1]))?;
+            } else {
+                staged.abandon_staged_changes()?;
+            }
+        }
+        let candidates = [first, terminal];
+        let before: Vec<_> = candidates
+            .iter()
+            .map(|candidate| {
+                candidate
+                    .get_holon_to_commit(&fixture.context)
+                    .map(|holon| holon.read().expect("test staged holon lock").clone())
+            })
+            .collect::<Result<_, HolonError>>()?;
+
+        // The first candidate has a missing required Title. Its prepared Invalid outcome
+        // must be discarded when the later terminal entry reveals an invalid workset.
+        assert!(matches!(
+            validate_commit_candidates(&fixture.context, &candidates),
+            Err(HolonError::InvalidParameter(_))
+        ));
+        for (candidate, before) in candidates.iter().zip(before) {
+            assert_eq!(
+                *candidate
+                    .get_holon_to_commit(&fixture.context)?
+                    .read()
+                    .expect("test staged holon lock"),
+                before
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn commit_candidate_anchor_resolution_error_preserves_prior_outcome() -> Result<(), HolonError> {
+    let fixture = Fixture::empty()?;
+    let transient = fixture.context.mutation().new_holon(Some(MapString("subject".into())))?;
+    let candidate = fixture.context.mutation().stage_new_holon(transient)?;
+    candidate.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+    assert!(matches!(
+        validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate)),
+        Err(HolonError::HolonNotFound(_))
+    ));
+    assert_eq!(candidate.validation_state()?, ValidationState::Validated);
+    assert!(candidate.validation_findings()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn empty_commit_candidates_are_accepted_without_schema_anchors() -> Result<(), HolonError> {
+    let fixture = Fixture::empty()?;
+    let report = validate_commit_candidates(&fixture.context, &[])?;
+    assert!(report.is_accepted());
+    assert_eq!(report.violation_count(), 0);
+    Ok(())
 }
 
 #[test]
