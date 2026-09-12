@@ -1,0 +1,33 @@
+<idea-plugin>
+  <id>org.evomimic.map.tdl</id>
+  <name>MAP TDL</name>
+  <vendor url="https://github.com/evomimic/map-holons">EvoMimic</vendor>
+  <description><![CDATA[
+    Source-only authoring support for MAP Type Definition Language files. The plugin starts the
+    map-schema language server; it does not resolve DHT references or implement descriptor semantics.
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <fileType
+        name="TDL"
+        language="TDL"
+        implementationClass="org.evomimic.map.tdl.TdlFileType"
+        fieldName="INSTANCE"
+        extensions="tdl" />
+    <lang.parserDefinition
+        language="TDL"
+        implementationClass="org.evomimic.map.tdl.TdlParserDefinition" />
+    <lang.syntaxHighlighterFactory
+        language="TDL"
+        implementationClass="org.evomimic.map.tdl.TdlSyntaxHighlighterFactory" />
+    <lang.psiStructureViewFactory
+        language="TDL"
+        implementationClass="org.evomimic.map.tdl.TdlStructureViewFactory" />
+    <structureViewBuilderProvider
+        implementation="org.evomimic.map.tdl.TdlStructureViewBuilderProvider" />
+    <platform.lsp.integrationProvider
+        implementation="org.evomimic.map.tdl.TdlLspIntegrationProvider"/>
+  </extensions>
+</idea-plugin>

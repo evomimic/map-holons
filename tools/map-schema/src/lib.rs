@@ -8,6 +8,10 @@
 
 use anyhow::{anyhow, Context, Result};
 pub mod diagnostics;
+/// Source-only editor services derived from TDL lowering and loader facts.
+pub mod editor_service;
+/// JSON-RPC/LSP transport for the source-only editor service.
+pub mod lsp;
 /// TDL parser, checker, and compiler entry points.
 pub mod tdl_compiler;
 
@@ -130,6 +134,21 @@ pub fn roundtrip_json_inputs(
 /// products, populated defaults, or validation results.
 pub fn inspect_loader_facts(inputs: &[PathBuf]) -> Result<LoaderFactProjection> {
     let project = parse_json_inputs_to_loader_fact_project(inputs)?;
+    Ok(LoaderFactProjection::from_project(&project))
+}
+
+/// Projects one in-memory canonical loader JSON document into explicit loader facts.
+///
+/// This is the source-tooling boundary used by editor integrations after TDL has
+/// mechanically lowered to canonical JSON. It deliberately does not resolve
+/// references, construct loader holons, or inspect descriptor semantics.
+pub fn inspect_loader_facts_json(
+    raw: &str,
+    source_name: impl Into<PathBuf>,
+) -> Result<LoaderFactProjection> {
+    let source_name = source_name.into();
+    let parsed = parse_import_file_contents(raw, &source_name, source_name.clone())?;
+    let project = loader_fact_project_from_parsed(vec![parsed])?;
     Ok(LoaderFactProjection::from_project(&project))
 }
 
