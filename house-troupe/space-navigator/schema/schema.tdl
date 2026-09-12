@@ -56,6 +56,17 @@ instance TableCollectionVisualizer.CollectionVisualizer {
   type CollectionVisualizer.HolonType
   relationships {
     ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
+    SupportsMetaDesignSystem -> SpaceNavigator.MetaDesignSystem
+    ConsumesDesignToken -> [
+      SpaceNavigator.CollectionSurfaceBackground.DesignToken,
+      SpaceNavigator.CollectionTextColor.DesignToken,
+      SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken,
+      SpaceNavigator.TableHeaderSurfaceBackground.DesignToken,
+      SpaceNavigator.TableHeaderTextColor.DesignToken,
+      SpaceNavigator.TableCellBorderColor.DesignToken,
+      SpaceNavigator.TableCellBorderWidth.DesignToken,
+      SpaceNavigator.TableCellPadding.DesignToken
+    ]
   }
 }
 
@@ -94,7 +105,15 @@ instance SpaceNavigator.MetaDesignSystem {
       SpaceNavigator.CanvasGap.DesignToken,
       SpaceNavigator.CanvasPadding.DesignToken,
       SpaceNavigator.CanvasSurfaceBackground.DesignToken,
-      SpaceNavigator.CanvasTextColor.DesignToken
+      SpaceNavigator.CanvasTextColor.DesignToken,
+      SpaceNavigator.CollectionSurfaceBackground.DesignToken,
+      SpaceNavigator.CollectionTextColor.DesignToken,
+      SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken,
+      SpaceNavigator.TableHeaderSurfaceBackground.DesignToken,
+      SpaceNavigator.TableHeaderTextColor.DesignToken,
+      SpaceNavigator.TableCellBorderColor.DesignToken,
+      SpaceNavigator.TableCellBorderWidth.DesignToken,
+      SpaceNavigator.TableCellPadding.DesignToken
     ]
   }
 }
@@ -131,6 +150,70 @@ instance SpaceNavigator.CanvasTextColor.DesignToken {
   }
 }
 
+instance SpaceNavigator.CollectionSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance SpaceNavigator.CollectionTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionHeaderSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance SpaceNavigator.TableHeaderSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableHeaderSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance SpaceNavigator.TableHeaderTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableHeaderTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance SpaceNavigator.TableCellBorderColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableCellBorderColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance SpaceNavigator.TableCellBorderWidth.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableCellBorderWidth"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance SpaceNavigator.TableCellPadding.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableCellPadding"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
 instance SpaceNavigator.DefaultTheme {
   type Theme.HolonType
   ThemeName "SpaceNavigator.DefaultTheme"
@@ -140,7 +223,15 @@ instance SpaceNavigator.DefaultTheme {
       SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment,
       SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment,
       SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment,
-      SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment
+      SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment
     ]
   }
 }
@@ -174,5 +265,69 @@ instance SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment {
   PresentationValue "#1f2933"
   relationships {
     ForDesignToken -> SpaceNavigator.CanvasTextColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CollectionSurfaceBackground.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CollectionTextColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#eef1f3"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e3e8eb"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableHeaderTextColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#c8d0d5"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableCellBorderColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableCellBorderWidth.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12px"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableCellPadding.DesignToken
   }
 }

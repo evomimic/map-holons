@@ -11,6 +11,7 @@ export type {
   HolonCollection,
   HolonDescriptorHandle,
   HolonId,
+  MapString,
   HolonReference,
   PropertyDescriptorHandle,
   ReadableHolon,

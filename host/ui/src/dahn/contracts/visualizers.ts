@@ -3,6 +3,7 @@ import type { CanvasApi } from './canvas';
 import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
+import type { TablePresentation } from './table-presentation';
 
 /**
  * Target classification metadata for a visualizer realized into the canvas.
@@ -42,6 +43,14 @@ export interface VisualizerContext {
   actions: ActionNode[];
   theme: DahnTheme;
   canvas: CanvasApi;
+  /**
+   * Collection data already projected into renderer-owned table values.
+   *
+   * Only Collection Visualizers consume this optional context. Keeping it
+   * separate from the singular target avoids turning collection provenance
+   * into a UI contract.
+   */
+  collectionPresentation?: TablePresentation;
 }
 
 /**
