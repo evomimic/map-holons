@@ -203,6 +203,19 @@ pub async fn execute_load_holons_internal(
         assert_eq!(actual_committed, 0, "rejected loader must not persist holons");
         assert!(violations > 0);
         assert!(context.is_open());
+        let findings: usize = context
+            .staged_references()
+            .unwrap()
+            .iter()
+            .map(|reference| reference.validation_findings().unwrap().len())
+            .sum();
+        assert_eq!(
+            findings as i64, violations,
+            "loader findings survive the staged-pool round trip"
+        );
+        let summary = read_string_property(&response_reference, CorePropertyTypeName::DanceSummary)
+            .expect("loader summary");
+        assert!(summary.contains(&format!("{violations} validation violations")));
     }
     let errors = response_reference.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
     assert_eq!(errors.read().unwrap().get_count().0, expect_errors.0, "HasLoadError count");

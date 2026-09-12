@@ -1,7 +1,7 @@
 use crate::fixture_cases::setup_undescribed_book_author_steps_with_context;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::PUBLISHED_BY;
-use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
+use holons_test::{DancesTestCase, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
 use tracing::info;
@@ -165,14 +165,8 @@ pub fn simple_add_remove_related_holons_fixture() -> Result<DancesTestCase, Holo
     //
     // == //
 
-    //  COMMIT  //
-    // Undescribed/freeform relationships cannot satisfy strict Pass 2 — expect Incomplete.
-    test_case.add_commit_step(
-        &mut fixture_holons,
-        ExpectedCommitStatus::Incomplete,
-        None,
-        Some("Commit --- expecting Incomplete: freeform relationships are rejected".to_string()),
-    )?;
+    // Freeform mutation/query coverage is intentionally pre-Commit. Semantic
+    // rejection is covered separately; undescribed state no longer reaches Pass 2.
 
     //  QUERY RELATIONSHIPS  //
     let query_expression = QueryExpression::new(book_to_person_relationship.clone());

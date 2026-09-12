@@ -55,152 +55,6 @@ fn expected_content_set_topology(content_set: &ContentSet) -> (i64, i64) {
     )
 }
 
-/// Execute public LoadHolons ingress end-to-end: dispatch MAP command,
-/// validate/parse files through the loader client, run the dance, and assert
-/// loader response properties.
-pub async fn execute_load_holons_client(
-    test_state: &mut TestExecutionState,
-    content_set: ContentSet,
-    expect_staged: MapInteger,
-    expect_committed: MapInteger,
-    expect_links_created: MapInteger,
-    expect_errors: MapInteger,
-    expect_total_bundles: MapInteger,
-    expect_total_loader_holons: MapInteger,
-    expect_status: ExpectedLoadStatus,
-    expect_validation_violation_count: Option<MapInteger>,
-) {
-    let context = test_state.context();
-
-    let command = MapCommand::Transaction(TransactionCommand {
-        context: context.clone(),
-        action: TransactionAction::LoadHolons { content_set },
-    });
-    let result = test_state
-        .dispatch_command(command, "load_holons_client")
-        .await
-        .unwrap_or_else(|e| panic!("load_holons_client failed: {e:?}"));
-
-    let response_reference = match result {
-        MapResult::Reference(HolonReference::Transient(t)) => t,
-        other => panic!("LoadHolons: expected Reference(Transient), got {other:?}"),
-    };
-
-    let staged = read_int_property(&response_reference, CorePropertyTypeName::HolonsStaged);
-    let committed = read_int_property(&response_reference, CorePropertyTypeName::HolonsCommitted);
-    let links_created = read_int_property(&response_reference, CorePropertyTypeName::LinksCreated);
-    let errors = read_int_property(&response_reference, CorePropertyTypeName::ErrorCount);
-    let total_bundles = read_int_property(&response_reference, CorePropertyTypeName::TotalBundles);
-    let total_loader_holons =
-        read_int_property(&response_reference, CorePropertyTypeName::TotalLoaderHolons);
-    let commit_status =
-        read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus);
-
-    let violations =
-        read_int_property(&response_reference, CorePropertyTypeName::ValidationViolationCount);
-    if let Some(expected) = expect_validation_violation_count {
-        assert_eq!(violations, expected.0, "ValidationViolationCount");
-    }
-    if expect_status == ExpectedLoadStatus::Rejected {
-        assert_eq!(committed, 0, "rejected loader must not persist holons");
-        assert!(violations > 0);
-        assert!(context.is_open());
-    }
-    let error_holons =
-        response_reference.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
-    assert_eq!(error_holons.read().unwrap().get_count().0, expect_errors.0, "HasLoadError count");
-
-    let full_dump = dump_full_response(&response_reference);
-    let error_dump = if errors > 0 {
-        dump_error_holons_from_response(&response_reference)
-    } else {
-        String::new()
-    };
-
-    info!("[loader-client] response_full_dump:\n{}", full_dump);
-    if !error_dump.is_empty() {
-        info!("[loader-client] response_error_dump:\n{}", error_dump);
-    }
-    info!(
-        "[loader-client] metrics observed: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}; expected: staged={}, committed={}, links_created={}, errors={}, total_bundles={}, total_loader_holons={}, status={}",
-        staged,
-        committed,
-        links_created,
-        errors,
-        total_bundles,
-        total_loader_holons,
-        commit_status,
-        expect_staged.0,
-        expect_committed.0,
-        expect_links_created.0,
-        expect_errors.0,
-        expect_total_bundles.0,
-        expect_total_loader_holons.0,
-        expect_status
-    );
-
-    let expected_status_string = expect_status.to_string();
-    let mut mismatches = Vec::new();
-    if staged != expect_staged.0 {
-        mismatches.push(format!("HolonsStaged expected {}, got {}", expect_staged.0, staged));
-    }
-    if committed != expect_committed.0 {
-        mismatches
-            .push(format!("HolonsCommitted expected {}, got {}", expect_committed.0, committed));
-    }
-    if links_created != expect_links_created.0 {
-        mismatches.push(format!(
-            "LinksCreated expected {}, got {}",
-            expect_links_created.0, links_created
-        ));
-    }
-    if errors != expect_errors.0 {
-        mismatches.push(format!("ErrorCount expected {}, got {}", expect_errors.0, errors));
-    }
-    if total_bundles != expect_total_bundles.0 {
-        mismatches.push(format!(
-            "TotalBundles expected {}, got {}",
-            expect_total_bundles.0, total_bundles
-        ));
-    }
-    if total_loader_holons != expect_total_loader_holons.0 {
-        mismatches.push(format!(
-            "TotalLoaderHolons expected {}, got {}",
-            expect_total_loader_holons.0, total_loader_holons
-        ));
-    }
-    if commit_status != expected_status_string {
-        mismatches.push(format!(
-            "LoadCommitStatus expected {}, got {}",
-            expected_status_string, commit_status
-        ));
-    }
-
-    if !mismatches.is_empty() {
-        let mut report = String::new();
-        report.push_str("LoadHolons expected ");
-        if expect_errors.0 == 0 {
-            report.push_str("success");
-        } else {
-            report.push_str(&format!("{} errors", expect_errors.0));
-        }
-        report.push_str(&format!(" but loader returned {} errors.\n", errors));
-        report.push_str("Mismatches:\n");
-        for mismatch in &mismatches {
-            report.push_str("  - ");
-            report.push_str(mismatch);
-            report.push('\n');
-        }
-        report.push_str("\n");
-        report.push_str(&full_dump);
-        if !error_dump.is_empty() {
-            report.push('\n');
-            report.push_str(&error_dump);
-        }
-        panic!("{report}");
-    }
-}
-
 /// Execute a successful package load and assert that its response reports the
 /// topology of the exact source artifacts supplied to the loader.
 pub async fn execute_load_holons_client_expect_success(
@@ -258,10 +112,13 @@ pub async fn execute_load_holons_client_expect_success(
     );
 }
 
+/// Checks an operational loader failure. An Incomplete Commit may already have
+/// persisted nodes, unlike a load that fails before Commit and reports Skipped.
 pub async fn execute_load_holons_client_expect_failure(
     test_state: &mut TestExecutionState,
     content_set: ContentSet,
     expected_status: ExpectedLoadStatus,
+    expected_committed: MapInteger,
     expected_error_substrings: &[&str],
 ) {
     let context = test_state.context();
@@ -297,7 +154,13 @@ pub async fn execute_load_holons_client_expect_failure(
         expected_status,
         commit_status
     );
-    assert_eq!(committed, 0, "failed loader import must not commit staged holons");
+    assert_eq!(committed, expected_committed.0, "unexpected committed holon count");
+    assert_eq!(
+        read_int_property(&response_reference, CorePropertyTypeName::ValidationViolationCount),
+        0,
+        "operational loader failure must remain distinct from semantic rejection"
+    );
+    assert!(context.is_open(), "failed load must leave its transaction open");
     assert!(errors > 0, "expected at least one loader error, got {errors}");
 
     for expected in expected_error_substrings {

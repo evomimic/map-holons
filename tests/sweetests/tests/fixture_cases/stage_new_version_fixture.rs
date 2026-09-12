@@ -4,10 +4,10 @@ use integrity_core_types::HolonErrorKind;
 use rstest::*;
 // use tracing::debug;
 
-use super::setup_undescribed_book_people_publisher_steps_with_context;
+use super::described_instances::add_described_instance;
 use holons_test::harness::helpers::{
-    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP, STAGE_NEW_VERSION_BOOK_KEY,
-    STAGE_NEW_VERSION_PERSON_1_KEY,
+    BOOK_DESCRIPTOR_KEY, BOOK_TO_PERSON_RELATIONSHIP, PERSON_DESCRIPTOR_KEY,
+    STAGE_NEW_VERSION_BOOK_KEY, STAGE_NEW_VERSION_PERSON_1_KEY,
 };
 
 // TODO: add/remove relationships
@@ -27,7 +27,7 @@ use holons_test::harness::helpers::{
 /// equivalent re-write, leaving exactly one forward and one inverse link.
 #[fixture]
 pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
-    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _ } =
         TestCaseInit::new("Simple StageNewVersion Testcase", "Tests stage_new_version dance");
     let staged_versions_with_same_base_key = MapInteger(1);
 
@@ -36,32 +36,25 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_begin_transaction_step(
         None,
-        Some("Begin transaction for Book/People/Publisher setup".to_string()),
+        Some("Begin transaction for Book/Person setup".to_string()),
     )?;
 
-    // Use helper function to set up a book holon, 2 persons, and a publisher.
-    setup_undescribed_book_people_publisher_steps_with_context(
+    // Only the Book and its eventual author participate in this scenario.
+    let book_staged_token = add_described_instance(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
-        &mut fixture_bindings,
         STAGE_NEW_VERSION_BOOK_KEY,
-        STAGE_NEW_VERSION_PERSON_1_KEY,
-        "Person.StageNewVersion.2",
-        "Publisher.StageNewVersion",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
     )?;
-
-    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
-
-    // Describe the Book by the loaded Book.HolonType so its Predecessor edges resolve.
-    let book_type_stub =
-        fixture_context.mutation().new_holon(Some(MapString(BOOK_DESCRIPTOR_KEY.to_string())))?;
-    let book_type_token = test_case.add_lookup_saved_holon_by_key_step(
+    let person_1_token = add_described_instance(
+        &fixture_context,
+        &mut test_case,
         &mut fixture_holons,
-        book_type_stub,
-        MapString(BOOK_DESCRIPTOR_KEY.to_string()),
-        None,
-        None,
+        STAGE_NEW_VERSION_PERSON_1_KEY,
+        "Name",
+        PERSON_DESCRIPTOR_KEY,
     )?;
     let title_property_stub =
         fixture_context.mutation().new_holon(Some(MapString("Title.PropertyType".to_string())))?;
@@ -71,14 +64,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         MapString("Title.PropertyType".to_string()),
         None,
         None,
-    )?;
-    let book_staged_token = test_case.add_add_related_holons_step(
-        &mut fixture_holons,
-        book_staged_token,
-        CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
-        vec![book_type_token],
-        None,
-        Some("Describe Book by Book.HolonType".to_string()),
     )?;
 
     //  COMMIT  // all Holons in staging_area
@@ -204,10 +189,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
         "Key".to_property_name(),
         MapString(STAGE_NEW_VERSION_BOOK_KEY.to_string()).to_base_value(),
     );
-    expected_clone_properties.insert(
-        "Description".to_property_name(),
-        "This is a different description".to_base_value(),
-    );
     expected_clone_properties.insert("Title".to_property_name(), "Changed".to_base_value());
 
     let staged_clone = test_case.add_with_properties_step(
@@ -220,10 +201,6 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Reuse the setup-phase staged Person1 token directly: the relationship adder
     // resolves it to Person1's committed head (issue #556), so no saved-key lookup
     // workaround is needed for the cross-transaction target (formerly issue #515).
-    let person_1_token = fixture_bindings
-        .get_token(&MapString("Person1".to_string()))
-        .expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Person1' label")
-        .clone();
     test_case.add_add_related_holons_step(
         &mut fixture_holons,
         staged_clone,

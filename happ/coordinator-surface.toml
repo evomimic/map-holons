@@ -132,6 +132,13 @@ rationale = "Scaffolded lookup selecting the oldest raw deletion action."
 
 [[export]]
 zome = "holons_test_probes"
+symbol = "commit_write_counts_for_test"
+exposure_kind = "zome_call"
+classification = "test_only"
+rationale = "Read-only source-chain action counts proving semantic Commit rejection authors neither nodes nor links."
+
+[[export]]
+zome = "holons_test_probes"
 symbol = "smartlink_author_raw_tag_for_test"
 exposure_kind = "zome_call"
 classification = "test_only"

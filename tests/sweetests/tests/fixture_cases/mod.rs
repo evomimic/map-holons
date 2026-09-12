@@ -1,6 +1,8 @@
 pub mod abandon_staged_changes_fixture;
 pub mod bootstrap_operational_schema_fixture;
+pub mod commit_validation_fixture;
 pub mod delete_holon_fixture;
+pub mod described_instances;
 pub mod ergonomic_add_remove_properties_fixture;
 pub mod ergonomic_add_remove_related_holons_fixture;
 pub mod load_book_person_inverse_schema_fixture;

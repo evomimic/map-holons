@@ -1,4 +1,5 @@
 use core_types::ValidationSubjectPath;
+use holons_core::core_shared_objects::holon::{StagedState, ValidationState};
 use holons_test::{
     ExecutionHandle, ExecutionReference, ExpectedCommitStatus, ExpectedRejectedHolon,
     ExpectedValidationSubject, ResolveBy, TestExecutionState, TestReference,
@@ -27,6 +28,27 @@ pub async fn execute_commit(
 ) {
     let context = state.context();
     state.set_last_commit_response(None);
+
+    // Retain staged handles across the wire round trip, including entries that
+    // Commit excludes. This checks workset accounting and outcome replacement
+    // without following fixture heads to their newly saved references.
+    let staged = context.staged_references().expect("complete Nursery");
+    let candidates: Vec<_> = staged
+        .iter()
+        .filter(|reference| reference.is_live_validation_candidate().unwrap())
+        .collect();
+    let excluded: Vec<_> = staged
+        .iter()
+        .filter(|reference| !reference.is_live_validation_candidate().unwrap())
+        .map(|reference| {
+            (
+                reference,
+                reference.validation_state().unwrap(),
+                reference.validation_findings().unwrap(),
+                reference.is_in_state(&context, StagedState::Abandoned).unwrap(),
+            )
+        })
+        .collect();
 
     // 1. BUILD — transaction commit command
     let command = MapCommand::Transaction(TransactionCommand {
@@ -62,6 +84,48 @@ pub async fn execute_commit(
             );
             info!("Success! Commit completed via Runtime dispatch with status {}", actual_status);
             state.set_last_commit_response(Some(commit_response_ref.clone()));
+            assert_eq!(
+                commit_response_ref.property_value(CorePropertyTypeName::CommitsAttempted).unwrap(),
+                Some(BaseValue::IntegerValue(MapInteger(candidates.len() as i64))),
+                "only live validation candidates count as attempts"
+            );
+            for (reference, validation_state, findings, abandoned) in &excluded {
+                assert_eq!(reference.validation_state().unwrap(), *validation_state);
+                assert_eq!(reference.validation_findings().unwrap(), *findings);
+                if *abandoned {
+                    assert!(reference.is_in_state(&context, StagedState::Abandoned).unwrap());
+                    assert_eq!(
+                        *validation_state,
+                        ValidationState::ValidationRequired,
+                        "these abandoned fixtures were never assessed"
+                    );
+                }
+            }
+            if expected_status != ExpectedCommitStatus::Rejected {
+                assert_eq!(
+                    commit_response_ref
+                        .property_value(CorePropertyTypeName::ValidationViolationCount)
+                        .unwrap(),
+                    Some(BaseValue::IntegerValue(MapInteger(0)))
+                );
+                assert_eq!(
+                    commit_response_ref
+                        .related_holons(CoreRelationshipTypeName::RejectedHolons)
+                        .unwrap()
+                        .read()
+                        .unwrap()
+                        .get_count()
+                        .0,
+                    0
+                );
+                for candidate in &candidates {
+                    assert_eq!(candidate.validation_state().unwrap(), ValidationState::Validated);
+                    assert!(
+                        candidate.validation_findings().unwrap().is_empty(),
+                        "accepted retry clears stale findings"
+                    );
+                }
+            }
 
             // 4. GET — committed holons from the SavedHolons relationship
             let committed_references = commit_response_ref
@@ -84,6 +148,11 @@ pub async fn execute_commit(
                 );
                 return;
             }
+            assert_eq!(
+                commit_count.0 as usize,
+                expected_tokens.len(),
+                "SavedHolons matches the fixture workset"
+            );
 
             // 5. RECORD — register committed holons so tokens become resolvable
             let holon_collection =

@@ -178,10 +178,12 @@ fn build_single_loader_with_offset_bundle(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Combined loader-controller fixture:
-///  1) Empty bundle → UnprocessableEntity; DB remains 1 (space holon)
-///  2) Nodes-only undescribed bundle (3 nodes) → Skipped; DB unchanged
-///  3) Undescribed link bundle → relationship staged, then skipped; DB unchanged
-///  4) Multi-bundle duplicate-key set (same LoaderHolon key in two files) → UnprocessableEntity; DB unchanged
+///  1) Empty bundle → Skipped, without errors.
+///  2) Nodes-only undescribed bundle (3 nodes) → Rejected, with three findings.
+///  3) Undescribed link bundle → endpoints resolve in memory, then Rejected.
+///  4) Multi-bundle duplicate-key set → Skipped, with an operational error.
+/// Each non-empty load has its own transaction: rejected transactions remain
+/// open in the session and must not leak candidates into subsequent loads.
 ///
 /// Notes:
 /// - The nodes-only keys are chosen to **avoid clashing** with the declared-link keys.
@@ -197,16 +199,16 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
          2) Load a HolonLoadSet containing a single empty HolonLoaderBundle and assert the\n\
             loader short-circuits cleanly (no holons staged/committed, DB unchanged),\n\
          3) Load a nodes-only HolonLoadSet (Book/Person/Publisher LoaderHolons, no relationships)\n\
-            and assert undescribed holons commit with default population deferred and no errors,\n\
+            and assert semantic rejection with three findings and no operational errors,\n\
          4) Load an undescribed relationship HolonLoadSet and assert relationship resolution stages the link\n\
-            before node commit succeeds but inverse resolution reports one error and Incomplete,\n\
+            before validation rejects both nodes without persistence or operational errors,\n\
          5) Load a multi-bundle HolonLoadSet where two different bundles each contain a\n\
             LoaderHolon with the same Key but different filenames and byte offsets, and assert\n\
             the loader reports a duplicate-key error, skips commit (HolonsCommitted = 0),\n\
             leaves the DB unchanged, and surfaces per-file provenance via error holons.\n",
         );
 
-    // B) Empty bundle → expect UnprocessableEntity and no DB change.
+    // B) Empty bundle → Skipped without operational errors or persistence.
     let empty_bundle = build_empty_bundle(&fixture_context, "Bundle.Empty.1")?;
     let empty_set = make_load_set_from_bundles(
         &fixture_context,
@@ -224,7 +226,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         ExpectedLoadStatus::Skipped,
         Some(MapInteger(0)),
     )?;
-    // C) Nodes-only undescribed bundle -> completion deferred; all nodes commit.
+    // C) One NoDescriptor finding per node; semantic refusal is not a loader error.
     let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
     let (nodes_bundle, n_nodes) =
         build_nodes_only_bundle(&fixture_context, "Bundle.NodesOnly.1", nodes_only_keys)?;
@@ -236,22 +238,21 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_holons_internal_step(
         nodes_set,
         MapInteger(n_nodes as i64), // holons_staged
-        MapInteger(n_nodes as i64), // holons_committed
+        MapInteger(0),              // holons_committed: rejected before writes
         MapInteger(0),              // links_created
         MapInteger(0),              // errors_encountered (completion deferred)
         MapInteger(1),              // total_bundles
         MapInteger(n_nodes as i64), // total_loader_holons
-        ExpectedLoadStatus::Complete,
-        Some(MapInteger(0)),
+        ExpectedLoadStatus::Rejected,
+        Some(MapInteger(n_nodes as i64)),
     )?;
     test_case.add_begin_transaction_step(
         None,
         Some("Begin new transaction before declared-link load".to_string()),
     )?;
 
-    // D) Named endpoints resolve and nodes commit, but persisting AuthoredBy
-    // requires a source descriptor to resolve its inverse. Commit records one
-    // MissingDescribedBy error for the source and reports Incomplete.
+    // D) Freeform endpoints still resolve in memory, but semantic validation now
+    // refuses persistence before the old inverse-resolution error could occur.
     let (declared_bundle, node_count, _links_created) = build_declared_links_bundle(
         &fixture_context,
         "Bundle.DeclaredLink.1",
@@ -267,13 +268,13 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_holons_internal_step(
         declared_set,
         MapInteger(node_count as i64), // holons_staged
-        MapInteger(node_count as i64), // holons_committed
+        MapInteger(0),                 // holons_committed: rejected before writes
         MapInteger(1),                 // relationship resolved and staged
-        MapInteger(1),                 // source inverse resolution: MissingDescribedBy
+        MapInteger(0),                 // findings are not operational errors
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
-        ExpectedLoadStatus::Incomplete,
-        Some(MapInteger(0)),
+        ExpectedLoadStatus::Rejected,
+        Some(MapInteger(node_count as i64)),
     )?;
     test_case.add_begin_transaction_step(
         None,

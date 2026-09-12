@@ -1,6 +1,7 @@
-use crate::fixture_cases::setup_book_and_authors_fixture::*;
+use super::described_instances::add_described_instance;
 use base_types::{MapString, ToBaseValue};
 use core_types::{HolonError, PropertyMap};
+use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use std::collections::BTreeMap;
@@ -8,20 +9,22 @@ use type_names::ToPropertyName;
 
 /// Demonstrates cloning a Book three ways using the new harness:
 ///   A) from a fresh **Transient** // Expected failure BadRequest
-///   B) from the **Staged** Book produced by the setup helper
+///   B) from a described **Staged** Book
 ///   C) from the **Saved** Book (same token, after commit flip)
 ///
 /// Strategy:
 /// - All step inputs are TestReference tokens
-/// - Commit is parameterless; after scheduling it, call `fixture_holons.commit()`
-///   to flip staged→saved expectations on the fixture side.
+/// - The Commit adder advances fixture heads; callers keep using their existing tokens.
 /// - Content assertions derive from `FixtureHolons`.
 pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
-    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, mut fixture_bindings } =
+    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _ } =
         TestCaseInit::new(
             "stage_new_from_clone",
             "Clone from transient, staged, and saved; mutate staged clones; assert counts+content",
         );
+
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
 
     // ──  PHASE A — Attempt clone from a Transient -- Expect BadRequest   ────────────────────────────
     let transient_source_key = MapString("Book.StageNewFromClone.TransientSource".to_string());
@@ -46,20 +49,16 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
     // TODO:  Find a better way to attempt a non-OK expected response for this step without minting a token and having to subtract from fixture holons saved count
 
-    // ── PHASE B — Setup undescribed holons, then clone FROM STAGED ──────────────────
-    setup_undescribed_book_people_publisher_steps_with_context(
+    // Phase B: cloning retains the source Book's descriptor.
+    let book_staged_token = add_described_instance(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
-        &mut fixture_bindings,
         "Book.StageNewFromClone.Source",
-        "Person.StageNewFromClone.1",
-        "Person.StageNewFromClone.2",
-        "Publisher.StageNewFromClone",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
     )?;
-
     let from_staged_key = MapString("Book.StageNewFromClone.FromStaged".to_string());
-    let book_staged_token = fixture_bindings.get_token(&MapString("Book".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Book' label").clone();
 
     //  Stage New From Clone  //
     let clone_from_staged_staged = test_case.add_stage_new_from_clone_step(
@@ -72,10 +71,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
 
     // Add Properties
     let mut phase_b_expected_properties = PropertyMap::new();
-    phase_b_expected_properties
-        .insert("Description".to_property_name(), "Cloning from staged".to_base_value());
     phase_b_expected_properties.insert("TITLE".to_property_name(), "Dune".to_base_value());
-    phase_b_expected_properties.insert("EDITION".to_property_name(), 2.to_base_value());
 
     test_case.add_with_properties_step(
         &mut fixture_holons,
@@ -114,11 +110,7 @@ pub fn stage_new_from_clone_fixture() -> Result<DancesTestCase, HolonError> {
     //  Add properties  //
     let mut phase_c_expected_properties = PropertyMap::new();
     phase_c_expected_properties
-        .insert("Description".to_property_name(), "Cloning from saved".to_base_value());
-    phase_c_expected_properties
         .insert("TITLE".to_property_name(), "Saved Clone of Dune".to_base_value());
-    phase_c_expected_properties.insert("EDITION".to_property_name(), 3.to_base_value());
-    phase_c_expected_properties.insert("TYPE".to_property_name(), "Book Clone".to_base_value());
 
     test_case.add_with_properties_step(
         &mut fixture_holons,

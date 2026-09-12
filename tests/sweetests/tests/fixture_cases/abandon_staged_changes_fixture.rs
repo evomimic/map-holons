@@ -1,5 +1,6 @@
-use super::setup_undescribed_book_people_publisher_steps_with_context;
+use super::described_instances::add_described_instance;
 use holons_prelude::prelude::*;
+use holons_test::harness::helpers::PERSON_DESCRIPTOR_KEY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use rstest::*;
 use std::collections::BTreeMap;
@@ -13,26 +14,30 @@ pub fn simple_abandon_staged_changes_fixture() -> Result<DancesTestCase, HolonEr
         mut test_case,
         fixture_context,
         mut fixture_holons,
-        mut fixture_bindings,
+        fixture_bindings: _,
     } = TestCaseInit::new(
             "Simple AbandonStagedChanges Testcase",
             "Tests abandon_staged_changes dance, confirms behavior of commit and verifies abandoned holon is not accessible",
         );
 
-    // Use helper function to set up a book holon, 2 persons, and a publisher.
-    setup_undescribed_book_people_publisher_steps_with_context(
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    add_described_instance(
         &fixture_context,
         &mut test_case,
         &mut fixture_holons,
-        &mut fixture_bindings,
-        "Book.AbandonStagedChanges",
-        "Person.AbandonStagedChanges.1",
-        "Person.AbandonStagedChanges.2",
-        "Publisher.AbandonStagedChanges",
+        "Person.AbandonStagedChanges.Live",
+        "Name",
+        PERSON_DESCRIPTOR_KEY,
     )?;
-
-    let person_1_staged_token =
-        fixture_bindings.get_token(&MapString("Person1".to_string())).expect("Expected setup fixture return_items to contain a staged-intent token associated with 'Person1' label").clone();
+    let person_1_staged_token = add_described_instance(
+        &fixture_context,
+        &mut test_case,
+        &mut fixture_holons,
+        "Person.AbandonStagedChanges.Abandoned",
+        "Name",
+        PERSON_DESCRIPTOR_KEY,
+    )?;
 
     //  ABANDON:  H2  //
     // This step verifies the abandon dance succeeds and that subsequent operations on the

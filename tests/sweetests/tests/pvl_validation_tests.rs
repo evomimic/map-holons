@@ -11,7 +11,6 @@ use core_types::{
     CanonicalKey, DeleteSmartLinkOutcome, HolonId, HolonWriteRequest, PreparedSmartLink,
     PutSmartLinkOutcome, StoredHolonNode,
 };
-use holochain::prelude::ActionHash;
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     assert_commit_rejected_with_message, assert_commit_rejected_with_pvl,
@@ -55,10 +54,6 @@ fn node(title: &str) -> HolonNodeModel {
             .into_iter()
             .collect(),
     )
-}
-
-fn action_hash(local_id: &LocalId) -> ActionHash {
-    ActionHash::try_from_raw_39(local_id.0.clone()).expect("persisted id must be an action hash")
 }
 
 async fn publish_root(backend: &MockConductorConfig, title: &str) -> StoredHolonNode {

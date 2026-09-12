@@ -1,5 +1,10 @@
+use core_types::CommitValidationViolationKind;
+use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
-use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
+use holons_test::{
+    DancesTestCase, ExpectedCommitStatus, ExpectedRejectedHolon, ExpectedValidationFinding,
+    ExpectedValidationSubject, TestCaseInit,
+};
 use rstest::*;
 use std::collections::BTreeMap;
 
@@ -8,10 +13,14 @@ use std::collections::BTreeMap;
 #[fixture]
 pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     // Init
-    let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, fixture_bindings: _fixture_bindings } =
-        TestCaseInit::new(
-            "Simple Create/Get Holon Testcase",
-            "Ensure the holons and relationships setup by book and author setup helper commit successfully",
+    let TestCaseInit {
+        mut test_case,
+        fixture_context,
+        mut fixture_holons,
+        fixture_bindings: _fixture_bindings,
+    } = TestCaseInit::new(
+        "Simple Create/Get Holon Testcase",
+        "Undescribed creation is rejected with identity-only findings and an open transaction",
     );
 
     //  ADD STEP:  STAGE:  Book Holon  //
@@ -31,7 +40,7 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Creating book holon... ".to_string()),
     )?;
 
-    test_case.add_stage_holon_step(
+    let staged = test_case.add_stage_holon_step(
         &mut fixture_holons,
         book_step_token.clone(),
         None,
@@ -39,10 +48,21 @@ pub fn simple_create_holon_fixture() -> Result<DancesTestCase, HolonError> {
     )?;
 
     // ADD STEP:  COMMIT  // all Holons in staging_area
-    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
+    test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)?;
 
-    //  MATCH SAVED CONTENT  //
-    test_case.add_match_saved_content_step()?;
+    test_case.add_verify_commit_rejection_step(
+        vec![ExpectedRejectedHolon {
+            token: staged,
+            validation_state: ValidationState::NoDescriptor,
+            findings: vec![ExpectedValidationFinding {
+                kind: CommitValidationViolationKind::NoDescriptor,
+                rule_key: None,
+                subject: ExpectedValidationSubject::Holon,
+            }],
+        }],
+        MapInteger(1),
+        None,
+    )?;
 
     // Finalize
     test_case.finalize(&fixture_context, &fixture_holons)?;
