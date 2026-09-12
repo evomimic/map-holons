@@ -68,6 +68,7 @@ pub async fn execute_load_holons_client(
     expect_total_bundles: MapInteger,
     expect_total_loader_holons: MapInteger,
     expect_status: ExpectedLoadStatus,
+    expect_validation_violation_count: Option<MapInteger>,
 ) {
     let context = test_state.context();
 
@@ -94,6 +95,20 @@ pub async fn execute_load_holons_client(
         read_int_property(&response_reference, CorePropertyTypeName::TotalLoaderHolons);
     let commit_status =
         read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus);
+
+    let violations =
+        read_int_property(&response_reference, CorePropertyTypeName::ValidationViolationCount);
+    if let Some(expected) = expect_validation_violation_count {
+        assert_eq!(violations, expected.0, "ValidationViolationCount");
+    }
+    if expect_status == ExpectedLoadStatus::Rejected {
+        assert_eq!(committed, 0, "rejected loader must not persist holons");
+        assert!(violations > 0);
+        assert!(context.is_open());
+    }
+    let error_holons =
+        response_reference.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
+    assert_eq!(error_holons.read().unwrap().get_count().0, expect_errors.0, "HasLoadError count");
 
     let full_dump = dump_full_response(&response_reference);
     let error_dump = if errors > 0 {
@@ -227,6 +242,11 @@ pub async fn execute_load_holons_client_expect_success(
     }
 
     assert_eq!(staged, expected_holons, "unexpected staged holon count");
+    assert_eq!(
+        read_int_property(&response_reference, CorePropertyTypeName::ValidationViolationCount),
+        0,
+        "accepted load must have no validation findings"
+    );
     assert_eq!(committed, expected_holons, "unexpected committed holon count");
     assert!(links_created > 0, "validation package must create relationships");
     assert_eq!(total_bundles, expected_bundles, "unexpected content bundle count");

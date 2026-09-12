@@ -155,6 +155,7 @@ pub async fn execute_load_holons_internal(
     expect_total_bundles: MapInteger,
     expect_total_loader_holons: MapInteger,
     expect_status: ExpectedLoadStatus,
+    expect_validation_violation_count: Option<MapInteger>,
 ) {
     info!("--- TEST STEP: Load Holons Internal ---");
     let context = test_state.context();
@@ -191,6 +192,20 @@ pub async fn execute_load_holons_internal(
     let actual_status =
         read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus)
             .unwrap_or_else(|e| panic!("read LoadCommitStatus failed: {e:?}"));
+
+    let violations =
+        read_integer_property(&response_reference, CorePropertyTypeName::ValidationViolationCount)
+            .expect("typed ValidationViolationCount on every loader response");
+    if let Some(expected) = expect_validation_violation_count {
+        assert_eq!(violations, expected.0, "ValidationViolationCount");
+    }
+    if expect_status == ExpectedLoadStatus::Rejected {
+        assert_eq!(actual_committed, 0, "rejected loader must not persist holons");
+        assert!(violations > 0);
+        assert!(context.is_open());
+    }
+    let errors = response_reference.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
+    assert_eq!(errors.read().unwrap().get_count().0, expect_errors.0, "HasLoadError count");
 
     // Always dump error holons if present
     if actual_error_count > 0 {

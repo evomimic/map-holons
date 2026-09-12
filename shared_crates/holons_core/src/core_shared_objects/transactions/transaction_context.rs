@@ -269,7 +269,7 @@ impl TransactionContext {
     /// # Returns
     /// - `Ok(CommitResponse)`:
     ///     - If the commit process is successful (either completely or partially).
-    ///     - Use the `CommitResponse`'s status to determine whether the commit is `Complete` or `Incomplete`.
+    ///     - Status distinguishes `Complete`, operationally `Incomplete`, and semantically `Rejected`.
     /// - `Err(HolonError)`:
     ///     - If a system-level failure prevents the commit process from proceeding.
     ///
@@ -539,7 +539,7 @@ impl TransactionContext {
         match status_value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
                 "Complete" => Ok(true),
-                "Incomplete" => Ok(false),
+                "Incomplete" | "Rejected" => Ok(false),
                 other => Err(HolonError::InvalidParameter(format!(
                     "Unexpected CommitRequestStatus value on CommitResponse: {}",
                     other
@@ -563,7 +563,7 @@ impl TransactionContext {
         match status_value {
             Some(BaseValue::StringValue(status)) => match status.0.as_str() {
                 "Complete" => Ok(true),
-                "Incomplete" | "Skipped" => Ok(false),
+                "Incomplete" | "Rejected" | "Skipped" => Ok(false),
                 other => Err(HolonError::InvalidParameter(format!(
                     "Unexpected LoadCommitStatus value on HolonLoadResponse: {}",
                     other
@@ -607,12 +607,14 @@ impl TransactionContext {
 mod tests {
     use super::*;
     use crate::core_shared_objects::{HolonCollection, RelationshipMap, ServiceRoutingPolicy};
-    use crate::reference_layer::{HolonServiceApi, StagedReference};
+    use crate::reference_layer::{HolonServiceApi, StagedReference, WritableHolon};
     use core_types::{HolonError, LocalId, RelationshipName};
     use std::any::Any;
 
     #[derive(Debug)]
-    struct TestHolonService;
+    struct TestHolonService {
+        response_status: &'static str,
+    }
 
     fn unreachable_in_transaction_context_tests<T>() -> Result<T, HolonError> {
         Err(HolonError::NotImplemented("TestHolonService".to_string()))
@@ -625,10 +627,15 @@ mod tests {
 
         fn commit_internal(
             &self,
-            _context: &Arc<TransactionContext>,
+            context: &Arc<TransactionContext>,
             _staged_references: &[StagedReference],
         ) -> Result<TransientReference, HolonError> {
-            unreachable_in_transaction_context_tests()
+            let mut response = context.mutation().new_holon(Some("CommitResponse".into()))?;
+            response.with_property_value(
+                CorePropertyTypeName::CommitRequestStatus,
+                self.response_status,
+            )?;
+            Ok(response)
         }
 
         fn delete_holon_internal(
@@ -673,15 +680,25 @@ mod tests {
 
         fn load_holons_internal(
             &self,
-            _context: &Arc<TransactionContext>,
+            context: &Arc<TransactionContext>,
             _bundle: TransientReference,
         ) -> Result<TransientReference, HolonError> {
-            unreachable_in_transaction_context_tests()
+            let mut response = context.mutation().new_holon(Some("LoadResponse".into()))?;
+            response.with_property_value(
+                CorePropertyTypeName::LoadCommitStatus,
+                self.response_status,
+            )?;
+            Ok(response)
         }
     }
 
     fn build_context() -> Arc<TransactionContext> {
-        let holon_service: Arc<dyn HolonServiceApi> = Arc::new(TestHolonService);
+        build_context_with_status("Complete")
+    }
+
+    fn build_context_with_status(response_status: &'static str) -> Arc<TransactionContext> {
+        let holon_service: Arc<dyn HolonServiceApi> =
+            Arc::new(TestHolonService { response_status });
         let space_manager = Arc::new(HolonSpaceManager::new_with_managers(
             None,
             holon_service,
@@ -693,6 +710,25 @@ mod tests {
             .get_transaction_manager()
             .open_new_transaction(Arc::clone(&space_manager))
             .expect("default transaction should open")
+    }
+
+    #[test]
+    fn commit_response_status_controls_transaction_lifecycle() {
+        for status in ["Rejected", "Incomplete", "Complete"] {
+            let context = build_context_with_status(status);
+            context.commit().expect("recognized status must return a response");
+            assert_eq!(context.is_open(), status != "Complete", "status: {status}");
+        }
+    }
+
+    #[test]
+    fn load_response_status_controls_transaction_lifecycle() {
+        for status in ["Rejected", "Incomplete", "Skipped", "Complete"] {
+            let context = build_context_with_status(status);
+            let set = context.mutation().new_holon(Some("LoadSet".into())).expect("load set");
+            context.load_holons_and_commit(set).expect("recognized status must return a response");
+            assert_eq!(context.is_open(), status != "Complete", "status: {status}");
+        }
     }
 
     #[test]

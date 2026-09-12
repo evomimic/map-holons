@@ -34,6 +34,7 @@ pub struct TestExecutionState {
     fixture_head_index: FixtureHeadIndex,
     // Registry of realized references keyed by source token's `TemporaryId`.
     execution_holons: ExecutionHolons,
+    last_commit_response: Option<TransientReference>,
 }
 
 impl TestExecutionState {
@@ -49,12 +50,24 @@ impl TestExecutionState {
             fixture_transient_holons,
             fixture_head_index,
             execution_holons: ExecutionHolons::default(),
+            last_commit_response: None,
         }
     }
 
     /// Reset the state (clears all recorded holons).
     pub fn clear(&mut self) {
         self.execution_holons = ExecutionHolons::new();
+        self.last_commit_response = None;
+    }
+
+    /// Retains the latest response for assertions on its staged rejection relationships.
+    pub fn set_last_commit_response(&mut self, response: Option<TransientReference>) {
+        self.last_commit_response = response;
+    }
+
+    /// Returns the response only within the transaction that produced it.
+    pub fn last_commit_response(&self) -> Option<&TransientReference> {
+        self.last_commit_response.as_ref()
     }
 
     /// Returns the active transaction context, resolved on demand from the session.
@@ -74,6 +87,7 @@ impl TestExecutionState {
     }
 
     pub fn set_active_tx_id(&mut self, tx_id: TxId) {
+        self.last_commit_response = None;
         self.active_tx_id = tx_id;
     }
 
@@ -81,7 +95,7 @@ impl TestExecutionState {
     pub fn activate_transaction(&mut self, tx_id: TxId) -> Result<(), HolonError> {
         let context = self.runtime.session().get_transaction(&tx_id)?;
         self.import_fixture_transient_holons(&context)?;
-        self.active_tx_id = tx_id;
+        self.set_active_tx_id(tx_id);
         Ok(())
     }
 
