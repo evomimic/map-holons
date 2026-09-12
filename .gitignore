@@ -56,3 +56,11 @@ settings.json
 
 # Local copied planning/spec docs
 docs/
+
+# Gradle / IntelliJ Platform plugin artifacts
+
+.gradle/
+# RustRover plugin build artifacts
+/tools/tdl-rustrover-plugin/.gradle/
+/tools/tdl-rustrover-plugin/.intellijPlatform/
+/tools/tdl-rustrover-plugin/build/

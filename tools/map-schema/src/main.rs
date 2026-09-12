@@ -2,7 +2,10 @@ use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use map_schema_tool::{
     bootstrap_bundle::generate_core_schema_bootstrap_bundle,
-    decompile_input_string, decompile_inputs, diff_loader_facts, inspect_loader_facts,
+    decompile_input_string, decompile_inputs, diff_loader_facts,
+    editor_service::outline_source,
+    inspect_loader_facts,
+    lsp::run_stdio,
     roundtrip_json_inputs,
     tdl_compiler::{
         check_input_string, check_inputs, compile_input_string, compile_inputs,
@@ -94,6 +97,16 @@ enum Commands {
         /// Right JSON file or directory.
         right: PathBuf,
     },
+
+    /// Run the source-only TDL language server over stdio.
+    Lsp,
+
+    /// Print a source-only declaration outline for TDL received on stdin.
+    EditorOutline {
+        /// URI used to identify the editor buffer in source-derived output.
+        #[arg(long)]
+        source_name: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -174,6 +187,15 @@ fn main() -> Result<()> {
         Commands::Diff { left, right } => {
             println!("{}", serde_json::to_string_pretty(&diff_loader_facts(&[left], &[right])?)?);
         }
+        Commands::Lsp => run_stdio()?,
+        Commands::EditorOutline { source_name } => {
+            for symbol in outline_source(source_name, &read_stdin()?) {
+                println!(
+                    "{}\t{}\t{}\t{}",
+                    symbol.range.start.line, symbol.range.start.character, symbol.kind, symbol.key
+                );
+            }
+        }
     }
 
     Ok(())
@@ -210,6 +232,9 @@ Commands:
   diff LEFT_JSON_FILE_OR_DIR RIGHT_JSON_FILE_OR_DIR
       Print additions, removals, and changes between normalized explicit loader
       facts. JSON formatting and object field order do not produce changes.
+
+  lsp
+      Run the source-only TDL language server over stdio.
 
 Common workflows:
   npm run map-schema:check:coreschema
