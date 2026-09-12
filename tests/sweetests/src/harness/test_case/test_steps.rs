@@ -3,7 +3,8 @@
 //!   corresponding to one or more MAP dances or assertions.
 
 use crate::harness::fixtures_support::TestReference;
-use core_types::TemporaryId;
+use core_types::{CommitValidationViolationKind, TemporaryId};
+use holons_core::core_shared_objects::holon::ValidationState;
 use holons_prelude::prelude::*;
 use integrity_core_types::HolonErrorKind;
 
@@ -13,6 +14,7 @@ use integrity_core_types::HolonErrorKind;
 pub enum ExpectedLoadStatus {
     Complete,
     Incomplete,
+    Rejected,
     Skipped,
 }
 
@@ -21,6 +23,7 @@ impl core::fmt::Display for ExpectedLoadStatus {
         let value = match self {
             ExpectedLoadStatus::Complete => "Complete",
             ExpectedLoadStatus::Incomplete => "Incomplete",
+            ExpectedLoadStatus::Rejected => "Rejected",
             ExpectedLoadStatus::Skipped => "Skipped",
         };
         write!(f, "{value}")
@@ -28,13 +31,14 @@ impl core::fmt::Display for ExpectedLoadStatus {
 }
 
 /// Expected `CommitRequestStatus` on the commit response holon. An
-/// `Incomplete` commit is an `Ok` response: Pass-1 holons are saved while a
-/// Pass-2 (relationship persistence) failure is recorded on the response.
+/// `Incomplete` commit is an `Ok` response with operational persistence errors;
+/// partial writes may have occurred. `Rejected` is an `Ok` semantic refusal with no writes.
 /// Display values match the on-holon property strings.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExpectedCommitStatus {
     Complete,
     Incomplete,
+    Rejected,
 }
 
 impl core::fmt::Display for ExpectedCommitStatus {
@@ -42,9 +46,34 @@ impl core::fmt::Display for ExpectedCommitStatus {
         let value = match self {
             ExpectedCommitStatus::Complete => "Complete",
             ExpectedCommitStatus::Incomplete => "Incomplete",
+            ExpectedCommitStatus::Rejected => "Rejected",
         };
         write!(f, "{value}")
     }
+}
+
+/// Identity-only subject shape; the executor supplies the realized holon's identity.
+#[derive(Clone, Debug)]
+pub enum ExpectedValidationSubject {
+    Holon,
+    Property(String),
+    Value(String),
+}
+
+/// Stable finding expectations deliberately omit diagnostic message text.
+#[derive(Clone, Debug)]
+pub struct ExpectedValidationFinding {
+    pub kind: CommitValidationViolationKind,
+    pub rule_key: Option<String>,
+    pub subject: ExpectedValidationSubject,
+}
+
+/// A rejected fixture token remains staged and exposes findings from the wire round trip.
+#[derive(Clone, Debug)]
+pub struct ExpectedRejectedHolon {
+    pub token: TestReference,
+    pub validation_state: ValidationState,
+    pub findings: Vec<ExpectedValidationFinding>,
 }
 
 /// Internal step representation used by executors at runtime.
@@ -72,6 +101,11 @@ pub enum DanceTestStep {
         expected_error: Option<HolonErrorKind>,
         description: String,
     },
+    VerifyCommitRejection {
+        rejected_holons: Vec<ExpectedRejectedHolon>,
+        expected_violation_count: MapInteger,
+        description: String,
+    },
     DeleteHolon {
         step_token: TestReference,
         expected_error: Option<HolonErrorKind>,
@@ -90,6 +124,7 @@ pub enum DanceTestStep {
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
         expect_status: ExpectedLoadStatus,
+        expect_validation_violation_count: Option<MapInteger>,
     },
     LookupSavedHolonByKey {
         step_token: TestReference,
@@ -245,6 +280,18 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::DeleteHolon { step_token, expected_error, description } => {
                 write!(f, "{description} [token: {step_token}, expected_error: {expected_error:?}]")
             }
+            DanceTestStep::VerifyCommitRejection {
+                rejected_holons,
+                expected_violation_count,
+                description,
+            } => {
+                write!(
+                    f,
+                    "{description} [rejected_holons: {}, violations: {}]",
+                    rejected_holons.len(),
+                    expected_violation_count.0
+                )
+            }
             DanceTestStep::EnsureDatabaseCount { expected_count, description } => {
                 write!(f, "{description} [expected_count: {}]", expected_count.0)
             }
@@ -257,10 +304,11 @@ impl core::fmt::Display for DanceTestStep {
                 expect_total_bundles,
                 expect_total_loader_holons,
                 expect_status,
+                expect_validation_violation_count,
             } => {
                 write!(
                     f,
-                    "LoadHolonsInternal(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={}, status={})",
+                    "LoadHolonsInternal(staged={}, committed={}, links_created={}, errors={}, bundles={}, loader_holons={}, status={}, violations={expect_validation_violation_count:?})",
                     expect_staged.0, expect_committed.0, expect_links_created.0, expect_errors.0, expect_total_bundles.0, expect_total_loader_holons.0, expect_status
                 )
             }

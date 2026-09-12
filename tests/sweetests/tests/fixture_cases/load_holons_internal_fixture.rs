@@ -222,6 +222,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1), // total_bundles
         MapInteger(0), // total_loader_holons
         ExpectedLoadStatus::Skipped,
+        Some(MapInteger(0)),
     )?;
     // C) Nodes-only undescribed bundle -> completion deferred; all nodes commit.
     let nodes_only_keys = &["Book.NodesOnly.1", "Person.NodesOnly.1", "Publisher.NodesOnly.1"];
@@ -241,6 +242,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),              // total_bundles
         MapInteger(n_nodes as i64), // total_loader_holons
         ExpectedLoadStatus::Complete,
+        Some(MapInteger(0)),
     )?;
     test_case.add_begin_transaction_step(
         None,
@@ -271,6 +273,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
         ExpectedLoadStatus::Incomplete,
+        Some(MapInteger(0)),
     )?;
     test_case.add_begin_transaction_step(
         None,
@@ -324,6 +327,7 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         MapInteger(2),               // total_bundles
         MapInteger(dup_total_nodes), // total_loader_holons
         ExpectedLoadStatus::Skipped,
+        Some(MapInteger(0)),
     )?;
 
     // Finalize
