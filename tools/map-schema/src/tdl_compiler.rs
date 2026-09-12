@@ -2318,10 +2318,32 @@ holon Example.HolonType {
             .context("SupportsMetaDesignSystem relationship")?;
         assert_eq!(supported_mds["target"][0]["$ref"], "SpaceNavigator.MetaDesignSystem");
 
-        let default_theme = space_navigator_holons
+        assert!(space_navigator_holons.iter().all(|holon| {
+            let key = holon["key"].as_str().unwrap_or_default();
+            key != "SpaceNavigator.MetaDesignSystem"
+                && key != "SpaceNavigator.DefaultTheme"
+                && !key.ends_with(".DesignToken")
+                && !key.ends_with(".ThemeTokenAssignment")
+        }));
+
+        let meta_design_system: Value = serde_json::from_str(&fs::read_to_string(
+            out_dir.join("meta-design-system/schema.json"),
+        )?)?;
+        let meta_design_system_holons = meta_design_system["holons"]
+            .as_array()
+            .context("Meta Design System schema holons array")?;
+        assert!(meta_design_system_holons
+            .iter()
+            .any(|holon| { holon["key"].as_str() == Some("SpaceNavigator.MetaDesignSystem") }));
+
+        let theme: Value =
+            serde_json::from_str(&fs::read_to_string(out_dir.join("theme/schema.json"))?)?;
+        let default_theme = theme["holons"]
+            .as_array()
+            .context("Theme schema holons array")?
             .iter()
             .find(|holon| holon["key"].as_str() == Some("SpaceNavigator.DefaultTheme"))
-            .context("Space Navigator default Theme package holon")?;
+            .context("Space Navigator default Theme schema holon")?;
         let default_theme_relationships = default_theme["relationships"]
             .as_array()
             .context("Space Navigator default Theme relationships")?;

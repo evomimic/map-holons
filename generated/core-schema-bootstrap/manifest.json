@@ -115,15 +115,15 @@
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "56b09baceef2c7661d869c6345b0dcf6d13c61cfecc6114c3e6ef48caaff9571"
+      "sha256": "21dd488b16fb12416afbdc06888b27571f7d2c9fa01b181130285f28d3c5be87"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "ca523d2dbb7cbe9e747f3e393cf29f58cb63a69e068998b17984b8f4db2d6fff"
+      "sha256": "b55927bfe5c38ef5ba344083ef87dfd21ed81a0fd8ebb52014ebd6c6f07c641e"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "6b34e0c0cdd4fcc180063018851b15286703737d518e67364ef2d8bb5a980fa2"
+      "sha256": "2ceb680b20d29f1876c4e612f2f26134b8c5be0cc5cd10bbdc2faca9fbe1a5d3"
     },
     {
       "path": "imports/dahn/schema.json",
@@ -2066,6 +2066,110 @@
     {
       "key": "SemanticAuthority.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SpaceNavigator.CanvasGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.CanvasPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.CanvasSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.CanvasTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.CollectionSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.CollectionTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme",
+      "type": "Theme.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.MetaDesignSystem",
+      "type": "MetaDesignSystem.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.TableCellBorderColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.TableCellBorderWidth.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.TableCellPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.TableHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SpaceNavigator.TableHeaderTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "StageNewFromClone.CommandType",

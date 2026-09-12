@@ -915,6 +915,372 @@
           ]
         }
       ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme",
+      "type": "Theme.HolonType",
+      "properties": {
+        "ThemeName": "SpaceNavigator.DefaultTheme"
+      },
+      "relationships": [
+        {
+          "name": "ForMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.MetaDesignSystem"
+            }
+          ]
+        },
+        {
+          "name": "HasThemeTokenAssignment",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "16px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CanvasGap.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "20px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CanvasPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#f7f5ef"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CanvasSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1f2933"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CanvasTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CollectionSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1f2933"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CollectionTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#eef1f3"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e3e8eb"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.TableHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1f2933"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.TableHeaderTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#c8d0d5"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.TableCellBorderColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.TableCellBorderWidth.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.TableCellPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

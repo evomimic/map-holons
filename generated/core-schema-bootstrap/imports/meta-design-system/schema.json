@@ -30,6 +30,64 @@
       ]
     },
     {
+      "key": "SpaceNavigator.MetaDesignSystem",
+      "type": "MetaDesignSystem.HolonType",
+      "properties": {
+        "MetaDesignSystemName": "SpaceNavigator.MetaDesignSystem-v0.1.0"
+      },
+      "relationships": [
+        {
+          "name": "DefinesDesignToken",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.CanvasPadding.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.CollectionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.CollectionTextColor.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.TableHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.TableHeaderTextColor.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.TableCellBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.TableCellBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SpaceNavigator.TableCellPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "MetaDesignSystem.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {

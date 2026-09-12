@@ -250,3 +250,124 @@ instance ThemeCompleteDesignTokenCoverage.ValidationRule {
   ValidationRuleDescription "A Theme must assign exactly one value to every DesignToken defined by its ForMetaDesignSystem target."
   rule_of "MAP Theme Schema-v0.1.0"
 }
+
+// The initial Theme is a core presentation realization. Space Navigator may
+// offer it in a HolonSpace, but neither its identity nor its values belong to
+// the application package.
+instance SpaceNavigator.DefaultTheme {
+  type Theme.HolonType
+  ThemeName "SpaceNavigator.DefaultTheme"
+  relationships {
+    ForMetaDesignSystem -> SpaceNavigator.MetaDesignSystem
+    HasThemeTokenAssignment -> [
+      SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment,
+      SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment
+    ]
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "16px"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CanvasGap.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "20px"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CanvasPadding.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f7f5ef"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CanvasSurfaceBackground.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CanvasTextColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CollectionSurfaceBackground.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CollectionTextColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#eef1f3"
+  relationships {
+    ForDesignToken -> SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e3e8eb"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableHeaderTextColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#c8d0d5"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableCellBorderColor.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableCellBorderWidth.DesignToken
+  }
+}
+
+instance SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12px"
+  relationships {
+    ForDesignToken -> SpaceNavigator.TableCellPadding.DesignToken
+  }
+}

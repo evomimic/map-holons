@@ -6,6 +6,27 @@ schema "MAP Meta Design System Schema-v0.1.0" {
   }
 }
 
+instance SpaceNavigator.MetaDesignSystem {
+  type MetaDesignSystem.HolonType
+  MetaDesignSystemName "SpaceNavigator.MetaDesignSystem-v0.1.0"
+  relationships {
+    DefinesDesignToken -> [
+      SpaceNavigator.CanvasGap.DesignToken,
+      SpaceNavigator.CanvasPadding.DesignToken,
+      SpaceNavigator.CanvasSurfaceBackground.DesignToken,
+      SpaceNavigator.CanvasTextColor.DesignToken,
+      SpaceNavigator.CollectionSurfaceBackground.DesignToken,
+      SpaceNavigator.CollectionTextColor.DesignToken,
+      SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken,
+      SpaceNavigator.TableHeaderSurfaceBackground.DesignToken,
+      SpaceNavigator.TableHeaderTextColor.DesignToken,
+      SpaceNavigator.TableCellBorderColor.DesignToken,
+      SpaceNavigator.TableCellBorderWidth.DesignToken,
+      SpaceNavigator.TableCellPadding.DesignToken
+    ]
+  }
+}
+
 holon MetaDesignSystem.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor

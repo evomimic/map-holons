@@ -27,6 +27,306 @@
       ]
     },
     {
+      "key": "SpaceNavigator.CanvasGap.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasGap"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.CanvasPadding.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasPadding"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.CanvasSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.CanvasTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.CollectionSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CollectionSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.CollectionTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CollectionTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CollectionHeaderSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.TableHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "TableHeaderSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.TableHeaderTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "TableHeaderTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.TableCellBorderColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "TableCellBorderColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.TableCellBorderWidth.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "TableCellBorderWidth"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigator.TableCellPadding.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "TableCellPadding"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "DesignToken.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
