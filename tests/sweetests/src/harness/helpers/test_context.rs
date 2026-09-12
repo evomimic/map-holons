@@ -6,6 +6,7 @@ use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::core_shared_objects::transactions::{TransactionContext, TxId};
 use holons_core::reference_layer::HolonSpaceBehavior;
 use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
+use holons_prelude::prelude::*;
 use map_commands_contract::{
     MapCommand, MapResult, SpaceCommand, TransactionAction, TransactionCommand,
 };
@@ -113,7 +114,7 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
         bootstrap_content_started.elapsed().as_millis(),
     );
     let bootstrap_load_started = Instant::now();
-    runtime
+    let bootstrap_response = runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
                 context: bootstrap_context.clone(),
@@ -123,6 +124,14 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
         )
         .await
         .expect("failed to load Core Schema bootstrap bundle");
+    let MapResult::Reference(HolonReference::Transient(response)) = bootstrap_response else {
+        panic!("bootstrap must return a load response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
+        Some(BaseValue::StringValue(MapString::from("Complete"))),
+        "canonical Core bootstrap must pass semantic validation and persistence"
+    );
     info!(
         "[PERF-688] sweettest_bootstrap: guest_load_and_commit_ms={}",
         bootstrap_load_started.elapsed().as_millis(),

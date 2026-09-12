@@ -40,6 +40,25 @@ fn to_wasm(error: HolonError) -> WasmError {
     wasm_error!(WasmErrorInner::Guest(error.to_string()))
 }
 
+/// Observes authoring, not graph traversal: semantic rejection must append neither
+/// node actions nor link actions, even if a later read could hide a partial write.
+/// Counting all entry and link creates is deliberately stronger than counting
+/// only the requested Book and its SmartLinks.
+#[hdk_extern]
+pub fn commit_write_counts_for_test(_: ()) -> ExternResult<(u32, u32)> {
+    let records = query(ChainQueryFilter::new())?;
+    let mut entries = 0;
+    let mut links = 0;
+    for record in records {
+        match record.action() {
+            Action::Create(_) | Action::Update(_) => entries += 1,
+            Action::CreateLink(_) => links += 1,
+            _ => {}
+        }
+    }
+    Ok((entries, links))
+}
+
 /// Root-oriented infrastructure link types whose rejected shapes require raw authoring.
 ///
 /// `SmartLink` uses its canonical storage API and therefore cannot be selected through this enum.

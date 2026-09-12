@@ -128,6 +128,7 @@ property Title.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor
   value MapStringValueType.StringValueType
+  IsValueRequired true
   header {
     description: "A title."
     display_name: "Title"

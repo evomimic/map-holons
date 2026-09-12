@@ -1,4 +1,6 @@
+use super::described_instances::add_described_instance;
 use holons_prelude::prelude::*;
+use holons_test::harness::helpers::BOOK_DESCRIPTOR_KEY;
 use holons_test::{DancesTestCase, ExpectedCommitStatus, TestCaseInit};
 use integrity_core_types::HolonErrorKind;
 use rstest::*;
@@ -25,30 +27,15 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
 
     // ── Phase 1: First transaction — create and commit ──
 
-    let book_key = MapString("Book.TransactionLifecycle.1".to_string());
-    let book_transient = fixture_context.mutation().new_holon(Some(book_key.clone()))?;
-
-    let mut book_props = BTreeMap::new();
-    book_props.insert("Title".to_property_name(), "Lifecycle Book".to_base_value());
-    book_props.insert(
-        "Description".to_property_name(),
-        "A holon for testing transaction lifecycle".to_base_value(),
-    );
-
-    let book_token = test_case.add_new_holon_step(
+    test_case.add_load_book_person_inverse_test_schema_step(None)?;
+    test_case.add_begin_transaction_step(None, None)?;
+    add_described_instance(
+        &fixture_context,
+        &mut test_case,
         &mut fixture_holons,
-        book_transient,
-        book_props,
-        Some(book_key),
-        None,
-        Some("Create Book in first transaction".to_string()),
-    )?;
-
-    test_case.add_stage_holon_step(
-        &mut fixture_holons,
-        book_token,
-        None,
-        Some("Stage Book".to_string()),
+        "Book.TransactionLifecycle.1",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
     )?;
 
     test_case.add_commit_step(
@@ -92,30 +79,13 @@ pub fn transaction_lifecycle_fixture() -> Result<DancesTestCase, HolonError> {
 
     test_case.add_begin_transaction_step(None, Some("Begin second transaction".to_string()))?;
 
-    let article_key = MapString("Article.TransactionLifecycle.1".to_string());
-    let article_transient = fixture_context.mutation().new_holon(Some(article_key.clone()))?;
-
-    let mut article_props = BTreeMap::new();
-    article_props.insert("Title".to_property_name(), "Lifecycle Article".to_base_value());
-    article_props.insert(
-        "Description".to_property_name(),
-        "Created in the second transaction".to_base_value(),
-    );
-
-    let article_token = test_case.add_new_holon_step(
+    add_described_instance(
+        &fixture_context,
+        &mut test_case,
         &mut fixture_holons,
-        article_transient,
-        article_props,
-        Some(article_key),
-        None,
-        Some("Create Article in second transaction".to_string()),
-    )?;
-
-    test_case.add_stage_holon_step(
-        &mut fixture_holons,
-        article_token,
-        None,
-        Some("Stage Article".to_string()),
+        "Book.TransactionLifecycle.2",
+        "Title",
+        BOOK_DESCRIPTOR_KEY,
     )?;
 
     test_case.add_commit_step(

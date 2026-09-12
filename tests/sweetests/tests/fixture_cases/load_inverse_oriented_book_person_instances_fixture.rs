@@ -1,20 +1,17 @@
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, TestCaseInit};
 
-/// Loads the schemas needed for Book/Person instance resolution, then verifies
-/// that public loader ingress rejects authoring an instance relationship through
-/// the inverse `AuthorOf` descriptor.
+/// Requires inverse-oriented imports to fail loader resolution before Commit.
+/// This regression intentionally remains red until loader-side direction
+/// enforcement is restored; partial persistence is not the expected contract.
 pub fn load_inverse_oriented_book_person_instances_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } = TestCaseInit::new(
         "load_inverse_oriented_book_person_instances",
-        "Load core and Book/Person schemas, then reject an inverse-oriented AuthorOf import",
+        "Inverse-oriented AuthorOf import reports Skipped with a loader error and no committed holons",
     );
 
-    test_case.add_load_core_schema_step(None)?;
-    test_case.add_begin_transaction_step(
-        None,
-        Some("Begin transaction for Book/Person schema load".to_string()),
-    )?;
+    // Core is provided by harness bootstrap. The suite loads this domain schema
+    // at most once, so this scenario also works without reimporting saved Core.
     test_case.add_load_book_person_inverse_test_schema_step(None)?;
     test_case.add_verify_book_person_descriptors_step(None)?;
 
