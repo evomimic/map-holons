@@ -7,7 +7,7 @@ schema "MAP Design Tokens Schema-v0.1.0" {
 
 // The Space Navigator visualizers consume this reusable semantic vocabulary;
 // visualizers and MetaDesignSystems do not own the tokens themselves.
-instance SpaceNavigator.CanvasGap.DesignToken {
+instance CanvasGap.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasGap"
   relationships {
@@ -15,7 +15,7 @@ instance SpaceNavigator.CanvasGap.DesignToken {
   }
 }
 
-instance SpaceNavigator.CanvasPadding.DesignToken {
+instance CanvasPadding.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasPadding"
   relationships {
@@ -23,7 +23,7 @@ instance SpaceNavigator.CanvasPadding.DesignToken {
   }
 }
 
-instance SpaceNavigator.CanvasSurfaceBackground.DesignToken {
+instance CanvasSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasSurfaceBackground"
   relationships {
@@ -31,7 +31,7 @@ instance SpaceNavigator.CanvasSurfaceBackground.DesignToken {
   }
 }
 
-instance SpaceNavigator.CanvasTextColor.DesignToken {
+instance CanvasTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CanvasTextColor"
   relationships {
@@ -39,7 +39,7 @@ instance SpaceNavigator.CanvasTextColor.DesignToken {
   }
 }
 
-instance SpaceNavigator.CollectionSurfaceBackground.DesignToken {
+instance CollectionSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionSurfaceBackground"
   relationships {
@@ -47,7 +47,7 @@ instance SpaceNavigator.CollectionSurfaceBackground.DesignToken {
   }
 }
 
-instance SpaceNavigator.CollectionTextColor.DesignToken {
+instance CollectionTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionTextColor"
   relationships {
@@ -55,7 +55,7 @@ instance SpaceNavigator.CollectionTextColor.DesignToken {
   }
 }
 
-instance SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken {
+instance CollectionHeaderSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "CollectionHeaderSurfaceBackground"
   relationships {
@@ -63,7 +63,7 @@ instance SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken {
   }
 }
 
-instance SpaceNavigator.TableHeaderSurfaceBackground.DesignToken {
+instance TableHeaderSurfaceBackground.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableHeaderSurfaceBackground"
   relationships {
@@ -71,7 +71,7 @@ instance SpaceNavigator.TableHeaderSurfaceBackground.DesignToken {
   }
 }
 
-instance SpaceNavigator.TableHeaderTextColor.DesignToken {
+instance TableHeaderTextColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableHeaderTextColor"
   relationships {
@@ -79,7 +79,7 @@ instance SpaceNavigator.TableHeaderTextColor.DesignToken {
   }
 }
 
-instance SpaceNavigator.TableCellBorderColor.DesignToken {
+instance TableCellBorderColor.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableCellBorderColor"
   relationships {
@@ -87,7 +87,7 @@ instance SpaceNavigator.TableCellBorderColor.DesignToken {
   }
 }
 
-instance SpaceNavigator.TableCellBorderWidth.DesignToken {
+instance TableCellBorderWidth.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableCellBorderWidth"
   relationships {
@@ -95,7 +95,7 @@ instance SpaceNavigator.TableCellBorderWidth.DesignToken {
   }
 }
 
-instance SpaceNavigator.TableCellPadding.DesignToken {
+instance TableCellPadding.DesignToken {
   type DesignToken.HolonType
   DesignTokenName "TableCellPadding"
   relationships {

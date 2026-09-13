@@ -115,19 +115,19 @@
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "21dd488b16fb12416afbdc06888b27571f7d2c9fa01b181130285f28d3c5be87"
+      "sha256": "82c79931b7c8553bee972853598f1a9f60219573ac631c160f1af4430f000610"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "b55927bfe5c38ef5ba344083ef87dfd21ed81a0fd8ebb52014ebd6c6f07c641e"
+      "sha256": "ca523d2dbb7cbe9e747f3e393cf29f58cb63a69e068998b17984b8f4db2d6fff"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "2ceb680b20d29f1876c4e612f2f26134b8c5be0cc5cd10bbdc2faca9fbe1a5d3"
+      "sha256": "6b34e0c0cdd4fcc180063018851b15286703737d518e67364ef2d8bb5a980fa2"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "9f743ff8d7625473b715e07c12188a8215e3ce13381c5a862b9b767f15d949c0"
+      "sha256": "dc4bead6e35195c88571a24fa7a2e1af5148b04d6a288ccb411d92de753b841d"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -472,10 +472,6 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(MetaDesignSystem.HolonType)-[SupportsVisualizer]->(Visualizer.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
-    },
-    {
       "key": "(MetaDesignSystem.HolonType)-[UsedByCanvas]->(Canvas.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -728,10 +724,6 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
-    },
-    {
       "key": "(Visualizer.HolonType)-[UsedByVisualizerUsage]->(VisualizerUsage.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -872,6 +864,22 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "CanvasGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "CanvasVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType"
     },
@@ -882,6 +890,18 @@
     {
       "key": "CloneHolon.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "CollectionHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "CollectionType.MapEnumValueType",
@@ -2068,110 +2088,6 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
-      "key": "SpaceNavigator.CanvasGap.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.CanvasPadding.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.CanvasSurfaceBackground.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.CanvasTextColor.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.CollectionSurfaceBackground.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.CollectionTextColor.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme",
-      "type": "Theme.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CollectionTextColor.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.TableCellPadding.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.MetaDesignSystem",
-      "type": "MetaDesignSystem.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.TableCellBorderColor.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.TableCellBorderWidth.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.TableCellPadding.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.TableHeaderSurfaceBackground.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
-      "key": "SpaceNavigator.TableHeaderTextColor.DesignToken",
-      "type": "DesignToken.HolonType"
-    },
-    {
       "key": "StageNewFromClone.CommandType",
       "type": "MetaCommandType.MetaHolonType"
     },
@@ -2210,6 +2126,26 @@
     {
       "key": "Summarize.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "TableCellBorderColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableCellBorderWidth.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableCellPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableHeaderTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "TargetBinding.MapEnumValueType",

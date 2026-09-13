@@ -34,12 +34,11 @@ instance SpaceNavigator.CanvasVisualizer {
   type CanvasVisualizer.HolonType
   relationships {
     ImplementedBy -> SpaceNavigatorTypeScript.VisualizerImplementation
-    SupportsMetaDesignSystem -> SpaceNavigator.MetaDesignSystem
     ConsumesDesignToken -> [
-      SpaceNavigator.CanvasGap.DesignToken,
-      SpaceNavigator.CanvasPadding.DesignToken,
-      SpaceNavigator.CanvasSurfaceBackground.DesignToken,
-      SpaceNavigator.CanvasTextColor.DesignToken
+      CanvasGap.DesignToken,
+      CanvasPadding.DesignToken,
+      CanvasSurfaceBackground.DesignToken,
+      CanvasTextColor.DesignToken
     ]
   }
 }
@@ -56,16 +55,15 @@ instance TableCollectionVisualizer.CollectionVisualizer {
   type CollectionVisualizer.HolonType
   relationships {
     ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
-    SupportsMetaDesignSystem -> SpaceNavigator.MetaDesignSystem
     ConsumesDesignToken -> [
-      SpaceNavigator.CollectionSurfaceBackground.DesignToken,
-      SpaceNavigator.CollectionTextColor.DesignToken,
-      SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken,
-      SpaceNavigator.TableHeaderSurfaceBackground.DesignToken,
-      SpaceNavigator.TableHeaderTextColor.DesignToken,
-      SpaceNavigator.TableCellBorderColor.DesignToken,
-      SpaceNavigator.TableCellBorderWidth.DesignToken,
-      SpaceNavigator.TableCellPadding.DesignToken
+      CollectionSurfaceBackground.DesignToken,
+      CollectionTextColor.DesignToken,
+      CollectionHeaderSurfaceBackground.DesignToken,
+      TableHeaderSurfaceBackground.DesignToken,
+      TableHeaderTextColor.DesignToken,
+      TableCellBorderColor.DesignToken,
+      TableCellBorderWidth.DesignToken,
+      TableCellPadding.DesignToken
     ]
   }
 }

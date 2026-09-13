@@ -8,10 +8,10 @@ import {
 } from './table-collection-visualizer.element';
 
 const THEME: DahnTheme = {
-  themeKey: 'SpaceNavigator.DefaultTheme',
-  themeVersionedKey: 'SpaceNavigator.DefaultTheme@1',
-  metaDesignSystemKey: 'SpaceNavigator.MetaDesignSystem',
-  metaDesignSystemVersionedKey: 'SpaceNavigator.MetaDesignSystem@1',
+  themeKey: 'DAHN.DefaultTheme',
+  themeVersionedKey: 'DAHN.DefaultTheme@1',
+  metaDesignSystemKey: 'DAHN.DefaultMetaDesignSystem',
+  metaDesignSystemVersionedKey: 'DAHN.DefaultMetaDesignSystem@1',
   cssCustomProperties: {},
 };
 

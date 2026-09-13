@@ -2312,16 +2312,19 @@ holon Example.HolonType {
         let canvas_visualizer_relationships = canvas_visualizer["relationships"]
             .as_array()
             .context("Space Navigator Canvas Visualizer relationships")?;
-        let supported_mds = canvas_visualizer_relationships
+        let consumed_tokens = canvas_visualizer_relationships
             .iter()
-            .find(|relationship| relationship["name"].as_str() == Some("SupportsMetaDesignSystem"))
-            .context("SupportsMetaDesignSystem relationship")?;
-        assert_eq!(supported_mds["target"][0]["$ref"], "SpaceNavigator.MetaDesignSystem");
+            .find(|relationship| relationship["name"].as_str() == Some("ConsumesDesignToken"))
+            .context("ConsumesDesignToken relationship")?;
+        assert_eq!(consumed_tokens["target"][0]["$ref"], "CanvasGap.DesignToken");
+        assert!(canvas_visualizer_relationships.iter().all(|relationship| {
+            relationship["name"].as_str() != Some("SupportsMetaDesignSystem")
+        }));
 
         assert!(space_navigator_holons.iter().all(|holon| {
             let key = holon["key"].as_str().unwrap_or_default();
-            key != "SpaceNavigator.MetaDesignSystem"
-                && key != "SpaceNavigator.DefaultTheme"
+            key != "DAHN.DefaultMetaDesignSystem"
+                && key != "DAHN.DefaultTheme"
                 && !key.ends_with(".DesignToken")
                 && !key.ends_with(".ThemeTokenAssignment")
         }));
@@ -2334,24 +2337,26 @@ holon Example.HolonType {
             .context("Meta Design System schema holons array")?;
         assert!(meta_design_system_holons
             .iter()
-            .any(|holon| { holon["key"].as_str() == Some("SpaceNavigator.MetaDesignSystem") }));
+            .all(|holon| holon["key"].as_str() != Some("DAHN.DefaultMetaDesignSystem")));
+
+        let design_tokens: Value =
+            serde_json::from_str(&fs::read_to_string(out_dir.join("design-tokens/schema.json"))?)?;
+        let design_token_holons =
+            design_tokens["holons"].as_array().context("Design Token schema holons array")?;
+        assert!(design_token_holons
+            .iter()
+            .any(|holon| holon["key"].as_str() == Some("CanvasGap.DesignToken")));
+        assert!(design_token_holons.iter().all(|holon| {
+            !holon["key"].as_str().is_some_and(|key| key.starts_with("SpaceNavigator."))
+        }));
 
         let theme: Value =
             serde_json::from_str(&fs::read_to_string(out_dir.join("theme/schema.json"))?)?;
-        let default_theme = theme["holons"]
+        assert!(theme["holons"]
             .as_array()
             .context("Theme schema holons array")?
             .iter()
-            .find(|holon| holon["key"].as_str() == Some("SpaceNavigator.DefaultTheme"))
-            .context("Space Navigator default Theme schema holon")?;
-        let default_theme_relationships = default_theme["relationships"]
-            .as_array()
-            .context("Space Navigator default Theme relationships")?;
-        let theme_mds = default_theme_relationships
-            .iter()
-            .find(|relationship| relationship["name"].as_str() == Some("ForMetaDesignSystem"))
-            .context("ForMetaDesignSystem relationship")?;
-        assert_eq!(theme_mds["target"][0]["$ref"], "SpaceNavigator.MetaDesignSystem");
+            .all(|holon| holon["key"].as_str() != Some("DAHN.DefaultTheme")));
 
         assert!(holons.iter().all(|holon| holon["key"].as_str() != Some("Layout.HolonType")));
         let visualizer_slot_type = holons

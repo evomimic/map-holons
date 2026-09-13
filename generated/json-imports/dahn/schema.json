@@ -225,9 +225,6 @@
               "$ref": "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
             },
             {
-              "$ref": "(Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType)"
-            },
-            {
               "$ref": "(Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)"
             }
           ]
@@ -1582,122 +1579,6 @@
           "target": [
             {
               "$ref": "MAP DAHN Schema-v0.1.0"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "SupportsMetaDesignSystem",
-        "TypeNamePlural": "SupportsMetaDesignSystemRelationships",
-        "DisplayName": "Supports Meta Design System",
-        "DisplayNamePlural": "Supports Meta Design System Relationships",
-        "Description": "Declares every MetaDesignSystem whose complete token contract a Visualizer supports.",
-        "DeletionSemantic": "Allow"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "DeclaredRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP DAHN Schema-v0.1.0"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "Visualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "MetaDesignSystem.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "HasInverse",
-          "target": [
-            {
-              "$ref": "(MetaDesignSystem.HolonType)-[SupportsVisualizer]->(Visualizer.HolonType)"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "OneOrMore.CardinalityConstraint"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "(MetaDesignSystem.HolonType)-[SupportsVisualizer]->(Visualizer.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType",
-      "properties": {
-        "TypeName": "SupportsVisualizer",
-        "TypeNamePlural": "SupportsVisualizerRelationships",
-        "DisplayName": "Supports Visualizer",
-        "DisplayNamePlural": "Supports Visualizer Relationships",
-        "Description": "Inverse of SupportsMetaDesignSystem.",
-        "DeletionSemantic": "Block"
-      },
-      "relationships": [
-        {
-          "name": "Extends",
-          "target": [
-            {
-              "$ref": "InverseRelationshipType.RelationshipType"
-            }
-          ]
-        },
-        {
-          "name": "ComponentOf",
-          "target": [
-            {
-              "$ref": "MAP DAHN Schema-v0.1.0"
-            }
-          ]
-        },
-        {
-          "name": "SourceType",
-          "target": [
-            {
-              "$ref": "MetaDesignSystem.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "TargetType",
-          "target": [
-            {
-              "$ref": "Visualizer.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "Constraints",
-          "target": [
-            {
-              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         }

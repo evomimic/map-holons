@@ -1,0 +1,340 @@
+{
+  "holons": [
+    {
+      "key": "MAP Default Presentation Commons-v0.1.0",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "MAP Default Presentation Commons-v0.1.0",
+        "Description": "A locally bundled Visualizer Commons contribution. It supplies an MDS contract and one compatible Theme without binding either to a Dancer or application."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Design Tokens Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultMetaDesignSystem",
+      "type": "MetaDesignSystem.HolonType",
+      "properties": {
+        "MetaDesignSystemName": "DAHN.DefaultMetaDesignSystem-v0.1.0"
+      },
+      "relationships": [
+        {
+          "name": "DefinesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "CollectionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CollectionTextColor.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderColor.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme",
+      "type": "Theme.HolonType",
+      "properties": {
+        "ThemeName": "DAHN.DefaultTheme"
+      },
+      "relationships": [
+        {
+          "name": "ForMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "DAHN.DefaultMetaDesignSystem"
+            }
+          ]
+        },
+        {
+          "name": "HasThemeTokenAssignment",
+          "target": [
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasPadding.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CollectionTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.TableCellPadding.ThemeTokenAssignment"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "16px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "20px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#f7f5ef"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1f2933"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CollectionTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1f2933"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#eef1f3"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e3e8eb"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1f2933"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#c8d0d5"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.TableCellPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

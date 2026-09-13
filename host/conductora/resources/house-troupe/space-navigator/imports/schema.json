@@ -88,16 +88,16 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
-              "$ref": "SpaceNavigator.CanvasGap.DesignToken"
+              "$ref": "CanvasGap.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CanvasPadding.DesignToken"
+              "$ref": "CanvasPadding.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CanvasSurfaceBackground.DesignToken"
+              "$ref": "CanvasSurfaceBackground.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CanvasTextColor.DesignToken"
+              "$ref": "CanvasTextColor.DesignToken"
             }
           ]
         },
@@ -106,14 +106,6 @@
           "target": [
             {
               "$ref": "SpaceNavigatorTypeScript.VisualizerImplementation"
-            }
-          ]
-        },
-        {
-          "name": "SupportsMetaDesignSystem",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.MetaDesignSystem"
             }
           ]
         }
@@ -151,28 +143,28 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
-              "$ref": "SpaceNavigator.CollectionSurfaceBackground.DesignToken"
+              "$ref": "CollectionSurfaceBackground.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CollectionTextColor.DesignToken"
+              "$ref": "CollectionTextColor.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken"
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.TableHeaderSurfaceBackground.DesignToken"
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.TableHeaderTextColor.DesignToken"
+              "$ref": "TableHeaderTextColor.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.TableCellBorderColor.DesignToken"
+              "$ref": "TableCellBorderColor.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.TableCellBorderWidth.DesignToken"
+              "$ref": "TableCellBorderWidth.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.TableCellPadding.DesignToken"
+              "$ref": "TableCellPadding.DesignToken"
             }
           ]
         },
@@ -181,14 +173,6 @@
           "target": [
             {
               "$ref": "TableCollectionTypeScript.VisualizerImplementation"
-            }
-          ]
-        },
-        {
-          "name": "SupportsMetaDesignSystem",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.MetaDesignSystem"
             }
           ]
         }

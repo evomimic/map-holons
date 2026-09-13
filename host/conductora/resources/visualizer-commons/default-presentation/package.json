@@ -1,0 +1,6 @@
+{
+  "package_identity": "DAHN.DefaultPresentation",
+  "schema_imports": ["imports/schema.json"],
+  "required_holons": ["DAHN.DefaultMetaDesignSystem", "DAHN.DefaultTheme"],
+  "offered_theme_keys": ["DAHN.DefaultTheme"]
+}

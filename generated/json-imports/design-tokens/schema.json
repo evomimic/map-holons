@@ -19,7 +19,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.CanvasGap.DesignToken",
+      "key": "CanvasGap.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "CanvasGap"
@@ -36,7 +36,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.CanvasPadding.DesignToken",
+      "key": "CanvasPadding.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "CanvasPadding"
@@ -53,7 +53,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.CanvasSurfaceBackground.DesignToken",
+      "key": "CanvasSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "CanvasSurfaceBackground"
@@ -70,7 +70,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.CanvasTextColor.DesignToken",
+      "key": "CanvasTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "CanvasTextColor"
@@ -87,7 +87,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.CollectionSurfaceBackground.DesignToken",
+      "key": "CollectionSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "CollectionSurfaceBackground"
@@ -104,7 +104,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.CollectionTextColor.DesignToken",
+      "key": "CollectionTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "CollectionTextColor"
@@ -121,7 +121,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.CollectionHeaderSurfaceBackground.DesignToken",
+      "key": "CollectionHeaderSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "CollectionHeaderSurfaceBackground"
@@ -138,7 +138,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.TableHeaderSurfaceBackground.DesignToken",
+      "key": "TableHeaderSurfaceBackground.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "TableHeaderSurfaceBackground"
@@ -155,7 +155,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.TableHeaderTextColor.DesignToken",
+      "key": "TableHeaderTextColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "TableHeaderTextColor"
@@ -172,7 +172,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.TableCellBorderColor.DesignToken",
+      "key": "TableCellBorderColor.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "TableCellBorderColor"
@@ -189,7 +189,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.TableCellBorderWidth.DesignToken",
+      "key": "TableCellBorderWidth.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "TableCellBorderWidth"
@@ -206,7 +206,7 @@
       ]
     },
     {
-      "key": "SpaceNavigator.TableCellPadding.DesignToken",
+      "key": "TableCellPadding.DesignToken",
       "type": "DesignToken.HolonType",
       "properties": {
         "DesignTokenName": "TableCellPadding"
