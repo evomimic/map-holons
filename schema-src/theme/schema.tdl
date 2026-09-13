@@ -250,3 +250,6 @@ instance ThemeCompleteDesignTokenCoverage.ValidationRule {
   ValidationRuleDescription "A Theme must assign exactly one value to every DesignToken defined by its ForMetaDesignSystem target."
   rule_of "MAP Theme Schema-v0.1.0"
 }
+
+// The initial Theme is a core presentation realization. A Dancer may offer it
+// in a HolonSpace, but neither its identity nor its values belong to an app.

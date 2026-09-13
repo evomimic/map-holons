@@ -4,6 +4,7 @@ import type {
   HolonId,
   LocalId,
   MapBytes,
+  MapString,
   PropertyName,
   RelationshipName,
 } from '../internal/wire-types/references';
@@ -24,6 +25,7 @@ export type {
   HolonId,
   LocalId,
   MapBytes,
+  MapString,
   PropertyName,
   RelationshipName,
 } from '../internal/wire-types/references';

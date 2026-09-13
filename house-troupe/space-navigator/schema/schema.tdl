@@ -34,12 +34,11 @@ instance SpaceNavigator.CanvasVisualizer {
   type CanvasVisualizer.HolonType
   relationships {
     ImplementedBy -> SpaceNavigatorTypeScript.VisualizerImplementation
-    SupportsMetaDesignSystem -> SpaceNavigator.MetaDesignSystem
     ConsumesDesignToken -> [
-      SpaceNavigator.CanvasGap.DesignToken,
-      SpaceNavigator.CanvasPadding.DesignToken,
-      SpaceNavigator.CanvasSurfaceBackground.DesignToken,
-      SpaceNavigator.CanvasTextColor.DesignToken
+      CanvasGap.DesignToken,
+      CanvasPadding.DesignToken,
+      CanvasSurfaceBackground.DesignToken,
+      CanvasTextColor.DesignToken
     ]
   }
 }
@@ -56,6 +55,16 @@ instance TableCollectionVisualizer.CollectionVisualizer {
   type CollectionVisualizer.HolonType
   relationships {
     ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
+    ConsumesDesignToken -> [
+      CollectionSurfaceBackground.DesignToken,
+      CollectionTextColor.DesignToken,
+      CollectionHeaderSurfaceBackground.DesignToken,
+      TableHeaderSurfaceBackground.DesignToken,
+      TableHeaderTextColor.DesignToken,
+      TableCellBorderColor.DesignToken,
+      TableCellBorderWidth.DesignToken,
+      TableCellPadding.DesignToken
+    ]
   }
 }
 
@@ -84,95 +93,4 @@ instance TableCollectionTypeScript.VisualizerImplementation {
   VisualizerArtifactDigest "sha256:5dcc1482113e5a09275fb4f3b0226b93474c12e9524679dcad3409c1ef1cc4da"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
-}
-
-instance SpaceNavigator.MetaDesignSystem {
-  type MetaDesignSystem.HolonType
-  MetaDesignSystemName "SpaceNavigator.MetaDesignSystem-v0.1.0"
-  relationships {
-    DefinesDesignToken -> [
-      SpaceNavigator.CanvasGap.DesignToken,
-      SpaceNavigator.CanvasPadding.DesignToken,
-      SpaceNavigator.CanvasSurfaceBackground.DesignToken,
-      SpaceNavigator.CanvasTextColor.DesignToken
-    ]
-  }
-}
-
-instance SpaceNavigator.CanvasGap.DesignToken {
-  type DesignToken.HolonType
-  DesignTokenName "CanvasGap"
-  relationships {
-    HasDesignTokenType -> Dimension.DesignTokenType
-  }
-}
-
-instance SpaceNavigator.CanvasPadding.DesignToken {
-  type DesignToken.HolonType
-  DesignTokenName "CanvasPadding"
-  relationships {
-    HasDesignTokenType -> Dimension.DesignTokenType
-  }
-}
-
-instance SpaceNavigator.CanvasSurfaceBackground.DesignToken {
-  type DesignToken.HolonType
-  DesignTokenName "CanvasSurfaceBackground"
-  relationships {
-    HasDesignTokenType -> Color.DesignTokenType
-  }
-}
-
-instance SpaceNavigator.CanvasTextColor.DesignToken {
-  type DesignToken.HolonType
-  DesignTokenName "CanvasTextColor"
-  relationships {
-    HasDesignTokenType -> Color.DesignTokenType
-  }
-}
-
-instance SpaceNavigator.DefaultTheme {
-  type Theme.HolonType
-  ThemeName "SpaceNavigator.DefaultTheme"
-  relationships {
-    ForMetaDesignSystem -> SpaceNavigator.MetaDesignSystem
-    HasThemeTokenAssignment -> [
-      SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment,
-      SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment,
-      SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment,
-      SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment
-    ]
-  }
-}
-
-instance SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment {
-  type ThemeTokenAssignment.HolonType
-  PresentationValue "16px"
-  relationships {
-    ForDesignToken -> SpaceNavigator.CanvasGap.DesignToken
-  }
-}
-
-instance SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment {
-  type ThemeTokenAssignment.HolonType
-  PresentationValue "20px"
-  relationships {
-    ForDesignToken -> SpaceNavigator.CanvasPadding.DesignToken
-  }
-}
-
-instance SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment {
-  type ThemeTokenAssignment.HolonType
-  PresentationValue "#f7f5ef"
-  relationships {
-    ForDesignToken -> SpaceNavigator.CanvasSurfaceBackground.DesignToken
-  }
-}
-
-instance SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment {
-  type ThemeTokenAssignment.HolonType
-  PresentationValue "#1f2933"
-  relationships {
-    ForDesignToken -> SpaceNavigator.CanvasTextColor.DesignToken
-  }
 }

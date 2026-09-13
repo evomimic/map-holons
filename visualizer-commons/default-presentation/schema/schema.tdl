@@ -1,0 +1,136 @@
+schema "MAP Default Presentation Commons-v0.1.0" {
+  depends_on "MAP Design Tokens Schema-v0.1.0"
+  depends_on "MAP Meta Design System Schema-v0.1.0"
+  depends_on "MAP Theme Schema-v0.1.0"
+  header {
+    description: "A locally bundled Visualizer Commons contribution. It supplies an MDS contract and one compatible Theme without binding either to a Dancer or application."
+  }
+}
+
+instance DAHN.DefaultMetaDesignSystem {
+  type MetaDesignSystem.HolonType
+  MetaDesignSystemName "DAHN.DefaultMetaDesignSystem-v0.1.0"
+  relationships {
+    DefinesDesignToken -> [
+      CanvasGap.DesignToken,
+      CanvasPadding.DesignToken,
+      CanvasSurfaceBackground.DesignToken,
+      CanvasTextColor.DesignToken,
+      CollectionSurfaceBackground.DesignToken,
+      CollectionTextColor.DesignToken,
+      CollectionHeaderSurfaceBackground.DesignToken,
+      TableHeaderSurfaceBackground.DesignToken,
+      TableHeaderTextColor.DesignToken,
+      TableCellBorderColor.DesignToken,
+      TableCellBorderWidth.DesignToken,
+      TableCellPadding.DesignToken
+    ]
+  }
+}
+
+instance DAHN.DefaultTheme {
+  type Theme.HolonType
+  ThemeName "DAHN.DefaultTheme"
+  relationships {
+    ForMetaDesignSystem -> DAHN.DefaultMetaDesignSystem
+    HasThemeTokenAssignment -> [
+      DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasPadding.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CollectionTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment,
+      DAHN.DefaultTheme.TableCellPadding.ThemeTokenAssignment
+    ]
+  }
+}
+
+instance DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "16px"
+  relationships {
+    ForDesignToken -> CanvasGap.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.CanvasPadding.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "20px"
+  relationships {
+    ForDesignToken -> CanvasPadding.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f7f5ef"
+  relationships {
+    ForDesignToken -> CanvasSurfaceBackground.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.CanvasTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> CanvasTextColor.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.CollectionSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> CollectionSurfaceBackground.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.CollectionTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> CollectionTextColor.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.CollectionHeaderSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#eef1f3"
+  relationships {
+    ForDesignToken -> CollectionHeaderSurfaceBackground.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.TableHeaderSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e3e8eb"
+  relationships {
+    ForDesignToken -> TableHeaderSurfaceBackground.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.TableHeaderTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1f2933"
+  relationships {
+    ForDesignToken -> TableHeaderTextColor.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.TableCellBorderColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#c8d0d5"
+  relationships {
+    ForDesignToken -> TableCellBorderColor.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.TableCellBorderWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> TableCellBorderWidth.DesignToken
+  }
+}
+instance DAHN.DefaultTheme.TableCellPadding.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12px"
+  relationships {
+    ForDesignToken -> TableCellPadding.DesignToken
+  }
+}

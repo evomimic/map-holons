@@ -83,7 +83,6 @@ abstract holon Visualizer.HolonType {
       (Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType),
       (Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor),
       (Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType),
-      (Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType),
       (Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)
     ]
   }
@@ -539,41 +538,6 @@ enum VisualizerImplementationRuntime.MapEnumValueType {
         plural: "Rust"
       }
     }
-  }
-}
-
-relationship (Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType) {
-  type MetaDeclaredRelationshipType.MetaRelationshipType
-  relationships {
-    Constraints -> OneOrMore.CardinalityConstraint
-    HasInverse -> SupportsVisualizer
-  }
-  extends DeclaredRelationshipType.RelationshipType
-  source Visualizer.HolonType
-  target MetaDesignSystem.HolonType
-  deletion_semantic Allow
-  header {
-    description: "Declares every MetaDesignSystem whose complete token contract a Visualizer supports."
-    display_name: "Supports Meta Design System"
-    display_plural: "Supports Meta Design System Relationships"
-    plural: "SupportsMetaDesignSystemRelationships"
-  }
-}
-
-inverse relationship (MetaDesignSystem.HolonType)-[SupportsVisualizer]->(Visualizer.HolonType) {
-  type MetaInverseRelationshipType.MetaRelationshipType
-  extends InverseRelationshipType.RelationshipType
-  source MetaDesignSystem.HolonType
-  target Visualizer.HolonType
-  relationships {
-    Constraints -> ZeroOrMore.CardinalityConstraint
-  }
-  deletion_semantic Block
-  header {
-    description: "Inverse of SupportsMetaDesignSystem."
-    display_name: "Supports Visualizer"
-    display_plural: "Supports Visualizer Relationships"
-    plural: "SupportsVisualizerRelationships"
   }
 }
 

@@ -88,16 +88,16 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
-              "$ref": "SpaceNavigator.CanvasGap.DesignToken"
+              "$ref": "CanvasGap.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CanvasPadding.DesignToken"
+              "$ref": "CanvasPadding.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CanvasSurfaceBackground.DesignToken"
+              "$ref": "CanvasSurfaceBackground.DesignToken"
             },
             {
-              "$ref": "SpaceNavigator.CanvasTextColor.DesignToken"
+              "$ref": "CanvasTextColor.DesignToken"
             }
           ]
         },
@@ -106,14 +106,6 @@
           "target": [
             {
               "$ref": "SpaceNavigatorTypeScript.VisualizerImplementation"
-            }
-          ]
-        },
-        {
-          "name": "SupportsMetaDesignSystem",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.MetaDesignSystem"
             }
           ]
         }
@@ -147,6 +139,35 @@
       "type": "CollectionVisualizer.HolonType",
       "properties": {},
       "relationships": [
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CollectionTextColor.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderColor.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        },
         {
           "name": "ImplementedBy",
           "target": [
@@ -189,202 +210,6 @@
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
       }
-    },
-    {
-      "key": "SpaceNavigator.MetaDesignSystem",
-      "type": "MetaDesignSystem.HolonType",
-      "properties": {
-        "MetaDesignSystemName": "SpaceNavigator.MetaDesignSystem-v0.1.0"
-      },
-      "relationships": [
-        {
-          "name": "DefinesDesignToken",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.CanvasGap.DesignToken"
-            },
-            {
-              "$ref": "SpaceNavigator.CanvasPadding.DesignToken"
-            },
-            {
-              "$ref": "SpaceNavigator.CanvasSurfaceBackground.DesignToken"
-            },
-            {
-              "$ref": "SpaceNavigator.CanvasTextColor.DesignToken"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.CanvasGap.DesignToken",
-      "type": "DesignToken.HolonType",
-      "properties": {
-        "DesignTokenName": "CanvasGap"
-      },
-      "relationships": [
-        {
-          "name": "HasDesignTokenType",
-          "target": [
-            {
-              "$ref": "Dimension.DesignTokenType"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.CanvasPadding.DesignToken",
-      "type": "DesignToken.HolonType",
-      "properties": {
-        "DesignTokenName": "CanvasPadding"
-      },
-      "relationships": [
-        {
-          "name": "HasDesignTokenType",
-          "target": [
-            {
-              "$ref": "Dimension.DesignTokenType"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.CanvasSurfaceBackground.DesignToken",
-      "type": "DesignToken.HolonType",
-      "properties": {
-        "DesignTokenName": "CanvasSurfaceBackground"
-      },
-      "relationships": [
-        {
-          "name": "HasDesignTokenType",
-          "target": [
-            {
-              "$ref": "Color.DesignTokenType"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.CanvasTextColor.DesignToken",
-      "type": "DesignToken.HolonType",
-      "properties": {
-        "DesignTokenName": "CanvasTextColor"
-      },
-      "relationships": [
-        {
-          "name": "HasDesignTokenType",
-          "target": [
-            {
-              "$ref": "Color.DesignTokenType"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme",
-      "type": "Theme.HolonType",
-      "properties": {
-        "ThemeName": "SpaceNavigator.DefaultTheme"
-      },
-      "relationships": [
-        {
-          "name": "ForMetaDesignSystem",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.MetaDesignSystem"
-            }
-          ]
-        },
-        {
-          "name": "HasThemeTokenAssignment",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment"
-            },
-            {
-              "$ref": "SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment"
-            },
-            {
-              "$ref": "SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment"
-            },
-            {
-              "$ref": "SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType",
-      "properties": {
-        "PresentationValue": "16px"
-      },
-      "relationships": [
-        {
-          "name": "ForDesignToken",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.CanvasGap.DesignToken"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasPadding.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType",
-      "properties": {
-        "PresentationValue": "20px"
-      },
-      "relationships": [
-        {
-          "name": "ForDesignToken",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.CanvasPadding.DesignToken"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType",
-      "properties": {
-        "PresentationValue": "#f7f5ef"
-      },
-      "relationships": [
-        {
-          "name": "ForDesignToken",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.CanvasSurfaceBackground.DesignToken"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "SpaceNavigator.DefaultTheme.CanvasTextColor.ThemeTokenAssignment",
-      "type": "ThemeTokenAssignment.HolonType",
-      "properties": {
-        "PresentationValue": "#1f2933"
-      },
-      "relationships": [
-        {
-          "name": "ForDesignToken",
-          "target": [
-            {
-              "$ref": "SpaceNavigator.CanvasTextColor.DesignToken"
-            }
-          ]
-        }
-      ]
     }
   ]
 }

@@ -115,7 +115,7 @@
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "56b09baceef2c7661d869c6345b0dcf6d13c61cfecc6114c3e6ef48caaff9571"
+      "sha256": "82c79931b7c8553bee972853598f1a9f60219573ac631c160f1af4430f000610"
     },
     {
       "path": "imports/meta-design-system/schema.json",
@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "9f743ff8d7625473b715e07c12188a8215e3ce13381c5a862b9b767f15d949c0"
+      "sha256": "dc4bead6e35195c88571a24fa7a2e1af5148b04d6a288ccb411d92de753b841d"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -472,10 +472,6 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(MetaDesignSystem.HolonType)-[SupportsVisualizer]->(Visualizer.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
-    },
-    {
       "key": "(MetaDesignSystem.HolonType)-[UsedByCanvas]->(Canvas.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -728,10 +724,6 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(Visualizer.HolonType)-[SupportsMetaDesignSystem]->(MetaDesignSystem.HolonType)",
-      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
-    },
-    {
       "key": "(Visualizer.HolonType)-[UsedByVisualizerUsage]->(VisualizerUsage.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
@@ -872,6 +864,22 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "CanvasGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "CanvasVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType"
     },
@@ -882,6 +890,18 @@
     {
       "key": "CloneHolon.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "CollectionHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "CollectionType.MapEnumValueType",
@@ -2106,6 +2126,26 @@
     {
       "key": "Summarize.CommandType",
       "type": "MetaCommandType.MetaHolonType"
+    },
+    {
+      "key": "TableCellBorderColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableCellBorderWidth.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableCellPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableHeaderTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "TargetBinding.MapEnumValueType",

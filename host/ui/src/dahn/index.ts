@@ -13,6 +13,15 @@ export { SdkVisualizerMaterializer } from './map-adapter/sdk-visualizer-material
 export type { DahnTarget } from './contracts/targets';
 export type { DahnTheme } from './contracts/themes';
 export type {
+  HolonPropertyMapTablePresentation,
+  ScalarTablePresentation,
+  TableColumn,
+  TableColumnId,
+  TablePresentation,
+  TableRowId,
+  TableValueType,
+} from './contracts/table-presentation';
+export type {
   VisualizerContext,
   VisualizerDefinition,
   VisualizerElement,

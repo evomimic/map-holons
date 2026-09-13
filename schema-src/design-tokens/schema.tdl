@@ -5,6 +5,104 @@ schema "MAP Design Tokens Schema-v0.1.0" {
   }
 }
 
+// The Space Navigator visualizers consume this reusable semantic vocabulary;
+// visualizers and MetaDesignSystems do not own the tokens themselves.
+instance CanvasGap.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasGap"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance CanvasPadding.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasPadding"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance CanvasSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance CanvasTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance CollectionSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance CollectionTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance CollectionHeaderSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionHeaderSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance TableHeaderSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableHeaderSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance TableHeaderTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableHeaderTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance TableCellBorderColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableCellBorderColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance TableCellBorderWidth.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableCellBorderWidth"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance TableCellPadding.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableCellPadding"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
 holon DesignToken.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor

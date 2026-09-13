@@ -15,6 +15,7 @@ use serde::Deserialize;
 #[derive(Debug, Clone)]
 pub struct DancerPackageCatalog {
     packages: Arc<HashMap<MapString, PathBuf>>,
+    presentation_package: PathBuf,
     activated: Arc<Mutex<HashSet<MapString>>>,
 }
 
@@ -38,7 +39,15 @@ impl DancerPackageCatalog {
         let mut packages = HashMap::new();
         packages
             .insert(MapString::from("SpaceNavigator.Dancer"), package_root.join("space-navigator"));
-        Self { packages: Arc::new(packages), activated: Arc::new(Mutex::new(HashSet::new())) }
+        let presentation_package = package_root
+            .parent()
+            .unwrap_or(&package_root)
+            .join("visualizer-commons/default-presentation");
+        Self {
+            packages: Arc::new(packages),
+            presentation_package,
+            activated: Arc::new(Mutex::new(HashSet::new())),
+        }
     }
 
     pub fn development_default() -> Self {
@@ -60,6 +69,19 @@ impl DancerPackageCatalog {
             .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?;
         if activated.contains(package_identity) {
             return Ok(());
+        }
+
+        let presentation_identity = MapString::from("DAHN.DefaultPresentation");
+        if !activated.contains(&presentation_identity) {
+            let presentation =
+                package_content_set(&self.presentation_package, &presentation_identity)?;
+            let isolated_context = context.open_isolated_transaction()?;
+            futures_executor::block_on(holons_loader_client::load_holons_from_files(
+                isolated_context,
+                presentation.content_set,
+            ))?;
+            establish_theme_offers(context, presentation.offered_theme_keys)?;
+            activated.insert(presentation_identity);
         }
 
         let package_directory = self.packages.get(package_identity).ok_or_else(|| {
@@ -215,10 +237,7 @@ mod tests {
         assert!(package_content.content_set.files_to_load[0]
             .raw_contents
             .contains("SpaceNavigator.Dancer"));
-        assert_eq!(
-            package_content.offered_theme_keys,
-            vec![MapString::from("SpaceNavigator.DefaultTheme")]
-        );
+        assert!(package_content.offered_theme_keys.is_empty());
     }
 
     #[test]

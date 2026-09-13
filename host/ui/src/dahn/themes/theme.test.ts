@@ -26,8 +26,8 @@ function reference(fixture: ReferenceFixture): HolonReference {
 
 function themeFixture(): ReferenceFixture {
   const gap = {
-    key: 'SpaceNavigator.CanvasGap.DesignToken',
-    versionedKey: 'SpaceNavigator.CanvasGap.DesignToken@1',
+    key: 'CanvasGap.DesignToken',
+    versionedKey: 'CanvasGap.DesignToken@1',
     properties: { DesignTokenName: 'CanvasGap' },
     relationships: {
       HasDesignTokenType: [
@@ -39,8 +39,8 @@ function themeFixture(): ReferenceFixture {
     },
   };
   const surface = {
-    key: 'SpaceNavigator.CanvasSurfaceBackground.DesignToken',
-    versionedKey: 'SpaceNavigator.CanvasSurfaceBackground.DesignToken@1',
+    key: 'CanvasSurfaceBackground.DesignToken',
+    versionedKey: 'CanvasSurfaceBackground.DesignToken@1',
     properties: { DesignTokenName: 'CanvasSurfaceBackground' },
     relationships: {
       HasDesignTokenType: [
@@ -52,26 +52,26 @@ function themeFixture(): ReferenceFixture {
     },
   };
   const metaDesignSystem = {
-    key: 'SpaceNavigator.MetaDesignSystem',
-    versionedKey: 'SpaceNavigator.MetaDesignSystem@1',
+    key: 'DAHN.DefaultMetaDesignSystem',
+    versionedKey: 'DAHN.DefaultMetaDesignSystem@1',
     relationships: { DefinesDesignToken: [gap, surface] },
   };
   const gapAssignment = {
-    key: 'SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment',
-    versionedKey: 'SpaceNavigator.DefaultTheme.CanvasGap.ThemeTokenAssignment@1',
+    key: 'DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment',
+    versionedKey: 'DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment@1',
     properties: { PresentationValue: '16px' },
     relationships: { ForDesignToken: [gap] },
   };
   const surfaceAssignment = {
-    key: 'SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment',
-    versionedKey: 'SpaceNavigator.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment@1',
+    key: 'DAHN.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment',
+    versionedKey: 'DAHN.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment@1',
     properties: { PresentationValue: '#f7f5ef' },
     relationships: { ForDesignToken: [surface] },
   };
 
   return {
-    key: 'SpaceNavigator.DefaultTheme',
-    versionedKey: 'SpaceNavigator.DefaultTheme@1',
+    key: 'DAHN.DefaultTheme',
+    versionedKey: 'DAHN.DefaultTheme@1',
     relationships: {
       ForMetaDesignSystem: [metaDesignSystem],
       HasThemeTokenAssignment: [gapAssignment, surfaceAssignment],
@@ -84,8 +84,8 @@ describe('Theme', () => {
     const resolved = await new Theme(reference(themeFixture())).toCssCustomProperties();
 
     expect(resolved).toMatchObject({
-      themeKey: 'SpaceNavigator.DefaultTheme',
-      metaDesignSystemKey: 'SpaceNavigator.MetaDesignSystem',
+      themeKey: 'DAHN.DefaultTheme',
+      metaDesignSystemKey: 'DAHN.DefaultMetaDesignSystem',
       cssCustomProperties: {
         '--dahn-canvas-gap': '16px',
         '--dahn-canvas-surface-background': '#f7f5ef',

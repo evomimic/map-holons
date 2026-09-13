@@ -38,6 +38,7 @@ export type {
   HolonId,
   LocalId,
   MapBytes,
+  MapString,
   MapErrorCode,
   PropertyName,
   ReadableHolon,
