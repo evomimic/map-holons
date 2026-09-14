@@ -11,15 +11,44 @@ schema "MAP Space Navigator Schema-v0.1.0" {
   }
 }
 
+holon SpaceNavigator.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Dancer.HolonType
+  header {
+    description: "Concrete Dancer type for the Space Navigator home experience."
+    display_name: "Space Navigator"
+    display_plural: "Space Navigators"
+    plural: "SpaceNavigators"
+  }
+}
+
 instance SpaceNavigator.Dancer {
-  type Dancer.HolonType
+  type SpaceNavigator.HolonType
   relationships {
     OffersDance -> MaterializeVisualizer.DanceType
+    AffordedByHolonSpace -> MAP.CoreSchemaSpace
     Requires -> [
       "MAP DAHN Schema-v0.1.0",
       "MAP Space Navigator Schema-v0.1.0"
     ]
   }
+}
+
+instance SpaceNavigator.HomeNodeVisualizer {
+  type NodeVisualizer.HolonType
+  relationships {
+    ApplicableToType -> SpaceNavigator.HolonType
+    ImplementedBy -> SpaceNavigatorHomeTypeScript.VisualizerImplementation
+  }
+}
+
+instance SpaceNavigatorHomeTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.space-navigator-home"
+  VisualizerArtifactDigest "sha256:abc225be030658223c1a751c373e6f38c513b9b25c781cdfa21038022d3cb96b"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
 }
 
 instance SpaceNavigator.CanvasVisualizer {

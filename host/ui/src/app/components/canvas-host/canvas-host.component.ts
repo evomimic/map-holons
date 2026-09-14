@@ -100,48 +100,56 @@ export class CanvasHostComponent implements AfterViewInit {
 
       const theme = await new Theme(themeHolon).toCssCustomProperties();
       const registry = new DefaultVisualizerRegistry();
-      let pathInspectorContext: VisualizerContext | null = null;
+      let homeDancerContext: VisualizerContext | null = null;
       const canvas = new DomCanvas(
         host,
         registry,
         () => {
-          if (pathInspectorContext === null) {
-            throw new Error('Path Inspector context is unavailable.');
+          if (homeDancerContext === null) {
+            throw new Error('Home-Dancer context is unavailable.');
           }
-          return pathInspectorContext;
+          return homeDancerContext;
         },
       );
       // The selected Theme is projected once by the Canvas and shared by all
       // future hosted Dancers. The Canvas remains intentionally empty here.
       canvas.setTheme(theme);
 
-      const nodeSelection = await transaction.selectVisualizer({
-        subject: activeHolonSpace,
-        requestedKind: 'node',
-      });
-      const nodeImplementation = await materialized.realize(nodeSelection.selected);
+      const homeDancerSelection = session.home_dancer_selection;
+      if (homeDancerSelection === null) {
+        // A missing declaration is the only intentional empty-Canvas state.
+        await canvas.mountVisualizers([]);
+        this.canvasState.set('mounted');
+        dismissStartupOverlay();
+        return;
+      }
+      const homeDancer = transaction.bindPersistedReference(homeDancerSelection.dancer);
+      const nodeVisualizer = transaction.bindPersistedReference(
+        homeDancerSelection.node_visualizer,
+      );
+      const nodeImplementation = await materialized.realize(nodeVisualizer);
       if (
         typeof nodeImplementation !== 'function' ||
         !(nodeImplementation.prototype instanceof HTMLElement)
       ) {
-        throw new Error('Selected Path Inspector implementation does not export an HTMLElement constructor.');
+        throw new Error('Selected home-Dancer implementation does not export an HTMLElement constructor.');
       }
       defineCustomElementOnce(
-        'map-path-inspector',
+        'map-home-dancer',
         nodeImplementation as CustomElementConstructor,
       );
-      const title = (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey();
+      const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
       registry.register({
-        id: 'path-inspector',
-        displayName: 'Path Inspector',
+        id: 'home-dancer',
+        displayName: 'Home Dancer',
         version: '0.1.0',
-        componentTag: 'map-path-inspector',
+        componentTag: 'map-home-dancer',
         supportedTargets: [{ kind: 'holon-node' }],
         load: async () => {},
       });
-      pathInspectorContext = {
+      homeDancerContext = {
         title,
-        target: { reference: activeHolonSpace },
+        target: { reference: homeDancer },
         holon: new DahnHolonView(activeHolonSpace),
         actions: [],
         theme,
@@ -149,8 +157,8 @@ export class CanvasHostComponent implements AfterViewInit {
       };
       await canvas.mountVisualizers([
         {
-          visualizerId: 'path-inspector',
-          target: { reference: activeHolonSpace },
+          visualizerId: 'home-dancer',
+          target: { reference: homeDancer },
           slot: 'primary',
         },
       ]);

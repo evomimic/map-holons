@@ -16,6 +16,13 @@ pub struct CanvasLaunchSelection {
     pub canvas_visualizer_key: String,
 }
 
+/// Rust-selected Dancer realization to be materialized by the thin UI client.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct HomeDancerLaunchSelection {
+    pub dancer: HolonReferenceWire,
+    pub node_visualizer: HolonReferenceWire,
+}
+
 /// The frontend experience selected by the MAP Application Launcher.
 ///
 /// This is deliberately application configuration rather than a visualizer
@@ -56,7 +63,10 @@ pub enum ApplicationSessionPhase {
     InitializingHost,
     OpeningSpace,
     BootstrappingCore,
+    ActivatingBasePackages,
     RealizingCanvas,
+    SelectingHomeDancer,
+    RealizingHomeDancer,
     Ready,
     Failed,
 }
@@ -69,6 +79,7 @@ struct ApplicationSession {
     phase: ApplicationSessionPhase,
     active_holon_space: Option<HolonReferenceWire>,
     canvas_selection: Option<CanvasLaunchSelection>,
+    home_dancer_selection: Option<HomeDancerLaunchSelection>,
     failure: Option<String>,
 }
 
@@ -79,6 +90,7 @@ pub struct ApplicationSessionSnapshot {
     pub phase: ApplicationSessionPhase,
     pub active_holon_space: Option<HolonReferenceWire>,
     pub canvas_selection: Option<CanvasLaunchSelection>,
+    pub home_dancer_selection: Option<HomeDancerLaunchSelection>,
     pub failure: Option<String>,
 }
 
@@ -102,6 +114,7 @@ impl ApplicationSessionState {
                 phase: ApplicationSessionPhase::InitializingHost,
                 active_holon_space: None,
                 canvas_selection: None,
+                home_dancer_selection: None,
                 failure: None,
             }),
         }
@@ -119,15 +132,29 @@ impl ApplicationSessionState {
         self.set_phase(ApplicationSessionPhase::RealizingCanvas)
     }
 
+    pub fn mark_activating_base_packages(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::ActivatingBasePackages)
+    }
+
+    pub fn mark_selecting_home_dancer(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::SelectingHomeDancer)
+    }
+
+    pub fn mark_realizing_home_dancer(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::RealizingHomeDancer)
+    }
+
     pub fn mark_ready(
         &self,
         active_holon_space: HolonReferenceWire,
         canvas_selection: CanvasLaunchSelection,
+        home_dancer_selection: Option<HomeDancerLaunchSelection>,
     ) -> Result<(), String> {
         let mut session = self.write()?;
         session.phase = ApplicationSessionPhase::Ready;
         session.active_holon_space = Some(active_holon_space);
         session.canvas_selection = Some(canvas_selection);
+        session.home_dancer_selection = home_dancer_selection;
         session.failure = None;
         Ok(())
     }
@@ -149,6 +176,7 @@ impl ApplicationSessionState {
             phase: session.phase,
             active_holon_space: session.active_holon_space.clone(),
             canvas_selection: session.canvas_selection.clone(),
+            home_dancer_selection: session.home_dancer_selection.clone(),
             failure: session.failure.clone(),
         })
     }
@@ -195,6 +223,7 @@ mod tests {
                     canvas_key: "MAP.BootstrapCanvas".into(),
                     canvas_visualizer_key: "MAP.BootstrapCanvasVisualizer".into(),
                 },
+                None,
             )
             .unwrap();
 
@@ -203,7 +232,39 @@ mod tests {
         assert_eq!(snapshot.experience, ApplicationExperience::Canvas);
         assert_eq!(snapshot.active_holon_space, Some(space_reference()));
         assert_eq!(snapshot.canvas_selection.unwrap().canvas_key, "MAP.BootstrapCanvas");
+        assert_eq!(snapshot.home_dancer_selection, None);
         assert_eq!(snapshot.failure, None);
+    }
+
+    #[test]
+    fn session_projects_home_dancer_selection_after_its_observable_stages() {
+        let state = ApplicationSessionState::new(ApplicationExperience::Canvas);
+        state.mark_activating_base_packages().unwrap();
+        assert_eq!(
+            state.snapshot().unwrap().phase,
+            ApplicationSessionPhase::ActivatingBasePackages
+        );
+        state.mark_selecting_home_dancer().unwrap();
+        assert_eq!(state.snapshot().unwrap().phase, ApplicationSessionPhase::SelectingHomeDancer);
+        state.mark_realizing_home_dancer().unwrap();
+
+        let home_dancer_selection = HomeDancerLaunchSelection {
+            dancer: space_reference(),
+            node_visualizer: space_reference(),
+        };
+        state
+            .mark_ready(
+                space_reference(),
+                CanvasLaunchSelection {
+                    theme_key: "MAP.BootstrapTheme".into(),
+                    canvas_key: "MAP.BootstrapCanvas".into(),
+                    canvas_visualizer_key: "MAP.BootstrapCanvasVisualizer".into(),
+                },
+                Some(home_dancer_selection.clone()),
+            )
+            .unwrap();
+
+        assert_eq!(state.snapshot().unwrap().home_dancer_selection, Some(home_dancer_selection));
     }
 
     #[test]

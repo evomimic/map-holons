@@ -64,6 +64,142 @@
             },
             {
               "$ref": "(Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AffordedByHolonSpace",
+        "TypeNamePlural": "AffordedByHolonSpaceRelationships",
+        "DisplayName": "Afforded By Holon Space",
+        "DisplayNamePlural": "Afforded By Holon Space Relationships",
+        "Description": "Associates a Dancer with the HolonSpace that affords it.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonSpace.HolonType)-[AffordsDancer]->(Dancer.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[AffordsDancer]->(Dancer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AffordsDancer",
+        "TypeNamePlural": "AffordsDancerRelationships",
+        "DisplayName": "Affords Dancer",
+        "DisplayNamePlural": "Affords Dancer Relationships",
+        "Description": "Exposes the Dancers afforded by a HolonSpace.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
             }
           ]
         },

@@ -1,4 +1,5 @@
 use anyhow::Context;
+use base_types::MapString;
 use std::sync::RwLock;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
@@ -7,12 +8,15 @@ use crate::{
     config::{providers::ProviderRuntimeSelection, storage_manager::StorageManager},
     map_commands as commands, runtime,
     setup::{
-        application_launcher::{ApplicationExperience, ApplicationSessionState},
+        application_launcher::{
+            ApplicationExperience, ApplicationSessionState, HomeDancerLaunchSelection,
+        },
         core_schema_bootstrap::{ensure_core_schema_space, CoreSchemaBootstrapGate},
         plugin_manager::PluginManager,
         provider_registry::ProviderRegistry,
         receptor_config_registry::ReceptorConfigRegistry,
         setup_manager::SetupManager,
+        space_imports::ensure_configured_space_imports,
     },
 };
 
@@ -158,9 +162,15 @@ impl AppBuilder {
                         "[PERF-688] conductora_startup: core_schema_bootstrap_ms={}",
                         bootstrap_started_at.elapsed().as_millis(),
                     );
+                    application_session
+                        .mark_activating_base_packages()
+                        .map_err(anyhow::Error::msg)?;
+                    ensure_configured_space_imports(&handle)
+                        .await
+                        .context("ensure_configured_space_imports failed")?;
                     application_session.mark_realizing_canvas().map_err(anyhow::Error::msg)?;
                     let canvas_selection_started_at = Instant::now();
-                    let (active_holon_space, canvas_selection) = {
+                    let (active_holon_space, canvas_selection, home_dancer_selection) = {
                         let runtime = handle
                             .state::<runtime::RuntimeState>()
                             .read()
@@ -200,16 +210,47 @@ impl AppBuilder {
                                 })?
                                 .to_string(),
                         };
+                        application_session
+                            .mark_selecting_home_dancer()
+                            .map_err(anyhow::Error::msg)?;
+                        let meta_design_system =
+                            holons_core::reference_layer::HolonReference::Smart(
+                                context.lookup().get_saved_holon_by_key(&MapString::from(
+                                    "MAP.BootstrapMetaDesignSystem",
+                                ))?,
+                            );
+                        let home_dancer = map_commands_runtime::select_home_dancer(
+                            &context,
+                            map_commands_runtime::HomeDancerSelectionContext {
+                                active_holon_space: active_holon_space.clone(),
+                                selected_theme: selection.theme,
+                                selected_meta_design_system: meta_design_system,
+                                runtime: map_commands_runtime::HomeDancerRuntime::Local,
+                                person: None,
+                            },
+                        )?;
+                        application_session
+                            .mark_realizing_home_dancer()
+                            .map_err(anyhow::Error::msg)?;
+                        let home_dancer_selection =
+                            home_dancer.map(|selection| HomeDancerLaunchSelection {
+                                dancer: selection.dancer.into(),
+                                node_visualizer: selection.node_visualizer.into(),
+                            });
                         runtime.session().archive_transaction(&tx_id)?;
                         tracing::info!("[PERF-707] canvas_selection: transaction archived");
-                        (active_holon_space, result)
+                        (active_holon_space, result, home_dancer_selection)
                     };
                     tracing::info!(
                         "[PERF-707] conductora_startup: canvas_selection_ms={}",
                         canvas_selection_started_at.elapsed().as_millis(),
                     );
                     application_session
-                        .mark_ready(active_holon_space.into(), canvas_selection)
+                        .mark_ready(
+                            active_holon_space.into(),
+                            canvas_selection,
+                            home_dancer_selection,
+                        )
                         .map_err(anyhow::Error::msg)?;
 
                     let window_started_at = Instant::now();

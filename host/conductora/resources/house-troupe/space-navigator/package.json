@@ -3,6 +3,8 @@
   "schema_imports": ["imports/schema.json"],
   "required_holons": [
     "SpaceNavigator.Dancer",
+    "SpaceNavigator.HolonType",
+    "SpaceNavigator.HomeNodeVisualizer",
     "SpaceNavigator.CanvasVisualizer",
     "PathInspector.NodeVisualizer",
     "TableCollectionVisualizer.CollectionVisualizer"

@@ -17,6 +17,7 @@ tauri-build = { version = "2", default-features = false, features = [
 ] }
 
 [dependencies]
+base_types = { workspace = true }
 serde = "1"
 tauri = { version = "2", features = [] }
 tauri-plugin-fs = "2"

@@ -2,6 +2,7 @@ export interface CanvasRootParts {
   root: HTMLDivElement;
   chrome: HTMLElement;
   hostedDancerRegion: HTMLElement;
+  awaitingHomeDancer: HTMLParagraphElement;
   primarySlot: HTMLDivElement;
 }
 
@@ -52,5 +53,5 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   root.append(chrome, hostedDancerRegion);
   container.append(root);
 
-  return { root, chrome, hostedDancerRegion, primarySlot };
+  return { root, chrome, hostedDancerRegion, awaitingHomeDancer, primarySlot };
 }

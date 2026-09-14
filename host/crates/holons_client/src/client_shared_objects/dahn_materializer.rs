@@ -122,6 +122,7 @@ impl DahnMaterializer {
             "MAP.BootstrapCanvasVisualizer" => "bootstrap-canvas.js",
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
             "PathInspector.NodeVisualizer" => "path-inspector.js",
+            "SpaceNavigator.HomeNodeVisualizer" => "space-navigator-home.js",
             "TableCollectionVisualizer.CollectionVisualizer" => "table-collection.js",
             key => {
                 return Err(HolonError::NotImplemented(format!(
@@ -215,6 +216,13 @@ mod tests {
                 .expect("known bootstrap visualizer")
                 .to_string_lossy(),
             "/artifacts/path-inspector.js"
+        );
+        assert_eq!(
+            materializer
+                .artifact_for(&MapString::from("SpaceNavigator.HomeNodeVisualizer"))
+                .expect("known home-Dancer visualizer")
+                .to_string_lossy(),
+            "/artifacts/space-navigator-home.js"
         );
     }
 

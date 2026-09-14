@@ -8,6 +8,7 @@ pub mod provider_registry;
 pub mod providers;
 pub mod receptor_config_registry;
 pub mod setup_manager;
+pub mod space_imports;
 pub mod window_setup;
 
 pub use app_builder::AppBuilder;

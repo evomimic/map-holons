@@ -18,8 +18,47 @@ holon Dancer.HolonType {
   relationships {
     InstanceRelationships -> [
       (Dancer.HolonType)-[OffersDance]->(DanceType.HolonType),
-      (Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor)
+      (Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor),
+      (Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType)
     ]
+  }
+}
+
+// Dancer availability belongs to a HolonSpace. The declared Dancer-side
+// occurrence permits a Dancer package to be imported into any space; commit
+// materializes the space-side inverse that runtime discovery reads.
+def relationship (Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> AffordsDancer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Dancer.HolonType
+  target HolonSpace.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Associates a Dancer with the HolonSpace that affords it."
+    display_name: "Afforded By Holon Space"
+    display_plural: "Afforded By Holon Space Relationships"
+    plural: "AffordedByHolonSpaceRelationships"
+  }
+}
+
+inverse relationship (HolonSpace.HolonType)-[AffordsDancer]->(Dancer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonSpace.HolonType
+  target Dancer.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Exposes the Dancers afforded by a HolonSpace."
+    display_name: "Affords Dancer"
+    display_plural: "Affords Dancer Relationships"
+    plural: "AffordsDancerRelationships"
   }
 }
 

@@ -144,6 +144,9 @@ describe('DomCanvas', () => {
     expect(mounted).not.toBeNull();
     expect(mounted?.dataset['contextApplied']).toBe('true');
     expect(mounted?.context).toBe(context);
+    expect(
+      container.querySelector<HTMLElement>('[data-dahn-canvas-empty-state="true"]')?.hidden,
+    ).toBe(true);
   });
 
   it('clears the primary slot', async () => {

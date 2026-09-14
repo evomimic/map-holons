@@ -37,10 +37,47 @@
       ]
     },
     {
+      "key": "SpaceNavigator.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SpaceNavigator",
+        "TypeNamePlural": "SpaceNavigators",
+        "DisplayName": "Space Navigator",
+        "DisplayNamePlural": "Space Navigators",
+        "Description": "Concrete Dancer type for the Space Navigator home experience."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Space Navigator Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "SpaceNavigator.Dancer",
-      "type": "Dancer.HolonType",
+      "type": "SpaceNavigator.HolonType",
       "properties": {},
       "relationships": [
+        {
+          "name": "AffordedByHolonSpace",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        },
         {
           "name": "OffersDance",
           "target": [
@@ -61,6 +98,40 @@
           ]
         }
       ]
+    },
+    {
+      "key": "SpaceNavigator.HomeNodeVisualizer",
+      "type": "NodeVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "SpaceNavigatorHomeTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SpaceNavigatorHomeTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:abc225be030658223c1a751c373e6f38c513b9b25c781cdfa21038022d3cb96b",
+        "VisualizerImplementationKey": "dahn.space-navigator-home",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
     },
     {
       "key": "SpaceNavigator.CanvasVisualizer",

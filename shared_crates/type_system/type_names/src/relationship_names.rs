@@ -64,6 +64,18 @@ impl ToRelationshipName for &DahnRelationshipTypeName {
     }
 }
 
+impl ToRelationshipName for DancerRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.as_relationship_name()
+    }
+}
+
+impl ToRelationshipName for &DancerRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.clone().as_relationship_name()
+    }
+}
+
 impl ToRelationshipName for RelationshipName {
     fn to_relationship_name(self) -> RelationshipName {
         self // pass-through unchanged
@@ -157,6 +169,20 @@ pub enum DahnRelationshipTypeName {
 }
 
 impl DahnRelationshipTypeName {
+    /// Canonical relationship name in ClassCase (UpperCamel).
+    pub fn as_relationship_name(&self) -> RelationshipName {
+        RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
+    }
+}
+
+/// Canonical Dancer relationship type names.
+#[derive(Debug, Clone, VariantNames)]
+pub enum DancerRelationshipTypeName {
+    AffordedByHolonSpace,
+    AffordsDancer,
+}
+
+impl DancerRelationshipTypeName {
     /// Canonical relationship name in ClassCase (UpperCamel).
     pub fn as_relationship_name(&self) -> RelationshipName {
         RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))

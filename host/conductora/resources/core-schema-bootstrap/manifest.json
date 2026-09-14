@@ -99,7 +99,7 @@
     },
     {
       "path": "imports/dancer/schema.json",
-      "sha256": "8631b30f13b52db3197e5e4926cf3a4b0b4b8b3bf418d4370ecfbf8451cb4dbc"
+      "sha256": "578b30ab2ba1601b9c3d72a07ea2728c0e804901ea47f0f66ab212b0939ee301"
     },
     {
       "path": "imports/commands/schema.json",
@@ -216,6 +216,10 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(Dancer.HolonType)-[OffersDance]->(DanceType.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -317,6 +321,10 @@
     },
     {
       "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[AffordsDancer]->(Dancer.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {

@@ -41,6 +41,7 @@
 			"resources/bootstrap-import.schema.json",
 			"resources/core-schema-bootstrap",
 			"resources/house-troupe",
+			"resources/visualizer-commons",
 			"resources/dahn-visualizers"
 		],
 		"externalBin": [],

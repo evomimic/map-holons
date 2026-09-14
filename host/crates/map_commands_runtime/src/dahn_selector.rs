@@ -6,7 +6,7 @@ use holons_core::reference_layer::{HolonReference, ReadableHolon};
 use holons_core::Descriptor;
 use map_commands_contract::{VisualizerKind, VisualizerSelection, VisualizerSelectionRequest};
 use std::sync::Arc;
-use type_names::DahnRelationshipTypeName;
+use type_names::{DahnRelationshipTypeName, DancerRelationshipTypeName};
 
 /// Bound runtime realization of the Canvas selected for one application
 /// session. The Canvas remains a semantic holon; this wrapper carries the
@@ -25,6 +25,97 @@ pub struct RuntimeCanvasVisualizer {
 pub struct BootstrapCanvasSelection {
     pub theme: HolonReference,
     pub canvas_visualizer: RuntimeCanvasVisualizer,
+}
+
+/// Runtime-only launch circumstances consulted by home-Dancer selection.
+///
+/// This is deliberately not an IPC wire type or persisted holon. Rust owns
+/// selection policy; the optional person reference leaves room for a later
+/// HolonSpace-scoped home preference without inventing one in this slice.
+pub struct HomeDancerSelectionContext {
+    pub active_holon_space: HolonReference,
+    pub selected_theme: HolonReference,
+    pub selected_meta_design_system: HolonReference,
+    pub runtime: HomeDancerRuntime,
+    pub person: Option<HolonReference>,
+}
+
+/// The local launch runtime available to the initial selector.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HomeDancerRuntime {
+    Local,
+}
+
+/// Rust-selected home Dancer and its applicable top-level Node Visualizer.
+pub struct HomeDancerSelection {
+    pub dancer: HolonReference,
+    pub node_visualizer: HolonReference,
+}
+
+/// Resolves the active HolonSpace's afforded Dancer candidates.
+///
+/// A missing declaration is a deliberate empty-home result. A non-empty
+/// declaration with no Dancer that can realize a Node Visualizer is an error;
+/// callers must not substitute a generic visualizer or a named Dancer.
+pub fn select_home_dancer(
+    context: &Arc<TransactionContext>,
+    selection_context: HomeDancerSelectionContext,
+) -> Result<Option<HomeDancerSelection>, HolonError> {
+    // Read each context member at the Rust boundary. The first policy has no
+    // person-specific preference or runtime alternatives, but it deliberately
+    // receives the complete context that later policy will evaluate.
+    let _ = selection_context.active_holon_space.holon_descriptor()?;
+    let _ = selection_context.selected_theme.holon_descriptor()?;
+    let _ = selection_context.selected_meta_design_system.holon_descriptor()?;
+    if let Some(person) = &selection_context.person {
+        let _ = person.holon_descriptor()?;
+    }
+    match selection_context.runtime {
+        HomeDancerRuntime::Local => {}
+    }
+
+    let candidates = selection_context
+        .active_holon_space
+        .related_holons(DancerRelationshipTypeName::AffordsDancer)?
+        .read()
+        .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+        .get_members()
+        .clone();
+    if candidates.is_empty() {
+        return Ok(None);
+    }
+
+    let dancer_type = HolonReference::Smart(
+        context.lookup().get_saved_holon_by_key(&MapString::from("Dancer.HolonType"))?,
+    );
+    let mut compatible = Vec::new();
+    for candidate in candidates {
+        let candidate_type = candidate.holon_descriptor()?.holon().clone();
+        if !equals_or_extends(&candidate_type, &dancer_type)? {
+            continue;
+        }
+        match select_node_visualizer(context, candidate.clone()) {
+            Ok(node_visualizer) => {
+                compatible.push(HomeDancerSelection { dancer: candidate, node_visualizer })
+            }
+            Err(HolonError::NotImplemented(_)) => {}
+            Err(error) => return Err(error),
+        }
+    }
+
+    match compatible.len() {
+        0 => Err(HolonError::NotImplemented(
+            "No declared home Dancer has an applicable top-level Node Visualizer".into(),
+        )),
+        1 => Ok(compatible.pop()),
+        count => Err(HolonError::MultipleRelatedHolons {
+            relationship: DancerRelationshipTypeName::AffordsDancer
+                .as_relationship_name()
+                .to_string(),
+            descriptor: selection_context.active_holon_space.summarize()?,
+            count,
+        }),
+    }
 }
 
 pub fn select_bootstrap_canvas(
