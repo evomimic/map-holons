@@ -63,23 +63,6 @@
       ]
     },
     {
-      "key": "LocalMaterializeVisualizer.DanceImplementation",
-      "type": "DanceImplementation.HolonType",
-      "properties": {
-        "ImplementationName": "LocalMaterializeVisualizer"
-      },
-      "relationships": [
-        {
-          "name": "ForDance",
-          "target": [
-            {
-              "$ref": "MaterializeVisualizer.DanceType"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "key": "SpaceNavigator.CanvasVisualizer",
       "type": "CanvasVisualizer.HolonType",
       "properties": {},

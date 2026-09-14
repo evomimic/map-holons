@@ -6,15 +6,23 @@ export type ApplicationSessionPhase =
   | 'initializing-host'
   | 'opening-space'
   | 'bootstrapping-core'
+  | 'realizing-canvas'
   | 'ready'
   | 'failed';
 
 export type ApplicationExperience = 'canvas' | 'holons-loader';
 
+export interface CanvasLaunchSelection {
+  theme_key: string;
+  canvas_key: string;
+  canvas_visualizer_key: string;
+}
+
 export interface ApplicationSessionSnapshot {
   experience: ApplicationExperience;
   phase: ApplicationSessionPhase;
   active_holon_space: string | null;
+  canvas_selection: CanvasLaunchSelection | null;
   failure: string | null;
 }
 
@@ -33,6 +41,7 @@ export class ApplicationSessionService {
         experience: 'canvas',
         phase: 'ready',
         active_holon_space: 'browser-preview',
+        canvas_selection: null,
         failure: null,
       };
     }

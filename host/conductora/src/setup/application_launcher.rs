@@ -9,6 +9,13 @@ use std::sync::RwLock;
 use core_types::HolonId;
 use serde::Serialize;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CanvasLaunchSelection {
+    pub theme_key: String,
+    pub canvas_key: String,
+    pub canvas_visualizer_key: String,
+}
+
 /// The frontend experience selected by the MAP Application Launcher.
 ///
 /// This is deliberately application configuration rather than a visualizer
@@ -49,6 +56,7 @@ pub enum ApplicationSessionPhase {
     InitializingHost,
     OpeningSpace,
     BootstrappingCore,
+    RealizingCanvas,
     Ready,
     Failed,
 }
@@ -60,6 +68,7 @@ struct ApplicationSession {
     experience: ApplicationExperience,
     phase: ApplicationSessionPhase,
     active_holon_space: Option<HolonId>,
+    canvas_selection: Option<CanvasLaunchSelection>,
     failure: Option<String>,
 }
 
@@ -69,6 +78,7 @@ pub struct ApplicationSessionSnapshot {
     pub experience: ApplicationExperience,
     pub phase: ApplicationSessionPhase,
     pub active_holon_space: Option<String>,
+    pub canvas_selection: Option<CanvasLaunchSelection>,
     pub failure: Option<String>,
 }
 
@@ -91,6 +101,7 @@ impl ApplicationSessionState {
                 experience,
                 phase: ApplicationSessionPhase::InitializingHost,
                 active_holon_space: None,
+                canvas_selection: None,
                 failure: None,
             }),
         }
@@ -104,10 +115,19 @@ impl ApplicationSessionState {
         self.set_phase(ApplicationSessionPhase::BootstrappingCore)
     }
 
-    pub fn mark_ready(&self, active_holon_space: HolonId) -> Result<(), String> {
+    pub fn mark_realizing_canvas(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::RealizingCanvas)
+    }
+
+    pub fn mark_ready(
+        &self,
+        active_holon_space: HolonId,
+        canvas_selection: CanvasLaunchSelection,
+    ) -> Result<(), String> {
         let mut session = self.write()?;
         session.phase = ApplicationSessionPhase::Ready;
         session.active_holon_space = Some(active_holon_space);
+        session.canvas_selection = Some(canvas_selection);
         session.failure = None;
         Ok(())
     }
@@ -128,6 +148,7 @@ impl ApplicationSessionState {
             experience: session.experience,
             phase: session.phase,
             active_holon_space: session.active_holon_space.as_ref().map(ToString::to_string),
+            canvas_selection: session.canvas_selection.clone(),
             failure: session.failure.clone(),
         })
     }
@@ -156,12 +177,22 @@ mod tests {
 
         state.mark_opening_space().unwrap();
         state.mark_bootstrapping_core().unwrap();
-        state.mark_ready(HolonId::Local(LocalId(vec![7]))).unwrap();
+        state
+            .mark_ready(
+                HolonId::Local(LocalId(vec![7])),
+                CanvasLaunchSelection {
+                    theme_key: "MAP.BootstrapTheme".into(),
+                    canvas_key: "MAP.BootstrapCanvas".into(),
+                    canvas_visualizer_key: "MAP.BootstrapCanvasVisualizer".into(),
+                },
+            )
+            .unwrap();
 
         let snapshot = state.snapshot().unwrap();
         assert_eq!(snapshot.phase, ApplicationSessionPhase::Ready);
         assert_eq!(snapshot.experience, ApplicationExperience::Canvas);
         assert!(snapshot.active_holon_space.is_some());
+        assert_eq!(snapshot.canvas_selection.unwrap().canvas_key, "MAP.BootstrapCanvas");
         assert_eq!(snapshot.failure, None);
     }
 

@@ -155,6 +155,23 @@
       ]
     },
     {
+      "key": "LocalMaterializeVisualizer.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "LocalMaterializeVisualizer"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "MaterializeVisualizer.DanceType"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "MetaVisualizerType.MetaHolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
@@ -335,8 +352,27 @@
               "$ref": "Canvas.HolonType"
             }
           ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapCanvasTypeScript.VisualizerImplementation"
+            }
+          ]
         }
       ]
+    },
+    {
+      "key": "MAP.BootstrapCanvasTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:0beb61de47c1c6fb9ea7ced7f7062b576f8ceb7e42501019f98c50b9d4c3395a",
+        "VisualizerImplementationKey": "dahn.bootstrap-canvas",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
     },
     {
       "key": "NodeVisualizer.HolonType",

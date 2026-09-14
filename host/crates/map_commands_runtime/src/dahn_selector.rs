@@ -14,6 +14,29 @@ pub struct RuntimeCanvasVisualizer {
     pub visualizer: HolonReference,
 }
 
+/// Rust-authorized bootstrap outcome for the Theme-to-Canvas launch path.
+///
+/// The policy has exactly one bootstrap candidate for each selection. Missing
+/// resources fail through normal lookup rather than being substituted by a
+/// caller or the TypeScript runtime.
+pub struct BootstrapCanvasSelection {
+    pub theme: HolonReference,
+    pub canvas_visualizer: RuntimeCanvasVisualizer,
+}
+
+pub fn select_bootstrap_canvas(
+    context: &Arc<TransactionContext>,
+) -> Result<BootstrapCanvasSelection, HolonError> {
+    let theme = HolonReference::Smart(
+        context.lookup().get_saved_holon_by_key(&MapString::from("MAP.BootstrapTheme"))?,
+    );
+    let canvas = HolonReference::Smart(
+        context.lookup().get_saved_holon_by_key(&MapString::from("MAP.BootstrapCanvas"))?,
+    );
+    let canvas_visualizer = select_canvas_visualizer(context, canvas)?;
+    Ok(BootstrapCanvasSelection { theme, canvas_visualizer })
+}
+
 /// Selects the generic Canvas Visualizer for an already selected Canvas holon.
 ///
 /// This is intentionally a dedicated service seam rather than a fallback in a

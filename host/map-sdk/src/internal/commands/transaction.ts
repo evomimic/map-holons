@@ -422,7 +422,12 @@ export function danceV2(
   invocation: DanceV2InvocationWire,
   options?: RequestOptionsOverrides,
 ): Promise<HolonReferenceWire> {
-  return runTransactionCommand(txId, { DanceV2: invocation }, expectReference, options);
+  return runTransactionCommand(
+    txId,
+    { DanceV2: { invocation } },
+    expectReference,
+    options,
+  );
 }
 
 /** Requests a semantic Visualizer selection from the Rust DAHN boundary. */

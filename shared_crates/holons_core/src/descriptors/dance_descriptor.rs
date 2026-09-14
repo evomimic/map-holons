@@ -61,7 +61,10 @@ impl DanceDescriptor {
     }
 
     pub fn implementation_candidates(&self) -> Result<Vec<DanceImplementation>, HolonError> {
-        let implementations = self.holon.related_holons(CoreRelationshipTypeName::ForDance)?;
+        // `ForDance` is owned by DanceImplementation. A DanceType discovers
+        // its implementations through the declared inverse, HasImplementation.
+        let implementations =
+            self.holon.related_holons(CoreRelationshipTypeName::HasImplementation)?;
         let members = implementations
             .read()
             .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
@@ -222,6 +225,28 @@ mod tests {
                 if relationship == "Response"
         ));
 
+        Ok(())
+    }
+
+    #[test]
+    fn implementation_candidates_follow_the_has_implementation_inverse() -> Result<(), HolonError> {
+        let context = build_context();
+        let implementation = new_descriptor_holon(
+            &context,
+            "materialize-impl",
+            "LocalMaterializeVisualizer",
+            "Holon",
+        )?;
+        let mut dance =
+            new_descriptor_holon(&context, "materialize-dance", "MaterializeVisualizer", "Holon")?;
+        dance.add_related_holons(
+            CoreRelationshipTypeName::HasImplementation,
+            vec![implementation.into()],
+        )?;
+
+        let candidates = DanceDescriptor::from_holon(dance.into()).implementation_candidates()?;
+
+        assert_eq!(candidates.len(), 1);
         Ok(())
     }
 

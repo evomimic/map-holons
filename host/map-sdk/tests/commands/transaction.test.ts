@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   commit,
   dance,
+  danceV2,
   deleteHolon,
   getAllHolons,
   getStagedHolonByBaseKey,
@@ -27,6 +28,7 @@ import type {
   BaseValue,
   ContentSet,
   DanceRequestWire,
+  DanceV2InvocationWire,
   DanceResponseWire,
   HolonCollectionWire,
   HolonId,
@@ -123,6 +125,10 @@ const danceResponse: DanceResponseWire = {
     HolonReference: transientReference,
   },
   descriptor: stagedReference,
+};
+
+const danceV2Invocation: DanceV2InvocationWire = {
+  invocation: transientReference,
 };
 
 const contentSet: ContentSet = {
@@ -399,5 +405,13 @@ describe('transaction command builders', () => {
     invokeMapCommandMock.mockResolvedValue(okResponse({ DanceResponse: danceResponse }));
 
     await expect(dance(txId, danceRequest)).resolves.toEqual(danceResponse);
+  });
+
+  it('wraps a DanceV2 invocation in the Rust struct-variant field', async () => {
+    invokeMapCommandMock.mockResolvedValue(okResponse({ Reference: transientReference }));
+
+    await expect(danceV2(txId, danceV2Invocation)).resolves.toEqual(transientReference);
+
+    expectTransactionRequest({ DanceV2: { invocation: danceV2Invocation } });
   });
 });

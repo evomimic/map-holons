@@ -19,6 +19,7 @@ use crate::{
 use client_shared_types::storage_receptor::ActiveStorageReceptor;
 use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
 use holons_core::reference_layer::HolonSpaceBehavior;
+use holons_core::reference_layer::ReadableHolon;
 
 pub struct AppBuilder;
 
@@ -170,8 +171,55 @@ impl AppBuilder {
                         .ok_or_else(|| {
                             anyhow::anyhow!("Core bootstrap completed without a local HolonSpace")
                         })?;
+                    application_session.mark_realizing_canvas().map_err(anyhow::Error::msg)?;
+                    let canvas_selection_started_at = Instant::now();
+                    let canvas_selection = {
+                        let runtime = handle
+                            .state::<runtime::RuntimeState>()
+                            .read()
+                            .map_err(|error| anyhow::anyhow!("reading RuntimeState: {error}"))?
+                            .as_ref()
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("MAP Commands runtime is not initialized")
+                            })?
+                            .clone();
+                        tracing::info!("[PERF-707] canvas_selection: opening transaction");
+                        let tx_id = runtime.session().begin_transaction().await?;
+                        tracing::info!("[PERF-707] canvas_selection: transaction opened");
+                        let context = runtime.session().get_transaction(&tx_id)?;
+                        let selection = map_commands_runtime::select_bootstrap_canvas(&context)?;
+                        tracing::info!("[PERF-707] canvas_selection: resources selected");
+                        let result = crate::setup::application_launcher::CanvasLaunchSelection {
+                            theme_key: selection
+                                .theme
+                                .key()?
+                                .ok_or_else(|| anyhow::anyhow!("Selected Theme has no key"))?
+                                .to_string(),
+                            canvas_key: selection
+                                .canvas_visualizer
+                                .canvas
+                                .key()?
+                                .ok_or_else(|| anyhow::anyhow!("Selected Canvas has no key"))?
+                                .to_string(),
+                            canvas_visualizer_key: selection
+                                .canvas_visualizer
+                                .visualizer
+                                .key()?
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!("Selected Canvas Visualizer has no key")
+                                })?
+                                .to_string(),
+                        };
+                        runtime.session().archive_transaction(&tx_id)?;
+                        tracing::info!("[PERF-707] canvas_selection: transaction archived");
+                        result
+                    };
+                    tracing::info!(
+                        "[PERF-707] conductora_startup: canvas_selection_ms={}",
+                        canvas_selection_started_at.elapsed().as_millis(),
+                    );
                     application_session
-                        .mark_ready(active_holon_space)
+                        .mark_ready(active_holon_space, canvas_selection)
                         .map_err(anyhow::Error::msg)?;
 
                     let window_started_at = Instant::now();
