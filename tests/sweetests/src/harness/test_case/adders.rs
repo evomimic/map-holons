@@ -40,8 +40,8 @@
 use super::test_case::DancesTestCase;
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
-    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, SourceSnapshot, TestHolonState,
-    TestSessionState, SAVED_LOOKUP_STUB_MARKER,
+    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, QueryScaffoldRoute, SourceSnapshot,
+    TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::{
@@ -239,6 +239,52 @@ impl DancesTestCase {
         let description =
             description.unwrap_or_else(|| "Load Book/Person inverse test schema".to_string());
         self.steps.push(DanceTestStep::LoadBookPersonInverseTestSchema { description });
+
+        Ok(())
+    }
+
+    pub fn add_load_query_test_schema_step(
+        &mut self,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description
+            .unwrap_or_else(|| "Load Query unimplemented-expression test schema".to_string());
+        self.steps.push(DanceTestStep::LoadQueryTestSchema { description });
+
+        Ok(())
+    }
+
+    /// Drives the QRY1 Query runtime scaffold over an already committed Query.
+    ///
+    /// `query` must resolve to a holon described as `Query`; `input_members`
+    /// become the explicit runtime input collection (may be empty). QRY1 has no
+    /// success path, so `expected_error` must be `Some` (`NotImplemented` for the
+    /// scaffold boundary, or the contract error a malformed request produces).
+    /// The step mints no fixture holon: every runtime record it creates is
+    /// transient and asserted in place by the executor.
+    pub fn add_execute_query_scaffold_step(
+        &mut self,
+        query: TestReference,
+        input_members: Vec<TestReference>,
+        route: QueryScaffoldRoute,
+        expected_error: Option<HolonErrorKind>,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        let description = description.unwrap_or_else(|| {
+            format!(
+                "Execute QRY1 query scaffold via {route:?} with {} input member(s)",
+                input_members.len()
+            )
+        });
+        self.steps.push(DanceTestStep::ExecuteQueryScaffold {
+            query,
+            input_members,
+            route,
+            expected_error,
+            description,
+        });
 
         Ok(())
     }

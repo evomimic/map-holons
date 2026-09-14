@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "export_mode": "test-fixture",
+    "load_with": [
+      "../core/root.json",
+      "../query/schema.json"
+    ]
+  },
+  "holons": [
+    {
+      "key": "QueryUnimplementedExpressionTestSchema",
+      "type": "Schema.HolonType",
+      "properties": {
+        "SchemaName": "QueryUnimplementedExpressionTestSchema",
+        "Description": "Sweettest-only concrete QueryExpression with no operator implementation. Gives QRY1 lifecycle and QueryDance adapter tests a structurally valid query root without adding a production operator."
+      },
+      "relationships": [
+        {
+          "name": "DependsOn",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "UnimplementedQueryExpression.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "UnimplementedQueryExpression",
+        "TypeNamePlural": "UnimplementedQueryExpressions",
+        "DisplayName": "Unimplemented Query Expression",
+        "DisplayNamePlural": "Unimplemented Query Expressions",
+        "Description": "Test-only QueryExpression whose execution is intentionally unimplemented."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "QueryUnimplementedExpressionTestSchema"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

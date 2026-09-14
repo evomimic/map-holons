@@ -52,10 +52,12 @@ use execution_steps::load_core_schema_executor::{
     execute_load_generated_validation_schema,
 };
 use execution_steps::load_holons_internal_executor::execute_load_holons_internal;
+use execution_steps::load_query_test_schema_executor::execute_load_query_test_schema;
 use execution_steps::lookup_saved_holon_executor::execute_lookup_saved_holon_by_key;
 use execution_steps::match_db_content_executor::execute_match_db_content;
 use execution_steps::new_holon_executor::execute_new_holon;
 use execution_steps::query_relationships_executor::execute_query_relationships;
+use execution_steps::query_scaffold_executor::execute_query_scaffold;
 use execution_steps::remove_properties_executor::execute_remove_properties;
 use execution_steps::remove_related_holon_executor::execute_remove_related_holons;
 use execution_steps::schema_validation_executor::execute_verify_schema_validation_conformance;
@@ -73,6 +75,7 @@ use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_book_person_inverse_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
 use fixture_cases::load_inverse_oriented_book_person_instances_fixture::*;
+use fixture_cases::query_qry1_scaffold_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
@@ -143,6 +146,7 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             frozen_member_head_redirect_fixture().unwrap(),
             frozen_member_head_redirect_cross_tx_fixture().unwrap(),
             cross_transaction_staged_target_diagnostic_fixture().unwrap(),
+            query_qry1_scaffold_fixture().unwrap(),
         ],
     }
 }
@@ -157,6 +161,7 @@ async fn run_dance_test_suite(test_suite: DanceTestSuite) {
     let mut bootstrap_case = DancesTestCase::default();
     let (runtime, initial_tx_id) = init_test_runtime(&mut bootstrap_case).await;
     let mut book_person_schema_loaded = false;
+    let mut query_test_schema_loaded = false;
 
     for (scenario_index, test_case) in test_suite.test_cases.into_iter().enumerate() {
         let tx_id = if scenario_index == 0 {
@@ -186,8 +191,13 @@ async fn run_dance_test_suite(test_suite: DanceTestSuite) {
         test_execution_state
             .activate_transaction(tx_id)
             .expect("failed to import scenario fixture holons");
-        run_dance_test_case(test_case, &mut test_execution_state, &mut book_person_schema_loaded)
-            .await;
+        run_dance_test_case(
+            test_case,
+            &mut test_execution_state,
+            &mut book_person_schema_loaded,
+            &mut query_test_schema_loaded,
+        )
+        .await;
     }
 }
 
@@ -196,6 +206,7 @@ async fn run_dance_test_case(
     test_case: DancesTestCase,
     mut test_execution_state: &mut TestExecutionState,
     book_person_schema_loaded: &mut bool,
+    query_test_schema_loaded: &mut bool,
 ) {
     // The heavy lifting for this test is in the test data set creation.
 
@@ -328,6 +339,30 @@ async fn run_dance_test_case(
                     execute_load_book_person_inverse_test_schema(&mut test_execution_state).await;
                     *book_person_schema_loaded = true;
                 }
+            }
+            DanceTestStep::LoadQueryTestSchema { .. } => {
+                if *query_test_schema_loaded {
+                    info!("Query test schema is already available in this suite");
+                } else {
+                    execute_load_query_test_schema(&mut test_execution_state).await;
+                    *query_test_schema_loaded = true;
+                }
+            }
+            DanceTestStep::ExecuteQueryScaffold {
+                query,
+                input_members,
+                route,
+                expected_error,
+                ..
+            } => {
+                execute_query_scaffold(
+                    &mut test_execution_state,
+                    query,
+                    input_members,
+                    route,
+                    expected_error,
+                )
+                .await
             }
             DanceTestStep::LoadInverseOrientedBookPersonInstancesExpectFailure { .. } => {
                 execute_load_inverse_oriented_book_person_instances_expect_failure(
