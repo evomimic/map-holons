@@ -5,7 +5,10 @@ use core_types::HolonError;
 use type_names::CoreRelationshipTypeName;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::dances::{DanceImplementation, DanceInvocation, DanceResponseReference};
+use crate::dances::query_dance_adapter;
+use crate::dances::{
+    BoundDanceInvocation, DanceImplementation, DanceInvocation, DanceResponseReference,
+};
 use crate::descriptors::{DanceDescriptor, DanceResponseDescriptor, Descriptor};
 use crate::reference_layer::{ReadableHolon, WritableHolon};
 
@@ -43,11 +46,23 @@ impl ResolvedDanceV2Invocation {
 /// by the Dance's declared response type. An implementation that requires a
 /// host-authoritative or space-authoritative capability delegates that concern
 /// to its service or routing boundary.
+///
+/// `QueryDance` is the one static exception to implementation selection: it
+/// declares no `DanceImplementation` and is routed, after ordinary binding and
+/// contract validation, to the internal direct Query seam (QRY1).
 pub async fn execute_dance_v2(
     context: &Arc<TransactionContext>,
     invocation: DanceInvocation,
 ) -> Result<DanceResponseReference, HolonError> {
-    let resolved = resolve_dance_v2_invocation(invocation)?;
+    let bound_invocation = bind_and_validate(invocation)?;
+
+    if query_dance_adapter::is_query_dance(bound_invocation.dance_descriptor())? {
+        let response_descriptor = bound_invocation.response_type()?;
+        let response_body = query_dance_adapter::invoke(context, &bound_invocation)?;
+        return build_response_reference(context, &response_descriptor, response_body);
+    }
+
+    let resolved = resolve_bound_dance_v2_invocation(bound_invocation)?;
     let response_body = resolved.implementation.invoke(context, &resolved.bound_invocation)?;
     build_resolved_dance_v2_response(context, &resolved, response_body)
 }
@@ -61,8 +76,21 @@ pub async fn execute_dance_v2(
 pub fn resolve_dance_v2_invocation(
     invocation: DanceInvocation,
 ) -> Result<ResolvedDanceV2Invocation, HolonError> {
+    resolve_bound_dance_v2_invocation(bind_and_validate(invocation)?)
+}
+
+/// Binds the invocation to its descriptor-backed contract and validates it.
+fn bind_and_validate(invocation: DanceInvocation) -> Result<BoundDanceInvocation, HolonError> {
     let bound_invocation = invocation.bind()?;
     validate_bound_invocation(&bound_invocation)?;
+    Ok(bound_invocation)
+}
+
+/// Selects the currently available implementation for an already validated
+/// invocation.
+fn resolve_bound_dance_v2_invocation(
+    bound_invocation: BoundDanceInvocation,
+) -> Result<ResolvedDanceV2Invocation, HolonError> {
     let implementation = resolve_implementation(&bound_invocation)?;
     let response_descriptor = bound_invocation.response_type()?;
     Ok(ResolvedDanceV2Invocation { bound_invocation, implementation, response_descriptor })

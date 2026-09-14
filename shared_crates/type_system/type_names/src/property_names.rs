@@ -78,6 +78,18 @@ impl ToPropertyName for &DancerPropertyTypeName {
     }
 }
 
+impl ToPropertyName for QueryPropertyTypeName {
+    fn to_property_name(self) -> PropertyName {
+        self.as_property_name()
+    }
+}
+
+impl ToPropertyName for &QueryPropertyTypeName {
+    fn to_property_name(self) -> PropertyName {
+        self.clone().as_property_name()
+    }
+}
+
 impl ToPropertyName for PropertyName {
     #[inline]
     fn to_property_name(self) -> PropertyName {
@@ -167,6 +179,19 @@ pub enum DahnPropertyTypeName {
 #[derive(Debug, Clone, VariantNames)]
 pub enum DancerPropertyTypeName {
     DancerPackageIdentity,
+}
+
+/// Canonical Query Schema property type names consumed by the QRY1 runtime scaffold.
+#[derive(Debug, Clone, VariantNames)]
+pub enum QueryPropertyTypeName {
+    ExecutionStatus,
+}
+
+impl QueryPropertyTypeName {
+    /// Canonical property name in ClassCase (UpperCamel).
+    pub fn as_property_name(&self) -> PropertyName {
+        PropertyName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
+    }
 }
 
 impl DahnPropertyTypeName {

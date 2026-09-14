@@ -7,6 +7,7 @@ pub mod holon_dance_adapter;
 pub mod implementation;
 pub mod implementations;
 pub mod materialized_visualizer;
+pub(crate) mod query_dance_adapter;
 
 pub use self::contract::{
     build_dance_v2_invocation, build_dance_v2_response, BoundDanceInvocation, DanceDiagnostic,

@@ -5,6 +5,7 @@ pub mod descriptor_completion;
 pub mod expected_test_result;
 pub mod mock_conductor;
 pub mod pvl_validation;
+pub mod query_test_schema;
 pub mod test_context;
 pub mod tracing_utils;
 
@@ -15,5 +16,6 @@ pub use descriptor_completion::*;
 pub use expected_test_result::*;
 pub use mock_conductor::*;
 pub use pvl_validation::*;
+pub use query_test_schema::*;
 pub use test_context::*;
 pub use tracing_utils::*;
