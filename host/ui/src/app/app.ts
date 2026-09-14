@@ -1,43 +1,32 @@
-import { Component, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet } from '@angular/router';
-import { ToolbarComponent } from './components/toolbar/toolbar.component';
-import { FooterComponent } from './components/footer/footer.component';
-import { ViewerComponent } from './components/viewer/viewer.component';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CanvasHostComponent } from './components/canvas-host/canvas-host.component';
+import { HolonsLoaderHostComponent } from './components/holons-loader-host/holons-loader-host.component';
+import {
+  ApplicationSessionService,
+  type ApplicationExperience,
+} from './services/application-session.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    RouterOutlet,
-    CommonModule,
-    ToolbarComponent,
-    FooterComponent,
-   // ViewerComponent
-    ],
+  imports: [CanvasHostComponent, HolonsLoaderHostComponent],
   templateUrl: './app.html',
-
 })
-export class App {
-  protected readonly title = signal('map-app');
-  error:string | null = ""
-  errorStyling:string = "text-red-500"
-  status:string | null = ""
-  statusStyling:string = "text-green-500"
+export class App implements OnInit {
+  private readonly applicationSession = inject(ApplicationSessionService);
+  protected readonly experience = signal<ApplicationExperience | null>(null);
+  protected readonly failure = signal<string | null>(null);
 
-  constructor(private router: Router){}
-    //effect(() => {
-      // 👇 The effect will be re-executed whenever the state changes.
-      //const state = getState(this.store);
-      //console.log('profile state changed', state);
-    //});
-  
-  navigateTo(path: string) {
-    this.router.navigate([path]);
-  }
-
-  errorDownstream(message:string){
-    console.log(message)
-    this.error = message
+  async ngOnInit(): Promise<void> {
+    try {
+      const session = await this.applicationSession.waitForReady();
+      if (session.phase !== 'ready') {
+        this.failure.set(session.failure ?? `Application session stopped in '${session.phase}'.`);
+        return;
+      }
+      this.experience.set(session.experience);
+    } catch (error) {
+      this.failure.set(error instanceof Error ? error.message : String(error));
+    }
   }
 }

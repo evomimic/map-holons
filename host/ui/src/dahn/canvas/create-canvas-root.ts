@@ -1,5 +1,7 @@
 export interface CanvasRootParts {
   root: HTMLDivElement;
+  chrome: HTMLElement;
+  hostedDancerRegion: HTMLElement;
   primarySlot: HTMLDivElement;
 }
 
@@ -10,9 +12,26 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   root.style.flexDirection = 'column';
   root.style.gap = 'var(--dahn-canvas-gap)';
   root.style.padding = 'var(--dahn-canvas-padding)';
-  root.style.background = 'var(--dahn-canvas-surface-background)';
-  root.style.color = 'var(--dahn-canvas-text-color)';
+  root.style.background = 'var(--dahn-canvas-surface-background, #f7f5ef)';
+  root.style.color = 'var(--dahn-canvas-text-color, #1d2430)';
   root.style.minHeight = '100%';
+
+  const chrome = document.createElement('header');
+  chrome.dataset['dahnCanvasChrome'] = 'true';
+  chrome.style.display = 'flex';
+  chrome.style.alignItems = 'center';
+  chrome.style.justifyContent = 'space-between';
+  chrome.style.borderBottom = '1px solid currentColor';
+  chrome.style.paddingBottom = 'var(--dahn-canvas-gap, 0.75rem)';
+  chrome.innerHTML = '<strong>MAP Canvas</strong><span>Desktop workspace</span>';
+
+  const hostedDancerRegion = document.createElement('section');
+  hostedDancerRegion.dataset['dahnHostedDancerRegion'] = 'true';
+  hostedDancerRegion.dataset['dahnCanvasState'] = 'awaiting-home-dancer';
+  hostedDancerRegion.style.display = 'flex';
+  hostedDancerRegion.style.flexDirection = 'column';
+  hostedDancerRegion.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
+  hostedDancerRegion.style.minHeight = '12rem';
 
   const primarySlot = document.createElement('div');
   primarySlot.dataset['dahnCanvasSlot'] = 'primary';
@@ -20,8 +39,13 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   primarySlot.style.flexDirection = 'column';
   primarySlot.style.gap = 'var(--dahn-canvas-gap)';
 
-  root.append(primarySlot);
+  const awaitingHomeDancer = document.createElement('p');
+  awaitingHomeDancer.dataset['dahnCanvasEmptyState'] = 'true';
+  awaitingHomeDancer.textContent = 'Awaiting home Dancer';
+
+  hostedDancerRegion.append(awaitingHomeDancer, primarySlot);
+  root.append(chrome, hostedDancerRegion);
   container.append(root);
 
-  return { root, primarySlot };
+  return { root, chrome, hostedDancerRegion, primarySlot };
 }

@@ -22,14 +22,6 @@ instance SpaceNavigator.Dancer {
   }
 }
 
-instance LocalMaterializeVisualizer.DanceImplementation {
-  type DanceImplementation.HolonType
-  ImplementationName "LocalMaterializeVisualizer"
-  relationships {
-    ForDance -> MaterializeVisualizer.DanceType
-  }
-}
-
 instance SpaceNavigator.CanvasVisualizer {
   type CanvasVisualizer.HolonType
   relationships {

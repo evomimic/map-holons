@@ -1,4 +1,5 @@
 pub mod app_builder;
+pub mod application_launcher;
 pub mod common_setup;
 pub mod core_schema_bootstrap;
 pub mod plugin_manager;

@@ -94,7 +94,7 @@ export type TransactionActionWire =
   // Retained legacy dance ingress. Keep operational, but do not treat as the
   // foundation for new command-surface work.
   | { Dance: DanceRequestWire }
-  | { DanceV2: DanceV2InvocationWire }
+  | { DanceV2: { invocation: DanceV2InvocationWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
   | { FetchArtifact: { handle: string } }
   | 'GetAllHolons'
@@ -280,7 +280,8 @@ export function isTransactionActionWire(
       isContentSet(value.LoadHolons['content_set'])) ||
     (hasSingleKey(value, 'Dance') && isDanceRequestWire(value.Dance)) ||
     (hasSingleKey(value, 'DanceV2') &&
-      isDanceV2InvocationWire(value.DanceV2)) ||
+      isRecord(value.DanceV2) &&
+      isDanceV2InvocationWire(value.DanceV2['invocation'])) ||
     (hasSingleKey(value, 'SelectVisualizer') &&
       isRecord(value.SelectVisualizer) &&
       isHolonReferenceWire(value.SelectVisualizer['subject']) &&

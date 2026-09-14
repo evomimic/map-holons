@@ -119,6 +119,7 @@ impl DahnMaterializer {
 
     fn artifact_for(&self, visualizer_key: &MapString) -> Result<PathBuf, HolonError> {
         let filename = match visualizer_key.0.as_str() {
+            "MAP.BootstrapCanvasVisualizer" => "bootstrap-canvas.js",
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
             "GenericHolonNodeVisualizer.NodeVisualizer" => "generic-holon-node.js",
             "TableCollectionVisualizer.CollectionVisualizer" => "table-collection.js",

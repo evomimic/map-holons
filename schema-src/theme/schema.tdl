@@ -253,3 +253,121 @@ instance ThemeCompleteDesignTokenCoverage.ValidationRule {
 
 // The initial Theme is a core presentation realization. A Dancer may offer it
 // in a HolonSpace, but neither its identity nor its values belong to an app.
+instance MAP.BootstrapTheme {
+  type Theme.HolonType
+  ThemeName "MAP Bootstrap Theme"
+  relationships {
+    ForMetaDesignSystem -> MAP.BootstrapMetaDesignSystem
+    HasThemeTokenAssignment -> [
+      BootstrapThemeCanvasGap,
+      BootstrapThemeCanvasPadding,
+      BootstrapThemeCanvasSurfaceBackground,
+      BootstrapThemeCanvasTextColor,
+      BootstrapThemeCollectionSurfaceBackground,
+      BootstrapThemeCollectionTextColor,
+      BootstrapThemeCollectionHeaderSurfaceBackground,
+      BootstrapThemeTableHeaderSurfaceBackground,
+      BootstrapThemeTableHeaderTextColor,
+      BootstrapThemeTableCellBorderColor,
+      BootstrapThemeTableCellBorderWidth,
+      BootstrapThemeTableCellPadding
+    ]
+    OfferedByHolonSpace -> MAP.CoreSchemaSpace
+  }
+}
+
+instance BootstrapThemeCanvasGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.75rem"
+  relationships {
+    ForDesignToken -> CanvasGap.DesignToken
+  }
+}
+
+instance BootstrapThemeCanvasPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.25rem"
+  relationships {
+    ForDesignToken -> CanvasPadding.DesignToken
+  }
+}
+
+instance BootstrapThemeCanvasSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#f7f5ef"
+  relationships {
+    ForDesignToken -> CanvasSurfaceBackground.DesignToken
+  }
+}
+
+instance BootstrapThemeCanvasTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1d2430"
+  relationships {
+    ForDesignToken -> CanvasTextColor.DesignToken
+  }
+}
+
+instance BootstrapThemeCollectionSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> CollectionSurfaceBackground.DesignToken
+  }
+}
+
+instance BootstrapThemeCollectionTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1d2430"
+  relationships {
+    ForDesignToken -> CollectionTextColor.DesignToken
+  }
+}
+
+instance BootstrapThemeCollectionHeaderSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e9e4d8"
+  relationships {
+    ForDesignToken -> CollectionHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance BootstrapThemeTableHeaderSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e9e4d8"
+  relationships {
+    ForDesignToken -> TableHeaderSurfaceBackground.DesignToken
+  }
+}
+
+instance BootstrapThemeTableHeaderTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1d2430"
+  relationships {
+    ForDesignToken -> TableHeaderTextColor.DesignToken
+  }
+}
+
+instance BootstrapThemeTableCellBorderColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#c7c0b3"
+  relationships {
+    ForDesignToken -> TableCellBorderColor.DesignToken
+  }
+}
+
+instance BootstrapThemeTableCellBorderWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> TableCellBorderWidth.DesignToken
+  }
+}
+
+instance BootstrapThemeTableCellPadding {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5rem"
+  relationships {
+    ForDesignToken -> TableCellPadding.DesignToken
+  }
+}

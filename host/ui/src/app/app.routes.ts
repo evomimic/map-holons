@@ -3,10 +3,16 @@ import { ContentSpace } from './components/content-spaces/content-spaces';
 import { ContentSpaceDetail } from './components/content-space-detail/content-space-detail';
 import { AllSpaces } from './components/all-spaces/all-spaces';
 import { Settings } from './components/settings/settings';
+import { LoadHolonsComponent } from './components/load-holons/load-holons.component';
 
 
 export const routes: Routes = [
     { path: '', component: AllSpaces},
+    {
+        path: 'load-holons',
+        component: LoadHolonsComponent,
+        data: { breadcrumb: 'Load Holons' },
+    },
     {
         path: 'contentspaces',
         // This parent route provides the static "Content Spaces" breadcrumb

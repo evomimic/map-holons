@@ -187,6 +187,31 @@
       ]
     },
     {
+      "key": "LocalMaterializeVisualizer.DanceImplementation",
+      "type": "DanceImplementation.HolonType",
+      "properties": {
+        "ImplementationName": "LocalMaterializeVisualizer"
+      },
+      "relationships": [
+        {
+          "name": "ForDance",
+          "target": [
+            {
+              "$ref": "MaterializeVisualizer.DanceType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "MetaVisualizerType.MetaHolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
@@ -354,6 +379,89 @@
             }
           ]
         },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MAP.BootstrapCanvas",
+      "type": "Canvas.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ContainsVisualizer",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapCanvasVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "UsesMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapMetaDesignSystem"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MAP.BootstrapCanvasVisualizer",
+      "type": "CanvasVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "Canvas.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapCanvasTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MAP.BootstrapCanvasTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:0beb61de47c1c6fb9ea7ced7f7062b576f8ceb7e42501019f98c50b9d4c3395a",
+        "VisualizerImplementationKey": "dahn.bootstrap-canvas",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      },
+      "relationships": [
         {
           "name": "OwnedBy",
           "target": [

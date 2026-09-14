@@ -57,6 +57,16 @@ holon MaterializeVisualizer.DanceType {
   }
 }
 
+// Materialization is DAHN-wide infrastructure. It is intentionally Core
+// bootstrap content, rather than a Space Navigator package dependency.
+instance LocalMaterializeVisualizer.DanceImplementation {
+  type DanceImplementation.HolonType
+  ImplementationName "LocalMaterializeVisualizer"
+  relationships {
+    ForDance -> MaterializeVisualizer.DanceType
+  }
+}
+
 holon MetaVisualizerType.MetaHolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends MetaHolonType.MetaTypeDescriptor
@@ -114,6 +124,34 @@ holon CanvasVisualizer.HolonType {
     display_plural: "Canvas Visualizers"
     plural: "CanvasVisualizers"
   }
+}
+
+// This generic Canvas and its Canvas Visualizer are bootstrap resources, not
+// Space Navigator resources. Selection policy may currently choose this sole
+// compatible candidate, but no caller may substitute it after a failed match.
+instance MAP.BootstrapCanvas {
+  type Canvas.HolonType
+  relationships {
+    UsesMetaDesignSystem -> MAP.BootstrapMetaDesignSystem
+    ContainsVisualizer -> MAP.BootstrapCanvasVisualizer
+  }
+}
+
+instance MAP.BootstrapCanvasVisualizer {
+  type CanvasVisualizer.HolonType
+  relationships {
+    ApplicableToType -> Canvas.HolonType
+    ImplementedBy -> MAP.BootstrapCanvasTypeScript.VisualizerImplementation
+  }
+}
+
+instance MAP.BootstrapCanvasTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.bootstrap-canvas"
+  VisualizerArtifactDigest "sha256:0beb61de47c1c6fb9ea7ced7f7062b576f8ceb7e42501019f98c50b9d4c3395a"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
 }
 
 holon NodeVisualizer.HolonType {
