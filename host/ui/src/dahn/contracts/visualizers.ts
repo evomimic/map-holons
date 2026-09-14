@@ -38,6 +38,8 @@ export interface VisualizerDefinition {
  * Common context passed into Web Component visualizers.
  */
 export interface VisualizerContext {
+  /** Human-readable occurrence identity supplied by the parent composition. */
+  title?: string;
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];

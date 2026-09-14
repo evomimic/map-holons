@@ -1,7 +1,9 @@
 import { AfterViewInit, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { DomCanvas } from '../../../dahn';
+import { DahnHolonView } from '../../../dahn/map-adapter/dahn-holon-view';
 import { DefaultVisualizerRegistry } from '../../../dahn/registry/default-visualizer-registry';
 import type { VisualizerContext } from '../../../dahn/contracts/visualizers';
+import { defineCustomElementOnce } from '../../../dahn/visualizers/define-custom-element-once';
 import { MapClient } from '../../../dahn/deps/map-sdk';
 import { SdkVisualizerMaterializer } from '../../../dahn/map-adapter/sdk-visualizer-materializer';
 import { MaterializedVisualizerCache } from '../../../dahn/runtime/materialized-visualizer-cache';
@@ -28,7 +30,7 @@ import { dismissStartupOverlay } from '../../startup-overlay';
         </button>
       </main>
     } @else {
-      <main #canvasHost [attr.data-dahn-canvas-state]="canvasState()"></main>
+      <main #canvasHost class="h-screen" [attr.data-dahn-canvas-state]="canvasState()"></main>
     }
   `,
 })
@@ -62,6 +64,9 @@ export class CanvasHostComponent implements AfterViewInit {
       if (selection === null) {
         throw new Error('Application session is ready without a selected Canvas.');
       }
+      if (session.active_holon_space === null) {
+        throw new Error('Application session is ready without an active HolonSpace reference.');
+      }
 
       const host = this.canvasHost?.nativeElement;
       if (host === undefined) {
@@ -69,6 +74,7 @@ export class CanvasHostComponent implements AfterViewInit {
       }
 
       const transaction = await new MapClient().beginTransaction();
+      const activeHolonSpace = transaction.bindPersistedReference(session.active_holon_space);
       // A transaction is a stateful execution surface. Keep these initial
       // reads ordered instead of relying on IPC scheduling for concurrent
       // commands that share its transaction identity.
@@ -87,20 +93,67 @@ export class CanvasHostComponent implements AfterViewInit {
       const materialized = new MaterializedVisualizerRuntime(
         new MaterializedVisualizerCache(new SdkVisualizerMaterializer(transaction)),
       );
-      const implementation = await materialized.realize(canvasVisualizer);
-      if (typeof implementation !== 'function') {
+      const canvasImplementation = await materialized.realize(canvasVisualizer);
+      if (typeof canvasImplementation !== 'function') {
         throw new Error('Selected Canvas implementation does not export a constructor.');
       }
 
+      const theme = await new Theme(themeHolon).toCssCustomProperties();
+      const registry = new DefaultVisualizerRegistry();
+      let pathInspectorContext: VisualizerContext | null = null;
       const canvas = new DomCanvas(
         host,
-        new DefaultVisualizerRegistry(),
-        () => ({} as VisualizerContext),
+        registry,
+        () => {
+          if (pathInspectorContext === null) {
+            throw new Error('Path Inspector context is unavailable.');
+          }
+          return pathInspectorContext;
+        },
       );
       // The selected Theme is projected once by the Canvas and shared by all
       // future hosted Dancers. The Canvas remains intentionally empty here.
-      canvas.setTheme(await new Theme(themeHolon).toCssCustomProperties());
-      await canvas.mountVisualizers([]);
+      canvas.setTheme(theme);
+
+      const nodeSelection = await transaction.selectVisualizer({
+        subject: activeHolonSpace,
+        requestedKind: 'node',
+      });
+      const nodeImplementation = await materialized.realize(nodeSelection.selected);
+      if (
+        typeof nodeImplementation !== 'function' ||
+        !(nodeImplementation.prototype instanceof HTMLElement)
+      ) {
+        throw new Error('Selected Path Inspector implementation does not export an HTMLElement constructor.');
+      }
+      defineCustomElementOnce(
+        'map-path-inspector',
+        nodeImplementation as CustomElementConstructor,
+      );
+      const title = (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey();
+      registry.register({
+        id: 'path-inspector',
+        displayName: 'Path Inspector',
+        version: '0.1.0',
+        componentTag: 'map-path-inspector',
+        supportedTargets: [{ kind: 'holon-node' }],
+        load: async () => {},
+      });
+      pathInspectorContext = {
+        title,
+        target: { reference: activeHolonSpace },
+        holon: new DahnHolonView(activeHolonSpace),
+        actions: [],
+        theme,
+        canvas,
+      };
+      await canvas.mountVisualizers([
+        {
+          visualizerId: 'path-inspector',
+          target: { reference: activeHolonSpace },
+          slot: 'primary',
+        },
+      ]);
       this.canvasState.set('mounted');
       dismissStartupOverlay();
     } catch (error) {

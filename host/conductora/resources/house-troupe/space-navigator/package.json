@@ -4,7 +4,7 @@
   "required_holons": [
     "SpaceNavigator.Dancer",
     "SpaceNavigator.CanvasVisualizer",
-    "GenericHolonNodeVisualizer.NodeVisualizer",
+    "PathInspector.NodeVisualizer",
     "TableCollectionVisualizer.CollectionVisualizer"
   ]
 }

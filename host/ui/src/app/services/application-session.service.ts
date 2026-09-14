@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { once } from '@tauri-apps/api/event';
+import type { HolonReferenceWire } from '../../dahn/deps/map-sdk';
 
 export type ApplicationSessionPhase =
   | 'initializing-host'
@@ -21,7 +22,7 @@ export interface CanvasLaunchSelection {
 export interface ApplicationSessionSnapshot {
   experience: ApplicationExperience;
   phase: ApplicationSessionPhase;
-  active_holon_space: string | null;
+  active_holon_space: HolonReferenceWire | null;
   canvas_selection: CanvasLaunchSelection | null;
   failure: string | null;
 }
@@ -40,7 +41,7 @@ export class ApplicationSessionService {
       return {
         experience: 'canvas',
         phase: 'ready',
-        active_holon_space: 'browser-preview',
+        active_holon_space: null,
         canvas_selection: null,
         failure: null,
       };

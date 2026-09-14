@@ -154,6 +154,25 @@ instance MAP.BootstrapCanvasTypeScript.VisualizerImplementation {
   Entrypoint "default"
 }
 
+// Path Inspector is a DAHN-wide Node Visualizer. It begins as the least
+// specific Node candidate and is discovered only through Type applicability.
+instance PathInspector.NodeVisualizer {
+  type NodeVisualizer.HolonType
+  relationships {
+    ApplicableToType -> HolonType.TypeDescriptor
+    ImplementedBy -> PathInspectorTypeScript.VisualizerImplementation
+  }
+}
+
+instance PathInspectorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.path-inspector"
+  VisualizerArtifactDigest "sha256:7c13c860f46269ad5b6164a9f3d511d2b4cc1a9c890d4180a575f7b0fc0fe7f4"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
 holon NodeVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType

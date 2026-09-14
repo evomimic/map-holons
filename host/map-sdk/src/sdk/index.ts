@@ -30,6 +30,8 @@ export {
   extractNumber,
   extractString,
 } from './types';
+/** Transport-safe persisted reference projection for session handoffs. */
+export type { HolonReferenceWire } from '../internal/wire-types/references';
 export type {
   BaseValue,
   ContentSet,

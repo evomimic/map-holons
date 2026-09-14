@@ -1,6 +1,7 @@
 import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
+  HolonReferenceWire,
   HolonId,
   LocalId,
   PropertyName,
@@ -84,6 +85,21 @@ export class MapTransaction {
 
   async commit(): Promise<void> {
     await internalTransaction.commit(txIdFor(this));
+  }
+
+  /**
+   * Rebinds a persisted reference projected by a separate runtime session into
+   * this transaction. Session handoffs may only carry Smart references: staged
+   * and transient references are transaction-local and cannot cross this seam.
+   */
+  bindPersistedReference(reference: HolonReferenceWire): HolonReference {
+    if (!('Smart' in reference)) {
+      throw new TypeError('Application-session references must be persisted Smart references');
+    }
+
+    return createHolonReference(txIdFor(this), {
+      Smart: { ...reference.Smart, tx_id: txIdFor(this) },
+    });
   }
 
   async newHolon(key?: string): Promise<TransientHolonReference> {

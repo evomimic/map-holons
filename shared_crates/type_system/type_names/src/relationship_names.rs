@@ -152,6 +152,7 @@ impl CoreRelationshipTypeName {
 /// Canonical DAHN relationship type names.
 #[derive(Debug, Clone, VariantNames)]
 pub enum DahnRelationshipTypeName {
+    HasApplicableVisualizer,
     ImplementedBy,
 }
 

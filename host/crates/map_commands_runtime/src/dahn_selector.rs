@@ -1,9 +1,12 @@
 use base_types::MapString;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
+use holons_core::descriptors::{equals_or_extends, walk_extends_chain};
 use holons_core::reference_layer::{HolonReference, ReadableHolon};
+use holons_core::Descriptor;
 use map_commands_contract::{VisualizerKind, VisualizerSelection, VisualizerSelectionRequest};
 use std::sync::Arc;
+use type_names::DahnRelationshipTypeName;
 
 /// Bound runtime realization of the Canvas selected for one application
 /// session. The Canvas remains a semantic holon; this wrapper carries the
@@ -76,36 +79,88 @@ pub fn select_visualizer(
         });
     }
 
-    let visualizer_key = bootstrap_visualizer_key(request.requested_kind)?;
-    let _ = request.subject.holon_descriptor()?;
-    let selected = context.lookup().get_saved_holon_by_key(&MapString::from(visualizer_key))?;
+    let selected = match request.requested_kind {
+        VisualizerKind::Node => select_node_visualizer(context, request.subject)?,
+        kind => {
+            let visualizer_key = bootstrap_visualizer_key(kind)?;
+            let _ = request.subject.holon_descriptor()?;
+            HolonReference::Smart(
+                context.lookup().get_saved_holon_by_key(&MapString::from(visualizer_key))?,
+            )
+        }
+    };
 
     Ok(VisualizerSelection {
-        selected: HolonReference::Smart(selected),
+        selected,
         requested_kind: request.requested_kind,
         alternatives_available: false,
     })
 }
 
+/// Selects the nearest applicable Node Visualizer by walking the subject's
+/// concrete descriptor lineage from leaf Type toward HolonType.
+fn select_node_visualizer(
+    context: &Arc<TransactionContext>,
+    subject: HolonReference,
+) -> Result<HolonReference, HolonError> {
+    let node_visualizer_type = HolonReference::Smart(
+        context.lookup().get_saved_holon_by_key(&MapString::from("NodeVisualizer.HolonType"))?,
+    );
+    let subject_type = subject.holon_descriptor()?.holon().clone();
+
+    for type_descriptor in walk_extends_chain(&subject_type) {
+        let type_descriptor = type_descriptor?;
+        let members = type_descriptor
+            .related_holons(DahnRelationshipTypeName::HasApplicableVisualizer)?
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+            .get_members()
+            .clone();
+        let mut candidates = Vec::new();
+        for candidate in members {
+            let candidate_type = candidate.holon_descriptor()?.holon().clone();
+            if equals_or_extends(&candidate_type, &node_visualizer_type)? {
+                candidates.push(candidate);
+            }
+        }
+
+        match candidates.as_slice() {
+            [] => continue,
+            [candidate] => return Ok(candidate.clone()),
+            _ => {
+                return Err(HolonError::MultipleRelatedHolons {
+                    relationship: DahnRelationshipTypeName::HasApplicableVisualizer
+                        .as_relationship_name()
+                        .to_string(),
+                    descriptor: type_descriptor.summarize()?,
+                    count: candidates.len(),
+                });
+            }
+        }
+    }
+
+    Err(HolonError::NotImplemented(
+        "No applicable Node Visualizer exists in the subject Type lineage".into(),
+    ))
+}
+
 /// Isolated deterministic bootstrap policy for currently bundled Visualizers.
 ///
-/// The stable semantic key predates the `HolonInspectorVisualizer` design
-/// name; it identifies the current least-specialized Node Visualizer, not the
-/// only possible Node Visualizer. Properties, Value, and Action are DAHN-wide
-/// kinds but have no PR 3 bootstrap selection yet, so requests for them fail
-/// explicitly.
+/// Only Canvas and Collection remain bootstrap-keyed. Node selection is
+/// applicability-driven; Properties, Value, and Action have no bootstrap
+/// selection and therefore fail explicitly.
 fn bootstrap_visualizer_key(kind: VisualizerKind) -> Result<&'static str, HolonError> {
     match kind {
         // The bootstrap Canvas is a DAHN-wide resource. It is deliberately
         // not owned by, or named after, the Space Navigator Dancer.
         VisualizerKind::Canvas => Ok("MAP.BootstrapCanvasVisualizer"),
-        VisualizerKind::Node => Ok("GenericHolonNodeVisualizer.NodeVisualizer"),
         VisualizerKind::Collection => Ok("TableCollectionVisualizer.CollectionVisualizer"),
-        VisualizerKind::Properties | VisualizerKind::Value | VisualizerKind::Action => {
-            Err(HolonError::NotImplemented(format!(
-                "No deterministic DAHN bootstrap selection is configured for VisualizerKind::{kind:?}"
-            )))
-        }
+        VisualizerKind::Node
+        | VisualizerKind::Properties
+        | VisualizerKind::Value
+        | VisualizerKind::Action => Err(HolonError::NotImplemented(format!(
+            "No deterministic DAHN bootstrap selection is configured for VisualizerKind::{kind:?}"
+        ))),
     }
 }
 
@@ -113,14 +168,6 @@ fn bootstrap_visualizer_key(kind: VisualizerKind) -> Result<&'static str, HolonE
 mod tests {
     use super::bootstrap_visualizer_key;
     use map_commands_contract::VisualizerKind;
-
-    #[test]
-    fn node_requests_use_the_holon_inspector_bootstrap_visualizer() {
-        assert_eq!(
-            bootstrap_visualizer_key(VisualizerKind::Node).expect("Node bootstrap visualizer"),
-            "GenericHolonNodeVisualizer.NodeVisualizer"
-        );
-    }
 
     #[test]
     fn canvas_requests_use_the_generic_bootstrap_canvas_visualizer() {
@@ -142,6 +189,7 @@ mod tests {
 
     #[test]
     fn unsupported_kinds_fail_without_selecting_an_unrelated_visualizer() {
+        assert!(bootstrap_visualizer_key(VisualizerKind::Node).is_err());
         assert!(bootstrap_visualizer_key(VisualizerKind::Properties).is_err());
         assert!(bootstrap_visualizer_key(VisualizerKind::Value).is_err());
         assert!(bootstrap_visualizer_key(VisualizerKind::Action).is_err());

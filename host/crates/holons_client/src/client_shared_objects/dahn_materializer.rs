@@ -121,7 +121,7 @@ impl DahnMaterializer {
         let filename = match visualizer_key.0.as_str() {
             "MAP.BootstrapCanvasVisualizer" => "bootstrap-canvas.js",
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
-            "GenericHolonNodeVisualizer.NodeVisualizer" => "generic-holon-node.js",
+            "PathInspector.NodeVisualizer" => "path-inspector.js",
             "TableCollectionVisualizer.CollectionVisualizer" => "table-collection.js",
             key => {
                 return Err(HolonError::NotImplemented(format!(
@@ -211,10 +211,10 @@ mod tests {
 
         assert_eq!(
             materializer
-                .artifact_for(&MapString::from("GenericHolonNodeVisualizer.NodeVisualizer"))
+                .artifact_for(&MapString::from("PathInspector.NodeVisualizer"))
                 .expect("known bootstrap visualizer")
                 .to_string_lossy(),
-            "/artifacts/generic-holon-node.js"
+            "/artifacts/path-inspector.js"
         );
     }
 

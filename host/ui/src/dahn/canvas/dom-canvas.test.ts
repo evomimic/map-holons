@@ -44,6 +44,21 @@ describe('DomCanvas', () => {
     );
   });
 
+  it('fills its allocated container and gives the hosted experience the remaining height', () => {
+    const container = document.createElement('div');
+    new DomCanvas(container, new DefaultVisualizerRegistry(), () => ({}) as VisualizerContext);
+
+    const root = container.querySelector<HTMLElement>('[data-dahn-canvas="root"]');
+    const hostedDancerRegion = container.querySelector<HTMLElement>(
+      '[data-dahn-hosted-dancer-region="true"]',
+    );
+    const primarySlot = container.querySelector<HTMLElement>('[data-dahn-canvas-slot="primary"]');
+
+    expect(root?.style.height).toBe('100%');
+    expect(hostedDancerRegion?.style.flexGrow).toBe('1');
+    expect(primarySlot?.style.flexGrow).toBe('1');
+  });
+
   it('resolves and applies Theme once during asynchronous canvas initialization', async () => {
     const container = document.createElement('div');
     const registry = new DefaultVisualizerRegistry();

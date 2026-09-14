@@ -18,7 +18,6 @@ use crate::{
 
 use client_shared_types::storage_receptor::ActiveStorageReceptor;
 use holons_client::deprecated_receptor_factory::DeprecatedReceptorFactory;
-use holons_core::reference_layer::HolonSpaceBehavior;
 use holons_core::reference_layer::ReadableHolon;
 
 pub struct AppBuilder;
@@ -159,21 +158,9 @@ impl AppBuilder {
                         "[PERF-688] conductora_startup: core_schema_bootstrap_ms={}",
                         bootstrap_started_at.elapsed().as_millis(),
                     );
-                    let active_holon_space = handle
-                        .state::<runtime::RuntimeState>()
-                        .read()
-                        .map_err(|error| anyhow::anyhow!("reading RuntimeState: {error}"))?
-                        .as_ref()
-                        .ok_or_else(|| anyhow::anyhow!("MAP Commands runtime is not initialized"))?
-                        .session()
-                        .space_manager()
-                        .get_space_holon_id()?
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("Core bootstrap completed without a local HolonSpace")
-                        })?;
                     application_session.mark_realizing_canvas().map_err(anyhow::Error::msg)?;
                     let canvas_selection_started_at = Instant::now();
-                    let canvas_selection = {
+                    let (active_holon_space, canvas_selection) = {
                         let runtime = handle
                             .state::<runtime::RuntimeState>()
                             .read()
@@ -187,6 +174,9 @@ impl AppBuilder {
                         let tx_id = runtime.session().begin_transaction().await?;
                         tracing::info!("[PERF-707] canvas_selection: transaction opened");
                         let context = runtime.session().get_transaction(&tx_id)?;
+                        let active_holon_space = context.get_space_holon()?.ok_or_else(|| {
+                            anyhow::anyhow!("Core bootstrap completed without a local HolonSpace")
+                        })?;
                         let selection = map_commands_runtime::select_bootstrap_canvas(&context)?;
                         tracing::info!("[PERF-707] canvas_selection: resources selected");
                         let result = crate::setup::application_launcher::CanvasLaunchSelection {
@@ -212,14 +202,14 @@ impl AppBuilder {
                         };
                         runtime.session().archive_transaction(&tx_id)?;
                         tracing::info!("[PERF-707] canvas_selection: transaction archived");
-                        result
+                        (active_holon_space, result)
                     };
                     tracing::info!(
                         "[PERF-707] conductora_startup: canvas_selection_ms={}",
                         canvas_selection_started_at.elapsed().as_millis(),
                     );
                     application_session
-                        .mark_ready(active_holon_space, canvas_selection)
+                        .mark_ready(active_holon_space.into(), canvas_selection)
                         .map_err(anyhow::Error::msg)?;
 
                     let window_started_at = Instant::now();

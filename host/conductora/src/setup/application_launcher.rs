@@ -6,7 +6,7 @@
 
 use std::sync::RwLock;
 
-use core_types::HolonId;
+use holons_boundary::HolonReferenceWire;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -67,7 +67,7 @@ pub enum ApplicationSessionPhase {
 struct ApplicationSession {
     experience: ApplicationExperience,
     phase: ApplicationSessionPhase,
-    active_holon_space: Option<HolonId>,
+    active_holon_space: Option<HolonReferenceWire>,
     canvas_selection: Option<CanvasLaunchSelection>,
     failure: Option<String>,
 }
@@ -77,7 +77,7 @@ struct ApplicationSession {
 pub struct ApplicationSessionSnapshot {
     pub experience: ApplicationExperience,
     pub phase: ApplicationSessionPhase,
-    pub active_holon_space: Option<String>,
+    pub active_holon_space: Option<HolonReferenceWire>,
     pub canvas_selection: Option<CanvasLaunchSelection>,
     pub failure: Option<String>,
 }
@@ -121,7 +121,7 @@ impl ApplicationSessionState {
 
     pub fn mark_ready(
         &self,
-        active_holon_space: HolonId,
+        active_holon_space: HolonReferenceWire,
         canvas_selection: CanvasLaunchSelection,
     ) -> Result<(), String> {
         let mut session = self.write()?;
@@ -147,7 +147,7 @@ impl ApplicationSessionState {
         Ok(ApplicationSessionSnapshot {
             experience: session.experience,
             phase: session.phase,
-            active_holon_space: session.active_holon_space.as_ref().map(ToString::to_string),
+            active_holon_space: session.active_holon_space.clone(),
             canvas_selection: session.canvas_selection.clone(),
             failure: session.failure.clone(),
         })
@@ -168,7 +168,17 @@ impl ApplicationSessionState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core_types::LocalId;
+    use core_types::{HolonId, LocalId};
+    use holons_boundary::SmartReferenceWire;
+    use holons_core::core_shared_objects::transactions::TxId;
+
+    fn space_reference() -> HolonReferenceWire {
+        HolonReferenceWire::Smart(SmartReferenceWire::new(
+            TxId::from_str("0").expect("fixture transaction id"),
+            HolonId::Local(LocalId(vec![7])),
+            None,
+        ))
+    }
 
     #[test]
     fn session_is_ready_only_after_a_local_space_is_available() {
@@ -179,7 +189,7 @@ mod tests {
         state.mark_bootstrapping_core().unwrap();
         state
             .mark_ready(
-                HolonId::Local(LocalId(vec![7])),
+                space_reference(),
                 CanvasLaunchSelection {
                     theme_key: "MAP.BootstrapTheme".into(),
                     canvas_key: "MAP.BootstrapCanvas".into(),
@@ -191,7 +201,7 @@ mod tests {
         let snapshot = state.snapshot().unwrap();
         assert_eq!(snapshot.phase, ApplicationSessionPhase::Ready);
         assert_eq!(snapshot.experience, ApplicationExperience::Canvas);
-        assert!(snapshot.active_holon_space.is_some());
+        assert_eq!(snapshot.active_holon_space, Some(space_reference()));
         assert_eq!(snapshot.canvas_selection.unwrap().canvas_key, "MAP.BootstrapCanvas");
         assert_eq!(snapshot.failure, None);
     }

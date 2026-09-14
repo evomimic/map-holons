@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "d048f4907a540c4ee2c222f68eb64d86856166046d1e83300b1105adbe006717"
+      "sha256": "c3dabece04316903955e928a645bd69a0be06429bc0d7feb60fede2c0806a0b1"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -1902,6 +1902,14 @@
     {
       "key": "ParameterName.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "PathInspector.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType"
+    },
+    {
+      "key": "PathInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
     },
     {
       "key": "PresentationValue.PropertyType",

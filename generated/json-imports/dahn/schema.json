@@ -375,6 +375,40 @@
       }
     },
     {
+      "key": "PathInspector.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "PathInspectorTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PathInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:7c13c860f46269ad5b6164a9f3d511d2b4cc1a9c890d4180a575f7b0fc0fe7f4",
+        "VisualizerImplementationKey": "dahn.path-inspector",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
       "key": "NodeVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType",
       "properties": {
