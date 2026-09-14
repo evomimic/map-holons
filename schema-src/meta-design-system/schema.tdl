@@ -34,6 +34,29 @@ property MetaDesignSystemName.PropertyType {
   }
 }
 
+// The sole bootstrap MDS is a real MAP instance. It supplies the complete
+// token vocabulary used by the initial Canvas and Theme selectors.
+instance MAP.BootstrapMetaDesignSystem {
+  type MetaDesignSystem.HolonType
+  MetaDesignSystemName "MAP Bootstrap Meta Design System"
+  relationships {
+    DefinesDesignToken -> [
+      CanvasGap.DesignToken,
+      CanvasPadding.DesignToken,
+      CanvasSurfaceBackground.DesignToken,
+      CanvasTextColor.DesignToken,
+      CollectionSurfaceBackground.DesignToken,
+      CollectionTextColor.DesignToken,
+      CollectionHeaderSurfaceBackground.DesignToken,
+      TableHeaderSurfaceBackground.DesignToken,
+      TableHeaderTextColor.DesignToken,
+      TableCellBorderColor.DesignToken,
+      TableCellBorderWidth.DesignToken,
+      TableCellPadding.DesignToken
+    ]
+  }
+}
+
 relationship (MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {

@@ -301,6 +301,44 @@
       ]
     },
     {
+      "key": "MAP.BootstrapCanvas",
+      "type": "Canvas.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ContainsVisualizer",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapCanvasVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "UsesMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapMetaDesignSystem"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MAP.BootstrapCanvasVisualizer",
+      "type": "CanvasVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "Canvas.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "NodeVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType",
       "properties": {

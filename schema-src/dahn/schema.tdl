@@ -116,6 +116,24 @@ holon CanvasVisualizer.HolonType {
   }
 }
 
+// This generic Canvas and its Canvas Visualizer are bootstrap resources, not
+// Space Navigator resources. Selection policy may currently choose this sole
+// compatible candidate, but no caller may substitute it after a failed match.
+instance MAP.BootstrapCanvas {
+  type Canvas.HolonType
+  relationships {
+    UsesMetaDesignSystem -> MAP.BootstrapMetaDesignSystem
+    ContainsVisualizer -> MAP.BootstrapCanvasVisualizer
+  }
+}
+
+instance MAP.BootstrapCanvasVisualizer {
+  type CanvasVisualizer.HolonType
+  relationships {
+    ApplicableToType -> Canvas.HolonType
+  }
+}
+
 holon NodeVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType

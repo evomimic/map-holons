@@ -771,6 +771,276 @@
           ]
         }
       ]
+    },
+    {
+      "key": "MAP.BootstrapTheme",
+      "type": "Theme.HolonType",
+      "properties": {
+        "ThemeName": "MAP Bootstrap Theme"
+      },
+      "relationships": [
+        {
+          "name": "ForMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapMetaDesignSystem"
+            }
+          ]
+        },
+        {
+          "name": "HasThemeTokenAssignment",
+          "target": [
+            {
+              "$ref": "BootstrapThemeCanvasGap"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasPadding"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionHeaderSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeTableHeaderSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeTableHeaderTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeTableCellBorderColor"
+            },
+            {
+              "$ref": "BootstrapThemeTableCellBorderWidth"
+            },
+            {
+              "$ref": "BootstrapThemeTableCellPadding"
+            }
+          ]
+        },
+        {
+          "name": "OfferedByHolonSpace",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.75rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.25rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#f7f5ef"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d2430"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d2430"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e9e4d8"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e9e4d8"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d2430"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#c7c0b3"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

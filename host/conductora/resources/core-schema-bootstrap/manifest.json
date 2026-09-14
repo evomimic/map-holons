@@ -119,15 +119,15 @@
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "ca523d2dbb7cbe9e747f3e393cf29f58cb63a69e068998b17984b8f4db2d6fff"
+      "sha256": "cd7bf39c32150180c234f1ab20b93beabbb9655f0982c973984ed63968c62b3c"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "6b34e0c0cdd4fcc180063018851b15286703737d518e67364ef2d8bb5a980fa2"
+      "sha256": "156ea3d882389959e60a09e7ab9e23c8292b9624696f56cf1bc7368e83c6757e"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "dc4bead6e35195c88571a24fa7a2e1af5148b04d6a288ccb411d92de753b841d"
+      "sha256": "3737126fa50da96b8e310dfa60cd240adb39c8a6ea80c942f7170ee5b2b74b09"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -846,6 +846,54 @@
     {
       "key": "BooleanValueType.ValueType",
       "type": "MetaValueType.MetaTypeDescriptor"
+    },
+    {
+      "key": "BootstrapThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
     },
     {
       "key": "BytesLengthConstraint.ConstraintType",
@@ -1606,6 +1654,22 @@
     {
       "key": "MAP Validation Schema-v0.1.0",
       "type": "Schema.HolonType"
+    },
+    {
+      "key": "MAP.BootstrapCanvas",
+      "type": "Canvas.HolonType"
+    },
+    {
+      "key": "MAP.BootstrapCanvasVisualizer",
+      "type": "CanvasVisualizer.HolonType"
+    },
+    {
+      "key": "MAP.BootstrapMetaDesignSystem",
+      "type": "MetaDesignSystem.HolonType"
+    },
+    {
+      "key": "MAP.BootstrapTheme",
+      "type": "Theme.HolonType"
     },
     {
       "key": "MAP.CoreSchemaSpace",

@@ -33,6 +33,17 @@ function createTestCanvasVisualizerElementClass(): typeof TestCanvasVisualizerEl
 }
 
 describe('DomCanvas', () => {
+  it('separates Canvas chrome from the hosted-Dancer allocation', () => {
+    const container = document.createElement('div');
+    new DomCanvas(container, new DefaultVisualizerRegistry(), () => ({}) as VisualizerContext);
+
+    expect(container.querySelector('[data-dahn-canvas-chrome="true"]')).not.toBeNull();
+    expect(container.querySelector('[data-dahn-hosted-dancer-region="true"]')).not.toBeNull();
+    expect(container.querySelector('[data-dahn-canvas-empty-state="true"]')?.textContent).toBe(
+      'Awaiting home Dancer',
+    );
+  });
+
   it('resolves and applies Theme once during asynchronous canvas initialization', async () => {
     const container = document.createElement('div');
     const registry = new DefaultVisualizerRegistry();
@@ -157,5 +168,10 @@ describe('DomCanvas', () => {
     canvas.clear();
 
     expect(container.querySelector('test-canvas-visualizer-clear')).toBeNull();
+    expect(
+      container.querySelector('[data-dahn-hosted-dancer-region="true"]')?.getAttribute(
+        'data-dahn-canvas-state',
+      ),
+    ).toBe('awaiting-home-dancer');
   });
 });

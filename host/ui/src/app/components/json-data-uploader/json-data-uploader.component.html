@@ -4,7 +4,11 @@
   <div class="mb-6">
     <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">Holon Data Validator & Uploader</h2>
     <p class="text-sm text-gray-600">Upload and validate JSON data files against a schema</p>
-  <p class="text-sm font-semibold text-gray-900">Space: {{ spaceId }}</p>
+  @if (standaloneMode) {
+    <p class="text-sm font-semibold text-gray-900">Target: active local MAP space</p>
+  } @else {
+    <p class="text-sm font-semibold text-gray-900">Space: {{ spaceId }}</p>
+  }
   </div>
 
   <!-- Schema Status Banner -->

@@ -8,7 +8,7 @@ import { environment } from '../../../environments/environment.mock';
 import { ContentSet, FileData } from '../../models/shared-types';
 import { ContentStoreInstance } from '../../stores/content.store';
 import { ContentController } from '../../contollers/content.controller';
-import { type HolonReference } from '../../../dahn/deps/map-sdk';
+import { MapClient, type HolonReference } from '../../../dahn/deps/map-sdk';
 import { presentLoaderResult, type LoaderResultView } from './loader-result.presenter';
 
 // Helper function to check if the app is running in a Tauri window
@@ -36,8 +36,14 @@ interface DataFileRecord {
 })
 export class JsonDataUploader implements OnInit {
   @Input() spaceId: string = "local";
+  /**
+   * Allows the temporary Loader experience to submit LoadHolons directly to
+   * the active MAP runtime rather than requiring a deprecated Content Space.
+   */
+  @Input() standaloneMode = false;
   @Output() formClosed = new EventEmitter<void>();
   store: WritableSignal<ContentStoreInstance | undefined> = signal(undefined);
+  private readonly mapClient = new MapClient();
 
 
   schemaJson = signal<string>('');
@@ -61,8 +67,13 @@ export class JsonDataUploader implements OnInit {
     {}
 
   async ngOnInit() {
-        const contentStore = this.contentController.getStoreById(this.spaceId);
-        this.store.set(contentStore);
+    if (this.standaloneMode) {
+      await this.loadSchema();
+      return;
+    }
+
+    const contentStore = this.contentController.getStoreById(this.spaceId);
+    this.store.set(contentStore);
     await this.loadSchema();
   }
 
@@ -254,8 +265,8 @@ export class JsonDataUploader implements OnInit {
   }
 
   async savetohost() {
-      const storeInstance = this.store();
-    if (storeInstance) {
+    const storeInstance = this.store();
+    if (storeInstance || this.standaloneMode) {
       // Check if all files are validated and valid
       const validFiles = this.dataFiles().filter(
         df => df.validationResult && df.validationResult.valid
@@ -300,7 +311,9 @@ export class JsonDataUploader implements OnInit {
           files_to_load: filedata
         };
 
-        const loaderReference = await storeInstance.uploadHolons(file_and_schema_Data);
+        const loaderReference = storeInstance
+          ? await storeInstance.uploadHolons(file_and_schema_Data)
+          : await this.loadHolonsIntoActiveRuntime(file_and_schema_Data);
         this.loaderResultStatus = 'Loading loader result...';
         await this.loadLoaderResult(loaderReference);
         if (this.loaderResult && Number(this.loaderResult.errorCount) === 0) {
@@ -317,6 +330,11 @@ export class JsonDataUploader implements OnInit {
     } else {
       this.errorMessage = 'Content store is not initialized.';
     }
+  }
+
+  private async loadHolonsIntoActiveRuntime(contentSet: ContentSet): Promise<HolonReference> {
+    const transaction = await this.mapClient.beginTransaction();
+    return transaction.loadHolons(contentSet);
   }
 
   clearForms() {

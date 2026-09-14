@@ -105,6 +105,56 @@
       ]
     },
     {
+      "key": "MAP.BootstrapMetaDesignSystem",
+      "type": "MetaDesignSystem.HolonType",
+      "properties": {
+        "MetaDesignSystemName": "MAP Bootstrap Meta Design System"
+      },
+      "relationships": [
+        {
+          "name": "DefinesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "CollectionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CollectionTextColor.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderColor.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "(MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {

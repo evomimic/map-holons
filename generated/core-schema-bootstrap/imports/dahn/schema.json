@@ -365,6 +365,60 @@
       ]
     },
     {
+      "key": "MAP.BootstrapCanvas",
+      "type": "Canvas.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ContainsVisualizer",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapCanvasVisualizer"
+            }
+          ]
+        },
+        {
+          "name": "UsesMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapMetaDesignSystem"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MAP.BootstrapCanvasVisualizer",
+      "type": "CanvasVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "Canvas.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "NodeVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType",
       "properties": {

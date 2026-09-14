@@ -915,6 +915,380 @@
           ]
         }
       ]
+    },
+    {
+      "key": "MAP.BootstrapTheme",
+      "type": "Theme.HolonType",
+      "properties": {
+        "ThemeName": "MAP Bootstrap Theme"
+      },
+      "relationships": [
+        {
+          "name": "ForMetaDesignSystem",
+          "target": [
+            {
+              "$ref": "MAP.BootstrapMetaDesignSystem"
+            }
+          ]
+        },
+        {
+          "name": "HasThemeTokenAssignment",
+          "target": [
+            {
+              "$ref": "BootstrapThemeCanvasGap"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasPadding"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionHeaderSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeTableHeaderSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeTableHeaderTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeTableCellBorderColor"
+            },
+            {
+              "$ref": "BootstrapThemeTableCellBorderWidth"
+            },
+            {
+              "$ref": "BootstrapThemeTableCellPadding"
+            }
+          ]
+        },
+        {
+          "name": "OfferedByHolonSpace",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.75rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.25rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#f7f5ef"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d2430"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d2430"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e9e4d8"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableHeaderSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e9e4d8"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableHeaderTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d2430"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#c7c0b3"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderWidth.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

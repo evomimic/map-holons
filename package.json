@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "start": "npm run build:happ && RUST_LOG=host:warn WASM_LOG=warn npm run start:host",
+    "start:canvas": "MAP_APPLICATION_EXPERIENCE=canvas npm run start",
+    "start:loader": "MAP_APPLICATION_EXPERIENCE=holons-loader npm run start",
     "start:info": "npm run build:happ && RUST_LOG=host:info WASM_LOG=info npm run start:host",
     "start:debug": "npm run build:happ && RUST_LOG=host:debug WASM_LOG=info npm run start:host",
     "start:host": "MAP_START_MODE=dev npm run start -w map-host",
