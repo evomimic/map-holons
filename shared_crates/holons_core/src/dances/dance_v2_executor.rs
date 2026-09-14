@@ -49,7 +49,8 @@ impl ResolvedDanceV2Invocation {
 ///
 /// `QueryDance` is the one static exception to implementation selection: it
 /// declares no `DanceImplementation` and is routed, after ordinary binding and
-/// contract validation, to the internal direct Query seam (QRY1).
+/// contract validation, to the internal direct Query seam. In QRY1 that route
+/// is scaffold-only: it always yields an error and never mints a response.
 pub async fn execute_dance_v2(
     context: &Arc<TransactionContext>,
     invocation: DanceInvocation,
@@ -57,9 +58,7 @@ pub async fn execute_dance_v2(
     let bound_invocation = bind_and_validate(invocation)?;
 
     if query_dance_adapter::is_query_dance(bound_invocation.dance_descriptor())? {
-        let response_descriptor = bound_invocation.response_type()?;
-        let response_body = query_dance_adapter::invoke(context, &bound_invocation)?;
-        return build_response_reference(context, &response_descriptor, response_body);
+        return Err(query_dance_adapter::invoke(context, &bound_invocation));
     }
 
     let resolved = resolve_bound_dance_v2_invocation(bound_invocation)?;

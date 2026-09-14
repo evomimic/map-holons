@@ -4,10 +4,14 @@
 //! ordinary binding and request/response-contract validation, the executor
 //! routes it here instead of generic `ForDance` implementation selection. The
 //! adapter maps the request's `RequestedQuery`, `InitialInput`, and
-//! `RequestParameters` onto the internal direct Query seam and propagates its
-//! result unchanged. It is scaffolding: in QRY1 the seam always returns
-//! `HolonError::NotImplemented`, so no `QueryDanceResponse` is minted.
+//! `RequestParameters` onto the internal direct Query seam and returns the
+//! error it produces.
+//!
+//! This is scaffold-only: [`invoke`] cannot succeed. It has no response-shaped
+//! return type, and the executor never mints a `QueryDanceResponse` on this
+//! route. QRY2 introduces the success path together with the first operators.
 
+use std::convert::Infallible;
 use std::sync::Arc;
 
 use core_types::HolonError;
@@ -26,11 +30,27 @@ pub(crate) fn is_query_dance(dance_descriptor: &DanceDescriptor) -> Result<bool,
     Ok(dance_descriptor.header().type_name()?.0 == QUERY_DANCE_TYPE_NAME)
 }
 
-/// Routes a validated `QueryDance` invocation onto the direct Query seam.
+/// Routes a validated `QueryDance` invocation onto the direct Query seam and
+/// returns the error that route produces.
+///
+/// Request-shape problems surface as the existing structured contract errors
+/// (`MissingRequiredRelationship`, `MultipleRelatedHolons`, `WrongDescriptorKind`);
+/// a well-formed request reaches the seam, which in QRY1 records the failed
+/// execution and returns `HolonError::NotImplemented`.
 pub(crate) fn invoke(
     context: &Arc<TransactionContext>,
     bound_invocation: &BoundDanceInvocation,
-) -> Result<Option<HolonReference>, HolonError> {
+) -> HolonError {
+    match route_to_seam(context, bound_invocation) {
+        Ok(never) => match never {},
+        Err(error) => error,
+    }
+}
+
+fn route_to_seam(
+    context: &Arc<TransactionContext>,
+    bound_invocation: &BoundDanceInvocation,
+) -> Result<Infallible, HolonError> {
     let request =
         bound_invocation.request().ok_or_else(|| HolonError::MissingRequiredRelationship {
             relationship: "Request".to_string(),
@@ -43,9 +63,9 @@ pub(crate) fn invoke(
         read_input_carrier(&exactly_one(request, QueryDanceRelationshipTypeName::InitialInput)?)?;
     let bindings = members(request, QueryDanceRelationshipTypeName::RequestParameters)?;
 
-    let _result = query.execute(context, input, bindings)?;
-
-    // QRY2+: materialize `_result` as the response body collection.
+    // The QRY1 seam has no success path; if it ever returns `Ok`, that is a
+    // QRY2 change that must also introduce response construction here.
+    let _ = query.execute(context, input, bindings)?;
     Err(HolonError::NotImplemented("QueryDance response construction (QRY2)".to_string()))
 }
 

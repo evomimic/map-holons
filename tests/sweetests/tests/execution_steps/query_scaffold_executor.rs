@@ -268,10 +268,12 @@ fn affording_space(context: &Arc<TransactionContext>) -> HolonReference {
     if let Ok(Some(space)) = context.get_space_holon() {
         if let Ok(descriptor) = space.holon_descriptor() {
             if descriptor.header().type_name().map(|name| name.0 == "HolonSpace").unwrap_or(false) {
+                info!("QueryDance affording holon: the transaction's HolonSpace anchor");
                 return space;
             }
         }
     }
+    info!("QueryDance affording holon: transient holon described as HolonSpace (anchor not described)");
     let mut space =
         context.mutation().new_holon(Some(MapString("qry1-affording-space".to_string()))).unwrap();
     space
