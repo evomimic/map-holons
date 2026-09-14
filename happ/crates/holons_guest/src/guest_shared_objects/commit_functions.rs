@@ -57,6 +57,7 @@ type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCol
 /// outlive the Wasm call, and the measurements must not alter commit behavior.
 #[derive(Default)]
 struct CommitPerformanceMetrics {
+    validation_micros: i64,
     commit_pass_1_micros: i64,
     commit_pass_2_micros: i64,
     holon_persist_count: usize,
@@ -269,8 +270,12 @@ pub fn commit(
         return Ok(response_reference);
     }
 
+    let mut performance_metrics = CommitPerformanceMetrics::default();
+
     // Assessment must finish before any node, SmartLink, or ownership-index write.
+    let validation_started_at = performance_timestamp_micros();
     let report = holons_validation::validate_commit_candidates(context, &candidates)?;
+    record_elapsed_micros(validation_started_at, &mut performance_metrics.validation_micros);
     response_reference
         .with_property_value(ValidationViolationCount, report.violation_count() as i64)?;
     if !report.is_accepted() {
@@ -293,8 +298,6 @@ pub fn commit(
     let mut saved_ids: Vec<LocalId> = Vec::new();
     let mut key_index_source_ids: HashSet<LocalId> = HashSet::new();
     let mut failed_count = 0_usize;
-
-    let mut performance_metrics = CommitPerformanceMetrics::default();
 
     // === FIRST PASS: Commit Staged Holons ===
     {
@@ -497,7 +500,9 @@ pub fn commit(
 
     info!("Commit completed: all staged holons processed and commit response constructed.");
     info!(
-        "[PERF-688] guest_commit: pass_1_ms={} pass_2_ms={} holon_persists={} holon_persist_ms={} inverse_resolutions={} inverse_resolution_ms={} smartlink_attempts={} smartlink_total_ms={} smartlink_expansions={} smartlink_expansion_ms={} smartlink_expansion_links={} smartlink_action_creates={} smartlink_action_create_ms={} semantic_forward_attempts={} semantic_inverse_attempts={} keyed_owns_index_attempts={} smartlink_inserted={} smartlink_already_present={} owns_key_lookups={} owns_key_lookup_ms={} owns_key_lookup_links={} lineage_target_materializations={} lineage_target_materialization_ms={} exact_historical_get_details_calls={} exact_historical_batch_requests=0 exact_historical_read_ms={} inverse_dedup_expansions={} inverse_dedup_expansion_ms={} inverse_dedup_candidates={} inverse_dedup_membership_checks={} inverse_dedup_skips={}",
+        "[PERF-688] guest_commit: validation_ms={} validation_candidates={} pass_1_ms={} pass_2_ms={} holon_persists={} holon_persist_ms={} inverse_resolutions={} inverse_resolution_ms={} smartlink_attempts={} smartlink_total_ms={} smartlink_expansions={} smartlink_expansion_ms={} smartlink_expansion_links={} smartlink_action_creates={} smartlink_action_create_ms={} semantic_forward_attempts={} semantic_inverse_attempts={} keyed_owns_index_attempts={} smartlink_inserted={} smartlink_already_present={} owns_key_lookups={} owns_key_lookup_ms={} owns_key_lookup_links={} lineage_target_materializations={} lineage_target_materialization_ms={} exact_historical_get_details_calls={} exact_historical_batch_requests=0 exact_historical_read_ms={} inverse_dedup_expansions={} inverse_dedup_expansion_ms={} inverse_dedup_candidates={} inverse_dedup_membership_checks={} inverse_dedup_skips={}",
+        performance_metrics.validation_micros / 1_000,
+        attempted_count,
         performance_metrics.commit_pass_1_micros / 1_000,
         performance_metrics.commit_pass_2_micros / 1_000,
         performance_metrics.holon_persist_count,
@@ -625,7 +630,7 @@ fn commit_holon(
                     &mut performance_metrics.holon_persist_micros,
                 );
 
-                info!(
+                debug!(
                     "Committed root (Create): version_id={} lineage=self",
                     short_hex(&stored.version_metadata.version_id, 8)
                 );
@@ -639,7 +644,7 @@ fn commit_holon(
                 let source_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_touched_relationship_commit_scope()?;
 
-                info!(
+                debug!(
                     "Committed graph-only edit (no action): reusing source anchor {}",
                     short_hex(&source_id, 8)
                 );
@@ -670,7 +675,7 @@ fn commit_holon(
                 // The lineage is logged alongside the predecessor precisely because they differ
                 // once a lineage is more than one version deep: the new version is rooted at the
                 // lineage, not at the holon it supersedes.
-                info!(
+                debug!(
                     "Committed version (Update): version_id={} lineage_id={} predecessor={}",
                     short_hex(&stored.version_metadata.version_id, 8),
                     stored.version_metadata.lineage_root(),

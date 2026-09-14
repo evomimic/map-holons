@@ -2,8 +2,8 @@ use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, TestCaseInit};
 
 /// Requires inverse-oriented imports to fail loader resolution before Commit.
-/// This regression intentionally remains red until loader-side direction
-/// enforcement is restored; partial persistence is not the expected contract.
+/// Resolution errors are returned with loader provenance; partial persistence
+/// and Commit semantic rejection are not the expected contract.
 pub fn load_inverse_oriented_book_person_instances_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } = TestCaseInit::new(
         "load_inverse_oriented_book_person_instances",

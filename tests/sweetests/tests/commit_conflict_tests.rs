@@ -50,7 +50,8 @@ use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     build_book_person_inverse_content_set, build_core_schema_bootstrap_content_set,
-    setup_probe_enabled_conductor, BOOK_DESCRIPTOR_KEY,
+    build_inverse_oriented_book_person_instance_content_set, setup_probe_enabled_conductor,
+    BOOK_DESCRIPTOR_KEY,
 };
 use holons_test::MockConductorConfig;
 use holons_trust_channel::TrustChannel;
@@ -299,6 +300,163 @@ async fn create_described_book(runtime: &Runtime, backend: &MockConductorConfig)
     local_id_of(&saved_reference_by_key(runtime, &context, BOOK_KEY).await)
 }
 
+/// Uses an instance before its staged subtype declaration to exercise inherited
+/// relationship lookup independently of JSON order and saved inverse indexes.
+fn orientation_content_set(relationship_name: &str, declared_orientation: bool) -> ContentSet {
+    let mut content_set = build_inverse_oriented_book_person_instance_content_set().unwrap();
+    let mut bundle: serde_json::Value =
+        serde_json::from_str(&content_set.files_to_load[0].raw_contents).unwrap();
+    bundle["holons"][0]["type"] = serde_json::json!("LoaderRegressionBook.HolonType");
+    if declared_orientation {
+        bundle["holons"][1].as_object_mut().unwrap().remove("relationships");
+        bundle["holons"][0]["relationships"] = serde_json::json!([{
+            "name": "AuthoredBy", "target": {"$ref": "Person.InverseOrientationFailure.1"}
+        }]);
+    } else {
+        bundle["holons"][1]["relationships"][0]["name"] = serde_json::json!(relationship_name);
+    }
+    bundle["holons"].as_array_mut().unwrap().push(serde_json::json!({
+        "key": "LoaderRegressionBook.HolonType",
+        "type": "MetaHolonType.MetaTypeDescriptor",
+        "properties": {
+            "TypeName": "LoaderRegressionBook", "TypeNamePlural": "LoaderRegressionBooks",
+            "DisplayName": "Loader regression book", "DisplayNamePlural": "Loader regression books",
+            "Description": "Staged subtype for inherited loader orientation checks."
+        },
+        "relationships": [
+            {"name": "Extends", "target": {"$ref": "Book.HolonType"}},
+            {"name": "ComponentOf", "target": {"$ref": "BookAuthorInverseSchema"}}
+        ]
+    }));
+    content_set.files_to_load[0].raw_contents = serde_json::to_string(&bundle).unwrap();
+    content_set
+}
+
+/// Pins both boundaries: loader errors skip all persistence, while a malformed
+/// graph staged independently still exercises Commit's defensive Pass 2 error.
+async fn verify_loader_orientation_and_direct_commit_failure(
+    runtime: &Runtime,
+    backend: &MockConductorConfig,
+) {
+    for relationship_name in ["AuthorOf", "UnknownRelationship"] {
+        let context = begin_transaction(runtime).await;
+        let content_set = orientation_content_set(relationship_name, false);
+        let before: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::LoadHolons { content_set },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect("resolution errors must return a load response, not fail the dance");
+        let MapResult::Reference(response) = result else {
+            panic!("load response");
+        };
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
+            Some("Skipped".to_base_value())
+        );
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::HolonsCommitted).unwrap(),
+            Some(MapInteger(0).to_base_value())
+        );
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
+            Some(MapInteger(0).to_base_value())
+        );
+        let errors = response.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
+        let errors = errors.read().unwrap().get_members().clone();
+        assert_eq!(errors.len(), 1);
+        let Some(BaseValue::StringValue(MapString(message))) =
+            errors[0].property_value(CorePropertyTypeName::ErrorMessage).unwrap()
+        else {
+            panic!("loader error must carry a diagnostic");
+        };
+        assert!(message.contains(relationship_name), "{message}");
+        if relationship_name == "AuthorOf" {
+            assert!(message.contains("declared orientation"), "{message}");
+            assert!(message.contains("AuthoredBy"), "{message}");
+        } else {
+            assert!(message.contains("relationship declaration"), "{message}");
+        }
+        assert_eq!(
+            errors[0].property_value(CorePropertyTypeName::LoaderHolonKey).unwrap(),
+            Some("Person.InverseOrientationFailure.1".to_base_value())
+        );
+        let after: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        assert_eq!(after, before, "loader refusal must write neither nodes nor SmartLinks");
+        assert!(context.is_open());
+        for staged in context.staged_references().unwrap() {
+            assert!(staged.is_in_state(&context, StagedState::ForCreate).unwrap());
+            assert_eq!(staged.validation_state().unwrap(), ValidationState::ValidationRequired);
+            assert!(staged.commit_errors().unwrap().is_empty());
+        }
+        runtime.session().archive_transaction(&context.tx_id()).unwrap();
+    }
+
+    // The same staged subtype must accept inherited declared authoring. Commit
+    // remains responsible for materializing the reciprocal AuthorOf occurrence.
+    load(runtime, orientation_content_set("AuthoredBy", true), "inherited declared import").await;
+    let context = begin_transaction(runtime).await;
+    let book = saved_reference_by_key(runtime, &context, "Book.InverseOrientationFailure.1").await;
+    let person =
+        saved_reference_by_key(runtime, &context, "Person.InverseOrientationFailure.1").await;
+    for (source, name, target) in [(&book, "AuthoredBy", &person), (&person, "AuthorOf", &book)] {
+        let links = live_smartlinks(backend, &local_id_of(source), &rel(name)).await;
+        assert_eq!(links.len(), 1, "one {name} occurrence");
+        assert_eq!(links[0].target_id, HolonId::Local(local_id_of(target)));
+    }
+    runtime.session().archive_transaction(&context.tx_id()).unwrap();
+
+    let context = begin_transaction(runtime).await;
+    let book = stage_described_book(runtime, &context, "Book.UndeclaredCommit.1").await;
+    let HolonReference::Staged(mut staged) = book else {
+        panic!("staged Book");
+    };
+    staged
+        .with_property_value("Title", "Undeclared relationship regression".to_base_value())
+        .unwrap();
+    let target = saved_reference_by_key(runtime, &context, TITLE_PROPERTY_KEY).await;
+    // The explicit construction seam models malformed staged input without
+    // relaxing the ordinary mutation guard or relying on loader permissiveness.
+    staged.add_related_holons_ungoverned("UnknownRelationship", vec![target]).unwrap();
+    let result = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&context),
+                action: TransactionAction::Commit,
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("Commit returns an operationally incomplete response");
+    let MapResult::Reference(response) = result else {
+        panic!("Commit response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some("Incomplete".to_base_value())
+    );
+    assert_eq!(staged.validation_state().unwrap(), ValidationState::Validated);
+    let id = staged.holon_id().unwrap().local_id().clone();
+    assert!(staged.is_in_state(&context, StagedState::Committed(id)).unwrap());
+    let errors = staged.commit_errors().unwrap();
+    assert_eq!(errors.len(), 1);
+    assert!(matches!(&errors[0], HolonError::DescriptorDeclarationNotFound { kind, name, .. }
+        if kind == "relationship" && name == "UnknownRelationship"));
+    assert!(context.is_open());
+    runtime.session().archive_transaction(&context.tx_id()).unwrap();
+}
+
 /// Builds a runtime over `backend`, keeping the same conductor handle the test uses for raw probe
 /// and storage extern calls. Mirrors `init_test_runtime`, minus the fixture-transient import.
 async fn runtime_over(backend: Arc<MockConductorConfig>) -> Runtime {
@@ -397,6 +555,11 @@ async fn load(runtime: &Runtime, content_set: ContentSet, label: &str) {
         Some(PropertyValue::IntegerValue(MapInteger(0))),
         "{label} reported loader errors: {error_messages:?}"
     );
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
+        Some("Complete".to_base_value()),
+        "{label} must persist successfully, not merely return zero operational errors"
+    );
 }
 
 /// Resolves a committed holon by key through `GetAllHolons`.
@@ -455,6 +618,8 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     // --- Phase 1: schema, then one described Book instance ---------------------------------
     load(&runtime, build_book_person_inverse_content_set().unwrap(), "book/person schema load")
         .await;
+
+    verify_loader_orientation_and_direct_commit_failure(&runtime, &backend).await;
 
     let context = begin_transaction(&runtime).await;
     let title_property_id =

@@ -251,8 +251,8 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Begin new transaction before declared-link load".to_string()),
     )?;
 
-    // D) Freeform endpoints still resolve in memory, but semantic validation now
-    // refuses persistence before the old inverse-resolution error could occur.
+    // D) Freeform endpoints resolve in memory, but their undescribed source has
+    // no declared relationship contract. Loader resolution must skip Commit.
     let (declared_bundle, node_count, _links_created) = build_declared_links_bundle(
         &fixture_context,
         "Bundle.DeclaredLink.1",
@@ -268,13 +268,13 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_holons_internal_step(
         declared_set,
         MapInteger(node_count as i64), // holons_staged
-        MapInteger(0),                 // holons_committed: rejected before writes
+        MapInteger(0),                 // holons_committed: Commit is skipped
         MapInteger(1),                 // relationship resolved and staged
-        MapInteger(0),                 // findings are not operational errors
+        MapInteger(1),                 // missing source descriptor during resolution
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
-        ExpectedLoadStatus::Rejected,
-        Some(MapInteger(node_count as i64)),
+        ExpectedLoadStatus::Skipped,
+        Some(MapInteger(0)),
     )?;
     test_case.add_begin_transaction_step(
         None,

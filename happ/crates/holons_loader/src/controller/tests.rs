@@ -68,7 +68,8 @@ impl HolonServiceApi for NoStorage {
     }
 }
 
-fn context() -> Arc<TransactionContext> {
+/// Shared in-memory context for loader tests; every storage operation fails fast.
+pub(crate) fn context() -> Arc<TransactionContext> {
     let space = Arc::new(HolonSpaceManager::new_with_managers(
         None,
         Arc::new(NoStorage),
