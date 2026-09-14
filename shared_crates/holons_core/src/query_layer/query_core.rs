@@ -21,7 +21,7 @@
 
 use std::sync::Arc;
 
-use base_types::{BaseValue, MapEnumValue, MapString};
+use base_types::{MapEnumValue, MapString};
 use core_types::HolonError;
 use type_names::{
     CoreRelationshipTypeName, QueryPropertyTypeName, QueryRelationshipTypeName, ToRelationshipName,
@@ -36,7 +36,6 @@ use crate::reference_layer::{
 
 /// Descriptor keys the scaffold resolves from the loaded Query and Core schemas.
 const QUERY_TYPE_NAME: &str = "Query";
-const HOLON_COLLECTION_TYPE_NAME: &str = "HolonCollection";
 const HOLON_COLLECTION_DESCRIPTOR_KEY: &str = "HolonCollection.HolonType";
 const EXECUTION_INSTANCE_DESCRIPTOR_KEY: &str = "ExecutionInstance.HolonType";
 const QUERY_EXPRESSION_EXECUTION_DESCRIPTOR_KEY: &str = "QueryExpressionExecution.HolonType";
@@ -53,27 +52,32 @@ pub struct QueryReference(HolonReference);
 impl QueryReference {
     /// Wraps a holon reference after verifying it is described as `Query`.
     pub fn new(reference: HolonReference) -> Result<Self, HolonError> {
-        require_described_as(&reference, QUERY_TYPE_NAME)?;
+        let descriptor = reference.holon_descriptor()?;
+        let found = descriptor.header().type_name()?;
+        if found.0 != QUERY_TYPE_NAME {
+            return Err(HolonError::WrongDescriptorKind {
+                expected: QUERY_TYPE_NAME.to_string(),
+                found: found.to_string(),
+                descriptor: reference.summarize()?,
+            });
+        }
         Ok(Self(reference))
-    }
-
-    /// Returns the underlying Query definition reference.
-    pub fn as_holon_reference(&self) -> &HolonReference {
-        &self.0
     }
 
     /// Creates the transient runtime records for one invocation without running it.
     ///
-    /// `input` is the caller's explicit runtime collection; `bindings` are
-    /// invocation-level `QueryParameterBinding` references carried unresolved
-    /// (QRY3 owns their semantics). Both records start `Pending`.
+    /// `input` is the caller's explicit runtime collection. `bindings` are
+    /// invocation-level `QueryParameterBinding` references; QRY1 accepts them
+    /// and does nothing with them (QRY3 owns their semantics). Both records
+    /// start `Pending`.
     pub fn begin_execution(
         &self,
         context: &Arc<TransactionContext>,
         input: HolonCollection,
         bindings: Vec<HolonReference>,
     ) -> Result<QueryExecution, HolonError> {
-        let root_expression = root_expression(&self.0)?;
+        let _ = bindings; // carried unresolved; not recorded anywhere in QRY1
+        let root_expression = exactly_one(&self.0, QueryRelationshipTypeName::RootExpression)?;
         let input_carrier = materialize_input_carrier(context, &input)?;
 
         let mut instance =
@@ -98,17 +102,7 @@ impl QueryReference {
             vec![root_execution.clone().into()],
         )?;
 
-        Ok(QueryExecution { instance, root_execution, bindings })
-    }
-
-    /// One-shot invocation: `begin_execution` followed by `run`.
-    pub fn execute(
-        &self,
-        context: &Arc<TransactionContext>,
-        input: HolonCollection,
-        bindings: Vec<HolonReference>,
-    ) -> Result<HolonCollection, HolonError> {
-        self.begin_execution(context, input, bindings)?.run(context)
+        Ok(QueryExecution { instance, root_execution })
     }
 }
 
@@ -117,8 +111,6 @@ impl QueryReference {
 pub struct QueryExecution {
     instance: TransientReference,
     root_execution: TransientReference,
-    #[allow(dead_code)] // carried unresolved until QRY3 introduces binding semantics
-    bindings: Vec<HolonReference>,
 }
 
 impl QueryExecution {
@@ -136,10 +128,7 @@ impl QueryExecution {
     /// boundary, records `Failed` on both, and returns `NotImplemented`.
     ///
     /// No `Result`, `ExecutionResult`, or success collection is created.
-    pub fn run(
-        mut self,
-        _context: &Arc<TransactionContext>,
-    ) -> Result<HolonCollection, HolonError> {
+    pub fn run(mut self) -> Result<HolonCollection, HolonError> {
         set_status(&mut self.instance, ExecutionStatus::Running)?;
         set_status(&mut self.root_execution, ExecutionStatus::Running)?;
 
@@ -151,54 +140,22 @@ impl QueryExecution {
     }
 }
 
-/// Lifecycle status mirrored from `QueryExecutionStatus.MapEnumValueType`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ExecutionStatus {
+/// Lifecycle states QRY1 records, mirrored from `QueryExecutionStatus.MapEnumValueType`.
+#[derive(Debug, Clone, Copy)]
+enum ExecutionStatus {
     Pending,
     Running,
-    Complete,
     Failed,
 }
 
 impl ExecutionStatus {
-    fn variant_name(self) -> &'static str {
-        match self {
+    fn as_enum_value(self) -> MapEnumValue {
+        let variant = match self {
             Self::Pending => "Pending",
             Self::Running => "Running",
-            Self::Complete => "Complete",
             Self::Failed => "Failed",
-        }
-    }
-
-    pub(crate) fn as_enum_value(self) -> MapEnumValue {
-        MapEnumValue(MapString(self.variant_name().to_string()))
-    }
-
-    pub(crate) fn parse(value: &MapString) -> Result<Self, HolonError> {
-        match value.0.as_str() {
-            "Pending" => Ok(Self::Pending),
-            "Running" => Ok(Self::Running),
-            "Complete" => Ok(Self::Complete),
-            "Failed" => Ok(Self::Failed),
-            other => Err(HolonError::UnexpectedValueType(
-                other.to_string(),
-                "QueryExecutionStatus".to_string(),
-            )),
-        }
-    }
-
-    /// Validates a lifecycle transition: `Pending -> Running -> {Complete | Failed}`.
-    pub(crate) fn transition(self, to: ExecutionStatus) -> Result<ExecutionStatus, HolonError> {
-        match (self, to) {
-            (Self::Pending, Self::Running)
-            | (Self::Running, Self::Complete)
-            | (Self::Running, Self::Failed) => Ok(to),
-            (from, to) => Err(HolonError::InvalidTransition(format!(
-                "QueryExecutionStatus {} -> {}",
-                from.variant_name(),
-                to.variant_name()
-            ))),
-        }
+        };
+        MapEnumValue(MapString(variant.to_string()))
     }
 }
 
@@ -207,15 +164,10 @@ impl ExecutionStatus {
 /// Used by the QueryDance adapter to turn a request's `InitialInput` into the
 /// explicit runtime collection the direct seam accepts.
 pub(crate) fn read_input_carrier(carrier: &HolonReference) -> Result<HolonCollection, HolonError> {
-    require_described_as(carrier, HOLON_COLLECTION_TYPE_NAME)?;
     let members = related_members(carrier, CoreRelationshipTypeName::CollectionMembers)?;
     let mut collection = HolonCollection::new_transient();
     collection.add_references(members)?;
     Ok(collection)
-}
-
-fn root_expression(query: &HolonReference) -> Result<HolonReference, HolonError> {
-    exactly_one(query, QueryRelationshipTypeName::RootExpression)
 }
 
 fn materialize_input_carrier(
@@ -239,47 +191,16 @@ fn new_runtime_record(
 ) -> Result<TransientReference, HolonError> {
     let mut record = context.mutation().new_holon(Some(MapString(key.to_string())))?;
     record.with_descriptor(resolve_core_descriptor(context, descriptor_key)?)?;
-    record.with_property_value(
-        QueryPropertyTypeName::ExecutionStatus,
-        ExecutionStatus::Pending.as_enum_value(),
-    )?;
+    set_status(&mut record, ExecutionStatus::Pending)?;
     Ok(record)
 }
 
-fn set_status(record: &mut TransientReference, to: ExecutionStatus) -> Result<(), HolonError> {
-    let current = read_status(record)?;
-    let next = current.transition(to)?;
-    record.with_property_value(QueryPropertyTypeName::ExecutionStatus, next.as_enum_value())?;
+fn set_status(record: &mut TransientReference, status: ExecutionStatus) -> Result<(), HolonError> {
+    record.with_property_value(QueryPropertyTypeName::ExecutionStatus, status.as_enum_value())?;
     Ok(())
 }
 
-fn read_status(record: &TransientReference) -> Result<ExecutionStatus, HolonError> {
-    let name = QueryPropertyTypeName::ExecutionStatus;
-    match record.property_value(name.clone())? {
-        Some(BaseValue::EnumValue(value)) => ExecutionStatus::parse(&value.0),
-        Some(BaseValue::StringValue(value)) => ExecutionStatus::parse(&value),
-        Some(other) => Err(HolonError::UnexpectedValueType(
-            format!("{other:?}"),
-            "QueryExecutionStatus".to_string(),
-        )),
-        None => Err(HolonError::EmptyField(name.as_property_name().to_string())),
-    }
-}
-
-fn require_described_as(holon: &HolonReference, expected: &str) -> Result<(), HolonError> {
-    let descriptor = holon.holon_descriptor()?;
-    let found = descriptor.header().type_name()?;
-    if found.0 != expected {
-        return Err(HolonError::WrongDescriptorKind {
-            expected: expected.to_string(),
-            found: found.to_string(),
-            descriptor: holon.summarize()?,
-        });
-    }
-    Ok(())
-}
-
-fn related_members<T: ToRelationshipName>(
+pub(crate) fn related_members<T: ToRelationshipName>(
     holon: &HolonReference,
     relationship: T,
 ) -> Result<Vec<HolonReference>, HolonError> {
@@ -292,7 +213,7 @@ fn related_members<T: ToRelationshipName>(
     Ok(members)
 }
 
-fn exactly_one<T: ToRelationshipName + Clone>(
+pub(crate) fn exactly_one<T: ToRelationshipName + Clone>(
     holon: &HolonReference,
     relationship: T,
 ) -> Result<HolonReference, HolonError> {
@@ -318,43 +239,6 @@ mod tests {
     use crate::descriptors::test_support::{
         build_context, new_holon_type_descriptor, new_test_holon,
     };
-
-    #[test]
-    fn status_transitions_follow_pending_running_terminal() {
-        use ExecutionStatus::*;
-        assert_eq!(Pending.transition(Running).unwrap(), Running);
-        assert_eq!(Running.transition(Failed).unwrap(), Failed);
-        assert_eq!(Running.transition(Complete).unwrap(), Complete);
-
-        for (from, to) in [
-            (Pending, Failed),
-            (Pending, Complete),
-            (Pending, Pending),
-            (Running, Pending),
-            (Running, Running),
-            (Failed, Running),
-            (Failed, Pending),
-            (Complete, Failed),
-        ] {
-            assert!(
-                matches!(from.transition(to), Err(HolonError::InvalidTransition(_))),
-                "{from:?} -> {to:?} should be rejected"
-            );
-        }
-    }
-
-    #[test]
-    fn status_enum_round_trips_through_map_enum_value() {
-        for status in [
-            ExecutionStatus::Pending,
-            ExecutionStatus::Running,
-            ExecutionStatus::Complete,
-            ExecutionStatus::Failed,
-        ] {
-            assert_eq!(ExecutionStatus::parse(&status.as_enum_value().0).unwrap(), status);
-        }
-        assert!(ExecutionStatus::parse(&MapString("Bogus".into())).is_err());
-    }
 
     #[test]
     fn query_reference_rejects_non_query_descriptor() {
