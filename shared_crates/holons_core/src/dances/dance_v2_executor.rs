@@ -58,7 +58,7 @@ pub async fn execute_dance_v2(
     let bound_invocation = bind_and_validate(invocation)?;
 
     if query_dance_adapter::is_query_dance(bound_invocation.dance_descriptor())? {
-        return Err(query_dance_adapter::invoke(context, &bound_invocation));
+        return Err(query_dance_adapter::invoke(context, &bound_invocation).unwrap_err());
     }
 
     let resolved = resolve_bound_dance_v2_invocation(bound_invocation)?;

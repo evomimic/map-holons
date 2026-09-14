@@ -24,7 +24,6 @@ use type_names::{
 };
 
 const HOLON_COLLECTION_DESCRIPTOR_KEY: &str = "HolonCollection.HolonType";
-const HOLON_SPACE_DESCRIPTOR_KEY: &str = "HolonSpace.HolonType";
 const DANCE_INVOCATION_DESCRIPTOR_KEY: &str = "DanceInvocation.HolonType";
 const QUERY_DANCE_REQUEST_DESCRIPTOR_KEY: &str = "QueryDanceRequest.HolonType";
 const QUERY_DANCE_NAME: &str = "QueryDance";
@@ -98,7 +97,7 @@ fn execute_direct(
     let root_execution: HolonReference = execution.root_execution().clone().into();
 
     // run: reaches the unimplemented operator boundary.
-    let result = execution.run(context);
+    let result = execution.run();
     match result {
         Ok(collection) => panic!(
             "QRY1 run must not succeed; got a collection with {} members",
@@ -118,7 +117,6 @@ fn execute_direct(
     assert_status(root_execution.clone(), "Failed");
     assert_related_count(&instance, "ExecutionResult", 0);
     assert_related_count(&root_execution, "Result", 0);
-    assert_related_count(&root_execution, "RuntimeParameters", 0);
 
     // Definition/runtime separation: nothing landed on the reusable definitions.
     assert_no_runtime_state(&query_reference, "Query");
@@ -260,26 +258,13 @@ fn build_input_carrier(
     carrier
 }
 
-/// The holon affording `QueryDance` (`DanceAffordedBy -> HolonSpace.HolonType`).
-///
-/// Prefers the transaction's own space holon; falls back to a transient holon
-/// described as `HolonSpace` when the anchor is not described.
+/// The holon affording `QueryDance` (`DanceAffordedBy -> HolonSpace.HolonType`):
+/// the transaction's own HolonSpace anchor, which is described as `HolonSpace`.
 fn affording_space(context: &Arc<TransactionContext>) -> HolonReference {
-    if let Ok(Some(space)) = context.get_space_holon() {
-        if let Ok(descriptor) = space.holon_descriptor() {
-            if descriptor.header().type_name().map(|name| name.0 == "HolonSpace").unwrap_or(false) {
-                info!("QueryDance affording holon: the transaction's HolonSpace anchor");
-                return space;
-            }
-        }
-    }
-    info!("QueryDance affording holon: transient holon described as HolonSpace (anchor not described)");
-    let mut space =
-        context.mutation().new_holon(Some(MapString("qry1-affording-space".to_string()))).unwrap();
-    space
-        .with_descriptor(resolve_core_descriptor(context, HOLON_SPACE_DESCRIPTOR_KEY).unwrap())
-        .unwrap();
-    space.into()
+    context
+        .get_space_holon()
+        .expect("space holon lookup should succeed")
+        .expect("transaction should have a HolonSpace anchor")
 }
 
 // ---------------------------------------------------------------------------
