@@ -28,8 +28,10 @@ use holons_core::core_shared_objects::transactions::{
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{short_hex, LocalId, PropertyMap, RelationshipName};
 use sha2::{Digest, Sha256};
-pub use type_names::CorePropertyTypeName::{CommitRequestStatus, CommitsAttempted};
-pub use type_names::CoreRelationshipTypeName::{AbandonedHolons, SavedHolons};
+pub use type_names::CorePropertyTypeName::{
+    CommitRequestStatus, CommitsAttempted, ValidationViolationCount,
+};
+pub use type_names::CoreRelationshipTypeName::{RejectedHolons, SavedHolons};
 pub use type_names::{
     CoreHolonTypeName, CorePropertyTypeName, CoreRelationshipTypeName, CoreValueTypeName,
     ToPropertyName, ToRelationshipName,
@@ -43,8 +45,6 @@ pub enum CommitOutcome {
         /// Whether this commit published a new immutable version that may establish a key.
         establishes_key_index_entry: bool,
     },
-    /// The holon was explicitly marked as abandoned and skipped.
-    Abandoned,
     /// No persistence action was required (already committed or unchanged).
     NoAction,
 }
@@ -57,6 +57,7 @@ type RelationshipCollectionSnapshot = Vec<(RelationshipName, Arc<RwLock<HolonCol
 /// outlive the Wasm call, and the measurements must not alter commit behavior.
 #[derive(Default)]
 struct CommitPerformanceMetrics {
+    validation_micros: i64,
     commit_pass_1_micros: i64,
     commit_pass_2_micros: i64,
     holon_persist_count: usize,
@@ -208,102 +209,87 @@ impl RelationshipCommitSource {
     }
 }
 
-/// `commit`
+/// Assesses the complete Nursery's live candidates before persisting nodes or relationships.
 ///
-/// Executes a two-pass commit of all staged holons and their relationships,
-/// returning a **`TransientReference` to a CommitResponseType holon** that
-/// reports the outcome of the operation.
+/// Validation, Pass 1, and `CommitsAttempted` share one candidate set, excluding abandoned
+/// and already committed entries. Every candidate is reassessed on each attempt. An
+/// operational assessment error propagates without installing partial validation outcomes
+/// or entering either persistence pass.
 ///
-/// ## What This Function Produces
+/// The returned transient CommitResponse holon carries:
+/// - `CommitRequestStatus`: `Rejected` for semantic findings, `Incomplete` for persistence
+///   failures, or `Complete` when both persistence passes succeed.
+/// - `CommitsAttempted`: the number of live candidates presented to validation.
+/// - `ValidationViolationCount`: the report's finding count, zero when accepted.
+/// - `RejectedHolons`: finding-bearing staged candidates on rejection.
+/// - `SavedHolons`: successfully committed holons, empty on rejection.
 ///
-/// Instead of returning a Rust `CommitResponse` struct (the old behavior),
-/// this function now **constructs a CommitResponse holon instance** using the
-/// holon operations API.
+/// Rejection refuses the entire candidate set before any persistence write. Replacement
+/// findings remain on the staged holons for correction and travel with the staged pool;
+/// the in-memory report is not serialized. Transaction lifecycle policy belongs to
+/// `TransactionContext`.
 ///
-/// The returned `TransientReference` points to a `CommitResponseType` holon with:
-/// - **Property** `CommitRequestStatus` = `"Complete"` or `"Incomplete"`
-/// - **Property** `CommitsAttempted` = number of staged holons
-/// - **Relationship** `SavedHolons` → all successfully committed holons
-/// - **Relationship** `AbandonedHolons` → all holons skipped or failed
+/// Pass 1 persists creates and new versions, and marks graph-only updates committed using
+/// their existing source ids. An unchanged `ForUpdate` candidate produces `NoAction`, so
+/// response counts need not balance. Persistence failures are recorded on staged errors
+/// without reclassifying holons as abandoned. Any Pass 1 failure skips Pass 2.
 ///
-/// This holon is a first-class MAP holon and can be returned directly as a
-/// dance response or inspected by follow-up guest or client processes.
-///
-/// ## Process Overview
-///
-/// The commit proceeds in **two passes**:
-///
-/// ### **Pass 1 — Commit staged holons**
-///
-/// Each staged holon is processed according to its `StagedState`:
-///
-/// - **ForCreate**
-///   Persist as a new HolonNode; update the staged holon to `Committed(saved_id)`
-///
-/// - **ForUpdateGraphOnly**
-///   Do not write a node; update to `Committed(existing_source_id)` so Pass 2
-///   anchors relationship SmartLinks to the existing persisted node.
-///
-/// - **ForUpdateNewVersion**
-///   Persist as a new HolonNode, stage `Predecessor` from the new version to
-///   the prior persisted version, and update to `Committed(new_saved_id)`.
-///
-/// - **Abandoned**
-///   Skipped and added to the `AbandonedHolons` relationship
-///
-/// - **ForUpdate / Already Committed**
-///   No-op
-///
-/// Any holon that fails to commit:
-/// - keeps its original staged state
-/// - receives its error in the holon’s internal error list
-/// - causes the CommitResponse holon’s `CommitRequestStatus` to be set to `"Incomplete"`
-///
-/// If **any** holon fails in pass 1, the function returns immediately after
-/// building the response holon. **Pass 2 is skipped.**
-///
-/// ### **Pass 2 — Commit relationships**
-///
-/// Only executed if pass 1 completes with no failures.
-///
-/// For each staged holon in `Committed(saved_id)` state:
-/// - iterate all staged relationship collections
-/// - create SmartLinks for each member (if the target holon has a LocalId)
-/// - record any errors into the source staged holon
-/// - update the CommitResponse holon to `"Incomplete"` if any error occurs
-///
-/// If all relationships succeed, the overall result remains `"Complete"`.
-///
-/// ## Return Value
-///
-/// Returns:
-/// Ok(TransientReference)
-/// pointing to the CommitResponse holon created during the process.
-///
-/// This holon is always returned—even if the commit is partially successful—
-/// and contains a complete summary of saved and abandoned items.
-///
-/// ## Clearing Staged Holons
-///
-/// If both passes succeed (no `Incomplete` status), the guest holon service
-/// is responsible for clearing the staged holon pool afterward.
+/// Pass 2 scans the complete Nursery, including already committed sources from an incomplete
+/// prior attempt, even when there are no live validation candidates. It snapshots eligible
+/// relationships under a short-lived source lock, then resolves and writes links after
+/// dropping that lock. Identical SmartLink replay succeeds; conflicting replay remains an
+/// operational failure. Pass 2 records the first error per source and returns `Incomplete`.
+/// Persistence remains non-atomic: successful earlier writes are not rolled back.
 pub fn commit(
     context: &Arc<TransactionContext>,
     staged_references: &[StagedReference],
 ) -> Result<TransientReference, HolonError> {
     info!("Entering commit...");
 
-    // Number of staged holons is derived from the provided references.
-    let stage_count = staged_references.len() as i64;
+    // Clone bound handles once so assessment and Pass 1 share exactly the same workset.
+    // Pass 2 still scans the complete Nursery for previously committed sources on retry.
+    let mut candidates = Vec::new();
+    for reference in staged_references {
+        if reference.is_live_validation_candidate()? {
+            candidates.push(reference.clone());
+        }
+    }
+    let attempted_count = candidates.len() as i64;
 
     let mut response_reference =
         context.mutation().new_holon(Some(MapString("Commit Response".to_string())))?;
     response_reference
         .with_property_value(CommitRequestStatus, "Complete")?
-        .with_property_value(CommitsAttempted, stage_count)?;
+        .with_property_value(CommitsAttempted, attempted_count)?;
 
-    if stage_count < 1 {
+    if staged_references.is_empty() {
         info!("Stage empty, nothing to commit!");
+        response_reference.with_property_value(ValidationViolationCount, 0_i64)?;
+        response_reference.add_related_holons(SavedHolons, Vec::new())?;
+        log_commit_response("Complete", attempted_count, &[], 0, 0);
+        return Ok(response_reference);
+    }
+
+    let mut performance_metrics = CommitPerformanceMetrics::default();
+
+    // Assessment must finish before any node, SmartLink, or ownership-index write.
+    let validation_started_at = performance_timestamp_micros();
+    let report = holons_validation::validate_commit_candidates(context, &candidates)?;
+    record_elapsed_micros(validation_started_at, &mut performance_metrics.validation_micros);
+    response_reference
+        .with_property_value(ValidationViolationCount, report.violation_count() as i64)?;
+    if !report.is_accepted() {
+        let mut rejected_holons = Vec::new();
+        for candidate in &candidates {
+            if !candidate.validation_findings()?.is_empty() {
+                rejected_holons.push(HolonReference::from(candidate));
+            }
+        }
+        let rejected_count = rejected_holons.len();
+        response_reference.with_property_value(CommitRequestStatus, "Rejected")?;
+        response_reference.add_related_holons(RejectedHolons, rejected_holons)?;
+        response_reference.add_related_holons(SavedHolons, Vec::new())?;
+        log_commit_response("Rejected", attempted_count, &[], rejected_count, 0);
         return Ok(response_reference);
     }
 
@@ -311,10 +297,7 @@ pub fn commit(
     // every exit — including the incomplete early return, which is the case most worth seeing.
     let mut saved_ids: Vec<LocalId> = Vec::new();
     let mut key_index_source_ids: HashSet<LocalId> = HashSet::new();
-    let mut abandoned_count = 0_usize;
     let mut failed_count = 0_usize;
-
-    let mut performance_metrics = CommitPerformanceMetrics::default();
 
     // === FIRST PASS: Commit Staged Holons ===
     {
@@ -322,10 +305,9 @@ pub fn commit(
         info!("\n\nStarting FIRST PASS... commit staged holons...");
 
         let mut saved_holons: Vec<HolonReference> = Vec::new();
-        let mut abandoned_holons: Vec<HolonReference> = Vec::new();
         let transaction_handle = TransactionContextHandle::new(Arc::clone(context));
 
-        for staged_reference in staged_references {
+        for staged_reference in &candidates {
             staged_reference.is_accessible(AccessType::Commit)?;
 
             trace!("Committing {:?}", staged_reference.temporary_id());
@@ -347,21 +329,14 @@ pub fn commit(
                     );
                     saved_holons.push(saved_reference);
                 }
-                Ok(CommitOutcome::Abandoned) => {
-                    abandoned_count += 1;
-                    // StagedReference → HolonReference via From<&StagedReference>
-                    abandoned_holons.push(staged_reference.into());
-                }
                 Ok(CommitOutcome::NoAction) => {
                     trace!("No action required for {:?}", staged_reference.temporary_id());
                 }
                 Err(error) => {
+                    let rc_holon = staged_reference.get_holon_to_commit(context)?;
+                    record_staged_error(&rc_holon, error.clone())?;
                     response_reference.with_property_value(CommitRequestStatus, "Incomplete")?;
-                    // A failed holon joins the abandoned collection, so it is counted there to
-                    // keep the log summary consistent with the response holon's shape.
-                    abandoned_count += 1;
                     failed_count += 1;
-                    abandoned_holons.push(staged_reference.into());
                     warn!("Commit failed for {:?}: {:?}", staged_reference.temporary_id(), error);
                 }
             }
@@ -369,7 +344,6 @@ pub fn commit(
 
         // Attach results to the CommitResponse holon
         response_reference.add_related_holons(SavedHolons, saved_holons)?;
-        response_reference.add_related_holons(AbandonedHolons, abandoned_holons)?;
         record_elapsed_micros(pass_started_at, &mut performance_metrics.commit_pass_1_micros);
     }
 
@@ -378,13 +352,7 @@ pub fn commit(
         let status_string: String = (&status_value).into();
         if status_string == "Incomplete" {
             info!("Commit Pass 1 incomplete — skipping Pass 2.");
-            log_commit_response(
-                &status_string,
-                stage_count,
-                &saved_ids,
-                abandoned_count,
-                failed_count,
-            );
+            log_commit_response(&status_string, attempted_count, &saved_ids, 0, failed_count);
             return Ok(response_reference);
         }
     }
@@ -407,8 +375,8 @@ pub fn commit(
 
         // 1) Snapshot what we need while holding only a read lock.
         //
-        // NOTE: This must NOT early-return from `commit()`; non-staged holons are simply skipped
-        // in Pass 2 (relationship persistence is only for staged holons in Committed state).
+        // Candidate derivation already verified that every Nursery entry is staged.
+        // Only committed entries have relationship work; other staged states are skipped.
         let snapshot: Option<(RelationshipCommitSource, RelationshipCollectionSnapshot)> = {
             let holon_read = rc_holon.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
@@ -433,12 +401,9 @@ pub fn commit(
                     }
                 }
                 other => {
-                    trace!(
-                        "Skipping relationship commit for {:?} (not a staged holon: {:?}).",
-                        staged_reference.temporary_id(),
-                        other
-                    );
-                    None
+                    return Err(HolonError::InvalidType(format!(
+                        "Relationship commit requires a staged holon after candidate classification: {other:?}"
+                    )));
                 }
             }
         };
@@ -514,17 +479,8 @@ pub fn commit(
 
         // 3) If anything failed, re-lock only to attach the error and mark the response incomplete.
         if let Some(error) = first_error {
-            let mut holon_write = rc_holon.write().map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire write lock on staged holon for relationship error writeback: {}",
-                    e
-                ))
-            })?;
-
-            if let Holon::Staged(staged_holon) = &mut *holon_write {
-                staged_holon.add_error(error.clone())?;
-            }
-
+            record_staged_error(&rc_holon, error.clone())?;
+            failed_count += 1;
             response_reference.with_property_value(CommitRequestStatus, "Incomplete")?;
 
             warn!(
@@ -544,7 +500,9 @@ pub fn commit(
 
     info!("Commit completed: all staged holons processed and commit response constructed.");
     info!(
-        "[PERF-688] guest_commit: pass_1_ms={} pass_2_ms={} holon_persists={} holon_persist_ms={} inverse_resolutions={} inverse_resolution_ms={} smartlink_attempts={} smartlink_total_ms={} smartlink_expansions={} smartlink_expansion_ms={} smartlink_expansion_links={} smartlink_action_creates={} smartlink_action_create_ms={} semantic_forward_attempts={} semantic_inverse_attempts={} keyed_owns_index_attempts={} smartlink_inserted={} smartlink_already_present={} owns_key_lookups={} owns_key_lookup_ms={} owns_key_lookup_links={} lineage_target_materializations={} lineage_target_materialization_ms={} exact_historical_get_details_calls={} exact_historical_batch_requests=0 exact_historical_read_ms={} inverse_dedup_expansions={} inverse_dedup_expansion_ms={} inverse_dedup_candidates={} inverse_dedup_membership_checks={} inverse_dedup_skips={}",
+        "[PERF-688] guest_commit: validation_ms={} validation_candidates={} pass_1_ms={} pass_2_ms={} holon_persists={} holon_persist_ms={} inverse_resolutions={} inverse_resolution_ms={} smartlink_attempts={} smartlink_total_ms={} smartlink_expansions={} smartlink_expansion_ms={} smartlink_expansion_links={} smartlink_action_creates={} smartlink_action_create_ms={} semantic_forward_attempts={} semantic_inverse_attempts={} keyed_owns_index_attempts={} smartlink_inserted={} smartlink_already_present={} owns_key_lookups={} owns_key_lookup_ms={} owns_key_lookup_links={} lineage_target_materializations={} lineage_target_materialization_ms={} exact_historical_get_details_calls={} exact_historical_batch_requests=0 exact_historical_read_ms={} inverse_dedup_expansions={} inverse_dedup_expansion_ms={} inverse_dedup_candidates={} inverse_dedup_membership_checks={} inverse_dedup_skips={}",
+        performance_metrics.validation_micros / 1_000,
+        attempted_count,
         performance_metrics.commit_pass_1_micros / 1_000,
         performance_metrics.commit_pass_2_micros / 1_000,
         performance_metrics.holon_persist_count,
@@ -576,7 +534,7 @@ pub fn commit(
         performance_metrics.inverse_dedup_membership_check_count,
         performance_metrics.inverse_dedup_skip_count,
     );
-    log_commit_response(&final_status, stage_count, &saved_ids, abandoned_count, failed_count);
+    log_commit_response(&final_status, attempted_count, &saved_ids, 0, failed_count);
 
     // Done — return the CommitResponse holon reference
     Ok(response_reference)
@@ -591,21 +549,38 @@ fn log_commit_response(
     status: &str,
     attempted: i64,
     saved_ids: &[LocalId],
-    abandoned_count: usize,
+    rejected_count: usize,
     failed_count: usize,
 ) {
     info!(
-        "Commit response: status={} attempted={} saved={} abandoned={} (of which failed={})",
+        "Commit response: status={} attempted={} saved={} rejected={} failed={}",
         status,
         attempted,
         saved_ids.len(),
-        abandoned_count,
+        rejected_count,
         failed_count
     );
 
     if !saved_ids.is_empty() {
         let rendered: Vec<String> = saved_ids.iter().map(|id| short_hex(id, 8)).collect();
         debug!("Commit response saved holons: [{}]", rendered.join(", "));
+    }
+}
+
+/// Records a persistence failure without changing staged lifecycle or validation outcomes.
+///
+/// Both persistence passes use this writeback path after releasing their work locks.
+fn record_staged_error(rc_holon: &Arc<RwLock<Holon>>, error: HolonError) -> Result<(), HolonError> {
+    let mut holon = rc_holon.write().map_err(|lock_error| {
+        HolonError::FailedToAcquireLock(format!(
+            "Failed to acquire staged holon write lock for commit error writeback: {lock_error}"
+        ))
+    })?;
+    match &mut *holon {
+        Holon::Staged(staged_holon) => staged_holon.add_error(error),
+        other => Err(HolonError::InvalidType(format!(
+            "Commit error writeback requires a staged holon: {other:?}"
+        ))),
     }
 }
 
@@ -617,12 +592,12 @@ fn log_commit_response(
 ///
 /// Returns:
 /// * `Ok(Saved)` – Holon successfully created or updated.
-/// * `Ok(Abandoned)` – Holon was explicitly marked abandoned and skipped.
 /// * `Ok(NoAction)` – Holon required no persistence action.
 /// * `Err(HolonError)` – Persistence failure or invalid state.
 ///
 /// This function is only invoked from within the guest environment. It is safe and
-/// idempotent to call repeatedly; holons already committed or abandoned are skipped.
+/// idempotent to call repeatedly for already committed holons. Abandoned holons must
+/// have been excluded by candidate classification and are an invalid input here.
 fn commit_holon(
     staged_reference: &StagedReference,
     context: &Arc<TransactionContext>,
@@ -655,7 +630,7 @@ fn commit_holon(
                     &mut performance_metrics.holon_persist_micros,
                 );
 
-                info!(
+                debug!(
                     "Committed root (Create): version_id={} lineage=self",
                     short_hex(&stored.version_metadata.version_id, 8)
                 );
@@ -669,7 +644,7 @@ fn commit_holon(
                 let source_id = staged_holon.get_versioned_source_id()?;
                 staged_holon.prepare_touched_relationship_commit_scope()?;
 
-                info!(
+                debug!(
                     "Committed graph-only edit (no action): reusing source anchor {}",
                     short_hex(&source_id, 8)
                 );
@@ -700,7 +675,7 @@ fn commit_holon(
                 // The lineage is logged alongside the predecessor precisely because they differ
                 // once a lineage is more than one version deep: the new version is rooted at the
                 // lineage, not at the holon it supersedes.
-                info!(
+                debug!(
                     "Committed version (Update): version_id={} lineage_id={} predecessor={}",
                     short_hex(&stored.version_metadata.version_id, 8),
                     stored.version_metadata.lineage_root(),
@@ -709,22 +684,16 @@ fn commit_holon(
 
                 let new_local_id = stored.version_metadata.version_id;
 
-                if let Err(error) =
-                    stage_predecessor_relationship(staged_holon, context, predecessor_id)
-                {
-                    staged_holon.add_error(error.clone())?;
-                    return Err(error);
-                }
+                stage_predecessor_relationship(staged_holon, context, predecessor_id)?;
 
                 staged_holon.to_committed(new_local_id)?;
                 Ok(CommitOutcome::Saved { establishes_key_index_entry: true })
             }
 
             // === ABANDONED HOLON ============================================================
-            StagedState::Abandoned => {
-                debug!("Skipping commit for Abandoned holon.");
-                Ok(CommitOutcome::Abandoned)
-            }
+            StagedState::Abandoned => Err(HolonError::InvalidState(
+                "Abandoned holon reached node persistence after candidate classification".into(),
+            )),
 
             // === ALREADY COMMITTED OR NO-OP ================================================
             StagedState::Committed(_) | StagedState::ForUpdate => {
@@ -1223,6 +1192,39 @@ fn canonical_key_from_optional_key(key: Option<MapString>) -> Result<CanonicalKe
 #[cfg(test)]
 mod tests {
     use super::*;
+    use holons_core::core_shared_objects::holon::ValidationState;
+
+    #[test]
+    fn persistence_error_writeback_preserves_lifecycle_and_validation() -> Result<(), HolonError> {
+        for committed in [false, true] {
+            let mut staged = StagedHolon::new_for_create();
+            staged.replace_validation_outcome(ValidationState::Validated, Vec::new())?;
+            staged.add_error(HolonError::CommitFailure("earlier attempt".into()))?;
+            // Pass 1 failures leave the source live; Pass 2 failures retain its committed id.
+            if committed {
+                staged.to_committed(LocalId(vec![1]))?;
+            }
+            let original_state = staged.get_staged_state();
+            let rc_holon = Arc::new(RwLock::new(Holon::Staged(staged)));
+            record_staged_error(&rc_holon, HolonError::CommitFailure("current attempt".into()))?;
+
+            let holon = rc_holon.read().expect("test staged holon lock");
+            let Holon::Staged(staged) = &*holon else {
+                unreachable!("error writeback must preserve the staged holon");
+            };
+            assert_eq!(staged.get_staged_state(), original_state);
+            assert_eq!(staged.validation_state(), &ValidationState::Validated);
+            assert!(staged.validation_findings().is_empty());
+            assert_eq!(
+                staged.errors(),
+                &[
+                    HolonError::CommitFailure("earlier attempt".into()),
+                    HolonError::CommitFailure("current attempt".into()),
+                ]
+            );
+        }
+        Ok(())
+    }
 
     #[test]
     fn owns_key_index_occurrence_is_stable_per_key_and_distinct_between_keys() {

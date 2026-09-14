@@ -906,6 +906,9 @@
               "$ref": "LoadCommitStatus.MapEnumValueType.Incomplete"
             },
             {
+              "$ref": "LoadCommitStatus.MapEnumValueType.Rejected"
+            },
+            {
               "$ref": "LoadCommitStatus.MapEnumValueType.Skipped"
             }
           ]
@@ -946,6 +949,33 @@
         "TypeName": "Incomplete",
         "DisplayName": "Incomplete",
         "Description": "An enum variant indicating an incomplete commit."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LoadCommitStatus.MapEnumValueType.Rejected",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Rejected",
+        "DisplayName": "Rejected",
+        "Description": "Semantic assessment completed and persistence was refused; nothing was written and the transaction remains open."
       },
       "relationships": [
         {

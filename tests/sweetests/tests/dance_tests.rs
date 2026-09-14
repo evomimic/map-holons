@@ -33,7 +33,7 @@ use execution_steps::abandon_staged_changes_executor::execute_abandon_staged_cha
 use execution_steps::add_related_holons_executor::execute_add_related_holons;
 use execution_steps::begin_transaction_executor::execute_begin_transaction;
 use execution_steps::command_affordance_verification_executor::execute_verify_core_schema_command_affordances;
-use execution_steps::commit_executor::execute_commit;
+use execution_steps::commit_executor::{execute_commit, execute_verify_commit_rejection};
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::descriptor_verification_executor::{
     execute_verify_book_person_descriptors, execute_verify_book_person_instance_links,
@@ -66,11 +66,13 @@ use execution_steps::with_properties_executor::execute_with_properties;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::bootstrap_operational_schema_fixture::*;
+use fixture_cases::commit_validation_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
 use fixture_cases::ergonomic_add_remove_related_holons_fixture::*;
 use fixture_cases::load_book_person_inverse_schema_fixture::*;
 use fixture_cases::load_holons_internal_fixture::*;
+use fixture_cases::load_inverse_oriented_book_person_instances_fixture::*;
 use fixture_cases::simple_add_remove_properties_fixture::*;
 use fixture_cases::simple_add_remove_related_holons_fixture::*;
 use fixture_cases::simple_create_holon_fixture::*;
@@ -125,8 +127,10 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
         name: "runtime_behavior_matrix",
         test_cases: vec![
             load_book_person_inverse_schema_fixture().unwrap(),
+            load_inverse_oriented_book_person_instances_fixture().unwrap(),
             stage_new_version_fixture().unwrap(),
             simple_create_holon_fixture().unwrap(),
+            commit_validation_fixture().unwrap(),
             simple_abandon_staged_changes_fixture().unwrap(),
             simple_add_remove_properties_fixture().unwrap(),
             simple_add_remove_related_holons_fixture().unwrap(),
@@ -250,6 +254,15 @@ async fn run_dance_test_case(
             DanceTestStep::DeleteHolon { step_token, expected_error, .. } => {
                 execute_delete_holon(&mut test_execution_state, step_token, expected_error).await
             }
+            DanceTestStep::VerifyCommitRejection {
+                rejected_holons,
+                expected_violation_count,
+                ..
+            } => execute_verify_commit_rejection(
+                &test_execution_state,
+                rejected_holons,
+                expected_violation_count,
+            ),
             DanceTestStep::EnsureDatabaseCount { expected_count, .. } => {
                 execute_ensure_database_count(&mut test_execution_state, expected_count).await
             }
@@ -262,6 +275,7 @@ async fn run_dance_test_case(
                 expect_total_bundles,
                 expect_total_loader_holons,
                 expect_status,
+                expect_validation_violation_count,
             } => {
                 execute_load_holons_internal(
                     &mut test_execution_state,
@@ -273,6 +287,7 @@ async fn run_dance_test_case(
                     expect_total_bundles,
                     expect_total_loader_holons,
                     expect_status,
+                    expect_validation_violation_count,
                 )
                 .await
             }

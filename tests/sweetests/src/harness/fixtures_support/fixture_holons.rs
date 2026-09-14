@@ -479,6 +479,38 @@ mod tests {
     }
 
     #[test]
+    fn rejected_commit_step_preserves_heads_for_corrected_retry() {
+        use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
+
+        let context = init_fixture_context();
+        let mut fixture_holons = FixtureHolons::new();
+        let staged_token = mint_staged_token(&context, &mut fixture_holons, "rejected-book");
+        let mut test_case = DancesTestCase::default();
+
+        test_case
+            .add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Rejected, None, None)
+            .unwrap();
+        let head = fixture_holons.resolve_target_token_to_head(&staged_token).unwrap();
+        assert_eq!(head.expected_id(), staged_token.expected_id());
+        assert_eq!(head.expected_snapshot().state(), TestHolonState::Staged);
+        assert!(
+            matches!(test_case.steps.last(), Some(DanceTestStep::Commit { saved_tokens, .. }) if saved_tokens.is_empty())
+        );
+
+        // The same token can feed a correction step; a subsequent accepted Commit advances it.
+        assert_eq!(
+            fixture_holons.derive_next_source(&staged_token).unwrap().state(),
+            TestHolonState::Staged
+        );
+        test_case
+            .add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)
+            .unwrap();
+        let head = fixture_holons.resolve_target_token_to_head(&staged_token).unwrap();
+        assert_eq!(head.expected_snapshot().state(), TestHolonState::Saved);
+        assert_ne!(head.expected_id(), staged_token.expected_id());
+    }
+
+    #[test]
     fn head_advanced_token_resolves_to_saved_head() {
         let context = init_fixture_context();
         let mut fixture_holons = FixtureHolons::new();

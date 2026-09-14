@@ -4,13 +4,13 @@
 //
 //   Pass 1: Map & stage node holons (properties only); queue relationship references.
 //   Pass 2: Resolve queued edges to concrete declared links (declared, DescribedBy).
-//   Commit: Persist staged holons in one bulk commit.
+//   Commit: Validate the Nursery, then persist only when semantic assessment accepts it.
 //   Respond: Return a *transient* HolonLoadResponse (with related *transient* HolonLoadError holons).
 //
 // This controller keeps only per-call, in-memory state (no cross-call persistence).
 // It is intentionally thin: it wires together Mapper → Resolver → Commit → Response.
 
-use hdk::prelude::sys_time;
+use crate::performance::{elapsed_micros, performance_timestamp_micros};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -31,11 +31,37 @@ pub struct FileProvenance {
 
 pub type ProvenanceIndex = HashMap<MapString /* loader_holon_key */, FileProvenance>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LoadCommitStatus {
     Complete,
     Incomplete,
+    Rejected,
     Skipped,
+}
+
+impl LoadCommitStatus {
+    /// Preserves semantic rejection independently of operational persistence failures.
+    fn from_commit_status(value: Option<BaseValue>) -> Self {
+        match value {
+            Some(BaseValue::StringValue(status)) => match status.0.as_str() {
+                "Complete" => Self::Complete,
+                "Incomplete" => Self::Incomplete,
+                "Rejected" => Self::Rejected,
+                _ => {
+                    warn!("Unexpected CommitRequestStatus value in commit response: {:?}", status);
+                    Self::Incomplete
+                }
+            },
+            Some(other) => {
+                warn!("Unexpected CommitRequestStatus type in commit response: {:?}", other);
+                Self::Incomplete
+            }
+            None => {
+                warn!("Missing CommitRequestStatus in commit response");
+                Self::Incomplete
+            }
+        }
+    }
 }
 
 impl fmt::Display for LoadCommitStatus {
@@ -43,6 +69,7 @@ impl fmt::Display for LoadCommitStatus {
         let value = match self {
             LoadCommitStatus::Complete => "Complete",
             LoadCommitStatus::Incomplete => "Incomplete",
+            LoadCommitStatus::Rejected => "Rejected",
             LoadCommitStatus::Skipped => "Skipped",
         };
         write!(f, "{}", value)
@@ -103,6 +130,7 @@ impl HolonLoaderController {
                 0, // holons_committed
                 0, // links_created
                 0, // errors_encountered
+                0, // validation_violation_count (Commit not invoked)
                 total_bundles,
                 0, // total_loader_holons
                 LoadCommitStatus::Skipped,
@@ -185,6 +213,7 @@ impl HolonLoaderController {
                     0,                 // holons_committed
                     0,                 // links_created
                     pass1_error_count, // always use real error count, not holon count
+                    0,                 // validation_violation_count (Commit not invoked)
                     total_bundles,
                     total_loader_holons,
                     LoadCommitStatus::Skipped,
@@ -228,6 +257,7 @@ impl HolonLoaderController {
                 0,                     // holons_committed
                 0,                     // links_created (none attempted)
                 duplicate_error_count, // errors_encountered
+                0,                     // validation_violation_count (Commit not invoked)
                 total_bundles,
                 total_loader_holons,
                 LoadCommitStatus::Skipped,
@@ -261,6 +291,7 @@ impl HolonLoaderController {
                 0, // holons_committed
                 0, // links_created
                 0, // errors_encountered
+                0, // validation_violation_count (Commit not invoked)
                 total_bundles,
                 total_loader_holons,
                 LoadCommitStatus::Skipped,
@@ -281,7 +312,7 @@ impl HolonLoaderController {
 
         let queued_relationship_count = merged_queued_relationship_references.len();
         let pass_2_started_at = performance_timestamp_micros();
-        let ResolverOutcome { links_created, errors: resolver_errors } =
+        let ResolverOutcome { links_created, errors: resolver_errors, metrics: resolver_metrics } =
             LoaderRefResolver::resolve_relationships(
                 context,
                 merged_queued_relationship_references,
@@ -291,6 +322,12 @@ impl HolonLoaderController {
         // SHORT-CIRCUIT CASE 3:
         // If Pass 2 produced any errors, build the response now and return (skip commit).
         if !resolver_errors.is_empty() {
+            info!(
+                "[PERF-688] loader: commit_status=Skipped queued_relationships={} pass_2_ms={} {}",
+                queued_relationship_count,
+                pass_2_micros / 1_000,
+                resolver_metrics,
+            );
             let resolver_error_count = resolver_errors.len() as i64;
 
             warn!(
@@ -308,6 +345,7 @@ impl HolonLoaderController {
                 0, // holons_committed
                 links_created,
                 resolver_error_count,
+                0, // validation_violation_count (Commit not invoked)
                 total_bundles,
                 total_loader_holons,
                 LoadCommitStatus::Skipped,
@@ -351,6 +389,7 @@ impl HolonLoaderController {
                 0,
                 links_created,
                 population_error_count,
+                0, // validation_violation_count (Commit not invoked)
                 total_bundles,
                 total_loader_holons,
                 LoadCommitStatus::Skipped,
@@ -376,35 +415,14 @@ impl HolonLoaderController {
         // commit() (authoritative), while counts are retained for summary/diagnostics.
         let commit_status_value = commit_response
             .property_value(CorePropertyTypeName::CommitRequestStatus.as_property_name())?;
-        let load_commit_status = match commit_status_value {
-            Some(BaseValue::StringValue(status)) if status.0 == "Complete" => {
-                LoadCommitStatus::Complete
-            }
-            Some(BaseValue::StringValue(status)) if status.0 == "Incomplete" => {
-                LoadCommitStatus::Incomplete
-            }
-            Some(BaseValue::StringValue(status)) => {
-                warn!("Unexpected CommitRequestStatus value in commit response: {:?}", status);
-                LoadCommitStatus::Incomplete
-            }
-            Some(other) => {
-                warn!("Unexpected CommitRequestStatus type in commit response: {:?}", other);
-                LoadCommitStatus::Incomplete
-            }
-            None => {
-                warn!("Missing CommitRequestStatus in commit response");
-                LoadCommitStatus::Incomplete
-            }
-        };
+        let load_commit_status = LoadCommitStatus::from_commit_status(commit_status_value);
 
-        // Retrieve commit accounting relationships for summary diagnostics.
+        // SavedHolons counts successful node persistence, not all assessed candidates.
+        // Live candidates may produce NoAction, so these counts need not balance.
         let committed_refs = commit_response
             .related_holons(CoreRelationshipTypeName::SavedHolons.as_relationship_name())?;
-        let abandoned_refs = commit_response
-            .related_holons(CoreRelationshipTypeName::AbandonedHolons.as_relationship_name())?;
 
         let saved_holons: i64 = committed_refs.read().unwrap().get_count().0;
-        let abandoned_holons: i64 = abandoned_refs.read().unwrap().get_count().0;
 
         // Retrieve property CommitsAttempted
         let commits_attempted_val = commit_response
@@ -418,14 +436,19 @@ impl HolonLoaderController {
             None => 0,
         };
 
-        let counts_balanced = (saved_holons + abandoned_holons) == commits_attempted;
-        if matches!(load_commit_status, LoadCommitStatus::Complete) && !counts_balanced {
-            warn!(
-                "CommitRequestStatus is Complete but commit counts do not balance (saved + abandoned = {}, attempts = {})",
-                saved_holons + abandoned_holons,
-                commits_attempted
-            );
-        }
+        let validation_violation_count = match commit_response
+            .property_value(CorePropertyTypeName::ValidationViolationCount)?
+        {
+            Some(BaseValue::IntegerValue(MapInteger(count))) => count,
+            Some(other) => {
+                warn!("Unexpected ValidationViolationCount type in commit response: {:?}", other);
+                0
+            }
+            None => {
+                warn!("Missing ValidationViolationCount in commit response");
+                0
+            }
+        };
 
         let commit_errors = Self::collect_commit_errors(context)?;
         let commit_error_count = commit_errors.len() as i64;
@@ -434,17 +457,18 @@ impl HolonLoaderController {
 
         let summary = if matches!(load_commit_status, LoadCommitStatus::Complete) {
             format!(
-                "Commit successful: {} holons staged; {} committed; {} abandoned; {} attempts.",
-                total_holons_staged, saved_holons, abandoned_holons, commits_attempted
+                "Commit successful: {} holons staged; {} committed; {} attempts.",
+                total_holons_staged, saved_holons, commits_attempted
+            )
+        } else if matches!(load_commit_status, LoadCommitStatus::Rejected) {
+            format!(
+                "Commit rejected: {} holons staged; 0 committed; {} attempts; {} validation violations; findings on the returned staged holons.",
+                total_holons_staged, commits_attempted, validation_violation_count
             )
         } else {
             format!(
-                "Commit incomplete: {} holons staged; {} committed; {} abandoned; {} attempts; {} commit errors.",
-                total_holons_staged,
-                saved_holons,
-                abandoned_holons,
-                commits_attempted,
-                commit_error_count
+                "Commit incomplete: {} holons staged; {} committed; {} attempts; {} commit errors.",
+                total_holons_staged, saved_holons, commits_attempted, commit_error_count
             )
         };
 
@@ -455,6 +479,7 @@ impl HolonLoaderController {
             saved_holons,
             links_created,
             commit_error_count,
+            validation_violation_count,
             total_bundles,
             total_loader_holons,
             load_commit_status,
@@ -463,7 +488,7 @@ impl HolonLoaderController {
         )?;
 
         info!(
-            "[PERF-688] loader: total_ms={} bundles={} loader_holons={} staged_holons={} queued_relationships={} pass_1_ms={} pass_2_ms={} links_created={} default_population_ms={} guest_commit_ms={}",
+            "[PERF-688] loader: total_ms={} bundles={} loader_holons={} staged_holons={} queued_relationships={} pass_1_ms={} pass_2_ms={} links_created={} default_population_ms={} guest_commit_ms={} {}",
             elapsed_micros(load_started_at) / 1_000,
             total_bundles,
             total_loader_holons,
@@ -474,6 +499,7 @@ impl HolonLoaderController {
             links_created,
             default_population_micros / 1_000,
             guest_commit_micros / 1_000,
+            resolver_metrics,
         );
         debug!("HolonLoaderController::load_set - done");
         Ok(response_reference)
@@ -485,6 +511,7 @@ impl HolonLoaderController {
 
     /// Collects per-holon errors recorded by the commit implementation and
     /// preserves loader-key context for provenance enrichment.
+    /// Semantic findings remain on staged holons and never become loader errors.
     fn collect_commit_errors(
         context: &Arc<TransactionContext>,
     ) -> Result<Vec<ErrorWithContext>, HolonError> {
@@ -686,6 +713,7 @@ impl HolonLoaderController {
         holons_committed: i64,
         links_created: i64,
         errors_encountered: i64,
+        validation_violation_count: i64,
         total_bundles: i64,
         total_loader_holons: i64,
         load_commit_status: LoadCommitStatus,
@@ -719,6 +747,10 @@ impl HolonLoaderController {
         response_reference.with_property_value(
             CorePropertyTypeName::ErrorCount,
             BaseValue::IntegerValue(MapInteger(errors_encountered)),
+        )?;
+        response_reference.with_property_value(
+            CorePropertyTypeName::ValidationViolationCount,
+            BaseValue::IntegerValue(MapInteger(validation_violation_count)),
         )?;
         response_reference.with_property_value(
             CorePropertyTypeName::DanceSummary,
@@ -758,13 +790,5 @@ impl HolonLoaderController {
     }
 }
 
-fn performance_timestamp_micros() -> Option<i64> {
-    sys_time().ok().map(|timestamp| timestamp.as_micros())
-}
-
-fn elapsed_micros(started_at: Option<i64>) -> i64 {
-    started_at
-        .zip(performance_timestamp_micros())
-        .map(|(started_at, completed_at)| completed_at.saturating_sub(started_at))
-        .unwrap_or_default()
-}
+#[cfg(test)]
+pub(crate) mod tests;

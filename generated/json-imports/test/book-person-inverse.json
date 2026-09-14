@@ -388,7 +388,8 @@
         "TypeNamePlural": "Titles",
         "DisplayName": "Title",
         "DisplayNamePlural": "Title",
-        "Description": "A title."
+        "Description": "A title.",
+        "IsValueRequired": true
       },
       "relationships": [
         {

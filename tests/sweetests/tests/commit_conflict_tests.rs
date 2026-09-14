@@ -20,7 +20,7 @@
 //!
 //! The mutation used here is `Book --ReferencesProperty--> Title.PropertyType`, matching the graph-only
 //! phase of `stage_new_version_fixture`. `ReferencesProperty` is declared for Book instances through
-//! `Book.HolonType`'s `InstanceProperties` and is non-definitional. The Book instance is described
+//! `Book.HolonType`'s `InstanceRelationships` and is non-definitional. The Book instance is described
 //! explicitly rather than loaded, because a descriptor is what makes the relationship declaration
 //! resolvable at all.
 //!
@@ -44,12 +44,14 @@ use core_types::{
     encode_smartlink_tag, CanonicalKey, ContentSet, HolonId, SmartLink, SmartLinkTagInput,
 };
 use holons_client::ClientHolonService;
+use holons_core::core_shared_objects::holon::{StagedState, ValidationState};
 use holons_core::core_shared_objects::space_manager::HolonSpaceManager;
 use holons_core::{HolonServiceApi, ServiceRoutingPolicy};
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::{
     build_book_person_inverse_content_set, build_core_schema_bootstrap_content_set,
-    setup_probe_enabled_conductor, BOOK_DESCRIPTOR_KEY,
+    build_inverse_oriented_book_person_instance_content_set, setup_probe_enabled_conductor,
+    BOOK_DESCRIPTOR_KEY,
 };
 use holons_test::MockConductorConfig;
 use holons_trust_channel::TrustChannel;
@@ -68,7 +70,7 @@ const BOOK_KEY: &str = "Book.CommitConflict.1";
 const TITLE_PROPERTY_KEY: &str = "Title.PropertyType";
 const REFERENCES_PROPERTY: &str = "ReferencesProperty";
 
-/// Canonical key on the planted link. Differs from the book's real key, which is what makes the
+/// Canonical key on the planted link. Differs from the target property's key, which makes the
 /// commit-time write a `Conflict` rather than an idempotent `AlreadyPresent`.
 const STALE_KEY: &str = "stale-key-from-an-older-writer";
 
@@ -76,23 +78,19 @@ fn rel(name: &str) -> RelationshipName {
     RelationshipName(MapString(name.to_string()))
 }
 
-/// Creates one Book instance, described by `Book.HolonType`, and commits it.
-///
-/// Returns the saved instance's id. The `DescribedBy` edge is what makes `ReferencesProperty` resolvable on
-/// this holon later; without it the graph-only add fails with `DescriptorDeclarationNotFound`
-/// before reaching any SmartLink write.
-///
-/// The descriptor is resolved inside this function's own transaction: `HolonReference`s are
-/// transaction-bound, so only ids may cross a transaction boundary.
-async fn create_described_book(runtime: &Runtime) -> LocalId {
-    let context = begin_transaction(runtime).await;
-    let book_type = saved_reference_by_key(runtime, &context, BOOK_DESCRIPTOR_KEY).await;
+/// Stages a described Book through public commands without committing.
+async fn stage_described_book(
+    runtime: &Runtime,
+    context: &Arc<TransactionContext>,
+    key: &str,
+) -> HolonReference {
+    let book_type = saved_reference_by_key(runtime, context, BOOK_DESCRIPTOR_KEY).await;
 
     let transient = match runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
-                context: Arc::clone(&context),
-                action: TransactionAction::NewHolon { key: Some(MapString(BOOK_KEY.to_string())) },
+                context: Arc::clone(context),
+                action: TransactionAction::NewHolon { key: Some(MapString(key.to_string())) },
             }),
             ExecutionPolicy::default(),
         )
@@ -106,7 +104,7 @@ async fn create_described_book(runtime: &Runtime) -> LocalId {
     let staged = match runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
-                context: Arc::clone(&context),
+                context: Arc::clone(context),
                 action: TransactionAction::StageNewHolon { source: transient },
             }),
             ExecutionPolicy::default(),
@@ -121,8 +119,8 @@ async fn create_described_book(runtime: &Runtime) -> LocalId {
     runtime
         .execute_command(
             MapCommand::Holon(HolonCommand {
-                context: Arc::clone(&context),
-                target: staged,
+                context: Arc::clone(context),
+                target: staged.clone(),
                 action: HolonAction::Write(WritableHolonAction::AddRelatedHolons {
                     name: CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
                     holons: vec![book_type.clone()],
@@ -133,7 +131,141 @@ async fn create_described_book(runtime: &Runtime) -> LocalId {
         .await
         .expect("describing the book failed");
 
+    staged
+}
+
+/// Exercises semantic refusal, a distinct Pass 1 operational failure, and a
+/// corrected retry before supplying the saved Book used by the conflict scenario.
+async fn create_described_book(runtime: &Runtime, backend: &MockConductorConfig) -> LocalId {
+    let context = begin_transaction(runtime).await;
+    // Include an accepted candidate: rejection must prevent its node write too.
+    let control = stage_described_book(runtime, &context, "Book.CommitValidation.Control").await;
     runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: Arc::clone(&context),
+                target: control,
+                action: HolonAction::Write(WritableHolonAction::WithPropertyValue {
+                    name: "Title".to_property_name(),
+                    value: "Valid control".to_base_value(),
+                }),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("populate control Book");
+    let staged = stage_described_book(runtime, &context, BOOK_KEY).await;
+
+    // The Book deliberately starts without required Title. Capture source-chain
+    // writes, including SmartLinks, rather than relying only on discoverable nodes.
+    let before: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
+    let rejected = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&context),
+                action: TransactionAction::Commit,
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("semantic rejection is a typed response");
+    let MapResult::Reference(response) = rejected else {
+        panic!("Commit response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some("Rejected".to_base_value())
+    );
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
+        Some(1_i64.to_base_value())
+    );
+    assert!(context.is_open());
+    let HolonReference::Staged(staged_reference) = &staged else {
+        panic!("staged Book");
+    };
+    assert!(staged_reference.is_in_state(&context, StagedState::ForCreate).unwrap());
+    assert_eq!(staged_reference.validation_state().unwrap(), ValidationState::Invalid);
+    let after: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
+    assert_eq!(after, before, "rejection must author zero nodes and zero links");
+
+    // C1 checks native string compatibility, not PVL's byte limit. This is a
+    // semantically clean candidate that deterministically fails persist_holon
+    // preflight, exercising Pass 1 error recording through public Commit.
+    runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: Arc::clone(&context),
+                target: staged.clone(),
+                action: HolonAction::Write(WritableHolonAction::WithPropertyValue {
+                    name: "Title".to_property_name(),
+                    value: MapString("x".repeat(16_385)).to_base_value(),
+                }),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("stage oversized native string");
+    let incomplete = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&context),
+                action: TransactionAction::Commit,
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("Pass 1 failure returns a response");
+    let MapResult::Reference(response) = incomplete else {
+        panic!("Commit response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some("Incomplete".to_base_value())
+    );
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
+        Some(0_i64.to_base_value())
+    );
+    assert_eq!(staged_reference.validation_state().unwrap(), ValidationState::Validated);
+    assert!(staged_reference.validation_findings().unwrap().is_empty());
+    assert!(
+        staged_reference.is_in_state(&context, StagedState::ForCreate).unwrap(),
+        "operational failure retains the staged lifecycle, never Abandoned"
+    );
+    let errors = staged_reference.commit_errors().unwrap();
+    assert_eq!(errors.len(), 1, "Pass 1 records its failure exactly once");
+    assert_eq!(
+        errors[0],
+        HolonError::PvlViolation(integrity_core_types::PvlViolation::StringValueTooLarge {
+            property_name: "Title".to_property_name(),
+            actual_bytes: 16_385,
+            max_bytes: 16_384,
+        })
+    );
+    assert!(context.is_open());
+
+    runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: Arc::clone(&context),
+                target: staged.clone(),
+                action: HolonAction::Write(WritableHolonAction::WithPropertyValue {
+                    name: "Title".to_property_name(),
+                    value: "Corrected Book".to_base_value(),
+                }),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("correct missing Title");
+    let accepted = runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
                 context: Arc::clone(&context),
@@ -143,9 +275,186 @@ async fn create_described_book(runtime: &Runtime) -> LocalId {
         )
         .await
         .expect("committing the described book failed");
+    let MapResult::Reference(response) = accepted else {
+        panic!("Commit response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some("Complete".to_base_value())
+    );
+    assert_eq!(staged_reference.validation_state().unwrap(), ValidationState::Validated);
+    assert!(staged_reference.validation_findings().unwrap().is_empty());
+    let accepted_counts: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
+    assert_eq!(accepted_counts.0, before.0 + 2, "the two Books persist exactly once");
+    assert!(accepted_counts.1 > before.1, "correction persists SmartLinks");
+    assert_eq!(
+        staged_reference.commit_errors().unwrap(),
+        errors,
+        "correction preserves operational history"
+    );
 
     let context = begin_transaction(runtime).await;
     local_id_of(&saved_reference_by_key(runtime, &context, BOOK_KEY).await)
+}
+
+/// Uses an instance before its staged subtype declaration to exercise inherited
+/// relationship lookup independently of JSON order and saved inverse indexes.
+fn orientation_content_set(relationship_name: &str, declared_orientation: bool) -> ContentSet {
+    let mut content_set = build_inverse_oriented_book_person_instance_content_set().unwrap();
+    let mut bundle: serde_json::Value =
+        serde_json::from_str(&content_set.files_to_load[0].raw_contents).unwrap();
+    bundle["holons"][0]["type"] = serde_json::json!("LoaderRegressionBook.HolonType");
+    if declared_orientation {
+        bundle["holons"][1].as_object_mut().unwrap().remove("relationships");
+        bundle["holons"][0]["relationships"] = serde_json::json!([{
+            "name": "AuthoredBy", "target": {"$ref": "Person.InverseOrientationFailure.1"}
+        }]);
+    } else {
+        bundle["holons"][1]["relationships"][0]["name"] = serde_json::json!(relationship_name);
+    }
+    bundle["holons"].as_array_mut().unwrap().push(serde_json::json!({
+        "key": "LoaderRegressionBook.HolonType",
+        "type": "MetaHolonType.MetaTypeDescriptor",
+        "properties": {
+            "TypeName": "LoaderRegressionBook", "TypeNamePlural": "LoaderRegressionBooks",
+            "DisplayName": "Loader regression book", "DisplayNamePlural": "Loader regression books",
+            "Description": "Staged subtype for inherited loader orientation checks."
+        },
+        "relationships": [
+            {"name": "Extends", "target": {"$ref": "Book.HolonType"}},
+            {"name": "ComponentOf", "target": {"$ref": "BookAuthorInverseSchema"}}
+        ]
+    }));
+    content_set.files_to_load[0].raw_contents = serde_json::to_string(&bundle).unwrap();
+    content_set
+}
+
+/// Pins both boundaries: loader errors skip all persistence, while a malformed
+/// graph staged independently still exercises Commit's defensive Pass 2 error.
+async fn verify_loader_orientation_and_direct_commit_failure(
+    runtime: &Runtime,
+    backend: &MockConductorConfig,
+) {
+    for relationship_name in ["AuthorOf", "UnknownRelationship"] {
+        let context = begin_transaction(runtime).await;
+        let content_set = orientation_content_set(relationship_name, false);
+        let before: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::LoadHolons { content_set },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .expect("resolution errors must return a load response, not fail the dance");
+        let MapResult::Reference(response) = result else {
+            panic!("load response");
+        };
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
+            Some("Skipped".to_base_value())
+        );
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::HolonsCommitted).unwrap(),
+            Some(MapInteger(0).to_base_value())
+        );
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
+            Some(MapInteger(0).to_base_value())
+        );
+        let errors = response.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
+        let errors = errors.read().unwrap().get_members().clone();
+        assert_eq!(errors.len(), 1);
+        let Some(BaseValue::StringValue(MapString(message))) =
+            errors[0].property_value(CorePropertyTypeName::ErrorMessage).unwrap()
+        else {
+            panic!("loader error must carry a diagnostic");
+        };
+        assert!(message.contains(relationship_name), "{message}");
+        if relationship_name == "AuthorOf" {
+            assert!(message.contains("declared orientation"), "{message}");
+            assert!(message.contains("AuthoredBy"), "{message}");
+        } else {
+            assert!(message.contains("relationship declaration"), "{message}");
+        }
+        assert_eq!(
+            errors[0].property_value(CorePropertyTypeName::LoaderHolonKey).unwrap(),
+            Some("Person.InverseOrientationFailure.1".to_base_value())
+        );
+        let after: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        assert_eq!(after, before, "loader refusal must write neither nodes nor SmartLinks");
+        assert!(context.is_open());
+        for staged in context.staged_references().unwrap() {
+            assert!(staged.is_in_state(&context, StagedState::ForCreate).unwrap());
+            assert_eq!(staged.validation_state().unwrap(), ValidationState::ValidationRequired);
+            assert!(staged.commit_errors().unwrap().is_empty());
+        }
+        runtime.session().archive_transaction(&context.tx_id()).unwrap();
+    }
+
+    // The same staged subtype must accept inherited declared authoring. Commit
+    // remains responsible for materializing the reciprocal AuthorOf occurrence.
+    load(runtime, orientation_content_set("AuthoredBy", true), "inherited declared import").await;
+    let context = begin_transaction(runtime).await;
+    let book = saved_reference_by_key(runtime, &context, "Book.InverseOrientationFailure.1").await;
+    let person =
+        saved_reference_by_key(runtime, &context, "Person.InverseOrientationFailure.1").await;
+    for (source, name, target) in [(&book, "AuthoredBy", &person), (&person, "AuthorOf", &book)] {
+        let links = live_smartlinks(backend, &local_id_of(source), &rel(name)).await;
+        assert_eq!(links.len(), 1, "one {name} occurrence");
+        assert_eq!(links[0].target_id, HolonId::Local(local_id_of(target)));
+    }
+    runtime.session().archive_transaction(&context.tx_id()).unwrap();
+
+    let context = begin_transaction(runtime).await;
+    let book = stage_described_book(runtime, &context, "Book.UndeclaredCommit.1").await;
+    let HolonReference::Staged(mut staged) = book else {
+        panic!("staged Book");
+    };
+    staged
+        .with_property_value("Title", "Undeclared relationship regression".to_base_value())
+        .unwrap();
+    let target = saved_reference_by_key(runtime, &context, TITLE_PROPERTY_KEY).await;
+    // The explicit construction seam models malformed staged input without
+    // relaxing the ordinary mutation guard or relying on loader permissiveness.
+    staged.add_related_holons_ungoverned("UnknownRelationship", vec![target]).unwrap();
+    let result = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&context),
+                action: TransactionAction::Commit,
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("Commit returns an operationally incomplete response");
+    let MapResult::Reference(response) = result else {
+        panic!("Commit response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some("Incomplete".to_base_value())
+    );
+    assert_eq!(staged.validation_state().unwrap(), ValidationState::Validated);
+    let id = staged.holon_id().unwrap().local_id().clone();
+    assert!(staged.is_in_state(&context, StagedState::Committed(id)).unwrap());
+    let errors = staged.commit_errors().unwrap();
+    assert_eq!(errors.len(), 1);
+    assert!(matches!(&errors[0], HolonError::DescriptorDeclarationNotFound { kind, name, .. }
+        if kind == "relationship" && name == "UnknownRelationship"));
+    assert!(context.is_open());
+    runtime.session().archive_transaction(&context.tx_id()).unwrap();
 }
 
 /// Builds a runtime over `backend`, keeping the same conductor handle the test uses for raw probe
@@ -246,6 +555,11 @@ async fn load(runtime: &Runtime, content_set: ContentSet, label: &str) {
         Some(PropertyValue::IntegerValue(MapInteger(0))),
         "{label} reported loader errors: {error_messages:?}"
     );
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
+        Some("Complete".to_base_value()),
+        "{label} must persist successfully, not merely return zero operational errors"
+    );
 }
 
 /// Resolves a committed holon by key through `GetAllHolons`.
@@ -305,11 +619,13 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     load(&runtime, build_book_person_inverse_content_set().unwrap(), "book/person schema load")
         .await;
 
+    verify_loader_orientation_and_direct_commit_failure(&runtime, &backend).await;
+
     let context = begin_transaction(&runtime).await;
     let title_property_id =
         local_id_of(&saved_reference_by_key(&runtime, &context, TITLE_PROPERTY_KEY).await);
 
-    let book_id = create_described_book(&runtime).await;
+    let book_id = create_described_book(&runtime, &backend).await;
 
     // --- Phase 2: stage the graph-only relationship add ------------------------------------
     // `ReferencesProperty` is non-definitional, so this stays a graph-only edit and Pass 2 anchors the
@@ -318,6 +634,8 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     let context = begin_transaction(&runtime).await;
     // Re-resolved in this transaction: the reference from Phase 1 belongs to a closed one.
     let title_property = saved_reference_by_key(&runtime, &context, TITLE_PROPERTY_KEY).await;
+    let name_property = saved_reference_by_key(&runtime, &context, "Name.PropertyType").await;
+    let name_property_id = local_id_of(&name_property);
     let staged = match runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
@@ -339,10 +657,12 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
         .execute_command(
             MapCommand::Holon(HolonCommand {
                 context: Arc::clone(&context),
-                target: staged,
+                target: staged.clone(),
                 action: HolonAction::Write(WritableHolonAction::AddRelatedHolons {
                     name: rel(REFERENCES_PROPERTY),
-                    holons: vec![title_property.clone()],
+                    // Persist this first occurrence before hitting the planted
+                    // Title conflict. Retry must replay it idempotently.
+                    holons: vec![name_property, title_property.clone()],
                 }),
             }),
             ExecutionPolicy::default(),
@@ -365,7 +685,7 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     })
     .expect("stale tag must encode");
 
-    let _planted: LocalId = backend
+    let planted_id: LocalId = backend
         .conductor
         .call(
             &backend.cell.zome(PROBE_ZOME),
@@ -432,9 +752,14 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     );
 
     // Supporting: the requested link was not written and the planted row is untouched.
-    assert_eq!(after.len(), 1, "the conflicting link must not have been persisted");
+    assert_eq!(after.len(), 2, "one successful occurrence plus the untouched planted conflict");
     assert_eq!(
-        after[0].canonical_key.as_str(),
+        after
+            .iter()
+            .find(|link| link.target_id == HolonId::Local(title_property_id.clone()))
+            .expect("planted Title link")
+            .canonical_key
+            .as_str(),
         STALE_KEY,
         "the planted link must survive the failed commit unchanged"
     );
@@ -446,4 +771,83 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
         !from_target.iter().any(|link| link.target_id == HolonId::Local(book_id.clone())),
         "the inverse link back to the book must not be written after a forward conflict"
     );
+
+    let HolonReference::Staged(staged) = staged else {
+        panic!("staged update");
+    };
+    assert!(staged.is_in_state(&context, StagedState::Committed(book_id.clone())).unwrap());
+    assert_eq!(staged.commit_errors().unwrap().len(), 1, "one operational failure, recorded once");
+    assert!(context.is_open());
+
+    // The Name occurrence was persisted before the Title conflict. The same
+    // committed staged entry must retry that collection with zero live candidates.
+    assert!(after.iter().any(|link| link.target_id == HolonId::Local(name_property_id.clone())));
+    let described_before = live_smartlinks(
+        &backend,
+        &book_id,
+        &CoreRelationshipTypeName::DescribedBy.as_relationship_name(),
+    )
+    .await;
+    assert_eq!(described_before.len(), 1);
+    let deleted: core_types::DeleteSmartLinkOutcome =
+        backend.conductor.call(&backend.cell.zome(ZOME), "smartlink_delete", planted_id).await;
+    assert_eq!(deleted, core_types::DeleteSmartLinkOutcome::Deleted);
+    let retry_before: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
+    let retry = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&context),
+                action: TransactionAction::Commit,
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("relationship retry");
+    let MapResult::Reference(response) = retry else {
+        panic!("Commit response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some("Complete".to_base_value())
+    );
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitsAttempted).unwrap(),
+        Some(0_i64.to_base_value())
+    );
+    assert_eq!(
+        response
+            .related_holons(CoreRelationshipTypeName::SavedHolons)
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_count()
+            .0,
+        0
+    );
+    let retry_after: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
+    assert_eq!(retry_after.0, retry_before.0, "retry must not persist another node");
+    assert_eq!(
+        retry_after.1,
+        retry_before.1 + 2,
+        "only the missing forward/inverse pair is authored"
+    );
+    assert_eq!(
+        live_smartlinks(
+            &backend,
+            &book_id,
+            &CoreRelationshipTypeName::DescribedBy.as_relationship_name()
+        )
+        .await
+        .len(),
+        1,
+        "identical replay must not duplicate DescribedBy"
+    );
+    assert_eq!(live_smartlinks(&backend, &book_id, &rel(REFERENCES_PROPERTY)).await.len(), 2);
+    assert_eq!(staged.commit_errors().unwrap().len(), 1, "retry preserves operational history");
 }

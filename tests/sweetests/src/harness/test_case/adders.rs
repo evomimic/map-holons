@@ -394,6 +394,7 @@ impl DancesTestCase {
         expect_total_bundles: MapInteger,
         expect_total_loader_holons: MapInteger,
         expect_status: ExpectedLoadStatus,
+        expect_validation_violation_count: Option<MapInteger>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         self.steps.push(DanceTestStep::LoadHolonsInternal {
@@ -405,6 +406,7 @@ impl DancesTestCase {
             expect_total_bundles,
             expect_total_loader_holons,
             expect_status,
+            expect_validation_violation_count,
         });
 
         Ok(())
@@ -486,12 +488,11 @@ impl DancesTestCase {
         Ok(())
     }
 
-    // Commit advances head snapshots to Saved for existing logical holons.
+    // Rejection retains staged heads so later correction steps resolve the same holons.
     //
     // `expected_status` declares the expected `CommitRequestStatus` on the commit
-    // response. Note that fixture heads advance to Saved even for an expected
-    // `Incomplete` status: Pass 1 (holons) persists before Pass 2 (relationships)
-    // can fail, so the holons themselves are still saved.
+    // response. Existing `Incomplete` fixtures model Pass 2 failures after node
+    // persistence, so they still advance heads to Saved.
     pub fn add_commit_step(
         &mut self,
         fixture_holons: &mut FixtureHolons,
@@ -501,7 +502,11 @@ impl DancesTestCase {
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| "Commit".to_string());
-        let saved_tokens = fixture_holons.commit()?;
+        let saved_tokens = if expected_status == ExpectedCommitStatus::Rejected {
+            Vec::new()
+        } else {
+            fixture_holons.commit()?
+        };
         self.steps.push(DanceTestStep::Commit {
             saved_tokens,
             expected_status,
@@ -509,6 +514,22 @@ impl DancesTestCase {
             description,
         });
 
+        Ok(())
+    }
+
+    /// Verifies identity-only findings on the staged pool returned by the preceding Commit.
+    pub fn add_verify_commit_rejection_step(
+        &mut self,
+        rejected_holons: Vec<crate::ExpectedRejectedHolon>,
+        expected_violation_count: MapInteger,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        self.steps.push(DanceTestStep::VerifyCommitRejection {
+            rejected_holons,
+            expected_violation_count,
+            description: description.unwrap_or_else(|| "Verify Commit rejection".to_string()),
+        });
         Ok(())
     }
 

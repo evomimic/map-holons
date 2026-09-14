@@ -331,6 +331,14 @@ enum LoadCommitStatus.MapEnumValueType {
         display_name: "Incomplete"
       }
     }
+    variant Rejected {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Semantic assessment completed and persistence was refused; nothing was written and the transaction remains open."
+        display_name: "Rejected"
+      }
+    }
     variant Skipped {
       type MetaEnumVariantValueType.MetaValueType
       extends MapEnumVariantValueType.EnumVariantValueType

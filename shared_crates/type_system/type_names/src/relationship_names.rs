@@ -78,7 +78,6 @@ impl ToRelationshipName for &RelationshipName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreRelationshipTypeName {
-    AbandonedHolons,
     AffordingHolon,
     AffordsCommand,
     AffordsDance,
@@ -119,6 +118,7 @@ pub enum CoreRelationshipTypeName {
     Request,
     ReferenceSource,
     ReferenceTarget,
+    RejectedHolons,
     Response,
     ResponseBody,
     ResponseBodyFor,
@@ -168,6 +168,10 @@ mod tests {
 
     #[test]
     fn test_variant_string_conversion() {
+        assert_eq!(
+            RelationshipName(MapString("RejectedHolons".to_string())),
+            CoreRelationshipTypeName::RejectedHolons.as_relationship_name()
+        );
         assert_eq!(
             CoreRelationshipTypeName::ValidationBindingFor.as_relationship_name().to_string(),
             "ValidationBindingFor"
