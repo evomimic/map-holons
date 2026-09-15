@@ -70,6 +70,12 @@ impl ToRelationshipName for QueryRelationshipTypeName {
     }
 }
 
+impl ToRelationshipName for DancerRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.as_relationship_name()
+    }
+}
+
 impl ToRelationshipName for &QueryRelationshipTypeName {
     fn to_relationship_name(self) -> RelationshipName {
         self.clone().as_relationship_name()
@@ -83,6 +89,12 @@ impl ToRelationshipName for QueryDanceRelationshipTypeName {
 }
 
 impl ToRelationshipName for &QueryDanceRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.clone().as_relationship_name()
+    }
+}
+
+impl ToRelationshipName for &DancerRelationshipTypeName {
     fn to_relationship_name(self) -> RelationshipName {
         self.clone().as_relationship_name()
     }
@@ -177,6 +189,9 @@ impl CoreRelationshipTypeName {
 /// Canonical DAHN relationship type names.
 #[derive(Debug, Clone, VariantNames)]
 pub enum DahnRelationshipTypeName {
+    AcceptsVisualizerType,
+    HasApplicableVisualizer,
+    HasSlot,
     ImplementedBy,
 }
 
@@ -213,6 +228,21 @@ pub enum QueryDanceRelationshipTypeName {
 }
 
 impl QueryDanceRelationshipTypeName {
+    /// Canonical relationship name in ClassCase (UpperCamel).
+    pub fn as_relationship_name(&self) -> RelationshipName {
+        RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
+    }
+}
+
+/// Canonical Dancer relationship type names.
+#[derive(Debug, Clone, VariantNames)]
+pub enum DancerRelationshipTypeName {
+    AffordedByHolonSpace,
+    AffordsDancer,
+    HasExperienceVisualizerSlot,
+}
+
+impl DancerRelationshipTypeName {
     /// Canonical relationship name in ClassCase (UpperCamel).
     pub fn as_relationship_name(&self) -> RelationshipName {
         RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))

@@ -6,7 +6,7 @@
 
 use std::sync::RwLock;
 
-use core_types::HolonId;
+use holons_boundary::HolonReferenceWire;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -14,6 +14,14 @@ pub struct CanvasLaunchSelection {
     pub theme_key: String,
     pub canvas_key: String,
     pub canvas_visualizer_key: String,
+}
+
+/// Rust-selected Dancer realization to be materialized by the thin UI client.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct HomeDancerLaunchSelection {
+    pub dancer: HolonReferenceWire,
+    pub rooted_navigation_visualizer: HolonReferenceWire,
+    pub root_node_visualizer: HolonReferenceWire,
 }
 
 /// The frontend experience selected by the MAP Application Launcher.
@@ -54,9 +62,15 @@ impl ApplicationExperience {
 #[serde(rename_all = "kebab-case")]
 pub enum ApplicationSessionPhase {
     InitializingHost,
+    ActivatingHolochainApp,
     OpeningSpace,
-    BootstrappingCore,
+    PreparingCoreSchema,
+    LoadingCoreSchema,
+    VerifyingCoreSchema,
+    ActivatingBasePackages,
     RealizingCanvas,
+    SelectingHomeDancer,
+    RealizingHomeDancer,
     Ready,
     Failed,
 }
@@ -66,9 +80,11 @@ pub enum ApplicationSessionPhase {
 #[derive(Debug, Clone)]
 struct ApplicationSession {
     experience: ApplicationExperience,
+    dev_mode: bool,
     phase: ApplicationSessionPhase,
-    active_holon_space: Option<HolonId>,
+    active_holon_space: Option<HolonReferenceWire>,
     canvas_selection: Option<CanvasLaunchSelection>,
+    home_dancer_selection: Option<HomeDancerLaunchSelection>,
     failure: Option<String>,
 }
 
@@ -76,9 +92,11 @@ struct ApplicationSession {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ApplicationSessionSnapshot {
     pub experience: ApplicationExperience,
+    pub dev_mode: bool,
     pub phase: ApplicationSessionPhase,
-    pub active_holon_space: Option<String>,
+    pub active_holon_space: Option<HolonReferenceWire>,
     pub canvas_selection: Option<CanvasLaunchSelection>,
+    pub home_dancer_selection: Option<HomeDancerLaunchSelection>,
     pub failure: Option<String>,
 }
 
@@ -96,12 +114,20 @@ impl Default for ApplicationSessionState {
 
 impl ApplicationSessionState {
     pub fn new(experience: ApplicationExperience) -> Self {
+        Self::with_dev_mode(experience, crate::env::dev_mode_enabled())
+    }
+
+    /// Captures the startup mode once so the UI can report the mode actually
+    /// selected for this application session.
+    pub fn with_dev_mode(experience: ApplicationExperience, dev_mode: bool) -> Self {
         Self {
             session: RwLock::new(ApplicationSession {
                 experience,
+                dev_mode,
                 phase: ApplicationSessionPhase::InitializingHost,
                 active_holon_space: None,
                 canvas_selection: None,
+                home_dancer_selection: None,
                 failure: None,
             }),
         }
@@ -111,23 +137,49 @@ impl ApplicationSessionState {
         self.set_phase(ApplicationSessionPhase::OpeningSpace)
     }
 
-    pub fn mark_bootstrapping_core(&self) -> Result<(), String> {
-        self.set_phase(ApplicationSessionPhase::BootstrappingCore)
+    pub fn mark_activating_holochain_app(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::ActivatingHolochainApp)
+    }
+
+    pub fn mark_preparing_core_schema(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::PreparingCoreSchema)
+    }
+
+    pub fn mark_loading_core_schema(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::LoadingCoreSchema)
+    }
+
+    pub fn mark_verifying_core_schema(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::VerifyingCoreSchema)
     }
 
     pub fn mark_realizing_canvas(&self) -> Result<(), String> {
         self.set_phase(ApplicationSessionPhase::RealizingCanvas)
     }
 
+    pub fn mark_activating_base_packages(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::ActivatingBasePackages)
+    }
+
+    pub fn mark_selecting_home_dancer(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::SelectingHomeDancer)
+    }
+
+    pub fn mark_realizing_home_dancer(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::RealizingHomeDancer)
+    }
+
     pub fn mark_ready(
         &self,
-        active_holon_space: HolonId,
+        active_holon_space: HolonReferenceWire,
         canvas_selection: CanvasLaunchSelection,
+        home_dancer_selection: Option<HomeDancerLaunchSelection>,
     ) -> Result<(), String> {
         let mut session = self.write()?;
         session.phase = ApplicationSessionPhase::Ready;
         session.active_holon_space = Some(active_holon_space);
         session.canvas_selection = Some(canvas_selection);
+        session.home_dancer_selection = home_dancer_selection;
         session.failure = None;
         Ok(())
     }
@@ -146,9 +198,11 @@ impl ApplicationSessionState {
             .map_err(|error| format!("ApplicationSession lock poisoned: {error}"))?;
         Ok(ApplicationSessionSnapshot {
             experience: session.experience,
+            dev_mode: session.dev_mode,
             phase: session.phase,
-            active_holon_space: session.active_holon_space.as_ref().map(ToString::to_string),
+            active_holon_space: session.active_holon_space.clone(),
             canvas_selection: session.canvas_selection.clone(),
+            home_dancer_selection: session.home_dancer_selection.clone(),
             failure: session.failure.clone(),
         })
     }
@@ -168,42 +222,92 @@ impl ApplicationSessionState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core_types::LocalId;
+    use core_types::{HolonId, LocalId};
+    use holons_boundary::SmartReferenceWire;
+    use holons_core::core_shared_objects::transactions::TxId;
+
+    fn space_reference() -> HolonReferenceWire {
+        HolonReferenceWire::Smart(SmartReferenceWire::new(
+            TxId::from_str("0").expect("fixture transaction id"),
+            HolonId::Local(LocalId(vec![7])),
+            None,
+        ))
+    }
 
     #[test]
     fn session_is_ready_only_after_a_local_space_is_available() {
-        let state = ApplicationSessionState::new(ApplicationExperience::Canvas);
+        let state = ApplicationSessionState::with_dev_mode(ApplicationExperience::Canvas, true);
         assert_eq!(state.snapshot().unwrap().phase, ApplicationSessionPhase::InitializingHost);
 
         state.mark_opening_space().unwrap();
-        state.mark_bootstrapping_core().unwrap();
+        state.mark_activating_holochain_app().unwrap();
+        state.mark_preparing_core_schema().unwrap();
+        state.mark_loading_core_schema().unwrap();
+        state.mark_verifying_core_schema().unwrap();
         state
             .mark_ready(
-                HolonId::Local(LocalId(vec![7])),
+                space_reference(),
                 CanvasLaunchSelection {
                     theme_key: "MAP.BootstrapTheme".into(),
                     canvas_key: "MAP.BootstrapCanvas".into(),
                     canvas_visualizer_key: "MAP.BootstrapCanvasVisualizer".into(),
                 },
+                None,
             )
             .unwrap();
 
         let snapshot = state.snapshot().unwrap();
         assert_eq!(snapshot.phase, ApplicationSessionPhase::Ready);
         assert_eq!(snapshot.experience, ApplicationExperience::Canvas);
-        assert!(snapshot.active_holon_space.is_some());
+        assert!(snapshot.dev_mode);
+        assert_eq!(snapshot.active_holon_space, Some(space_reference()));
         assert_eq!(snapshot.canvas_selection.unwrap().canvas_key, "MAP.BootstrapCanvas");
+        assert_eq!(snapshot.home_dancer_selection, None);
         assert_eq!(snapshot.failure, None);
     }
 
     #[test]
+    fn session_projects_home_dancer_selection_after_its_observable_stages() {
+        let state = ApplicationSessionState::with_dev_mode(ApplicationExperience::Canvas, false);
+        state.mark_activating_base_packages().unwrap();
+        assert_eq!(
+            state.snapshot().unwrap().phase,
+            ApplicationSessionPhase::ActivatingBasePackages
+        );
+        state.mark_selecting_home_dancer().unwrap();
+        assert_eq!(state.snapshot().unwrap().phase, ApplicationSessionPhase::SelectingHomeDancer);
+        state.mark_realizing_home_dancer().unwrap();
+
+        let home_dancer_selection = HomeDancerLaunchSelection {
+            dancer: space_reference(),
+            rooted_navigation_visualizer: space_reference(),
+            root_node_visualizer: space_reference(),
+        };
+        state
+            .mark_ready(
+                space_reference(),
+                CanvasLaunchSelection {
+                    theme_key: "MAP.BootstrapTheme".into(),
+                    canvas_key: "MAP.BootstrapCanvas".into(),
+                    canvas_visualizer_key: "MAP.BootstrapCanvasVisualizer".into(),
+                },
+                Some(home_dancer_selection.clone()),
+            )
+            .unwrap();
+
+        assert_eq!(state.snapshot().unwrap().home_dancer_selection, Some(home_dancer_selection));
+    }
+
+    #[test]
     fn failure_retains_its_diagnostic_without_inventing_a_ready_space() {
-        let state = ApplicationSessionState::new(ApplicationExperience::HolonsLoader);
+        let state =
+            ApplicationSessionState::with_dev_mode(ApplicationExperience::HolonsLoader, false);
         state.mark_failed("Core bootstrap failed").unwrap();
 
         let snapshot = state.snapshot().unwrap();
         assert_eq!(snapshot.phase, ApplicationSessionPhase::Failed);
         assert_eq!(snapshot.experience, ApplicationExperience::HolonsLoader);
+        assert!(!snapshot.dev_mode);
         assert_eq!(snapshot.active_holon_space, None);
         assert_eq!(snapshot.failure.as_deref(), Some("Core bootstrap failed"));
     }

@@ -2,6 +2,7 @@ export interface CanvasRootParts {
   root: HTMLDivElement;
   chrome: HTMLElement;
   hostedDancerRegion: HTMLElement;
+  awaitingHomeDancer: HTMLParagraphElement;
   primarySlot: HTMLDivElement;
 }
 
@@ -14,6 +15,7 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   root.style.padding = 'var(--dahn-canvas-padding)';
   root.style.background = 'var(--dahn-canvas-surface-background, #f7f5ef)';
   root.style.color = 'var(--dahn-canvas-text-color, #1d2430)';
+  root.style.height = '100%';
   root.style.minHeight = '100%';
 
   const chrome = document.createElement('header');
@@ -30,6 +32,8 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   hostedDancerRegion.dataset['dahnCanvasState'] = 'awaiting-home-dancer';
   hostedDancerRegion.style.display = 'flex';
   hostedDancerRegion.style.flexDirection = 'column';
+  hostedDancerRegion.style.flexGrow = '1';
+  hostedDancerRegion.style.minHeight = '0';
   hostedDancerRegion.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
   hostedDancerRegion.style.minHeight = '12rem';
 
@@ -37,6 +41,8 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   primarySlot.dataset['dahnCanvasSlot'] = 'primary';
   primarySlot.style.display = 'flex';
   primarySlot.style.flexDirection = 'column';
+  primarySlot.style.flexGrow = '1';
+  primarySlot.style.minHeight = '0';
   primarySlot.style.gap = 'var(--dahn-canvas-gap)';
 
   const awaitingHomeDancer = document.createElement('p');
@@ -47,5 +53,5 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   root.append(chrome, hostedDancerRegion);
   container.append(root);
 
-  return { root, chrome, hostedDancerRegion, primarySlot };
+  return { root, chrome, hostedDancerRegion, awaitingHomeDancer, primarySlot };
 }

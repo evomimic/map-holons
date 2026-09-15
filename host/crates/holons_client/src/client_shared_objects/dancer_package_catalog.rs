@@ -2,16 +2,21 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use super::client_holon_service::run_future_synchronously;
 use base_types::MapString;
 use core_types::{ContentSet, FileData, HolonError};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::{ReadableHolon, WritableHolon};
 use serde::Deserialize;
 
-/// Host-owned catalog of locally bundled Dancer packages.
+/// Transitional host-owned catalog of locally bundled Dancer packages.
 ///
-/// The catalog maps semantic package identities to packaged resources. It
-/// deliberately knows nothing about individual Dance names or Visualizers.
+/// This is a bootstrap installer/cache for development and locally bundled
+/// assets, not the authority for Dancer discovery or home-Dancer selection.
+/// Those decisions belong to DHT-backed Holons and their relationships within
+/// the active HolonSpace. The catalog maps semantic package identities to
+/// packaged resources and deliberately knows nothing about individual Dance
+/// names or Visualizers.
 #[derive(Debug, Clone)]
 pub struct DancerPackageCatalog {
     packages: Arc<HashMap<MapString, PathBuf>>,
@@ -57,7 +62,12 @@ impl DancerPackageCatalog {
         )
     }
 
-    /// Loads a package once per host runtime using an isolated transaction.
+    /// Loads a locally bundled bootstrap package once per host runtime using
+    /// an isolated transaction.
+    ///
+    /// Loading makes a package's Holons available locally; it does not confer
+    /// authority to select the package's Dancer. Runtime selection must read
+    /// the active HolonSpace's DHT-backed relationship state.
     pub fn activate(
         &self,
         context: &Arc<TransactionContext>,
@@ -76,7 +86,7 @@ impl DancerPackageCatalog {
             let presentation =
                 package_content_set(&self.presentation_package, &presentation_identity)?;
             let isolated_context = context.open_isolated_transaction()?;
-            futures_executor::block_on(holons_loader_client::load_holons_from_files(
+            run_future_synchronously(holons_loader_client::load_holons_from_files(
                 isolated_context,
                 presentation.content_set,
             ))?;
@@ -91,7 +101,7 @@ impl DancerPackageCatalog {
         })?;
         let package_content = package_content_set(package_directory, package_identity)?;
         let isolated_context = context.open_isolated_transaction()?;
-        futures_executor::block_on(holons_loader_client::load_holons_from_files(
+        run_future_synchronously(holons_loader_client::load_holons_from_files(
             isolated_context,
             package_content.content_set,
         ))?;

@@ -71,6 +71,7 @@ import {
   createTransientHolonReference,
   HolonReference,
   TransientHolonReference,
+  unwrapHolonReference,
 } from '../../src/sdk/references';
 import { createMapTransaction, MapTransaction } from '../../src/sdk/transaction';
 
@@ -163,6 +164,32 @@ describe('MapTransaction', () => {
     await expect(transaction().commit()).resolves.toBeUndefined();
     expect(commitMock).toHaveBeenCalledTimes(1);
     expect(commitMock).toHaveBeenCalledWith(txId);
+  });
+
+  it('rebinds a persisted application-session reference to this transaction', () => {
+    const sessionReference: HolonReferenceWire = {
+      Smart: {
+        tx_id: 7,
+        holon_id: holonId,
+        smart_property_values: null,
+      },
+    };
+
+    const rebound = transaction().bindPersistedReference(sessionReference);
+
+    expect(unwrapHolonReference(rebound)).toEqual({
+      Smart: {
+        tx_id: txId,
+        holon_id: holonId,
+        smart_property_values: null,
+      },
+    });
+  });
+
+  it('rejects transaction-local references supplied by an application session', () => {
+    expect(() => transaction().bindPersistedReference(transientReference)).toThrow(
+      'persisted Smart references',
+    );
   });
 
   it('wraps newHolon results as transient references', async () => {

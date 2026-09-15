@@ -39,10 +39,10 @@ const canvasDescriptor: CanvasDescriptor = {
 };
 
 const visualizerDefinition: VisualizerDefinition = {
-  id: 'holon-node',
-  displayName: 'Holon Node',
+  id: 'path-inspector',
+  displayName: 'Path Inspector',
   version: '0.0.0',
-  componentTag: 'map-holon-node',
+  componentTag: 'map-path-inspector',
   supportedTargets: [{ kind: 'holon-node' }],
   load: async () => {},
 };

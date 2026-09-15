@@ -2231,14 +2231,16 @@ holon Example.HolonType {
             serde_json::from_str(&fs::read_to_string(out_dir.join("dahn/schema.json"))?)?;
         let holons = dahn["holons"].as_array().expect("DAHN schema holons array");
 
-        for key in [
-            "CanvasVisualizer.HolonType",
-            "NodeVisualizer.HolonType",
-            "CollectionVisualizer.HolonType",
-            "PropertiesVisualizer.HolonType",
-            "ValueVisualizer.HolonType",
-            "ActionVisualizer.HolonType",
-            "GraphVisualizer.HolonType",
+        for (key, parent) in [
+            ("CanvasVisualizer.HolonType", "Visualizer.HolonType"),
+            ("NodeVisualizer.HolonType", "Visualizer.HolonType"),
+            ("StructureVisualizer.HolonType", "Visualizer.HolonType"),
+            ("RootedNavigationVisualizer.HolonType", "StructureVisualizer.HolonType"),
+            ("CollectionVisualizer.HolonType", "Visualizer.HolonType"),
+            ("PropertiesVisualizer.HolonType", "Visualizer.HolonType"),
+            ("ValueVisualizer.HolonType", "Visualizer.HolonType"),
+            ("ActionVisualizer.HolonType", "Visualizer.HolonType"),
+            ("GraphVisualizer.HolonType", "Visualizer.HolonType"),
         ] {
             let visualizer_type = holons
                 .iter()
@@ -2252,8 +2254,35 @@ holon Example.HolonType {
                         .find(|relationship| relationship["name"].as_str() == Some("Extends"))
                 })
                 .context("Extends relationship")?;
-            assert_eq!(extends["target"][0]["$ref"], "Visualizer.HolonType");
+            assert_eq!(extends["target"][0]["$ref"], parent);
         }
+
+        let holon_inspector = holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("HolonInspector.NodeVisualizer"))
+            .context("Holon Inspector Node Visualizer holon")?;
+        assert_eq!(holon_inspector["type"], "NodeVisualizer.HolonType");
+        let holon_inspector_relationships =
+            holon_inspector["relationships"].as_array().context("Holon Inspector relationships")?;
+        let applicable_to_type = holon_inspector_relationships
+            .iter()
+            .find(|relationship| relationship["name"].as_str() == Some("ApplicableToType"))
+            .context("Holon Inspector ApplicableToType relationship")?;
+        assert_eq!(applicable_to_type["target"][0]["$ref"], "HolonType.TypeDescriptor");
+        let implemented_by = holon_inspector_relationships
+            .iter()
+            .find(|relationship| relationship["name"].as_str() == Some("ImplementedBy"))
+            .context("Path Inspector ImplementedBy relationship")?;
+        assert_eq!(
+            implemented_by["target"][0]["$ref"],
+            "HolonInspectorTypeScript.VisualizerImplementation"
+        );
+
+        let path_inspector = holons
+            .iter()
+            .find(|holon| holon["key"].as_str() == Some("PathInspector.RootedNavigationVisualizer"))
+            .context("Path Inspector RootedNavigation Visualizer holon")?;
+        assert_eq!(path_inspector["type"], "RootedNavigationVisualizer.HolonType");
 
         let house_troupe_out_dir = temp_out_dir();
         let house_troupe_source = fixture_dir()
@@ -2265,46 +2294,6 @@ holon Example.HolonType {
             serde_json::from_str(&fs::read_to_string(house_troupe_out_dir.join("schema.json"))?)?;
         let space_navigator_holons =
             space_navigator["holons"].as_array().expect("Space Navigator schema holons array");
-        let generic_node_visualizer = space_navigator_holons
-            .iter()
-            .find(|holon| {
-                holon["key"].as_str() == Some("GenericHolonNodeVisualizer.NodeVisualizer")
-            })
-            .context("Generic Holon Node Visualizer package holon")?;
-        assert_eq!(generic_node_visualizer["type"], "NodeVisualizer.HolonType");
-
-        let relationships = generic_node_visualizer["relationships"]
-            .as_array()
-            .context("Generic Holon Node Visualizer relationships")?;
-        let applicable_to_type = relationships
-            .iter()
-            .find(|relationship| relationship["name"].as_str() == Some("ApplicableToType"))
-            .context("ApplicableToType relationship")?;
-        assert_eq!(applicable_to_type["target"][0]["$ref"], "HolonType.TypeDescriptor");
-        let implemented_by = relationships
-            .iter()
-            .find(|relationship| relationship["name"].as_str() == Some("ImplementedBy"))
-            .context("ImplementedBy relationship")?;
-        assert_eq!(
-            implemented_by["target"][0]["$ref"],
-            "GenericHolonNodeTypeScript.VisualizerImplementation"
-        );
-
-        let generic_node_implementation = space_navigator_holons
-            .iter()
-            .find(|holon| {
-                holon["key"].as_str() == Some("GenericHolonNodeTypeScript.VisualizerImplementation")
-            })
-            .context("Generic Holon Node Visualizer implementation")?;
-        assert_eq!(
-            generic_node_implementation["properties"]["VisualizerImplementationRuntime"],
-            "TypeScript"
-        );
-        assert_eq!(
-            generic_node_implementation["properties"]["VisualizerImplementationKey"],
-            "dahn.generic-holon-node"
-        );
-
         let canvas_visualizer = space_navigator_holons
             .iter()
             .find(|holon| holon["key"].as_str() == Some("SpaceNavigator.CanvasVisualizer"))

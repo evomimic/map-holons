@@ -5,6 +5,7 @@ import {
   ApplicationSessionService,
   type ApplicationExperience,
 } from './services/application-session.service';
+import { updateStartupOverlayPhase } from './startup-overlay';
 
 @Component({
   selector: 'app-root',
@@ -19,7 +20,9 @@ export class App implements OnInit {
 
   async ngOnInit(): Promise<void> {
     try {
-      const session = await this.applicationSession.waitForReady();
+      const session = await this.applicationSession.waitForReady((snapshot) => {
+        updateStartupOverlayPhase(snapshot.phase, snapshot.failure, snapshot.dev_mode);
+      });
       if (session.phase !== 'ready') {
         this.failure.set(session.failure ?? `Application session stopped in '${session.phase}'.`);
         return;

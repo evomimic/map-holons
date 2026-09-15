@@ -13,6 +13,7 @@ export type {
   HolonId,
   MapString,
   HolonReference,
+  HolonReferenceWire,
   PropertyDescriptorHandle,
   ReadableHolon,
   RelationshipDescriptorHandle,
