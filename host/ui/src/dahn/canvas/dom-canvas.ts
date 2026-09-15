@@ -19,6 +19,7 @@ export class DomCanvas implements CanvasApi {
   private readonly root: HTMLDivElement;
   private readonly primarySlot: HTMLDivElement;
   private readonly hostedDancerRegion: HTMLElement;
+  private readonly awaitingHomeDancer: HTMLParagraphElement;
 
   constructor(
     container: HTMLElement,
@@ -29,6 +30,7 @@ export class DomCanvas implements CanvasApi {
     this.root = parts.root;
     this.primarySlot = parts.primarySlot;
     this.hostedDancerRegion = parts.hostedDancerRegion;
+    this.awaitingHomeDancer = parts.awaitingHomeDancer;
   }
 
   /**
@@ -67,11 +69,13 @@ export class DomCanvas implements CanvasApi {
 
     this.hostedDancerRegion.dataset['dahnCanvasState'] =
       plan.length === 0 ? 'awaiting-home-dancer' : 'mounted';
+    this.awaitingHomeDancer.hidden = plan.length > 0;
   }
 
   clear(): void {
     this.primarySlot.replaceChildren();
     this.hostedDancerRegion.dataset['dahnCanvasState'] = 'awaiting-home-dancer';
+    this.awaitingHomeDancer.hidden = false;
   }
 
   setTheme(theme: DahnTheme): void {

@@ -375,6 +375,40 @@
       }
     },
     {
+      "key": "HolonInspector.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "HolonInspectorTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:32a82a5fa4faa873efbc3519263d99050c1c898db2de7cb6e099cc6e1c9b6eb1",
+        "VisualizerImplementationKey": "dahn.holon-inspector",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
       "key": "NodeVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType",
       "properties": {
@@ -402,6 +436,121 @@
           ]
         }
       ]
+    },
+    {
+      "key": "StructureVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "StructureVisualizer",
+        "TypeNamePlural": "StructureVisualizers",
+        "DisplayName": "Structure Visualizer",
+        "DisplayNamePlural": "Structure Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that realize a multi-Holon semantic structure organized by a topology."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RootedNavigationVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "RootedNavigationVisualizer",
+        "TypeNamePlural": "RootedNavigationVisualizers",
+        "DisplayName": "Rooted Navigation Visualizer",
+        "DisplayNamePlural": "Rooted Navigation Visualizers",
+        "Description": "Structure Visualizer subkind for interaction-derived navigation rooted at one Holon."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "StructureVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PathInspector.RootedNavigationVisualizer",
+      "type": "RootedNavigationVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "PathInspector.RootNodeSlot"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "PathInspectorTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PathInspector.RootNodeSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "NodeVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PathInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:2a848a082987045e94989ddee5cdbc3ca46ffebf316c1c6536125e682eaa9936",
+        "VisualizerImplementationKey": "dahn.path-inspector",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
     },
     {
       "key": "CollectionVisualizer.HolonType",

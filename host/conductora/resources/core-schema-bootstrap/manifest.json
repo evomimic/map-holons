@@ -99,7 +99,7 @@
     },
     {
       "path": "imports/dancer/schema.json",
-      "sha256": "8631b30f13b52db3197e5e4926cf3a4b0b4b8b3bf418d4370ecfbf8451cb4dbc"
+      "sha256": "6927ad47307bb083c4fdf2b2c3f5310bfa26cc7ed8d5311a0ef5f9ec1b8043a1"
     },
     {
       "path": "imports/commands/schema.json",
@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "d048f4907a540c4ee2c222f68eb64d86856166046d1e83300b1105adbe006717"
+      "sha256": "78d07b7f31a6fd2895b1b1e4e8b6e453817d9a0cf6cd869684b0c8135756b8ab"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -213,6 +213,14 @@
     },
     {
       "key": "(DanceType.HolonType)-[Response]->(DanceResponseType.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Dancer.HolonType)-[HasExperienceVisualizerSlot]->(VisualizerSlot.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -317,6 +325,10 @@
     },
     {
       "key": "(HolonLoaderBundle.HolonType)-[ContainedIn]->(HolonLoadSet.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[AffordsDancer]->(Dancer.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -734,6 +746,10 @@
     {
       "key": "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[ExperienceSlotForDancer]->(Dancer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(VisualizerSlot.HolonType)-[FulfilledByVisualizerUsage]->(VisualizerUsage.HolonType)",
@@ -1412,6 +1428,14 @@
       "type": "MetaBytesValueType.MetaValueType"
     },
     {
+      "key": "HolonInspector.NodeVisualizer",
+      "type": "NodeVisualizer.HolonType"
+    },
+    {
+      "key": "HolonInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
       "key": "HolonKey.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -1912,6 +1936,18 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "PathInspector.RootNodeSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "PathInspector.RootedNavigationVisualizer",
+      "type": "RootedNavigationVisualizer.HolonType"
+    },
+    {
+      "key": "PathInspectorTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
       "key": "PresentationValue.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -2144,6 +2180,10 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "RootedNavigationVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType"
+    },
+    {
       "key": "Rule.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -2202,6 +2242,10 @@
     {
       "key": "StrokeStyle.DesignTokenType",
       "type": "MetaStringValueType.MetaValueType"
+    },
+    {
+      "key": "StructureVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType"
     },
     {
       "key": "Summarize.CommandType",

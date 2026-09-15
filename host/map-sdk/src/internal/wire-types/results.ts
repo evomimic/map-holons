@@ -32,6 +32,7 @@ function isVisualizerSelectionWire(value: unknown): value is VisualizerSelection
   return isRecord(value) && isHolonReferenceWire(value['selected']) &&
     (value['requested_kind'] === 'Canvas' ||
       value['requested_kind'] === 'Node' ||
+      value['requested_kind'] === 'RootedNavigation' ||
       value['requested_kind'] === 'Collection' ||
       value['requested_kind'] === 'Properties' ||
       value['requested_kind'] === 'Value' ||

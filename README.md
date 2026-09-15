@@ -38,10 +38,14 @@ Enter the nix shell by running this in the root folder of the repository:
 
 ```bash
 nix develop
-npm install
+npm ci
 ```
 
 **Run all the other instructions in this README from inside this nix shell, otherwise they won't work**.
+
+`npm run deps:check` verifies that installed packages still match the root workspace manifests and lockfile. It runs
+automatically before `npm start`. If it reports stale or missing dependencies, run `npm ci` from the repository root.
+Use `npm install` only when intentionally changing npm dependencies and updating `package-lock.json`.
 
 ## Running 2 agents
 

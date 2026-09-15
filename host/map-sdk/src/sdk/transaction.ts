@@ -1,6 +1,7 @@
 import { DomainError } from '../internal';
 import * as internalTransaction from '../internal/commands/transaction';
 import type {
+  HolonReferenceWire,
   HolonId,
   LocalId,
   PropertyName,
@@ -29,6 +30,7 @@ import {
 export type VisualizerKind =
   | 'canvas'
   | 'node'
+  | 'rootedNavigation'
   | 'collection'
   | 'properties'
   | 'value'
@@ -84,6 +86,21 @@ export class MapTransaction {
 
   async commit(): Promise<void> {
     await internalTransaction.commit(txIdFor(this));
+  }
+
+  /**
+   * Rebinds a persisted reference projected by a separate runtime session into
+   * this transaction. Session handoffs may only carry Smart references: staged
+   * and transient references are transaction-local and cannot cross this seam.
+   */
+  bindPersistedReference(reference: HolonReferenceWire): HolonReference {
+    if (!('Smart' in reference)) {
+      throw new TypeError('Application-session references must be persisted Smart references');
+    }
+
+    return createHolonReference(txIdFor(this), {
+      Smart: { ...reference.Smart, tx_id: txIdFor(this) },
+    });
   }
 
   async newHolon(key?: string): Promise<TransientHolonReference> {
@@ -305,11 +322,17 @@ export class MapTransaction {
     );
     return {
       selected: createHolonReference(txId, wire.selected),
-      requestedKind: wire.requested_kind.toLowerCase() as VisualizerKind,
+      requestedKind: fromVisualizerKindWire(wire.requested_kind),
       alternativesAvailable: wire.alternatives_available,
     };
   }
 
+}
+
+function fromVisualizerKindWire(kind: ReturnType<typeof toVisualizerKindWire>): VisualizerKind {
+  return kind === 'RootedNavigation'
+    ? 'rootedNavigation'
+    : kind.toLowerCase() as VisualizerKind;
 }
 
 // ===========================================
@@ -334,13 +357,18 @@ function toSmartReferenceWire(
 function toVisualizerKindWire(kind: VisualizerKind):
   | 'Canvas'
   | 'Node'
+  | 'RootedNavigation'
   | 'Collection'
   | 'Properties'
   | 'Value'
   | 'Action' {
+  if (kind === 'rootedNavigation') {
+    return 'RootedNavigation';
+  }
   return `${kind[0].toUpperCase()}${kind.slice(1)}` as
     | 'Canvas'
     | 'Node'
+    | 'RootedNavigation'
     | 'Collection'
     | 'Properties'
     | 'Value'

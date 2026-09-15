@@ -7,7 +7,7 @@ describe('MaterializedVisualizerCache', () => {
       source: 'export default class Visualizer {}', format: 'ESModule', entrypoint: 'default',
     });
     const cache = new MaterializedVisualizerCache({ materialize });
-    const selected = { key: vi.fn().mockResolvedValue('GenericHolonNodeVisualizer.NodeVisualizer') };
+    const selected = { key: vi.fn().mockResolvedValue('PathInspector.RootedNavigationVisualizer') };
 
     await Promise.all([cache.get(selected as never), cache.get(selected as never)]);
     expect(materialize).toHaveBeenCalledTimes(1);

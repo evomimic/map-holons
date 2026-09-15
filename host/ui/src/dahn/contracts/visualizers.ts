@@ -38,11 +38,19 @@ export interface VisualizerDefinition {
  * Common context passed into Web Component visualizers.
  */
 export interface VisualizerContext {
+  /** Human-readable occurrence identity supplied by the parent composition. */
+  title?: string;
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];
   theme: DahnTheme;
   canvas: CanvasApi;
+  /**
+   * Child visualizers already selected by Rust and instantiated by this
+   * visualizer's parent. Their slot keys are composition-local, never
+   * semantic implementation identifiers.
+   */
+  childVisualizers?: ReadonlyMap<string, HTMLElement>;
   /**
    * Collection data already projected into renderer-owned table values.
    *

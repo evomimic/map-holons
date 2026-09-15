@@ -1,12 +1,19 @@
 import { Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { once } from '@tauri-apps/api/event';
+import type { HolonReferenceWire } from '../../dahn/deps/map-sdk';
 
 export type ApplicationSessionPhase =
   | 'initializing-host'
+  | 'activating-holochain-app'
   | 'opening-space'
-  | 'bootstrapping-core'
+  | 'preparing-core-schema'
+  | 'loading-core-schema'
+  | 'verifying-core-schema'
+  | 'activating-base-packages'
   | 'realizing-canvas'
+  | 'selecting-home-dancer'
+  | 'realizing-home-dancer'
   | 'ready'
   | 'failed';
 
@@ -18,11 +25,19 @@ export interface CanvasLaunchSelection {
   canvas_visualizer_key: string;
 }
 
+export interface HomeDancerLaunchSelection {
+  dancer: HolonReferenceWire;
+  rooted_navigation_visualizer: HolonReferenceWire;
+  root_node_visualizer: HolonReferenceWire;
+}
+
 export interface ApplicationSessionSnapshot {
   experience: ApplicationExperience;
+  dev_mode: boolean;
   phase: ApplicationSessionPhase;
-  active_holon_space: string | null;
+  active_holon_space: HolonReferenceWire | null;
   canvas_selection: CanvasLaunchSelection | null;
+  home_dancer_selection: HomeDancerLaunchSelection | null;
   failure: string | null;
 }
 
@@ -35,18 +50,25 @@ function isTauri(): boolean {
 /** Thin readiness client for the Rust-owned MAP Application Launcher. */
 @Injectable({ providedIn: 'root' })
 export class ApplicationSessionService {
-  async waitForReady(): Promise<ApplicationSessionSnapshot> {
+  async waitForReady(
+    onProgress?: (snapshot: ApplicationSessionSnapshot) => void,
+  ): Promise<ApplicationSessionSnapshot> {
     if (!isTauri()) {
-      return {
+      const ready: ApplicationSessionSnapshot = {
         experience: 'canvas',
+        dev_mode: false,
         phase: 'ready',
-        active_holon_space: 'browser-preview',
+        active_holon_space: null,
         canvas_selection: null,
+        home_dancer_selection: null,
         failure: null,
       };
+      onProgress?.(ready);
+      return ready;
     }
 
     const initial = await this.snapshot();
+    onProgress?.(initial);
     if (initial.phase === 'ready' || initial.phase === 'failed') {
       return initial;
     }
@@ -56,10 +78,21 @@ export class ApplicationSessionService {
       resolveReady = resolve;
     });
     const unlisten = await once(STARTUP_READY_EVENT, resolveReady);
+    const poll = window.setInterval(() => {
+      void this.snapshot().then((snapshot) => {
+        onProgress?.(snapshot);
+        if (snapshot.phase === 'failed') {
+          resolveReady();
+        }
+      });
+    }, 250);
     try {
       await ready;
-      return this.snapshot();
+      const snapshot = await this.snapshot();
+      onProgress?.(snapshot);
+      return snapshot;
     } finally {
+      window.clearInterval(poll);
       unlisten();
     }
   }

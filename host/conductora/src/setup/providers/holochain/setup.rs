@@ -1,6 +1,7 @@
 use crate::config::providers::holochain::{CellDetail, HolochainConfig};
 use crate::config::StorageProvider;
 use crate::runtime::RuntimeInitiatorState;
+use crate::setup::application_launcher::ApplicationSessionState;
 use crate::setup::common_setup::{register_receptor, serialize_props};
 use crate::setup::window_setup::ProviderWindowSetup;
 use async_trait::async_trait;
@@ -52,6 +53,11 @@ impl HolochainSetup {
             .await
             .map_err(tauri_plugin_holochain::Error::ConductorApiError)?;
 
+        handle
+            .try_state::<ApplicationSessionState>()
+            .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?
+            .mark_activating_holochain_app()
+            .map_err(anyhow::Error::msg)?;
         let t_install = std::time::Instant::now();
         if dev_mode && Self::is_app_installed(&installed_apps, app_id.clone()) {
             // Dev mode but app is already installed (wipe didn't clear it, e.g. first-ever run
