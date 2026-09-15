@@ -46,6 +46,12 @@ export interface VisualizerContext {
   theme: DahnTheme;
   canvas: CanvasApi;
   /**
+   * Child visualizers already selected by Rust and instantiated by this
+   * visualizer's parent. Their slot keys are composition-local, never
+   * semantic implementation identifiers.
+   */
+  childVisualizers?: ReadonlyMap<string, HTMLElement>;
+  /**
    * Collection data already projected into renderer-owned table values.
    *
    * Only Collection Visualizers consume this optional context. Keeping it

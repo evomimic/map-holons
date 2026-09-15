@@ -164,7 +164,9 @@ impl CoreRelationshipTypeName {
 /// Canonical DAHN relationship type names.
 #[derive(Debug, Clone, VariantNames)]
 pub enum DahnRelationshipTypeName {
+    AcceptsVisualizerType,
     HasApplicableVisualizer,
+    HasSlot,
     ImplementedBy,
 }
 
@@ -180,6 +182,7 @@ impl DahnRelationshipTypeName {
 pub enum DancerRelationshipTypeName {
     AffordedByHolonSpace,
     AffordsDancer,
+    HasExperienceVisualizerSlot,
 }
 
 impl DancerRelationshipTypeName {

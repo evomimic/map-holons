@@ -153,7 +153,6 @@ impl AppBuilder {
                         .try_state::<ApplicationSessionState>()
                         .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?;
                     application_session.mark_opening_space().map_err(anyhow::Error::msg)?;
-                    application_session.mark_bootstrapping_core().map_err(anyhow::Error::msg)?;
                     let bootstrap_started_at = Instant::now();
                     ensure_core_schema_space(&handle)
                         .await
@@ -235,7 +234,10 @@ impl AppBuilder {
                         let home_dancer_selection =
                             home_dancer.map(|selection| HomeDancerLaunchSelection {
                                 dancer: selection.dancer.into(),
-                                node_visualizer: selection.node_visualizer.into(),
+                                rooted_navigation_visualizer: selection
+                                    .rooted_navigation_visualizer
+                                    .into(),
+                                root_node_visualizer: selection.root_node_visualizer.into(),
                             });
                         runtime.session().archive_transaction(&tx_id)?;
                         tracing::info!("[PERF-707] canvas_selection: transaction archived");

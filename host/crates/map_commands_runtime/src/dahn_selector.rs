@@ -46,17 +46,20 @@ pub enum HomeDancerRuntime {
     Local,
 }
 
-/// Rust-selected home Dancer and its applicable top-level Node Visualizer.
+/// Rust-selected home Dancer and the two concrete visualizers in its initial
+/// experience composition. The Dancer owns the Structure slot; the Structure
+/// visualizer owns the Node slot.
 pub struct HomeDancerSelection {
     pub dancer: HolonReference,
-    pub node_visualizer: HolonReference,
+    pub rooted_navigation_visualizer: HolonReference,
+    pub root_node_visualizer: HolonReference,
 }
 
 /// Resolves the active HolonSpace's afforded Dancer candidates.
 ///
 /// A missing declaration is a deliberate empty-home result. A non-empty
-/// declaration with no Dancer that can realize a Node Visualizer is an error;
-/// callers must not substitute a generic visualizer or a named Dancer.
+/// declaration with no Dancer that can realize its declared RootedNavigation
+/// experience is an error; callers must not substitute a named visualizer.
 pub fn select_home_dancer(
     context: &Arc<TransactionContext>,
     selection_context: HomeDancerSelectionContext,
@@ -94,9 +97,36 @@ pub fn select_home_dancer(
         if !equals_or_extends(&candidate_type, &dancer_type)? {
             continue;
         }
-        match select_node_visualizer(context, candidate.clone()) {
-            Ok(node_visualizer) => {
-                compatible.push(HomeDancerSelection { dancer: candidate, node_visualizer })
+        match select_rooted_navigation_visualizer(
+            context,
+            selection_context.active_holon_space.clone(),
+        ) {
+            Ok(rooted_navigation_visualizer) => {
+                // A Dancer must own an explicit experience slot. Selection is
+                // still applicability-driven, rather than a lookup by slot.
+                let dancer_slot = require_single_related(
+                    &candidate,
+                    DancerRelationshipTypeName::HasExperienceVisualizerSlot,
+                    "Dancer experience VisualizerSlot",
+                )?;
+                require_slot_accepts(
+                    context,
+                    &dancer_slot,
+                    "RootedNavigationVisualizer.HolonType",
+                )?;
+                let path_slot = require_single_related(
+                    &rooted_navigation_visualizer,
+                    DahnRelationshipTypeName::HasSlot,
+                    "RootedNavigation NodeVisualizerSlot",
+                )?;
+                require_slot_accepts(context, &path_slot, "NodeVisualizer.HolonType")?;
+                let root_node_visualizer =
+                    select_node_visualizer(context, selection_context.active_holon_space.clone())?;
+                compatible.push(HomeDancerSelection {
+                    dancer: candidate,
+                    rooted_navigation_visualizer,
+                    root_node_visualizer,
+                })
             }
             Err(HolonError::NotImplemented(_)) => {}
             Err(error) => return Err(error),
@@ -105,7 +135,7 @@ pub fn select_home_dancer(
 
     match compatible.len() {
         0 => Err(HolonError::NotImplemented(
-            "No declared home Dancer has an applicable top-level Node Visualizer".into(),
+            "No declared home Dancer has a selectable RootedNavigation experience".into(),
         )),
         1 => Ok(compatible.pop()),
         count => Err(HolonError::MultipleRelatedHolons {
@@ -172,6 +202,9 @@ pub fn select_visualizer(
 
     let selected = match request.requested_kind {
         VisualizerKind::Node => select_node_visualizer(context, request.subject)?,
+        VisualizerKind::RootedNavigation => {
+            select_rooted_navigation_visualizer(context, request.subject)?
+        }
         kind => {
             let visualizer_key = bootstrap_visualizer_key(kind)?;
             let _ = request.subject.holon_descriptor()?;
@@ -194,8 +227,32 @@ fn select_node_visualizer(
     context: &Arc<TransactionContext>,
     subject: HolonReference,
 ) -> Result<HolonReference, HolonError> {
-    let node_visualizer_type = HolonReference::Smart(
-        context.lookup().get_saved_holon_by_key(&MapString::from("NodeVisualizer.HolonType"))?,
+    select_applicable_visualizer(context, subject, "NodeVisualizer.HolonType", "Node")
+}
+
+/// Selects the nearest applicable RootedNavigation Structure visualizer.
+fn select_rooted_navigation_visualizer(
+    context: &Arc<TransactionContext>,
+    subject: HolonReference,
+) -> Result<HolonReference, HolonError> {
+    select_applicable_visualizer(
+        context,
+        subject,
+        "RootedNavigationVisualizer.HolonType",
+        "RootedNavigation",
+    )
+}
+
+/// Common leaf-to-root applicability walk. Role identity is supplied by the
+/// caller; this does not generalize Structure selection beyond RootedNavigation.
+fn select_applicable_visualizer(
+    context: &Arc<TransactionContext>,
+    subject: HolonReference,
+    required_visualizer_type_key: &str,
+    role_name: &str,
+) -> Result<HolonReference, HolonError> {
+    let required_visualizer_type = HolonReference::Smart(
+        context.lookup().get_saved_holon_by_key(&MapString::from(required_visualizer_type_key))?,
     );
     let subject_type = subject.holon_descriptor()?.holon().clone();
 
@@ -210,7 +267,7 @@ fn select_node_visualizer(
         let mut candidates = Vec::new();
         for candidate in members {
             let candidate_type = candidate.holon_descriptor()?.holon().clone();
-            if equals_or_extends(&candidate_type, &node_visualizer_type)? {
+            if equals_or_extends(&candidate_type, &required_visualizer_type)? {
                 candidates.push(candidate);
             }
         }
@@ -230,9 +287,48 @@ fn select_node_visualizer(
         }
     }
 
-    Err(HolonError::NotImplemented(
-        "No applicable Node Visualizer exists in the subject Type lineage".into(),
-    ))
+    Err(HolonError::NotImplemented(format!(
+        "No applicable {role_name} Visualizer exists in the subject Type lineage"
+    )))
+}
+
+fn require_single_related<T: type_names::ToRelationshipName>(
+    holon: &HolonReference,
+    relationship: T,
+    description: &str,
+) -> Result<HolonReference, HolonError> {
+    let members = holon
+        .related_holons(relationship)?
+        .read()
+        .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+        .get_members()
+        .clone();
+    match members.as_slice() {
+        [member] => Ok(member.clone()),
+        [] => Err(HolonError::NotImplemented(format!("Missing {description}"))),
+        _ => Err(HolonError::NotImplemented(format!("Ambiguous {description}"))),
+    }
+}
+
+fn require_slot_accepts(
+    context: &Arc<TransactionContext>,
+    slot: &HolonReference,
+    required_visualizer_type_key: &str,
+) -> Result<(), HolonError> {
+    let accepted_type = require_single_related(
+        slot,
+        DahnRelationshipTypeName::AcceptsVisualizerType,
+        "VisualizerSlot accepted type",
+    )?;
+    let required_type = HolonReference::Smart(
+        context.lookup().get_saved_holon_by_key(&MapString::from(required_visualizer_type_key))?,
+    );
+    if equals_or_extends(&accepted_type, &required_type)? {
+        return Ok(());
+    }
+    Err(HolonError::NotImplemented(format!(
+        "VisualizerSlot does not accept required {required_visualizer_type_key}"
+    )))
 }
 
 /// Isolated deterministic bootstrap policy for currently bundled Visualizers.
@@ -247,6 +343,7 @@ fn bootstrap_visualizer_key(kind: VisualizerKind) -> Result<&'static str, HolonE
         VisualizerKind::Canvas => Ok("MAP.BootstrapCanvasVisualizer"),
         VisualizerKind::Collection => Ok("TableCollectionVisualizer.CollectionVisualizer"),
         VisualizerKind::Node
+        | VisualizerKind::RootedNavigation
         | VisualizerKind::Properties
         | VisualizerKind::Value
         | VisualizerKind::Action => Err(HolonError::NotImplemented(format!(

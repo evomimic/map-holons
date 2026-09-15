@@ -1,6 +1,7 @@
 schema "MAP Dancer Schema-v0.1.0" {
   depends_on "MAP Core Schema-v0.0.7"
   depends_on "MAP Dance Schema-v0.1.0"
+  depends_on "MAP DAHN Schema-v0.1.0"
   header {
     description: "Generic MAP semantics for Dancers, their offered Dances, declared semantic dependencies, and the descriptor-driven activation affordance. Concrete Dancers and House Troupe packaging remain outside this package."
   }
@@ -19,7 +20,8 @@ holon Dancer.HolonType {
     InstanceRelationships -> [
       (Dancer.HolonType)-[OffersDance]->(DanceType.HolonType),
       (Dancer.HolonType)-[Requires]->(HolonType.TypeDescriptor),
-      (Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType)
+      (Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType),
+      (Dancer.HolonType)-[HasExperienceVisualizerSlot]->(VisualizerSlot.HolonType)
     ]
   }
 }
@@ -59,6 +61,41 @@ inverse relationship (HolonSpace.HolonType)-[AffordsDancer]->(Dancer.HolonType) 
     display_name: "Affords Dancer"
     display_plural: "Affords Dancer Relationships"
     plural: "AffordsDancerRelationships"
+  }
+}
+
+relationship (Dancer.HolonType)-[HasExperienceVisualizerSlot]->(VisualizerSlot.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> ExperienceSlotForDancer
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Dancer.HolonType
+  target VisualizerSlot.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Declares a semantic VisualizerSlot that a Dancer composes as part of its experience without making the Dancer itself a Visualizer."
+    display_name: "Has Experience Visualizer Slot"
+    display_plural: "Has Experience Visualizer Slots"
+    plural: "HasExperienceVisualizerSlots"
+  }
+}
+
+inverse relationship (VisualizerSlot.HolonType)-[ExperienceSlotForDancer]->(Dancer.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source VisualizerSlot.HolonType
+  target Dancer.HolonType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of HasExperienceVisualizerSlot, identifying the Dancer that owns an experience composition slot."
+    display_name: "Experience Slot For Dancer"
+    display_plural: "Experience Slots For Dancers"
+    plural: "ExperienceSlotForDancers"
   }
 }
 

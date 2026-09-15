@@ -21,7 +21,7 @@ export class App implements OnInit {
   async ngOnInit(): Promise<void> {
     try {
       const session = await this.applicationSession.waitForReady((snapshot) => {
-        updateStartupOverlayPhase(snapshot.phase, snapshot.failure);
+        updateStartupOverlayPhase(snapshot.phase, snapshot.failure, snapshot.dev_mode);
       });
       if (session.phase !== 'ready') {
         this.failure.set(session.failure ?? `Application session stopped in '${session.phase}'.`);

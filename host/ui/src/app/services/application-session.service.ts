@@ -5,8 +5,11 @@ import type { HolonReferenceWire } from '../../dahn/deps/map-sdk';
 
 export type ApplicationSessionPhase =
   | 'initializing-host'
+  | 'activating-holochain-app'
   | 'opening-space'
-  | 'bootstrapping-core'
+  | 'preparing-core-schema'
+  | 'loading-core-schema'
+  | 'verifying-core-schema'
   | 'activating-base-packages'
   | 'realizing-canvas'
   | 'selecting-home-dancer'
@@ -24,11 +27,13 @@ export interface CanvasLaunchSelection {
 
 export interface HomeDancerLaunchSelection {
   dancer: HolonReferenceWire;
-  node_visualizer: HolonReferenceWire;
+  rooted_navigation_visualizer: HolonReferenceWire;
+  root_node_visualizer: HolonReferenceWire;
 }
 
 export interface ApplicationSessionSnapshot {
   experience: ApplicationExperience;
+  dev_mode: boolean;
   phase: ApplicationSessionPhase;
   active_holon_space: HolonReferenceWire | null;
   canvas_selection: CanvasLaunchSelection | null;
@@ -51,6 +56,7 @@ export class ApplicationSessionService {
     if (!isTauri()) {
       const ready: ApplicationSessionSnapshot = {
         experience: 'canvas',
+        dev_mode: false,
         phase: 'ready',
         active_holon_space: null,
         canvas_selection: null,

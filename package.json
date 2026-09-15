@@ -9,6 +9,9 @@
     "host/map-sdk"
   ],
   "scripts": {
+    "postinstall": "node scripts/deps-check.mjs --record",
+    "deps:check": "node scripts/deps-check.mjs",
+    "prestart": "npm run deps:check",
     "start": "npm run build:happ && RUST_LOG=host:warn WASM_LOG=warn npm run start:host",
     "start:canvas": "MAP_APPLICATION_EXPERIENCE=canvas npm run start",
     "start:loader": "MAP_APPLICATION_EXPERIENCE=holons-loader npm run start",

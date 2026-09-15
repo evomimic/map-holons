@@ -30,6 +30,7 @@ import {
 export type VisualizerKind =
   | 'canvas'
   | 'node'
+  | 'rootedNavigation'
   | 'collection'
   | 'properties'
   | 'value'
@@ -321,11 +322,17 @@ export class MapTransaction {
     );
     return {
       selected: createHolonReference(txId, wire.selected),
-      requestedKind: wire.requested_kind.toLowerCase() as VisualizerKind,
+      requestedKind: fromVisualizerKindWire(wire.requested_kind),
       alternativesAvailable: wire.alternatives_available,
     };
   }
 
+}
+
+function fromVisualizerKindWire(kind: ReturnType<typeof toVisualizerKindWire>): VisualizerKind {
+  return kind === 'RootedNavigation'
+    ? 'rootedNavigation'
+    : kind.toLowerCase() as VisualizerKind;
 }
 
 // ===========================================
@@ -350,13 +357,18 @@ function toSmartReferenceWire(
 function toVisualizerKindWire(kind: VisualizerKind):
   | 'Canvas'
   | 'Node'
+  | 'RootedNavigation'
   | 'Collection'
   | 'Properties'
   | 'Value'
   | 'Action' {
+  if (kind === 'rootedNavigation') {
+    return 'RootedNavigation';
+  }
   return `${kind[0].toUpperCase()}${kind.slice(1)}` as
     | 'Canvas'
     | 'Node'
+    | 'RootedNavigation'
     | 'Collection'
     | 'Properties'
     | 'Value'

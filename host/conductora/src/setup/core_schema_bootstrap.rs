@@ -15,7 +15,7 @@ use std::time::Instant;
 use tauri::{AppHandle, Manager};
 use tracing::info;
 
-use crate::runtime::RuntimeState;
+use crate::{runtime::RuntimeState, setup::application_launcher::ApplicationSessionState};
 
 // Tauri preserves the source `resources/` path below the runtime resource
 // directory (including in dev mode under `target/debug/resources`).
@@ -164,6 +164,11 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<()> 
         return Ok(());
     }
 
+    handle
+        .try_state::<ApplicationSessionState>()
+        .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?
+        .mark_preparing_core_schema()
+        .map_err(anyhow::Error::msg)?;
     let input_started_at = Instant::now();
     let content_set = packaged_bootstrap_content_set(handle)?;
     let input_millis = input_started_at.elapsed().as_millis();
@@ -171,6 +176,11 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<()> 
     let context = runtime.session().get_transaction(&tx_id)?;
     context.enable_bootstrap_provisioning();
 
+    handle
+        .try_state::<ApplicationSessionState>()
+        .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?
+        .mark_loading_core_schema()
+        .map_err(anyhow::Error::msg)?;
     let load_started_at = Instant::now();
     let result = runtime
         .execute_command(
@@ -185,6 +195,11 @@ pub async fn ensure_core_schema_space(handle: &AppHandle) -> anyhow::Result<()> 
     runtime.session().archive_transaction(&tx_id)?;
     result?;
 
+    handle
+        .try_state::<ApplicationSessionState>()
+        .ok_or_else(|| anyhow::anyhow!("ApplicationSessionState is not managed"))?
+        .mark_verifying_core_schema()
+        .map_err(anyhow::Error::msg)?;
     if runtime.session().space_manager().get_space_holon_id()?.is_none() {
         return Err(anyhow::anyhow!(
             "Core Schema bootstrap completed without injecting a LocalHolonSpace"

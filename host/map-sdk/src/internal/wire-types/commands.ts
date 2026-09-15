@@ -54,6 +54,7 @@ export interface ContentSet {
 export type VisualizerKindWire =
   | 'Canvas'
   | 'Node'
+  | 'RootedNavigation'
   | 'Collection'
   | 'Properties'
   | 'Value'
@@ -287,6 +288,7 @@ export function isTransactionActionWire(
       isHolonReferenceWire(value.SelectVisualizer['subject']) &&
       (value.SelectVisualizer['requested_kind'] === 'Canvas' ||
         value.SelectVisualizer['requested_kind'] === 'Node' ||
+        value.SelectVisualizer['requested_kind'] === 'RootedNavigation' ||
         value.SelectVisualizer['requested_kind'] === 'Collection' ||
         value.SelectVisualizer['requested_kind'] === 'Properties' ||
         value.SelectVisualizer['requested_kind'] === 'Value' ||

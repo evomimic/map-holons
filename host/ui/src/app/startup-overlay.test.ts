@@ -22,12 +22,18 @@ describe('updateStartupOverlayPhase', () => {
     phases.id = 'loading-phases';
     document.body.append(phases);
 
-    updateStartupOverlayPhase('bootstrapping-core');
+    updateStartupOverlayPhase('activating-holochain-app', null, true);
+    updateStartupOverlayPhase('preparing-core-schema');
+    updateStartupOverlayPhase('loading-core-schema');
+    updateStartupOverlayPhase('verifying-core-schema');
     updateStartupOverlayPhase('activating-base-packages');
 
     const rows = phases.querySelectorAll('p');
-    expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toMatch(/^Loading Core Schema\.\.\. \d+ ms ✓$/);
-    expect(rows[1].textContent).toMatch(/^Activating base packages\.\.\. \d+ ms$/);
+    expect(rows).toHaveLength(5);
+    expect(rows[0].textContent).toMatch(/^Installing Holochain application \(including WASM compilation; DEV MODE: ON\)\.\.\. \d+ ms ✓$/);
+    expect(rows[1].textContent).toMatch(/^Preparing Core Schema bundle\.\.\. \d+ ms ✓$/);
+    expect(rows[2].textContent).toMatch(/^Executing Core Schema LoadHolons dance\.\.\. \d+ ms ✓$/);
+    expect(rows[3].textContent).toMatch(/^Verifying Core Schema\.\.\. \d+ ms ✓$/);
+    expect(rows[4].textContent).toMatch(/^Activating base packages\.\.\. \d+ ms$/);
   });
 });

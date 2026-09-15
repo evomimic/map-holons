@@ -20,7 +20,8 @@ pub struct CanvasLaunchSelection {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct HomeDancerLaunchSelection {
     pub dancer: HolonReferenceWire,
-    pub node_visualizer: HolonReferenceWire,
+    pub rooted_navigation_visualizer: HolonReferenceWire,
+    pub root_node_visualizer: HolonReferenceWire,
 }
 
 /// The frontend experience selected by the MAP Application Launcher.
@@ -61,8 +62,11 @@ impl ApplicationExperience {
 #[serde(rename_all = "kebab-case")]
 pub enum ApplicationSessionPhase {
     InitializingHost,
+    ActivatingHolochainApp,
     OpeningSpace,
-    BootstrappingCore,
+    PreparingCoreSchema,
+    LoadingCoreSchema,
+    VerifyingCoreSchema,
     ActivatingBasePackages,
     RealizingCanvas,
     SelectingHomeDancer,
@@ -76,6 +80,7 @@ pub enum ApplicationSessionPhase {
 #[derive(Debug, Clone)]
 struct ApplicationSession {
     experience: ApplicationExperience,
+    dev_mode: bool,
     phase: ApplicationSessionPhase,
     active_holon_space: Option<HolonReferenceWire>,
     canvas_selection: Option<CanvasLaunchSelection>,
@@ -87,6 +92,7 @@ struct ApplicationSession {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ApplicationSessionSnapshot {
     pub experience: ApplicationExperience,
+    pub dev_mode: bool,
     pub phase: ApplicationSessionPhase,
     pub active_holon_space: Option<HolonReferenceWire>,
     pub canvas_selection: Option<CanvasLaunchSelection>,
@@ -108,9 +114,16 @@ impl Default for ApplicationSessionState {
 
 impl ApplicationSessionState {
     pub fn new(experience: ApplicationExperience) -> Self {
+        Self::with_dev_mode(experience, crate::env::dev_mode_enabled())
+    }
+
+    /// Captures the startup mode once so the UI can report the mode actually
+    /// selected for this application session.
+    pub fn with_dev_mode(experience: ApplicationExperience, dev_mode: bool) -> Self {
         Self {
             session: RwLock::new(ApplicationSession {
                 experience,
+                dev_mode,
                 phase: ApplicationSessionPhase::InitializingHost,
                 active_holon_space: None,
                 canvas_selection: None,
@@ -124,8 +137,20 @@ impl ApplicationSessionState {
         self.set_phase(ApplicationSessionPhase::OpeningSpace)
     }
 
-    pub fn mark_bootstrapping_core(&self) -> Result<(), String> {
-        self.set_phase(ApplicationSessionPhase::BootstrappingCore)
+    pub fn mark_activating_holochain_app(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::ActivatingHolochainApp)
+    }
+
+    pub fn mark_preparing_core_schema(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::PreparingCoreSchema)
+    }
+
+    pub fn mark_loading_core_schema(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::LoadingCoreSchema)
+    }
+
+    pub fn mark_verifying_core_schema(&self) -> Result<(), String> {
+        self.set_phase(ApplicationSessionPhase::VerifyingCoreSchema)
     }
 
     pub fn mark_realizing_canvas(&self) -> Result<(), String> {
@@ -173,6 +198,7 @@ impl ApplicationSessionState {
             .map_err(|error| format!("ApplicationSession lock poisoned: {error}"))?;
         Ok(ApplicationSessionSnapshot {
             experience: session.experience,
+            dev_mode: session.dev_mode,
             phase: session.phase,
             active_holon_space: session.active_holon_space.clone(),
             canvas_selection: session.canvas_selection.clone(),
@@ -210,11 +236,14 @@ mod tests {
 
     #[test]
     fn session_is_ready_only_after_a_local_space_is_available() {
-        let state = ApplicationSessionState::new(ApplicationExperience::Canvas);
+        let state = ApplicationSessionState::with_dev_mode(ApplicationExperience::Canvas, true);
         assert_eq!(state.snapshot().unwrap().phase, ApplicationSessionPhase::InitializingHost);
 
         state.mark_opening_space().unwrap();
-        state.mark_bootstrapping_core().unwrap();
+        state.mark_activating_holochain_app().unwrap();
+        state.mark_preparing_core_schema().unwrap();
+        state.mark_loading_core_schema().unwrap();
+        state.mark_verifying_core_schema().unwrap();
         state
             .mark_ready(
                 space_reference(),
@@ -230,6 +259,7 @@ mod tests {
         let snapshot = state.snapshot().unwrap();
         assert_eq!(snapshot.phase, ApplicationSessionPhase::Ready);
         assert_eq!(snapshot.experience, ApplicationExperience::Canvas);
+        assert!(snapshot.dev_mode);
         assert_eq!(snapshot.active_holon_space, Some(space_reference()));
         assert_eq!(snapshot.canvas_selection.unwrap().canvas_key, "MAP.BootstrapCanvas");
         assert_eq!(snapshot.home_dancer_selection, None);
@@ -238,7 +268,7 @@ mod tests {
 
     #[test]
     fn session_projects_home_dancer_selection_after_its_observable_stages() {
-        let state = ApplicationSessionState::new(ApplicationExperience::Canvas);
+        let state = ApplicationSessionState::with_dev_mode(ApplicationExperience::Canvas, false);
         state.mark_activating_base_packages().unwrap();
         assert_eq!(
             state.snapshot().unwrap().phase,
@@ -250,7 +280,8 @@ mod tests {
 
         let home_dancer_selection = HomeDancerLaunchSelection {
             dancer: space_reference(),
-            node_visualizer: space_reference(),
+            rooted_navigation_visualizer: space_reference(),
+            root_node_visualizer: space_reference(),
         };
         state
             .mark_ready(
@@ -269,12 +300,14 @@ mod tests {
 
     #[test]
     fn failure_retains_its_diagnostic_without_inventing_a_ready_space() {
-        let state = ApplicationSessionState::new(ApplicationExperience::HolonsLoader);
+        let state =
+            ApplicationSessionState::with_dev_mode(ApplicationExperience::HolonsLoader, false);
         state.mark_failed("Core bootstrap failed").unwrap();
 
         let snapshot = state.snapshot().unwrap();
         assert_eq!(snapshot.phase, ApplicationSessionPhase::Failed);
         assert_eq!(snapshot.experience, ApplicationExperience::HolonsLoader);
+        assert!(!snapshot.dev_mode);
         assert_eq!(snapshot.active_holon_space, None);
         assert_eq!(snapshot.failure.as_deref(), Some("Core bootstrap failed"));
     }

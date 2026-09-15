@@ -16,6 +16,9 @@
             },
             {
               "$ref": "MAP Dance Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
             }
           ]
         },
@@ -67,6 +70,9 @@
             },
             {
               "$ref": "(Dancer.HolonType)-[AffordedByHolonSpace]->(HolonSpace.HolonType)"
+            },
+            {
+              "$ref": "(Dancer.HolonType)-[HasExperienceVisualizerSlot]->(VisualizerSlot.HolonType)"
             }
           ]
         },
@@ -200,6 +206,138 @@
           "target": [
             {
               "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Dancer.HolonType)-[HasExperienceVisualizerSlot]->(VisualizerSlot.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasExperienceVisualizerSlot",
+        "TypeNamePlural": "HasExperienceVisualizerSlots",
+        "DisplayName": "Has Experience Visualizer Slot",
+        "DisplayNamePlural": "Has Experience Visualizer Slots",
+        "Description": "Declares a semantic VisualizerSlot that a Dancer composes as part of its experience without making the Dancer itself a Visualizer.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(VisualizerSlot.HolonType)-[ExperienceSlotForDancer]->(Dancer.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(VisualizerSlot.HolonType)-[ExperienceSlotForDancer]->(Dancer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExperienceSlotForDancer",
+        "TypeNamePlural": "ExperienceSlotForDancers",
+        "DisplayName": "Experience Slot For Dancer",
+        "DisplayNamePlural": "Experience Slots For Dancers",
+        "Description": "Inverse of HasExperienceVisualizerSlot, identifying the Dancer that owns an experience composition slot.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "VisualizerSlot.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Dancer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
             }
           ]
         },

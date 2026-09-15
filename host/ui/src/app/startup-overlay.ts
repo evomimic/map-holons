@@ -8,7 +8,11 @@ export function dismissStartupOverlay(): void {
 }
 
 /** Appends Rust-owned startup phases and records the elapsed time of each one. */
-export function updateStartupOverlayPhase(phase: string, failure: string | null = null): void {
+export function updateStartupOverlayPhase(
+  phase: string,
+  failure: string | null = null,
+  devMode = false,
+): void {
   const phases = document.getElementById('loading-phases');
   if (phases === null) {
     return;
@@ -23,6 +27,7 @@ export function updateStartupOverlayPhase(phase: string, failure: string | null 
   const row = document.createElement('p');
   row.dataset['startupPhase'] = phase;
   row.dataset['startupPhaseActive'] = 'true';
+  row.dataset['startupDevMode'] = String(devMode);
   phases.append(row);
 
   if (phase === 'failed') {
@@ -31,7 +36,7 @@ export function updateStartupOverlayPhase(phase: string, failure: string | null 
     return;
   }
 
-  const label = startupPhaseLabels[phase] ?? 'Starting MAP...';
+  const label = labelForPhase(phase, devMode);
   const startedAt = performance.now();
   const render = () => {
     row.textContent = `${label} ${formatElapsed(performance.now() - startedAt)}`;
@@ -44,14 +49,24 @@ export function updateStartupOverlayPhase(phase: string, failure: string | null 
 
 const startupPhaseLabels: Record<string, string> = {
     'initializing-host': 'Initializing host...',
+    'activating-holochain-app': 'Installing Holochain application (including WASM compilation',
     'opening-space': 'Opening HolonSpace...',
-    'bootstrapping-core': 'Loading Core Schema...',
+    'preparing-core-schema': 'Preparing Core Schema bundle...',
+    'loading-core-schema': 'Executing Core Schema LoadHolons dance...',
+    'verifying-core-schema': 'Verifying Core Schema...',
     'activating-base-packages': 'Activating base packages...',
     'realizing-canvas': 'Realizing Canvas...',
     'selecting-home-dancer': 'Selecting home Dancer...',
     'realizing-home-dancer': 'Realizing home Dancer...',
     ready: 'Starting Canvas...',
 };
+
+function labelForPhase(phase: string, devMode: boolean): string {
+  if (phase === 'activating-holochain-app') {
+    return `${startupPhaseLabels[phase]}; DEV MODE: ${devMode ? 'ON' : 'OFF'})...`;
+  }
+  return startupPhaseLabels[phase] ?? 'Starting MAP...';
+}
 
 function finishActivePhase(): void {
   const phases = document.getElementById('loading-phases');
@@ -67,7 +82,10 @@ function finishPhase(row: HTMLElement | null): void {
     window.clearInterval(timer);
   }
   const startedAt = Number(row.dataset['startupPhaseStartedAt']);
-  const label = startupPhaseLabels[row.dataset['startupPhase'] ?? ''] ?? 'Starting MAP...';
+  const label = labelForPhase(
+    row.dataset['startupPhase'] ?? '',
+    row.dataset['startupDevMode'] === 'true',
+  );
   row.textContent = `${label} ${formatElapsed(performance.now() - startedAt)} ✓`;
   row.dataset['startupPhaseActive'] = 'false';
 }

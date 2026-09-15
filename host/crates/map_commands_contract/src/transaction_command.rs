@@ -118,6 +118,9 @@ pub enum TransactionAction {
 pub enum VisualizerKind {
     Canvas,
     Node,
+    /// The only Structure subkind supported by this slice. This deliberately
+    /// does not establish a general Structure taxonomy at the command seam.
+    RootedNavigation,
     Collection,
     Properties,
     Value,

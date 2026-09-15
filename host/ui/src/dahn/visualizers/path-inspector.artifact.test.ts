@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 type PathInspectorElement = HTMLElement & {
-  setContext(context: { title?: string }): void;
+  setContext(context: { title?: string; childVisualizers?: ReadonlyMap<string, HTMLElement> }): void;
 };
 
 async function loadPathInspector(): Promise<new () => PathInspectorElement> {
@@ -17,20 +17,24 @@ async function loadPathInspector(): Promise<new () => PathInspectorElement> {
 }
 
 describe('Path Inspector visualizer artifact', () => {
-  it('renders the requested initial geometry and inspection landmarks', async () => {
+  it('allocates a bounded root Node region owned by the Path Inspector', async () => {
     const PathInspector = await loadPathInspector();
     const tagName = 'map-path-inspector-artifact-test';
     customElements.define(tagName, PathInspector);
     const element = document.createElement(tagName) as PathInspectorElement;
 
-    element.setContext({ title: 'Active HolonSpace' });
+    const rootNode = document.createElement('section');
+    rootNode.dataset.rootNodeFixture = 'true';
+    element.setContext({
+      title: 'Active HolonSpace',
+      childVisualizers: new Map([['root-node', rootNode]]),
+    });
 
     expect(element.dataset.dahnPathInspector).toBe('true');
     expect(element.style.display).toBe('grid');
     expect(element.querySelector('[data-path-inspector-title]')?.textContent).toBe('Active HolonSpace');
-    expect(element.querySelector('[data-path-inspector-action-bar]')).not.toBeNull();
-    expect(element.querySelector('[data-path-inspector-property-viewer]')).not.toBeNull();
-    expect(element.querySelector('[data-path-inspector-single-value-rail]')).not.toBeNull();
-    expect(element.querySelector('[data-path-inspector-collection-tab-bar]')).not.toBeNull();
+    const region = element.querySelector('[data-path-inspector-root-node]');
+    expect(region).not.toBeNull();
+    expect(region?.querySelector('[data-root-node-fixture]')).not.toBeNull();
   });
 });

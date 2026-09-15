@@ -151,6 +151,7 @@ pub enum TransactionActionWire {
 pub enum VisualizerKindWire {
     Canvas,
     Node,
+    RootedNavigation,
     Collection,
     Properties,
     Value,
@@ -173,6 +174,7 @@ impl From<VisualizerKindWire> for VisualizerKind {
         match value {
             VisualizerKindWire::Canvas => Self::Canvas,
             VisualizerKindWire::Node => Self::Node,
+            VisualizerKindWire::RootedNavigation => Self::RootedNavigation,
             VisualizerKindWire::Collection => Self::Collection,
             VisualizerKindWire::Properties => Self::Properties,
             VisualizerKindWire::Value => Self::Value,
@@ -186,6 +188,7 @@ impl From<VisualizerKind> for VisualizerKindWire {
         match value {
             VisualizerKind::Canvas => Self::Canvas,
             VisualizerKind::Node => Self::Node,
+            VisualizerKind::RootedNavigation => Self::RootedNavigation,
             VisualizerKind::Collection => Self::Collection,
             VisualizerKind::Properties => Self::Properties,
             VisualizerKind::Value => Self::Value,

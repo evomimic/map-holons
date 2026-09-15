@@ -154,21 +154,21 @@ instance MAP.BootstrapCanvasTypeScript.VisualizerImplementation {
   Entrypoint "default"
 }
 
-// Path Inspector is a DAHN-wide Node Visualizer. It begins as the least
+// Holon Inspector is the DAHN-wide Node Visualizer. It begins as the least
 // specific Node candidate and is discovered only through Type applicability.
-instance PathInspector.NodeVisualizer {
+instance HolonInspector.NodeVisualizer {
   type NodeVisualizer.HolonType
   relationships {
     ApplicableToType -> HolonType.TypeDescriptor
-    ImplementedBy -> PathInspectorTypeScript.VisualizerImplementation
+    ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
   }
 }
 
-instance PathInspectorTypeScript.VisualizerImplementation {
+instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
-  VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:7c13c860f46269ad5b6164a9f3d511d2b4cc1a9c890d4180a575f7b0fc0fe7f4"
+  VisualizerImplementationKey "dahn.holon-inspector"
+  VisualizerArtifactDigest "sha256:32a82a5fa4faa873efbc3519263d99050c1c898db2de7cb6e099cc6e1c9b6eb1"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -182,6 +182,56 @@ holon NodeVisualizer.HolonType {
     display_plural: "Node Visualizers"
     plural: "NodeVisualizers"
   }
+}
+
+holon StructureVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that realize a multi-Holon semantic structure organized by a topology."
+    display_name: "Structure Visualizer"
+    display_plural: "Structure Visualizers"
+    plural: "StructureVisualizers"
+  }
+}
+
+holon RootedNavigationVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends StructureVisualizer.HolonType
+  header {
+    description: "Structure Visualizer subkind for interaction-derived navigation rooted at one Holon."
+    display_name: "Rooted Navigation Visualizer"
+    display_plural: "Rooted Navigation Visualizers"
+    plural: "RootedNavigationVisualizers"
+  }
+}
+
+// Path Inspector is the first RootedNavigation Structure visualizer. Its
+// root subject is a HolonSpace; it owns the Node Visualizer slot used to
+// realize that root without becoming a Node Visualizer itself.
+instance PathInspector.RootedNavigationVisualizer {
+  type RootedNavigationVisualizer.HolonType
+  relationships {
+    ApplicableToType -> HolonSpace.HolonType
+    HasSlot -> PathInspector.RootNodeSlot
+    ImplementedBy -> PathInspectorTypeScript.VisualizerImplementation
+  }
+}
+
+instance PathInspector.RootNodeSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> NodeVisualizer.HolonType
+  }
+}
+
+instance PathInspectorTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.path-inspector"
+  VisualizerArtifactDigest "sha256:2a848a082987045e94989ddee5cdbc3ca46ffebf316c1c6536125e682eaa9936"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
 }
 
 holon CollectionVisualizer.HolonType {

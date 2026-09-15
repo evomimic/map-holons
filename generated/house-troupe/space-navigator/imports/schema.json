@@ -79,6 +79,14 @@
           ]
         },
         {
+          "name": "HasExperienceVisualizerSlot",
+          "target": [
+            {
+              "$ref": "SpaceNavigator.RootedNavigationSlot"
+            }
+          ]
+        },
+        {
           "name": "OffersDance",
           "target": [
             {
@@ -100,38 +108,19 @@
       ]
     },
     {
-      "key": "SpaceNavigator.HomeNodeVisualizer",
-      "type": "NodeVisualizer.HolonType",
+      "key": "SpaceNavigator.RootedNavigationSlot",
+      "type": "VisualizerSlot.HolonType",
       "properties": {},
       "relationships": [
         {
-          "name": "ApplicableToType",
+          "name": "AcceptsVisualizerType",
           "target": [
             {
-              "$ref": "SpaceNavigator.HolonType"
-            }
-          ]
-        },
-        {
-          "name": "ImplementedBy",
-          "target": [
-            {
-              "$ref": "SpaceNavigatorHomeTypeScript.VisualizerImplementation"
+              "$ref": "RootedNavigationVisualizer.HolonType"
             }
           ]
         }
       ]
-    },
-    {
-      "key": "SpaceNavigatorHomeTypeScript.VisualizerImplementation",
-      "type": "VisualizerImplementation.HolonType",
-      "properties": {
-        "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:abc225be030658223c1a751c373e6f38c513b9b25c781cdfa21038022d3cb96b",
-        "VisualizerImplementationKey": "dahn.space-navigator-home",
-        "VisualizerImplementationRuntime": "TypeScript",
-        "VisualizerModuleFormat": "ESModule"
-      }
     },
     {
       "key": "SpaceNavigator.CanvasVisualizer",

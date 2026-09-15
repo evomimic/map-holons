@@ -124,28 +124,55 @@ export class CanvasHostComponent implements AfterViewInit {
         return;
       }
       const homeDancer = transaction.bindPersistedReference(homeDancerSelection.dancer);
-      const nodeVisualizer = transaction.bindPersistedReference(
-        homeDancerSelection.node_visualizer,
+      const rootedNavigationVisualizer = transaction.bindPersistedReference(
+        homeDancerSelection.rooted_navigation_visualizer,
       );
-      const nodeImplementation = await materialized.realize(nodeVisualizer);
+      const rootNodeVisualizer = transaction.bindPersistedReference(
+        homeDancerSelection.root_node_visualizer,
+      );
+      const [pathImplementation, nodeImplementation] = await Promise.all([
+        materialized.realize(rootedNavigationVisualizer),
+        materialized.realize(rootNodeVisualizer),
+      ]);
       if (
         typeof nodeImplementation !== 'function' ||
         !(nodeImplementation.prototype instanceof HTMLElement)
       ) {
-        throw new Error('Selected home-Dancer implementation does not export an HTMLElement constructor.');
+        throw new Error('Selected root Node implementation does not export an HTMLElement constructor.');
+      }
+      if (
+        typeof pathImplementation !== 'function' ||
+        !(pathImplementation.prototype instanceof HTMLElement)
+      ) {
+        throw new Error('Selected RootedNavigation implementation does not export an HTMLElement constructor.');
       }
       defineCustomElementOnce(
-        'map-home-dancer',
+        'map-root-node-visualizer',
         nodeImplementation as CustomElementConstructor,
+      );
+      defineCustomElementOnce(
+        'map-rooted-navigation-visualizer',
+        pathImplementation as CustomElementConstructor,
       );
       const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
       registry.register({
-        id: 'home-dancer',
-        displayName: 'Home Dancer',
+        id: 'rooted-navigation',
+        displayName: 'Rooted Navigation',
         version: '0.1.0',
-        componentTag: 'map-home-dancer',
+        componentTag: 'map-rooted-navigation-visualizer',
         supportedTargets: [{ kind: 'holon-node' }],
         load: async () => {},
+      });
+      const rootNodeElement = document.createElement('map-root-node-visualizer') as HTMLElement & {
+        setContext(context: VisualizerContext): void;
+      };
+      rootNodeElement.setContext({
+        title: (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey(),
+        target: { reference: activeHolonSpace },
+        holon: new DahnHolonView(activeHolonSpace),
+        actions: [],
+        theme,
+        canvas,
       });
       homeDancerContext = {
         title,
@@ -154,10 +181,11 @@ export class CanvasHostComponent implements AfterViewInit {
         actions: [],
         theme,
         canvas,
+        childVisualizers: new Map([['root-node', rootNodeElement]]),
       };
       await canvas.mountVisualizers([
         {
-          visualizerId: 'home-dancer',
+          visualizerId: 'rooted-navigation',
           target: { reference: homeDancer },
           slot: 'primary',
         },
