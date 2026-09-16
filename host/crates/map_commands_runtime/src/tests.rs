@@ -18,7 +18,7 @@ use session_receptor::{RecoveryStore, TransactionRecoveryStore};
 
 use map_commands_contract::{
     HolonAction, HolonCommand, MapCommand, MapResult, ReadableHolonAction, SpaceCommand,
-    TransactionAction, TransactionCommand,
+    TransactionAction, TransactionCommand, VisualizerKind, VisualizerSelectionRequest,
 };
 
 use crate::{ExecutionPolicy, Runtime, RuntimeSession};
@@ -165,6 +165,43 @@ fn minimally_described_transient(
         .expect("link target descriptor");
 
     (context, HolonReference::Transient(target))
+}
+
+#[tokio::test]
+async fn select_visualizer_command_delegates_to_dahn_selection() {
+    let runtime = build_test_runtime();
+    let tx_id = begin_tx(&runtime).await;
+    let (context, subject) = minimally_described_transient(&runtime, &tx_id);
+    let direct = dahn_selection::select_visualizer(
+        &context,
+        VisualizerSelectionRequest {
+            subject: subject.clone(),
+            requested_kind: VisualizerKind::Node,
+        },
+    );
+    let through_command = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context,
+                action: TransactionAction::SelectVisualizer {
+                    request: VisualizerSelectionRequest {
+                        subject,
+                        requested_kind: VisualizerKind::Node,
+                    },
+                },
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await;
+
+    match (direct, through_command) {
+        (Err(direct), Err(through_command)) => {
+            assert_eq!(direct.to_string(), through_command.to_string());
+        }
+        (direct, through_command) => panic!(
+            "SelectVisualizer command must preserve dahn_selection outcome; direct={direct:?}, command={through_command:?}"
+        ),
+    }
 }
 
 // ── Handler tests ───────────────────────────────────────────────────

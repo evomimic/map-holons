@@ -166,7 +166,7 @@ pub fn select_bootstrap_canvas(
 /// This is intentionally a dedicated service seam rather than a fallback in a
 /// caller. The bootstrap policy currently has one compatible Canvas
 /// Visualizer; a missing resource remains an error from the lookup.
-pub fn select_canvas_visualizer(
+fn select_canvas_visualizer(
     context: &Arc<TransactionContext>,
     canvas: HolonReference,
 ) -> Result<RuntimeCanvasVisualizer, HolonError> {
@@ -180,7 +180,7 @@ pub fn select_canvas_visualizer(
 /// Resolves a visualization request through the DAHN Selector Function.
 ///
 /// The current implementation is a deterministic bootstrap policy for the
-/// request kinds supported by PR 3. It must not be read as a permanent
+/// request kinds supported by the initial DAHN slice. It must not be read as a permanent
 /// one-Visualizer-per-kind registry: future policy will choose among multiple
 /// candidates using richer subjects, Slot context, and runtime information.
 ///

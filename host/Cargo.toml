@@ -10,7 +10,8 @@ members = [
     "conductora/plugins/tauri-plugin-holochain",
     "crates/map_commands_contract",
     "crates/map_commands_wire",
-    "crates/map_commands_runtime"]
+    "crates/map_commands_runtime",
+    "crates/dahn_selection"]
 
 [workspace.dependencies]
 
@@ -52,6 +53,7 @@ tauri-plugin-holochain = { path = "conductora/plugins/tauri-plugin-holochain" }
 map_commands_contract = { path = "crates/map_commands_contract" }
 map_commands_wire = { path = "crates/map_commands_wire" }
 map_commands_runtime = { path = "crates/map_commands_runtime" }
+dahn_selection = { path = "crates/dahn_selection" }
 session_receptor = { path = "crates/session_receptor" }
 
 [patch.crates-io]

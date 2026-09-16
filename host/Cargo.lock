@@ -12,6 +12,7 @@ dependencies = [
  "base_types",
  "client_shared_types",
  "core_types",
+ "dahn_selection",
  "futures",
  "holochain_client",
  "holochain_receptor",
@@ -1646,6 +1647,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.114",
+]
+
+[[package]]
+name = "dahn_selection"
+version = "0.1.0"
+dependencies = [
+ "base_types",
+ "core_types",
+ "holons_core",
+ "map_commands_contract",
+ "type_names",
 ]
 
 [[package]]
@@ -5470,6 +5482,7 @@ dependencies = [
  "base_types",
  "client_shared_types",
  "core_types",
+ "dahn_selection",
  "holons_client",
  "holons_core",
  "holons_loader_client",
@@ -5477,7 +5490,6 @@ dependencies = [
  "serde_json",
  "session_receptor",
  "tokio",
- "type_names",
 ]
 
 [[package]]

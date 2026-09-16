@@ -46,6 +46,7 @@ holons_boundary = { workspace = true }
 map_commands_contract = { workspace = true }
 map_commands_wire = { workspace = true }
 map_commands_runtime = { workspace = true }
+dahn_selection = { workspace = true }
 core_types = { path = "../../shared_crates/type_system/core_types" }
 
 #holochain dependencies
