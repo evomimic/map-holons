@@ -4,7 +4,6 @@ use holons_core::dances::execute_dance_v2;
 use holons_core::HolonReference;
 use map_commands_contract::{MapResult, TransactionAction, TransactionCommand};
 
-use super::dahn_selector;
 use super::runtime_session::RuntimeSession;
 
 /// Handles transaction-scoped commands.
@@ -47,7 +46,7 @@ pub async fn handle_transaction(
             Ok(MapResult::Reference(HolonReference::from(response)))
         }
         TransactionAction::SelectVisualizer { request } => {
-            Ok(MapResult::VisualizerSelection(dahn_selector::select_visualizer(context, request)?))
+            Ok(MapResult::VisualizerSelection(dahn_selection::select_visualizer(context, request)?))
         }
         TransactionAction::FetchArtifact { handle } => {
             Ok(MapResult::Value(BaseValue::BytesValue(context.fetch_artifact(&handle)?)))

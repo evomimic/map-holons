@@ -186,7 +186,7 @@ impl AppBuilder {
                         let active_holon_space = context.get_space_holon()?.ok_or_else(|| {
                             anyhow::anyhow!("Core bootstrap completed without a local HolonSpace")
                         })?;
-                        let selection = map_commands_runtime::select_bootstrap_canvas(&context)?;
+                        let selection = dahn_selection::select_bootstrap_canvas(&context)?;
                         tracing::info!("[PERF-707] canvas_selection: resources selected");
                         let result = crate::setup::application_launcher::CanvasLaunchSelection {
                             theme_key: selection
@@ -218,13 +218,13 @@ impl AppBuilder {
                                     "MAP.BootstrapMetaDesignSystem",
                                 ))?,
                             );
-                        let home_dancer = map_commands_runtime::select_home_dancer(
+                        let home_dancer = dahn_selection::select_home_dancer(
                             &context,
-                            map_commands_runtime::HomeDancerSelectionContext {
+                            dahn_selection::HomeDancerSelectionContext {
                                 active_holon_space: active_holon_space.clone(),
                                 selected_theme: selection.theme,
                                 selected_meta_design_system: meta_design_system,
-                                runtime: map_commands_runtime::HomeDancerRuntime::Local,
+                                runtime: dahn_selection::HomeDancerRuntime::Local,
                                 person: None,
                             },
                         )?;

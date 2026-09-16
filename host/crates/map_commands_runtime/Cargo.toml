@@ -5,13 +5,13 @@ edition = "2021"
 
 [dependencies]
 map_commands_contract = { workspace = true }
+dahn_selection = { workspace = true }
 holons_core = { workspace = true }
 holons_loader_client = { workspace = true }
 holons_client = { path = "../holons_client" } 
 session_receptor = { path = "../session_receptor" }
 base_types = { workspace = true }
 core_types = { workspace = true }
-type_names = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
