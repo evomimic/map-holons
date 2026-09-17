@@ -44,9 +44,7 @@ use crate::{
     TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
-use holons_core::{
-    core_shared_objects::transactions::TransactionContext, reference_layer::ReadableHolon,
-};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_prelude::prelude::*;
 use integrity_core_types::{HolonErrorKind, PropertyMap};
 use std::sync::Arc;
@@ -436,7 +434,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Abandon staged changes".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let new_snapshot = new_source.snapshot().clone_holon()?;
+        let new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Abandoned);
         if expected_error.is_none() {
             // Advance head snapshot for the FixtureHolon
@@ -469,7 +467,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Delete Holon".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let new_snapshot = new_source.snapshot().clone_holon()?;
+        let new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Deleted);
         if expected_error.is_none() {
             // Advance head snapshot for the FixtureHolon
@@ -546,7 +544,7 @@ impl DancesTestCase {
     ) -> Result<TestReference, HolonError> {
         self.ensure_not_finalized()?;
         let description = description.unwrap_or_else(|| "New Holon".to_string());
-        let mut snapshot = source_reference.clone_holon()?;
+        let mut snapshot = fixture_holons.clone_holon(&source_reference.clone().into())?;
         for (name, value) in properties.clone() {
             snapshot.with_property_value(name, value)?;
         }
@@ -592,7 +590,7 @@ impl DancesTestCase {
         let description =
             description.unwrap_or_else(|| format!("Lookup saved holon by key '{}'", key.0));
         // Clone the stub so the marker lands on the frozen expected snapshot.
-        let mut snapshot = stub_reference.clone_holon()?;
+        let mut snapshot = fixture_holons.clone_holon(&stub_reference.clone().into())?;
         snapshot.with_property_value(SAVED_LOOKUP_STUB_MARKER, true)?;
         let source = SourceSnapshot::new(stub_reference, TestHolonState::SavedLookup);
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::SavedLookup);
@@ -633,7 +631,7 @@ impl DancesTestCase {
             .collect::<Result<Vec<_>, HolonError>>()?;
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon()?;
+        let mut new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         let mut references_to_add: Vec<HolonReference> = Vec::new();
         // Set Targets
         for token in &holons_to_add {
@@ -673,7 +671,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Remove properties".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon()?;
+        let mut new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         for property in properties.keys() {
             new_snapshot.remove_property_value(property)?;
         }
@@ -715,7 +713,7 @@ impl DancesTestCase {
             .collect::<Result<Vec<_>, HolonError>>()?;
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon()?;
+        let mut new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         let mut references_to_remove: Vec<HolonReference> = Vec::new();
         // Set Targets
         for token in &holons_to_remove {
@@ -754,7 +752,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Stage Holon".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let snapshot = new_source.snapshot().clone_holon()?;
+        let snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon
@@ -786,7 +784,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Stage new from clone".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon()?;
+        let mut new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         new_snapshot.with_property_value("Key", new_key.clone())?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
@@ -821,7 +819,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Stage new version".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let new_snapshot = new_source.snapshot().clone_holon()?;
+        let new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         let expected = ExpectedSnapshot::new(new_snapshot, TestHolonState::Staged);
         if expected_error.is_none() {
             // Create new FixtureHolon
@@ -856,7 +854,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "With properties".to_string());
         // Cloning new source to create the expected snapshot
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let mut new_snapshot = new_source.snapshot().clone_holon()?;
+        let mut new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         for (property, value) in properties.clone() {
             new_snapshot.with_property_value(property, value)?;
         }
@@ -892,7 +890,7 @@ impl DancesTestCase {
         let description = description.unwrap_or_else(|| "Query Relationships".to_string());
         // Derive new source
         let new_source = fixture_holons.derive_next_source(&step_token)?;
-        let new_snapshot = new_source.snapshot().clone_holon()?;
+        let new_snapshot = fixture_holons.clone_holon(&new_source.snapshot().clone().into())?;
         // TODO: set expected, as for now the exec step does not do comparison matching for query result
         let expected = ExpectedSnapshot::new(new_snapshot, new_source.state());
         // Mint

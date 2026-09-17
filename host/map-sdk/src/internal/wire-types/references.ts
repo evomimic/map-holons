@@ -57,7 +57,6 @@ export interface StagedReferenceWire {
 }
 
 export interface SmartReferenceWire {
-  tx_id: TxId;
   holon_id: HolonId;
   smart_property_values: PropertyMap | null;
 }
@@ -137,7 +136,8 @@ export type CommitValidationViolationKindWire =
   | { UnsupportedConstraintType: { constraint_identity: string; constraint_type_identity: string } }
   | { RuleViolation: { code: string } }
   | 'UnresolvedLocalDependency'
-  | 'RelationshipCoordinationRequired';
+  | 'RelationshipCoordinationRequired'
+  | 'IndependentlyAuthoredInverseRelationship';
 
 export type ValidationSubjectPathWire =
   | { Holon: { holon_identity: string } }
@@ -165,6 +165,8 @@ export type StagedState =
   | 'ForUpdateGraphOnly'
   | 'ForUpdateNewVersion'
   | { Committed: LocalId };
+
+export type RelationshipCommitScope = 'Full' | 'TouchedOnly';
 
 export interface TransientRelationshipMapWire {
   map: Record<string, HolonCollectionWire>;
@@ -194,6 +196,7 @@ export interface StagedHolonWire {
   original_id: LocalId | null;
   versioned_source_id?: LocalId | null;
   touched_relationship_names?: RelationshipName[];
+  relationship_commit_scope: RelationshipCommitScope;
   errors: HolonErrorWire[];
 }
 
@@ -713,7 +716,6 @@ export function isStagedReferenceWire(value: unknown): value is StagedReferenceW
 export function isSmartReferenceWire(value: unknown): value is SmartReferenceWire {
   return (
     isRecord(value) &&
-    isNumber(value['tx_id']) &&
     isHolonId(value['holon_id']) &&
     isNullable(value['smart_property_values'], isPropertyMap)
   );
@@ -1262,6 +1264,8 @@ export function isStagedHolonWire(value: unknown): value is StagedHolonWire {
     (value['touched_relationship_names'] === undefined ||
       (Array.isArray(value['touched_relationship_names']) &&
         value['touched_relationship_names'].every(isString))) &&
+    (value['relationship_commit_scope'] === 'Full' ||
+      value['relationship_commit_scope'] === 'TouchedOnly') &&
     Array.isArray(value['errors']) &&
     value['errors'].every(isHolonErrorWire)
   );
@@ -1275,6 +1279,7 @@ export function isCommitValidationViolationKindWire(
     value === 'UnsupportedValidationRule' ||
     value === 'UnresolvedLocalDependency' ||
     value === 'RelationshipCoordinationRequired' ||
+    value === 'IndependentlyAuthoredInverseRelationship' ||
     isTaggedValue(
       value,
       'UnsupportedConstraintType',

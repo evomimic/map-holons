@@ -2,10 +2,11 @@ use crate::harness::fixtures_support::{TestHolonState, TestReference};
 use base_types::MapInteger;
 use core_types::{HolonError, TemporaryId};
 use derive_new::new;
-use holons_core::HolonReference;
-use holons_core::TransientReference;
 use holons_core::WritableHolon;
-use std::collections::BTreeMap;
+use holons_core::{
+    core_shared_objects::transactions::TransactionContext, HolonReference, TransientReference,
+};
+use std::{collections::BTreeMap, sync::Arc};
 use tracing::debug;
 
 use super::{ExpectedSnapshot, SnapshotId, SourceSnapshot};
@@ -84,8 +85,12 @@ impl FixtureHolon {
 /// - `commit()` advances head with a minted *Saved* expectation for all *Staged* intents.
 ///
 ///  Each token maps to an ExecutionHolon -- the expected runtime resolution.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone)]
 pub struct FixtureHolons {
+    /// Fixture authoring owns one transaction. Expected snapshots are cloned
+    /// through it so the harness follows the same transaction-owned clone
+    /// policy as runtime code while keeping that context out of `DancesTestCase`.
+    fixture_context: Arc<TransactionContext>,
     /// Append-only ledger of all TestReferences minted during fixture authoring,
     /// including tokens not returned to TestCase authors (e.g. commit-minted tokens).
     ///
@@ -105,9 +110,19 @@ pub struct FixtureHolons {
 }
 
 impl FixtureHolons {
-    /// Create an empty container.
-    pub fn new() -> Self {
-        Self::default()
+    /// Create an empty fixture registry bound to its authoring transaction.
+    pub fn new(fixture_context: Arc<TransactionContext>) -> Self {
+        Self {
+            fixture_context,
+            tokens: Vec::new(),
+            holons: BTreeMap::new(),
+            snapshot_to_fixture_holon: BTreeMap::new(),
+        }
+    }
+
+    /// Clone an expected snapshot through the fixture transaction.
+    pub fn clone_holon(&self, source: &HolonReference) -> Result<TransientReference, HolonError> {
+        self.fixture_context.clone_holon(source)
     }
 
     /// Creates and adds a new FixtureHolon from the given Expected snapshot.
@@ -285,7 +300,8 @@ impl FixtureHolons {
                 continue;
             }
 
-            let mut updated_snapshot = existing_holon.head_snapshot.snapshot().clone_holon()?;
+            let mut updated_snapshot =
+                self.clone_holon(&existing_holon.head_snapshot.snapshot().clone().into())?;
             let relationship_map = match updated_snapshot.all_related_holons() {
                 Ok(map) => map,
                 Err(HolonError::NotImplemented(_)) => continue,
@@ -364,7 +380,8 @@ impl FixtureHolons {
         for holon in self.holons.clone().values() {
             match holon.head_snapshot.state() {
                 TestHolonState::Staged => {
-                    let snapshot = holon.head_snapshot.snapshot().clone().clone_holon()?;
+                    let snapshot =
+                        self.clone_holon(&holon.head_snapshot.snapshot().clone().into())?;
                     let source = holon.head_snapshot.as_source();
                     let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Saved);
                     // Mint saved
@@ -470,7 +487,7 @@ mod tests {
             .new_holon(Some(MapString(key.to_string())))
             .expect("new_holon should succeed");
         let staged = ExpectedSnapshot::new(
-            transient.clone_holon().expect("clone_holon should succeed"),
+            context.clone_holon(&transient.clone().into()).expect("clone_holon should succeed"),
             TestHolonState::Staged,
         );
         fixture_holons.create_fixture_holon(staged.clone()).expect("create_fixture_holon");
@@ -483,7 +500,7 @@ mod tests {
         use crate::{DanceTestStep, DancesTestCase, ExpectedCommitStatus};
 
         let context = init_fixture_context();
-        let mut fixture_holons = FixtureHolons::new();
+        let mut fixture_holons = FixtureHolons::new(context.clone());
         let staged_token = mint_staged_token(&context, &mut fixture_holons, "rejected-book");
         let mut test_case = DancesTestCase::default();
 
@@ -513,7 +530,7 @@ mod tests {
     #[test]
     fn head_advanced_token_resolves_to_saved_head() {
         let context = init_fixture_context();
-        let mut fixture_holons = FixtureHolons::new();
+        let mut fixture_holons = FixtureHolons::new(context.clone());
         let staged_token = mint_staged_token(&context, &mut fixture_holons, "book-key");
 
         fixture_holons.commit().expect("commit should advance staged heads");
@@ -532,7 +549,7 @@ mod tests {
     #[test]
     fn same_head_token_is_returned_unchanged() {
         let context = init_fixture_context();
-        let mut fixture_holons = FixtureHolons::new();
+        let mut fixture_holons = FixtureHolons::new(context.clone());
         let staged_token = mint_staged_token(&context, &mut fixture_holons, "person-key");
 
         let resolved = fixture_holons
@@ -544,14 +561,14 @@ mod tests {
     #[test]
     fn untracked_token_errors() {
         let context = init_fixture_context();
-        let mut fixture_holons = FixtureHolons::new();
+        let mut fixture_holons = FixtureHolons::new(context.clone());
         // Mint a token without registering a FixtureHolon for its snapshot.
         let transient = context
             .mutation()
             .new_holon(Some(MapString("orphan-key".to_string())))
             .expect("new_holon should succeed");
         let expected = ExpectedSnapshot::new(
-            transient.clone_holon().expect("clone_holon should succeed"),
+            context.clone_holon(&transient.clone().into()).expect("clone_holon should succeed"),
             TestHolonState::Staged,
         );
         let token = fixture_holons.mint_test_reference(

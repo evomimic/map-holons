@@ -224,14 +224,9 @@ mod tests {
     use super::*;
     use core_types::{HolonId, LocalId};
     use holons_boundary::SmartReferenceWire;
-    use holons_core::core_shared_objects::transactions::TxId;
 
     fn space_reference() -> HolonReferenceWire {
-        HolonReferenceWire::Smart(SmartReferenceWire::new(
-            TxId::from_str("0").expect("fixture transaction id"),
-            HolonId::Local(LocalId(vec![7])),
-            None,
-        ))
+        HolonReferenceWire::Smart(SmartReferenceWire::new(HolonId::Local(LocalId(vec![7])), None))
     }
 
     #[test]

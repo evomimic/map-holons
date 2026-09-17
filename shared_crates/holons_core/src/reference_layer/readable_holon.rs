@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
-use super::{HolonReference, TransientReference};
+use super::HolonReference;
 use crate::descriptors::{
     CommandDescriptor, DanceDescriptor, HolonDescriptor, PropertyDescriptor, QualifiedRelationship,
 };
@@ -23,11 +23,6 @@ use type_names::{ToCommandName, ToDanceName};
 // Façade: ergonomic + complete; default bodies delegate to *_impl.
 pub trait ReadableHolon: ReadableHolonImpl {
     // Plain forwards
-    /// Generic clone for all Holon variants. Resulting clone is always a TransientReference, regardless of source phase.
-    fn clone_holon(&self) -> Result<TransientReference, HolonError> {
-        ReadableHolonImpl::clone_holon_impl(self)
-    }
-
     /// Returns true when this holon and `other` have the same definition-level content.
     #[inline]
     fn is_definitionally_equivalent(&self, other: &HolonReference) -> Result<bool, HolonError> {
@@ -169,6 +164,11 @@ pub trait ReadableHolon: ReadableHolonImpl {
     ///
     /// # Guarantees
     /// - Never returns `None`; an empty `HolonCollection` indicates no related holons.
+    /// - Transient and staged references read only their local relationship map.
+    ///   They do not fall back to collections on a saved lineage source. Normal
+    ///   saved-to-transient cloning omits recognized materialized inverse
+    ///   occurrences, so those members are absent from an authoring clone or
+    ///   staged update unless explicitly present in its local map.
     ///
     /// # See also
     /// - [`ToRelationshipName`] for supported input conversions.
@@ -188,10 +188,13 @@ pub trait ReadableHolon: ReadableHolonImpl {
         ReadableHolonImpl::related_holons_impl(self, &rel)
     }
 
-    /// Enumerates relationships available on this source in its current state.
+    /// Enumerates outbound relationships available from this source in its
+    /// current lifecycle state.
     ///
-    /// Availability filters the effective outbound relationship set by source
-    /// commit state:
+    /// Availability is a read-navigation concept: it filters the descriptor's
+    /// effective outbound relationship surface by source commit state. It does
+    /// not authorize an agent or determine whether a relationship occurrence
+    /// may be authored by a write operation.
     ///
     /// | Source reference state          | Declared | Inverse |
     /// | ------------------------------- | -------- | ------- |

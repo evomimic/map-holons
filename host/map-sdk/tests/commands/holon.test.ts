@@ -74,7 +74,6 @@ const transientReference: HolonReferenceWire = {
 
 const descriptor: HolonReferenceWire = {
   Smart: {
-    tx_id: txId,
     holon_id: {
       Local: [1, 2, 3, 4],
     },

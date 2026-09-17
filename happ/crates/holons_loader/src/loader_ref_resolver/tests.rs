@@ -96,7 +96,7 @@ fn declared_relationship_is_accepted_and_resolved_once() {
 }
 
 #[test]
-fn duplicate_inverse_references_keep_authored_targets_and_provenance() {
+fn duplicate_inverse_references_are_left_for_common_commit_assessment() {
     let f = Fixture::new();
     let result = LoaderRefResolver::resolve_relationships(
         &f.context,
@@ -107,13 +107,10 @@ fn duplicate_inverse_references_keep_authored_targets_and_provenance() {
     )
     .unwrap();
     assert_eq!(result.links_created, 1, "second write plan must be empty");
-    assert_eq!(result.errors.len(), 2, "both authored references must be assessed");
-    for error in result.errors {
-        assert_eq!(error.source_loader_key, Some("person".into()));
-        assert!(matches!(error.error, HolonError::InvalidRelationship(name, message)
-            if name == "AuthorOf" && message.contains("AuthoredBy")
-                && message.contains("opposite endpoint")));
-    }
+    assert!(
+        result.errors.is_empty(),
+        "recognized inverse input is assessed by common Commit preparation rather than loader-owned errors"
+    );
     assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 2);
     assert_eq!(result.metrics.assessment.endpoint_resolution_calls, 0);
     assert_eq!(result.metrics.declaration_lookup_calls, 2);

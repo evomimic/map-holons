@@ -18,9 +18,7 @@ use crate::harness::{
     fixtures_support::{SnapshotId, TestHolonState, TestReference},
 };
 use core_types::{LocalId, TemporaryId};
-use holons_core::core_shared_objects::{
-    holon::StagedState, transactions::TransactionContextHandle,
-};
+use holons_core::core_shared_objects::holon::StagedState;
 use holons_core::reference_layer::SmartReference;
 use holons_prelude::prelude::*;
 use std::collections::BTreeMap;
@@ -150,16 +148,16 @@ impl ExecutionHolons {
                         TestHolonState::Saved | TestHolonState::SavedLookup,
                         HolonReference::Smart(smart_reference),
                     ) => {
-                        let context_handle = TransactionContextHandle::new(context.clone());
+                        let space_read_handle = context.space_read_handle();
                         let rebound_reference =
                             match smart_reference.smart_property_values().cloned() {
                                 Some(properties) => SmartReference::new_with_properties(
-                                    context_handle,
+                                    space_read_handle,
                                     smart_reference.holon_id(),
                                     properties,
                                 ),
                                 None => SmartReference::new_from_id(
-                                    context_handle,
+                                    space_read_handle,
                                     smart_reference.holon_id(),
                                 ),
                             };

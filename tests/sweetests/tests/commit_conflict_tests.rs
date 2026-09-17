@@ -332,8 +332,9 @@ fn orientation_content_set(relationship_name: &str, declared_orientation: bool) 
     content_set
 }
 
-/// Pins both boundaries: loader errors skip all persistence, while a malformed
-/// graph staged independently still exercises Commit's defensive Pass 2 error.
+/// Pins both boundaries: unresolved names fail loader resolution and skip
+/// Commit, while recognized inverse input reaches common Commit preparation and
+/// is rejected before any persistence write.
 async fn verify_loader_orientation_and_direct_commit_failure(
     runtime: &Runtime,
     backend: &MockConductorConfig,
@@ -358,9 +359,10 @@ async fn verify_loader_orientation_and_direct_commit_failure(
         let MapResult::Reference(response) = result else {
             panic!("load response");
         };
+        let recognized_inverse = relationship_name == "AuthorOf";
         assert_eq!(
             response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
-            Some("Skipped".to_base_value())
+            Some(if recognized_inverse { "Rejected" } else { "Skipped" }.to_base_value())
         );
         assert_eq!(
             response.property_value(CorePropertyTypeName::HolonsCommitted).unwrap(),
@@ -368,27 +370,29 @@ async fn verify_loader_orientation_and_direct_commit_failure(
         );
         assert_eq!(
             response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
-            Some(MapInteger(0).to_base_value())
+            Some(MapInteger(if recognized_inverse { 1 } else { 0 }).to_base_value())
         );
         let errors = response.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
         let errors = errors.read().unwrap().get_members().clone();
-        assert_eq!(errors.len(), 1);
-        let Some(BaseValue::StringValue(MapString(message))) =
-            errors[0].property_value(CorePropertyTypeName::ErrorMessage).unwrap()
-        else {
-            panic!("loader error must carry a diagnostic");
-        };
-        assert!(message.contains(relationship_name), "{message}");
-        if relationship_name == "AuthorOf" {
-            assert!(message.contains("declared orientation"), "{message}");
-            assert!(message.contains("AuthoredBy"), "{message}");
+        if recognized_inverse {
+            assert!(
+                errors.is_empty(),
+                "recognized inverse input must surface as a Commit finding, not a loader error"
+            );
         } else {
+            assert_eq!(errors.len(), 1);
+            let Some(BaseValue::StringValue(MapString(message))) =
+                errors[0].property_value(CorePropertyTypeName::ErrorMessage).unwrap()
+            else {
+                panic!("loader error must carry a diagnostic");
+            };
+            assert!(message.contains(relationship_name), "{message}");
             assert!(message.contains("relationship declaration"), "{message}");
+            assert_eq!(
+                errors[0].property_value(CorePropertyTypeName::LoaderHolonKey).unwrap(),
+                Some("Person.InverseOrientationFailure.1".to_base_value())
+            );
         }
-        assert_eq!(
-            errors[0].property_value(CorePropertyTypeName::LoaderHolonKey).unwrap(),
-            Some("Person.InverseOrientationFailure.1".to_base_value())
-        );
         let after: (u32, u32) = backend
             .conductor
             .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
@@ -397,8 +401,14 @@ async fn verify_loader_orientation_and_direct_commit_failure(
         assert!(context.is_open());
         for staged in context.staged_references().unwrap() {
             assert!(staged.is_in_state(&context, StagedState::ForCreate).unwrap());
-            assert_eq!(staged.validation_state().unwrap(), ValidationState::ValidationRequired);
-            assert!(staged.commit_errors().unwrap().is_empty());
+            if recognized_inverse {
+                // Commit installed a shared orientation finding on the source;
+                // unrelated assembled holons remain validation-required.
+                assert!(staged.commit_errors().unwrap().is_empty());
+            } else {
+                assert_eq!(staged.validation_state().unwrap(), ValidationState::ValidationRequired);
+                assert!(staged.commit_errors().unwrap().is_empty());
+            }
         }
         runtime.session().archive_transaction(&context.tx_id()).unwrap();
     }

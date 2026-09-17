@@ -18,6 +18,7 @@ pub mod relationship_descriptor;
 mod resolved_descriptor_roots;
 #[cfg(test)]
 mod schema_contract_tests;
+pub mod source_relationship_contract;
 #[cfg(test)]
 pub(crate) mod test_support;
 pub mod transaction_descriptor;
@@ -46,6 +47,9 @@ pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
 pub use relationship_descriptor::{RelationshipDescriptor, TargetBinding};
 pub use resolved_descriptor_roots::{resolve_core_descriptor, ResolvedValueTypeRoots};
+pub use source_relationship_contract::{
+    RelationshipOccurrenceOrientation, SourceRelationshipContract,
+};
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
 pub use universal_descriptor_contract::UniversalDescriptorContract;

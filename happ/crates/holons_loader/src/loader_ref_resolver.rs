@@ -520,9 +520,12 @@ impl LoaderRefResolver {
         (total_links_created, errors)
     }
 
-    /// Enforces import orientation using the source's inherited declarations.
-    /// Inverse detection walks opposite endpoints' declared contracts so it also
-    /// works for staged schemas without a persisted TargetOf navigation index.
+    /// Keeps loader resolution strict for unresolved names while allowing
+    /// recognized inverse input to reach the common Commit preparation pass.
+    ///
+    /// Loader assembly is intentionally permissive enough to construct an
+    /// incomplete graph. Commit owns the authoritative inverse-authoring
+    /// finding, so every producer receives the same rejection surface.
     fn require_declared_relationship(
         source: &HolonReference,
         name: &RelationshipName,
@@ -538,26 +541,25 @@ impl LoaderRefResolver {
             Err(error @ HolonError::DescriptorDeclarationNotFound { .. }) => error,
             Err(error) => return Err(error),
         };
-        let source_descriptor = source.holon_descriptor()?;
+        let contract = SourceRelationshipContract::resolve(source.clone())?;
+        let mut recognized_inverse = false;
         for target in targets {
-            for declared in target.holon_descriptor()?.effective_declared_relationships()? {
-                if declared.required_inverse()?.base_relationship_name()? == *name
-                    && equals_or_extends(
-                        source_descriptor.holon(),
-                        declared.target_type()?.holon(),
-                    )?
-                {
-                    return Err(HolonError::InvalidRelationship(
-                        name.to_string(),
-                        format!(
-                            "Loader imports must use declared orientation; '{}' is inverse-oriented. Author '{}' from the opposite endpoint instead.",
-                            name, declared.base_relationship_name()?
-                        ),
-                    ));
+            match contract.classify_occurrence(name, target)? {
+                RelationshipOccurrenceOrientation::RecognizedInverse { .. } => {
+                    recognized_inverse = true;
                 }
+                // A source declaration would have returned above; neither of
+                // these forms supplies a loader exemption for the original
+                // unresolved-name error.
+                RelationshipOccurrenceOrientation::Declared(_)
+                | RelationshipOccurrenceOrientation::Unresolved => return Err(missing),
             }
         }
-        Err(missing)
+        if recognized_inverse {
+            Ok(())
+        } else {
+            Err(missing)
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────

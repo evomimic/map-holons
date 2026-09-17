@@ -169,7 +169,6 @@ describe('MapTransaction', () => {
   it('rebinds a persisted application-session reference to this transaction', () => {
     const sessionReference: HolonReferenceWire = {
       Smart: {
-        tx_id: 7,
         holon_id: holonId,
         smart_property_values: null,
       },
@@ -179,7 +178,6 @@ describe('MapTransaction', () => {
 
     expect(unwrapHolonReference(rebound)).toEqual({
       Smart: {
-        tx_id: txId,
         holon_id: holonId,
         smart_property_values: null,
       },
@@ -237,7 +235,6 @@ describe('MapTransaction', () => {
     });
 
     expect(stageNewVersionMock).toHaveBeenCalledWith(txId, {
-      tx_id: txId,
       holon_id: holonId,
       smart_property_values: {
         title: {
@@ -256,7 +253,6 @@ describe('MapTransaction', () => {
     });
 
     expect(stageNewVersionMock).toHaveBeenCalledWith(txId, {
-      tx_id: txId,
       holon_id: holonId,
       smart_property_values: null,
     });

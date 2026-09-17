@@ -18,20 +18,10 @@ pub async fn execute_stage_new_from_clone(
     let source_reference: HolonReference =
         state.resolve_execution_reference(&context, ResolveBy::Source, &step_token).unwrap();
 
-    // Rebind SmartReferences to the current context to avoid cross-transaction errors.
-    // SmartReferences from a prior commit carry the old transaction's context handle.
-    let rebound_reference = match &source_reference {
-        HolonReference::Smart(smart_ref) => {
-            let context_handle = TransactionContextHandle::new(context.clone());
-            HolonReference::Smart(SmartReference::new_from_id(context_handle, smart_ref.holon_id()))
-        }
-        other => other.clone(),
-    };
-
     // 2. BUILD + DISPATCH
     let command = MapCommand::Transaction(TransactionCommand {
         context: context.clone(),
-        action: TransactionAction::StageNewFromClone { original: rebound_reference, new_key },
+        action: TransactionAction::StageNewFromClone { original: source_reference, new_key },
     });
     let result = state.dispatch_command(command, "stage_new_from_clone").await;
     debug!("stage_new_from_clone result: {:?}", &result);

@@ -15,10 +15,15 @@ use core_types::{
     CommitValidationViolation, HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap,
     PropertyName, PropertyValue, RelationshipName,
 };
+use serde::{Deserialize, Serialize};
 use type_names::CorePropertyTypeName;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-enum RelationshipCommitScope {
+/// Pass-2 relationship persistence scope selected during Commit preparation.
+///
+/// This is serialized with staged state so an interrupted Commit retry cannot
+/// broaden a graph-only update into a full relationship replay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum RelationshipCommitScope {
     #[default]
     Full,
     TouchedOnly,
@@ -129,6 +134,7 @@ impl StagedHolon {
         original_id: Option<LocalId>,
         versioned_source_id: Option<LocalId>,
         touched_relationship_names: BTreeSet<RelationshipName>,
+        relationship_commit_scope: RelationshipCommitScope,
         errors: Vec<HolonError>,
     ) -> Self {
         Self {
@@ -142,7 +148,7 @@ impl StagedHolon {
             original_id,
             versioned_source_id,
             touched_relationship_names,
-            relationship_commit_scope: RelationshipCommitScope::Full,
+            relationship_commit_scope,
             errors,
         }
     }
@@ -335,6 +341,11 @@ impl StagedHolon {
         self.is_accessible(AccessType::Commit)?;
         self.relationship_commit_scope = RelationshipCommitScope::TouchedOnly;
         Ok(())
+    }
+
+    /// Returns the recorded relationship persistence decision for wire projection.
+    pub fn relationship_commit_scope(&self) -> RelationshipCommitScope {
+        self.relationship_commit_scope
     }
 
     fn mark_relationship_touched(&mut self, relationship_name: &RelationshipName) {
@@ -908,6 +919,7 @@ mod tests {
             None,
             Some(LocalId(vec![1, 2, 3])),
             BTreeSet::new(),
+            RelationshipCommitScope::Full,
             Vec::new(),
         );
 

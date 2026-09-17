@@ -9,6 +9,24 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
 
+/// Lifetime over which a relationship collection may be reused.
+///
+/// A guest service lives for one dance request, so its relationship cache may
+/// reuse every persisted relationship collection within that request. A host
+/// service owns a cache shared by many transactions and may reuse only
+/// declared definitional relationship membership, which is immutable for a
+/// saved source version.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RelationshipCacheScope {
+    /// The cache is request-local and may reuse any persisted relationship
+    /// collection for the duration of that request.
+    RequestLocal,
+
+    /// The cache spans transactions and may reuse only declared definitional
+    /// relationship collections.
+    SpaceDefinitionalOnly,
+}
+
 /// The HolonServiceApi trait defines the public service interface for Holon operations
 /// in MAP. Its primary purpose is to provide a **shared abstraction** between client
 /// and guest contexts while isolating differences in their implementations.
@@ -26,6 +44,13 @@ use std::sync::Arc;
 /// client and guest provide the "how" for their respective contexts.
 pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
+
+    /// States the lifetime semantics of the relationship cache paired with
+    /// this service. Guest implementations retain the safe request-local
+    /// default; host implementations opt into descriptor-governed reuse.
+    fn relationship_cache_scope(&self) -> RelationshipCacheScope {
+        RelationshipCacheScope::RequestLocal
+    }
 
     /// This function commits the staged holons to the persistent store
     fn commit_internal(

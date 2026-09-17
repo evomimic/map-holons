@@ -1,9 +1,7 @@
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::core_shared_objects::transactions::{
-    TransactionContext, TransactionContextHandle, TxId,
-};
+use crate::core_shared_objects::transactions::TransactionContext;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -122,29 +120,33 @@ impl HolonReference {
         }
     }
 
-    pub fn tx_id(&self) -> TxId {
+    /// Returns the transaction context only for transaction-local reference phases.
+    /// Saved references are space-bound and intentionally have no transaction context.
+    pub(crate) fn transaction_context(&self) -> Option<Arc<TransactionContext>> {
         match self {
-            HolonReference::Smart(smart_reference) => smart_reference.tx_id(),
-            HolonReference::Staged(staged_reference) => staged_reference.tx_id(),
-            HolonReference::Transient(transient_reference) => transient_reference.tx_id(),
+            Self::Smart(_) => None,
+            Self::Staged(reference) => Some(reference.bound_context()),
+            Self::Transient(reference) => Some(reference.bound_context()),
         }
     }
 
-    /// Keeps bootstrap lookup bound to the reference without exposing context plumbing.
-    pub(crate) fn bound_context(&self) -> Arc<TransactionContext> {
+    /// Gets an execution context suitable for descriptor resolution. Saved
+    /// references obtain a fresh restricted context for their owning space;
+    /// transaction-local phases retain their bound context.
+    pub(crate) fn resolution_context(&self) -> Result<Arc<TransactionContext>, HolonError> {
         match self {
-            Self::Smart(reference) => reference.bound_context(),
-            Self::Staged(reference) => reference.bound_context(),
-            Self::Transient(reference) => reference.bound_context(),
+            Self::Smart(reference) => reference.resolution_context(),
+            Self::Staged(reference) => Ok(reference.bound_context()),
+            Self::Transient(reference) => Ok(reference.bound_context()),
         }
     }
 
-    /// Creates a tx-bound `HolonReference::Smart` for the given `HolonId`.
+    /// Creates a space-bound `HolonReference::Smart` for the given `HolonId`.
     pub fn smart_from_id(
-        transaction_handle: TransactionContextHandle,
+        space_read_handle: crate::core_shared_objects::SpaceReadHandle,
         holon_id: HolonId,
     ) -> HolonReference {
-        HolonReference::Smart(SmartReference::new_from_id(transaction_handle, holon_id))
+        HolonReference::Smart(SmartReference::new_from_id(space_read_handle, holon_id))
     }
 
     /// Constructs a `HolonReference::Smart` for a holon that has been
@@ -172,14 +174,14 @@ impl HolonReference {
     /// - Other properties may be added later through the generic
     ///   `smart_with_properties` constructor.
     pub fn smart_with_key(
-        transaction_handle: TransactionContextHandle,
+        space_read_handle: crate::core_shared_objects::SpaceReadHandle,
         holon_id: HolonId,
         key: MapString,
     ) -> Self {
         let mut smart_properties = PropertyMap::new();
         smart_properties
             .insert(CorePropertyTypeName::Key.as_property_name(), BaseValue::StringValue(key));
-        Self::smart_with_properties(transaction_handle, holon_id, smart_properties)
+        Self::smart_with_properties(space_read_handle, holon_id, smart_properties)
     }
 
     /// Constructs a `HolonReference::Smart` with an explicit set of cached
@@ -213,12 +215,12 @@ impl HolonReference {
     /// - If you only need to embed the holon's key, prefer
     ///   [`smart_with_key`](Self::smart_with_key) for convenience.
     pub fn smart_with_properties(
-        transaction_handle: TransactionContextHandle,
+        space_read_handle: crate::core_shared_objects::SpaceReadHandle,
         holon_id: HolonId,
         smart_properties: PropertyMap,
     ) -> Self {
         HolonReference::Smart(SmartReference::new_with_properties(
-            transaction_handle,
+            space_read_handle,
             holon_id,
             smart_properties,
         ))
@@ -550,9 +552,7 @@ impl WritableHolonImpl for HolonReference {
 impl PartialEq for HolonReference {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (HolonReference::Smart(a), HolonReference::Smart(b)) => {
-                a.tx_id() == b.tx_id() && a.holon_id() == b.holon_id()
-            }
+            (HolonReference::Smart(a), HolonReference::Smart(b)) => a == b,
             (HolonReference::Staged(a), HolonReference::Staged(b)) => {
                 a.tx_id() == b.tx_id() && a.temporary_id() == b.temporary_id()
             }

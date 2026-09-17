@@ -19,6 +19,61 @@ fn value_path() -> ValidationSubjectPath {
 }
 
 #[test]
+fn commit_assessment_rejects_ungoverned_inverse_input_without_target_of() -> Result<(), HolonError>
+{
+    let mut fixture = Fixture::new()?;
+    for key in [
+        "DeclaredRelationshipType",
+        "InverseRelationshipType",
+        "BookType",
+        "PersonType",
+        "WrittenBy",
+        "Authors",
+    ] {
+        fixture.node(key)?;
+    }
+    fixture.link("WrittenBy", CoreRelationshipTypeName::Extends, "DeclaredRelationshipType")?;
+    fixture.link("Authors", CoreRelationshipTypeName::Extends, "InverseRelationshipType")?;
+    fixture.link("WrittenBy", CoreRelationshipTypeName::SourceType, "PersonType")?;
+    fixture.link("WrittenBy", CoreRelationshipTypeName::TargetType, "BookType")?;
+    fixture.link("Authors", CoreRelationshipTypeName::SourceType, "BookType")?;
+    fixture.link("Authors", CoreRelationshipTypeName::TargetType, "PersonType")?;
+    fixture.link("WrittenBy", CoreRelationshipTypeName::HasInverse, "Authors")?;
+    fixture.link("Authors", CoreRelationshipTypeName::InverseOf, "WrittenBy")?;
+    fixture.link("PersonType", CoreRelationshipTypeName::InstanceRelationships, "WrittenBy")?;
+
+    let candidate_transient =
+        fixture.context.mutation().new_holon(Some(MapString("inverse-input-person".into())))?;
+    let mut candidate = fixture.context.mutation().stage_new_holon(candidate_transient)?;
+    candidate.with_descriptor(fixture.nodes["BookType"].clone())?;
+    let target_transient = fixture
+        .context
+        .mutation()
+        .new_holon(Some(MapString("inverse-input-person-target".into())))?;
+    let mut target = fixture.context.mutation().stage_new_holon(target_transient)?;
+    target.with_descriptor(fixture.nodes["PersonType"].clone())?;
+
+    // This simulates incomplete loader/wire construction. It deliberately
+    // bypasses mutation-time feedback, but the common preparation pass must
+    // still recognize the inverse using the target's declared contract.
+    candidate.add_related_holons_ungoverned("Authors", vec![target.into()])?;
+
+    let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))?;
+    assert_eq!(report.violation_count(), 1);
+    assert_eq!(
+        report.violations[0].kind,
+        CommitValidationViolationKind::IndependentlyAuthoredInverseRelationship
+    );
+    assert!(matches!(
+        &report.violations[0].subject,
+        ValidationSubjectPath::Relationship { name, .. } if name == "Authors"
+    ));
+    assert_eq!(candidate.validation_state()?, ValidationState::Invalid);
+
+    Ok(())
+}
+
+#[test]
 fn commit_candidates_replace_all_outcomes_and_accept_corrected_retry() -> Result<(), HolonError> {
     let fixture = Fixture::new()?;
     let mut missing_title = fixture.staged_subject("missing-title")?;

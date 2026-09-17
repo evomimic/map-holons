@@ -27,6 +27,7 @@ pub enum CommitValidationViolationKind {
     RuleViolation { code: String },
     UnresolvedLocalDependency,
     RelationshipCoordinationRequired,
+    IndependentlyAuthoredInverseRelationship,
 }
 
 /// Serialized identity and path of the subject; never a bound runtime handle.
@@ -82,6 +83,10 @@ mod tests {
             (
                 CommitValidationViolationKind::RelationshipCoordinationRequired,
                 json!("RelationshipCoordinationRequired"),
+            ),
+            (
+                CommitValidationViolationKind::IndependentlyAuthoredInverseRelationship,
+                json!("IndependentlyAuthoredInverseRelationship"),
             ),
         ];
         let subjects = [

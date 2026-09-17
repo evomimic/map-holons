@@ -177,7 +177,10 @@ impl ValueDescriptor {
         &self,
         roots: &super::ResolvedValueTypeRoots,
     ) -> Result<ValueDescriptorKind, HolonError> {
-        super::resolved_descriptor_roots::assert_same_transaction(&self.holon, &roots.context)?;
+        super::resolved_descriptor_roots::assert_descriptor_reference_compatible(
+            &self.holon,
+            &roots.context,
+        )?;
         for (root, kind) in &roots.families {
             if equals_or_extends(&self.holon, root)? {
                 return Ok(kind.clone());
@@ -188,7 +191,8 @@ impl ValueDescriptor {
 
     /// Existing one-off operations resolve through their already-bound transaction.
     fn resolved_value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
-        self.value_kind(&super::ResolvedValueTypeRoots::resolve(&self.holon.bound_context())?)
+        let context = self.holon.resolution_context()?;
+        self.value_kind(&super::ResolvedValueTypeRoots::resolve(&context)?)
     }
 
     fn validate_boolean(&self, value: &BaseValue) -> Result<(), HolonError> {

@@ -1,8 +1,5 @@
 use super::transaction_context::TransactionOperation;
-use super::{
-    HolonServiceApi, HolonStagingBehavior, TransactionContext, TransactionContextHandle,
-    TransientHolonBehavior,
-};
+use super::{HolonServiceApi, HolonStagingBehavior, TransactionContext, TransientHolonBehavior};
 use crate::{HolonReference, ReadableHolon, SmartReference, StagedReference, TransientReference};
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId};
@@ -127,9 +124,7 @@ impl MutationFacade {
         // Avoid constructing SmartReference at call sites (e.g. loader).
         // This keeps reference minting inside core execution surfaces/managers.
 
-        // Build a tx-bound SmartReference using the context handle derived from the Arc.
-        let handle = TransactionContextHandle::new(self.context.clone());
-        let smart = SmartReference::new_from_id(handle, holon_id);
+        let smart = SmartReference::new_from_id(self.context.space_read_handle(), holon_id);
 
         // Lifecycle check happens inside stage_new_version
         self.stage_new_version(smart)
@@ -161,7 +156,7 @@ impl MutationFacade {
         self.context.assert_allowed(TransactionOperation::MutateState)?;
 
         let target = SmartReference::new_from_id(
-            self.context.context_handle(),
+            self.context.space_read_handle(),
             HolonId::Local(local_id.clone()),
         );
         if !target.holon_descriptor()?.instance_deletion_allowed()? {

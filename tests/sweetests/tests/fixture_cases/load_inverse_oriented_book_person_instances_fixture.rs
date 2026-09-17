@@ -1,9 +1,8 @@
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, TestCaseInit};
 
-/// Requires inverse-oriented imports to fail loader resolution before Commit.
-/// Resolution errors are returned with loader provenance; partial persistence
-/// and Commit semantic rejection are not the expected contract.
+/// Requires inverse-oriented imports to reach common Commit assessment and be
+/// rejected before persistence. The rejection is semantic, not a loader error.
 ///
 /// `commit_conflict_tests` covers the same refusal through direct Runtime calls.
 /// This case earns its place on the path rather than the assertion: it dances the
@@ -11,7 +10,7 @@ use holons_test::{DancesTestCase, TestCaseInit};
 pub fn load_inverse_oriented_book_person_instances_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, fixture_holons, .. } = TestCaseInit::new(
         "load_inverse_oriented_book_person_instances",
-        "Inverse-oriented AuthorOf import reports Skipped with a loader error and no committed holons",
+        "Inverse-oriented AuthorOf import reports Rejected with no committed holons",
     );
 
     // Core is provided by harness bootstrap. The suite loads this domain schema

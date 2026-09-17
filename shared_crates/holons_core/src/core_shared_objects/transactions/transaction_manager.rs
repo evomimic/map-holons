@@ -42,7 +42,7 @@ impl TransactionManager {
         let tx_id = self.id_generator.next_id();
 
         // Build the transaction context with a STRONG space reference.
-        let context = TransactionContext::new(tx_id, space_manager);
+        let context = TransactionContext::new(tx_id, space_manager, false);
 
         // Register the transaction (weak only) while holding the lock briefly.
         let mut guard = self.transactions.write().map_err(|e| {
@@ -78,7 +78,7 @@ impl TransactionManager {
         self.id_generator.bump_to_at_least(tx_id);
 
         // Build the transaction context with a STRONG space reference.
-        let context = TransactionContext::new(tx_id, space_manager);
+        let context = TransactionContext::new(tx_id, space_manager, false);
 
         // Register the transaction (weak only) while holding the lock briefly.
         let mut guard = self.transactions.write().map_err(|e| {
@@ -90,6 +90,50 @@ impl TransactionManager {
         guard.insert(tx_id, Arc::downgrade(&context));
         drop(guard);
 
+        Ok(context)
+    }
+
+    /// Opens an internal transaction used only to satisfy a saved-cache miss.
+    /// It may carry transient dance request/response state, but cannot stage or
+    /// persist changes and is dropped once the cache read completes.
+    pub(crate) fn open_restricted_cache_read_transaction(
+        &self,
+        space_manager: Arc<HolonSpaceManager>,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        let tx_id = self.id_generator.next_id();
+        let context = TransactionContext::new(tx_id, space_manager, true);
+        let mut guard = self.transactions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on transactions: {}",
+                e
+            ))
+        })?;
+        guard.insert(tx_id, Arc::downgrade(&context));
+        Ok(context)
+    }
+
+    /// Restores the guest half of a restricted cache-read transaction using the
+    /// host-assigned id carried by the ordinary dance session envelope.
+    pub fn open_restricted_cache_read_transaction_with_id(
+        &self,
+        space_manager: Arc<HolonSpaceManager>,
+        tx_id: TxId,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        if let Some(existing) = self.get_transaction(&tx_id)? {
+            return Err(HolonError::DuplicateError(
+                "Transaction".to_string(),
+                format!("tx_id={}", existing.tx_id().value()),
+            ));
+        }
+        self.id_generator.bump_to_at_least(tx_id);
+        let context = TransactionContext::new(tx_id, space_manager, true);
+        let mut guard = self.transactions.write().map_err(|e| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire write lock on transactions: {}",
+                e
+            ))
+        })?;
+        guard.insert(tx_id, Arc::downgrade(&context));
         Ok(context)
     }
 

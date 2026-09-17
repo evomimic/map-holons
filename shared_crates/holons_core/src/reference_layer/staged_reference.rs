@@ -10,7 +10,8 @@ use crate::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle, TxId,
 };
 use crate::descriptors::{
-    effective_relationship_declaration, inheritance::described_by_descriptor, RelationshipDirection,
+    effective_relationship_declaration, inheritance::described_by_descriptor,
+    RelationshipOccurrenceOrientation, SourceRelationshipContract,
 };
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
@@ -356,6 +357,7 @@ impl StagedReference {
     fn relationship_mutation_policy(
         &self,
         relationship_name: &RelationshipName,
+        targets: &[HolonReference],
     ) -> Result<RelationshipMutationPolicy, HolonError> {
         let staged_state = self.staged_state()?;
 
@@ -391,24 +393,19 @@ impl StagedReference {
                     });
                 }
 
-                if source_descriptor.is_some() {
-                    match source_ref
-                        .holon_descriptor()?
-                        .allows_relationship(relationship_name.clone())
-                    {
-                        Ok(qualified)
-                            if qualified.descriptor_direction == RelationshipDirection::Inverse =>
-                        {
-                            return Err(HolonError::ValidationError(
-                                    ValidationError::RelationshipError(format!(
-                                        "Relationship '{}' is an inverse relationship and cannot be staged as ordinary mutation input. Stage the declared relationship from the declared source endpoint instead.",
-                                        relationship_name
-                                    )),
-                                ));
-                        }
-                        Ok(_) => return Err(original_error),
-                        Err(_) => return Err(original_error),
-                    }
+                if source_descriptor.is_some()
+                    && Self::all_targets_are_recognized_inverses(
+                        &SourceRelationshipContract::resolve(source_ref.clone())?,
+                        relationship_name,
+                        targets,
+                    )?
+                {
+                    return Err(HolonError::ValidationError(
+                        ValidationError::RelationshipError(format!(
+                            "Relationship '{}' is an inverse relationship and cannot be staged as ordinary mutation input. Stage the declared relationship from the declared source endpoint instead.",
+                            relationship_name
+                        )),
+                    ));
                 }
 
                 return Err(original_error);
@@ -431,16 +428,59 @@ impl StagedReference {
     fn classify_relationship_removal(
         &self,
         relationship_name: &RelationshipName,
+        targets: &[HolonReference],
     ) -> Result<Option<bool>, HolonError> {
         if self.staged_state()? == StagedState::ForCreate {
             return Ok(None);
         }
 
         let source_ref = HolonReference::Staged(self.clone());
-        let relationship_descriptor =
-            effective_relationship_declaration(&source_ref, relationship_name.clone())?;
+        match effective_relationship_declaration(&source_ref, relationship_name.clone()) {
+            Ok(relationship_descriptor) => Ok(Some(relationship_descriptor.is_definitional()?)),
+            Err(
+                original_error @ HolonError::DescriptorDeclarationNotFound {
+                    kind: _,
+                    name: _,
+                    descriptor: _,
+                },
+            ) => {
+                if Self::all_targets_are_recognized_inverses(
+                    &SourceRelationshipContract::resolve(source_ref)?,
+                    relationship_name,
+                    targets,
+                )? {
+                    Ok(Some(false))
+                } else {
+                    Err(original_error)
+                }
+            }
+            Err(error) => Err(error),
+        }
+    }
 
-        Ok(Some(relationship_descriptor.is_definitional()?))
+    /// Returns true only when a non-empty request consists exclusively of
+    /// target-specific recognized inverse occurrences. This permits governed
+    /// correction of invalid staged input without licensing empty, mixed, or
+    /// unresolved requests.
+    fn all_targets_are_recognized_inverses(
+        source_contract: &SourceRelationshipContract,
+        relationship_name: &RelationshipName,
+        targets: &[HolonReference],
+    ) -> Result<bool, HolonError> {
+        if targets.is_empty() {
+            return Ok(false);
+        }
+
+        for target in targets {
+            if !matches!(
+                source_contract.classify_occurrence(relationship_name, target)?,
+                RelationshipOccurrenceOrientation::RecognizedInverse { .. }
+            ) {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 
     /// Filters add entries for a duplicate-disallowed relationship against the staged
@@ -843,7 +883,7 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let policy = self.relationship_mutation_policy(&relationship_name)?;
+        let policy = self.relationship_mutation_policy(&relationship_name, &holons)?;
         // Precompute keys before taking the holon write lock to avoid re-entrant locking on self-edges.
         let holons_with_keys = Self::related_holons_with_keys(holons)?;
 
@@ -858,7 +898,7 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let is_definitional = self.classify_relationship_removal(&relationship_name)?;
+        let is_definitional = self.classify_relationship_removal(&relationship_name, &holons)?;
         let holons_with_keys = Self::related_holons_with_keys(holons)?;
         info!(
             "Removing {:?} related holons from relationship: {:?}",
@@ -1042,6 +1082,7 @@ mod tests {
             original.original_id_ref().cloned(),
             original.versioned_source_id_ref().cloned(),
             original.touched_relationship_names().clone(),
+            original.relationship_commit_scope(),
             vec![HolonError::NotImplemented("persistence failure".into())],
         );
         *holon = Holon::Staged(restored);
@@ -1255,6 +1296,7 @@ mod tests {
     }
 
     struct RelationshipPairFixture {
+        source_type: StagedReference,
         target_type: StagedReference,
     }
 
@@ -1327,7 +1369,7 @@ mod tests {
             vec![(&declared).into()],
         )?;
 
-        Ok(RelationshipPairFixture { target_type })
+        Ok(RelationshipPairFixture { source_type, target_type })
     }
 
     fn staged_update_source(
@@ -1621,7 +1663,8 @@ mod tests {
         let source = new_test_holon(&context, "person-instance")?;
         let mut staged_source = context.mutation().stage_new_holon(source)?;
         staged_source.with_descriptor((&fixture.target_type).into())?;
-        let target = staged_target(&context, "book-instance")?;
+        let mut target = staged_target(&context, "book-instance")?;
+        target.with_descriptor((&fixture.source_type).into())?;
 
         let result = staged_source.add_related_holons("Authors", vec![target.into()]);
 

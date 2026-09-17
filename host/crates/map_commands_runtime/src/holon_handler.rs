@@ -1,9 +1,11 @@
 use base_types::{BaseValue, MapString};
 use core_types::HolonError;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::descriptors::Descriptor;
 use holons_core::reference_layer::{HolonReference, ReadableHolon, WritableHolon};
 use holons_core::{CollectionState, HolonCollection};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use map_commands_contract::{
     HolonAction, HolonCommand, MapResult, ReadableHolonAction, WritableHolonAction,
@@ -12,18 +14,19 @@ use map_commands_contract::{
 /// Handles holon-scoped commands.
 pub async fn handle_holon(command: HolonCommand) -> Result<MapResult, HolonError> {
     match command.action {
-        HolonAction::Read(action) => handle_read(command.target, action),
+        HolonAction::Read(action) => handle_read(&command.context, command.target, action),
         HolonAction::Write(action) => handle_write(command.target, action),
     }
 }
 
 fn handle_read(
+    context: &Arc<TransactionContext>,
     target: HolonReference,
     action: ReadableHolonAction,
 ) -> Result<MapResult, HolonError> {
     match action {
         ReadableHolonAction::CloneHolon => {
-            let transient = target.clone_holon()?;
+            let transient = context.clone_holon(&target)?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))
         }
         ReadableHolonAction::Summarize => {

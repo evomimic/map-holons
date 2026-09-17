@@ -118,7 +118,7 @@ fn dump_error_holons_from_response(
     output.push_str("\n===== Loader Error Holons (HasLoadError) =====\n");
 
     for (index, holon_reference) in members.into_iter().enumerate() {
-        let transient_reference = match holon_reference.clone_holon() {
+        let transient_reference = match state.context().clone_holon(&holon_reference) {
             Ok(reference) => reference,
             Err(error) => {
                 output.push_str(&format!(

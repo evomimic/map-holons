@@ -1,15 +1,31 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, RwLock};
 use tracing::debug;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::core_shared_objects::{HolonCollection, RelationshipMap};
+use crate::core_shared_objects::{CollectionState, HolonCollection, RelationshipMap};
 use crate::reference_layer::HolonServiceApi;
+use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::{HolonError, HolonId, RelationshipName};
-/// In-memory cache mapping a source `HolonId` to its relationship map.
+/// Selects whether a relationship read may reuse a cached collection for the
+/// lifetime of its enclosing cache manager.
 ///
-/// This cache does **not** enforce eviction or invalidation; correctness
-/// relies on transaction scoping and the immutability of saved holons.
+/// The host determines whether a saved relationship is stable enough for its
+/// space-wide cache. Guest cache managers are request-local and therefore may
+/// safely reuse any persisted relationship collection for that request.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RelationshipCachePolicy {
+    Reuse,
+    Fresh,
+}
+
+/// In-memory cache of relationship collections.
+///
+/// Keys are logically `(source HolonId, relationship name)`. The nested map is
+/// only a storage optimization. Entries contain saved references whose
+/// membership is reusable for the cache manager's lifetime. The owning cache
+/// manager is responsible for ensuring that a space-wide cache stores only
+/// declared definitional relationship collections.
 #[derive(Clone, Debug)]
 pub struct RelationshipCache {
     cache: Arc<RwLock<HashMap<HolonId, RelationshipMap>>>,
@@ -25,43 +41,21 @@ impl RelationshipCache {
         Self { cache: Arc::new(RwLock::new(HashMap::new())) }
     }
 
-    /// Retrieves a RelationshipMap for the source HolonReference by calling the HolonService to fetch all related Holons.
-    pub fn get_all_related_holons(
-        &self,
-        context: &Arc<TransactionContext>,
-        holon_service: &dyn HolonServiceApi,
-        source_holon_id: &HolonId,
-    ) -> Result<RelationshipMap, HolonError> {
-        holon_service.fetch_all_related_holons_internal(context, source_holon_id)
-    }
-
     /// Retrieves the `HolonCollection` containing references to all holons that are related
     /// to the specified `source_holon_id` via the specified `relationship_name` Note
     /// that the `HolonCollection` could be empty.
     ///
-    /// Cache semantics:
-    /// - First access triggers a fetch via `HolonServiceApi`
-    /// - Results (including empty collections) are cached exactly once
-    /// - Subsequent reads are served entirely from memory
-    ///
-    /// If the relationship data for the `source_holon_id` and `relationship_name` is already in
-    /// the cache, it is returned immediately. Otherwise, it is fetched from the `HolonServiceApi`,
-    /// inserted into the cache, and then returned.
-    ///
-    /// This implementation supports both **lazy loading** and **exactly-once** semantics. The first
-    /// time a cache miss occurs for a `source_holon_id`, an entry for that `source_holon_id` is added
-    /// to the cache, along with an entry for the requested `relationship_name`. If there are no
-    /// target holons for the requested relationship, an empty `HolonCollection` is cached, avoiding
-    /// repeated calls to the `fetch_related_holons` method of the `HolonServiceApi`.
+    /// Reusable reads are cached, including known-empty collections. Fresh
+    /// reads are deliberately never read from or written to this cache.
     pub fn related_holons(
         &self,
         context: &Arc<TransactionContext>,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
+        cache_policy: RelationshipCachePolicy,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        // First, check if the relationship exists in the cache (immutable borrow)
-        {
+        if cache_policy == RelationshipCachePolicy::Reuse {
             let cache = self.cache.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
                     "Failed to acquire read lock on relationship_cache: {}",
@@ -80,7 +74,7 @@ impl RelationshipCache {
                     return Ok(Arc::clone(&related_holons));
                 }
             }
-        } // cache read lock is dropped here
+        }
 
         // Cache miss: Fetch related holons from the HolonServiceApi
         debug!(
@@ -92,11 +86,9 @@ impl RelationshipCache {
             &source_holon_id,
             relationship_name,
         )?;
-        // Wrap in Arc<RwLock> for caching
-        let fetched_arc = Arc::new(RwLock::new(fetched_holons));
+        let fetched_arc = Arc::new(RwLock::new(seal_saved_collection(fetched_holons)?));
 
-        // Update the cache
-        {
+        if cache_policy == RelationshipCachePolicy::Reuse {
             let mut cache = self.cache.write().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
                     "Failed to acquire write lock on relationship_cache: {}",
@@ -107,9 +99,24 @@ impl RelationshipCache {
                 cache.entry(source_holon_id.clone()).or_insert_with(RelationshipMap::new_empty);
             relationship_map.insert(relationship_name.clone(), Arc::clone(&fetched_arc));
         }
-        // Return the fetched holons
         Ok(fetched_arc)
     }
+}
+
+fn seal_saved_collection(fetched: HolonCollection) -> Result<HolonCollection, HolonError> {
+    let members = fetched.get_members().clone();
+    let mut keyed_index = BTreeMap::new();
+    for (index, reference) in members.iter().enumerate() {
+        if !matches!(reference, HolonReference::Smart(_)) {
+            return Err(HolonError::InvalidState(
+                "relationship cache may retain only saved references".to_owned(),
+            ));
+        }
+        if let Some(key) = reference.key()? {
+            keyed_index.insert(key, index);
+        }
+    }
+    Ok(HolonCollection::from_parts(CollectionState::Saved, members, keyed_index))
 }
 
 #[cfg(test)]

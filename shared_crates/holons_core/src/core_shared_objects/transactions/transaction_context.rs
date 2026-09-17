@@ -8,8 +8,11 @@ use std::{
     },
 };
 
+use crate::core_shared_objects::relationship_behavior::ReadableRelationship;
+use crate::core_shared_objects::transient_holon_manager::ToHolonCloneModel;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
-use crate::reference_layer::{ReadableHolon, StagedReference};
+use crate::descriptors::{RelationshipOccurrenceOrientation, SourceRelationshipContract};
+use crate::reference_layer::{ReadableHolon, StagedReference, WritableHolon};
 use base_types::BaseValue;
 use core_types::{HolonError, HolonId};
 use type_names::CorePropertyTypeName;
@@ -22,19 +25,22 @@ use super::{
     TransactionLifecycleState, TransientHolonBehavior, TransientHolonManager,
     TransientManagerAccess, TransientReference, TxId,
 };
+use crate::core_shared_objects::SpaceReadHandle;
 
 /// Transaction-scoped operations used for lifecycle/access policy checks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum TransactionOperation {
-    /// Create a new transient holon.
+    /// Create transient working state only; this does not stage or persist a holon.
     CreateTransient,
-    /// Read-only lookup operations (LookupFacade).
+    /// Read saved or transaction-visible state without creating a durable change.
     ReadState,
-    /// Stage/delete/load and other state mutation operations.
+    /// Create a pending durable change or directly mutate persisted holon-space state.
+    /// This covers staging, version staging, and deletion, not transient-only edits.
     MutateState,
-    /// Commit execution within an already-open transaction.
+    /// Execute commit-like persistence work, including load-and-commit.
     CommitExecution,
-    /// Host-side external mutation ingress entry.
+    /// Admit an externally initiated host mutation before transaction execution.
+    /// This guards ingress concurrency rather than the mutation itself.
     HostMutationEntry,
 }
 
@@ -53,6 +59,7 @@ pub struct TransactionContext {
     space_manager: Arc<HolonSpaceManager>,
     nursery: Arc<Nursery>,
     transient_manager: Arc<TransientHolonManager>,
+    restricted_cache_read: bool,
 }
 
 impl fmt::Debug for TransactionContext {
@@ -66,7 +73,11 @@ impl fmt::Debug for TransactionContext {
 
 impl TransactionContext {
     /// Creates a new transaction context with its own staging and transient pools.
-    pub(super) fn new(tx_id: TxId, space_manager: Arc<HolonSpaceManager>) -> Arc<Self> {
+    pub(super) fn new(
+        tx_id: TxId,
+        space_manager: Arc<HolonSpaceManager>,
+        restricted_cache_read: bool,
+    ) -> Arc<Self> {
         Arc::new_cyclic(|weak_ctx| TransactionContext {
             tx_id,
             lifecycle_state: AtomicU8::new(TransactionLifecycleState::Open.as_u8()),
@@ -75,6 +86,7 @@ impl TransactionContext {
             space_manager,
             nursery: Arc::new(Nursery::new(tx_id, weak_ctx.clone())),
             transient_manager: Arc::new(TransientHolonManager::new_empty(tx_id, weak_ctx.clone())),
+            restricted_cache_read,
         })
     }
 
@@ -85,6 +97,11 @@ impl TransactionContext {
     /// Creates a handle to this transaction context for holon references.
     pub fn context_handle(self: &Arc<Self>) -> TransactionContextHandle {
         TransactionContextHandle::new(Arc::clone(self))
+    }
+
+    /// Creates a saved-reference read capability for this context's space.
+    pub fn space_read_handle(self: &Arc<Self>) -> SpaceReadHandle {
+        SpaceReadHandle::new(Arc::clone(&self.space_manager))
     }
 
     /// Returns the transaction id.
@@ -102,6 +119,16 @@ impl TransactionContext {
     /// Returns whether this context is the internal bootstrap transaction.
     pub fn is_bootstrap_provisioning(&self) -> bool {
         self.bootstrap_provisioning.load(Ordering::Acquire)
+    }
+
+    /// Returns whether this is the internal cache-fill execution carrier.
+    pub fn is_restricted_cache_read(&self) -> bool {
+        self.restricted_cache_read
+    }
+
+    /// Defense-in-depth gate used by Nursery before it inserts staged state.
+    pub(crate) fn ensure_staging_allowed(&self) -> Result<(), HolonError> {
+        self.assert_allowed(TransactionOperation::MutateState)
     }
 
     /// Returns the current lifecycle state for this transaction.
@@ -167,6 +194,19 @@ impl TransactionContext {
     ///
     /// Any unknown/raw lifecycle value is rejected as `TransactionNotOpen`.
     pub(super) fn assert_allowed(&self, operation: TransactionOperation) -> Result<(), HolonError> {
+        if self.restricted_cache_read
+            && matches!(
+                operation,
+                TransactionOperation::MutateState
+                    | TransactionOperation::CommitExecution
+                    | TransactionOperation::HostMutationEntry
+            )
+        {
+            return Err(HolonError::InvalidState(
+                "restricted cache-read transactions cannot stage, persist, commit, or admit host mutations"
+                    .to_owned(),
+            ));
+        }
         let raw_state = self.lifecycle_state.load(Ordering::Acquire);
 
         match operation {
@@ -317,6 +357,85 @@ impl TransactionContext {
         let transient_service =
             Arc::clone(&self.transient_manager) as Arc<dyn TransientHolonBehavior + Send + Sync>;
         transient_service.new_from_clone_model(holon_clone_model)
+    }
+
+    /// Clones a reference into this transaction's transient pool.
+    ///
+    /// Saved sources are routed through their space-bound read capability. A
+    /// saved-to-transient clone copies declared and unresolved relationships,
+    /// but omits recognized materialized inverse occurrences: those are
+    /// derived traversal state, not authoring input. This does not modify the
+    /// saved inverse collection. Clones of transient and staged sources retain
+    /// their local input unchanged so Commit can diagnose independently
+    /// authored inverse occurrences.
+    ///
+    /// Staged and transient sources must already belong to this exact context,
+    /// because their backing pools are transaction-local.
+    pub fn clone_holon(
+        self: &Arc<Self>,
+        source: &HolonReference,
+    ) -> Result<TransientReference, HolonError> {
+        self.assert_allowed(TransactionOperation::CreateTransient)?;
+        if let Some(source_context) = source.transaction_context() {
+            if !Arc::ptr_eq(&source_context, self) {
+                return Err(HolonError::CrossTransactionReference {
+                    reference_kind: source.reference_kind_string(),
+                    reference_id: source.reference_id_string(),
+                    reference_tx: source_context.tx_id().value(),
+                    context_tx: self.tx_id.value(),
+                });
+            }
+        }
+
+        source.is_accessible(crate::core_shared_objects::holon::state::AccessType::Clone)?;
+        let saved_source = matches!(source, HolonReference::Smart(_));
+        let clone_model = match source {
+            HolonReference::Smart(reference) => reference.holon_clone_model()?,
+            HolonReference::Staged(reference) => reference.holon_clone_model()?,
+            HolonReference::Transient(reference) => reference.holon_clone_model()?,
+        };
+        let mut clone = self.new_transient_from_clone_model(clone_model)?;
+        if saved_source {
+            // Saved maps contain both authored declared occurrences and
+            // materialized inverse traversal state. Filter only at this
+            // saved-to-transient boundary; later transient and staged clones
+            // preserve explicitly authored invalid input for Commit diagnosis.
+            let relationship_contract = match SourceRelationshipContract::resolve(source.clone()) {
+                Ok(contract) => Some(contract),
+                Err(HolonError::MissingDescribedBy { .. })
+                | Err(HolonError::MultipleDescribedBy { .. }) => None,
+                Err(error) => return Err(error),
+            };
+            let relationships = source.all_related_holons()?.clone_for_new_source()?;
+            for (name, collection) in relationships.map {
+                let members = collection
+                    .read()
+                    .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                    .get_members()
+                    .to_vec();
+                let members = if let Some(contract) = &relationship_contract {
+                    members
+                        .into_iter()
+                        .map(|member| match contract.classify_occurrence(&name, &member)? {
+                            RelationshipOccurrenceOrientation::RecognizedInverse { .. } => Ok(None),
+                            RelationshipOccurrenceOrientation::Declared(_)
+                            | RelationshipOccurrenceOrientation::Unresolved => Ok(Some(member)),
+                        })
+                        .collect::<Result<Vec<_>, HolonError>>()?
+                        .into_iter()
+                        .flatten()
+                        .collect()
+                } else {
+                    members
+                };
+                if members.is_empty() {
+                    continue;
+                }
+                clone.add_related_holons(name, members)?;
+            }
+        }
+        clone.populate_defaults()?;
+        Ok(clone)
     }
 
     pub fn ensure_local_holon_space(self: &Arc<Self>) -> Result<HolonReference, HolonError> {
@@ -513,9 +632,10 @@ impl TransactionContext {
             return Ok(None);
         };
 
-        let handle = self.context_handle();
-
-        Ok(Some(HolonReference::Smart(SmartReference::new_from_id(handle, holon_id))))
+        Ok(Some(HolonReference::Smart(SmartReference::new_from_id(
+            self.space_read_handle(),
+            holon_id,
+        ))))
     }
 
     /// Sets the space holon id.

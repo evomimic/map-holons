@@ -82,6 +82,7 @@ export interface StagedHolon {
   original_id?: LocalId | null;
   versioned_source_id?: LocalId | null;
   touched_relationship_names?: RelationshipName[];
+  relationship_commit_scope: "Full" | "TouchedOnly";
   errors: HolonError[];
 }
 
@@ -247,6 +248,7 @@ export class StagedHolonFactory {
       original_id: null,
       versioned_source_id: null,
       touched_relationship_names: [],
+      relationship_commit_scope: "Full",
       errors: []
     };
   }
@@ -266,6 +268,7 @@ export class StagedHolonFactory {
       original_id: originalId,
       versioned_source_id: originalId,
       touched_relationship_names: [],
+      relationship_commit_scope: "Full",
       errors: []
     };
   }

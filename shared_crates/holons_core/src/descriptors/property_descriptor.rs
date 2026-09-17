@@ -279,7 +279,7 @@ mod tests {
         source.with_descriptor(descriptor.into())?;
         source.with_property_value("Authored", "preserved")?;
 
-        let transient_clone = source.clone_holon()?;
+        let transient_clone = context.clone_holon(&source.clone().into())?;
         let mut clone_source = context.mutation().stage_new_holon(source.clone())?;
         assert_eq!(
             clone_source.property_value("Enabled")?,

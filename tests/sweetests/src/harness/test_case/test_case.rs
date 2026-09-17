@@ -50,8 +50,8 @@ impl TestCaseInit {
 
         Self {
             test_case,
-            fixture_context: context,
-            fixture_holons: FixtureHolons::default(),
+            fixture_context: context.clone(),
+            fixture_holons: FixtureHolons::new(context.clone()),
             fixture_bindings: FixtureBindings::default(),
         }
     }

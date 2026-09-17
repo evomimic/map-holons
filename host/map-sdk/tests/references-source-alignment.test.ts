@@ -26,6 +26,7 @@ describe('source-aligned holon wire guards', () => {
       version: 1, holon_state: 'Mutable', staged_state: 'ForCreate',
       validation_state: 'Invalid', property_map: {},
       staged_relationships: { map: {} }, original_id: null,
+      relationship_commit_scope: 'Full',
       errors: [{ NotImplemented: 'persistence' }],
     };
     expect(isStagedHolonWire(staged)).toBe(true);
@@ -34,7 +35,8 @@ describe('source-aligned holon wire guards', () => {
     // Rust unit variants serialize as strings; struct variants use external tags.
     for (const kind of [
       'NoDescriptor', 'UnsupportedValidationRule', 'UnresolvedLocalDependency',
-      'RelationshipCoordinationRequired', { RuleViolation: { code: 'DS-PROP-001' } },
+      'RelationshipCoordinationRequired', 'IndependentlyAuthoredInverseRelationship',
+      { RuleViolation: { code: 'DS-PROP-001' } },
       { UnsupportedConstraintType: { constraint_identity: 'constraint', constraint_type_identity: 'type' } },
     ]) {
       for (const subject of [
@@ -118,6 +120,7 @@ describe('source-aligned holon wire guards', () => {
       original_id: [1, 1, 1],
       versioned_source_id: [2, 2, 2],
       touched_relationship_names: ['Properties'],
+      relationship_commit_scope: 'TouchedOnly',
       errors: [],
     };
 
@@ -130,5 +133,7 @@ describe('source-aligned holon wire guards', () => {
         touched_relationship_names: [7],
       }),
     ).toBe(false);
+    const { relationship_commit_scope: _scope, ...missingScope } = stagedHolon;
+    expect(isStagedHolonWire(missingScope)).toBe(false);
   });
 });

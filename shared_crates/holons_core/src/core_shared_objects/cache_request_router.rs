@@ -76,6 +76,23 @@ impl CacheRequestRouter {
     }
 }
 impl HolonCacheAccess for CacheRequestRouter {
+    fn get_cached_rc_holon(
+        &self,
+        holon_id: &HolonId,
+    ) -> Result<Option<Arc<RwLock<Holon>>>, HolonError> {
+        match Self::get_request_route(holon_id, &self.cache_routing_policy)? {
+            ServiceRoute::Local => self
+                .local_cache_manager
+                .read()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Cache manager read lock poisoned: {e}"
+                    ))
+                })?
+                .get_cached_rc_holon(holon_id),
+        }
+    }
+
     /// Retrieves a mutable reference (`Arc<RwLock<Holon>`) to the `Holon` identified by `holon_id`.
     /// Delegates to the `local_cache_manager` if the `ServiceRoute` is `Local`.
     /// Returns an error if the route is not `Local` or cannot be resolved.
@@ -142,20 +159,17 @@ impl HolonCacheAccess for CacheRequestRouter {
         context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        // Determine the routing policy for the request
         match CacheRequestRouter::get_request_route(source_holon_id, &self.cache_routing_policy)? {
-            ServiceRoute::Local => {
-                // Delegate to the local cache manager through a read lock
-                self.local_cache_manager
-                    .read()
-                    .map_err(|e| {
-                        HolonError::FailedToAcquireLock(format!(
-                            "Cache manager read lock poisoned: {}",
-                            e
-                        ))
-                    })?
-                    .get_all_related_holons(context, source_holon_id)
-            }
+            ServiceRoute::Local => self
+                .local_cache_manager
+                .read()
+                .map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Cache manager read lock poisoned: {}",
+                        e
+                    ))
+                })?
+                .get_all_related_holons(context, source_holon_id),
         }
     }
 }

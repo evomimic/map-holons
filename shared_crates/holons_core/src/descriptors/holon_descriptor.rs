@@ -294,33 +294,40 @@ impl HolonDescriptor {
         declared.required_inverse()
     }
 
-    /// Validates that the named relationship is effective outbound from
-    /// instances of this descriptor.
+    /// Resolves one relationship that is effective for outbound navigation
+    /// from instances of this descriptor.
     ///
-    /// Navigation is always outbound from the source: the name may resolve to a
-    /// declared relationship licensed on this type, or to an inverse
-    /// relationship whose `SourceType` is this type. See
-    /// [`effective_relationships`] for the full relationship semantics.
-    pub fn allows_relationship(
+    /// This is a descriptor-level read-navigation operation. It resolves the
+    /// requested name across inherited declared and inverse relationship
+    /// contributions and returns its direction in `QualifiedRelationship`.
+    /// It does **not** authorize an agent, validate an authored occurrence, or
+    /// determine whether a write is permitted. Those are separate security and
+    /// relationship-orientation concerns.
+    pub fn resolve_available_relationship(
         &self,
         name: impl ToRelationshipName,
     ) -> Result<QualifiedRelationship, HolonError> {
-        effective_relationships::allows_relationship(self, name.to_relationship_name())
+        effective_relationships::resolve_available_relationship(self, name.to_relationship_name())
     }
 
-    /// Enumerates effective declared relationships for instances of this descriptor.
+    /// Enumerates the inherited declared relationship contract for instances
+    /// of this descriptor.
     ///
-    /// This is staged-safe because it uses the forward `InstanceRelationships`
-    /// declaration surface on this descriptor's `Extends` lineage.
+    /// This is the descriptor-level source contract used for authored
+    /// relationship operations. It includes only declared relationships and
+    /// is staged-safe because it follows forward `InstanceRelationships` on
+    /// the descriptor's `Extends` lineage. It is not an authorization check.
     pub fn effective_declared_relationships(
         &self,
     ) -> Result<Vec<DeclaredRelationshipDescriptor>, HolonError> {
         effective_relationships::effective_declared_relationships(self)
     }
 
-    /// Enumerates effective inverse relationships for instances of this descriptor.
+    /// Enumerates inherited inverse outbound relationship contributions for
+    /// instances of this descriptor.
     ///
-    /// This requires the materialized `TargetOf` index and therefore may return
+    /// This is read-navigation metadata, not authored-write permission. It
+    /// requires the materialized `TargetOf` index and therefore may return
     /// `UnsupportedStagedTraversal` for unsaved descriptor endpoints.
     pub fn effective_inverse_relationships(
         &self,
@@ -328,11 +335,11 @@ impl HolonDescriptor {
         effective_relationships::effective_inverse_relationships(self)
     }
 
-    /// Enumerates effective outbound relationships for instances of this
-    /// descriptor: declared relationships plus inverse relationships whose
-    /// `SourceType` is this type.
+    /// Enumerates descriptor-level effective outbound navigation metadata for
+    /// instances of this descriptor: inherited declared relationships plus
+    /// inherited inverse relationships whose `SourceType` is this type.
     ///
-    /// This is a type-level, state-agnostic enumeration; use
+    /// This is type-level and state-agnostic; use
     /// [`crate::reference_layer::ReadableHolon::available_relationships`] to
     /// filter by the state of a concrete source holon reference.
     pub fn effective_relationships(&self) -> Result<Vec<QualifiedRelationship>, HolonError> {

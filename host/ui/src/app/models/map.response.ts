@@ -588,6 +588,7 @@ const mockStagedHolon: StagedHolon = {
   staged_relationships: {} as StagedRelationshipMap,
   versioned_source_id: null,
   touched_relationship_names: [],
+  relationship_commit_scope: "Full",
   errors: []
 };
 

@@ -37,15 +37,13 @@
 use base_types::{MapBytes, MapString};
 use core_types::{HolonError, HolonId};
 use futures_executor::block_on;
-use holons_core::core_shared_objects::transactions::{
-    TransactionContext, TransactionContextHandle,
-};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
-    reference_layer::{HolonServiceApi, SmartReference},
+    reference_layer::{HolonServiceApi, RelationshipCacheScope, SmartReference},
     HolonCollectionApi, HolonReference, RelationshipMap, StagedReference,
 };
 use integrity_core_types::{LocalId, RelationshipName};
@@ -85,6 +83,10 @@ impl ClientHolonService {
 impl HolonServiceApi for ClientHolonService {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn relationship_cache_scope(&self) -> RelationshipCacheScope {
+        RelationshipCacheScope::SpaceDefinitionalOnly
     }
 
     fn commit_internal(
@@ -148,9 +150,10 @@ impl HolonServiceApi for ClientHolonService {
         context: &Arc<TransactionContext>,
         source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        let context_handle = TransactionContextHandle::new(Arc::clone(context));
-        let source_reference =
-            HolonReference::Smart(SmartReference::new_from_id(context_handle, source_id.clone()));
+        let source_reference = HolonReference::Smart(SmartReference::new_from_id(
+            context.space_read_handle(),
+            source_id.clone(),
+        ));
         let node_collection =
             NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
 
@@ -239,9 +242,10 @@ impl HolonServiceApi for ClientHolonService {
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
-        let context_handle = TransactionContextHandle::new(Arc::clone(context));
-        let source_reference =
-            HolonReference::Smart(SmartReference::new_from_id(context_handle, source_id.clone()));
+        let source_reference = HolonReference::Smart(SmartReference::new_from_id(
+            context.space_read_handle(),
+            source_id.clone(),
+        ));
         let node_collection =
             NodeCollection { members: vec![Node::new(source_reference, None)], query_spec: None };
         let query = QueryExpression::new(relationship_name.clone());

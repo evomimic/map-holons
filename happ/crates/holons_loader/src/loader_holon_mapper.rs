@@ -78,7 +78,7 @@ impl LoaderHolonMapper {
                     output.staged_count += 1;
 
                     // Queue relationship references only for successfully staged holons.
-                    match Self::collect_loader_rel_refs(loader_reference) {
+                    match Self::collect_loader_rel_refs(context, loader_reference) {
                         Ok(relationship_refs) => {
                             output.queued_relationship_references.extend(relationship_refs)
                         }
@@ -110,7 +110,7 @@ impl LoaderHolonMapper {
         loader: &HolonReference,
     ) -> Result<(StagedReference, MapString), HolonError> {
         // Produce a detached TransientReference so we can access raw properties
-        let loader_transient = loader.clone_holon()?;
+        let loader_transient = context.clone_holon(loader)?;
 
         // Read the LoaderHolon's current property map (owned snapshot)
         let properties: PropertyMap = loader_transient.get_raw_property_map(context)?;
@@ -166,6 +166,7 @@ impl LoaderHolonMapper {
     ///
     /// Relationship used: `HAS_LOADER_RELATIONSHIP_REFERENCE`.
     pub fn collect_loader_rel_refs(
+        context: &Arc<TransactionContext>,
         loader: &HolonReference,
     ) -> Result<Vec<TransientReference>, HolonError> {
         // Direct traversal from LoaderHolon → LoaderRelationshipReference entries.
@@ -185,7 +186,7 @@ impl LoaderHolonMapper {
         let mut output: Vec<TransientReference> = Vec::new();
         // Work on **detached** copies so Pass-2 can resolve in any order/idempotently.
         for holon_reference in member_refs {
-            let loader_relationship = holon_reference.clone_holon()?;
+            let loader_relationship = context.clone_holon(holon_reference)?;
             output.push(loader_relationship);
         }
 

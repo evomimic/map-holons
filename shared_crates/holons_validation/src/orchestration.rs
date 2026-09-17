@@ -5,8 +5,8 @@ use holons_core::core_shared_objects::{holon::ValidationState, transactions::Tra
 use holons_core::{HolonReference, StagedReference};
 
 use crate::{
-    validate_holon, CommitValidationReport, HolonValidationContext, HolonValidationSubject,
-    ValidationCollector,
+    relationship_orientation::assess_relationship_input, validate_holon, CommitValidationReport,
+    HolonValidationContext, HolonValidationSubject, ValidationCollector,
 };
 
 /// Assesses every supplied live candidate on every call and installs replacement
@@ -46,6 +46,7 @@ pub fn validate_commit_candidates(
             &validation_context,
             &mut collector,
         )?;
+        assess_relationship_input(candidate, &mut collector)?;
         // Keep the candidate association directly; finding identities are diagnostics,
         // not lookup keys for installing staged outcomes.
         prepared_outcomes.push((candidate, collector.into_report().violations));
