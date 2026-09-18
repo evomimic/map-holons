@@ -8,6 +8,7 @@ use type_names::relationship_names::CoreRelationshipTypeName;
 use type_names::CorePropertyTypeName;
 
 use crate::core_shared_objects::space_read_handle::SpaceReadHandle;
+use crate::descriptors::effective_relationships::effective_declared_relationships_for_holon;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
         transient_holon_manager::ToHolonCloneModel,
         Holon, HolonCollection, ReadableHolonState,
     },
-    reference_layer::{HolonReference, ReadableHolon, TransientReference},
+    reference_layer::{HolonCollectionApi, HolonReference, ReadableHolon},
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
@@ -155,12 +156,6 @@ impl fmt::Display for SmartReference {
 }
 
 impl ReadableHolonImpl for SmartReference {
-    fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
-        Err(HolonError::NotImplemented(
-            "Clone a saved holon through TransactionContext::clone_holon".to_owned(),
-        ))
-    }
-
     fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
         self.space_read_handle.get_all_related_holons(&self.holon_id)
@@ -391,6 +386,56 @@ impl WritableHolonImpl for SmartReference {
 
 impl ToHolonCloneModel for SmartReference {
     fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
+        self.is_accessible(AccessType::Clone)?;
+        let mut clone_model = self.raw_holon_clone_model()?;
+
+        // Saved sources must be described; their read surface includes inverses. The source's
+        // `DescribedBy` relationship is itself copied only if its descriptor
+        // declares it among the effective instance relationships.
+        let declared_relationship_names =
+            effective_declared_relationships_for_holon(&HolonReference::from(self))?
+                .into_iter()
+                .map(|relationship| relationship.base_relationship_name())
+                .collect::<Result<Vec<_>, HolonError>>()?;
+
+        let mut cloned_relationships = RelationshipMap::new_empty();
+        for (relationship_name, collection) in self.all_related_holons()?.iter() {
+            let members = collection
+                .read()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                .get_members()
+                .to_vec();
+            let retained_members = if declared_relationship_names
+                .iter()
+                .any(|declared_name| declared_name == &relationship_name)
+            {
+                members
+            } else {
+                Vec::new()
+            };
+
+            if retained_members.is_empty() {
+                continue;
+            }
+
+            let mut cloned_collection = HolonCollection::new_transient();
+            cloned_collection.add_references(retained_members)?;
+            cloned_relationships
+                .insert(relationship_name, Arc::new(RwLock::new(cloned_collection)));
+        }
+
+        // A clone model returned from a runtime reference is directly
+        // clonable: it always carries the complete, normalized relationship
+        // map, including an explicitly empty map.
+        clone_model.relationships = Some(cloned_relationships);
+        Ok(clone_model)
+    }
+}
+
+impl SmartReference {
+    /// Returns this reference's unnormalized source state for reference-level
+    /// clone-model construction.
+    pub(crate) fn raw_holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let model = rc_holon
             .read()

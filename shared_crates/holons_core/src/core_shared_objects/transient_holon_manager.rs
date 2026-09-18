@@ -23,9 +23,13 @@ use core_types::{HolonError, PropertyMap, TemporaryId};
 use tracing::warn;
 use type_names::CorePropertyTypeName;
 
-/// Holon variant-agnostic interface for cloning.
+/// Holon reference-agnostic interface for constructing a clone model.
 ///
-/// Regardless of the source phase, cloned Holons always begin their lifecycle as `TransientHolon`.
+/// Runtime reference implementations resolve source state through their bound
+/// handles. Transient and staged sources preserve authored state; saved sources
+/// resolve their descriptors and retain only declared relationships.
+/// Regardless of the source phase, cloned Holons always begin their lifecycle
+/// as `TransientHolon` in the destination transaction.
 pub trait ToHolonCloneModel {
     fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError>;
 }

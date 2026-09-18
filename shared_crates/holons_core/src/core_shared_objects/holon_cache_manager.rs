@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc, RwLock,
@@ -62,20 +63,21 @@ impl HolonCacheManager {
         context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-        cache_policy: RelationshipCachePolicy,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        self.relationship_cache
+        let cache = self
+            .relationship_cache
             .read()
             .map_err(|e| {
                 HolonError::FailedToAcquireLock(format!("Cache manager read lock poisoned: {e}"))
             })?
-            .related_holons(
-                context,
-                self.holon_service.as_ref(),
-                source_holon_id,
-                relationship_name,
-                cache_policy,
-            )
+            .clone();
+        cache.related_holons(
+            context,
+            self.holon_service.as_ref(),
+            source_holon_id,
+            relationship_name,
+            || self.relationship_cache_policy(context, source_holon_id, relationship_name),
+        )
     }
 
     fn space_relationship_cache_policy(
@@ -142,12 +144,11 @@ impl HolonCacheManager {
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<RelationshipCachePolicy, HolonError> {
+        // Cache lifetime does not make mutable membership immutable. Both
+        // request-local and space caches use the same descriptor-governed policy.
         match self.holon_service.relationship_cache_scope() {
-            // A guest cache manager is created for one dance request, so it
-            // may reuse non-definitional and inverse membership within that
-            // request without asserting cross-transaction immutability.
-            RelationshipCacheScope::RequestLocal => Ok(RelationshipCachePolicy::Reuse),
-            RelationshipCacheScope::SpaceDefinitionalOnly => {
+            RelationshipCacheScope::RequestLocal
+            | RelationshipCacheScope::SpaceDefinitionalOnly => {
                 self.space_relationship_cache_policy(context, source_holon_id, relationship_name)
             }
         }
@@ -197,9 +198,7 @@ impl HolonCacheAccess for HolonCacheManager {
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        let cache_policy =
-            self.relationship_cache_policy(context, source_holon_id, relationship_name)?;
-        self.related_holons_with_policy(context, source_holon_id, relationship_name, cache_policy)
+        self.related_holons_with_policy(context, source_holon_id, relationship_name)
     }
 
     fn get_all_related_holons(
@@ -207,54 +206,28 @@ impl HolonCacheAccess for HolonCacheManager {
         context: &Arc<TransactionContext>,
         source_holon_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        if self.holon_service.relationship_cache_scope() == RelationshipCacheScope::RequestLocal {
-            return self.holon_service.fetch_all_related_holons_internal(context, source_holon_id);
-        }
-
-        if self.resolving_relationship_semantics() {
-            return self.holon_service.fetch_all_related_holons_internal(context, source_holon_id);
-        }
-        let _resolution_guard = self.enter_relationship_semantics_resolution();
-
         let source =
             HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
-        let declared_relationships = match source.holon_descriptor() {
-            Ok(descriptor) => descriptor.effective_declared_relationships()?,
-            Err(HolonError::MissingDescribedBy { .. }) => {
-                return self
-                    .holon_service
-                    .fetch_all_related_holons_internal(context, source_holon_id)
+        let relationship_names = {
+            // Discovery reads the descriptor graph through this cache manager.
+            // Release its recursion guard before named reads classify membership
+            // for reuse, otherwise eligible collections would be forced fresh.
+            let _resolution_guard = self.enter_relationship_semantics_resolution();
+            let mut seen = HashSet::new();
+            let mut names = Vec::new();
+            for relationship in source.available_relationships()? {
+                let name = relationship.descriptor.base_relationship_name()?;
+                if seen.insert(name.clone()) {
+                    names.push(name);
+                }
             }
-            Err(error) => return Err(error),
+            names
         };
 
         let mut relationship_map = RelationshipMap::new_empty();
-        for declared in declared_relationships {
-            let relationship_name = declared.base_relationship_name()?;
-            let cache_policy = if declared.is_definitional()? {
-                RelationshipCachePolicy::Reuse
-            } else {
-                RelationshipCachePolicy::Fresh
-            };
-            let collection = self.related_holons_with_policy(
-                context,
-                source_holon_id,
-                &relationship_name,
-                cache_policy,
-            )?;
-            relationship_map.insert(relationship_name, collection);
-        }
-
-        // Inverse relationship membership and any persisted relationship not
-        // licensed as a declared source relationship remain fresh. The raw
-        // response also avoids deriving inverse navigation from the target-side
-        // index merely to answer an all-related read for this source.
-        let fresh_relationships =
-            self.holon_service.fetch_all_related_holons_internal(context, source_holon_id)?;
-        for (relationship_name, collection) in fresh_relationships.iter() {
-            if relationship_map.get_collection_for_relationship(&relationship_name).is_none() {
-                relationship_map.insert(relationship_name, collection);
-            }
+        for name in relationship_names {
+            let collection = self.get_related_holons(context, source_holon_id, &name)?;
+            relationship_map.insert(name, collection);
         }
 
         Ok(relationship_map)
@@ -262,14 +235,4 @@ impl HolonCacheAccess for HolonCacheManager {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*; // brings HolonCacheManager into scope
-
-    // Generic helper to assert Send + Sync at compile time
-    fn assert_thread_safe<T: Send + Sync>() {}
-
-    #[test]
-    fn assert_cache_manager_is_thread_safe() {
-        assert_thread_safe::<HolonCacheManager>();
-    }
-}
+mod tests;

@@ -58,8 +58,7 @@ pub use holons_core::reference_layer::{
 };
 pub use holons_core::{
     Descriptor, EffectiveRelationshipMember, ExtendsIter, HolonDescriptor, HolonSpaceDescriptor,
-    PropertyDescriptor, RelationshipDescriptor, RelationshipDirection,
-    RelationshipOccurrenceOrientation, ResolvedValueTypeRoots, SourceRelationshipContract,
+    PropertyDescriptor, RelationshipDescriptor, RelationshipDirection, ResolvedValueTypeRoots,
     TransactionDescriptor, TypeHeader, UniversalDescriptorContract, ValueDescriptor,
     ValueDescriptorKind, ancestors, classify_relationship_direction,
     effective_relationship_declaration, effective_relationship_targets, equals_or_extends,

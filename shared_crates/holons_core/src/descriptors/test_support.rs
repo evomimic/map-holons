@@ -163,7 +163,7 @@ pub(crate) fn build_context_with_saved_holons(
 
     space_manager
         .get_transaction_manager()
-        .open_new_transaction(Arc::clone(&space_manager))
+        .open_public_transaction(Arc::clone(&space_manager))
         .expect("default transaction should open")
 }
 

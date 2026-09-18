@@ -72,7 +72,7 @@ impl SpaceReadHandle {
     ) -> Result<Arc<super::transactions::TransactionContext>, HolonError> {
         self.space_manager
             .get_transaction_manager()
-            .open_restricted_cache_read_transaction(Arc::clone(&self.space_manager))
+            .open_private_restricted_cache_read_transaction(Arc::clone(&self.space_manager))
     }
 
     fn with_cache_context<T>(
@@ -82,7 +82,7 @@ impl SpaceReadHandle {
         let context = self
             .space_manager
             .get_transaction_manager()
-            .open_restricted_cache_read_transaction(Arc::clone(&self.space_manager))?;
+            .open_private_restricted_cache_read_transaction(Arc::clone(&self.space_manager))?;
         operation(context)
     }
 }

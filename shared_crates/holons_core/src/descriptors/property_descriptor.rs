@@ -145,8 +145,10 @@ const _: fn() = || {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::descriptors::test_support::new_test_holon;
-    use crate::descriptors::test_support::{build_context, new_descriptor_holon};
+    use crate::descriptors::test_support::{
+        build_context, new_declared_relationship_descriptor_holon, new_descriptor_holon,
+        new_holon_type_descriptor, new_test_holon,
+    };
     use crate::reference_layer::{CompletionOutcome, ReadableHolon, WritableHolon};
     use base_types::MapString;
     use core_types::HolonError;
@@ -269,10 +271,22 @@ mod tests {
             .with_property_value(CorePropertyTypeName::IsValueRequired, true)?
             .with_property_value(CorePropertyTypeName::DefaultValue, false)?;
         let property = context.mutation().stage_new_holon(property)?;
-        let mut descriptor = new_descriptor_holon(&context, "contract", "Contract", "Holon")?;
+        let mut descriptor = new_holon_type_descriptor(&context, "contract", "Contract")?;
+        let described_by = new_declared_relationship_descriptor_holon(
+            &context,
+            "contract-described-by",
+            "DescribedBy",
+            descriptor.clone().into(),
+            descriptor.clone().into(),
+        )?;
+        let described_by = context.mutation().stage_new_holon(described_by)?;
         descriptor.add_related_holons(
             CoreRelationshipTypeName::InstanceProperties,
             vec![property.into()],
+        )?;
+        descriptor.add_related_holons(
+            CoreRelationshipTypeName::InstanceRelationships,
+            vec![described_by.into()],
         )?;
         let descriptor = context.mutation().stage_new_holon(descriptor)?;
         let mut source = new_test_holon(&context, "source")?;

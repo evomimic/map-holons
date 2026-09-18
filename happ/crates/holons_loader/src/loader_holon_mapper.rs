@@ -18,6 +18,9 @@ use holons_prelude::prelude::*;
 
 use crate::errors::ErrorWithContext;
 
+#[cfg(test)]
+mod tests;
+
 /// The mapper's output: staged nodes and queued edge-descriptors, owned
 /// for the duration of the load call.
 #[derive(Debug, Default)]

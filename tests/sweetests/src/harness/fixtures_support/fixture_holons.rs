@@ -120,9 +120,13 @@ impl FixtureHolons {
         }
     }
 
-    /// Clone an expected snapshot through the fixture transaction.
-    pub fn clone_holon(&self, source: &HolonReference) -> Result<TransientReference, HolonError> {
-        self.fixture_context.clone_holon(source)
+    /// Clones a transient fixture snapshot through the destination transaction.
+    /// Undescribed and incomplete fixture state is preserved for later validation.
+    pub fn copy_fixture_snapshot(
+        &self,
+        source: &TransientReference,
+    ) -> Result<TransientReference, HolonError> {
+        self.fixture_context.clone_holon(&source.into())
     }
 
     /// Creates and adds a new FixtureHolon from the given Expected snapshot.
@@ -301,7 +305,7 @@ impl FixtureHolons {
             }
 
             let mut updated_snapshot =
-                self.clone_holon(&existing_holon.head_snapshot.snapshot().clone().into())?;
+                self.copy_fixture_snapshot(existing_holon.head_snapshot.snapshot())?;
             let relationship_map = match updated_snapshot.all_related_holons() {
                 Ok(map) => map,
                 Err(HolonError::NotImplemented(_)) => continue,
@@ -380,8 +384,7 @@ impl FixtureHolons {
         for holon in self.holons.clone().values() {
             match holon.head_snapshot.state() {
                 TestHolonState::Staged => {
-                    let snapshot =
-                        self.clone_holon(&holon.head_snapshot.snapshot().clone().into())?;
+                    let snapshot = self.copy_fixture_snapshot(holon.head_snapshot.snapshot())?;
                     let source = holon.head_snapshot.as_source();
                     let expected = ExpectedSnapshot::new(snapshot, TestHolonState::Saved);
                     // Mint saved
@@ -487,7 +490,9 @@ mod tests {
             .new_holon(Some(MapString(key.to_string())))
             .expect("new_holon should succeed");
         let staged = ExpectedSnapshot::new(
-            context.clone_holon(&transient.clone().into()).expect("clone_holon should succeed"),
+            fixture_holons
+                .copy_fixture_snapshot(&transient)
+                .expect("copy_fixture_snapshot should succeed"),
             TestHolonState::Staged,
         );
         fixture_holons.create_fixture_holon(staged.clone()).expect("create_fixture_holon");
@@ -568,7 +573,9 @@ mod tests {
             .new_holon(Some(MapString("orphan-key".to_string())))
             .expect("new_holon should succeed");
         let expected = ExpectedSnapshot::new(
-            context.clone_holon(&transient.clone().into()).expect("clone_holon should succeed"),
+            fixture_holons
+                .copy_fixture_snapshot(&transient)
+                .expect("copy_fixture_snapshot should succeed"),
             TestHolonState::Staged,
         );
         let token = fixture_holons.mint_test_reference(

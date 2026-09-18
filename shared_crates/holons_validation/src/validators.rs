@@ -19,8 +19,19 @@ pub fn validate_holon(
     context: &HolonValidationContext,
     collector: &mut ValidationCollector,
 ) -> Result<(), HolonError> {
-    let identity = subject.holon.reference_id_string();
-    let path = ValidationSubjectPath::Holon { holon_identity: identity.clone() };
+    if let Some(descriptor) = resolve_holon_descriptor(subject, collector)? {
+        validate_described_holon(subject, &descriptor, context, collector)?;
+    }
+    Ok(())
+}
+
+/// Resolves once for both contract validation and Commit-only authored-state checks.
+/// Missing or ambiguous descriptors are findings, not operational failures.
+pub(crate) fn resolve_holon_descriptor(
+    subject: HolonValidationSubject<'_>,
+    collector: &mut ValidationCollector,
+) -> Result<Option<HolonDescriptor>, HolonError> {
+    let path = ValidationSubjectPath::Holon { holon_identity: subject.holon.reference_id_string() };
     let descriptor = match subject.holon.holon_descriptor() {
         Ok(descriptor) => descriptor,
         Err(
@@ -42,20 +53,32 @@ pub fn validate_holon(
                 None,
                 format!("{reason}: {error}"),
             );
-            return Ok(());
+            return Ok(None);
         }
         Err(error) => return Err(error),
     };
+    Ok(Some(descriptor))
+}
+
+/// Assesses the conformance contract using the descriptor already resolved for this pass.
+pub(crate) fn validate_described_holon(
+    subject: HolonValidationSubject<'_>,
+    descriptor: &HolonDescriptor,
+    context: &HolonValidationContext,
+    collector: &mut ValidationCollector,
+) -> Result<(), HolonError> {
+    let identity = subject.holon.reference_id_string();
+    let path = ValidationSubjectPath::Holon { holon_identity: identity.clone() };
     let bindings =
-        prepare_bindings(&descriptor, SubjectLevel::Holon, &context.values, &path, collector)?;
+        prepare_bindings(descriptor, SubjectLevel::Holon, &context.values, &path, collector)?;
     for (binding, handler) in &bindings {
         mark_dispatched(binding, collector)?;
         handler(
-            ValidationInvocation::Holon { binding, subject, descriptor: &descriptor, path: &path },
+            ValidationInvocation::Holon { binding, subject, descriptor, path: &path },
             collector,
         )?;
     }
-    assess_constraints(&descriptor, &path, collector)?;
+    assess_constraints(descriptor, &path, collector)?;
 
     // Enumerate the descriptor contract, not the populated map: absence is a subject.
     for property in descriptor.instance_properties()? {

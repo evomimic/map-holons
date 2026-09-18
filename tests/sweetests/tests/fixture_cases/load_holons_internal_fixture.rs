@@ -6,15 +6,15 @@
 //!
 //! Scope: loader-controller behavior only — empty bundles, undescribed loader holons,
 //! duplicate-key failure, response metrics, error holons, and `LoadCommitStatus`.
-//! Missing descriptors defer default population without blocking commit. Named
+//! Missing descriptors defer default population, then block persistence at Commit. Named
 //! relationship endpoints resolve independently of descriptor-aware validation.
 //!
 //! ## Fixture Progression (combined)
 //!
-//! 1. **Empty bundle** → `UnprocessableEntity`; no loader holons commit
-//! 2. **Nodes-only undescribed bundle** → default population deferred; all nodes commit
-//! 3. **Undescribed relationship bundle** → nodes commit; inverse resolution fails; `Incomplete`
-//! 4. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `UnprocessableEntity`; no loader holons commit
+//! 1. **Empty bundle** → `Skipped`; no loader holons commit
+//! 2. **Nodes-only undescribed bundle** → `Rejected`; one NoDescriptor finding per node
+//! 3. **Undescribed relationship bundle** → relationship staged, then `Rejected`; no persistence
+//! 4. **Multi-bundle duplicate-key set** (same LoaderHolon key in two files) → `Skipped`; no loader holons commit
 //!
 //! ### Why a single fixture?
 //! - Enables incremental coverage growth by appending new steps (`add_load_holons_internal_step()`).
@@ -26,7 +26,7 @@
 //! - `context.mutation().new_holon(Some(key: String | MapString))` **sets the holon `Key` property automatically**,
 //!   so we simply pass the *intended instance key string* when creating LoaderHolons.
 //! - Loader relationship resolution binds named endpoints independently of descriptor-aware
-//!   validation. Once implemented, commit-triggered semantic validation must reject an invalid
+//!   validation. Commit-triggered semantic validation rejects an invalid
 //!   transaction before any of its staged data is persisted.
 //! - Pass-2 resolves `LoaderRelationshipReference` endpoints by `LoaderHolonReference.holon_key`
 //!   (in-bundle first, then previously committed as your resolver specifies).
@@ -251,8 +251,8 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Begin new transaction before declared-link load".to_string()),
     )?;
 
-    // D) Freeform endpoints resolve in memory, but their undescribed source has
-    // no declared relationship contract. Loader resolution must skip Commit.
+    // D) Freeform endpoints resolve and the link is assembled without a descriptor.
+    // Commit rejects both undescribed nodes before any persistence.
     let (declared_bundle, node_count, _links_created) = build_declared_links_bundle(
         &fixture_context,
         "Bundle.DeclaredLink.1",
@@ -268,13 +268,13 @@ pub fn loader_incremental_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.add_load_holons_internal_step(
         declared_set,
         MapInteger(node_count as i64), // holons_staged
-        MapInteger(0),                 // holons_committed: Commit is skipped
+        MapInteger(0),                 // holons_committed: rejected before writes
         MapInteger(1),                 // relationship resolved and staged
-        MapInteger(1),                 // missing source descriptor during resolution
+        MapInteger(0),                 // semantic findings are not loader errors
         MapInteger(1),                 // total_bundles
         MapInteger(node_count as i64), // total_loader_holons
-        ExpectedLoadStatus::Skipped,
-        Some(MapInteger(0)),
+        ExpectedLoadStatus::Rejected,
+        Some(MapInteger(node_count as i64)), // one NoDescriptor finding per node
     )?;
     test_case.add_begin_transaction_step(
         None,

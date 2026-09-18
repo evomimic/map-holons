@@ -8,11 +8,9 @@ use std::{
     },
 };
 
-use crate::core_shared_objects::relationship_behavior::ReadableRelationship;
 use crate::core_shared_objects::transient_holon_manager::ToHolonCloneModel;
 use crate::core_shared_objects::transient_manager_access_internal::TransientManagerAccessInternal;
-use crate::descriptors::{RelationshipOccurrenceOrientation, SourceRelationshipContract};
-use crate::reference_layer::{ReadableHolon, StagedReference, WritableHolon};
+use crate::reference_layer::{ReadableHolon, StagedReference};
 use base_types::BaseValue;
 use core_types::{HolonError, HolonId};
 use type_names::CorePropertyTypeName;
@@ -361,81 +359,17 @@ impl TransactionContext {
 
     /// Clones a reference into this transaction's transient pool.
     ///
-    /// Saved sources are routed through their space-bound read capability. A
-    /// saved-to-transient clone copies declared and unresolved relationships,
-    /// but omits recognized materialized inverse occurrences: those are
-    /// derived traversal state, not authoring input. This does not modify the
-    /// saved inverse collection. Clones of transient and staged sources retain
-    /// their local input unchanged so Commit can diagnose independently
-    /// authored inverse occurrences.
-    ///
-    /// Staged and transient sources must already belong to this exact context,
-    /// because their backing pools are transaction-local.
+    /// The source variant supplies its clone model: transient and staged sources
+    /// preserve authored state; saved sources copy only declared relationships.
+    /// The resulting clone belongs only to
+    /// this destination context; source and destination may be in different
+    /// transactions or spaces.
     pub fn clone_holon(
         self: &Arc<Self>,
         source: &HolonReference,
     ) -> Result<TransientReference, HolonError> {
         self.assert_allowed(TransactionOperation::CreateTransient)?;
-        if let Some(source_context) = source.transaction_context() {
-            if !Arc::ptr_eq(&source_context, self) {
-                return Err(HolonError::CrossTransactionReference {
-                    reference_kind: source.reference_kind_string(),
-                    reference_id: source.reference_id_string(),
-                    reference_tx: source_context.tx_id().value(),
-                    context_tx: self.tx_id.value(),
-                });
-            }
-        }
-
-        source.is_accessible(crate::core_shared_objects::holon::state::AccessType::Clone)?;
-        let saved_source = matches!(source, HolonReference::Smart(_));
-        let clone_model = match source {
-            HolonReference::Smart(reference) => reference.holon_clone_model()?,
-            HolonReference::Staged(reference) => reference.holon_clone_model()?,
-            HolonReference::Transient(reference) => reference.holon_clone_model()?,
-        };
-        let mut clone = self.new_transient_from_clone_model(clone_model)?;
-        if saved_source {
-            // Saved maps contain both authored declared occurrences and
-            // materialized inverse traversal state. Filter only at this
-            // saved-to-transient boundary; later transient and staged clones
-            // preserve explicitly authored invalid input for Commit diagnosis.
-            let relationship_contract = match SourceRelationshipContract::resolve(source.clone()) {
-                Ok(contract) => Some(contract),
-                Err(HolonError::MissingDescribedBy { .. })
-                | Err(HolonError::MultipleDescribedBy { .. }) => None,
-                Err(error) => return Err(error),
-            };
-            let relationships = source.all_related_holons()?.clone_for_new_source()?;
-            for (name, collection) in relationships.map {
-                let members = collection
-                    .read()
-                    .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
-                    .get_members()
-                    .to_vec();
-                let members = if let Some(contract) = &relationship_contract {
-                    members
-                        .into_iter()
-                        .map(|member| match contract.classify_occurrence(&name, &member)? {
-                            RelationshipOccurrenceOrientation::RecognizedInverse { .. } => Ok(None),
-                            RelationshipOccurrenceOrientation::Declared(_)
-                            | RelationshipOccurrenceOrientation::Unresolved => Ok(Some(member)),
-                        })
-                        .collect::<Result<Vec<_>, HolonError>>()?
-                        .into_iter()
-                        .flatten()
-                        .collect()
-                } else {
-                    members
-                };
-                if members.is_empty() {
-                    continue;
-                }
-                clone.add_related_holons(name, members)?;
-            }
-        }
-        clone.populate_defaults()?;
-        Ok(clone)
+        self.new_transient_from_clone_model(source.holon_clone_model()?)
     }
 
     pub fn ensure_local_holon_space(self: &Arc<Self>) -> Result<HolonReference, HolonError> {
@@ -477,7 +411,7 @@ impl TransactionContext {
     ) -> Result<Arc<TransactionContext>, HolonError> {
         self.space_manager
             .get_transaction_manager()
-            .open_new_transaction(Arc::clone(&self.space_manager))
+            .open_public_transaction(Arc::clone(&self.space_manager))
     }
 
     // ---------------------------------------------------------------------
@@ -765,9 +699,13 @@ impl TransactionContext {
 mod tests {
     use super::*;
     use crate::core_shared_objects::{HolonCollection, RelationshipMap, ServiceRoutingPolicy};
+    use crate::descriptors::test_support::{
+        new_declared_relationship_descriptor_holon, new_holon_type_descriptor,
+    };
     use crate::reference_layer::{HolonServiceApi, StagedReference, WritableHolon};
     use core_types::{HolonError, LocalId, RelationshipName};
     use std::any::Any;
+    use type_names::CoreRelationshipTypeName;
 
     #[derive(Debug)]
     struct TestHolonService {
@@ -866,7 +804,7 @@ mod tests {
 
         space_manager
             .get_transaction_manager()
-            .open_new_transaction(Arc::clone(&space_manager))
+            .open_public_transaction(Arc::clone(&space_manager))
             .expect("default transaction should open")
     }
 
@@ -1000,5 +938,98 @@ mod tests {
             context.assert_allowed(TransactionOperation::CreateTransient).is_ok(),
             "transient creation should remain allowed after committed lifecycle state"
         );
+    }
+
+    #[test]
+    fn clone_from_another_transaction_is_owned_by_destination() {
+        let source_context = build_context();
+        let destination_context = build_context();
+        let mut source_type = new_holon_type_descriptor(
+            &source_context,
+            "cross-transaction-clone-source-type",
+            "CrossTransactionCloneSource",
+        )
+        .expect("source type should be created");
+        let described_by = new_declared_relationship_descriptor_holon(
+            &source_context,
+            "cross-transaction-clone-described-by",
+            "DescribedBy",
+            source_type.clone().into(),
+            source_type.clone().into(),
+        )
+        .expect("DescribedBy declaration should be created");
+        let described_by = source_context
+            .mutation()
+            .stage_new_holon(described_by)
+            .expect("DescribedBy declaration should stage");
+        source_type
+            .add_related_holons(
+                CoreRelationshipTypeName::InstanceRelationships,
+                vec![described_by.into()],
+            )
+            .expect("source type should declare DescribedBy");
+        let source_type = source_context
+            .mutation()
+            .stage_new_holon(source_type)
+            .expect("source type should stage");
+        let source = source_context
+            .mutation()
+            .new_holon(Some("cross-transaction-clone-source".into()))
+            .expect("source transient should be created");
+        let mut source = source;
+        source.with_descriptor(source_type.into()).expect("source should be described");
+
+        let clone = destination_context.clone_holon(&HolonReference::from(source.clone())).expect(
+            "destination transaction should accept a readable source from another transaction",
+        );
+
+        assert_eq!(
+            source.key().expect("source key should be readable"),
+            clone.key().expect("clone key should be readable"),
+            "the clone should carry source content"
+        );
+        destination_context
+            .mutation()
+            .stage_new_holon(clone)
+            .expect("the destination transaction must resolve and stage its own clone");
+    }
+
+    #[test]
+    fn clone_holon_preserves_undescribed_transient_and_staged_input() {
+        let source_context = build_context();
+        let destination_context = build_context();
+        let mut source =
+            source_context.mutation().new_holon(Some("undescribed-clone-source".into())).unwrap();
+        let target = source_context.mutation().new_holon(Some("raw-target".into())).unwrap();
+        let target = source_context.mutation().stage_new_holon(target).unwrap();
+        source.add_related_holons("PendingRelationship", vec![target.clone().into()]).unwrap();
+        let staged = source_context.mutation().stage_new_holon(source.clone()).unwrap();
+
+        for source in [HolonReference::from(source), HolonReference::from(staged)] {
+            let mut cloned = destination_context.clone_holon(&source).unwrap();
+            assert_eq!(cloned.key().unwrap(), source.key().unwrap());
+            assert!(matches!(
+                cloned.holon_descriptor(),
+                Err(HolonError::MissingDescribedBy { .. })
+            ));
+            assert_eq!(
+                cloned.related_holons("PendingRelationship").unwrap().read().unwrap().get_members(),
+                &vec![HolonReference::from(target.clone())]
+            );
+            cloned
+                .remove_related_holons("PendingRelationship", vec![target.clone().into()])
+                .unwrap();
+            assert_eq!(
+                source
+                    .related_holons("PendingRelationship")
+                    .unwrap()
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .len(),
+                1
+            );
+            destination_context.mutation().stage_new_holon(cloned).unwrap();
+        }
     }
 }

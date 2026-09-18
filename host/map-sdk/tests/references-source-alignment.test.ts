@@ -35,7 +35,7 @@ describe('source-aligned holon wire guards', () => {
     // Rust unit variants serialize as strings; struct variants use external tags.
     for (const kind of [
       'NoDescriptor', 'UnsupportedValidationRule', 'UnresolvedLocalDependency',
-      'RelationshipCoordinationRequired', 'IndependentlyAuthoredInverseRelationship',
+      'RelationshipCoordinationRequired',
       { RuleViolation: { code: 'DS-PROP-001' } },
       { UnsupportedConstraintType: { constraint_identity: 'constraint', constraint_type_identity: 'type' } },
     ]) {

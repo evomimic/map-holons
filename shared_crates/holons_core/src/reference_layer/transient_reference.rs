@@ -176,18 +176,6 @@ impl fmt::Display for TransientReference {
 // ==========================
 
 impl ReadableHolonImpl for TransientReference {
-    fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
-        self.is_accessible(AccessType::Clone)?;
-        let rc_holon = self.get_rc_holon()?;
-        let holon_clone_model =
-            self.read_holon_guard(&rc_holon, "clone_holon_impl")?.holon_clone_model();
-
-        let cloned_holon_transient_reference =
-            self.context_handle.context().new_transient_from_clone_model(holon_clone_model)?;
-
-        Ok(cloned_holon_transient_reference)
-    }
-
     fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
         let rc_holon = self.get_rc_holon()?;
@@ -420,6 +408,16 @@ impl WritableHolonImpl for TransientReference {
 
 impl ToHolonCloneModel for TransientReference {
     fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
+        self.is_accessible(AccessType::Clone)?;
+        // Preserve in-progress authored state; descriptors may be attached later.
+        self.raw_holon_clone_model()
+    }
+}
+
+impl TransientReference {
+    /// Returns this reference's unnormalized source state for reference-level
+    /// clone-model construction.
+    pub(crate) fn raw_holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let holon_clone_model =
             self.read_holon_guard(&rc_holon, "holon_clone_model")?.holon_clone_model();

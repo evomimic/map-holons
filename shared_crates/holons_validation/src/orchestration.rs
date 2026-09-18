@@ -1,12 +1,14 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
-use core_types::{CommitValidationViolationKind, HolonError};
+use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
 use holons_core::core_shared_objects::{holon::ValidationState, transactions::TransactionContext};
-use holons_core::{HolonReference, StagedReference};
+use holons_core::{Descriptor, HolonDescriptor, HolonReference, ReadableHolon, StagedReference};
+
+use crate::handlers::finding;
+use crate::validators::{resolve_holon_descriptor, validate_described_holon};
 
 use crate::{
-    relationship_orientation::assess_relationship_input, validate_holon, CommitValidationReport,
-    HolonValidationContext, HolonValidationSubject, ValidationCollector,
+    CommitValidationReport, HolonValidationContext, HolonValidationSubject, ValidationCollector,
 };
 
 /// Assesses every supplied live candidate on every call and installs replacement
@@ -18,6 +20,9 @@ use crate::{
 /// Previous validation states never exclude a candidate from reassessment.
 /// A supplied abandoned or committed entry is a caller error, detected before any
 /// outcomes are installed.
+/// Populated authored relationships must be licensed by the completed source
+/// contract. These findings join conformance findings in the existing rejection
+/// gate, before Commit writes any candidate node or relationship.
 ///
 /// An assessment error leaves all prior outcomes untouched. Completed assessment replaces
 /// state and findings together per candidate, preserving operational errors; installation
@@ -41,12 +46,11 @@ pub fn validate_commit_candidates(
         }
         let holon = HolonReference::from(candidate);
         let mut collector = ValidationCollector::default();
-        validate_holon(
-            HolonValidationSubject { holon: &holon },
-            &validation_context,
-            &mut collector,
-        )?;
-        assess_relationship_input(candidate, &mut collector)?;
+        let subject = HolonValidationSubject { holon: &holon };
+        if let Some(descriptor) = resolve_holon_descriptor(subject, &mut collector)? {
+            validate_authored_relationships(candidate, &descriptor, &mut collector)?;
+            validate_described_holon(subject, &descriptor, &validation_context, &mut collector)?;
+        }
         // Keep the candidate association directly; finding identities are diagnostics,
         // not lookup keys for installing staged outcomes.
         prepared_outcomes.push((candidate, collector.into_report().violations));
@@ -69,4 +73,46 @@ pub fn validate_commit_candidates(
         candidate.replace_validation_outcome(state, findings)?;
     }
     Ok(report)
+}
+
+/// Checks completed authored state, not a saved holon's navigation surface.
+/// The same declared-only contract used by mutation policy licenses these names;
+/// no target descriptor or materialized inverse index participates.
+fn validate_authored_relationships(
+    candidate: &StagedReference,
+    descriptor: &HolonDescriptor,
+    collector: &mut ValidationCollector,
+) -> Result<(), HolonError> {
+    let declared_names = descriptor
+        .effective_declared_relationships()?
+        .into_iter()
+        .map(|declaration| declaration.base_relationship_name().map(|name| name.to_string()))
+        .collect::<Result<HashSet<_>, HolonError>>()?;
+    let mut relationships = candidate.all_related_holons()?.iter();
+    relationships.sort_by_key(|(name, _)| name.to_string());
+    for (name, collection) in relationships {
+        let members = collection
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+            .get_members()
+            .to_vec();
+        if members.is_empty() || declared_names.contains(&name.to_string()) {
+            continue;
+        }
+        for target in members {
+            finding(
+                collector,
+                CommitValidationViolationKind::RuleViolation { code: "UndeclaredRelationship".into() },
+                None,
+                &ValidationSubjectPath::Relationship {
+                    source_identity: candidate.reference_id_string(),
+                    name: name.to_string(),
+                    target_identity: target.reference_id_string(),
+                },
+                Some(descriptor.holon().reference_id_string()),
+                format!("Populated relationship {name} must be declared by the source's effective descriptor; remove it or author a declared forward relationship."),
+            );
+        }
+    }
+    Ok(())
 }

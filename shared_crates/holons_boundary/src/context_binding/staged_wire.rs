@@ -167,7 +167,8 @@ mod tests {
             None,
             ServiceRoutingPolicy::BlockExternal,
         ));
-        let context = space.get_transaction_manager().open_new_transaction(Arc::clone(&space))?;
+        let context =
+            space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
         let mut staged = StagedHolon::new_for_create();
         staged.add_error(HolonError::NotImplemented("persistence".into()))?;
         staged.replace_validation_outcome(

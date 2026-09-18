@@ -1,5 +1,4 @@
 use crate::core_shared_objects::holon::state::AccessType;
-use crate::reference_layer::TransientReference;
 use crate::{HolonCollection, HolonReference, RelationshipMap};
 use base_types::MapString;
 use core_types::{
@@ -8,9 +7,6 @@ use core_types::{
 use std::sync::{Arc, RwLock};
 
 pub trait ReadableHolonImpl {
-    /// Generic clone for all Holon variants. Resulting clone is always a TransientReference, regardless of source phase.
-    fn clone_holon_impl(&self) -> Result<TransientReference, HolonError>;
-
     fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError>;
 
     fn holon_id_impl(&self) -> Result<HolonId, HolonError>;

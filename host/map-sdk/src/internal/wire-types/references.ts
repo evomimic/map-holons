@@ -136,8 +136,7 @@ export type CommitValidationViolationKindWire =
   | { UnsupportedConstraintType: { constraint_identity: string; constraint_type_identity: string } }
   | { RuleViolation: { code: string } }
   | 'UnresolvedLocalDependency'
-  | 'RelationshipCoordinationRequired'
-  | 'IndependentlyAuthoredInverseRelationship';
+  | 'RelationshipCoordinationRequired';
 
 export type ValidationSubjectPathWire =
   | { Holon: { holon_identity: string } }
@@ -1279,7 +1278,6 @@ export function isCommitValidationViolationKindWire(
     value === 'UnsupportedValidationRule' ||
     value === 'UnresolvedLocalDependency' ||
     value === 'RelationshipCoordinationRequired' ||
-    value === 'IndependentlyAuthoredInverseRelationship' ||
     isTaggedValue(
       value,
       'UnsupportedConstraintType',

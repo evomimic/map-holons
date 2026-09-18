@@ -11,15 +11,12 @@ use std::sync::Arc;
 
 /// Lifetime over which a relationship collection may be reused.
 ///
-/// A guest service lives for one dance request, so its relationship cache may
-/// reuse every persisted relationship collection within that request. A host
-/// service owns a cache shared by many transactions and may reuse only
-/// declared definitional relationship membership, which is immutable for a
-/// saved source version.
+/// A guest service lives for one dance request; a host service owns a cache
+/// shared by many transactions. Both reuse only declared definitional
+/// relationship membership, which is immutable for a saved source version.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RelationshipCacheScope {
-    /// The cache is request-local and may reuse any persisted relationship
-    /// collection for the duration of that request.
+    /// The cache reuses declared definitional collections within one request.
     RequestLocal,
 
     /// The cache spans transactions and may reuse only declared definitional
@@ -46,8 +43,8 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
 
     /// States the lifetime semantics of the relationship cache paired with
-    /// this service. Guest implementations retain the safe request-local
-    /// default; host implementations opt into descriptor-governed reuse.
+    /// this service. Both scopes apply descriptor-governed reuse; scope does
+    /// not authorize caching non-definitional or inverse membership.
     fn relationship_cache_scope(&self) -> RelationshipCacheScope {
         RelationshipCacheScope::RequestLocal
     }

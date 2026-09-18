@@ -1,7 +1,10 @@
 use tracing::info;
 use type_names::relationship_names::CoreRelationshipTypeName;
 
-use crate::core_shared_objects::transactions::TransactionContext;
+use crate::core_shared_objects::{
+    holon::HolonCloneModel, transactions::TransactionContext,
+    transient_holon_manager::ToHolonCloneModel,
+};
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
@@ -291,17 +294,17 @@ impl fmt::Display for HolonReference {
     }
 }
 
-impl ReadableHolonImpl for HolonReference {
-    fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
+impl ToHolonCloneModel for HolonReference {
+    fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
         match self {
-            HolonReference::Transient(transient_reference) => {
-                transient_reference.clone_holon_impl()
-            }
-            HolonReference::Staged(staged_reference) => staged_reference.clone_holon_impl(),
-            HolonReference::Smart(smart_reference) => smart_reference.clone_holon_impl(),
+            HolonReference::Transient(reference) => reference.holon_clone_model(),
+            HolonReference::Staged(reference) => reference.holon_clone_model(),
+            HolonReference::Smart(reference) => reference.holon_clone_model(),
         }
     }
+}
 
+impl ReadableHolonImpl for HolonReference {
     fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError> {
         match self {
             HolonReference::Transient(transient_reference) => {

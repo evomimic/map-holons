@@ -10,9 +10,9 @@ use core_types::{HolonError, HolonId, RelationshipName};
 /// Selects whether a relationship read may reuse a cached collection for the
 /// lifetime of its enclosing cache manager.
 ///
-/// The host determines whether a saved relationship is stable enough for its
-/// space-wide cache. Guest cache managers are request-local and therefore may
-/// safely reuse any persisted relationship collection for that request.
+/// The cache manager determines whether a saved relationship is definitional
+/// and declared. Non-definitional and inverse membership stays fresh, including
+/// when the enclosing cache manager is request-local.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RelationshipCachePolicy {
     Reuse,
@@ -45,17 +45,17 @@ impl RelationshipCache {
     /// to the specified `source_holon_id` via the specified `relationship_name` Note
     /// that the `HolonCollection` could be empty.
     ///
-    /// Reusable reads are cached, including known-empty collections. Fresh
-    /// reads are deliberately never read from or written to this cache.
+    /// Cache hits, including known-empty collections, require no classification.
+    /// On a miss, classify only after fetching and sealing, with no cache lock held.
     pub fn related_holons(
         &self,
         context: &Arc<TransactionContext>,
         holon_service: &dyn HolonServiceApi,
         source_holon_id: &HolonId,
         relationship_name: &RelationshipName,
-        cache_policy: RelationshipCachePolicy,
+        cache_policy: impl FnOnce() -> Result<RelationshipCachePolicy, HolonError>,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
-        if cache_policy == RelationshipCachePolicy::Reuse {
+        {
             let cache = self.cache.read().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
                     "Failed to acquire read lock on relationship_cache: {}",
@@ -88,7 +88,7 @@ impl RelationshipCache {
         )?;
         let fetched_arc = Arc::new(RwLock::new(seal_saved_collection(fetched_holons)?));
 
-        if cache_policy == RelationshipCachePolicy::Reuse {
+        if cache_policy()? == RelationshipCachePolicy::Reuse {
             let mut cache = self.cache.write().map_err(|e| {
                 HolonError::FailedToAcquireLock(format!(
                     "Failed to acquire write lock on relationship_cache: {}",

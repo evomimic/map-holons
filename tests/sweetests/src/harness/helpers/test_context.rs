@@ -46,7 +46,7 @@ pub fn init_fixture_context() -> Arc<TransactionContext> {
     // Step 4: Open the default transaction for this space.
     let transaction_context = space_manager
         .get_transaction_manager()
-        .open_new_transaction(Arc::clone(&space_manager))
+        .open_public_transaction(Arc::clone(&space_manager))
         .expect("failed to open default fixture transaction");
 
     transaction_context
@@ -132,7 +132,28 @@ pub async fn init_test_runtime(test_case: &mut DancesTestCase) -> (Runtime, TxId
     assert_eq!(
         response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
         Some(BaseValue::StringValue(MapString::from("Complete"))),
-        "canonical Core bootstrap must pass semantic validation and persistence"
+        "canonical Core bootstrap must pass semantic validation and persistence; \
+         summary: {:?}; loader errors (LoaderHolonKey, ErrorMessage): {:#?}",
+        response.property_value(CorePropertyTypeName::DanceSummary),
+        // Assertion message arguments are evaluated only on failure. Keep read
+        // errors in the diagnostic instead of replacing the bootstrap failure
+        // with a second panic while inspecting its response.
+        response.related_holons(CoreRelationshipTypeName::HasLoadError).and_then(|collection| {
+            let members = collection
+                .read()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                .get_members()
+                .to_vec();
+            Ok(members
+                .iter()
+                .map(|error| {
+                    (
+                        error.property_value(CorePropertyTypeName::LoaderHolonKey),
+                        error.property_value(CorePropertyTypeName::ErrorMessage),
+                    )
+                })
+                .collect::<Vec<_>>())
+        })
     );
     info!(
         "[PERF-688] sweettest_bootstrap: guest_load_and_commit_ms={}",

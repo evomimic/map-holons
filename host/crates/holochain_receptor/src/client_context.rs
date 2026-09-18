@@ -27,7 +27,7 @@ pub fn init_client_context(initiator: Option<Arc<dyn DanceInitiator>>) -> Arc<Tr
     // TransactionContext becomes the sole execution root and owns the space.
     space_manager
         .get_transaction_manager()
-        .open_new_transaction(Arc::clone(&space_manager))
+        .open_public_transaction(Arc::clone(&space_manager))
         .expect("failed to open default client transaction")
 }
 

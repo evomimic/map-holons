@@ -68,11 +68,14 @@ pub fn init_guest_context(
     let transaction_context = if restricted_cache_read {
         space_manager
             .get_transaction_manager()
-            .open_restricted_cache_read_transaction_with_id(Arc::clone(&space_manager), tx_id)?
+            .open_private_restricted_cache_read_transaction_with_id(
+                Arc::clone(&space_manager),
+                tx_id,
+            )?
     } else {
         space_manager
             .get_transaction_manager()
-            .open_transaction_with_id(Arc::clone(&space_manager), tx_id)?
+            .open_public_transaction_with_id(Arc::clone(&space_manager), tx_id)?
     };
 
     // Step 4: Load staged and transient holons into the transaction.
