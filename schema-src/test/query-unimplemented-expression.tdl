@@ -1,0 +1,23 @@
+meta {
+  export_mode: "test-fixture"
+  load_with: ["../core/root.json","../query/schema.json"]
+}
+
+schema QueryUnimplementedExpressionTestSchema {
+  depends_on "MAP Core Schema-v0.0.7"
+  depends_on "MAP Query Schema-v0.0.2"
+  header {
+    description: "Sweettest-only concrete QueryExpression with no operator implementation. Gives QRY1 lifecycle and QueryDance adapter tests a structurally valid query root without adding a production operator."
+  }
+}
+
+holon UnimplementedQueryExpression.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Test-only QueryExpression whose execution is intentionally unimplemented."
+    display_name: "Unimplemented Query Expression"
+    display_plural: "Unimplemented Query Expressions"
+    plural: "UnimplementedQueryExpressions"
+  }
+}

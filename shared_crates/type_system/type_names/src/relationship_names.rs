@@ -64,9 +64,33 @@ impl ToRelationshipName for &DahnRelationshipTypeName {
     }
 }
 
+impl ToRelationshipName for QueryRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.as_relationship_name()
+    }
+}
+
 impl ToRelationshipName for DancerRelationshipTypeName {
     fn to_relationship_name(self) -> RelationshipName {
         self.as_relationship_name()
+    }
+}
+
+impl ToRelationshipName for &QueryRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.clone().as_relationship_name()
+    }
+}
+
+impl ToRelationshipName for QueryDanceRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.as_relationship_name()
+    }
+}
+
+impl ToRelationshipName for &QueryDanceRelationshipTypeName {
+    fn to_relationship_name(self) -> RelationshipName {
+        self.clone().as_relationship_name()
     }
 }
 
@@ -97,6 +121,7 @@ pub enum CoreRelationshipTypeName {
     AffordsOperator,
     AffordsTransactionModel,
     BundleMembers,
+    CollectionMembers,
     CommandAffordedBy,
     ComponentOf,
     Constraints,
@@ -171,6 +196,38 @@ pub enum DahnRelationshipTypeName {
 }
 
 impl DahnRelationshipTypeName {
+    /// Canonical relationship name in ClassCase (UpperCamel).
+    pub fn as_relationship_name(&self) -> RelationshipName {
+        RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
+    }
+}
+
+/// Canonical Query Schema relationship type names consumed by the QRY1 runtime scaffold.
+#[derive(Debug, Clone, VariantNames)]
+pub enum QueryRelationshipTypeName {
+    ExecutesExpression,
+    ExecutesQuery,
+    ExpressionExecutions,
+    Input,
+    RootExpression,
+}
+
+impl QueryRelationshipTypeName {
+    /// Canonical relationship name in ClassCase (UpperCamel).
+    pub fn as_relationship_name(&self) -> RelationshipName {
+        RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))
+    }
+}
+
+/// Canonical Query Dance Adapter Schema relationship type names.
+#[derive(Debug, Clone, VariantNames)]
+pub enum QueryDanceRelationshipTypeName {
+    InitialInput,
+    RequestParameters,
+    RequestedQuery,
+}
+
+impl QueryDanceRelationshipTypeName {
     /// Canonical relationship name in ClassCase (UpperCamel).
     pub fn as_relationship_name(&self) -> RelationshipName {
         RelationshipName(MapString(format!("{self:?}").to_case(Case::UpperCamel)))

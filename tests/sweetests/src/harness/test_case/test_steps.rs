@@ -76,6 +76,17 @@ pub struct ExpectedRejectedHolon {
     pub findings: Vec<ExpectedValidationFinding>,
 }
 
+/// How an `ExecuteQueryScaffold` step reaches the QRY1 direct Query seam.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QueryScaffoldRoute {
+    /// Peer Rust call: `QueryReference::begin_execution` then `run`.
+    Direct,
+    /// Descriptor-bound `QueryDance` invocation through `TransactionAction::DanceV2`.
+    QueryDance,
+    /// `QueryDance` invocation whose request omits `InitialInput` (contract-error case).
+    QueryDanceWithoutInitialInput,
+}
+
 /// Internal step representation used by executors at runtime.
 #[derive(Clone, Debug)]
 pub enum DanceTestStep {
@@ -154,6 +165,16 @@ pub enum DanceTestStep {
         description: String,
     },
     LoadBookPersonInverseTestSchema {
+        description: String,
+    },
+    LoadQueryTestSchema {
+        description: String,
+    },
+    ExecuteQueryScaffold {
+        query: TestReference,
+        input_members: Vec<TestReference>,
+        route: QueryScaffoldRoute,
+        expected_error: Option<HolonErrorKind>,
         description: String,
     },
     LoadInverseOrientedBookPersonInstancesExpectFailure {
@@ -345,6 +366,12 @@ impl core::fmt::Display for DanceTestStep {
                 write!(f, "{description}")
             }
             DanceTestStep::LoadBookPersonInverseTestSchema { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::LoadQueryTestSchema { description } => {
+                write!(f, "{description}")
+            }
+            DanceTestStep::ExecuteQueryScaffold { description, .. } => {
                 write!(f, "{description}")
             }
             DanceTestStep::LoadInverseOrientedBookPersonInstancesExpectFailure { description } => {
