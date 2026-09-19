@@ -177,6 +177,7 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
         VisualizerSelectionRequest {
             subject: subject.clone(),
             requested_kind: VisualizerKind::Node,
+            parent_visualizer: None,
         },
     );
     let through_command = runtime
@@ -187,6 +188,7 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
                     request: VisualizerSelectionRequest {
                         subject,
                         requested_kind: VisualizerKind::Node,
+                        parent_visualizer: None,
                     },
                 },
             }),

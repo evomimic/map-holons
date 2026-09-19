@@ -154,6 +154,7 @@ pub enum VisualizerKindWire {
     RootedNavigation,
     Collection,
     Properties,
+    Property,
     Value,
     Action,
 }
@@ -161,12 +162,15 @@ pub enum VisualizerKindWire {
 /// Wire form of the current, Holon-backed selection request ingress.
 ///
 /// The wire shape is deliberately request-based even though the current
-/// subjects are Holons. Later selector work may generalize the subject without
-/// reducing the Selector Function to a kind-to-implementation registry.
+/// Properties uses the owning holon as its subject. Property and Value use the
+/// resolved PropertyDescriptor holon, preserving descriptor provenance across
+/// this transport boundary.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VisualizerSelectionRequestWire {
     pub subject: HolonReferenceWire,
     pub requested_kind: VisualizerKindWire,
+    #[serde(default)]
+    pub parent_visualizer: Option<HolonReferenceWire>,
 }
 
 impl From<VisualizerKindWire> for VisualizerKind {
@@ -177,6 +181,7 @@ impl From<VisualizerKindWire> for VisualizerKind {
             VisualizerKindWire::RootedNavigation => Self::RootedNavigation,
             VisualizerKindWire::Collection => Self::Collection,
             VisualizerKindWire::Properties => Self::Properties,
+            VisualizerKindWire::Property => Self::Property,
             VisualizerKindWire::Value => Self::Value,
             VisualizerKindWire::Action => Self::Action,
         }
@@ -191,6 +196,7 @@ impl From<VisualizerKind> for VisualizerKindWire {
             VisualizerKind::RootedNavigation => Self::RootedNavigation,
             VisualizerKind::Collection => Self::Collection,
             VisualizerKind::Properties => Self::Properties,
+            VisualizerKind::Property => Self::Property,
             VisualizerKind::Value => Self::Value,
             VisualizerKind::Action => Self::Action,
         }
@@ -236,6 +242,10 @@ impl TransactionActionWire {
                     request: VisualizerSelectionRequest {
                         subject: request.subject.bind(context)?,
                         requested_kind: request.requested_kind.into(),
+                        parent_visualizer: request
+                            .parent_visualizer
+                            .map(|parent| parent.bind(context))
+                            .transpose()?,
                     },
                 })
             }

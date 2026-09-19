@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "78d07b7f31a6fd2895b1b1e4e8b6e453817d9a0cf6cd869684b0c8135756b8ab"
+      "sha256": "f583c5921248003b550b22033d023406c277a05fd44176b27b0a97a997d3d11f"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -365,10 +365,6 @@
     },
     {
       "key": "(HolonType.TypeDescriptor)-[ElementTypeFor]->(HolonCollection.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
-    },
-    {
-      "key": "(HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
@@ -680,6 +676,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -716,7 +716,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor)",
+      "key": "(Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -860,6 +860,10 @@
       "type": "MetaValidationRule.MetaHolonType"
     },
     {
+      "key": "BooleanValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
+    },
+    {
       "key": "BooleanValueType.ValueType",
       "type": "MetaValueType.MetaTypeDescriptor"
     },
@@ -918,6 +922,10 @@
     {
       "key": "BytesValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "BytesValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
     },
     {
       "key": "BytesValueType.ValueType",
@@ -1268,6 +1276,10 @@
       "type": "EnumValueValidationRule.HolonType"
     },
     {
+      "key": "EnumValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
+    },
+    {
       "key": "EnumValueType.ValueType",
       "type": "MetaEnumValueType.MetaValueType"
     },
@@ -1342,6 +1354,30 @@
     {
       "key": "FormatRule.KeyRuleType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "GenericProperties.PropertiesVisualizer",
+      "type": "PropertiesVisualizer.HolonType"
+    },
+    {
+      "key": "GenericProperties.PropertySlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "GenericPropertiesTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "GenericProperty.PropertyVisualizer",
+      "type": "PropertyVisualizer.HolonType"
+    },
+    {
+      "key": "GenericProperty.ValueSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "GenericPropertyTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
     },
     {
       "key": "GetAllHolons.CommandType",
@@ -1432,6 +1468,10 @@
       "type": "NodeVisualizer.HolonType"
     },
     {
+      "key": "HolonInspector.PropertyViewerSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
     },
@@ -1506,6 +1546,10 @@
     {
       "key": "IntegerValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "IntegerValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
     },
     {
       "key": "IntegerValueType.ValueType",
@@ -1972,6 +2016,10 @@
       "type": "PropertyValidationRule.HolonType"
     },
     {
+      "key": "PropertyVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType"
+    },
+    {
       "key": "ProxyId.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -2188,6 +2236,10 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "ScalarValueTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
       "key": "Schema.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -2234,6 +2286,10 @@
     {
       "key": "StringValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "StringValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
     },
     {
       "key": "StringValueType.ValueType",

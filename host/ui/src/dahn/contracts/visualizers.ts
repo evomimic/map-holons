@@ -4,6 +4,7 @@ import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
 import type { TablePresentation } from './table-presentation';
+import type { BaseValue } from '../deps';
 
 /**
  * Target classification metadata for a visualizer realized into the canvas.
@@ -59,6 +60,15 @@ export interface VisualizerContext {
    * into a UI contract.
    */
   collectionPresentation?: TablePresentation;
+  /**
+   * Descriptor-derived presentation input for Property and Value visualizers.
+   * It is supplied by the parent composition after Rust selects the child; it
+   * is not a TypeScript-owned value-type classification surface.
+   */
+  propertyPresentation?: {
+    propertyName: string;
+    value: BaseValue | null;
+  };
 }
 
 /**

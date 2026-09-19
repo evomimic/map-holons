@@ -9,3 +9,8 @@ export const CorePropertyName = {
   PropertyName: 'PropertyName',
   RelationshipName: 'RelationshipName',
 } as const;
+
+/** MAP Core descriptor relationships used by public descriptor handles. */
+export const CoreRelationshipName = {
+  ValueType: 'ValueType',
+} as const;

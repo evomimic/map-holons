@@ -20,7 +20,15 @@ export default class HolonInspectorElement extends HTMLElement {
 
     const propertyViewer = document.createElement('section');
     propertyViewer.dataset.holonInspectorPropertyViewer = 'true';
-    propertyViewer.textContent = 'Property Viewer Pane';
+    propertyViewer.style.gridColumn = '1';
+    propertyViewer.style.gridRow = '2';
+    propertyViewer.style.minWidth = '0';
+    const propertiesVisualizer = context.childVisualizers?.get('properties');
+    if (propertiesVisualizer === undefined) {
+      propertyViewer.textContent = 'Property Viewer Pane';
+    } else {
+      propertyViewer.append(propertiesVisualizer);
+    }
 
     const singleValueRail = document.createElement('aside');
     singleValueRail.dataset.holonInspectorSingleValueRail = 'true';
@@ -35,11 +43,15 @@ export default class HolonInspectorElement extends HTMLElement {
 
     const body = document.createElement('div');
     body.dataset.holonInspectorBody = 'true';
-    body.style.gridColumn = '1';
+    body.style.gridColumn = '1 / -1';
     body.style.gridRow = '2';
     body.style.display = 'grid';
     body.style.gridTemplateColumns = 'minmax(0, 1fr) 11rem';
+    body.style.gridTemplateRows = 'auto minmax(0, 1fr)';
     body.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
+    actionBar.style.gridColumn = '1';
+    actionBar.style.gridRow = '1';
+    singleValueRail.style.gridRow = '1 / span 2';
     body.append(actionBar, propertyViewer, singleValueRail);
 
     this.replaceChildren(title, body, collectionTabBar);

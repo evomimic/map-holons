@@ -57,6 +57,7 @@ export type VisualizerKindWire =
   | 'RootedNavigation'
   | 'Collection'
   | 'Properties'
+  | 'Property'
   | 'Value'
   | 'Action';
 
@@ -70,6 +71,7 @@ export type VisualizerKindWire =
 export interface VisualizerSelectionRequestWire {
   subject: HolonReferenceWire;
   requested_kind: VisualizerKindWire;
+  parent_visualizer: HolonReferenceWire | null;
 }
 
 /**
@@ -286,11 +288,15 @@ export function isTransactionActionWire(
     (hasSingleKey(value, 'SelectVisualizer') &&
       isRecord(value.SelectVisualizer) &&
       isHolonReferenceWire(value.SelectVisualizer['subject']) &&
+      (value.SelectVisualizer['parent_visualizer'] === undefined ||
+        value.SelectVisualizer['parent_visualizer'] === null ||
+        isHolonReferenceWire(value.SelectVisualizer['parent_visualizer'])) &&
       (value.SelectVisualizer['requested_kind'] === 'Canvas' ||
         value.SelectVisualizer['requested_kind'] === 'Node' ||
         value.SelectVisualizer['requested_kind'] === 'RootedNavigation' ||
         value.SelectVisualizer['requested_kind'] === 'Collection' ||
         value.SelectVisualizer['requested_kind'] === 'Properties' ||
+        value.SelectVisualizer['requested_kind'] === 'Property' ||
         value.SelectVisualizer['requested_kind'] === 'Value' ||
         value.SelectVisualizer['requested_kind'] === 'Action')) ||
     (hasSingleKey(value, 'GetStagedHolonByBaseKey') &&

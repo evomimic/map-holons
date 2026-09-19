@@ -91,7 +91,7 @@ abstract holon Visualizer.HolonType {
   relationships {
     InstanceRelationships -> [
       (Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType),
-      (Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor),
+      (Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor),
       (Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType),
       (Visualizer.HolonType)-[ConsumesDesignToken]->(DesignToken.HolonType)
     ]
@@ -160,7 +160,15 @@ instance HolonInspector.NodeVisualizer {
   type NodeVisualizer.HolonType
   relationships {
     ApplicableToType -> HolonType.TypeDescriptor
+    HasSlot -> HolonInspector.PropertyViewerSlot
     ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
+  }
+}
+
+instance HolonInspector.PropertyViewerSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> PropertiesVisualizer.HolonType
   }
 }
 
@@ -168,7 +176,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:32a82a5fa4faa873efbc3519263d99050c1c898db2de7cb6e099cc6e1c9b6eb1"
+  VisualizerArtifactDigest "sha256:db95ca8a5c4a8c597ab01c468168f65461006f16de1e65a1eb18e7171c077038"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -256,6 +264,73 @@ holon PropertiesVisualizer.HolonType {
   }
 }
 
+holon PropertyVisualizer.HolonType {
+  type MetaVisualizerType.MetaHolonType
+  extends Visualizer.HolonType
+  header {
+    description: "Concrete Visualizer Holon Type for visualizers that compose one descriptor-defined property name with a selected Value Visualizer. It does not own set-level layout."
+    display_name: "Property Visualizer"
+    display_plural: "Property Visualizers"
+    plural: "PropertyVisualizers"
+  }
+}
+
+// The generic Properties presentation owns the property-set layout. It is
+// applicable to the ordinary HolonType lineage so every generic Node can bind
+// it through its Property Viewer slot without a bootstrap fallback.
+instance GenericProperties.PropertiesVisualizer {
+  type PropertiesVisualizer.HolonType
+  relationships {
+    ApplicableToType -> HolonType.TypeDescriptor
+    HasSlot -> GenericProperties.PropertySlot
+    ImplementedBy -> GenericPropertiesTypeScript.VisualizerImplementation
+  }
+}
+
+instance GenericProperties.PropertySlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> PropertyVisualizer.HolonType
+  }
+}
+
+instance GenericPropertiesTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.properties"
+  VisualizerArtifactDigest "sha256:31fa6574c6dc5adcf5925f0f9c552bff85e98b7de595992179f717aa59774629"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
+// The generic property presentation is selected for each PropertyDescriptor.
+// It is intentionally distinct from PropertiesVisualizer: it owns only one
+// name/value row and its Value slot, never set-level layout or spatial budget.
+instance GenericProperty.PropertyVisualizer {
+  type PropertyVisualizer.HolonType
+  relationships {
+    ApplicableToType -> PropertyType.TypeDescriptor
+    HasSlot -> GenericProperty.ValueSlot
+    ImplementedBy -> GenericPropertyTypeScript.VisualizerImplementation
+  }
+}
+
+instance GenericProperty.ValueSlot {
+  type VisualizerSlot.HolonType
+  relationships {
+    AcceptsVisualizerType -> ValueVisualizer.HolonType
+  }
+}
+
+instance GenericPropertyTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.property"
+  VisualizerArtifactDigest "sha256:815219b8b7d9351cac616face6ebeca59a0694998b2dbc06268cb94c407ba4ed"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
+}
+
 holon ValueVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
@@ -265,6 +340,58 @@ holon ValueVisualizer.HolonType {
     display_plural: "Value Visualizers"
     plural: "ValueVisualizers"
   }
+}
+
+// These semantic identities are selected independently for their declared
+// ValueType lineages. The first client shares one scalar read-only executable
+// implementation while retaining distinct ValueVisualizer identity.
+instance StringValue.ValueVisualizer {
+  type ValueVisualizer.HolonType
+  relationships {
+    ApplicableToType -> StringValueType.ValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance IntegerValue.ValueVisualizer {
+  type ValueVisualizer.HolonType
+  relationships {
+    ApplicableToType -> IntegerValueType.ValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance BooleanValue.ValueVisualizer {
+  type ValueVisualizer.HolonType
+  relationships {
+    ApplicableToType -> BooleanValueType.ValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance EnumValue.ValueVisualizer {
+  type ValueVisualizer.HolonType
+  relationships {
+    ApplicableToType -> EnumValueType.ValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance BytesValue.ValueVisualizer {
+  type ValueVisualizer.HolonType
+  relationships {
+    ApplicableToType -> BytesValueType.ValueType
+    ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
+  }
+}
+
+instance ScalarValueTypeScript.VisualizerImplementation {
+  type VisualizerImplementation.HolonType
+  VisualizerImplementationRuntime TypeScript
+  VisualizerImplementationKey "dahn.scalar-value"
+  VisualizerArtifactDigest "sha256:7b8cd6b923b5259e80248fb00dd7920571c4ab2e033d9a6cb3c6d34cf2a32dd4"
+  VisualizerModuleFormat "ESModule"
+  Entrypoint "default"
 }
 
 holon ActionVisualizer.HolonType {
@@ -375,7 +502,7 @@ inverse relationship (VisualizerImplementation.HolonType)-[ImplementsVisualizer]
   }
 }
 
-relationship (Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor) {
+relationship (Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
@@ -383,27 +510,27 @@ relationship (Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescripto
   }
   extends DeclaredRelationshipType.RelationshipType
   source Visualizer.HolonType
-  target HolonType.TypeDescriptor
+  target TypeDescriptor
   deletion_semantic Allow
   header {
-    description: "Declares a subject Holon Type against which a selector evaluates a Visualizer Holon's applicability using the subject's direct descriptor and type lineage. A target of HolonType.TypeDescriptor means any ordinary subject described by a Holon Type, not descriptor holons as subjects. Additional applicability dimensions remain additive schema work."
+    description: "Declares a descriptor Type against which a selector evaluates a Visualizer Holon's applicability using its type lineage. Node and Properties visualizers target HolonType lineages; Property and Value visualizers may target PropertyType and ValueType lineages."
     display_name: "ApplicableToType Relationship"
     display_plural: "ApplicableToType Relationships"
     plural: "ApplicableToTypeRelationships"
   }
 }
 
-inverse relationship (HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType) {
+inverse relationship (TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType) {
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
-  source HolonType.TypeDescriptor
+  source TypeDescriptor
   target Visualizer.HolonType
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint
   }
   deletion_semantic Block
   header {
-    description: "Inverse of ApplicableToType, exposing the Visualizer Holons applicable to a Holon Type."
+    description: "Inverse of ApplicableToType, exposing the Visualizer Holons applicable to a descriptor Type."
     display_name: "HasApplicableVisualizer Relationship"
     display_plural: "HasApplicableVisualizer Relationships"
     plural: "HasApplicableVisualizerRelationships"

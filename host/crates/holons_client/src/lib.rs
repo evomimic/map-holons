@@ -1,6 +1,7 @@
 pub mod client_context;
 pub mod client_session;
 pub mod client_shared_objects;
+pub mod dahn;
 pub mod dances_client;
 pub mod deprecated_receptor_cache;
 pub mod deprecated_receptor_factory;
@@ -14,6 +15,7 @@ pub use client_session::ClientSession;
 pub use client_shared_objects::*;
 use client_shared_types::{MapRequest, MapResponse, SpaceInfo};
 use core_types::HolonError;
+pub use dahn::{DahnMaterializer, DancerPackageCatalog};
 pub use holochain_receptor::DeprecatedHolochainReceptor;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 pub use session_receptor::session_receptor::SessionReceptor;

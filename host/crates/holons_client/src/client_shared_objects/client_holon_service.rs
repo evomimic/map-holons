@@ -56,7 +56,7 @@ use tokio::runtime::Handle;
 use tokio::task::block_in_place;
 use tracing::info;
 
-use super::{DahnMaterializer, DancerPackageCatalog};
+use crate::dahn::{DahnMaterializer, DancerPackageCatalog};
 
 #[derive(Debug, Clone)]
 pub struct ClientHolonService {

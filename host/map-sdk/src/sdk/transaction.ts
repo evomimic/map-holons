@@ -19,6 +19,10 @@ import {
   unwrapTransientHolonReference,
 } from './references';
 import {
+  unwrapPropertyDescriptorHandle,
+  type PropertyDescriptorHandle,
+} from './descriptors';
+import {
   type ContentSet,
   extractBytes,
   extractNumber,
@@ -33,19 +37,22 @@ export type VisualizerKind =
   | 'rootedNavigation'
   | 'collection'
   | 'properties'
+  | 'property'
   | 'value'
   | 'action';
 
 /**
  * A visualization request submitted to the Rust-owned DAHN Selector Function.
  *
- * This SDK ingress currently supports Holon-backed subjects. The request form
- * intentionally leaves room for future Slot, semantic-context, and non-Holon
- * subject inputs without making TypeScript a second selector authority.
+ * This SDK ingress carries a bound holon reference. Properties uses the owner
+ * holon; Property and Value use the resolved PropertyDescriptor reference so
+ * Rust retains descriptor and ValueType authority.
  */
 export interface VisualizerSelectionRequest {
   subject: HolonReference;
   requestedKind: VisualizerKind;
+  /** Selected parent whose declared slot Rust must validate for this child. */
+  parentVisualizer?: HolonReference;
 }
 
 /** Rust-selected semantic Visualizer reference for a visualization request. */
@@ -316,6 +323,9 @@ export class MapTransaction {
       {
         subject: unwrapHolonReference(request.subject),
         requested_kind: toVisualizerKindWire(request.requestedKind),
+        parent_visualizer: request.parentVisualizer === undefined
+          ? null
+          : unwrapHolonReference(request.parentVisualizer),
       },
     );
     return {
@@ -323,6 +333,37 @@ export class MapTransaction {
       requestedKind: fromVisualizerKindWire(wire.requested_kind),
       alternativesAvailable: wire.alternatives_available,
     };
+  }
+
+  /**
+   * Selects the Property Visualizer for a resolved PropertyDescriptor. The
+   * descriptor, rather than a raw PropertyMap entry, is the semantic subject.
+   */
+  selectPropertyVisualizer(
+    property: PropertyDescriptorHandle,
+    parentVisualizer: HolonReference,
+  ): Promise<VisualizerSelection> {
+    return this.selectVisualizer({
+      subject: unwrapPropertyDescriptorHandle(property),
+      requestedKind: 'property',
+      parentVisualizer,
+    });
+  }
+
+  /**
+   * Selects the Value Visualizer through the PropertyDescriptor's declared
+   * ValueType. Rust resolves that relationship; TypeScript does not infer a
+   * visualizer from the runtime value variant.
+   */
+  selectValueVisualizer(
+    property: PropertyDescriptorHandle,
+    parentVisualizer: HolonReference,
+  ): Promise<VisualizerSelection> {
+    return this.selectVisualizer({
+      subject: unwrapPropertyDescriptorHandle(property),
+      requestedKind: 'value',
+      parentVisualizer,
+    });
   }
 
 }
@@ -354,6 +395,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
   | 'RootedNavigation'
   | 'Collection'
   | 'Properties'
+  | 'Property'
   | 'Value'
   | 'Action' {
   if (kind === 'rootedNavigation') {
@@ -365,6 +407,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
     | 'RootedNavigation'
     | 'Collection'
     | 'Properties'
+    | 'Property'
     | 'Value'
     | 'Action';
 }

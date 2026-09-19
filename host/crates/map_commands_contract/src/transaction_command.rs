@@ -123,22 +123,31 @@ pub enum VisualizerKind {
     RootedNavigation,
     Collection,
     Properties,
+    /// Visualizes one descriptor-defined property within a Properties slot.
+    /// The request subject is the bound `PropertyDescriptor` holon, never a
+    /// raw entry from a PropertyMap.
+    Property,
     Value,
     Action,
 }
 
 /// Input to the Rust-owned DAHN Selector Function.
 ///
-/// This command ingress currently binds a Holon-backed subject because Node,
-/// Canvas, and Collection are the only bootstrap policies implemented by PR 3.
+/// This command ingress binds a Holon-backed subject. For `Properties`, it is
+/// the holon whose descriptor defines the property set; for `Property` and
+/// `Value`, it is the resolved PropertyDescriptor holon. A raw PropertyMap
+/// entry is deliberately not a selector subject because it has no descriptor
+/// or declared ValueType provenance.
 /// The selector contract deliberately remains a request rather than a
-/// `VisualizerKind -> Visualizer` lookup: future request subjects may be
-/// collections, property/value context, action affordances, Slots, and richer
-/// runtime context without redesigning the selection boundary.
+/// `VisualizerKind -> Visualizer` lookup: future requests may add explicit
+/// Slot and richer runtime context without redesigning the selection boundary.
 #[derive(Debug)]
 pub struct VisualizerSelectionRequest {
     pub subject: HolonReference,
     pub requested_kind: VisualizerKind,
+    /// When present, Rust verifies the selected child can occupy one of this
+    /// parent's declared VisualizerSlots before returning it to the UI.
+    pub parent_visualizer: Option<HolonReference>,
 }
 
 impl TransactionAction {

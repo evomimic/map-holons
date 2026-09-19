@@ -154,6 +154,101 @@ export class CanvasHostComponent implements AfterViewInit {
         'map-rooted-navigation-visualizer',
         pathImplementation as CustomElementConstructor,
       );
+      const propertiesSelection = await transaction.selectVisualizer({
+        subject: activeHolonSpace,
+        requestedKind: 'properties',
+        parentVisualizer: rootNodeVisualizer,
+      });
+      const propertiesImplementation = await materialized.realize(propertiesSelection.selected);
+      if (
+        typeof propertiesImplementation !== 'function' ||
+        !(propertiesImplementation.prototype instanceof HTMLElement)
+      ) {
+        throw new Error('Selected Properties implementation does not export an HTMLElement constructor.');
+      }
+      defineCustomElementOnce(
+        'map-properties-visualizer',
+        propertiesImplementation as CustomElementConstructor,
+      );
+      const propertyVisualizers = new Map<string, HTMLElement>();
+      for (const propertyDescriptor of await activeHolonSpace.availableProperties()) {
+        const propertyName = await propertyDescriptor.propertyName();
+        // Each command shares one transaction-bound execution surface. Keep
+        // descriptor selection and the value read serialized so request
+        // handling cannot interleave their reference-bound work.
+        const propertySelection = await transaction.selectPropertyVisualizer(
+          propertyDescriptor,
+          propertiesSelection.selected,
+        );
+        const value = await activeHolonSpace.propertyValue(propertyName);
+        const valueSelection = await transaction.selectValueVisualizer(
+          propertyDescriptor,
+          propertySelection.selected,
+        );
+        const [propertyImplementation, valueImplementation] = await Promise.all([
+          materialized.realize(propertySelection.selected),
+          materialized.realize(valueSelection.selected),
+        ]);
+        if (
+          typeof propertyImplementation !== 'function' ||
+          !(propertyImplementation.prototype instanceof HTMLElement)
+        ) {
+          throw new Error('Selected Property implementation does not export an HTMLElement constructor.');
+        }
+        if (
+          typeof valueImplementation !== 'function' ||
+          !(valueImplementation.prototype instanceof HTMLElement)
+        ) {
+          throw new Error('Selected Value implementation does not export an HTMLElement constructor.');
+        }
+        defineCustomElementOnce(
+          'map-property-visualizer',
+          propertyImplementation as CustomElementConstructor,
+        );
+        defineCustomElementOnce(
+          'map-scalar-value-visualizer',
+          valueImplementation as CustomElementConstructor,
+        );
+        const propertyPresentation = { propertyName, value };
+        const valueElement = document.createElement('map-scalar-value-visualizer') as HTMLElement & {
+          setContext(context: VisualizerContext): void;
+        };
+        valueElement.setContext({
+          title: propertyName,
+          target: { reference: activeHolonSpace },
+          holon: new DahnHolonView(activeHolonSpace),
+          actions: [],
+          theme,
+          canvas,
+          propertyPresentation,
+        });
+        const propertyElement = document.createElement('map-property-visualizer') as HTMLElement & {
+          setContext(context: VisualizerContext): void;
+        };
+        propertyElement.setContext({
+          title: propertyName,
+          target: { reference: activeHolonSpace },
+          holon: new DahnHolonView(activeHolonSpace),
+          actions: [],
+          theme,
+          canvas,
+          propertyPresentation,
+          childVisualizers: new Map([['value', valueElement]]),
+        });
+        propertyVisualizers.set(propertyName, propertyElement);
+      }
+      const propertiesElement = document.createElement('map-properties-visualizer') as HTMLElement & {
+        setContext(context: VisualizerContext): void;
+      };
+      propertiesElement.setContext({
+        title: 'Properties',
+        target: { reference: activeHolonSpace },
+        holon: new DahnHolonView(activeHolonSpace),
+        actions: [],
+        theme,
+        canvas,
+        childVisualizers: propertyVisualizers,
+      });
       const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
       registry.register({
         id: 'rooted-navigation',
@@ -173,6 +268,7 @@ export class CanvasHostComponent implements AfterViewInit {
         actions: [],
         theme,
         canvas,
+        childVisualizers: new Map([['properties', propertiesElement]]),
       });
       homeDancerContext = {
         title,
@@ -208,11 +304,15 @@ function describeError(error: unknown): string {
     return String(error);
   }
 
-  const detailedError = error as Error & { cause?: unknown; details?: unknown };
+  const detailedError = error as Error & { cause?: unknown; details?: unknown; payload?: unknown };
   const cause = detailedError.cause;
   const details = detailedError.details;
+  const payload = detailedError.payload;
   if (details !== undefined) {
     return `${error.message}: ${describeUnknown(details)}`;
+  }
+  if (payload !== undefined) {
+    return `${error.message}: ${describeUnknown(payload)}`;
   }
   if (cause === undefined) {
     return error.message;
