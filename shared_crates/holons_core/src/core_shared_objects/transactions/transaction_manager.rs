@@ -1,4 +1,4 @@
-//! Per-space transaction authority for creating and registering transactions.
+//! Per-space transaction authority for public and private transaction contexts.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, Weak};
@@ -10,17 +10,24 @@ use crate::core_shared_objects::space_manager::HolonSpaceManager;
 use super::tx_id::TransactionIdGenerator;
 use super::{TransactionContext, TxId};
 
-/// Owns transaction id generation and transaction registration for a space.
+/// Owns transaction id generation and public transaction registration for a space.
 ///
-/// Ownership model:
-/// - TransactionManager does NOT own transaction lifetimes.
-/// - The registry stores only Weak<TransactionContext>.
-/// - Callers own transactions by holding Arc<TransactionContext>.
+/// A **public** transaction is manager-addressable: another component may
+/// later resolve its `TxId` to resume, mutate, commit, or otherwise coordinate
+/// that specific transaction. Public transactions are registered here.
+///
+/// A **private** transaction is a stack-bounded execution frame. Its context
+/// is passed directly through a bounded operation and its `TxId` is only a
+/// correlation/diagnostic value, not a lookup capability. Private
+/// transactions are intentionally absent from this registry.
+///
+/// The manager does not own either transaction's lifetime. The public registry
+/// stores only `Weak<TransactionContext>`; callers retain the owning `Arc`.
 #[derive(Debug)]
 pub struct TransactionManager {
     /// Monotonic id generator scoped to this space.
     id_generator: TransactionIdGenerator,
-    /// Registry of open transactions keyed by id (weak refs only).
+    /// Manager-addressable public transactions keyed by id (weak refs only).
     transactions: RwLock<HashMap<TxId, Weak<TransactionContext>>>,
 }
 
@@ -33,8 +40,12 @@ impl TransactionManager {
         }
     }
 
-    /// Creates and registers a new transaction for this space.
-    pub fn open_new_transaction(
+    /// Opens a new public transaction for this space and registers it by `TxId`.
+    ///
+    /// Use this when later work may resolve the transaction through
+    /// [`Self::get_transaction`], including client commands and ordinary dance
+    /// sessions. Do not use it for a bounded internal execution frame.
+    pub fn open_public_transaction(
         &self,
         space_manager: Arc<HolonSpaceManager>,
     ) -> Result<Arc<TransactionContext>, HolonError> {
@@ -42,7 +53,7 @@ impl TransactionManager {
         let tx_id = self.id_generator.next_id();
 
         // Build the transaction context with a STRONG space reference.
-        let context = TransactionContext::new(tx_id, space_manager);
+        let context = TransactionContext::new(tx_id, space_manager, false);
 
         // Register the transaction (weak only) while holding the lock briefly.
         let mut guard = self.transactions.write().map_err(|e| {
@@ -57,11 +68,11 @@ impl TransactionManager {
         Ok(context)
     }
 
-    /// Creates and registers a transaction with a specific id.
+    /// Opens and registers a public transaction with a specific id.
     ///
     /// This is intended for IPC round-trips where the originating side
     /// supplies an explicit tx_id that must be preserved.
-    pub fn open_transaction_with_id(
+    pub fn open_public_transaction_with_id(
         &self,
         space_manager: Arc<HolonSpaceManager>,
         tx_id: TxId,
@@ -78,7 +89,7 @@ impl TransactionManager {
         self.id_generator.bump_to_at_least(tx_id);
 
         // Build the transaction context with a STRONG space reference.
-        let context = TransactionContext::new(tx_id, space_manager);
+        let context = TransactionContext::new(tx_id, space_manager, false);
 
         // Register the transaction (weak only) while holding the lock briefly.
         let mut guard = self.transactions.write().map_err(|e| {
@@ -91,6 +102,36 @@ impl TransactionManager {
         drop(guard);
 
         Ok(context)
+    }
+
+    /// Opens a private restricted transaction used only to satisfy a
+    /// saved-cache miss.
+    ///
+    /// The frame may carry transient dance request/response state, but cannot
+    /// stage or persist changes. It is passed directly through the read and is
+    /// dropped when that operation completes. Its `TxId` is not registered and
+    /// cannot be resolved through [`Self::get_transaction`].
+    pub(crate) fn open_private_restricted_cache_read_transaction(
+        &self,
+        space_manager: Arc<HolonSpaceManager>,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        let tx_id = self.id_generator.next_id();
+        Ok(TransactionContext::new(tx_id, space_manager, true))
+    }
+
+    /// Opens the guest half of a private restricted cache-read transaction
+    /// using the host-assigned id carried by the ordinary dance session
+    /// envelope.
+    ///
+    /// The envelope carries the id for correlation, not manager lookup. The
+    /// resulting context remains private and unregistered on the guest.
+    pub fn open_private_restricted_cache_read_transaction_with_id(
+        &self,
+        space_manager: Arc<HolonSpaceManager>,
+        tx_id: TxId,
+    ) -> Result<Arc<TransactionContext>, HolonError> {
+        self.id_generator.bump_to_at_least(tx_id);
+        Ok(TransactionContext::new(tx_id, space_manager, true))
     }
 
     /// Looks up a transaction by id.
@@ -139,6 +180,15 @@ impl TransactionManager {
         }
 
         Ok(upgraded)
+    }
+
+    #[cfg(test)]
+    fn registered_transaction_count(&self) -> Result<usize, HolonError> {
+        self.transactions.read().map(|transactions| transactions.len()).map_err(|error| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on transactions: {error}"
+            ))
+        })
     }
 }
 
@@ -243,15 +293,15 @@ mod tests {
     }
 
     #[test]
-    fn open_default_transaction_creates_and_registers() {
+    fn open_public_transaction_creates_and_registers() {
         // Step 1: Create a space manager and transaction manager.
         let space_manager = build_space_manager();
         let tm = space_manager.get_transaction_manager();
 
-        // Step 2: Open the default transaction.
+        // Step 2: Open the public transaction.
         let transaction = tm
-            .open_new_transaction(Arc::clone(&space_manager))
-            .expect("default transaction should open");
+            .open_public_transaction(Arc::clone(&space_manager))
+            .expect("public transaction should open");
 
         // Step 3: Look up the transaction by id.
         let lookup = tm
@@ -273,7 +323,7 @@ mod tests {
         let mut ids = Vec::new();
         for _ in 0..5 {
             let transaction = tm
-                .open_new_transaction(Arc::clone(&space_manager))
+                .open_public_transaction(Arc::clone(&space_manager))
                 .expect("transaction should open");
             ids.push(transaction.tx_id());
         }
@@ -296,8 +346,8 @@ mod tests {
         let space_manager = build_space_manager();
         let tm = space_manager.get_transaction_manager();
         let transaction = tm
-            .open_new_transaction(Arc::clone(&space_manager))
-            .expect("default transaction should open");
+            .open_public_transaction(Arc::clone(&space_manager))
+            .expect("public transaction should open");
 
         // Step 2: Export staged holons from the transaction nursery.
         let staged = transaction.export_staged_holons().expect("staged export should succeed");
@@ -323,8 +373,8 @@ mod tests {
 
         let tx_id = {
             let transaction = tm
-                .open_new_transaction(Arc::clone(&space_manager))
-                .expect("default transaction should open");
+                .open_public_transaction(Arc::clone(&space_manager))
+                .expect("public transaction should open");
             transaction.tx_id()
         }; // transaction Arc dropped here (no other strong owners in this test)
 
@@ -340,8 +390,8 @@ mod tests {
         let tm = space_manager.get_transaction_manager();
 
         let transaction = tm
-            .open_new_transaction(Arc::clone(&space_manager))
-            .expect("default transaction should open");
+            .open_public_transaction(Arc::clone(&space_manager))
+            .expect("public transaction should open");
 
         // Step 2: Drop the original Arc; TC should still keep the space alive.
         drop(space_manager);
@@ -349,5 +399,26 @@ mod tests {
         // Step 3: Accessing space-backed context state should still work.
         let _ =
             transaction.get_space_holon().expect("space-backed lookup should remain accessible");
+    }
+
+    #[test]
+    fn private_restricted_read_transactions_are_not_registered() {
+        let space_manager = build_space_manager();
+        let tm = space_manager.get_transaction_manager();
+
+        for _ in 0..32 {
+            let transaction = tm
+                .open_private_restricted_cache_read_transaction(Arc::clone(&space_manager))
+                .expect("private read transaction should open");
+            assert!(tm
+                .get_transaction(&transaction.tx_id())
+                .expect("private lookup should succeed")
+                .is_none());
+        }
+
+        assert_eq!(
+            tm.registered_transaction_count().expect("registry inspection should succeed"),
+            0
+        );
     }
 }

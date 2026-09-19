@@ -63,8 +63,8 @@ fn undescribed_properties_use_the_same_effective_contract_in_every_phase() -> Re
         ((id(3), CoreRelationshipTypeName::InstanceProperties.to_relationship_name()), vec![id(4)]),
     ]);
     let context = build_context_with_saved_holons(snapshots, relationships);
-    let smart = HolonReference::smart_from_id(context.context_handle(), id(1));
-    let descriptor = HolonReference::smart_from_id(context.context_handle(), id(2));
+    let smart = HolonReference::smart_from_id(context.space_read_handle(), id(1));
+    let descriptor = HolonReference::smart_from_id(context.space_read_handle(), id(2));
     let mut transient = new_test_holon(&context, "transient-instance")?;
     transient
         .with_property_value("Title", "Example")?
@@ -78,7 +78,7 @@ fn undescribed_properties_use_the_same_effective_contract_in_every_phase() -> Re
     assert_eq!(smart.undescribed_property_names()?, expected);
     assert_eq!(HolonReference::from(transient).undescribed_property_names()?, expected);
     assert_eq!(HolonReference::from(staged).undescribed_property_names()?, expected);
-    let keyless = HolonReference::smart_from_id(context.context_handle(), id(7));
+    let keyless = HolonReference::smart_from_id(context.space_read_handle(), id(7));
     assert_eq!(keyless.key()?, None);
     assert!(keyless.undescribed_property_names()?.is_empty());
     Ok(())

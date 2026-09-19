@@ -6,7 +6,6 @@
       "action": {
         "StageNewVersion": {
           "current_version": {
-            "tx_id": 41,
             "holon_id": {
               "External": {
                 "space_id": [

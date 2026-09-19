@@ -40,7 +40,12 @@ pub enum Holon {
 /// By design, this type is decoupled from the richer state and invariants of
 /// the `Holon` variants (e.g. `HolonState`, `ValidationState`, errors,
 /// commit/staging metadata). That separation allows it to act as a lightweight,
-/// portable container for cloning before reconstructing a new `TransientHolon`.
+/// container for cloning before reconstructing a new `TransientHolon`.
+///
+/// Copied relationship references retain their existing runtime bindings. This
+/// model neither relocates their targets nor translates foreign references into
+/// local ones, and it is not a cross-space transport representation. Mirror
+/// cloning semantics remain unspecified.
 #[derive(new, Debug, Clone)]
 pub struct HolonCloneModel {
     pub version: MapInteger,

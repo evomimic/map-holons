@@ -1,7 +1,9 @@
 use core_types::ContentSet;
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_prelude::prelude::*;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
 use serde_json::Value;
+use std::sync::Arc;
 use tracing::info;
 
 use holons_test::{ExpectedLoadStatus, TestExecutionState};
@@ -91,7 +93,7 @@ pub async fn execute_load_holons_client_expect_success(
         panic!(
             "validation package import reported {errors} errors.{}{}",
             dump_full_response(&response_reference),
-            dump_error_holons_from_response(&response_reference),
+            dump_error_holons_from_response(&context, &response_reference),
         );
     }
 
@@ -112,63 +114,61 @@ pub async fn execute_load_holons_client_expect_success(
     );
 }
 
-/// Checks an operational loader failure. An Incomplete Commit may already have
-/// persisted nodes, unlike a load that fails before Commit and reports Skipped.
-pub async fn execute_load_holons_client_expect_failure(
+/// Checks a loader input that stages successfully but is rejected by common
+/// Commit validation before any persistence write.
+pub async fn execute_load_holons_client_expect_semantic_rejection(
     test_state: &mut TestExecutionState,
     content_set: ContentSet,
-    expected_status: ExpectedLoadStatus,
-    expected_committed: MapInteger,
-    expected_error_substrings: &[&str],
 ) {
     let context = test_state.context();
-
     let command = MapCommand::Transaction(TransactionCommand {
         context: context.clone(),
         action: TransactionAction::LoadHolons { content_set },
     });
     let result = test_state
-        .dispatch_command(command, "load_holons_client_expect_failure")
+        .dispatch_command(command, "load_holons_client_expect_semantic_rejection")
         .await
-        .unwrap_or_else(|e| panic!("load_holons_client_expect_failure failed: {e:?}"));
+        .unwrap_or_else(|error| {
+            panic!("load_holons_client_expect_semantic_rejection failed: {error:?}")
+        });
 
     let response_reference = match result {
-        MapResult::Reference(HolonReference::Transient(t)) => t,
+        MapResult::Reference(HolonReference::Transient(reference)) => reference,
         other => panic!("LoadHolons: expected Reference(Transient), got {other:?}"),
     };
 
-    let committed = read_int_property(&response_reference, CorePropertyTypeName::HolonsCommitted);
-    let errors = read_int_property(&response_reference, CorePropertyTypeName::ErrorCount);
-    let commit_status =
-        read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus);
-    let error_dump = dump_error_holons_from_response(&response_reference);
-    let full_dump = dump_full_response(&response_reference);
-
-    info!("[loader-client] expected_failure_error_dump:\n{}", error_dump);
-    info!("[loader-client] expected_failure_full_dump:\n{}", full_dump);
-
     assert_eq!(
-        commit_status,
-        expected_status.to_string(),
-        "Expected LoadCommitStatus={}, got {}",
-        expected_status,
-        commit_status
+        read_string_property(&response_reference, CorePropertyTypeName::LoadCommitStatus),
+        ExpectedLoadStatus::Rejected.to_string(),
+        "semantic rejection must be reported by Commit"
     );
-    assert_eq!(committed, expected_committed.0, "unexpected committed holon count");
+    assert_eq!(
+        read_int_property(&response_reference, CorePropertyTypeName::HolonsCommitted),
+        0,
+        "semantic rejection must not commit holons"
+    );
     assert_eq!(
         read_int_property(&response_reference, CorePropertyTypeName::ValidationViolationCount),
-        0,
-        "operational loader failure must remain distinct from semantic rejection"
+        1,
+        "inverse-oriented input must produce one common Commit finding"
     );
-    assert!(context.is_open(), "failed load must leave its transaction open");
-    assert!(errors > 0, "expected at least one loader error, got {errors}");
-
-    for expected in expected_error_substrings {
-        assert!(
-            error_dump.contains(expected),
-            "expected loader error dump to contain {expected:?}; dump:\n{error_dump}"
-        );
-    }
+    assert_eq!(
+        read_int_property(&response_reference, CorePropertyTypeName::ErrorCount),
+        0,
+        "semantic rejection must not be reported as a loader error"
+    );
+    let loader_errors = response_reference
+        .related_holons(CoreRelationshipTypeName::HasLoadError)
+        .unwrap_or_else(|error| panic!("failed to read loader errors: {error:?}"));
+    assert!(
+        loader_errors
+            .read()
+            .unwrap_or_else(|error| panic!("failed to read loader error collection: {error}"))
+            .get_members()
+            .is_empty(),
+        "common Commit rejection must not create loader errors"
+    );
+    assert!(context.is_open(), "rejected load must leave its transaction open");
 }
 
 /// Utility: dump all properties on the response holon plus key loader fields.
@@ -184,7 +184,10 @@ fn dump_full_response(response: &TransientReference) -> String {
 }
 
 /// Dump attached error holons (HasLoadError) for quick diagnostics.
-fn dump_error_holons_from_response(response_reference: &TransientReference) -> String {
+fn dump_error_holons_from_response(
+    context: &Arc<TransactionContext>,
+    response_reference: &TransientReference,
+) -> String {
     let mut output = String::new();
 
     let relationship_name = CoreRelationshipTypeName::HasLoadError;
@@ -208,7 +211,7 @@ fn dump_error_holons_from_response(response_reference: &TransientReference) -> S
     output.push_str("\n===== Loader Error Holons (HasLoadError) =====\n");
 
     for (index, holon_reference) in members.into_iter().enumerate() {
-        let transient_reference = match holon_reference.clone_holon() {
+        let transient_reference = match context.clone_holon(&holon_reference) {
             Ok(reference) => reference,
             Err(error) => {
                 output.push_str(&format!(

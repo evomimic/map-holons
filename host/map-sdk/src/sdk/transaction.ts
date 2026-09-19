@@ -98,9 +98,7 @@ export class MapTransaction {
       throw new TypeError('Application-session references must be persisted Smart references');
     }
 
-    return createHolonReference(txIdFor(this), {
-      Smart: { ...reference.Smart, tx_id: txIdFor(this) },
-    });
+    return createHolonReference(txIdFor(this), reference);
   }
 
   async newHolon(key?: string): Promise<TransientHolonReference> {
@@ -139,7 +137,7 @@ export class MapTransaction {
     const txId = txIdFor(this);
     const wireRef = await internalTransaction.stageNewVersion(
       txId,
-      toSmartReferenceWire(txId, currentVersion),
+      toSmartReferenceWire(currentVersion),
     );
     return createHolonReference(txId, wireRef);
   }
@@ -343,12 +341,8 @@ export function createMapTransaction(txId: TxId): MapTransaction {
   return new MapTransaction(txId, MAP_TRANSACTION_CONSTRUCTION);
 }
 
-function toSmartReferenceWire(
-  txId: TxId,
-  currentVersion: SmartReference,
-): SmartReferenceWire {
+function toSmartReferenceWire(currentVersion: SmartReference): SmartReferenceWire {
   return {
-    tx_id: txId,
     holon_id: currentVersion.holonId,
     smart_property_values: currentVersion.smartPropertyValues ?? null,
   };

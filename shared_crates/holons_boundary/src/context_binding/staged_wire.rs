@@ -1,7 +1,9 @@
 use crate::context_binding::staged_relationship_wire::StagedRelationshipMapWire;
 use base_types::MapInteger;
 use core_types::{CommitValidationViolation, HolonError, LocalId, PropertyMap, RelationshipName};
-use holons_core::core_shared_objects::holon::{HolonState, StagedState, ValidationState};
+use holons_core::core_shared_objects::holon::{
+    HolonState, RelationshipCommitScope, StagedState, ValidationState,
+};
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::core_shared_objects::StagedHolon;
 use serde::{Deserialize, Serialize};
@@ -23,6 +25,7 @@ pub struct StagedHolonWire {
     versioned_source_id: Option<LocalId>,
     #[serde(default)]
     touched_relationship_names: BTreeSet<RelationshipName>,
+    relationship_commit_scope: RelationshipCommitScope,
     errors: Vec<HolonError>,
 }
 
@@ -40,6 +43,7 @@ impl StagedHolonWire {
             self.original_id,
             self.versioned_source_id,
             self.touched_relationship_names,
+            self.relationship_commit_scope,
             self.errors,
         ))
     }
@@ -58,6 +62,7 @@ impl StagedHolonWire {
             self.original_id,
             self.versioned_source_id,
             self.touched_relationship_names,
+            self.relationship_commit_scope,
             self.errors,
         ))
     }
@@ -76,6 +81,7 @@ impl From<&StagedHolon> for StagedHolonWire {
             original_id: value.original_id_ref().cloned(),
             versioned_source_id: value.versioned_source_id_ref().cloned(),
             touched_relationship_names: value.touched_relationship_names().clone(),
+            relationship_commit_scope: value.relationship_commit_scope(),
             errors: value.errors().to_vec(),
         }
     }
@@ -161,7 +167,8 @@ mod tests {
             None,
             ServiceRoutingPolicy::BlockExternal,
         ));
-        let context = space.get_transaction_manager().open_new_transaction(Arc::clone(&space))?;
+        let context =
+            space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
         let mut staged = StagedHolon::new_for_create();
         staged.add_error(HolonError::NotImplemented("persistence".into()))?;
         staged.replace_validation_outcome(
@@ -189,11 +196,17 @@ mod tests {
         assert_eq!(wire.rebind(&context)?, staged);
 
         json.as_object_mut().unwrap().remove("validation_findings");
-        let legacy: StagedHolonWire = serde_json::from_value(json).unwrap();
+        let legacy: StagedHolonWire = serde_json::from_value(json.clone()).unwrap();
         let rebound = legacy.bind(&context)?;
         assert!(rebound.validation_findings().is_empty());
         assert_eq!(rebound.validation_state(), staged.validation_state());
         assert_eq!(rebound.errors(), staged.errors());
+
+        json.as_object_mut().unwrap().remove("relationship_commit_scope");
+        assert!(
+            serde_json::from_value::<StagedHolonWire>(json).is_err(),
+            "relationship_commit_scope is required so an interrupted graph-only retry cannot default to Full"
+        );
         Ok(())
     }
 
@@ -222,6 +235,10 @@ mod tests {
             "StagedHolonWire must carry touched_relationship_names so relationship-mutation \
              intent survives the dance/session-state round-trip; without it, graph-only \
              commits lose their touched set and persist no relationship changes"
+        );
+        assert!(
+            json.get("relationship_commit_scope").is_some(),
+            "StagedHolonWire must carry relationship_commit_scope so retry preserves its Pass-2 persistence decision"
         );
     }
 }

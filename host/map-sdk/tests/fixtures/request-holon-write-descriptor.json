@@ -14,7 +14,6 @@
           "WithDescriptor": {
             "descriptor": {
               "Smart": {
-                "tx_id": 41,
                 "holon_id": {
                   "External": {
                     "space_id": [

@@ -1,7 +1,8 @@
 //! Instance-level relationship availability.
 //!
 //! Available relationships are the runtime-state-filtered subset of a source
-//! holon's effective outbound relationship surface:
+//! holon's effective outbound **read-navigation** surface. Availability does
+//! not express agent authorization or permission to author a relationship.
 //!
 //! | Source reference state          | Declared | Inverse |
 //! | ------------------------------- | -------- | ------- |
@@ -11,10 +12,10 @@
 //! | `TransientReference`            | yes      | no      |
 //!
 //! The declared side comes exclusively from the source holon's `DescribedBy`
-//! contract. This applies to descriptor holons as well as ordinary holons: a
-//! descriptor's own `InstanceRelationships` declarations license its instances,
-//! not the descriptor itself. The inverse side is consulted only for committed
-//! sources.
+//! contract and its inherited `InstanceRelationships`. This applies to
+//! descriptor holons as well as ordinary holons: a descriptor's own
+//! `InstanceRelationships` declarations license its instances, not the
+//! descriptor itself. The inverse side is consulted only for committed sources.
 
 use crate::descriptors::{
     effective_relationships::effective_declared_relationships_for_holon, Descriptor,
@@ -314,7 +315,7 @@ mod tests {
             .mutation()
             .stage_new_holon(new_test_holon(&fixture.context, "commit-state-staged")?)?;
         let smart = SmartReference::new_from_id(
-            fixture.context.context_handle(),
+            fixture.context.space_read_handle(),
             HolonId::Local(LocalId(vec![1, 2, 3])),
         );
 

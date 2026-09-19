@@ -1,11 +1,11 @@
 // shared_crates/holons_loader/src/loader_ref_resolver.rs
 //
 // Pass-2 (Resolver): Transform queued LoaderRelationshipReference holons into
-// concrete writes on staged holons. Implements the multi-pass, graph-driven
-// declared relationship authoring policy:
+// concrete writes on staged holons. Assembles imported state before
+// descriptor-dependent validation:
 //   Pass-2a: write DescribedBy first
 //   Pass-2b: write Extends next so descriptor ancestry is available
-//   Pass-2c: assemble remaining relationships, then assess declared orientation
+//   Pass-2c: assemble remaining relationships through ungoverned staged writes
 //
 // Design goals:
 // - Self-contained, self-describing code with explicit invariants
@@ -18,7 +18,7 @@
 // Safety guardrails:
 // - DescribedBy must target exactly one descriptor
 // - Bootstrap relationships are selected by name before the type graph is queryable
-// - Instance relationships must be authored in declared orientation
+// - Assembly preserves authored direction; it never infers or writes a reverse edge
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -53,12 +53,6 @@ pub struct ResolverMetrics {
     pub extends: ResolverPhaseMetrics,
     /// Remaining in-memory relationship writes.
     pub assembly: ResolverPhaseMetrics,
-    /// Orientation checks over the completed graph.
-    pub assessment: ResolverPhaseMetrics,
-    /// Effective source-declaration lookup attempts, including failures.
-    pub declaration_lookup_calls: usize,
-    /// Source-declaration lookup time; excludes inverse diagnostic traversal.
-    pub declaration_lookup_micros: i64,
 }
 
 impl std::fmt::Display for ResolverMetrics {
@@ -68,7 +62,6 @@ impl std::fmt::Display for ResolverMetrics {
             ("described_by", &self.described_by),
             ("extends", &self.extends),
             ("assembly", &self.assembly),
-            ("assessment", &self.assessment),
         ] {
             write!(formatter,
                 "resolver_{name}_ms={} resolver_{name}_endpoint_calls={} resolver_{name}_endpoint_us={} ",
@@ -77,11 +70,7 @@ impl std::fmt::Display for ResolverMetrics {
             )?;
             endpoint_calls += phase.endpoint_resolution_calls;
         }
-        write!(
-            formatter,
-            "resolver_endpoint_calls={} resolver_declaration_calls={} resolver_declaration_us={}",
-            endpoint_calls, self.declaration_lookup_calls, self.declaration_lookup_micros,
-        )
+        write!(formatter, "resolver_endpoint_calls={endpoint_calls}")
     }
 }
 
@@ -91,7 +80,6 @@ enum ResolverPhase {
     DescribedBy,
     Extends,
     Assembly,
-    Assessment,
 }
 
 /// Outcome of Pass-2: counts successful writes and collects non-fatal errors.
@@ -116,20 +104,11 @@ struct RelationshipEdgeKey {
     target_identifier: String,
 }
 
-/// Batched authored write; orientation is assessed after graph assembly.
+/// Batched authored relationship write; declarations may still be under construction.
 struct DeclaredRelationshipWrite {
     staged_source: StagedReference,
     targets: Vec<HolonReference>,
     edge_keys: Vec<RelationshipEdgeKey>,
-}
-
-/// Original authored endpoints, retained independently of the deduplicated
-/// write plan. Even a replay with no writes must receive a complete assessment.
-struct AssembledRelationship {
-    name: RelationshipName,
-    source: HolonReference,
-    targets: Vec<HolonReference>,
-    source_loader_key: Option<MapString>,
 }
 
 /// Invocation-local counters and phase selection. No descriptor results are
@@ -151,7 +130,6 @@ impl ResolverState {
             ResolverPhase::DescribedBy => &mut self.metrics.described_by,
             ResolverPhase::Extends => &mut self.metrics.extends,
             ResolverPhase::Assembly => &mut self.metrics.assembly,
-            ResolverPhase::Assessment => &mut self.metrics.assessment,
         }
     }
 }
@@ -165,7 +143,7 @@ impl LoaderRefResolver {
     /// Multi-pass orchestration (deterministic):
     ///   1) Pass-2a: DescribedBy -> with_descriptor()
     ///   2) Pass-2b: Extends -> add_related_holons_ungoverned()
-    ///   3) Pass-2c: assemble remaining references, then assess their orientation
+    ///   3) Pass-2c: assemble remaining relationships with add_related_holons_ungoverned()
     pub fn resolve_relationships(
         context: &Arc<TransactionContext>,
         queued_relationship_references: Vec<TransientReference>,
@@ -316,7 +294,7 @@ impl LoaderRefResolver {
                     }
 
                     // Perform the write using with_descriptor()
-                    match Self::write_relationship(
+                    match Self::write_bootstrap_relationship(
                         staged_source,
                         &described_by,
                         target_endpoints.split_off(0), // exactly one
@@ -324,7 +302,7 @@ impl LoaderRefResolver {
                         Ok(n) => {
                             outcome.links_created += n;
                             debug!(
-                                "[resolver] AFTER write_relationship(DescribedBy): links_created={}",
+                                "[resolver] AFTER write_bootstrap_relationship(DescribedBy): links_created={}",
                                 n
                             );
                         }
@@ -425,8 +403,11 @@ impl LoaderRefResolver {
                         }
                     }
 
-                    match Self::write_relationship(staged_source, relationship_name, unique_targets)
-                    {
+                    match Self::write_bootstrap_relationship(
+                        staged_source,
+                        relationship_name,
+                        unique_targets,
+                    ) {
                         Ok(n) => outcome.links_created += n,
                         Err(e) => {
                             outcome.errors.push(Self::error_with_context(relationship_reference, e))
@@ -462,9 +443,9 @@ impl LoaderRefResolver {
     // ─────────────────────────────────────────────────────────────────────
 
     /// After bootstrap passes, resolve each remaining authored relationship once.
-    /// Every input holon was staged before Pass 2 and `DescribedBy`/`Extends`
-    /// were written in the preceding passes, so a later Pass 2c write cannot
-    /// make a failed named reference become resolvable.
+    /// All input nodes are staged, but their contracts are still being assembled.
+    /// Declaration checks cannot govern these writes: imports populate their own
+    /// `InstanceRelationships` edges, possibly after the relationships they license.
     fn process_remaining_references(
         context: &Arc<TransactionContext>,
         resolver_state: &mut ResolverState,
@@ -473,7 +454,6 @@ impl LoaderRefResolver {
     ) -> (i64, Vec<ErrorWithContext>) {
         let mut errors: Vec<ErrorWithContext> = Vec::new();
         let mut total_links_created = 0i64;
-        let mut resolved_references = Vec::new();
         resolver_state.phase = ResolverPhase::Assembly;
         let started_at = performance_timestamp_micros();
         for relationship_reference in queue {
@@ -488,76 +468,16 @@ impl LoaderRefResolver {
                 &relationship_reference,
                 seen,
             ) {
-                Ok((created, assembled)) => {
+                Ok(created) => {
                     total_links_created += created;
-                    resolved_references.push(assembled);
                 }
-                Err(error) => errors.push(Self::error_with_context(&relationship_reference, error)),
+                Err(error) => {
+                    errors.push(Self::error_with_context(&relationship_reference, error));
+                }
             }
         }
-        // Schema imports populate their own InstanceRelationships and HasInverse
-        // edges here. Assess the completed in-memory graph, not an import-order
-        // dependent prefix. These are nursery writes only: any accumulated error
-        // makes the controller skip Commit, leaving the staged input for diagnosis.
         resolver_state.metrics.assembly.elapsed_micros = elapsed_micros(started_at);
-        resolver_state.phase = ResolverPhase::Assessment;
-        let started_at = performance_timestamp_micros();
-        for assembled in resolved_references {
-            let assessment = Self::require_declared_relationship(
-                &assembled.source,
-                &assembled.name,
-                &assembled.targets,
-                &mut resolver_state.metrics,
-            );
-            if let Err(error) = assessment {
-                errors.push(ErrorWithContext {
-                    error,
-                    source_loader_key: assembled.source_loader_key,
-                });
-            }
-        }
-        resolver_state.metrics.assessment.elapsed_micros = elapsed_micros(started_at);
         (total_links_created, errors)
-    }
-
-    /// Enforces import orientation using the source's inherited declarations.
-    /// Inverse detection walks opposite endpoints' declared contracts so it also
-    /// works for staged schemas without a persisted TargetOf navigation index.
-    fn require_declared_relationship(
-        source: &HolonReference,
-        name: &RelationshipName,
-        targets: &[HolonReference],
-        metrics: &mut ResolverMetrics,
-    ) -> Result<(), HolonError> {
-        metrics.declaration_lookup_calls += 1;
-        let started_at = performance_timestamp_micros();
-        let declaration = effective_relationship_declaration(source, name.clone());
-        metrics.declaration_lookup_micros += elapsed_micros(started_at);
-        let missing = match declaration {
-            Ok(_) => return Ok(()),
-            Err(error @ HolonError::DescriptorDeclarationNotFound { .. }) => error,
-            Err(error) => return Err(error),
-        };
-        let source_descriptor = source.holon_descriptor()?;
-        for target in targets {
-            for declared in target.holon_descriptor()?.effective_declared_relationships()? {
-                if declared.required_inverse()?.base_relationship_name()? == *name
-                    && equals_or_extends(
-                        source_descriptor.holon(),
-                        declared.target_type()?.holon(),
-                    )?
-                {
-                    return Err(HolonError::InvalidRelationship(
-                        name.to_string(),
-                        format!(
-                            "Loader imports must use declared orientation; '{}' is inverse-oriented. Author '{}' from the opposite endpoint instead.",
-                            name, declared.base_relationship_name()?
-                        ),
-                    ));
-                }
-            }
-        }
-        Err(missing)
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -824,10 +744,10 @@ impl LoaderRefResolver {
         ))
     }
 
-    /// Performs the actual write:
+    /// Performs a bootstrap write:
     /// - DescribedBy: exactly one target → `with_descriptor`
     /// - Others: batch → `add_related_holons_ungoverned`
-    fn write_relationship(
+    fn write_bootstrap_relationship(
         mut staged_source: StagedReference,
         declared_relationship_name: &RelationshipName,
         mut write_targets: Vec<HolonReference>,
@@ -862,6 +782,22 @@ impl LoaderRefResolver {
         staged_source
             .add_related_holons_ungoverned(declared_relationship_name.clone(), write_targets)?;
 
+        Ok(number_of_targets)
+    }
+
+    /// Preserves imported relationship state while its descriptor contract is
+    /// under construction. Declaration validation needs the completed graph.
+    fn write_assembled_relationship(
+        mut staged_source: StagedReference,
+        relationship_name: &RelationshipName,
+        targets: Vec<HolonReference>,
+    ) -> Result<i64, HolonError> {
+        if targets.is_empty() {
+            return Ok(0);
+        }
+
+        let number_of_targets = targets.len() as i64;
+        staged_source.add_related_holons_ungoverned(relationship_name.clone(), targets)?;
         Ok(number_of_targets)
     }
 
@@ -918,7 +854,7 @@ impl LoaderRefResolver {
         resolver_state: &mut ResolverState,
         relationship_reference: &TransientReference,
         seen_relationship_edge_keys: &mut HashSet<RelationshipEdgeKey>,
-    ) -> Result<(i64, AssembledRelationship), HolonError> {
+    ) -> Result<i64, HolonError> {
         debug!("[resolver] Entering try_resolve_by_type_graph");
 
         let relationship_name = Self::extract_relationship_metadata(relationship_reference)?;
@@ -944,7 +880,7 @@ impl LoaderRefResolver {
         // Write phase: execute only after all endpoint pairs and write sources resolved.
         let mut created_link_count = 0i64;
         if let Some(declared_write) = declared_write {
-            created_link_count += Self::write_relationship(
+            created_link_count += Self::write_assembled_relationship(
                 declared_write.staged_source,
                 &relationship_name,
                 declared_write.targets,
@@ -954,15 +890,7 @@ impl LoaderRefResolver {
             }
         }
 
-        Ok((
-            created_link_count,
-            AssembledRelationship {
-                name: relationship_name,
-                source: source_endpoint,
-                targets: target_endpoints,
-                source_loader_key: Self::source_loader_key_of_lrr(relationship_reference),
-            },
-        ))
+        Ok(created_link_count)
     }
 
     /// Plan a batched declared write and dedupe it without mutating the global seen set.

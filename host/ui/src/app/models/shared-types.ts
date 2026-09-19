@@ -75,7 +75,6 @@ export interface StagedReference {
 }
 
 export interface SmartReference {
-  tx_id: TxId;
   holon_id: HolonId;
   smart_property_values?: PropertyMap | null;
 }
@@ -248,10 +247,9 @@ export class HolonReferenceFactory {
 
   static smart(
     holon_id: HolonId,
-    tx_id: TxId = DEFAULT_TX_ID,
     smart_property_values?: PropertyMap
   ): HolonReference {
-    return { Smart: { holon_id, tx_id, smart_property_values: smart_property_values || null } };
+    return { Smart: { holon_id, smart_property_values: smart_property_values || null } };
   }
 }
 

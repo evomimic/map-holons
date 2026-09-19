@@ -91,86 +91,71 @@ fn declared_relationship_is_accepted_and_resolved_once() {
     assert!(result.errors.is_empty(), "{:?}", result.errors);
     assert_eq!(result.links_created, 1);
     assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 1);
-    assert_eq!(result.metrics.assessment.endpoint_resolution_calls, 0);
-    assert_eq!(result.metrics.declaration_lookup_calls, 1);
 }
 
 #[test]
-fn duplicate_inverse_references_keep_authored_targets_and_provenance() {
-    let f = Fixture::new();
-    let result = LoaderRefResolver::resolve_relationships(
-        &f.context,
-        vec![
-            f.reference(&f.person, "AuthorOf", &f.book),
-            f.reference(&f.person, "AuthorOf", &f.book),
-        ],
-    )
-    .unwrap();
-    assert_eq!(result.links_created, 1, "second write plan must be empty");
-    assert_eq!(result.errors.len(), 2, "both authored references must be assessed");
-    for error in result.errors {
-        assert_eq!(error.source_loader_key, Some("person".into()));
-        assert!(matches!(error.error, HolonError::InvalidRelationship(name, message)
-            if name == "AuthorOf" && message.contains("AuthoredBy")
-                && message.contains("opposite endpoint")));
+fn assembly_preserves_unlicensed_names_without_inverting_them() {
+    // Assembly preserves authored input for validation against the completed
+    // graph; it must not infer or synthesize a forward edge from an inverse name.
+    for name in ["AuthorOf", "Unknown"] {
+        let f = Fixture::new();
+        let result = LoaderRefResolver::resolve_relationships(
+            &f.context,
+            vec![f.reference(&f.person, name, &f.book), f.reference(&f.person, name, &f.book)],
+        )
+        .unwrap();
+        assert!(result.errors.is_empty(), "{:?}", result.errors);
+        assert_eq!(result.links_created, 1, "replayed authored edges are deduplicated");
+        assert_eq!(
+            f.person.related_holons(name).unwrap().read().unwrap().get_members(),
+            &vec![HolonReference::from(&f.book)]
+        );
+        assert!(f
+            .book
+            .related_holons("AuthoredBy")
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .is_empty());
+        assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 2);
     }
-    assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 2);
-    assert_eq!(result.metrics.assessment.endpoint_resolution_calls, 0);
-    assert_eq!(result.metrics.declaration_lookup_calls, 2);
 }
 
 #[test]
-fn unknown_name_preserves_original_declaration_error() {
-    let f = Fixture::new();
-    let name = "Unknown".to_relationship_name();
-    let expected =
-        effective_relationship_declaration(&(&f.book).into(), name.clone()).err().unwrap();
-    let mut metrics = ResolverMetrics::default();
-    let actual = LoaderRefResolver::require_declared_relationship(
-        &(&f.book).into(),
-        &name,
-        &[(&f.person).into()],
-        &mut metrics,
-    )
-    .unwrap_err();
-    assert_eq!(actual, expected);
-    assert_eq!(metrics.declaration_lookup_calls, 1);
-}
-
-#[test]
-fn late_declaration_is_available_before_any_assessment() {
-    let mut f = Fixture::new();
-    // Remove the declaration from the authored graph, then queue it AFTER its
-    // first use. The instance type itself already exists: Extends ordering alone
-    // cannot make this case pass if assembly and assessment are merged.
-    f.book_type.remove_related_holons("InstanceRelationships", vec![(&f.declared).into()]).unwrap();
-    let result = LoaderRefResolver::resolve_relationships(
-        &f.context,
-        vec![
+fn assembly_allows_declarations_before_or_after_their_use() {
+    for declaration_first in [false, true] {
+        let mut f = Fixture::new();
+        f.book_type
+            .remove_related_holons("InstanceRelationships", vec![(&f.declared).into()])
+            .unwrap();
+        let mut references = vec![
             f.reference(&f.book, "AuthoredBy", &f.person),
             f.reference(&f.book_type, "InstanceRelationships", &f.declared),
-        ],
-    )
-    .unwrap();
-    // The deliberately minimal BookType has no metadescriptor, so assessment of
-    // its own metadata edge fails. The earlier instance edge must NOT fail.
-    assert_eq!(result.errors.len(), 1, "{:?}", result.errors);
-    assert_eq!(result.errors[0].source_loader_key, Some("BookType".into()));
-    assert!(matches!(result.errors[0].error, HolonError::MissingDescribedBy { .. }));
-    assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 2);
-    assert_eq!(result.metrics.assessment.endpoint_resolution_calls, 0);
+        ];
+        if declaration_first {
+            references.reverse();
+        }
+        let result = LoaderRefResolver::resolve_relationships(&f.context, references).unwrap();
+        assert!(result.errors.is_empty(), "{:?}", result.errors);
+        assert_eq!(result.links_created, 2);
+        assert_eq!(
+            f.book.related_holons("AuthoredBy").unwrap().read().unwrap().get_members(),
+            &vec![HolonReference::from(&f.person)]
+        );
+        effective_relationship_declaration(&(&f.book).into(), "AuthoredBy").unwrap();
+        assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 2);
+    }
 }
 
 #[test]
-fn endpoint_failure_is_counted_without_entering_assessment() {
+fn endpoint_failure_is_counted_without_declaredness_lookup() {
     let f = Fixture::new();
     let mut broken = f.context.mutation().new_holon(Some("broken-reference".into())).unwrap();
     broken.with_property_value(CorePropertyTypeName::RelationshipName, "AuthoredBy").unwrap();
     let result = LoaderRefResolver::resolve_relationships(&f.context, vec![broken]).unwrap();
     assert_eq!(result.errors.len(), 1);
     assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 1);
-    assert_eq!(result.metrics.assessment.endpoint_resolution_calls, 0);
-    assert_eq!(result.metrics.declaration_lookup_calls, 0);
 }
 
 #[test]
@@ -179,7 +164,7 @@ fn bootstrap_subpasses_count_their_own_endpoint_work() {
     let untyped = node(&f.context, "untyped");
     let base = node(&f.context, "BaseType");
     // Input order is immaterial: partitioning, not queue position, assigns work
-    // to the two bootstrap phases. Neither reference enters assembly/assessment.
+    // to the two bootstrap phases. Neither reference enters ordinary assembly.
     let result = LoaderRefResolver::resolve_relationships(
         &f.context,
         vec![
@@ -192,7 +177,5 @@ fn bootstrap_subpasses_count_their_own_endpoint_work() {
     assert_eq!(result.metrics.described_by.endpoint_resolution_calls, 1);
     assert_eq!(result.metrics.extends.endpoint_resolution_calls, 1);
     assert_eq!(result.metrics.assembly.endpoint_resolution_calls, 0);
-    assert_eq!(result.metrics.assessment.endpoint_resolution_calls, 0);
-    assert_eq!(result.metrics.declaration_lookup_calls, 0);
     assert_eq!(result.metrics.described_by.elapsed_micros, 0, "no HDK clock in unit tests");
 }

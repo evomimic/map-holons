@@ -5,7 +5,7 @@ use core_types::HolonError;
 
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::descriptors::resolved_descriptor_roots::{
-    assert_same_transaction, resolve_core_descriptor,
+    assert_descriptor_reference_compatible, resolve_core_descriptor,
 };
 use crate::descriptors::{equals_or_extends, Descriptor, HolonDescriptor, TypeHeader};
 use crate::reference_layer::HolonReference;
@@ -20,6 +20,7 @@ use crate::reference_layer::HolonReference;
 pub struct UniversalDescriptorContract {
     descriptor_root: HolonReference,
     member_ids: HashSet<String>,
+    context: Arc<TransactionContext>,
 }
 
 impl UniversalDescriptorContract {
@@ -29,14 +30,16 @@ impl UniversalDescriptorContract {
     pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
         let meta_type = resolve_core_descriptor(context, "MetaTypeDescriptor.HolonType")?;
         let descriptor_root = resolve_core_descriptor(context, "TypeDescriptor")?;
-        Self::from_resolved(&HolonDescriptor::from_holon(meta_type), descriptor_root)
+        Self::from_resolved(context, &HolonDescriptor::from_holon(meta_type), descriptor_root)
     }
 
     fn from_resolved(
+        context: &Arc<TransactionContext>,
         meta_type: &HolonDescriptor,
         descriptor_root: HolonReference,
     ) -> Result<Self, HolonError> {
-        assert_same_transaction(meta_type.holon(), &descriptor_root.bound_context())?;
+        assert_descriptor_reference_compatible(meta_type.holon(), context)?;
+        assert_descriptor_reference_compatible(&descriptor_root, context)?;
         let mut member_ids = HashSet::new();
         for property in meta_type.instance_properties()? {
             member_ids.insert(property.holon().reference_id_string());
@@ -44,7 +47,7 @@ impl UniversalDescriptorContract {
         for relationship in meta_type.instance_relationships()? {
             member_ids.insert(relationship.holon().reference_id_string());
         }
-        Ok(Self { descriptor_root, member_ids })
+        Ok(Self { descriptor_root, member_ids, context: Arc::clone(context) })
     }
 
     /// Implements `EnforceMinimum(H, M)` for a member of H's conformance contract.
@@ -57,8 +60,8 @@ impl UniversalDescriptorContract {
         holon: &HolonReference,
         member: &HolonReference,
     ) -> Result<bool, HolonError> {
-        assert_same_transaction(holon, &self.descriptor_root.bound_context())?;
-        assert_same_transaction(member, &self.descriptor_root.bound_context())?;
+        assert_descriptor_reference_compatible(holon, &self.context)?;
+        assert_descriptor_reference_compatible(member, &self.context)?;
         let is_abstract = equals_or_extends(holon, &self.descriptor_root)?
             && TypeHeader::new(holon).is_abstract_type()?;
         Ok(!is_abstract || self.member_ids.contains(&member.reference_id_string()))
@@ -122,7 +125,8 @@ mod tests {
         let context = build_context();
         let root: HolonReference = new_test_holon(&context, "root")?.into();
         let baseline = HolonDescriptor::from_holon(new_test_holon(&context, "baseline")?.into());
-        let contract = UniversalDescriptorContract::from_resolved(&baseline, root.clone())?;
+        let contract =
+            UniversalDescriptorContract::from_resolved(&context, &baseline, root.clone())?;
         let mut descriptor = new_test_holon(&context, "incomplete-descriptor")?;
         descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![root])?;
         let member: HolonReference = new_test_holon(&context, "member")?.into();

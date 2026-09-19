@@ -162,8 +162,13 @@ fn initialize_context_from_session_state(
     let transient_holons = session_state.get_transient_holons().clone();
     let staged_holons = session_state.get_staged_holons().clone();
 
-    let context =
-        init_guest_context(transient_holons, staged_holons, local_space_holon_id.clone(), tx_id)?;
+    let context = init_guest_context(
+        transient_holons,
+        staged_holons,
+        local_space_holon_id.clone(),
+        tx_id,
+        session_state.is_restricted_cache_read(),
+    )?;
 
     let bootstrap_provisioning = session_state.is_bootstrap_provisioning();
     if local_space_holon_id.is_none() && !bootstrap_provisioning {
@@ -212,12 +217,14 @@ fn restore_session_state_from_context(
         }
     };
 
-    Some(SessionStateWire::new(
+    let mut state = SessionStateWire::new(
         serializable_transient_pool,
         serializable_staged_pool,
         local_space_holon.map(HolonReferenceWire::from),
         Some(context.tx_id()),
-    ))
+    );
+    state.set_restricted_cache_read(context.is_restricted_cache_read());
+    Some(state)
 }
 
 fn validate_request(_request: &DanceRequestWire) -> Result<(), ResponseStatusCode> {

@@ -41,7 +41,8 @@
 //! commit is about to write.
 
 use core_types::{
-    encode_smartlink_tag, CanonicalKey, ContentSet, HolonId, SmartLink, SmartLinkTagInput,
+    encode_smartlink_tag, CanonicalKey, CommitValidationViolationKind, ContentSet, HolonError,
+    HolonId, SmartLink, SmartLinkTagInput, ValidationSubjectPath,
 };
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::holon::{StagedState, ValidationState};
@@ -332,9 +333,9 @@ fn orientation_content_set(relationship_name: &str, declared_orientation: bool) 
     content_set
 }
 
-/// Pins both boundaries: loader errors skip all persistence, while a malformed
-/// graph staged independently still exercises Commit's defensive Pass 2 error.
-async fn verify_loader_orientation_and_direct_commit_failure(
+/// Loader assembly preserves raw input, then Commit rejects populated names
+/// outside the completed source contract before persisting any candidate.
+async fn verify_loader_rejects_non_declared_relationship_input(
     runtime: &Runtime,
     backend: &MockConductorConfig,
 ) {
@@ -354,13 +355,13 @@ async fn verify_loader_orientation_and_direct_commit_failure(
                 ExecutionPolicy::default(),
             )
             .await
-            .expect("resolution errors must return a load response, not fail the dance");
+            .expect("validation rejection must return a load response, not fail the dance");
         let MapResult::Reference(response) = result else {
             panic!("load response");
         };
         assert_eq!(
             response.property_value(CorePropertyTypeName::LoadCommitStatus).unwrap(),
-            Some("Skipped".to_base_value())
+            Some("Rejected".to_base_value())
         );
         assert_eq!(
             response.property_value(CorePropertyTypeName::HolonsCommitted).unwrap(),
@@ -368,36 +369,66 @@ async fn verify_loader_orientation_and_direct_commit_failure(
         );
         assert_eq!(
             response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
-            Some(MapInteger(0).to_base_value())
+            Some(MapInteger(1).to_base_value())
         );
-        let errors = response.related_holons(CoreRelationshipTypeName::HasLoadError).unwrap();
-        let errors = errors.read().unwrap().get_members().clone();
-        assert_eq!(errors.len(), 1);
-        let Some(BaseValue::StringValue(MapString(message))) =
-            errors[0].property_value(CorePropertyTypeName::ErrorMessage).unwrap()
-        else {
-            panic!("loader error must carry a diagnostic");
-        };
-        assert!(message.contains(relationship_name), "{message}");
-        if relationship_name == "AuthorOf" {
-            assert!(message.contains("declared orientation"), "{message}");
-            assert!(message.contains("AuthoredBy"), "{message}");
-        } else {
-            assert!(message.contains("relationship declaration"), "{message}");
-        }
+        assert!(response
+            .related_holons(CoreRelationshipTypeName::HasLoadError)
+            .unwrap()
+            .read()
+            .unwrap()
+            .get_members()
+            .is_empty());
+        let findings = context
+            .staged_references()
+            .unwrap()
+            .iter()
+            .flat_map(|candidate| candidate.validation_findings().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(findings.len(), 1);
+        assert!(matches!(&findings[0].kind,
+            CommitValidationViolationKind::RuleViolation { code } if code == "UndeclaredRelationship"));
+        let staged_candidates = context.staged_references().unwrap();
+        let source = staged_candidates
+            .iter()
+            .find(|candidate| {
+                candidate.key().unwrap().unwrap().to_string()
+                    == "Person.InverseOrientationFailure.1"
+            })
+            .expect("offending person");
+        let target = staged_candidates
+            .iter()
+            .find(|candidate| {
+                candidate.key().unwrap().unwrap().to_string() == "Book.InverseOrientationFailure.1"
+            })
+            .expect("target book");
+        assert_eq!(source.validation_state().unwrap(), ValidationState::Invalid);
+        assert_eq!(source.validation_findings().unwrap(), findings);
         assert_eq!(
-            errors[0].property_value(CorePropertyTypeName::LoaderHolonKey).unwrap(),
-            Some("Person.InverseOrientationFailure.1".to_base_value())
+            findings[0].subject,
+            ValidationSubjectPath::Relationship {
+                source_identity: source.reference_id_string(),
+                name: relationship_name.into(),
+                target_identity: target.reference_id_string(),
+            }
         );
         let after: (u32, u32) = backend
             .conductor
             .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
             .await;
-        assert_eq!(after, before, "loader refusal must write neither nodes nor SmartLinks");
+        assert_eq!(
+            after, before,
+            "Commit rejection must write neither nodes nor SmartLinks for any candidate"
+        );
         assert!(context.is_open());
         for staged in context.staged_references().unwrap() {
             assert!(staged.is_in_state(&context, StagedState::ForCreate).unwrap());
-            assert_eq!(staged.validation_state().unwrap(), ValidationState::ValidationRequired);
+            let expected_state = if staged.reference_id_string() == source.reference_id_string() {
+                ValidationState::Invalid
+            } else {
+                assert!(staged.validation_findings().unwrap().is_empty());
+                ValidationState::Validated
+            };
+            assert_eq!(staged.validation_state().unwrap(), expected_state);
             assert!(staged.commit_errors().unwrap().is_empty());
         }
         runtime.session().archive_transaction(&context.tx_id()).unwrap();
@@ -426,9 +457,12 @@ async fn verify_loader_orientation_and_direct_commit_failure(
         .with_property_value("Title", "Undeclared relationship regression".to_base_value())
         .unwrap();
     let target = saved_reference_by_key(runtime, &context, TITLE_PROPERTY_KEY).await;
-    // The explicit construction seam models malformed staged input without
-    // relaxing the ordinary mutation guard or relying on loader permissiveness.
-    staged.add_related_holons_ungoverned("UnknownRelationship", vec![target]).unwrap();
+    // Bypass ordinary mutation checks to model incomplete staged assembly.
+    staged.add_related_holons_ungoverned("UnknownRelationship", vec![target.clone()]).unwrap();
+    let before: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
     let result = runtime
         .execute_command(
             MapCommand::Transaction(TransactionCommand {
@@ -438,23 +472,161 @@ async fn verify_loader_orientation_and_direct_commit_failure(
             ExecutionPolicy::default(),
         )
         .await
-        .expect("Commit returns an operationally incomplete response");
+        .expect("Commit returns a validation rejection");
     let MapResult::Reference(response) = result else {
         panic!("Commit response");
     };
     assert_eq!(
         response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
-        Some("Incomplete".to_base_value())
+        Some("Rejected".to_base_value())
     );
-    assert_eq!(staged.validation_state().unwrap(), ValidationState::Validated);
-    let id = staged.holon_id().unwrap().local_id().clone();
-    assert!(staged.is_in_state(&context, StagedState::Committed(id)).unwrap());
-    let errors = staged.commit_errors().unwrap();
-    assert_eq!(errors.len(), 1);
-    assert!(matches!(&errors[0], HolonError::DescriptorDeclarationNotFound { kind, name, .. }
-        if kind == "relationship" && name == "UnknownRelationship"));
+    assert_eq!(staged.validation_state().unwrap(), ValidationState::Invalid);
+    assert!(staged.is_in_state(&context, StagedState::ForCreate).unwrap());
+    assert!(staged.commit_errors().unwrap().is_empty());
+    let findings = staged.validation_findings().unwrap();
+    assert_eq!(findings.len(), 1);
+    assert!(
+        matches!(&findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "UndeclaredRelationship")
+    );
+    let after: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
+    assert_eq!(after, before, "malformed staged input must be rejected before any persistence");
     assert!(context.is_open());
+
+    staged.remove_related_holons("UnknownRelationship", vec![target]).unwrap();
+    let result = runtime
+        .execute_command(
+            MapCommand::Transaction(TransactionCommand {
+                context: Arc::clone(&context),
+                action: TransactionAction::Commit,
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("corrected Commit succeeds");
+    let MapResult::Reference(response) = result else {
+        panic!("Commit response");
+    };
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some("Complete".to_base_value())
+    );
+    assert!(staged.validation_findings().unwrap().is_empty());
+    let corrected: (u32, u32) = backend
+        .conductor
+        .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+        .await;
+    assert_eq!(corrected.0, before.0 + 1, "only the corrected candidate is persisted");
     runtime.session().archive_transaction(&context.tx_id()).unwrap();
+    verify_update_relationship_cleanup(runtime, backend).await;
+}
+
+/// Invalid local input can be discarded after rejection without changing the
+/// persistence scope selected by valid edits on an update.
+async fn verify_update_relationship_cleanup(runtime: &Runtime, backend: &MockConductorConfig) {
+    for new_version in [false, true] {
+        let context = begin_transaction(runtime).await;
+        let saved = saved_reference_by_key(runtime, &context, "Book.UndeclaredCommit.1").await;
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::StageNewVersionFromId {
+                        holon_id: saved.holon_id().unwrap(),
+                    },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(HolonReference::Staged(mut staged)) = result else {
+            panic!("staged update");
+        };
+        let target = saved_reference_by_key(runtime, &context, TITLE_PROPERTY_KEY).await;
+        staged.add_related_holons(REFERENCES_PROPERTY, vec![target.clone()]).unwrap();
+        if new_version {
+            staged
+                .with_property_value("Title", "Corrected version update".to_base_value())
+                .unwrap();
+        }
+        let expected = if new_version {
+            StagedState::ForUpdateNewVersion
+        } else {
+            StagedState::ForUpdateGraphOnly
+        };
+        assert!(staged.is_in_state(&context, expected.clone()).unwrap());
+        for name in ["AuthorOf", "UnknownRelationship"] {
+            staged.add_related_holons_ungoverned(name, vec![target.clone()]).unwrap();
+        }
+        let before: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::Commit,
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(response) = result else {
+            panic!("Commit response");
+        };
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+            Some("Rejected".to_base_value())
+        );
+        assert_eq!(staged.validation_state().unwrap(), ValidationState::Invalid);
+        assert_eq!(staged.validation_findings().unwrap().len(), 2);
+        let after: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        assert_eq!(before, after);
+        for name in ["AuthorOf", "UnknownRelationship"] {
+            staged.remove_related_holons(name, vec![target.clone()]).unwrap();
+            assert!(staged.related_holons(name).unwrap().read().unwrap().get_members().is_empty());
+            assert!(staged.is_in_state(&context, expected.clone()).unwrap());
+            assert!(matches!(
+                staged.add_related_holons(name, vec![target.clone()]),
+                Err(HolonError::DescriptorDeclarationNotFound { .. })
+            ));
+        }
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::Commit,
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(response) = result else {
+            panic!("Commit response");
+        };
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+            Some("Complete".to_base_value())
+        );
+        assert!(staged.validation_findings().unwrap().is_empty());
+        assert!(staged.commit_errors().unwrap().is_empty());
+        let persisted: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        assert_eq!(
+            persisted.0,
+            before.0 + u32::from(new_version),
+            "cleanup must preserve node-version behavior"
+        );
+        runtime.session().archive_transaction(&context.tx_id()).unwrap();
+    }
 }
 
 /// Builds a runtime over `backend`, keeping the same conductor handle the test uses for raw probe
@@ -619,7 +791,7 @@ async fn smartlink_conflict_downgrades_commit_to_incomplete() {
     load(&runtime, build_book_person_inverse_content_set().unwrap(), "book/person schema load")
         .await;
 
-    verify_loader_orientation_and_direct_commit_failure(&runtime, &backend).await;
+    verify_loader_rejects_non_declared_relationship_input(&runtime, &backend).await;
 
     let context = begin_transaction(&runtime).await;
     let title_property_id =

@@ -7,6 +7,12 @@ use crate::{HolonCollection, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
 
 pub trait HolonCacheAccess: Debug + Send + Sync {
+    /// Returns a resident saved holon without starting a cache-fill transaction.
+    fn get_cached_rc_holon(
+        &self,
+        holon_id: &HolonId,
+    ) -> Result<Option<Arc<RwLock<Holon>>>, HolonError>;
+
     /// This method returns a mutable reference to the Holon identified by holon_id.
     /// If holon_id is `Local`, it retrieves the holon from the local cache. If the holon is not
     /// already resident in the cache, this function first fetches the holon from the persistent
@@ -30,6 +36,7 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
 
+    /// Retrieves all relationships visible from a saved source.
     fn get_all_related_holons(
         &self,
         context: &Arc<TransactionContext>,

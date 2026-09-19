@@ -85,7 +85,9 @@ impl HolonServiceApi for TestHolonService {
             collection.add_references(
                 targets
                     .iter()
-                    .map(|id| HolonReference::smart_from_id(context.context_handle(), id.clone()))
+                    .map(|id| {
+                        HolonReference::smart_from_id(context.space_read_handle(), id.clone())
+                    })
                     .collect(),
             )?;
         }
@@ -116,7 +118,7 @@ impl HolonServiceApi for TestHolonService {
             .collect();
         match matches.as_slice() {
             [(id, _)] => {
-                Ok(crate::SmartReference::new_from_id(context.context_handle(), (*id).clone()))
+                Ok(crate::SmartReference::new_from_id(context.space_read_handle(), (*id).clone()))
             }
             [] => Err(HolonError::HolonNotFound(key.to_string())),
             _ => Err(HolonError::DuplicateError("saved fixture key".into(), key.to_string())),
@@ -161,7 +163,7 @@ pub(crate) fn build_context_with_saved_holons(
 
     space_manager
         .get_transaction_manager()
-        .open_new_transaction(Arc::clone(&space_manager))
+        .open_public_transaction(Arc::clone(&space_manager))
         .expect("default transaction should open")
 }
 

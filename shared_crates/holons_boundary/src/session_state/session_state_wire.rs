@@ -27,6 +27,8 @@ pub struct SessionStateWire {
     staged_holons: SerializableHolonPool,
     local_holon_space: Option<HolonReferenceWire>,
     bootstrap_provisioning: bool,
+    #[serde(default)]
+    restricted_cache_read: bool,
 }
 
 impl SessionStateWire {
@@ -43,6 +45,7 @@ impl SessionStateWire {
             staged_holons,
             local_holon_space,
             bootstrap_provisioning: false,
+            restricted_cache_read: false,
         }
     }
 
@@ -69,6 +72,14 @@ impl SessionStateWire {
 
     pub fn set_bootstrap_provisioning(&mut self, bootstrap_provisioning: bool) {
         self.bootstrap_provisioning = bootstrap_provisioning;
+    }
+
+    pub fn is_restricted_cache_read(&self) -> bool {
+        self.restricted_cache_read
+    }
+
+    pub fn set_restricted_cache_read(&mut self, restricted_cache_read: bool) {
+        self.restricted_cache_read = restricted_cache_read;
     }
 
     /// Retrieves the staged holon pool.

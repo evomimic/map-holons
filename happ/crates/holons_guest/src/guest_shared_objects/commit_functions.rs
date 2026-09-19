@@ -22,9 +22,7 @@ use holons_core::{
 
 use base_types::MapString;
 use core_types::{CanonicalKey, HolonError, HolonId, KeyMatch, OccurrenceId};
-use holons_core::core_shared_objects::transactions::{
-    TransactionContext, TransactionContextHandle,
-};
+use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::reference_layer::TransientReference;
 use integrity_core_types::{short_hex, LocalId, PropertyMap, RelationshipName};
 use sha2::{Digest, Sha256};
@@ -305,8 +303,6 @@ pub fn commit(
         info!("\n\nStarting FIRST PASS... commit staged holons...");
 
         let mut saved_holons: Vec<HolonReference> = Vec::new();
-        let transaction_handle = TransactionContextHandle::new(Arc::clone(context));
-
         for staged_reference in &candidates {
             staged_reference.is_accessible(AccessType::Commit)?;
 
@@ -323,7 +319,7 @@ pub fn commit(
                         key_index_source_ids.insert(holon_id.local_id().clone());
                     }
                     let saved_reference = HolonReference::smart_with_key(
-                        transaction_handle.clone(),
+                        context.space_read_handle(),
                         holon_id,
                         key_string,
                     );
@@ -420,6 +416,23 @@ pub fn commit(
         let mut first_error: Option<HolonError> = None;
 
         for (name, holon_collection_rc) in relationship_collections {
+            // Removing the final member leaves an empty staged collection. It
+            // represents no persistence work and must not force descriptor or
+            // inverse resolution (which can otherwise turn a successful
+            // correction into an unrelated Pass-2 failure).
+            let has_members = {
+                let collection = holon_collection_rc.read().map_err(|e| {
+                    HolonError::FailedToAcquireLock(format!(
+                        "Failed to acquire read lock on relationship collection for {}: {}",
+                        name.0 .0, e
+                    ))
+                })?;
+                !collection.get_members().is_empty()
+            };
+            if !has_members {
+                continue;
+            }
+
             debug!("COMMITTING {:#?} relationship", name.0.clone());
 
             // Resolve descriptor metadata before locking the staged collection.
@@ -717,10 +730,8 @@ fn stage_predecessor_relationship(
     context: &Arc<TransactionContext>,
     predecessor_id: LocalId,
 ) -> Result<(), HolonError> {
-    let predecessor_reference = SmartReference::new_from_id(
-        TransactionContextHandle::new(Arc::clone(context)),
-        HolonId::Local(predecessor_id),
-    );
+    let predecessor_reference =
+        SmartReference::new_from_id(context.space_read_handle(), HolonId::Local(predecessor_id));
 
     staged_holon.add_related_holons_with_keys(
         CoreRelationshipTypeName::Predecessor.as_relationship_name(),

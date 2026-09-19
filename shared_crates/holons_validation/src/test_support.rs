@@ -116,7 +116,7 @@ impl Fixture {
             None,
             ServiceRoutingPolicy::BlockExternal,
         ));
-        let context = manager.get_transaction_manager().open_new_transaction(manager.clone())?;
+        let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
         Ok(Self { context, nodes: BTreeMap::new() })
     }
 
@@ -153,6 +153,25 @@ impl Fixture {
             .get_mut("Title.PropertyType")
             .unwrap()
             .with_property_value("IsValueRequired", true)?;
+        // Commit candidates carry DescribedBy; license it through the inherited
+        // authored contract without relying on any materialized inverse index.
+        fixture.node("DeclaredRelationshipType")?;
+        fixture.node("DescribedBy.Relationship")?;
+        fixture
+            .nodes
+            .get_mut("DescribedBy.Relationship")
+            .unwrap()
+            .with_property_value("TypeName", "DescribedBy")?;
+        fixture.link(
+            "DescribedBy.Relationship",
+            CoreRelationshipTypeName::Extends,
+            "DeclaredRelationshipType",
+        )?;
+        fixture.link(
+            "HolonType.TypeDescriptor",
+            CoreRelationshipTypeName::InstanceRelationships,
+            "DescribedBy.Relationship",
+        )?;
         Ok(fixture)
     }
 

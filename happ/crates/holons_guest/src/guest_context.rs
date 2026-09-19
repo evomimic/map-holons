@@ -44,6 +44,7 @@ pub fn init_guest_context(
     staged_holons: SerializableHolonPool,
     local_space_holon_id: Option<HolonId>,
     tx_id: TxId,
+    restricted_cache_read: bool,
 ) -> Result<Arc<TransactionContext>, HolonError> {
     info!("\n ========== Initializing GUEST CONTEXT ============");
 
@@ -64,9 +65,18 @@ pub fn init_guest_context(
     ));
 
     // Step 3: Open the default transaction for this space.
-    let transaction_context = space_manager
-        .get_transaction_manager()
-        .open_transaction_with_id(Arc::clone(&space_manager), tx_id)?;
+    let transaction_context = if restricted_cache_read {
+        space_manager
+            .get_transaction_manager()
+            .open_private_restricted_cache_read_transaction_with_id(
+                Arc::clone(&space_manager),
+                tx_id,
+            )?
+    } else {
+        space_manager
+            .get_transaction_manager()
+            .open_public_transaction_with_id(Arc::clone(&space_manager), tx_id)?
+    };
 
     // Step 4: Load staged and transient holons into the transaction.
     let bound_staged_holons = staged_holons.bind(&transaction_context)?;

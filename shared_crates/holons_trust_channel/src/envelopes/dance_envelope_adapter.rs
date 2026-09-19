@@ -54,6 +54,7 @@ impl DanceEnvelopeAdapter {
         session_state
             .set_local_holon_space(context.get_space_holon()?.map(HolonReferenceWire::from));
         session_state.set_bootstrap_provisioning(context.is_bootstrap_provisioning());
+        session_state.set_restricted_cache_read(context.is_restricted_cache_read());
         session_state.set_tx_id(context.tx_id());
 
         Ok(session_state)

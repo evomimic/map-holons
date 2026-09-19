@@ -23,7 +23,6 @@ use crate::persistence_layer::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{CanonicalKey, HolonError, HolonId, HolonWriteRequest, KeyMatch, SmartLink};
-use holons_core::core_shared_objects::transactions::TransactionContextHandle;
 use holons_core::{
     core_shared_objects::{transactions::TransactionContext, Holon, HolonCollection},
     reference_layer::{
@@ -123,7 +122,7 @@ impl GuestHolonService {
 
         let local_id = holon.get_local_id()?;
 
-        let handle = context.context_handle();
+        let handle = context.space_read_handle();
 
         Ok(HolonReference::Smart(SmartReference::new_from_id(handle, HolonId::Local(local_id))))
     }
@@ -134,7 +133,7 @@ impl GuestHolonService {
         holon_id: HolonId,
         smart_property_values: Option<PropertyMap>,
     ) -> Result<HolonReference, HolonError> {
-        let handle = TransactionContextHandle::new(Arc::clone(context));
+        let handle = context.space_read_handle();
 
         let smart = match smart_property_values {
             Some(props) => SmartReference::new_with_properties(handle, holon_id, props),
@@ -603,10 +602,7 @@ impl HolonServiceApi for GuestHolonService {
             });
         };
 
-        Ok(SmartReference::new_from_id(
-            TransactionContextHandle::new(Arc::clone(context)),
-            HolonId::Local(head.clone()),
-        ))
+        Ok(SmartReference::new_from_id(context.space_read_handle(), HolonId::Local(head.clone())))
     }
 
     /// Execute a Holon import from a `HolonLoadSet`.

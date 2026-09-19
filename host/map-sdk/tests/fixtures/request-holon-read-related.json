@@ -5,7 +5,6 @@
       "tx_id": 41,
       "target": {
         "Smart": {
-          "tx_id": 41,
           "holon_id": {
             "Local": [
               61,

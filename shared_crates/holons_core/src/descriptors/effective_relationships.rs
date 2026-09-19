@@ -204,11 +204,12 @@ pub(crate) fn effective_declared_relationships_for_holon(
     effective_declared_relationships(&source_descriptor)
 }
 
-/// Validates that `relationship_name` is effective outbound from `endpoint`.
+/// Resolves `relationship_name` as effective outbound navigation from `endpoint`.
 ///
-/// Matches the requested name against both declared and inverse effective
-/// relationships (see [`effective_relationships`]).
-pub(crate) fn allows_relationship(
+/// Matches the requested name against inherited declared and inverse effective
+/// relationships (see [`effective_relationships`]). This is navigation
+/// resolution, not authorization or authored-occurrence validation.
+pub(crate) fn resolve_available_relationship(
     endpoint: &HolonDescriptor,
     relationship_name: RelationshipName,
 ) -> Result<QualifiedRelationship, HolonError> {
@@ -301,12 +302,28 @@ fn collect_inverse_candidates(
     let mut seen_inverse_refs = HashSet::new();
     let mut missing_inverse_declaration = None;
 
-    // Inverse relationships whose SourceType is this type, discovered through
-    // the materialized TargetOf index on the declared relationship's target.
+    // Inverse relationships whose SourceType is this type are discovered from
+    // declared relationships in the materialized TargetOf index. The index
+    // contains all relationship descriptors that target this type, including
+    // inverse descriptors themselves; only a declared descriptor can supply a
+    // `HasInverse` relationship for outbound inverse navigation.
     let target_of_members =
         effective_relationship_targets(endpoint.holon(), CoreRelationshipTypeName::TargetOf)?;
     for member in &target_of_members {
-        let declared = DeclaredRelationshipDescriptor::try_from_holon(member.member.clone())?;
+        let declared = match DeclaredRelationshipDescriptor::try_from_holon(member.member.clone()) {
+            Ok(declared) => declared,
+            Err(error @ HolonError::WrongDescriptorKind { .. }) => {
+                // An inverse descriptor can appear here because its own
+                // `TargetType` is this endpoint. It is already a traversal
+                // direction, not a declared relationship from which another
+                // inverse should be derived.
+                if InverseRelationshipDescriptor::try_from_holon(member.member.clone()).is_ok() {
+                    continue;
+                }
+                return Err(error);
+            }
+            Err(error) => return Err(error),
+        };
         if !target_endpoint_is_compatible(endpoint, &declared)? {
             continue;
         }
@@ -402,6 +419,7 @@ mod tests {
         source_type: TransientReference,
         target_type: TransientReference,
         declared: TransientReference,
+        inverse: TransientReference,
     }
 
     fn relationship_name(name: &str) -> RelationshipName {
@@ -466,7 +484,7 @@ mod tests {
                 .add_related_holons(CoreRelationshipTypeName::TargetOf, vec![(&declared).into()])?;
         }
 
-        Ok(RelationshipPairFixture { source_type, target_type, declared })
+        Ok(RelationshipPairFixture { source_type, target_type, declared, inverse })
     }
 
     fn qualified_names(
@@ -484,7 +502,7 @@ mod tests {
     }
 
     #[test]
-    fn allows_relationship_resolves_declared_name_outbound() -> Result<(), HolonError> {
+    fn resolve_available_relationship_resolves_declared_name_outbound() -> Result<(), HolonError> {
         let context = build_context();
         let fixture = build_relationship_pair(
             &context,
@@ -496,7 +514,7 @@ mod tests {
         )?;
         let descriptor = HolonDescriptor::from_holon(fixture.source_type.into());
 
-        let qualified = descriptor.allows_relationship("authored_by")?;
+        let qualified = descriptor.resolve_available_relationship("authored_by")?;
         assert_eq!(qualified.descriptor_direction, RelationshipDirection::Declared);
         assert_eq!(qualified.descriptor.base_relationship_name()?, relationship_name("AuthoredBy"));
 
@@ -504,7 +522,7 @@ mod tests {
     }
 
     #[test]
-    fn allows_relationship_resolves_inverse_name_outbound_from_target_type(
+    fn resolve_available_relationship_resolves_inverse_name_outbound_from_target_type(
     ) -> Result<(), HolonError> {
         let context = build_context();
         let fixture = build_relationship_pair(
@@ -517,9 +535,38 @@ mod tests {
         )?;
         let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
 
-        let qualified = descriptor.allows_relationship("authors")?;
+        let qualified = descriptor.resolve_available_relationship("authors")?;
         assert_eq!(qualified.descriptor_direction, RelationshipDirection::Inverse);
         assert_eq!(qualified.descriptor.base_relationship_name()?, relationship_name("Authors"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn effective_inverse_relationships_ignores_inverse_descriptors_in_target_of_index(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut fixture = build_relationship_pair(
+            &context,
+            "mixed-target-of",
+            "AuthoredBy",
+            "Authors",
+            true,
+            true,
+        )?;
+
+        // A committed schema index contains relationship descriptors of both
+        // directions that target this endpoint. Only the declared descriptor
+        // can contribute an outbound inverse relationship here.
+        fixture.target_type.add_related_holons(
+            CoreRelationshipTypeName::TargetOf,
+            vec![HolonReference::from(&fixture.inverse)],
+        )?;
+
+        let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
+        let relationships = descriptor.effective_inverse_relationships()?;
+        assert_eq!(relationships.len(), 1);
+        assert_eq!(relationships[0].base_relationship_name()?, relationship_name("Authors"));
 
         Ok(())
     }
@@ -557,7 +604,8 @@ mod tests {
         )?;
         let operator_descriptor = HolonDescriptor::from_holon(value_operator.target_type.into());
 
-        let value_inverse = operator_descriptor.allows_relationship("ValueTypeAffordedBy")?;
+        let value_inverse =
+            operator_descriptor.resolve_available_relationship("ValueTypeAffordedBy")?;
         assert_eq!(value_inverse.descriptor_direction, RelationshipDirection::Inverse);
         assert_eq!(
             value_inverse.descriptor.base_relationship_name()?,
@@ -565,7 +613,7 @@ mod tests {
         );
 
         let validation_inverse =
-            operator_descriptor.allows_relationship("ValidationRuleAffordedBy")?;
+            operator_descriptor.resolve_available_relationship("ValidationRuleAffordedBy")?;
         assert_eq!(validation_inverse.descriptor_direction, RelationshipDirection::Inverse);
         assert_eq!(
             validation_inverse.descriptor.base_relationship_name()?,
@@ -576,7 +624,7 @@ mod tests {
     }
 
     #[test]
-    fn allows_relationship_reports_not_found_for_unknown_name_on_saved_index(
+    fn resolve_available_relationship_reports_not_found_for_unknown_name_on_saved_index(
     ) -> Result<(), HolonError> {
         let context = build_context();
         let fixture =
@@ -584,7 +632,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
 
         assert!(matches!(
-            descriptor.allows_relationship("missing_relationship"),
+            descriptor.resolve_available_relationship("missing_relationship"),
             Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                 if kind == "relationship" && name == "MissingRelationship"
         ));
@@ -608,7 +656,7 @@ mod tests {
         // The declared relationship's SourceType is the source type, so it is
         // not outbound from the target type; only the inverse name is.
         assert!(matches!(
-            descriptor.allows_relationship("authored_by"),
+            descriptor.resolve_available_relationship("authored_by"),
             Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                 if kind == "relationship" && name == "AuthoredBy"
         ));
@@ -649,7 +697,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(target_type.into());
 
         assert!(matches!(
-            descriptor.allows_relationship("authors"),
+            descriptor.resolve_available_relationship("authors"),
             Err(HolonError::MissingRequiredRelationship { relationship, .. })
                 if relationship == "HasInverse"
         ));
@@ -675,7 +723,7 @@ mod tests {
         )?;
         let descriptor = HolonDescriptor::from_holon(child.into());
 
-        let qualified = descriptor.allows_relationship("authored_by")?;
+        let qualified = descriptor.resolve_available_relationship("authored_by")?;
         assert_eq!(qualified.descriptor_direction, RelationshipDirection::Declared);
 
         Ok(())
@@ -835,7 +883,7 @@ mod tests {
         )?;
         let descriptor = HolonDescriptor::from_holon(child_target.into());
 
-        let qualified = descriptor.allows_relationship("authors")?;
+        let qualified = descriptor.resolve_available_relationship("authors")?;
         assert_eq!(qualified.descriptor_direction, RelationshipDirection::Inverse);
 
         Ok(())
@@ -849,7 +897,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(fixture.target_type.into());
 
         assert!(matches!(
-            descriptor.allows_relationship("authors"),
+            descriptor.resolve_available_relationship("authors"),
             Err(HolonError::DescriptorDeclarationNotFound { kind, name, .. })
                 if kind == "relationship" && name == "Authors"
         ));
@@ -881,7 +929,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(first.target_type.into());
 
         assert!(matches!(
-            descriptor.allows_relationship("authors"),
+            descriptor.resolve_available_relationship("authors"),
             Err(HolonError::AmbiguousRelationshipTraversal { relationship, .. })
                 if relationship == "Authors"
         ));
@@ -904,7 +952,7 @@ mod tests {
         let descriptor = HolonDescriptor::from_holon(staged_target.into());
 
         assert!(matches!(
-            descriptor.allows_relationship("authors"),
+            descriptor.resolve_available_relationship("authors"),
             Err(HolonError::UnsupportedStagedTraversal { relationship, .. })
                 if relationship == "Authors"
         ));

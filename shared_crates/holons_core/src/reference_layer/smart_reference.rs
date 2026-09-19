@@ -5,32 +5,29 @@ use std::{
 };
 use tracing::trace;
 use type_names::relationship_names::CoreRelationshipTypeName;
+use type_names::CorePropertyTypeName;
 
-use crate::core_shared_objects::transactions::{
-    TransactionContext, TransactionContextHandle, TxId,
-};
+use crate::core_shared_objects::space_read_handle::SpaceReadHandle;
+use crate::descriptors::effective_relationships::effective_declared_relationships_for_holon;
 use crate::reference_layer::readable_impl::ReadableHolonImpl;
 use crate::reference_layer::writable_impl::WritableHolonImpl;
 use crate::{
     core_shared_objects::{
-        cache_access::HolonCacheAccess,
         holon::{state::AccessType, HolonCloneModel},
-        relationship_behavior::ReadableRelationship,
         transient_holon_manager::ToHolonCloneModel,
         Holon, HolonCollection, ReadableHolonState,
     },
-    reference_layer::{HolonReference, ReadableHolon, TransientReference, WritableHolon},
+    reference_layer::{HolonCollectionApi, HolonReference, ReadableHolon},
     RelationshipMap,
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
     HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName, PropertyValue, RelationshipName,
 };
-use type_names::CorePropertyTypeName;
 
 #[derive(new, Debug, Clone)]
 pub struct SmartReference {
-    context_handle: TransactionContextHandle,
+    space_read_handle: SpaceReadHandle,
     holon_id: HolonId,
     smart_property_values: Option<PropertyMap>,
 }
@@ -39,7 +36,7 @@ pub struct SmartReference {
 pub(crate) struct SmartRefAccessKey(());
 
 impl SmartRefAccessKey {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(())
     }
 }
@@ -48,33 +45,23 @@ impl SmartReference {
     // *************** CONSTRUCTORS ***************
 
     /// Constructor for SmartReference that takes a HolonId and sets smart_property_values to None
-    pub fn new_from_id(context_handle: TransactionContextHandle, holon_id: HolonId) -> Self {
-        SmartReference { context_handle, holon_id, smart_property_values: None }
+    pub fn new_from_id(space_read_handle: SpaceReadHandle, holon_id: HolonId) -> Self {
+        SmartReference { space_read_handle, holon_id, smart_property_values: None }
     }
 
     pub fn new_with_properties(
-        context_handle: TransactionContextHandle,
+        space_read_handle: SpaceReadHandle,
         holon_id: HolonId,
         smart_property_values: PropertyMap,
     ) -> Self {
         SmartReference {
-            context_handle,
+            space_read_handle,
             holon_id,
             smart_property_values: Some(smart_property_values),
         }
     }
 
     // *************** ACCESSORS ***************
-
-    /// Returns the transaction id this reference is bound to.
-    pub fn tx_id(&self) -> TxId {
-        self.context_handle.tx_id()
-    }
-
-    /// Internal access for descriptor bootstrap lookup through the bound transaction.
-    pub(crate) fn bound_context(&self) -> Arc<TransactionContext> {
-        self.context_handle.context()
-    }
 
     /// Returns the persistent holon id for this smart reference.
     pub fn holon_id(&self) -> HolonId {
@@ -84,6 +71,14 @@ impl SmartReference {
     /// Returns a borrowed view of the cached smart properties, if present.
     pub fn smart_property_values(&self) -> Option<&PropertyMap> {
         self.smart_property_values.as_ref()
+    }
+
+    /// Opens an internal restricted context for descriptor resolution rooted in
+    /// this reference's space. It is not retained by the saved reference.
+    pub(crate) fn resolution_context(
+        &self,
+    ) -> Result<Arc<crate::core_shared_objects::transactions::TransactionContext>, HolonError> {
+        self.space_read_handle.open_resolution_context()
     }
 
     /// Returns the persistent holon id (kept for backwards compatibility with existing call sites).
@@ -102,16 +97,8 @@ impl SmartReference {
 
     // *************** UTILITY METHODS ***************
 
-    fn get_cache_access(&self) -> Arc<dyn HolonCacheAccess + Send + Sync> {
-        self.context_handle.context().cache_access(SmartRefAccessKey::new())
-    }
-
     fn get_rc_holon(&self) -> Result<Arc<RwLock<Holon>>, HolonError> {
-        // Get CacheAccess
-        let cache_access = self.get_cache_access();
-
-        // Retrieve the holon from the cache
-        let rc_holon = cache_access.get_rc_holon(&self.context_handle.context(), &self.holon_id)?;
+        let rc_holon = self.space_read_handle.get_rc_holon(&self.holon_id)?;
         trace!("Got a reference to rc_holon from the cache manager: {:#?}", rc_holon);
 
         Ok(rc_holon)
@@ -169,60 +156,9 @@ impl fmt::Display for SmartReference {
 }
 
 impl ReadableHolonImpl for SmartReference {
-    fn clone_holon_impl(&self) -> Result<TransientReference, HolonError> {
-        self.is_accessible(AccessType::Clone)?;
-        let clone_model = {
-            let rc_holon = self.get_rc_holon()?;
-            let borrowed_holon = rc_holon.read().map_err(|e| {
-                HolonError::FailedToAcquireLock(format!(
-                    "Failed to acquire read lock on holon for clone_holon_impl: {}",
-                    e
-                ))
-            })?;
-            borrowed_holon.holon_clone_model()
-        };
-
-        // Saved clone models omit relationships; the bound reference resolves
-        // them after releasing the source lock, including self-describing edges.
-        let mut cloned_holon_transient_reference =
-            self.context_handle.context().new_transient_from_clone_model(clone_model)?;
-
-        let relationships = self.all_related_holons()?;
-        let transient_relationships = relationships.clone_for_new_source()?;
-
-        for (name, collection) in transient_relationships.map {
-            let members = collection
-                .read()
-                .map_err(|e| {
-                    HolonError::FailedToAcquireLock(format!(
-                        "Failed to acquire read lock on relationship collection in clone_holon_impl: {}",
-                        e
-                    ))
-                })?
-                .get_members()
-                .to_vec();
-
-            cloned_holon_transient_reference.add_related_holons(name, members)?;
-        }
-
-        // Saved clone models omit relationships, so completion must wait until
-        // the full relationship map (including DescribedBy) has been attached.
-        // `Nursery::stage_new_version` depends on completion happening here: it
-        // classifies a staged update by diffing this clone against the persisted
-        // properties, so removing this call would silently leave saved clones
-        // incomplete and suppress that content-change classification.
-        cloned_holon_transient_reference.populate_defaults()?;
-
-        Ok(cloned_holon_transient_reference)
-    }
-
     fn all_related_holons_impl(&self) -> Result<RelationshipMap, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        let cache_access = self.get_cache_access();
-        let relationship_map =
-            cache_access.get_all_related_holons(&self.context_handle.context(), &self.get_id()?)?;
-
-        Ok(relationship_map)
+        self.space_read_handle.get_all_related_holons(&self.holon_id)
     }
 
     fn property_map_impl(&self) -> Result<PropertyMap, HolonError> {
@@ -358,13 +294,7 @@ impl ReadableHolonImpl for SmartReference {
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
         self.is_accessible(AccessType::Read)?;
-        // Get CacheAccess
-        let cache_access = self.get_cache_access();
-        cache_access.get_related_holons(
-            &self.context_handle.context(),
-            &self.holon_id,
-            relationship_name,
-        )
+        self.space_read_handle.get_related_holons(&self.holon_id, relationship_name)
     }
 
     fn summarize_impl(&self) -> Result<String, HolonError> {
@@ -456,6 +386,56 @@ impl WritableHolonImpl for SmartReference {
 
 impl ToHolonCloneModel for SmartReference {
     fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
+        self.is_accessible(AccessType::Clone)?;
+        let mut clone_model = self.raw_holon_clone_model()?;
+
+        // Saved sources must be described; their read surface includes inverses. The source's
+        // `DescribedBy` relationship is itself copied only if its descriptor
+        // declares it among the effective instance relationships.
+        let declared_relationship_names =
+            effective_declared_relationships_for_holon(&HolonReference::from(self))?
+                .into_iter()
+                .map(|relationship| relationship.base_relationship_name())
+                .collect::<Result<Vec<_>, HolonError>>()?;
+
+        let mut cloned_relationships = RelationshipMap::new_empty();
+        for (relationship_name, collection) in self.all_related_holons()?.iter() {
+            let members = collection
+                .read()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                .get_members()
+                .to_vec();
+            let retained_members = if declared_relationship_names
+                .iter()
+                .any(|declared_name| declared_name == &relationship_name)
+            {
+                members
+            } else {
+                Vec::new()
+            };
+
+            if retained_members.is_empty() {
+                continue;
+            }
+
+            let mut cloned_collection = HolonCollection::new_transient();
+            cloned_collection.add_references(retained_members)?;
+            cloned_relationships
+                .insert(relationship_name, Arc::new(RwLock::new(cloned_collection)));
+        }
+
+        // A clone model returned from a runtime reference is directly
+        // clonable: it always carries the complete, normalized relationship
+        // map, including an explicitly empty map.
+        clone_model.relationships = Some(cloned_relationships);
+        Ok(clone_model)
+    }
+}
+
+impl SmartReference {
+    /// Returns this reference's unnormalized source state for reference-level
+    /// clone-model construction.
+    pub(crate) fn raw_holon_clone_model(&self) -> Result<HolonCloneModel, HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let model = rc_holon
             .read()
@@ -473,13 +453,18 @@ impl ToHolonCloneModel for SmartReference {
 
 // ---------- SmartReference equality ----------
 //
-// Equality for tx-bound references must be based on stable identity,
-// not on `Arc<TransactionContext>` pointer identity.
+// Equality for saved references is based on persistent identity. Local ids are
+// scoped by the owning local space; external ids carry that scope themselves.
 
 impl PartialEq for SmartReference {
     fn eq(&self, other: &Self) -> bool {
-        self.context_handle.tx_id() == other.context_handle.tx_id()
-            && self.holon_id == other.holon_id
+        if self.holon_id != other.holon_id {
+            return false;
+        }
+        match &self.holon_id {
+            HolonId::External(_) => true,
+            HolonId::Local(_) => self.space_read_handle.same_space(&other.space_read_handle),
+        }
         // NOTE: We intentionally do *not* include `smart_property_values` in equality.
         // Those are cached hints and do not change the identity of the referenced holon.
     }

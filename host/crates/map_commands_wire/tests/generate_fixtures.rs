@@ -539,7 +539,8 @@ fn smart_reference_wire(
     holon_id: HolonId,
     smart_property_values: Option<PropertyMap>,
 ) -> SmartReferenceWire {
-    SmartReferenceWire::new(tx_id(tx), holon_id, smart_property_values)
+    let _ = tx;
+    SmartReferenceWire::new(holon_id, smart_property_values)
 }
 
 fn transient_reference(tx: u64, id: &str) -> HolonReferenceWire {

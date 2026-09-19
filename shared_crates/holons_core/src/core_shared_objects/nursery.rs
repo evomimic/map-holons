@@ -7,7 +7,7 @@ use crate::core_shared_objects::transactions::{
     TransactionContext, TransactionContextHandle, TxId,
 };
 use crate::{
-    core_shared_objects::{transient_holon_manager::ToHolonCloneModel, StagedHolon},
+    core_shared_objects::StagedHolon,
     reference_layer::{HolonStagingBehavior, StagedReference, TransientReference},
     HolonReference, NurseryAccess, ReadableHolon, SmartReference, WritableHolon,
 };
@@ -56,6 +56,7 @@ impl Nursery {
     /// # Returns
     /// The TemporaryId, which is used a unique identifier.
     fn stage_holon(&self, holon: StagedHolon) -> Result<TemporaryId, HolonError> {
+        self.require_context()?.ensure_staging_allowed()?;
         let mut pool = self.staged_holons.write().map_err(|e| {
             HolonError::FailedToAcquireLock(format!(
                 "Failed to acquire write lock on staged_holons: {}",
@@ -106,6 +107,15 @@ impl Nursery {
         }
 
         Ok(TransactionContextHandle::new(context))
+    }
+
+    fn require_context(&self) -> Result<Arc<TransactionContext>, HolonError> {
+        self.context.upgrade().ok_or_else(|| {
+            HolonError::ServiceNotAvailable(format!(
+                "TransactionContext (tx_id={})",
+                self.tx_id.value()
+            ))
+        })
     }
 }
 
@@ -188,8 +198,10 @@ impl HolonStagingBehavior for Nursery {
         &self,
         transient_reference: TransientReference,
     ) -> Result<StagedReference, HolonError> {
+        // Staging preserves the transaction's authored transient input so
+        // Commit can validate it later, after descriptors have been attached.
         let staged_holon =
-            StagedHolon::new_from_clone_model(transient_reference.holon_clone_model()?)?;
+            StagedHolon::new_from_clone_model(transient_reference.raw_holon_clone_model()?)?;
         let new_id = self.stage_holon(staged_holon)?;
         let mut staged_reference = self.to_validated_staged_reference(&new_id)?;
         staged_reference.populate_defaults()?;
@@ -204,7 +216,7 @@ impl HolonStagingBehavior for Nursery {
         new_key: MapString,
     ) -> Result<StagedReference, HolonError> {
         // Clone into a transient holon
-        let mut cloned_transient = original_holon.clone_holon()?;
+        let mut cloned_transient = self.require_context()?.clone_holon(&original_holon)?;
 
         // Overwrite the Key property on the clone
         let key_prop = CorePropertyTypeName::Key.as_property_name();
@@ -237,12 +249,13 @@ impl HolonStagingBehavior for Nursery {
         };
 
         // Snapshot the persisted properties before cloning. `clone_holon` runs construction
-        // completion on the clone (see `SmartReference::clone_holon_impl`), so this is the
+        // completion on the clone (see `TransactionContext::clone_holon`), so this is the
         // last point at which the pre-completion state is observable.
         let source_properties = current_version.into_model()?.property_map;
         // Clone through the reference layer so cached persisted relationships are preserved.
-        let cloned_transient = current_version.clone_holon()?;
-        let clone_model = cloned_transient.holon_clone_model()?;
+        let cloned_transient =
+            self.require_context()?.clone_holon(&HolonReference::Smart(current_version.clone()))?;
+        let clone_model = cloned_transient.raw_holon_clone_model()?;
         let completion_changed_properties = clone_model.properties != source_properties;
         let mut staged_holon =
             StagedHolon::new_for_update_from_clone_model(clone_model, source_local_id)?;
@@ -357,6 +370,101 @@ mod tests {
         described: bool,
     }
 
+    impl StageVersionTestService {
+        fn descriptor_id() -> LocalId {
+            LocalId(vec![201])
+        }
+
+        fn described_by_id() -> LocalId {
+            LocalId(vec![202])
+        }
+
+        fn declared_relationship_type_id() -> LocalId {
+            LocalId(vec![203])
+        }
+
+        fn fixture_descriptor(&self, id: &LocalId) -> Option<SavedHolon> {
+            let (key, type_name) = if id == &Self::descriptor_id() {
+                ("saved-source-type", "SavedSource")
+            } else if id == &Self::described_by_id() {
+                ("saved-source-described-by", "DescribedBy")
+            } else if id == &Self::declared_relationship_type_id() {
+                ("declared-relationship-type", "DeclaredRelationshipType")
+            } else {
+                return None;
+            };
+
+            let mut properties = PropertyMap::new();
+            properties.insert(
+                CorePropertyTypeName::Key.as_property_name(),
+                BaseValue::StringValue(MapString(key.into())),
+            );
+            properties.insert(
+                CorePropertyTypeName::TypeName.as_property_name(),
+                BaseValue::StringValue(MapString(type_name.into())),
+            );
+            Some(SavedHolon::new(id.clone(), properties, None, MapInteger(1)))
+        }
+
+        fn related_holons(
+            &self,
+            context: &Arc<TransactionContext>,
+            source_id: &HolonId,
+            relationship_name: &RelationshipName,
+        ) -> Result<HolonCollection, HolonError> {
+            let mut collection = HolonCollection::new_existing();
+            let name = relationship_name.to_string();
+
+            if source_id.local_id() == &self.source_id {
+                if name == CoreRelationshipTypeName::DescribedBy.as_relationship_name().to_string()
+                    && self.described
+                {
+                    collection.add_references(vec![HolonReference::smart_with_key(
+                        context.space_read_handle(),
+                        HolonId::Local(Self::descriptor_id()),
+                        MapString("saved-source-type".into()),
+                    )])?;
+                }
+                if name == CoreRelationshipTypeName::Predecessor.as_relationship_name().to_string()
+                {
+                    if let Some(predecessor_id) = &self.source_predecessor_id {
+                        collection.add_references(vec![HolonReference::smart_with_key(
+                            context.space_read_handle(),
+                            HolonId::Local(predecessor_id.clone()),
+                            MapString("prior-version".into()),
+                        )])?;
+                    }
+                }
+                return Ok(collection);
+            }
+
+            if self.described
+                && source_id.local_id() == &Self::descriptor_id()
+                && name
+                    == CoreRelationshipTypeName::InstanceRelationships
+                        .as_relationship_name()
+                        .to_string()
+            {
+                collection.add_references(vec![HolonReference::smart_with_key(
+                    context.space_read_handle(),
+                    HolonId::Local(Self::described_by_id()),
+                    MapString("saved-source-described-by".into()),
+                )])?;
+            } else if self.described
+                && source_id.local_id() == &Self::described_by_id()
+                && name == CoreRelationshipTypeName::Extends.as_relationship_name().to_string()
+            {
+                collection.add_references(vec![HolonReference::smart_with_key(
+                    context.space_read_handle(),
+                    HolonId::Local(Self::declared_relationship_type_id()),
+                    MapString("declared-relationship-type".into()),
+                )])?;
+            }
+
+            Ok(collection)
+        }
+    }
+
     impl HolonServiceApi for StageVersionTestService {
         fn as_any(&self) -> &dyn Any {
             self
@@ -383,49 +491,19 @@ mod tests {
             context: &Arc<TransactionContext>,
             source_id: &HolonId,
         ) -> Result<RelationshipMap, HolonError> {
-            if source_id.local_id() == &self.source_id {
-                let mut relationships = RelationshipMap::new_empty();
-
-                if let Some(predecessor_id) = &self.source_predecessor_id {
-                    let predecessor_reference = HolonReference::smart_with_key(
-                        context.context_handle(),
-                        HolonId::Local(predecessor_id.clone()),
-                        MapString("prior-version".to_string()),
-                    );
-                    let mut predecessor_collection = HolonCollection::new_existing();
-                    predecessor_collection.add_references(vec![predecessor_reference])?;
-                    relationships.insert(
-                        CoreRelationshipTypeName::Predecessor.to_relationship_name(),
-                        Arc::new(RwLock::new(predecessor_collection)),
-                    );
+            let mut relationships = RelationshipMap::new_empty();
+            for relationship_name in [
+                CoreRelationshipTypeName::DescribedBy.to_relationship_name(),
+                CoreRelationshipTypeName::Predecessor.to_relationship_name(),
+                CoreRelationshipTypeName::InstanceRelationships.to_relationship_name(),
+                CoreRelationshipTypeName::Extends.to_relationship_name(),
+            ] {
+                let collection = self.related_holons(context, source_id, &relationship_name)?;
+                if !collection.get_members().is_empty() {
+                    relationships.insert(relationship_name, Arc::new(RwLock::new(collection)));
                 }
-
-                if self.described {
-                    use crate::descriptors::test_support::new_descriptor_holon;
-                    let mut property =
-                        new_descriptor_holon(context, "enabled", "Enabled", "Property")?;
-                    property.with_property_value(CorePropertyTypeName::IsValueRequired, true)?;
-                    property.with_property_value(CorePropertyTypeName::DefaultValue, false)?;
-                    let property = context.mutation().stage_new_holon(property)?;
-                    let mut descriptor =
-                        new_descriptor_holon(context, "contract", "Contract", "Holon")?;
-                    descriptor.add_related_holons(
-                        CoreRelationshipTypeName::InstanceProperties,
-                        vec![property.into()],
-                    )?;
-                    let descriptor = context.mutation().stage_new_holon(descriptor)?;
-                    let mut collection = HolonCollection::new_existing();
-                    collection.add_references(vec![descriptor.into()])?;
-                    relationships.insert(
-                        CoreRelationshipTypeName::DescribedBy.to_relationship_name(),
-                        Arc::new(RwLock::new(collection)),
-                    );
-                }
-
-                Ok(relationships)
-            } else {
-                Err(HolonError::HolonNotFound(format!("{:?}", source_id)))
             }
+            Ok(relationships)
         }
 
         fn fetch_holon_internal(
@@ -435,6 +513,8 @@ mod tests {
         ) -> Result<Holon, HolonError> {
             if id.local_id() == &self.source_id {
                 Ok(Holon::Saved(self.source_holon.clone()))
+            } else if let Some(descriptor) = self.fixture_descriptor(id.local_id()) {
+                Ok(Holon::Saved(descriptor))
             } else {
                 Err(HolonError::HolonNotFound(format!("{:?}", id)))
             }
@@ -442,11 +522,11 @@ mod tests {
 
         fn fetch_related_holons_internal(
             &self,
-            _context: &Arc<TransactionContext>,
-            _source_id: &HolonId,
-            _relationship_name: &RelationshipName,
+            context: &Arc<TransactionContext>,
+            source_id: &HolonId,
+            relationship_name: &RelationshipName,
         ) -> Result<HolonCollection, HolonError> {
-            Ok(HolonCollection::new_existing())
+            self.related_holons(context, source_id, relationship_name)
         }
 
         fn get_all_holons_internal(
@@ -486,13 +566,58 @@ mod tests {
 
         space_manager
             .get_transaction_manager()
-            .open_new_transaction(Arc::clone(&space_manager))
+            .open_public_transaction(Arc::clone(&space_manager))
             .expect("test transaction should open")
     }
 
     #[test]
-    fn saved_clone_completion_preserves_history_and_classifies_content_changes(
+    fn saved_clone_requires_a_descriptor_and_copies_only_declared_relationships(
     ) -> Result<(), HolonError> {
+        for described in [false, true] {
+            let source_id = LocalId(vec![4, 5, 6]);
+            let mut properties = PropertyMap::new();
+            properties.insert(
+                CorePropertyTypeName::Key.as_property_name(),
+                BaseValue::StringValue(MapString("saved-source".into())),
+            );
+            let source = SavedHolon::new(source_id.clone(), properties, None, MapInteger(1));
+            let context = stage_version_test_context(
+                source_id.clone(),
+                source,
+                Some(LocalId(vec![7])),
+                described,
+            );
+            let saved =
+                SmartReference::new_from_id(context.space_read_handle(), HolonId::Local(source_id));
+            let result = context.clone_holon(&saved.into());
+            if described {
+                let cloned = result?;
+                assert_eq!(
+                    cloned
+                        .related_holons(CoreRelationshipTypeName::DescribedBy)?
+                        .read()
+                        .unwrap()
+                        .get_members()
+                        .len(),
+                    1
+                );
+                // The saved read surface contains Predecessor, but this fixture's
+                // descriptor declares only DescribedBy.
+                assert!(cloned
+                    .related_holons(CoreRelationshipTypeName::Predecessor)?
+                    .read()
+                    .unwrap()
+                    .get_members()
+                    .is_empty());
+            } else {
+                assert!(matches!(result, Err(HolonError::MissingDescribedBy { .. })));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn saved_clone_preserves_history_and_classifies_content_changes() -> Result<(), HolonError> {
         for authored in [None, Some(true)] {
             let source_id = LocalId(vec![4, 5, 6]);
             let mut properties = PropertyMap::new();
@@ -510,11 +635,11 @@ mod tests {
                 SavedHolon::new(source_id.clone(), properties.clone(), None, MapInteger(1));
             let context = stage_version_test_context(source_id.clone(), source, None, true);
             let saved =
-                SmartReference::new_from_id(context.context_handle(), HolonId::Local(source_id));
-            let cloned = saved.clone_holon()?;
+                SmartReference::new_from_id(context.space_read_handle(), HolonId::Local(source_id));
+            let cloned = context.clone_holon(&saved.clone().into())?;
             assert_eq!(
                 cloned.property_value("Enabled")?,
-                Some(BaseValue::BooleanValue(base_types::MapBoolean(authored.unwrap_or(false))))
+                authored.map(|value| BaseValue::BooleanValue(base_types::MapBoolean(value)))
             );
             assert_eq!(saved.into_model()?.property_map, properties);
 
@@ -525,26 +650,14 @@ mod tests {
             assert_eq!(saved.into_model()?.property_map, properties);
 
             let staged = context.mutation().stage_new_version(saved.clone())?;
-            let expected_state = if authored.is_some() {
-                StagedState::ForUpdate
-            } else {
-                StagedState::ForUpdateNewVersion
-            };
-            assert!(staged.is_in_state(&context, expected_state)?);
+            assert!(staged.is_in_state(&context, StagedState::ForUpdate)?);
             assert_eq!(staged.property_value("Enabled")?, cloned.property_value("Enabled")?);
             // Check the lifecycle consequence of a subsequent non-definitional edit.
             let rc_holon = staged.get_holon_to_commit(&context)?;
             let mut holon = rc_holon.write().unwrap();
             let Holon::Staged(holon) = &mut *holon else { panic!("expected staged update") };
             holon.note_relationship_mutation(false)?;
-            assert_eq!(
-                holon.get_staged_state(),
-                if authored.is_some() {
-                    StagedState::ForUpdateGraphOnly
-                } else {
-                    StagedState::ForUpdateNewVersion
-                }
-            );
+            assert_eq!(holon.get_staged_state(), StagedState::ForUpdateGraphOnly);
             assert_eq!(saved.into_model()?.property_map, properties);
         }
         Ok(())
@@ -567,10 +680,10 @@ mod tests {
             source_id.clone(),
             source_holon,
             Some(LocalId(vec![9, 8, 7])),
-            false,
+            true,
         );
         let current_version = SmartReference::new_from_id(
-            context.context_handle(),
+            context.space_read_handle(),
             HolonId::Local(source_id.clone()),
         );
 

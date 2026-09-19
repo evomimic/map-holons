@@ -480,7 +480,7 @@ fn diverge_here(reason: String) -> EquivalenceOutcome {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum ReferenceIdentity {
-    Saved { tx_id: TxId, holon_id: HolonId },
+    Saved { holon_id: HolonId },
     Staged { tx_id: TxId, temporary_id: TemporaryId },
     Transient { tx_id: TxId, temporary_id: TemporaryId },
 }
@@ -499,9 +499,7 @@ struct RelationshipComparisonDescriptor {
 impl ReferenceIdentity {
     fn from_reference(reference: &HolonReference) -> Result<Self, HolonError> {
         match reference {
-            HolonReference::Smart(_) => {
-                Ok(Self::Saved { tx_id: reference.tx_id(), holon_id: reference.holon_id()? })
-            }
+            HolonReference::Smart(_) => Ok(Self::Saved { holon_id: reference.holon_id()? }),
             HolonReference::Staged(staged) => {
                 Ok(Self::Staged { tx_id: staged.tx_id(), temporary_id: staged.temporary_id() })
             }
@@ -559,12 +557,15 @@ mod tests {
     }
 
     fn saved_reference(context: &TestContext, byte: u8) -> HolonReference {
-        HolonReference::Smart(SmartReference::new_from_id(context.context_handle(), holon_id(byte)))
+        HolonReference::Smart(SmartReference::new_from_id(
+            context.space_read_handle(),
+            holon_id(byte),
+        ))
     }
 
     fn saved_reference_with_key(context: &TestContext, byte: u8, key: &str) -> HolonReference {
         HolonReference::smart_with_key(
-            context.context_handle(),
+            context.space_read_handle(),
             holon_id(byte),
             MapString(key.to_string()),
         )
@@ -1063,14 +1064,15 @@ mod tests {
         let mut marker_properties = PropertyMap::new();
         marker_properties
             .insert(property_name("MatchByKey"), BaseValue::BooleanValue(MapBoolean(true)));
-        let left = HolonReference::smart_with_properties(context.context_handle(), holon_id(1), {
-            let mut properties = marker_properties.clone();
-            properties.insert(
-                CorePropertyTypeName::Key.to_property_name(),
-                BaseValue::StringValue(MapString("shared-key".to_string())),
-            );
-            properties
-        });
+        let left =
+            HolonReference::smart_with_properties(context.space_read_handle(), holon_id(1), {
+                let mut properties = marker_properties.clone();
+                properties.insert(
+                    CorePropertyTypeName::Key.to_property_name(),
+                    BaseValue::StringValue(MapString("shared-key".to_string())),
+                );
+                properties
+            });
         let right = saved_reference_with_key(&context, 2, "shared-key");
         let resolver = TestResolver {
             canonical_key: MapString("unused".to_string()),

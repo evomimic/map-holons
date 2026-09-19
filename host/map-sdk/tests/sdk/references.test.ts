@@ -97,7 +97,6 @@ const stagedReference: HolonReferenceWire = {
 
 const smartReference: HolonReferenceWire = {
   Smart: {
-    tx_id: txId,
     holon_id: {
       Local: [1, 2, 3, 4],
     },

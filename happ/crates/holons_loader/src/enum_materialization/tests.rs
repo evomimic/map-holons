@@ -70,7 +70,7 @@ fn context() -> Arc<TransactionContext> {
         None,
         ServiceRoutingPolicy::BlockExternal,
     ));
-    space.get_transaction_manager().open_new_transaction(space.clone()).unwrap()
+    space.get_transaction_manager().open_public_transaction(space.clone()).unwrap()
 }
 
 fn node(

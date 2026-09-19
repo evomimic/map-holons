@@ -17,8 +17,8 @@ pub mod utils;
 // pub use core_shared_objects::*;
 pub use core_shared_objects::{
     CollectionState, HolonCache, HolonCacheAccess, HolonCacheManager, HolonCollection, HolonPool,
-    Nursery, NurseryAccess, RelationshipCache, RelationshipMap, ServiceRoutingPolicy,
-    StagedRelationshipMap, TransientCollection,
+    Nursery, NurseryAccess, RelationshipCache, RelationshipCachePolicy, RelationshipMap,
+    ServiceRoutingPolicy, StagedRelationshipMap, TransientCollection,
 };
 pub use core_types::HolonError;
 pub use descriptors::{

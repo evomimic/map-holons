@@ -24,7 +24,7 @@ impl ClientSession {
     ) -> Result<Self, HolonError> {
         let context = space_manager
             .get_transaction_manager()
-            .open_new_transaction(Arc::clone(&space_manager))?;
+            .open_public_transaction(Arc::clone(&space_manager))?;
 
         Ok(Self { context, recovery })
     }
@@ -40,7 +40,7 @@ impl ClientSession {
 
         let context = space_manager
             .get_transaction_manager()
-            .open_transaction_with_id(Arc::clone(&space_manager), tx_id)?;
+            .open_public_transaction_with_id(Arc::clone(&space_manager), tx_id)?;
 
         let session = Self { context, recovery };
         session.restore_from_recovery()?;
