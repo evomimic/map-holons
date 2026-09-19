@@ -38,9 +38,48 @@ enum DuplicatePolicy {
     Ungoverned,
 }
 
+/// Lifecycle effect of an already-permitted relationship mutation.
+///
+/// This classification does not authorize an operation. Policy errors must be
+/// propagated rather than converted into `PreserveLifecycle`.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum RelationshipMutationEffect {
+    /// Leave the staged lifecycle unchanged, as for creates, ungoverned assembly,
+    /// or removal of undeclared local input.
+    /// This skips lifecycle classification; it does not bypass Commit validation.
+    PreserveLifecycle,
+    /// Promote an update to `ForUpdateNewVersion` because version-bound state changed.
+    /// Creates and updates already producing a new version retain their state.
+    DefinitionalChange,
+    /// Promote `ForUpdate` to `ForUpdateGraphOnly` because only mutable membership changed.
+    /// Never demote an existing `ForUpdateNewVersion` to graph-only.
+    NonDefinitionalChange,
+}
+
+impl RelationshipMutationEffect {
+    fn from_definitional(is_definitional: bool) -> Self {
+        if is_definitional {
+            Self::DefinitionalChange
+        } else {
+            Self::NonDefinitionalChange
+        }
+    }
+
+    fn apply(
+        self,
+        holon: &mut crate::core_shared_objects::holon::StagedHolon,
+    ) -> Result<(), HolonError> {
+        match self {
+            Self::PreserveLifecycle => Ok(()),
+            Self::DefinitionalChange => holon.note_relationship_mutation(true),
+            Self::NonDefinitionalChange => holon.note_relationship_mutation(false),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct RelationshipMutationPolicy {
-    note_definitional: Option<bool>,
+    effect: RelationshipMutationEffect,
     duplicate_policy: DuplicatePolicy,
 }
 
@@ -370,7 +409,7 @@ impl StagedReference {
                     if staged_state == StagedState::ForCreate =>
                 {
                     return Ok(RelationshipMutationPolicy {
-                        note_definitional: None,
+                        effect: RelationshipMutationEffect::PreserveLifecycle,
                         duplicate_policy: DuplicatePolicy::Ungoverned,
                     });
                 }
@@ -384,7 +423,7 @@ impl StagedReference {
                     let source_descriptor = described_by_descriptor(&source_ref)?;
                     if staged_state == StagedState::ForCreate && source_descriptor.is_none() {
                         return Ok(RelationshipMutationPolicy {
-                            note_definitional: None,
+                            effect: RelationshipMutationEffect::PreserveLifecycle,
                             duplicate_policy: DuplicatePolicy::Ungoverned,
                         });
                     }
@@ -397,27 +436,37 @@ impl StagedReference {
         let duplicate_policy = DuplicatePolicy::Enforced {
             allows_duplicates: relationship_descriptor.allows_duplicates()?,
         };
-        let note_definitional = if staged_state == StagedState::ForCreate {
-            None
+        let effect = if staged_state == StagedState::ForCreate {
+            RelationshipMutationEffect::PreserveLifecycle
         } else {
-            Some(relationship_descriptor.is_definitional()?)
+            RelationshipMutationEffect::from_definitional(
+                relationship_descriptor.is_definitional()?,
+            )
         };
 
-        Ok(RelationshipMutationPolicy { note_definitional, duplicate_policy })
+        Ok(RelationshipMutationPolicy { effect, duplicate_policy })
     }
 
+    /// Classifies removal from the local authored map, without saved-state fallback.
+    /// An undeclared name may be discarded without changing lifecycle classification;
+    /// this does not authorize persisted inverse deletion. Descriptor-resolution
+    /// failures still propagate, rather than granting descriptor-independent removal.
     fn classify_relationship_removal(
         &self,
         relationship_name: &RelationshipName,
-    ) -> Result<Option<bool>, HolonError> {
+    ) -> Result<RelationshipMutationEffect, HolonError> {
         if self.staged_state()? == StagedState::ForCreate {
-            return Ok(None);
+            return Ok(RelationshipMutationEffect::PreserveLifecycle);
         }
 
         let source_ref = HolonReference::Staged(self.clone());
         match effective_relationship_declaration(&source_ref, relationship_name.clone()) {
-            Ok(relationship_descriptor) => Ok(Some(relationship_descriptor.is_definitional()?)),
-            Err(error @ HolonError::DescriptorDeclarationNotFound { .. }) => Err(error),
+            Ok(relationship_descriptor) => Ok(RelationshipMutationEffect::from_definitional(
+                relationship_descriptor.is_definitional()?,
+            )),
+            Err(HolonError::DescriptorDeclarationNotFound { .. }) => {
+                Ok(RelationshipMutationEffect::PreserveLifecycle)
+            }
             Err(error) => Err(error),
         }
     }
@@ -526,9 +575,7 @@ impl StagedReference {
         match &mut *holon_mut {
             Holon::Staged(staged_holon) => {
                 staged_holon.add_related_holons_with_keys(relationship_name, entries)?;
-                if let Some(is_definitional) = policy.note_definitional {
-                    staged_holon.note_relationship_mutation(is_definitional)?;
-                }
+                policy.effect.apply(staged_holon)?;
             }
             _ => {
                 return Err(HolonError::InvalidType(
@@ -544,7 +591,7 @@ impl StagedReference {
         &self,
         relationship_name: &RelationshipName,
         entries: Vec<(HolonReference, Option<MapString>)>,
-        is_definitional: Option<bool>,
+        effect: RelationshipMutationEffect,
     ) -> Result<(), HolonError> {
         let rc_holon = self.get_rc_holon()?;
         let mut holon_mut = rc_holon.write().map_err(|e| {
@@ -557,9 +604,7 @@ impl StagedReference {
         match &mut *holon_mut {
             Holon::Staged(staged_holon) => {
                 staged_holon.remove_related_holons_with_keys(relationship_name, entries)?;
-                if let Some(is_definitional) = is_definitional {
-                    staged_holon.note_relationship_mutation(is_definitional)?;
-                }
+                effect.apply(staged_holon)?;
             }
             _ => {
                 return Err(HolonError::InvalidType(
@@ -581,7 +626,7 @@ impl StagedReference {
             relationship_name,
             holons_with_keys,
             RelationshipMutationPolicy {
-                note_definitional: None,
+                effect: RelationshipMutationEffect::PreserveLifecycle,
                 duplicate_policy: DuplicatePolicy::Ungoverned,
             },
         )
@@ -614,7 +659,11 @@ impl StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<(), HolonError> {
         let holons_with_keys = Self::related_holons_with_keys(holons)?;
-        self.remove_related_holons_with_classification(relationship_name, holons_with_keys, None)
+        self.remove_related_holons_with_classification(
+            relationship_name,
+            holons_with_keys,
+            RelationshipMutationEffect::PreserveLifecycle,
+        )
     }
 }
 
@@ -818,7 +867,7 @@ impl WritableHolonImpl for StagedReference {
         holons: Vec<HolonReference>,
     ) -> Result<&mut Self, HolonError> {
         self.is_accessible(AccessType::Write)?;
-        let is_definitional = self.classify_relationship_removal(&relationship_name)?;
+        let effect = self.classify_relationship_removal(&relationship_name)?;
         let holons_with_keys = Self::related_holons_with_keys(holons)?;
         info!(
             "Removing {:?} related holons from relationship: {:?}",
@@ -828,7 +877,7 @@ impl WritableHolonImpl for StagedReference {
         self.remove_related_holons_with_classification(
             &relationship_name,
             holons_with_keys,
-            is_definitional,
+            effect,
         )?;
 
         Ok(self)
@@ -1631,6 +1680,53 @@ mod tests {
         staged_source.add_related_holons("AuthoredBy", vec![target.into()])?;
 
         assert!(staged_source.is_in_state(&context, StagedState::ForUpdateNewVersion)?);
+        Ok(())
+    }
+
+    #[test]
+    fn update_cleanup_does_not_swallow_missing_descriptor() -> Result<(), HolonError> {
+        let context = build_context();
+        let mut source =
+            context.mutation().stage_new_holon(new_test_holon(&context, "undescribed")?)?;
+        let target = staged_target(&context, "target")?;
+        source.add_related_holons_ungoverned("UnknownRelationship", vec![target.clone().into()])?;
+        force_staged_reference_for_update(&context, &source)?;
+        assert!(matches!(
+            source.remove_related_holons("UnknownRelationship", vec![target.into()]),
+            Err(HolonError::MissingDescribedBy { .. })
+        ));
+        assert_eq!(relationship_member_count(&source, "UnknownRelationship")?, 1);
+        assert!(source.is_in_state(&context, StagedState::ForUpdate)?);
+        Ok(())
+    }
+
+    #[test]
+    fn undeclared_update_cleanup_preserves_lifecycle() -> Result<(), HolonError> {
+        for definitional in [false, true] {
+            let context = build_context();
+            let (descriptor, _) =
+                staged_relationship_descriptor(&context, "AuthoredBy", Some(definitional))?;
+            let mut source = staged_update_source(&context, descriptor)?;
+            let target = staged_target(&context, "author")?;
+            source.add_related_holons("AuthoredBy", vec![target.clone().into()])?;
+            let expected = if definitional {
+                StagedState::ForUpdateNewVersion
+            } else {
+                StagedState::ForUpdateGraphOnly
+            };
+            source.add_related_holons_ungoverned(
+                "UnknownRelationship",
+                vec![target.clone().into()],
+            )?;
+            source.remove_related_holons("UnknownRelationship", vec![target.clone().into()])?;
+            assert!(source.is_in_state(&context, expected)?);
+            assert_eq!(relationship_member_count(&source, "UnknownRelationship")?, 0);
+            assert_eq!(relationship_member_count(&source, "AuthoredBy")?, 1);
+            assert!(matches!(
+                source.add_related_holons("UnknownRelationship", vec![target.into()]),
+                Err(HolonError::DescriptorDeclarationNotFound { .. })
+            ));
+        }
         Ok(())
     }
 

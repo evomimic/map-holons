@@ -41,8 +41,8 @@
 //! commit is about to write.
 
 use core_types::{
-    encode_smartlink_tag, CanonicalKey, CommitValidationViolationKind, ContentSet, HolonId,
-    SmartLink, SmartLinkTagInput, ValidationSubjectPath,
+    encode_smartlink_tag, CanonicalKey, CommitValidationViolationKind, ContentSet, HolonError,
+    HolonId, SmartLink, SmartLinkTagInput, ValidationSubjectPath,
 };
 use holons_client::ClientHolonService;
 use holons_core::core_shared_objects::holon::{StagedState, ValidationState};
@@ -520,6 +520,113 @@ async fn verify_loader_rejects_non_declared_relationship_input(
         .await;
     assert_eq!(corrected.0, before.0 + 1, "only the corrected candidate is persisted");
     runtime.session().archive_transaction(&context.tx_id()).unwrap();
+    verify_update_relationship_cleanup(runtime, backend).await;
+}
+
+/// Invalid local input can be discarded after rejection without changing the
+/// persistence scope selected by valid edits on an update.
+async fn verify_update_relationship_cleanup(runtime: &Runtime, backend: &MockConductorConfig) {
+    for new_version in [false, true] {
+        let context = begin_transaction(runtime).await;
+        let saved = saved_reference_by_key(runtime, &context, "Book.UndeclaredCommit.1").await;
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::StageNewVersionFromId {
+                        holon_id: saved.holon_id().unwrap(),
+                    },
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(HolonReference::Staged(mut staged)) = result else {
+            panic!("staged update");
+        };
+        let target = saved_reference_by_key(runtime, &context, TITLE_PROPERTY_KEY).await;
+        staged.add_related_holons(REFERENCES_PROPERTY, vec![target.clone()]).unwrap();
+        if new_version {
+            staged
+                .with_property_value("Title", "Corrected version update".to_base_value())
+                .unwrap();
+        }
+        let expected = if new_version {
+            StagedState::ForUpdateNewVersion
+        } else {
+            StagedState::ForUpdateGraphOnly
+        };
+        assert!(staged.is_in_state(&context, expected.clone()).unwrap());
+        for name in ["AuthorOf", "UnknownRelationship"] {
+            staged.add_related_holons_ungoverned(name, vec![target.clone()]).unwrap();
+        }
+        let before: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::Commit,
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(response) = result else {
+            panic!("Commit response");
+        };
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+            Some("Rejected".to_base_value())
+        );
+        assert_eq!(staged.validation_state().unwrap(), ValidationState::Invalid);
+        assert_eq!(staged.validation_findings().unwrap().len(), 2);
+        let after: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        assert_eq!(before, after);
+        for name in ["AuthorOf", "UnknownRelationship"] {
+            staged.remove_related_holons(name, vec![target.clone()]).unwrap();
+            assert!(staged.related_holons(name).unwrap().read().unwrap().get_members().is_empty());
+            assert!(staged.is_in_state(&context, expected.clone()).unwrap());
+            assert!(matches!(
+                staged.add_related_holons(name, vec![target.clone()]),
+                Err(HolonError::DescriptorDeclarationNotFound { .. })
+            ));
+        }
+        let result = runtime
+            .execute_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: Arc::clone(&context),
+                    action: TransactionAction::Commit,
+                }),
+                ExecutionPolicy::default(),
+            )
+            .await
+            .unwrap();
+        let MapResult::Reference(response) = result else {
+            panic!("Commit response");
+        };
+        assert_eq!(
+            response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+            Some("Complete".to_base_value())
+        );
+        assert!(staged.validation_findings().unwrap().is_empty());
+        assert!(staged.commit_errors().unwrap().is_empty());
+        let persisted: (u32, u32) = backend
+            .conductor
+            .call(&backend.cell.zome(PROBE_ZOME), "commit_write_counts_for_test", ())
+            .await;
+        assert_eq!(
+            persisted.0,
+            before.0 + u32::from(new_version),
+            "cleanup must preserve node-version behavior"
+        );
+        runtime.session().archive_transaction(&context.tx_id()).unwrap();
+    }
 }
 
 /// Builds a runtime over `backend`, keeping the same conductor handle the test uses for raw probe

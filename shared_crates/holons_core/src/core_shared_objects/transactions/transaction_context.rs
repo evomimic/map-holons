@@ -361,9 +361,13 @@ impl TransactionContext {
     ///
     /// The source variant supplies its clone model: transient and staged sources
     /// preserve authored state; saved sources copy only declared relationships.
-    /// The resulting clone belongs only to
-    /// this destination context; source and destination may be in different
-    /// transactions or spaces.
+    /// The resulting clone belongs only to this destination context. Sources
+    /// from another transaction resolve through their own bound handles.
+    ///
+    /// This operation imposes no source/destination space-equality check, but
+    /// that does not establish support for direct foreign-space references or
+    /// cross-space transport. Multi-space operation is not currently supported;
+    /// cloning local mirrors of externally owned holons remains unspecified.
     pub fn clone_holon(
         self: &Arc<Self>,
         source: &HolonReference,

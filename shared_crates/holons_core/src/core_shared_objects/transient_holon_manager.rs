@@ -30,6 +30,9 @@ use type_names::CorePropertyTypeName;
 /// resolve their descriptors and retain only declared relationships.
 /// Regardless of the source phase, cloned Holons always begin their lifecycle
 /// as `TransientHolon` in the destination transaction.
+/// Relationship references included in the model retain their existing bindings;
+/// model construction does not import targets into the destination space or
+/// define cross-space transport or mirror-cloning semantics.
 pub trait ToHolonCloneModel {
     fn holon_clone_model(&self) -> Result<HolonCloneModel, HolonError>;
 }
