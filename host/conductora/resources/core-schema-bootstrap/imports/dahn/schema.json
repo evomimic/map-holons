@@ -980,6 +980,18 @@
             },
             {
               "$ref": "PropertiesRowGap.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
             }
           ]
         },
@@ -1037,7 +1049,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:58c1bc54c92f11864bd966c1f4018b434460e827ed412b8bd99840076c54d340",
+        "VisualizerArtifactDigest": "sha256:639cf7e4663b150606796ca6dbcd0b099cb7d263c83d5d6a60b3dbaf2bd88211",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1074,6 +1086,18 @@
             },
             {
               "$ref": "PropertyNameMinWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
             }
           ]
         },
@@ -1131,7 +1155,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:d636db6711922debf05b10986e503062ae9a503e6bf25eabb562faaf884cad72",
+        "VisualizerArtifactDigest": "sha256:e12fa72f3d048e0affc49dfbb84c3b754ee1f8d506cdba3797cd5a42f76801fb",
         "VisualizerImplementationKey": "dahn.property",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

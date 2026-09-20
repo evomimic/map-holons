@@ -64,6 +64,15 @@ pub fn load_book_person_inverse_schema_fixture() -> Result<DancesTestCase, Holon
         "Title".to_property_name(),
         MapString(BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY.to_string()).to_base_value(),
     );
+    book_properties.insert("IsPublished".to_property_name(), false.to_base_value());
+    book_properties.insert("PageCount".to_property_name(), MapInteger(0).to_base_value());
+    book_properties.insert(
+        "PublicationStatus".to_property_name(),
+        MapEnumValue(MapString::from("Draft")).to_base_value(),
+    );
+    book_properties
+        .insert("CoverDigest".to_property_name(), MapBytes(vec![0, 127, 255]).to_base_value());
+    // Subtitle intentionally remains absent to exercise optional presentation.
     let book_token = test_case.add_new_holon_step(
         &mut fixture_holons,
         book_source,

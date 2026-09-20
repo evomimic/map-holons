@@ -31,6 +31,27 @@ describe('MaterializedVisualizerRuntime', () => {
     );
   });
 
+  it('shares constructor identity for concurrent requests using the same materialized source', async () => {
+    const materialize = vi.fn().mockResolvedValue({ source: 'shared source', format: 'ESModule', entrypoint: 'default' });
+    const constructor = class Selected {};
+    const importer = vi.fn().mockResolvedValue({ default: constructor });
+    const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
+    const first = { key: async () => 'first' };
+    const second = { key: async () => 'second' };
+    expect(await Promise.all([runtime.realize(first as never), runtime.realize(second as never)])).toEqual([constructor, constructor]);
+    expect(importer).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces realization failure and permits retry without a fallback', async () => {
+    const cache = new MaterializedVisualizerCache({ materialize: vi.fn().mockResolvedValue({ source: 'selected', format: 'ESModule', entrypoint: 'default' }) });
+    const constructor = class Selected {};
+    const importer = vi.fn().mockRejectedValueOnce(new Error('unavailable selected module')).mockResolvedValue({ default: constructor });
+    const runtime = new MaterializedVisualizerRuntime(cache, importer);
+    const selected = { key: async () => 'selected' };
+    await expect(runtime.realize(selected as never)).rejects.toThrow('unavailable selected module');
+    await expect(runtime.realize(selected as never)).resolves.toBe(constructor);
+  });
+
   it('rejects a module that omits its declared entrypoint', async () => {
     const cache = new MaterializedVisualizerCache({
       materialize: vi.fn().mockResolvedValue({

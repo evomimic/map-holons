@@ -461,3 +461,14 @@ async fn run_dance_test_case(
     }
     info!("\n{TEST_CLIENT_PREFIX} ------- END OF {} TEST CASE  ---------------", test_case.name);
 }
+
+/// Focused Issue 706 acceptance using the committed shared Book/Person fixture.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "focused artifact export; runtime_behavior_matrix already covers these assertions"]
+async fn book_value_presentation_acceptance() {
+    run_dance_test_suite(DanceTestSuite {
+        name: "book_value_presentation_acceptance",
+        test_cases: vec![load_book_person_inverse_schema_fixture().unwrap()],
+    })
+    .await;
+}
