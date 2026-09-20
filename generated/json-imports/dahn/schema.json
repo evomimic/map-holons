@@ -354,6 +354,53 @@
           ]
         },
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -384,6 +431,32 @@
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "InspectorContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
             }
           ]
         },
@@ -425,7 +498,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:db95ca8a5c4a8c597ab01c468168f65461006f16de1e65a1eb18e7171c077038",
+        "VisualizerArtifactDigest": "sha256:293a0a63fe24d5d8af6aaf61beb2e71b163013a9ab23d5aa168c71242941d18b",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -532,6 +605,26 @@
           ]
         },
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
           "name": "HasSlot",
           "target": [
             {
@@ -569,7 +662,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:2a848a082987045e94989ddee5cdbc3ca46ffebf316c1c6536125e682eaa9936",
+        "VisualizerArtifactDigest": "sha256:ca1e44811c1ac335c5132a83b72bc1706e3c2d709207e586ddc8ec6ee0451034",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -676,6 +769,23 @@
           ]
         },
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingGap.DesignToken"
+            },
+            {
+              "$ref": "PropertiesRowGap.DesignToken"
+            }
+          ]
+        },
+        {
           "name": "HasSlot",
           "target": [
             {
@@ -713,7 +823,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:31fa6574c6dc5adcf5925f0f9c552bff85e98b7de595992179f717aa59774629",
+        "VisualizerArtifactDigest": "sha256:58c1bc54c92f11864bd966c1f4018b434460e827ed412b8bd99840076c54d340",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -729,6 +839,17 @@
           "target": [
             {
               "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyColumnGap.DesignToken"
+            },
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
             }
           ]
         },
@@ -770,7 +891,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:815219b8b7d9351cac616face6ebeca59a0694998b2dbc06268cb94c407ba4ed",
+        "VisualizerArtifactDigest": "sha256:d636db6711922debf05b10986e503062ae9a503e6bf25eabb562faaf884cad72",
         "VisualizerImplementationKey": "dahn.property",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1302,7 +1423,8 @@
         "DisplayName": "HasApplicableVisualizer Relationship",
         "DisplayNamePlural": "HasApplicableVisualizer Relationships",
         "Description": "Inverse of ApplicableToType, exposing the Visualizer Holons applicable to a descriptor Type.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "MembershipCacheMaxAgeMillis": 30000
       },
       "relationships": [
         {
@@ -1356,6 +1478,7 @@
         "DisplayName": "HasSlot Relationship",
         "DisplayNamePlural": "HasSlot Relationships",
         "Description": "Declares the semantic VisualizerSlots that a Visualizer requires for its internal composition.",
+        "IsDefinitional": true,
         "DeletionSemantic": "Allow"
       },
       "relationships": [

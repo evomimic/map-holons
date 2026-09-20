@@ -19,7 +19,7 @@
 //!   4. The resulting `DanceResponse` is interpreted and converted back into a
 //!      `HolonReference`, `HolonCollection`, or a `HolonError`.
 //!
-//! This makes the client holon service a **pure request/response layer**: it never touches
+//! The client holon service also decides which fetched relationships can be cached. It never touches
 //! persistence, never owns a runtime, and remains compatible with synchronous application
 //! environments (Tauri, desktop/native, CLI tools, etc.).
 //!
@@ -40,17 +40,22 @@ use futures_executor::block_on;
 use holons_core::core_shared_objects::transactions::TransactionContext;
 use holons_core::dances::{ResponseBody, ResponseStatusCode};
 use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
+use holons_core::reference_layer::holon_service_api::declared_relationship_cache_policy;
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
-    reference_layer::{HolonServiceApi, RelationshipCacheScope, SmartReference},
-    HolonCollectionApi, HolonReference, RelationshipMap, StagedReference,
+    reference_layer::{HolonServiceApi, SmartReference},
+    HolonCollectionApi, HolonReference, ReadableHolon, RelationshipCachePolicy, RelationshipMap,
+    StagedReference,
 };
 use integrity_core_types::{LocalId, RelationshipName};
 use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::{Arc, RwLock};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, RwLock,
+};
 use std::time::Instant;
 use tokio::runtime::Handle;
 use tokio::task::block_in_place;
@@ -62,14 +67,43 @@ use crate::dahn::{DahnMaterializer, DancerPackageCatalog};
 pub struct ClientHolonService {
     dahn_materializer: DahnMaterializer,
     dancer_package_catalog: DancerPackageCatalog,
+    // Clones share the recursion guard for inverse cache-policy discovery.
+    relationship_semantics_resolution_depth: Arc<AtomicUsize>,
+    cache_clock_origin: Instant,
+}
+
+struct RelationshipSemanticsResolutionGuard<'a> {
+    depth: &'a AtomicUsize,
+}
+
+impl Drop for RelationshipSemanticsResolutionGuard<'_> {
+    fn drop(&mut self) {
+        self.depth.fetch_sub(1, Ordering::Release);
+    }
 }
 
 impl ClientHolonService {
+    fn resolving_relationship_semantics(&self) -> bool {
+        self.relationship_semantics_resolution_depth.load(Ordering::Acquire) > 0
+    }
+
+    fn enter_relationship_semantics_resolution(&self) -> RelationshipSemanticsResolutionGuard<'_> {
+        self.relationship_semantics_resolution_depth.fetch_add(1, Ordering::AcqRel);
+        RelationshipSemanticsResolutionGuard {
+            depth: &self.relationship_semantics_resolution_depth,
+        }
+    }
+
     pub fn new(
         dahn_materializer: DahnMaterializer,
         dancer_package_catalog: DancerPackageCatalog,
     ) -> Self {
-        Self { dahn_materializer, dancer_package_catalog }
+        Self {
+            dahn_materializer,
+            dancer_package_catalog,
+            relationship_semantics_resolution_depth: Arc::new(AtomicUsize::new(0)),
+            cache_clock_origin: Instant::now(),
+        }
     }
 
     pub fn development_default() -> Self {
@@ -85,8 +119,55 @@ impl HolonServiceApi for ClientHolonService {
         self
     }
 
-    fn relationship_cache_scope(&self) -> RelationshipCacheScope {
-        RelationshipCacheScope::SpaceDefinitionalOnly
+    fn relationship_cache_time_millis(&self) -> Option<u64> {
+        u64::try_from(self.cache_clock_origin.elapsed().as_millis()).ok()
+    }
+
+    fn relationship_cache_policy(
+        &self,
+        context: &Arc<TransactionContext>,
+        source_holon_id: &HolonId,
+        relationship_name: &RelationshipName,
+    ) -> Result<RelationshipCachePolicy, HolonError> {
+        // Declared classification traverses only kernel structural edges. It must
+        // remain available during inverse policy lookup so nested definitional
+        // reads retain their normal version-bound policy.
+        if let Some(policy) =
+            declared_relationship_cache_policy(context, source_holon_id, relationship_name)?
+        {
+            return Ok(policy);
+        }
+
+        // Reading SourceOf indexes can recursively request their own inverse
+        // policy. Decline nested inverse retention without suppressing declared
+        // definitional reuse. Concurrent inverse classifications may conservatively
+        // fall back to fresh membership, never to stale reuse.
+        if self.resolving_relationship_semantics() {
+            tracing::debug!(target: "map_profile", policy_reason = "recursive_inverse_resolution");
+            return Ok(RelationshipCachePolicy::Fresh);
+        }
+        let _resolution_guard = self.enter_relationship_semantics_resolution();
+        let source =
+            HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
+        // Navigation reads inverse descriptors directly from SourceOf indexes
+        // along the source type's ancestry; each direction owns its TTL.
+        match source.available_relationships() {
+            Ok(relationships) => {
+                for relationship in relationships {
+                    let descriptor = relationship.descriptor;
+                    if descriptor.base_relationship_name()? != *relationship_name {
+                        continue;
+                    }
+                    return Ok(match descriptor.membership_cache_max_age_millis()? {
+                        0 => RelationshipCachePolicy::Fresh,
+                        age => RelationshipCachePolicy::MaxAgeMillis(age),
+                    });
+                }
+                Ok(RelationshipCachePolicy::Fresh)
+            }
+            Err(HolonError::MissingDescribedBy { .. }) => Ok(RelationshipCachePolicy::Fresh),
+            Err(error) => Err(error),
+        }
     }
 
     fn commit_internal(
@@ -242,6 +323,11 @@ impl HolonServiceApi for ClientHolonService {
         source_id: &HolonId,
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
+        let _profile = tracing::debug_span!(
+            target: "map_profile", "fetch_relationship",
+            relationship = %relationship_name
+        )
+        .entered();
         let source_reference = HolonReference::Smart(SmartReference::new_from_id(
             context.space_read_handle(),
             source_id.clone(),
@@ -460,3 +546,6 @@ where
     // Otherwise, run directly with futures_executor (no Tokio runtime required).
     block_on(future)
 }
+
+#[cfg(test)]
+mod tests;

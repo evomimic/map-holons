@@ -488,7 +488,7 @@
           "name": "InstanceRelationships",
           "target": [
             {
-              "$ref": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)"
+              "$ref": "(DanceImplementation.HolonType)-[ForDance]->(MetaDanceType.MetaHolonType)"
             }
           ]
         }
@@ -755,7 +755,8 @@
         "DisplayName": "Affords Dance Relationship",
         "DisplayNamePlural": "Affords Dance Relationships",
         "Description": "Inverse of DanceAffordedBy, exposing Dances afforded by a HolonType.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "MembershipCacheMaxAgeMillis": 30000
       },
       "relationships": [
         {
@@ -918,7 +919,7 @@
       ]
     },
     {
-      "key": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)",
+      "key": "(DanceImplementation.HolonType)-[ForDance]->(MetaDanceType.MetaHolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "ForDance",
@@ -958,7 +959,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "DanceType.HolonType"
+              "$ref": "MetaDanceType.MetaHolonType"
             }
           ]
         },
@@ -966,7 +967,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)"
+              "$ref": "(MetaDanceType.MetaHolonType)-[HasImplementation]->(DanceImplementation.HolonType)"
             }
           ]
         },
@@ -981,7 +982,7 @@
       ]
     },
     {
-      "key": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)",
+      "key": "(MetaDanceType.MetaHolonType)-[HasImplementation]->(DanceImplementation.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "HasImplementation",
@@ -989,7 +990,8 @@
         "DisplayName": "HasImplementation Relationship",
         "DisplayNamePlural": "HasImplementation Relationships",
         "Description": "Inverse of ForDance, from DanceType to DanceImplementation.",
-        "DeletionSemantic": "Block"
+        "DeletionSemantic": "Block",
+        "MembershipCacheMaxAgeMillis": 30000
       },
       "relationships": [
         {
@@ -1012,7 +1014,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "DanceType.HolonType"
+              "$ref": "MetaDanceType.MetaHolonType"
             }
           ]
         },

@@ -5,9 +5,9 @@ export default class HolonInspectorElement extends HTMLElement {
     this.style.display = 'grid';
     this.style.flex = '1 1 auto';
     this.style.minHeight = '0';
-    this.style.gridTemplateColumns = 'minmax(0, 1fr) 11rem';
-    this.style.gridTemplateRows = 'auto minmax(12rem, 1fr) auto';
-    this.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
+    this.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
+    this.style.gridTemplateRows = 'auto minmax(var(--dahn-inspector-content-min-height), 1fr) auto';
+    this.style.gap = 'var(--dahn-canvas-gap)';
 
     const title = document.createElement('header');
     title.dataset.holonInspectorTitle = 'true';
@@ -46,12 +46,16 @@ export default class HolonInspectorElement extends HTMLElement {
     body.style.gridColumn = '1 / -1';
     body.style.gridRow = '2';
     body.style.display = 'grid';
-    body.style.gridTemplateColumns = 'minmax(0, 1fr) 11rem';
+    body.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
     body.style.gridTemplateRows = 'auto minmax(0, 1fr)';
-    body.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
+    body.style.gap = 'var(--dahn-canvas-gap)';
     actionBar.style.gridColumn = '1';
     actionBar.style.gridRow = '1';
     singleValueRail.style.gridRow = '1 / span 2';
+    for (const pane of [actionBar, propertyViewer, singleValueRail, collectionTabBar]) {
+      pane.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
+      pane.style.padding = 'var(--dahn-slot-padding)';
+    }
     body.append(actionBar, propertyViewer, singleValueRail);
 
     this.replaceChildren(title, body, collectionTabBar);

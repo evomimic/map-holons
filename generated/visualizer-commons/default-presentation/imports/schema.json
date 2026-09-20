@@ -35,6 +35,117 @@
           "name": "DefinesDesignToken",
           "target": [
             {
+              "$ref": "LauncherSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "LauncherTextColor.DesignToken"
+            },
+            {
+              "$ref": "LauncherPadding.DesignToken"
+            },
+            {
+              "$ref": "LauncherPhaseGap.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorSize.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorColor.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorWidth.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorDuration.DesignToken"
+            },
+            {
+              "$ref": "LauncherDismissDuration.DesignToken"
+            },
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            },
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            },
+            {
+              "$ref": "InspectorContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingGap.DesignToken"
+            },
+            {
+              "$ref": "PropertiesRowGap.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "PropertyColumnGap.DesignToken"
+            },
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderFontWeight.DesignToken"
+            },
+            {
               "$ref": "CanvasGap.DesignToken"
             },
             {
@@ -92,6 +203,117 @@
         {
           "name": "HasThemeTokenAssignment",
           "target": [
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherPadding.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherPhaseGap.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherIndicatorSize.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherIndicatorColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherIndicatorWidth.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherIndicatorDuration.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.LauncherDismissDuration.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ActionSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ActionHoverSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ActionTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ActionPaddingBlock.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ActionPaddingInline.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ActionCornerRadius.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasFontFamily.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasFontSize.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasFontWeight.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasLineHeight.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasHeadingFontWeight.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CanvasContentMinHeight.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.SlotBorderColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.SlotBorderWidth.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.SlotBorderStyle.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.SlotPadding.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.InspectorRailWidth.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.InspectorContentMinHeight.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.PropertiesHeadingGap.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.PropertiesRowGap.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.PropertiesHeadingFontSize.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.PropertiesHeadingFontWeight.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.PropertyColumnGap.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.PropertyNameMinWidth.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.TableCellBorderStyle.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CollectionHeadingFontSize.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.CollectionHeadingFontWeight.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.TableHeaderFontWeight.ThemeTokenAssignment"
+            },
             {
               "$ref": "DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment"
             },
@@ -331,6 +553,635 @@
           "target": [
             {
               "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasFontFamily.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "Arial, sans-serif"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasFontSize.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasFontWeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasLineHeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasHeadingFontWeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "700"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CanvasContentMinHeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.SlotBorderColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#1d2430"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.SlotBorderWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.SlotBorderStyle.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "solid"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.SlotPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.InspectorRailWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "11rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.InspectorContentMinHeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "InspectorContentMinHeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PropertiesHeadingGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.35rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PropertiesRowGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.25rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesRowGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PropertiesHeadingFontSize.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.9rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PropertiesHeadingFontWeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PropertyColumnGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyColumnGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PropertyNameMinWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "8rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.TableCellBorderStyle.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "solid"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderStyle.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CollectionHeadingFontSize.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeadingFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.CollectionHeadingFontWeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeadingFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.TableHeaderFontWeight.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "700"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderFontWeight.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#102a43"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e0f2fe"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherPadding.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "2rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherPadding.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherPhaseGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherPhaseGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherIndicatorSize.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "4rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherIndicatorColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#60a5c7"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherIndicatorWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "4px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorWidth.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherIndicatorDuration.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1s"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorDuration.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.LauncherDismissDuration.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5s"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherDismissDuration.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ActionSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#245878"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ActionHoverSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#173f5f"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ActionTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ActionPaddingBlock.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ActionPaddingInline.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ActionCornerRadius.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.25rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
             }
           ]
         }

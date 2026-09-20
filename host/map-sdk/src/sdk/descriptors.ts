@@ -44,8 +44,8 @@ export class PropertyDescriptorHandle {
 
   async propertyName(): Promise<PropertyName> {
     return requiredString(
-      propertyDescriptorReference(this).propertyValue(CorePropertyName.PropertyName),
-      CorePropertyName.PropertyName,
+      propertyDescriptorReference(this).propertyValue(CorePropertyName.TypeName),
+      CorePropertyName.TypeName,
     );
   }
 
@@ -102,8 +102,8 @@ export class RelationshipDescriptorHandle {
 
   async relationshipName(): Promise<RelationshipName> {
     return requiredString(
-      this.#reference.propertyValue(CorePropertyName.RelationshipName),
-      CorePropertyName.RelationshipName,
+      this.#reference.propertyValue(CorePropertyName.TypeName),
+      CorePropertyName.TypeName,
     );
   }
 }

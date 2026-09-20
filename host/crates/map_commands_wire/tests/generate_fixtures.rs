@@ -208,6 +208,7 @@ fn generate_fixtures() {
                 smart_reference(41, local_holon_id(&[61, 62, 63]), None),
                 HolonActionWire::Read(ReadableHolonActionWire::GetRelatedHolons {
                     name: relationship_name("children"),
+                    require_fresh: false,
                 }),
             ),
             default_options(),

@@ -8,8 +8,10 @@ import { MapClient } from '../../../dahn/deps/map-sdk';
 import { SdkVisualizerMaterializer } from '../../../dahn/map-adapter/sdk-visualizer-materializer';
 import { MaterializedVisualizerCache } from '../../../dahn/runtime/materialized-visualizer-cache';
 import { MaterializedVisualizerRuntime } from '../../../dahn/runtime/materialized-visualizer-runtime';
+import { renderVisualizerRegion } from '../../../dahn/runtime/visualizer-region';
 import { Theme } from '../../../dahn/themes/theme';
 import { ApplicationSessionService } from '../../services/application-session.service';
+import { StartupProfile } from '../../startup-profile';
 import { dismissStartupOverlay } from '../../startup-overlay';
 
 /** Generic Canvas host. It owns no Dancer selection or visualizer fallback. */
@@ -18,11 +20,11 @@ import { dismissStartupOverlay } from '../../startup-overlay';
   standalone: true,
   template: `
     @if (failure()) {
-      <main class="min-h-screen bg-slate-900 p-8 text-slate-100" data-dahn-canvas-state="realization-error" role="alert">
+      <main class="launcher-error" data-dahn-canvas-state="realization-error" role="alert">
         <h1>MAP Application Launcher failed</h1>
         <p>{{ failure() }}</p>
         <button
-          class="mt-4 cursor-pointer rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-500"
+          class="launcher-action"
           type="button"
           (click)="retry()"
         >
@@ -54,10 +56,12 @@ export class CanvasHostComponent implements AfterViewInit {
   }
 
   private async realizeCanvas(): Promise<void> {
+    const profile = new StartupProfile();
     try {
       const session = await this.applicationSession.waitForReady();
       if (session.phase !== 'ready') {
         this.failure.set(session.failure ?? `Application session stopped in '${session.phase}'.`);
+        profile.finish('session-failed');
         return;
       }
       const selection = session.canvas_selection;
@@ -73,11 +77,13 @@ export class CanvasHostComponent implements AfterViewInit {
         throw new Error('Canvas host is unavailable.');
       }
 
+      profile.next('open transaction');
       const transaction = await new MapClient().beginTransaction();
       const activeHolonSpace = transaction.bindPersistedReference(session.active_holon_space);
       // A transaction is a stateful execution surface. Keep these initial
       // reads ordered instead of relying on IPC scheduling for concurrent
       // commands that share its transaction identity.
+      profile.next('lookup launch resources');
       const themeHolon = await transaction.getSavedHolonByBaseKey(selection.theme_key);
       const canvasHolon = await transaction.getSavedHolonByBaseKey(selection.canvas_key);
       const canvasVisualizer = await transaction.getSavedHolonByBaseKey(
@@ -93,12 +99,15 @@ export class CanvasHostComponent implements AfterViewInit {
       const materialized = new MaterializedVisualizerRuntime(
         new MaterializedVisualizerCache(new SdkVisualizerMaterializer(transaction)),
       );
+      profile.next('materialize Canvas');
       const canvasImplementation = await materialized.realize(canvasVisualizer);
       if (typeof canvasImplementation !== 'function') {
         throw new Error('Selected Canvas implementation does not export a constructor.');
       }
 
+      profile.next('project theme');
       const theme = await new Theme(themeHolon).toCssCustomProperties();
+      profile.next('construct Canvas');
       const registry = new DefaultVisualizerRegistry();
       let homeDancerContext: VisualizerContext | null = null;
       const canvas = new DomCanvas(
@@ -118,8 +127,10 @@ export class CanvasHostComponent implements AfterViewInit {
       const homeDancerSelection = session.home_dancer_selection;
       if (homeDancerSelection === null) {
         // A missing declaration is the only intentional empty-Canvas state.
+        profile.next('mount home Dancer');
         await canvas.mountVisualizers([]);
         this.canvasState.set('mounted');
+        profile.finish('empty-canvas');
         dismissStartupOverlay();
         return;
       }
@@ -130,165 +141,175 @@ export class CanvasHostComponent implements AfterViewInit {
       const rootNodeVisualizer = transaction.bindPersistedReference(
         homeDancerSelection.root_node_visualizer,
       );
-      const [pathImplementation, nodeImplementation] = await Promise.all([
-        materialized.realize(rootedNavigationVisualizer),
-        materialized.realize(rootNodeVisualizer),
-      ]);
-      if (
-        typeof nodeImplementation !== 'function' ||
-        !(nodeImplementation.prototype instanceof HTMLElement)
-      ) {
-        throw new Error('Selected root Node implementation does not export an HTMLElement constructor.');
-      }
-      if (
-        typeof pathImplementation !== 'function' ||
-        !(pathImplementation.prototype instanceof HTMLElement)
-      ) {
-        throw new Error('Selected RootedNavigation implementation does not export an HTMLElement constructor.');
-      }
-      defineCustomElementOnce(
-        'map-root-node-visualizer',
-        nodeImplementation as CustomElementConstructor,
-      );
-      defineCustomElementOnce(
-        'map-rooted-navigation-visualizer',
-        pathImplementation as CustomElementConstructor,
-      );
-      const propertiesSelection = await transaction.selectVisualizer({
-        subject: activeHolonSpace,
-        requestedKind: 'properties',
-        parentVisualizer: rootNodeVisualizer,
-      });
-      const propertiesImplementation = await materialized.realize(propertiesSelection.selected);
-      if (
-        typeof propertiesImplementation !== 'function' ||
-        !(propertiesImplementation.prototype instanceof HTMLElement)
-      ) {
-        throw new Error('Selected Properties implementation does not export an HTMLElement constructor.');
-      }
-      defineCustomElementOnce(
-        'map-properties-visualizer',
-        propertiesImplementation as CustomElementConstructor,
-      );
-      const propertyVisualizers = new Map<string, HTMLElement>();
-      for (const propertyDescriptor of await activeHolonSpace.availableProperties()) {
-        const propertyName = await propertyDescriptor.propertyName();
-        // Each command shares one transaction-bound execution surface. Keep
-        // descriptor selection and the value read serialized so request
-        // handling cannot interleave their reference-bound work.
-        const propertySelection = await transaction.selectPropertyVisualizer(
-          propertyDescriptor,
-          propertiesSelection.selected,
-        );
-        const value = await activeHolonSpace.propertyValue(propertyName);
-        const valueSelection = await transaction.selectValueVisualizer(
-          propertyDescriptor,
-          propertySelection.selected,
-        );
-        const [propertyImplementation, valueImplementation] = await Promise.all([
-          materialized.realize(propertySelection.selected),
-          materialized.realize(valueSelection.selected),
-        ]);
-        if (
-          typeof propertyImplementation !== 'function' ||
-          !(propertyImplementation.prototype instanceof HTMLElement)
-        ) {
-          throw new Error('Selected Property implementation does not export an HTMLElement constructor.');
+      try {
+        profile.next('materialize rooted navigation');
+        const pathImplementation = await materialized.realize(rootedNavigationVisualizer);
+        if (typeof pathImplementation !== 'function' || !(pathImplementation.prototype instanceof HTMLElement)) {
+          throw new Error('Selected RootedNavigation implementation does not export an HTMLElement constructor.');
         }
-        if (
-          typeof valueImplementation !== 'function' ||
-          !(valueImplementation.prototype instanceof HTMLElement)
-        ) {
-          throw new Error('Selected Value implementation does not export an HTMLElement constructor.');
-        }
-        defineCustomElementOnce(
-          'map-property-visualizer',
-          propertyImplementation as CustomElementConstructor,
-        );
-        defineCustomElementOnce(
-          'map-scalar-value-visualizer',
-          valueImplementation as CustomElementConstructor,
-        );
-        const propertyPresentation = { propertyName, value };
-        const valueElement = document.createElement('map-scalar-value-visualizer') as HTMLElement & {
-          setContext(context: VisualizerContext): void;
-        };
-        valueElement.setContext({
-          title: propertyName,
-          target: { reference: activeHolonSpace },
-          holon: new DahnHolonView(activeHolonSpace),
-          actions: [],
-          theme,
-          canvas,
-          propertyPresentation,
+        const pathTag = defineCustomElementOnce('map-rooted-navigation-visualizer', pathImplementation as CustomElementConstructor);
+        const rootNodeElement = await renderVisualizerRegion('Root node', async () => {
+          profile.next('materialize root node');
+          const nodeImplementation = await materialized.realize(rootNodeVisualizer);
+          if (
+            typeof nodeImplementation !== 'function' ||
+            !(nodeImplementation.prototype instanceof HTMLElement)
+          ) {
+            throw new Error('Selected root Node implementation does not export an HTMLElement constructor.');
+          }
+          const nodeTag = defineCustomElementOnce(
+            'map-root-node-visualizer',
+            nodeImplementation as CustomElementConstructor,
+          );
+          const propertiesElement = await renderVisualizerRegion('Properties', async () => {
+            profile.next('select and materialize Properties');
+            const propertiesSelection = await transaction.selectVisualizer({
+              subject: activeHolonSpace,
+              requestedKind: 'properties',
+              parentVisualizer: rootNodeVisualizer,
+            });
+            const propertiesImplementation = await materialized.realize(propertiesSelection.selected);
+            if (
+              typeof propertiesImplementation !== 'function' ||
+              !(propertiesImplementation.prototype instanceof HTMLElement)
+            ) {
+              throw new Error('Selected Properties implementation does not export an HTMLElement constructor.');
+            }
+            const propertiesTag = defineCustomElementOnce(
+              'map-properties-visualizer',
+              propertiesImplementation as CustomElementConstructor,
+            );
+            profile.next('discover and render property fields');
+            const propertyVisualizers = new Map<string, HTMLElement>();
+            for (const propertyDescriptor of await activeHolonSpace.availableProperties()) {
+              let propertyName = 'Property ' + (propertyVisualizers.size + 1);
+              const propertyRegion = await renderVisualizerRegion('Property', async () => {
+                propertyName = await propertyDescriptor.propertyName();
+                return renderVisualizerRegion(propertyName, async () => {
+                  // Each command shares one transaction-bound execution surface. Keep
+                  // descriptor selection and the value read serialized so request
+                  // handling cannot interleave their reference-bound work.
+                  const propertySelection = await transaction.selectPropertyVisualizer(
+                    propertyDescriptor,
+                    propertiesSelection.selected,
+                  );
+                  const propertyImplementation = await materialized.realize(propertySelection.selected);
+                  if (
+                    typeof propertyImplementation !== 'function' ||
+                    !(propertyImplementation.prototype instanceof HTMLElement)
+                  ) {
+                    throw new Error('Selected Property implementation does not export an HTMLElement constructor.');
+                  }
+                  const propertyTag = defineCustomElementOnce(
+                    'map-property-visualizer',
+                    propertyImplementation as CustomElementConstructor,
+                  );
+                  const value = await activeHolonSpace.propertyValue(propertyName);
+                  const valueElement = await renderVisualizerRegion(propertyName, async () => {
+                    const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected);
+                    const valueImplementation = await materialized.realize(valueSelection.selected);
+                    if (typeof valueImplementation !== 'function' || !(valueImplementation.prototype instanceof HTMLElement)) {
+                      throw new Error('Selected Value implementation does not export an HTMLElement constructor.');
+                    }
+                    const valueTag = defineCustomElementOnce(
+                      'map-scalar-value-visualizer',
+                      valueImplementation as CustomElementConstructor,
+                    );
+
+                    const renderedValue = document.createElement(valueTag) as HTMLElement & {
+                      setContext(context: VisualizerContext): void;
+                    };
+                    renderedValue.setContext({
+                      title: propertyName,
+                      target: { reference: activeHolonSpace },
+                      holon: new DahnHolonView(activeHolonSpace),
+                      actions: [],
+                      theme,
+                      canvas,
+                      propertyPresentation: { propertyName, value },
+                    });
+
+                    return renderedValue;
+                  });
+                  const propertyElement = document.createElement(propertyTag) as HTMLElement & {
+                    setContext(context: VisualizerContext): void;
+                  };
+                  propertyElement.setContext({
+                    title: propertyName,
+                    target: { reference: activeHolonSpace },
+                    holon: new DahnHolonView(activeHolonSpace),
+                    actions: [],
+                    theme,
+                    canvas,
+                    propertyPresentation: { propertyName, value },
+                    childVisualizers: new Map([['value', valueElement]]),
+                  });
+                  return propertyElement;
+                });
+              });
+              propertyVisualizers.set(propertyName, propertyRegion);
+            }
+            const propertiesElement = document.createElement(propertiesTag) as HTMLElement & {
+              setContext(context: VisualizerContext): void;
+            };
+            propertiesElement.setContext({
+              title: 'Properties',
+              target: { reference: activeHolonSpace },
+              holon: new DahnHolonView(activeHolonSpace),
+              actions: [],
+              theme,
+              canvas,
+              childVisualizers: propertyVisualizers,
+            });
+            return propertiesElement;
+          });
+          const rootNodeElement = document.createElement(nodeTag) as HTMLElement & {
+            setContext(context: VisualizerContext): void;
+          };
+          rootNodeElement.setContext({
+            title: (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey(),
+            target: { reference: activeHolonSpace },
+            holon: new DahnHolonView(activeHolonSpace),
+            actions: [],
+            theme,
+            canvas,
+            childVisualizers: new Map([['properties', propertiesElement]]),
+          });
+          return rootNodeElement;
         });
-        const propertyElement = document.createElement('map-property-visualizer') as HTMLElement & {
-          setContext(context: VisualizerContext): void;
-        };
-        propertyElement.setContext({
-          title: propertyName,
-          target: { reference: activeHolonSpace },
-          holon: new DahnHolonView(activeHolonSpace),
-          actions: [],
-          theme,
-          canvas,
-          propertyPresentation,
-          childVisualizers: new Map([['value', valueElement]]),
+        const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
+        registry.register({
+          id: 'rooted-navigation',
+          displayName: 'Rooted Navigation',
+          version: '0.1.0',
+          componentTag: pathTag,
+          supportedTargets: [{ kind: 'holon-node' }],
+          load: async () => { },
         });
-        propertyVisualizers.set(propertyName, propertyElement);
-      }
-      const propertiesElement = document.createElement('map-properties-visualizer') as HTMLElement & {
-        setContext(context: VisualizerContext): void;
-      };
-      propertiesElement.setContext({
-        title: 'Properties',
-        target: { reference: activeHolonSpace },
-        holon: new DahnHolonView(activeHolonSpace),
-        actions: [],
-        theme,
-        canvas,
-        childVisualizers: propertyVisualizers,
-      });
-      const title = (await homeDancer.key()) ?? await homeDancer.versionedKey();
-      registry.register({
-        id: 'rooted-navigation',
-        displayName: 'Rooted Navigation',
-        version: '0.1.0',
-        componentTag: 'map-rooted-navigation-visualizer',
-        supportedTargets: [{ kind: 'holon-node' }],
-        load: async () => {},
-      });
-      const rootNodeElement = document.createElement('map-root-node-visualizer') as HTMLElement & {
-        setContext(context: VisualizerContext): void;
-      };
-      rootNodeElement.setContext({
-        title: (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey(),
-        target: { reference: activeHolonSpace },
-        holon: new DahnHolonView(activeHolonSpace),
-        actions: [],
-        theme,
-        canvas,
-        childVisualizers: new Map([['properties', propertiesElement]]),
-      });
-      homeDancerContext = {
-        title,
-        target: { reference: homeDancer },
-        holon: new DahnHolonView(activeHolonSpace),
-        actions: [],
-        theme,
-        canvas,
-        childVisualizers: new Map([['root-node', rootNodeElement]]),
-      };
-      await canvas.mountVisualizers([
-        {
-          visualizerId: 'rooted-navigation',
+        homeDancerContext = {
+          title,
           target: { reference: homeDancer },
-          slot: 'primary',
-        },
-      ]);
+          holon: new DahnHolonView(activeHolonSpace),
+          actions: [],
+          theme,
+          canvas,
+          childVisualizers: new Map([['root-node', rootNodeElement]]),
+        };
+        await canvas.mountVisualizers([
+          {
+            visualizerId: 'rooted-navigation',
+            target: { reference: homeDancer },
+            slot: 'primary',
+          },
+        ]);
+      } catch (error) {
+        canvas.showUnavailable('Home Dancer', error);
+      }
       this.canvasState.set('mounted');
+      profile.finish('mounted');
       dismissStartupOverlay();
     } catch (error) {
+      profile.finish('failed');
       this.failure.set(describeError(error));
       this.canvasState.set('realization-error');
       // A Canvas realization failure is terminal for this launch. Reveal the

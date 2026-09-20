@@ -43,7 +43,7 @@ use holons_core::query_layer::{Node, NodeCollection, QueryExpression};
 use holons_core::reference_layer::TransientReference;
 use holons_core::{
     core_shared_objects::{Holon, HolonCollection},
-    reference_layer::{HolonServiceApi, RelationshipCacheScope, SmartReference},
+    reference_layer::{HolonServiceApi, SmartReference},
     HolonCollectionApi, HolonReference, RelationshipMap, StagedReference,
 };
 use integrity_core_types::{LocalId, RelationshipName};
@@ -62,9 +62,8 @@ impl HolonServiceApi for ClientHolonService {
         self
     }
 
-    fn relationship_cache_scope(&self) -> RelationshipCacheScope {
-        RelationshipCacheScope::SpaceDefinitionalOnly
-    }
+    // This deprecated adapter inherits declared definitional reuse.
+    // Bounded inverse eligibility belongs to holons_client::ClientHolonService.
 
     fn commit_internal(
         &self,

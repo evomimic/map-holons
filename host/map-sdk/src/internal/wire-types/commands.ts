@@ -140,7 +140,7 @@ export type ReadableHolonActionWire =
   | 'GetAvailableProperties'
   | 'GetAvailableRelationships'
   | { GetPropertyValue: { name: PropertyName } }
-  | { GetRelatedHolons: { name: RelationshipName } };
+  | { GetRelatedHolons: { name: RelationshipName; require_fresh?: boolean } };
 
 // Mutating holon actions.
 export type WritableHolonActionWire =
@@ -235,7 +235,8 @@ export function isReadableHolonActionWire(
     (hasSingleKey(value, 'GetPropertyValue') &&
       isStringFieldObject(value.GetPropertyValue, 'name')) ||
     (hasSingleKey(value, 'GetRelatedHolons') &&
-      isStringFieldObject(value.GetRelatedHolons, 'name'))
+      isStringFieldObject(value.GetRelatedHolons, 'name') &&
+      (!('require_fresh' in value.GetRelatedHolons) || typeof value.GetRelatedHolons.require_fresh === 'boolean'))
   );
 }
 

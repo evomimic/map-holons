@@ -52,6 +52,19 @@ impl SpaceReadHandle {
         })
     }
 
+    pub(crate) fn get_related_holons_with_hint(
+        &self,
+        source: &HolonId,
+        name: &RelationshipName,
+        hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        self.with_cache_context(|context| {
+            context
+                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
+                .get_related_holons_with_hint(&context, source, name, hint)
+        })
+    }
+
     pub(crate) fn get_all_related_holons(
         &self,
         source_holon_id: &HolonId,

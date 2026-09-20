@@ -115,6 +115,117 @@
           "name": "DefinesDesignToken",
           "target": [
             {
+              "$ref": "LauncherSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "LauncherTextColor.DesignToken"
+            },
+            {
+              "$ref": "LauncherPadding.DesignToken"
+            },
+            {
+              "$ref": "LauncherPhaseGap.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorSize.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorColor.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorWidth.DesignToken"
+            },
+            {
+              "$ref": "LauncherIndicatorDuration.DesignToken"
+            },
+            {
+              "$ref": "LauncherDismissDuration.DesignToken"
+            },
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            },
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            },
+            {
+              "$ref": "InspectorContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingGap.DesignToken"
+            },
+            {
+              "$ref": "PropertiesRowGap.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "PropertyColumnGap.DesignToken"
+            },
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderFontWeight.DesignToken"
+            },
+            {
               "$ref": "CanvasGap.DesignToken"
             },
             {

@@ -9,21 +9,6 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-/// Lifetime over which a relationship collection may be reused.
-///
-/// A guest service lives for one dance request; a host service owns a cache
-/// shared by many transactions. Both reuse only declared definitional
-/// relationship membership, which is immutable for a saved source version.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RelationshipCacheScope {
-    /// The cache reuses declared definitional collections within one request.
-    RequestLocal,
-
-    /// The cache spans transactions and may reuse only declared definitional
-    /// relationship collections.
-    SpaceDefinitionalOnly,
-}
-
 /// The HolonServiceApi trait defines the public service interface for Holon operations
 /// in MAP. Its primary purpose is to provide a **shared abstraction** between client
 /// and guest contexts while isolating differences in their implementations.
@@ -42,11 +27,24 @@ pub enum RelationshipCacheScope {
 pub trait HolonServiceApi: Debug + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
 
-    /// States the lifetime semantics of the relationship cache paired with
-    /// this service. Both scopes apply descriptor-governed reuse; scope does
-    /// not authorize caching non-definitional or inverse membership.
-    fn relationship_cache_scope(&self) -> RelationshipCacheScope {
-        RelationshipCacheScope::RequestLocal
+    /// Monotonic service-local milliseconds for bounded cache reuse. No clock
+    /// means bounded entries cannot be retained. Guests need no OS clock.
+    fn relationship_cache_time_millis(&self) -> Option<u64> {
+        None
+    }
+
+    /// Decides whether a fetched saved collection may be retained. Called only
+    /// after a fetch, with no cache lock held. Cache hits skip this decision.
+    /// The default resolves declared policies. Request-local guests override it
+    /// with unconditional reuse; clients also resolve inverse descriptor policies.
+    fn relationship_cache_policy(
+        &self,
+        context: &Arc<TransactionContext>,
+        source_holon_id: &HolonId,
+        relationship_name: &RelationshipName,
+    ) -> Result<crate::RelationshipCachePolicy, HolonError> {
+        Ok(declared_relationship_cache_policy(context, source_holon_id, relationship_name)?
+            .unwrap_or(crate::RelationshipCachePolicy::Fresh))
     }
 
     /// This function commits the staged holons to the persistent store
@@ -169,4 +167,49 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
     ) -> Result<HolonReference, HolonError> {
         Err(HolonError::NotImplemented("ensure_local_holon_space_internal".to_string()))
     }
+}
+
+/// Resolves cache eligibility from the saved source's declared relationship contract.
+///
+/// Clients use this resolver for Space-scoped retention. Request-local guests
+/// select unconditional reuse instead. `None` means the name is not declared
+/// (or the source is undescribed), leaving inverse policy lookup to the client.
+/// This traversal uses only the kernel structural edges handled below, so it
+/// is safe even while another relationship's policy is being resolved.
+pub fn declared_relationship_cache_policy(
+    context: &Arc<TransactionContext>,
+    source_holon_id: &HolonId,
+    relationship_name: &RelationshipName,
+) -> Result<Option<crate::RelationshipCachePolicy>, HolonError> {
+    use crate::descriptors::effective_relationship_declaration;
+    use crate::RelationshipCachePolicy;
+    use type_names::{CoreRelationshipTypeName, ToRelationshipName};
+
+    // These version-bound structural edges bootstrap descriptor traversal;
+    // classifying them through the same graph would recurse indefinitely.
+    if matches!(relationship_name,
+        name if name == &CoreRelationshipTypeName::DescribedBy.to_relationship_name()
+            || name == &CoreRelationshipTypeName::Extends.to_relationship_name()
+            || name == &CoreRelationshipTypeName::InstanceRelationships.to_relationship_name()
+    ) {
+        return Ok(Some(RelationshipCachePolicy::Reuse));
+    }
+    let source =
+        HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
+    let declared = match effective_relationship_declaration(&source, relationship_name.clone()) {
+        Ok(descriptor) => descriptor,
+        Err(
+            HolonError::MissingDescribedBy { .. }
+            | HolonError::DescriptorDeclarationNotFound { .. },
+        ) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    Ok(Some(if declared.is_definitional()? {
+        RelationshipCachePolicy::Reuse
+    } else {
+        match declared.membership_cache_max_age_millis()? {
+            0 => RelationshipCachePolicy::Fresh,
+            age => RelationshipCachePolicy::MaxAgeMillis(age),
+        }
+    }))
 }

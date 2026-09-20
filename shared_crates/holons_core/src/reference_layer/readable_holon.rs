@@ -188,6 +188,15 @@ pub trait ReadableHolon: ReadableHolonImpl {
         ReadableHolonImpl::related_holons_impl(self, &rel)
     }
 
+    /// Reads membership using schema freshness or explicitly bypassing its cache.
+    fn related_holons_with_hint<T: ToRelationshipName>(
+        &self,
+        name: T,
+        hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        ReadableHolonImpl::related_holons_with_hint_impl(self, &name.to_relationship_name(), hint)
+    }
+
     /// Enumerates outbound relationships available from this source in its
     /// current lifecycle state.
     ///

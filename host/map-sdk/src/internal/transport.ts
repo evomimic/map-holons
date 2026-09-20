@@ -34,11 +34,21 @@ export async function invokeMapCommand(
   request: MapIpcRequest,
 ): Promise<MapIpcResponse> {
   let response: unknown;
+  const profiling = performance.getEntriesByName('map.startup.active', 'mark').length > 0;
+  const started = profiling ? performance.now() : 0;
 
   try {
     response = await invoke<MapIpcResponse>('dispatch_map_command', { request });
   } catch (cause) {
     throw new TransportError('Failed to invoke dispatch_map_command', cause);
+  } finally {
+    if (profiling) {
+      performance.measure('map.ipc', {
+        start: started,
+        end: performance.now(),
+        detail: commandProfileLabel(request.command),
+      });
+    }
   }
 
   if (!isRecord(response) || !isNumber(response['request_id'])) {
@@ -94,4 +104,22 @@ export function unwrapMapResponse(response: MapIpcResponse): MapResultWire {
     'MAP IPC response result envelope was malformed',
     response,
   );
+}
+
+
+/** Records only operation names, never command payloads or holon values. */
+function commandProfileLabel(command: MapIpcRequest['command']): string {
+  const [scope, body] = Object.entries(command)[0];
+  let action: unknown = isRecord(body) ? body['action'] : body;
+  const parts = [scope];
+  for (let depth = 0; depth < 2; depth++) {
+    if (typeof action === 'string') { parts.push(action); break; }
+    if (!isRecord(action)) break;
+    const [name, child] = Object.entries(action)[0] ?? [];
+    if (!name) break;
+    parts.push(name);
+    if (name !== 'Read' && name !== 'Write') break;
+    action = child;
+  }
+  return parts.join('.');
 }

@@ -56,6 +56,8 @@ pub enum ReadableHolonActionWire {
     /// `related_holons(name)` → `HolonCollection`
     GetRelatedHolons {
         name: RelationshipName,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        require_fresh: bool,
     },
 
     GetHolonDescriptor,
@@ -121,8 +123,15 @@ impl ReadableHolonActionWire {
             ReadableHolonActionWire::GetPropertyValue { name } => {
                 ReadableHolonAction::GetPropertyValue { name }
             }
-            ReadableHolonActionWire::GetRelatedHolons { name } => {
-                ReadableHolonAction::GetRelatedHolons { name }
+            ReadableHolonActionWire::GetRelatedHolons { name, require_fresh } => {
+                ReadableHolonAction::GetRelatedHolons {
+                    name,
+                    hint: if require_fresh {
+                        holons_core::RelationshipReadHint::RequireFresh
+                    } else {
+                        holons_core::RelationshipReadHint::SchemaDefault
+                    },
+                }
             }
             ReadableHolonActionWire::GetHolonDescriptor => ReadableHolonAction::GetHolonDescriptor,
             ReadableHolonActionWire::GetAvailableProperties => {

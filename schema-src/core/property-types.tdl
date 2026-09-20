@@ -424,3 +424,15 @@ property HolonId.PropertyType {
     plural: "HolonIds"
   }
 }
+
+property MembershipCacheMaxAgeMillis.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  header {
+    description: "Maximum age in milliseconds for host-cached mutable relationship membership. Missing or zero requires fresh reads; positive values permit bounded staleness. Callers may require fresh membership. Definitional declared membership remains version-bound."
+    display_name: "Membership cache maximum age (ms)"
+    display_plural: "Membership cache maximum ages (ms)"
+    plural: "MembershipCacheMaxAgesMillis"
+  }
+}

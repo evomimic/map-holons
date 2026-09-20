@@ -140,6 +140,22 @@ instance MAP.BootstrapCanvas {
 instance MAP.BootstrapCanvasVisualizer {
   type CanvasVisualizer.HolonType
   relationships {
+    ConsumesDesignToken -> [
+      CanvasContentMinHeight.DesignToken,
+      CanvasFontFamily.DesignToken,
+      CanvasFontSize.DesignToken,
+      CanvasFontWeight.DesignToken,
+      CanvasGap.DesignToken,
+      CanvasHeadingFontWeight.DesignToken,
+      CanvasLineHeight.DesignToken,
+      CanvasPadding.DesignToken,
+      CanvasSurfaceBackground.DesignToken,
+      CanvasTextColor.DesignToken,
+      SlotBorderColor.DesignToken,
+      SlotBorderStyle.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotPadding.DesignToken,
+    ]
     ApplicableToType -> Canvas.HolonType
     ImplementedBy -> MAP.BootstrapCanvasTypeScript.VisualizerImplementation
   }
@@ -159,6 +175,15 @@ instance MAP.BootstrapCanvasTypeScript.VisualizerImplementation {
 instance HolonInspector.NodeVisualizer {
   type NodeVisualizer.HolonType
   relationships {
+    ConsumesDesignToken -> [
+      CanvasGap.DesignToken,
+      InspectorContentMinHeight.DesignToken,
+      InspectorRailWidth.DesignToken,
+      SlotBorderColor.DesignToken,
+      SlotBorderStyle.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotPadding.DesignToken,
+    ]
     ApplicableToType -> HolonType.TypeDescriptor
     HasSlot -> HolonInspector.PropertyViewerSlot
     ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
@@ -176,7 +201,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:db95ca8a5c4a8c597ab01c468168f65461006f16de1e65a1eb18e7171c077038"
+  VisualizerArtifactDigest "sha256:293a0a63fe24d5d8af6aaf61beb2e71b163013a9ab23d5aa168c71242941d18b"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -220,6 +245,13 @@ holon RootedNavigationVisualizer.HolonType {
 instance PathInspector.RootedNavigationVisualizer {
   type RootedNavigationVisualizer.HolonType
   relationships {
+    ConsumesDesignToken -> [
+      CanvasGap.DesignToken,
+      SlotBorderColor.DesignToken,
+      SlotBorderStyle.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotPadding.DesignToken,
+    ]
     ApplicableToType -> HolonSpace.HolonType
     HasSlot -> PathInspector.RootNodeSlot
     ImplementedBy -> PathInspectorTypeScript.VisualizerImplementation
@@ -237,7 +269,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:2a848a082987045e94989ddee5cdbc3ca46ffebf316c1c6536125e682eaa9936"
+  VisualizerArtifactDigest "sha256:ca1e44811c1ac335c5132a83b72bc1706e3c2d709207e586ddc8ec6ee0451034"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -281,6 +313,12 @@ holon PropertyVisualizer.HolonType {
 instance GenericProperties.PropertiesVisualizer {
   type PropertiesVisualizer.HolonType
   relationships {
+    ConsumesDesignToken -> [
+      PropertiesHeadingFontSize.DesignToken,
+      PropertiesHeadingFontWeight.DesignToken,
+      PropertiesHeadingGap.DesignToken,
+      PropertiesRowGap.DesignToken,
+    ]
     ApplicableToType -> HolonType.TypeDescriptor
     HasSlot -> GenericProperties.PropertySlot
     ImplementedBy -> GenericPropertiesTypeScript.VisualizerImplementation
@@ -298,7 +336,7 @@ instance GenericPropertiesTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.properties"
-  VisualizerArtifactDigest "sha256:31fa6574c6dc5adcf5925f0f9c552bff85e98b7de595992179f717aa59774629"
+  VisualizerArtifactDigest "sha256:58c1bc54c92f11864bd966c1f4018b434460e827ed412b8bd99840076c54d340"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -309,6 +347,10 @@ instance GenericPropertiesTypeScript.VisualizerImplementation {
 instance GenericProperty.PropertyVisualizer {
   type PropertyVisualizer.HolonType
   relationships {
+    ConsumesDesignToken -> [
+      PropertyColumnGap.DesignToken,
+      PropertyNameMinWidth.DesignToken,
+    ]
     ApplicableToType -> PropertyType.TypeDescriptor
     HasSlot -> GenericProperty.ValueSlot
     ImplementedBy -> GenericPropertyTypeScript.VisualizerImplementation
@@ -326,7 +368,7 @@ instance GenericPropertyTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.property"
-  VisualizerArtifactDigest "sha256:815219b8b7d9351cac616face6ebeca59a0694998b2dbc06268cb94c407ba4ed"
+  VisualizerArtifactDigest "sha256:d636db6711922debf05b10986e503062ae9a503e6bf25eabb562faaf884cad72"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -521,6 +563,7 @@ relationship (Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor) {
 }
 
 inverse relationship (TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType) {
+  MembershipCacheMaxAgeMillis 30000
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source TypeDescriptor
@@ -537,7 +580,7 @@ inverse relationship (TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.Hol
   }
 }
 
-relationship (Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType) {
+def relationship (Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint

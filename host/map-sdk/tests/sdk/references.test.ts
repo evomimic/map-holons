@@ -250,10 +250,38 @@ describe('HolonReference', () => {
       txId,
       stagedReference,
       'related_to',
+      undefined,
+      false,
     );
     expect(collection).toBeInstanceOf(HolonCollection);
     expect(collection.members[0]).toBeInstanceOf(TransientHolonReference);
     expect(collection.members[1]).toBeInstanceOf(HolonReference);
+  });
+
+  it('forwards explicit fresh membership requests', async () => {
+    readRelatedHolonsMock.mockResolvedValue(relatedCollection);
+    await stagedHandle().relatedHolons('related_to', { requireFresh: true });
+    expect(readRelatedHolonsMock).toHaveBeenCalledWith(txId, stagedReference, 'related_to', undefined, true);
+  });
+
+  it('reads discovered property member names from local TypeName', async () => {
+    readAvailablePropertiesMock.mockResolvedValue(descriptorCollection);
+    readPropertyValueMock.mockImplementation(async (_tx, _reference, name) =>
+      name === 'TypeName' ? { StringValue: 'Title' } : null,
+    );
+
+    const properties = await stagedHandle().availableProperties();
+    await expect(properties[0].propertyName()).resolves.toBe('Title');
+  });
+
+  it('reads discovered relationship member names from local TypeName', async () => {
+    readAvailableRelationshipsMock.mockResolvedValue(qualifiedRelationships);
+    readPropertyValueMock.mockImplementation(async (_tx, _reference, name) =>
+      name === 'TypeName' ? { StringValue: 'OwnedBy' } : null,
+    );
+
+    const relationships = await stagedHandle().availableRelationships();
+    await expect(relationships[0].descriptor.relationshipName()).resolves.toBe('OwnedBy');
   });
 
   it('wraps descriptor discovery results in typed public handles', async () => {

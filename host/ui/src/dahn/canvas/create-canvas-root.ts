@@ -13,8 +13,12 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   root.style.flexDirection = 'column';
   root.style.gap = 'var(--dahn-canvas-gap)';
   root.style.padding = 'var(--dahn-canvas-padding)';
-  root.style.background = 'var(--dahn-canvas-surface-background, #f7f5ef)';
-  root.style.color = 'var(--dahn-canvas-text-color, #1d2430)';
+  root.style.background = 'var(--dahn-canvas-surface-background)';
+  root.style.color = 'var(--dahn-canvas-text-color)';
+  root.style.fontFamily = 'var(--dahn-canvas-font-family)';
+  root.style.fontSize = 'var(--dahn-canvas-font-size)';
+  root.style.fontWeight = 'var(--dahn-canvas-font-weight)';
+  root.style.lineHeight = 'var(--dahn-canvas-line-height)';
   root.style.height = '100%';
   root.style.minHeight = '100%';
 
@@ -23,9 +27,10 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   chrome.style.display = 'flex';
   chrome.style.alignItems = 'center';
   chrome.style.justifyContent = 'space-between';
-  chrome.style.borderBottom = '1px solid currentColor';
-  chrome.style.paddingBottom = 'var(--dahn-canvas-gap, 0.75rem)';
+  chrome.style.borderBottom = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
+  chrome.style.paddingBottom = 'var(--dahn-canvas-gap)';
   chrome.innerHTML = '<strong>MAP Canvas</strong><span>Desktop workspace</span>';
+  chrome.querySelector('strong')!.style.fontWeight = 'var(--dahn-canvas-heading-font-weight)';
 
   const hostedDancerRegion = document.createElement('section');
   hostedDancerRegion.dataset['dahnHostedDancerRegion'] = 'true';
@@ -34,11 +39,13 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   hostedDancerRegion.style.flexDirection = 'column';
   hostedDancerRegion.style.flexGrow = '1';
   hostedDancerRegion.style.minHeight = '0';
-  hostedDancerRegion.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
-  hostedDancerRegion.style.minHeight = '12rem';
+  hostedDancerRegion.style.gap = 'var(--dahn-canvas-gap)';
+  hostedDancerRegion.style.minHeight = 'var(--dahn-canvas-content-min-height)';
 
   const primarySlot = document.createElement('div');
   primarySlot.dataset['dahnCanvasSlot'] = 'primary';
+  primarySlot.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
+  primarySlot.style.padding = 'var(--dahn-slot-padding)';
   primarySlot.style.display = 'flex';
   primarySlot.style.flexDirection = 'column';
   primarySlot.style.flexGrow = '1';

@@ -99,7 +99,18 @@ impl Runtime {
         }
 
         let tx_id_for_snapshot = context.as_ref().map(|ctx| ctx.tx_id());
-        let result = self.route_command(command).await?;
+        let profile = std::env::var_os("MAP_PROFILE").is_some();
+        let route_started = std::time::Instant::now();
+        let routed = self.route_command(command).await;
+        let route_ms = route_started.elapsed().as_secs_f64() * 1000.0;
+        let snapshot_started = std::time::Instant::now();
+        if profile && routed.is_err() {
+            eprintln!(
+                "[MAP-PROFILE] command={} route_ms={:.3} outcome=error",
+                command_label, route_ms
+            );
+        }
+        let result = routed?;
 
         // Persist after every mutable non-commit command so the store can clear
         // the redo stack unconditionally. EU creation only happens when
@@ -110,6 +121,14 @@ impl Runtime {
             }
         }
 
+        if profile {
+            eprintln!(
+                "[MAP-PROFILE] command={} route_ms={:.3} recovery_ms={:.3}",
+                command_label,
+                route_ms,
+                snapshot_started.elapsed().as_secs_f64() * 1000.0
+            );
+        }
         Ok(result)
     }
 

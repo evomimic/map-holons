@@ -81,6 +81,9 @@ export class TableCollectionVisualizerElement
     const heading = document.createElement('h2');
     heading.dataset['tableCollection'] = 'header';
     heading.textContent = presentation.displayName;
+    heading.style.margin = '0';
+    heading.style.fontSize = 'var(--dahn-collection-heading-font-size)';
+    heading.style.fontWeight = 'var(--dahn-collection-heading-font-weight)';
     headerRegion.append(heading);
 
     const table = document.createElement('table');
@@ -90,12 +93,13 @@ export class TableCollectionVisualizerElement
     for (const column of presentation.columns) {
       const header = document.createElement('th');
       header.scope = 'col';
+      header.style.fontWeight = 'var(--dahn-table-header-font-weight)';
       header.dataset['columnId'] = column.id;
       header.textContent = column.displayName;
       header.style.backgroundColor =
         'var(--dahn-table-header-surface-background)';
       header.style.borderBottom =
-        'var(--dahn-table-cell-border-width) solid var(--dahn-table-cell-border-color)';
+        'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
       header.style.color = 'var(--dahn-table-header-text-color)';
       header.style.padding = 'var(--dahn-table-cell-padding)';
       headerRow.append(header);
@@ -112,7 +116,7 @@ export class TableCollectionVisualizerElement
         cell.dataset['columnId'] = column.id;
         cell.textContent = formatStaticValue(column.values[rowIndex]!);
         cell.style.borderBottom =
-          'var(--dahn-table-cell-border-width) solid var(--dahn-table-cell-border-color)';
+          'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
         cell.style.padding = 'var(--dahn-table-cell-padding)';
         row.append(cell);
       }

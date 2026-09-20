@@ -473,6 +473,9 @@
               "$ref": "IsDefinitional.PropertyType"
             },
             {
+              "$ref": "MembershipCacheMaxAgeMillis.PropertyType"
+            },
+            {
               "$ref": "IsOrdered.PropertyType"
             },
             {

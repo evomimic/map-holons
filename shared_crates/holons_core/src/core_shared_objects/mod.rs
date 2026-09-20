@@ -36,7 +36,7 @@ pub use nursery::Nursery;
 pub use nursery_access::NurseryAccess;
 pub use relationship::RelationshipMap;
 pub use relationship_behavior::{ReadableRelationship, WritableRelationship};
-pub use relationship_cache::{RelationshipCache, RelationshipCachePolicy};
+pub use relationship_cache::{RelationshipCache, RelationshipCachePolicy, RelationshipReadHint};
 pub use space_read_handle::SpaceReadHandle;
 pub use staged_relationship::StagedRelationshipMap;
 pub use transient_collection::TransientCollection;

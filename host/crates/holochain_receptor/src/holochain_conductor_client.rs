@@ -92,6 +92,9 @@ impl ConductorDanceCaller for HolochainConductorClient {
         request: DanceRequestEnvelope,
     ) -> Result<DanceResponseEnvelope, HolonError> {
         let is_load_holons = request.request.dance_name.0.as_str() == "load_holons";
+        let profiling = std::env::var_os("MAP_PROFILE").is_some();
+        let dance_name = profiling.then(|| request.request.dance_name.0.clone());
+        let round_trip_started = Instant::now();
 
         // --- Serialize request ---
         let payload: ExternIO = match ExternIO::encode(request) {
@@ -103,6 +106,8 @@ impl ConductorDanceCaller for HolochainConductorClient {
                 )));
             }
         };
+
+        let encode_ms = round_trip_started.elapsed().as_secs_f64() * 1000.0;
 
         // --- Clone websocket (POC safe) ---
         let ws = {
@@ -135,6 +140,15 @@ impl ConductorDanceCaller for HolochainConductorClient {
             );
         }
 
+        if let Some(dance) = dance_name {
+            tracing::debug!(
+                target: "map_profile",
+                guest_dance = %dance,
+                encode_ms,
+                call_ms = zome_call_started_at.elapsed().as_secs_f64() * 1000.0,
+                succeeded = result.is_ok()
+            );
+        }
         let extern_io = result
             .map_err(|error| HolonError::ConductorError(format!("Zome call failed: {error:?}")))?;
 

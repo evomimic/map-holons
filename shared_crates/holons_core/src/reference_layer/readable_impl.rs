@@ -25,6 +25,15 @@ pub trait ReadableHolonImpl {
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
 
+    fn related_holons_with_hint_impl(
+        &self,
+        name: &RelationshipName,
+        _hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        // Transaction-local variants always expose their current local state.
+        self.related_holons_impl(name)
+    }
+
     fn versioned_key_impl(&self) -> Result<MapString, HolonError>;
 
     fn property_map_impl(&self) -> Result<PropertyMap, HolonError>;

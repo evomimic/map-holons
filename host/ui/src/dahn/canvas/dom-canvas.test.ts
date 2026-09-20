@@ -193,3 +193,25 @@ describe('DomCanvas', () => {
     ).toBe('awaiting-home-dancer');
   });
 });
+
+it('keeps Canvas chrome and successful mounts when another visualizer fails', async () => {
+  const diagnostic = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const container = document.createElement('div');
+  const registry = new DefaultVisualizerRegistry();
+  customElements.define('test-healthy-sibling', createTestCanvasVisualizerElementClass());
+  registry.register({
+    id: 'healthy', displayName: 'Healthy', version: '1',
+    componentTag: 'test-healthy-sibling', supportedTargets: [{ kind: 'holon-node' }],
+    load: async () => {},
+  });
+  const canvas = new DomCanvas(container, registry, () => ({}) as VisualizerContext);
+  const target = {} as DahnTarget;
+  await canvas.mountVisualizers([
+    { visualizerId: 'missing', target, slot: 'primary' },
+    { visualizerId: 'healthy', target, slot: 'primary' },
+  ]);
+  expect(container.querySelector('[data-dahn-canvas-chrome]')).not.toBeNull();
+  expect(container.querySelector('[data-dahn-region-state="unavailable"]')).not.toBeNull();
+  expect(container.querySelector('test-healthy-sibling')?.getAttribute('data-context-applied')).toBe('true');
+  diagnostic.mockRestore();
+});

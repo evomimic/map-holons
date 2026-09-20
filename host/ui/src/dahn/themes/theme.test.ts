@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import type { HolonReference } from '../deps/map-sdk';
 import { HolonSpaceThemeResolver } from './holon-space-theme-resolver';
 import { Theme } from './theme';
@@ -121,5 +123,38 @@ describe('Theme', () => {
     await expect(
       new HolonSpaceThemeResolver(space).resolveTheme(),
     ).resolves.toBeInstanceOf(Theme);
+  });
+});
+
+
+describe('bundled theme coverage', () => {
+  it('projects both authored themes and keeps launcher CSS identical to the bootstrap theme', async () => {
+    const read = async (path: string) => JSON.parse(await readFile(resolve(process.cwd(), '..', path), 'utf8'));
+    const files = await Promise.all([
+      read('generated/json-imports/design-tokens/schema.json'),
+      read('generated/json-imports/meta-design-system/schema.json'),
+      read('generated/json-imports/theme/schema.json'),
+      read('generated/visualizer-commons/default-presentation/imports/schema.json'),
+    ]);
+    const holons = new Map(files.flatMap(file => file.holons).map(holon => [holon.key, holon]));
+    const fixture = (key: string): ReferenceFixture => {
+      const holon = holons.get(key)!;
+      const relevant = ['ForMetaDesignSystem', 'DefinesDesignToken', 'HasThemeTokenAssignment', 'ForDesignToken', 'HasDesignTokenType'];
+      return {
+        key,
+        versionedKey: key + '@1',
+        properties: holon.properties,
+        relationships: Object.fromEntries(holon.relationships
+          .filter((relationship: { name: string }) => relevant.includes(relationship.name))
+          .map((relationship: { name: string; target: { $ref: string }[] }) =>
+            [relationship.name, relationship.target.map(target => fixture(target.$ref))])),
+      };
+    };
+    const bootstrap = await new Theme(reference(fixture('MAP.BootstrapTheme'))).toCssCustomProperties();
+    const alternate = await new Theme(reference(fixture('DAHN.DefaultTheme'))).toCssCustomProperties();
+    expect(Object.keys(alternate.cssCustomProperties).sort()).toEqual(Object.keys(bootstrap.cssCustomProperties).sort());
+    const css = await readFile(resolve(process.cwd(), 'ui/src/launcher-theme.generated.css'), 'utf8');
+    const declarations = Object.fromEntries([...css.matchAll(/(--dahn-[a-z-]+): ([^;]+);/g)].map(match => [match[1], match[2]]));
+    expect(declarations).toEqual(bootstrap.cssCustomProperties);
   });
 });

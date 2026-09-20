@@ -179,6 +179,7 @@ abstract holon MetaRelationshipType.MetaTypeDescriptor {
   relationships {
     InstanceProperties -> [
       IsDefinitional.PropertyType,
+      MembershipCacheMaxAgeMillis.PropertyType,
       IsOrdered.PropertyType,
       AllowsDuplicates.PropertyType,
       DeletionSemantic.PropertyType,

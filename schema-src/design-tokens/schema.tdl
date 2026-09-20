@@ -197,7 +197,7 @@ property DesignTokenName.PropertyType {
   }
 }
 
-relationship (DesignToken.HolonType)-[HasDesignTokenType]->(DesignTokenType.ValueType) {
+def relationship (DesignToken.HolonType)-[HasDesignTokenType]->(DesignTokenType.ValueType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> ExactlyOne.CardinalityConstraint
@@ -229,5 +229,312 @@ inverse relationship (DesignTokenType.ValueType)-[TypesDesignToken]->(DesignToke
     display_name: "Types Design Token"
     display_plural: "Types Design Token Relationships"
     plural: "TypesDesignTokenRelationships"
+  }
+}
+
+instance CanvasFontFamily.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasFontFamily"
+  relationships {
+    HasDesignTokenType -> FontFamily.DesignTokenType
+  }
+}
+
+instance CanvasFontSize.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasFontSize"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance CanvasFontWeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasFontWeight"
+  relationships {
+    HasDesignTokenType -> FontWeight.DesignTokenType
+  }
+}
+
+instance CanvasLineHeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasLineHeight"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance CanvasHeadingFontWeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasHeadingFontWeight"
+  relationships {
+    HasDesignTokenType -> FontWeight.DesignTokenType
+  }
+}
+
+instance CanvasContentMinHeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CanvasContentMinHeight"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance SlotBorderColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "SlotBorderColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance SlotBorderWidth.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "SlotBorderWidth"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance SlotBorderStyle.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "SlotBorderStyle"
+  relationships {
+    HasDesignTokenType -> StrokeStyle.DesignTokenType
+  }
+}
+
+instance SlotPadding.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "SlotPadding"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance InspectorRailWidth.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "InspectorRailWidth"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance InspectorContentMinHeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "InspectorContentMinHeight"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance PropertiesHeadingGap.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PropertiesHeadingGap"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance PropertiesRowGap.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PropertiesRowGap"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance PropertiesHeadingFontSize.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PropertiesHeadingFontSize"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance PropertiesHeadingFontWeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PropertiesHeadingFontWeight"
+  relationships {
+    HasDesignTokenType -> FontWeight.DesignTokenType
+  }
+}
+
+instance PropertyColumnGap.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PropertyColumnGap"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance PropertyNameMinWidth.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PropertyNameMinWidth"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance TableCellBorderStyle.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableCellBorderStyle"
+  relationships {
+    HasDesignTokenType -> StrokeStyle.DesignTokenType
+  }
+}
+
+instance CollectionHeadingFontSize.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionHeadingFontSize"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance CollectionHeadingFontWeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "CollectionHeadingFontWeight"
+  relationships {
+    HasDesignTokenType -> FontWeight.DesignTokenType
+  }
+}
+
+instance TableHeaderFontWeight.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "TableHeaderFontWeight"
+  relationships {
+    HasDesignTokenType -> FontWeight.DesignTokenType
+  }
+}
+
+value Duration.DesignTokenType {
+  type MetaStringValueType.MetaValueType
+  extends DesignTokenType.ValueType
+  header {
+    description: "Elapsed presentation time for animations and transitions."
+    display_name: "Duration"
+    display_plural: "Durations"
+    plural: "Durations"
+  }
+}
+
+instance LauncherSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance LauncherTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance LauncherPadding.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherPadding"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance LauncherPhaseGap.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherPhaseGap"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance LauncherIndicatorSize.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherIndicatorSize"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance LauncherIndicatorColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherIndicatorColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance LauncherIndicatorWidth.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherIndicatorWidth"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance LauncherIndicatorDuration.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherIndicatorDuration"
+  relationships {
+    HasDesignTokenType -> Duration.DesignTokenType
+  }
+}
+
+instance LauncherDismissDuration.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "LauncherDismissDuration"
+  relationships {
+    HasDesignTokenType -> Duration.DesignTokenType
+  }
+}
+
+instance ActionSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ActionSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance ActionHoverSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ActionHoverSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance ActionTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ActionTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance ActionPaddingBlock.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ActionPaddingBlock"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance ActionPaddingInline.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ActionPaddingInline"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance ActionCornerRadius.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ActionCornerRadius"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
   }
 }
