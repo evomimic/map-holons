@@ -23,6 +23,7 @@ This records functional acceptance against [Issue 706](https://github.com/evomim
 - SDK: 270 tests passed; SDK typecheck passed.
 - UI with committed acceptance evidence: 62 tests passed across 22 files.
 - Focused Holochain `book_value_presentation_acceptance`: passed. This executes the loader/commit path, descriptor discovery, command selection with parent slot checks, verified materialization, and one-use artifact retrieval.
+- Existing Holochain `runtime_behavior_matrix`: passed (261 seconds), including the extended fixture and downstream runtime scenarios.
 - Schema compiler: 42 tests passed; generated source check and 21-file round-trip passed.
 - SDK fixture regeneration and repository formatting checks passed.
 - Browser inspection of the exact exported artifacts confirmed scalar values, absent Subtitle, nested borders, and Properties/Collections placement.
