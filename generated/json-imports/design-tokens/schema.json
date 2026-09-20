@@ -1254,6 +1254,23 @@
           ]
         }
       ]
+    },
+    {
+      "key": "PropertiesDisclosureFocusColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertiesDisclosureFocusColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

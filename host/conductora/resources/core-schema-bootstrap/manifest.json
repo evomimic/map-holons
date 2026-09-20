@@ -115,19 +115,19 @@
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "1a154290af6d4e868ce85868b568c1eafe31afe19b0653da1300de8827a1d355"
+      "sha256": "b399778c944c23492efa939d6cbd3714325f9d70b665b19e36ea85b9697aa13b"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "cdc969c55d5f8cd9aa27bba005e6604cd14ef82ee6d864fee749d4aff4f4199f"
+      "sha256": "b182cd909cbf00ac07f7d278cf4953b94a1ff86f9c27ba238dbfe5099a5cd01e"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "dd990914b7a0a3761a3c33fdabfeb55dc01dae11e6bae6edfe72900304cfc007"
+      "sha256": "d4d8c21bcefe6cc054e88bf21dd85735de1120dcbd8f26027200390faef95312"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "f621e2c99d3e985e078cabbb9f72a9df7b776785839347dfac56f37ad21a1fb1"
+      "sha256": "0ebe6773758bb7da6ae75e11b1cd92c93e172b0ebd261eff98c14677adb42195"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -1017,6 +1017,10 @@
     },
     {
       "key": "BootstrapThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertiesDisclosureFocusColor",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -2254,6 +2258,10 @@
     {
       "key": "Projection.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "PropertiesDisclosureFocusColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "PropertiesHeadingFontSize.DesignToken",

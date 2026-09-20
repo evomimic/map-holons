@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineCustomElementOnce } from './define-custom-element-once';
 
 type Materialized = { source: string; entrypoint: string; selected: string };
@@ -13,7 +13,10 @@ async function realize(module: Materialized): Promise<Element> {
 // Rust selection/materialization. No selection policy lives in this consumer.
 const evidencePath = process.env['MAP_VALUE_PRESENTATION_EVIDENCE'];
 describe.skipIf(evidencePath === undefined)('committed Book presentation acceptance', () => {
+  afterEach(() => vi.unstubAllGlobals());
   it('renders the actual Rust-selected artifacts and every committed scalar family', async () => {
+    // jsdom checks composition; the browser harness checks actual layout.
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
     const evidence = JSON.parse(await readFile(evidencePath!, 'utf8'));
     const children = new Map<string, HTMLElement>();
     for (const field of evidence.fields) {

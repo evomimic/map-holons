@@ -47,3 +47,19 @@ node scripts/render-value-presentation-acceptance.mjs \
 The JSON contains only fixture values and the verified Rust-selected module sources. The browser harness consumes those selections without discovering candidates or substituting a fallback. Without the evidence environment variable, the ordinary UI suite skips only the committed-artifact acceptance test; the scalar and composition artifact tests still run.
 
 The focused Rust test is ignored in ordinary runs to avoid duplicating bootstrap; its assertions also run in `runtime_behavior_matrix`. The existing `runtime_behavior_matrix` Sweettest exercises other consumers of the extended Book/Person schema. GitHub CI and final merge status must be evaluated on the delivered PR head; local acceptance alone does not establish those results.
+
+## Responsive disclosure correction
+
+Manual Conductora testing found that the original unconstrained browser harness missed an overlap between overflowing Properties and Collections. The user's hApp build, host build, and `npm start` succeeded, but that layout result invalidated bounded-region visual acceptance.
+
+The corrected harness uses the production Canvas root and Path Inspector around the selected Node, with a viewport-height allocation. Properties now measures complete rows in supplied order, reserves a stationary disclosure footer when necessary, and initially exposes only the prefix that fits. “Show m more properties” enables scrolling within the list; “Show fewer properties” restores the prefix and scroll origin. No Rust ordering or salience policy is added. Hidden children remain mounted, inert, and excluded from the accessibility tree.
+
+The control reuses action spacing/hover tokens and adds a theme-assigned `PropertiesDisclosureFocusColor` token. Parent content regions can shrink within their allocations. Resize observation covers the region, heading, footer, list content, and row sizes; writes are coalesced by animation frame and skipped when the presentation state is unchanged.
+
+Real-browser checks are available by serving the generated acceptance HTML and opening it with `?check-layout=1`. `scripts/value-presentation-layout-checks.mjs` verifies ordered-prefix fitting, the hidden count, inaccessible hidden rows, stable pane/footer geometry, expanded-list scrolling, collapse/reset, height and width changes, changed child heights, and an allocation that fits only the disclosure. Keyboard checks additionally exercised Space to expand, End to scroll the focused list, and Enter to collapse with focus retained. The checks use the full bounded composition, not an unconstrained page.
+
+Focused UI coverage now includes `properties-disclosure.artifact.test.ts`; the suite passes 67 tests when supplied with the committed-artifact evidence. UI typecheck, schema source consistency/round-trip, and all 42 schema compiler tests also pass. Artifact digests and bootstrap/theme resources are regenerated from authored TDL.
+
+On September 20, 2026, the user reran Conductora with `npm start` after the disclosure revisions and confirmed that show more, scrolling, and show fewer all work. The supplied screenshots (08:02:13, 08:02:34, and 08:02:46) show the collapsed two-property prefix, the expanded list scrolled to later properties, and the restored prefix, with Collections remaining outside the Properties pane. This supplies manual application verification of the overlap correction.
+
+Final user-reported validation after the latest revisions: `npm test` completed successfully, hApp and host builds succeeded, and `npm start` behaved as expected. This supersedes the earlier full-suite result from before the disclosure revisions. The final regenerated artifacts also passed focused Holochain acceptance (95.95 seconds), all 67 UI tests, and the bounded browser layout checks. Publication is authorized; merge remains pending review and is not authorized by this closeout request.

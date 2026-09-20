@@ -157,6 +157,7 @@ describe('bundled theme coverage', () => {
     const declarations = Object.fromEntries([...css.matchAll(/(--dahn-[a-z-]+): ([^;]+);/g)].map(match => [match[1], match[2]]));
     expect(declarations).toEqual(bootstrap.cssCustomProperties);
     for (const theme of [bootstrap, alternate]) {
+      expect(theme.cssCustomProperties['--dahn-properties-disclosure-focus-color']).toMatch(/^#/);
       expect(theme.cssCustomProperties['--dahn-slot-border-style']).toBe('solid');
       expect(theme.cssCustomProperties['--dahn-slot-border-width']).not.toBe('0');
       expect(theme.cssCustomProperties['--dahn-slot-border-color']).toMatch(/^#/);

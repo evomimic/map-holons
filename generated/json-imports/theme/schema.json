@@ -855,6 +855,9 @@
               "$ref": "BootstrapThemeCanvasContentMinHeight"
             },
             {
+              "$ref": "BootstrapThemePropertiesDisclosureFocusColor"
+            },
+            {
               "$ref": "BootstrapThemeSlotBorderColor"
             },
             {
@@ -1778,6 +1781,23 @@
           "target": [
             {
               "$ref": "ActionCornerRadius.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#60a5c7"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesDisclosureFocusColor.DesignToken"
             }
           ]
         }

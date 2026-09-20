@@ -281,6 +281,7 @@ instance MAP.BootstrapTheme {
       BootstrapThemeCanvasLineHeight,
       BootstrapThemeCanvasHeadingFontWeight,
       BootstrapThemeCanvasContentMinHeight,
+      BootstrapThemePropertiesDisclosureFocusColor,
       BootstrapThemeSlotBorderColor,
       BootstrapThemeSlotBorderWidth,
       BootstrapThemeSlotBorderStyle,
@@ -704,5 +705,13 @@ instance BootstrapThemeActionCornerRadius {
   PresentationValue "0.25rem"
   relationships {
     ForDesignToken -> ActionCornerRadius.DesignToken
+  }
+}
+
+instance BootstrapThemePropertiesDisclosureFocusColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#60a5c7"
+  relationships {
+    ForDesignToken -> PropertiesDisclosureFocusColor.DesignToken
   }
 }

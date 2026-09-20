@@ -538,3 +538,11 @@ instance ActionCornerRadius.DesignToken {
     HasDesignTokenType -> Dimension.DesignTokenType
   }
 }
+
+instance PropertiesDisclosureFocusColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PropertiesDisclosureFocusColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}

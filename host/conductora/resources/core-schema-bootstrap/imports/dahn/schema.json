@@ -612,7 +612,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:293a0a63fe24d5d8af6aaf61beb2e71b163013a9ab23d5aa168c71242941d18b",
+        "VisualizerArtifactDigest": "sha256:0ae4d446d796d246b03611c67e1cb0412604c791f0a207ecfa843d5c7800fcc7",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -826,7 +826,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:ca1e44811c1ac335c5132a83b72bc1706e3c2d709207e586ddc8ec6ee0451034",
+        "VisualizerArtifactDigest": "sha256:e2ba373147af80d8f271e4aa191582fb04c97f85c34c287d51a8d82bdf99855a",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -982,6 +982,24 @@
               "$ref": "PropertiesRowGap.DesignToken"
             },
             {
+              "$ref": "PropertiesDisclosureFocusColor.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
               "$ref": "SlotBorderColor.DesignToken"
             },
             {
@@ -1049,7 +1067,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:639cf7e4663b150606796ca6dbcd0b099cb7d263c83d5d6a60b3dbaf2bd88211",
+        "VisualizerArtifactDigest": "sha256:49162162447f12d44362694024f5e5dfc12325f19a61226aa27efc14f0b77bcd",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

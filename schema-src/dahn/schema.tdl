@@ -201,7 +201,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:293a0a63fe24d5d8af6aaf61beb2e71b163013a9ab23d5aa168c71242941d18b"
+  VisualizerArtifactDigest "sha256:0ae4d446d796d246b03611c67e1cb0412604c791f0a207ecfa843d5c7800fcc7"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -269,7 +269,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:ca1e44811c1ac335c5132a83b72bc1706e3c2d709207e586ddc8ec6ee0451034"
+  VisualizerArtifactDigest "sha256:e2ba373147af80d8f271e4aa191582fb04c97f85c34c287d51a8d82bdf99855a"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -318,6 +318,12 @@ instance GenericProperties.PropertiesVisualizer {
       PropertiesHeadingFontWeight.DesignToken,
       PropertiesHeadingGap.DesignToken,
       PropertiesRowGap.DesignToken,
+      PropertiesDisclosureFocusColor.DesignToken,
+      CanvasTextColor.DesignToken,
+      ActionHoverSurfaceBackground.DesignToken,
+      ActionPaddingBlock.DesignToken,
+      ActionPaddingInline.DesignToken,
+      ActionCornerRadius.DesignToken,
       SlotBorderColor.DesignToken,
       SlotBorderWidth.DesignToken,
       SlotBorderStyle.DesignToken,
@@ -340,7 +346,7 @@ instance GenericPropertiesTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.properties"
-  VisualizerArtifactDigest "sha256:639cf7e4663b150606796ca6dbcd0b099cb7d263c83d5d6a60b3dbaf2bd88211"
+  VisualizerArtifactDigest "sha256:49162162447f12d44362694024f5e5dfc12325f19a61226aa27efc14f0b77bcd"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

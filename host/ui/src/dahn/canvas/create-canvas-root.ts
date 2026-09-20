@@ -20,6 +20,7 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   root.style.fontWeight = 'var(--dahn-canvas-font-weight)';
   root.style.lineHeight = 'var(--dahn-canvas-line-height)';
   root.style.height = '100%';
+  root.style.overflow = 'hidden';
   root.style.minHeight = '100%';
 
   const chrome = document.createElement('header');
@@ -38,9 +39,9 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   hostedDancerRegion.style.display = 'flex';
   hostedDancerRegion.style.flexDirection = 'column';
   hostedDancerRegion.style.flexGrow = '1';
+  // The viewport allocation takes precedence over the content's preferred height.
   hostedDancerRegion.style.minHeight = '0';
   hostedDancerRegion.style.gap = 'var(--dahn-canvas-gap)';
-  hostedDancerRegion.style.minHeight = 'var(--dahn-canvas-content-min-height)';
 
   const primarySlot = document.createElement('div');
   primarySlot.dataset['dahnCanvasSlot'] = 'primary';

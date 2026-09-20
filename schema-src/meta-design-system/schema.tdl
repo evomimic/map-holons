@@ -63,6 +63,7 @@ instance MAP.BootstrapMetaDesignSystem {
       CanvasLineHeight.DesignToken,
       CanvasHeadingFontWeight.DesignToken,
       CanvasContentMinHeight.DesignToken,
+      PropertiesDisclosureFocusColor.DesignToken,
       SlotBorderColor.DesignToken,
       SlotBorderWidth.DesignToken,
       SlotBorderStyle.DesignToken,

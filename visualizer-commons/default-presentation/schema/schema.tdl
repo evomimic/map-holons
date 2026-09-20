@@ -34,6 +34,7 @@ instance DAHN.DefaultMetaDesignSystem {
       CanvasLineHeight.DesignToken,
       CanvasHeadingFontWeight.DesignToken,
       CanvasContentMinHeight.DesignToken,
+      PropertiesDisclosureFocusColor.DesignToken,
       SlotBorderColor.DesignToken,
       SlotBorderWidth.DesignToken,
       SlotBorderStyle.DesignToken,
@@ -95,6 +96,7 @@ instance DAHN.DefaultTheme {
       DAHN.DefaultTheme.CanvasLineHeight.ThemeTokenAssignment,
       DAHN.DefaultTheme.CanvasHeadingFontWeight.ThemeTokenAssignment,
       DAHN.DefaultTheme.CanvasContentMinHeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertiesDisclosureFocusColor.ThemeTokenAssignment,
       DAHN.DefaultTheme.SlotBorderColor.ThemeTokenAssignment,
       DAHN.DefaultTheme.SlotBorderWidth.ThemeTokenAssignment,
       DAHN.DefaultTheme.SlotBorderStyle.ThemeTokenAssignment,
@@ -506,5 +508,13 @@ instance DAHN.DefaultTheme.ActionCornerRadius.ThemeTokenAssignment {
   PresentationValue "0.25rem"
   relationships {
     ForDesignToken -> ActionCornerRadius.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertiesDisclosureFocusColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#245878"
+  relationships {
+    ForDesignToken -> PropertiesDisclosureFocusColor.DesignToken
   }
 }

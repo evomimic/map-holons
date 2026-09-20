@@ -21,6 +21,7 @@ export default class PathInspectorElement extends HTMLElement {
     rootNodeRegion.style.display = 'flex';
     rootNodeRegion.style.flex = '1 1 auto';
     rootNodeRegion.style.minHeight = '0';
+    rootNodeRegion.style.overflow = 'hidden';
 
     const rootNode = context.childVisualizers?.get('root-node');
     if (rootNode === undefined) {

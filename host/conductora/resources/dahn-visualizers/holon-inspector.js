@@ -5,8 +5,9 @@ export default class HolonInspectorElement extends HTMLElement {
     this.style.display = 'grid';
     this.style.flex = '1 1 auto';
     this.style.minHeight = '0';
+    this.style.overflow = 'hidden';
     this.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
-    this.style.gridTemplateRows = 'auto minmax(var(--dahn-inspector-content-min-height), 1fr) auto';
+    this.style.gridTemplateRows = 'auto minmax(0, 1fr) auto';
     this.style.gap = 'var(--dahn-canvas-gap)';
 
     const title = document.createElement('header');
@@ -23,6 +24,10 @@ export default class HolonInspectorElement extends HTMLElement {
     propertyViewer.style.gridColumn = '1';
     propertyViewer.style.gridRow = '2';
     propertyViewer.style.minWidth = '0';
+    propertyViewer.style.minHeight = '0';
+    propertyViewer.style.overflow = 'hidden';
+    propertyViewer.style.display = 'flex';
+    propertyViewer.style.flexDirection = 'column';
     const propertiesVisualizer = context.childVisualizers?.get('properties');
     if (propertiesVisualizer === undefined) {
       propertyViewer.textContent = 'Property Viewer Pane';
@@ -46,6 +51,7 @@ export default class HolonInspectorElement extends HTMLElement {
     body.style.gridColumn = '1 / -1';
     body.style.gridRow = '2';
     body.style.display = 'grid';
+    body.style.minHeight = '0';
     body.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
     body.style.gridTemplateRows = 'auto minmax(0, 1fr)';
     body.style.gap = 'var(--dahn-canvas-gap)';
