@@ -1,39 +1,18 @@
 use std::collections::HashSet;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc, RwLock,
-};
+use std::sync::{Arc, RwLock};
 use tracing::{debug, info};
 
 use super::{holon_cache::HolonCache, Holon};
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::reference_layer::{
-    HolonReference, HolonServiceApi, ReadableHolon, RelationshipCacheScope,
-};
-use crate::{
-    HolonCacheAccess, HolonCollection, RelationshipCache, RelationshipCachePolicy, RelationshipMap,
-};
+use crate::reference_layer::{HolonReference, HolonServiceApi, ReadableHolon};
+use crate::{HolonCacheAccess, HolonCollection, RelationshipCache, RelationshipMap};
 use core_types::{HolonError, HolonId, RelationshipName};
-use type_names::{CoreRelationshipTypeName, ToRelationshipName};
 
 #[derive(Debug)]
 pub struct HolonCacheManager {
     cache: HolonCache, // Thread-safe cache of holons
     relationship_cache: RwLock<RelationshipCache>,
     holon_service: Arc<dyn HolonServiceApi>,
-    /// Prevents descriptor traversal used to classify a host cache read from
-    /// recursively re-entering that same classification path.
-    relationship_semantics_resolution_depth: AtomicUsize,
-}
-
-struct RelationshipSemanticsResolutionGuard<'a> {
-    depth: &'a AtomicUsize,
-}
-
-impl Drop for RelationshipSemanticsResolutionGuard<'_> {
-    fn drop(&mut self) {
-        self.depth.fetch_sub(1, Ordering::Release);
-    }
 }
 
 impl HolonCacheManager {
@@ -43,18 +22,6 @@ impl HolonCacheManager {
             cache: HolonCache::new(),
             relationship_cache: RwLock::new(RelationshipCache::new()),
             holon_service,
-            relationship_semantics_resolution_depth: AtomicUsize::new(0),
-        }
-    }
-
-    fn resolving_relationship_semantics(&self) -> bool {
-        self.relationship_semantics_resolution_depth.load(Ordering::Acquire) > 0
-    }
-
-    fn enter_relationship_semantics_resolution(&self) -> RelationshipSemanticsResolutionGuard<'_> {
-        self.relationship_semantics_resolution_depth.fetch_add(1, Ordering::AcqRel);
-        RelationshipSemanticsResolutionGuard {
-            depth: &self.relationship_semantics_resolution_depth,
         }
     }
 
@@ -76,82 +43,14 @@ impl HolonCacheManager {
             self.holon_service.as_ref(),
             source_holon_id,
             relationship_name,
-            || self.relationship_cache_policy(context, source_holon_id, relationship_name),
+            || {
+                self.holon_service.relationship_cache_policy(
+                    context,
+                    source_holon_id,
+                    relationship_name,
+                )
+            },
         )
-    }
-
-    fn space_relationship_cache_policy(
-        &self,
-        context: &Arc<TransactionContext>,
-        source_holon_id: &HolonId,
-        relationship_name: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        // These kernel structural edges define the immutable descriptor graph
-        // used to classify every application relationship. Resolving their
-        // cache policy through that same graph would recurse indefinitely;
-        // their membership is version-bound for every saved source and may be
-        // reused without further descriptor traversal.
-        if matches!(
-            relationship_name,
-            name if name == &CoreRelationshipTypeName::DescribedBy.to_relationship_name()
-                || name == &CoreRelationshipTypeName::Extends.to_relationship_name()
-                || name == &CoreRelationshipTypeName::InstanceRelationships.to_relationship_name()
-        ) {
-            return Ok(RelationshipCachePolicy::Reuse);
-        }
-
-        // Resolving the declared source contract traverses the descriptor graph
-        // through ordinary relationship reads. Those reads must not recursively
-        // attempt to classify themselves for the space-wide cache. They remain
-        // correct as fresh reads; the guard is deliberately conservative across
-        // concurrent callers, where it may cause an additional fresh read but
-        // never reuse mutable relationship membership.
-        if self.resolving_relationship_semantics() {
-            return Ok(RelationshipCachePolicy::Fresh);
-        }
-        let _resolution_guard = self.enter_relationship_semantics_resolution();
-
-        let source =
-            HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
-        match source.holon_descriptor() {
-            Ok(descriptor) => descriptor
-                .effective_declared_relationships()?
-                .into_iter()
-                .find(|declared| {
-                    declared.base_relationship_name().is_ok_and(|name| name == *relationship_name)
-                })
-                .map(|declared| {
-                    if declared.is_definitional()? {
-                        Ok(RelationshipCachePolicy::Reuse)
-                    } else {
-                        Ok(RelationshipCachePolicy::Fresh)
-                    }
-                })
-                // An inverse or unknown name is not part of the immutable
-                // source contract. Preserve read behavior, but never retain
-                // its membership in the cross-transaction cache.
-                .unwrap_or(Ok(RelationshipCachePolicy::Fresh)),
-            // Legacy saved holons may predate the `DescribedBy` contract. They
-            // cannot establish cross-transaction stability, but remain readable.
-            Err(HolonError::MissingDescribedBy { .. }) => Ok(RelationshipCachePolicy::Fresh),
-            Err(error) => Err(error),
-        }
-    }
-
-    fn relationship_cache_policy(
-        &self,
-        context: &Arc<TransactionContext>,
-        source_holon_id: &HolonId,
-        relationship_name: &RelationshipName,
-    ) -> Result<RelationshipCachePolicy, HolonError> {
-        // Cache lifetime does not make mutable membership immutable. Both
-        // request-local and space caches use the same descriptor-governed policy.
-        match self.holon_service.relationship_cache_scope() {
-            RelationshipCacheScope::RequestLocal
-            | RelationshipCacheScope::SpaceDefinitionalOnly => {
-                self.space_relationship_cache_policy(context, source_holon_id, relationship_name)
-            }
-        }
     }
 }
 
@@ -201,6 +100,28 @@ impl HolonCacheAccess for HolonCacheManager {
         self.related_holons_with_policy(context, source_holon_id, relationship_name)
     }
 
+    fn get_related_holons_with_hint(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
+        hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        let cache = self
+            .relationship_cache
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .clone();
+        cache.related_holons_with_hint(
+            context,
+            self.holon_service.as_ref(),
+            source,
+            name,
+            hint,
+            || self.holon_service.relationship_cache_policy(context, source, name),
+        )
+    }
+
     fn get_all_related_holons(
         &self,
         context: &Arc<TransactionContext>,
@@ -209,10 +130,6 @@ impl HolonCacheAccess for HolonCacheManager {
         let source =
             HolonReference::smart_from_id(context.space_read_handle(), source_holon_id.clone());
         let relationship_names = {
-            // Discovery reads the descriptor graph through this cache manager.
-            // Release its recursion guard before named reads classify membership
-            // for reuse, otherwise eligible collections would be forced fresh.
-            let _resolution_guard = self.enter_relationship_semantics_resolution();
             let mut seen = HashSet::new();
             let mut names = Vec::new();
             for relationship in source.available_relationships()? {

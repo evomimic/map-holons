@@ -289,6 +289,15 @@ impl ReadableHolonImpl for SmartReference {
         Ok(prop_val)
     }
 
+    fn related_holons_with_hint_impl(
+        &self,
+        name: &RelationshipName,
+        hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        self.is_accessible(AccessType::Read)?;
+        self.space_read_handle.get_related_holons_with_hint(&self.holon_id, name, hint)
+    }
+
     fn related_holons_impl(
         &self,
         relationship_name: &RelationshipName,

@@ -20,7 +20,7 @@ holon Book.HolonType {
     plural: "Books"
   }
   relationships {
-    InstanceProperties -> Title.PropertyType
+    InstanceProperties -> [Title.PropertyType, IsPublished.PropertyType, PageCount.PropertyType, PublicationStatus.PropertyType, CoverDigest.PropertyType, Subtitle.PropertyType]
     InstanceRelationships -> [
       (Book.HolonType)-[AuthoredBy]->(Person.HolonType),
       (Book.HolonType)-[ReferencesProperty]->(PropertyType.TypeDescriptor)
@@ -134,5 +134,94 @@ property Title.PropertyType {
     display_name: "Title"
     display_plural: "Title"
     plural: "Titles"
+  }
+}
+
+property IsPublished.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapBooleanValueType.BooleanValueType
+  header {
+    description: "Optional IsPublished for scalar presentation acceptance."
+    display_name: "IsPublished"
+    display_plural: "IsPublished"
+    plural: "IsPublishedValues"
+  }
+}
+
+property PageCount.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapIntegerValueType.IntegerValueType
+  header {
+    description: "Optional PageCount for scalar presentation acceptance."
+    display_name: "PageCount"
+    display_plural: "PageCount"
+    plural: "PageCountValues"
+  }
+}
+
+property PublicationStatus.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value PublicationStatus.MapEnumValueType
+  header {
+    description: "Optional PublicationStatus for scalar presentation acceptance."
+    display_name: "PublicationStatus"
+    display_plural: "PublicationStatus"
+    plural: "PublicationStatusValues"
+  }
+}
+
+property CoverDigest.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapBytesValueType.BytesValueType
+  header {
+    description: "Optional CoverDigest for scalar presentation acceptance."
+    display_name: "CoverDigest"
+    display_plural: "CoverDigest"
+    plural: "CoverDigestValues"
+  }
+}
+
+property Subtitle.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Optional Subtitle for scalar presentation acceptance."
+    display_name: "Subtitle"
+    display_plural: "Subtitle"
+    plural: "SubtitleValues"
+  }
+}
+
+enum PublicationStatus.MapEnumValueType {
+  type MetaEnumValueType.MetaValueType
+  extends MapEnumValueType.EnumValueType
+  header {
+    description: "Publication state for Book value presentation."
+    display_name: "PublicationStatus"
+    display_plural: "PublicationStatuses"
+    plural: "PublicationStatuses"
+  }
+  variants {
+    variant Draft {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Not yet published."
+        display_name: "Draft"
+      }
+    }
+    variant Published {
+      type MetaEnumVariantValueType.MetaValueType
+      extends MapEnumVariantValueType.EnumVariantValueType
+      header {
+        description: "Published edition."
+        display_name: "Published"
+      }
+    }
   }
 }

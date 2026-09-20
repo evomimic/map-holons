@@ -93,6 +93,7 @@ const HOLOCHAIN_NOISY_CRATES: &[(&str, &str)] = &[
 /// zome log level.  Must be called exactly once, before any log events.
 pub fn init_logging() {
     let filter = build_env_filter();
+    let profiling = std::env::var_os("MAP_PROFILE").is_some();
 
     let subscriber = tracing_subscriber::fmt()
         // ── Output destination ────────────────────────────────────────────
@@ -100,12 +101,17 @@ pub fn init_logging() {
         // ── Filter ────────────────────────────────────────────────────────
         .with_env_filter(filter)
         // ── Span / event metadata ─────────────────────────────────────────
+        .with_span_events(if profiling {
+            tracing_subscriber::fmt::format::FmtSpan::CLOSE
+        } else {
+            tracing_subscriber::fmt::format::FmtSpan::NONE
+        })
         .with_target(true) // print the crate::module path
         .with_thread_ids(true) // helps correlate async tasks
         .with_file(true) // source file name
         .with_line_number(true) // source line number
         // ── Formatting ────────────────────────────────────────────────────
-        .with_ansi(true) // ANSI colours; set false if piping to a file
+        .with_ansi(!profiling) // ANSI colours; set false if piping to a file
         .pretty() // multi-line; swap for .compact() if preferred
         .finish();
 
@@ -148,6 +154,9 @@ fn build_env_filter() -> EnvFilter {
         }
     }
 
+    if std::env::var_os("MAP_PROFILE").is_some() {
+        expanded.push_str(",map_profile=debug");
+    }
     eprintln!("[LOGGING] Final filter: {}", expanded);
     EnvFilter::from_str(&expanded).unwrap_or_else(|e| {
         eprintln!("[LOGGING] Invalid filter string ({e}), falling back to 'host:warn'");

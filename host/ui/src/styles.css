@@ -1,2 +1,61 @@
-/* You can add global styles to this file, and also import other style files */
 @import "tailwindcss";
+@import "./launcher-theme.generated.css";
+
+/* The pre-runtime launcher uses the generated bootstrap theme. Canvas supplies
+   its selected theme locally once the persisted graph is available. */
+body {
+  background: var(--dahn-launcher-surface-background);
+  color: var(--dahn-launcher-text-color);
+  font-family: var(--dahn-canvas-font-family);
+  font-size: var(--dahn-canvas-font-size);
+  font-weight: var(--dahn-canvas-font-weight);
+  line-height: var(--dahn-canvas-line-height);
+}
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 50;
+  overflow: auto;
+  padding: var(--dahn-launcher-padding);
+  gap: var(--dahn-canvas-gap);
+  background: var(--dahn-launcher-surface-background);
+  color: var(--dahn-launcher-text-color);
+  transition: opacity var(--dahn-launcher-dismiss-duration) ease-in-out;
+}
+#loading-phases {
+  display: grid;
+  gap: var(--dahn-launcher-phase-gap);
+}
+.startup-indicator {
+  flex-shrink: 0;
+  width: var(--dahn-launcher-indicator-size);
+  height: var(--dahn-launcher-indicator-size);
+  border-radius: 50%;
+  border-top: var(--dahn-launcher-indicator-width) var(--dahn-slot-border-style) var(--dahn-launcher-indicator-color);
+  border-bottom: var(--dahn-launcher-indicator-width) var(--dahn-slot-border-style) var(--dahn-launcher-indicator-color);
+  animation: launcher-spin var(--dahn-launcher-indicator-duration) linear infinite;
+}
+@keyframes launcher-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .startup-indicator { animation: none; }
+  #loading-overlay { transition: none; }
+}
+.launcher-error {
+  min-height: 100vh;
+  padding: var(--dahn-launcher-padding);
+  background: var(--dahn-launcher-surface-background);
+  color: var(--dahn-launcher-text-color);
+}
+.launcher-action {
+  cursor: pointer;
+  margin-top: var(--dahn-canvas-gap);
+  border-radius: var(--dahn-action-corner-radius);
+  padding: var(--dahn-action-padding-block) var(--dahn-action-padding-inline);
+  background: var(--dahn-action-surface-background);
+  color: var(--dahn-action-text-color);
+}
+.launcher-action:hover { background: var(--dahn-action-hover-surface-background); }

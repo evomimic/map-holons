@@ -7,7 +7,7 @@ export default class PathInspectorElement extends HTMLElement {
     this.style.minHeight = '0';
     this.style.gridTemplateColumns = 'minmax(0, 1fr)';
     this.style.gridTemplateRows = 'auto minmax(0, 1fr)';
-    this.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
+    this.style.gap = 'var(--dahn-canvas-gap)';
 
     const title = document.createElement('header');
     title.dataset.pathInspectorTitle = 'true';
@@ -16,9 +16,12 @@ export default class PathInspectorElement extends HTMLElement {
 
     const rootNodeRegion = document.createElement('section');
     rootNodeRegion.dataset.pathInspectorRootNode = 'true';
+    rootNodeRegion.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
+    rootNodeRegion.style.padding = 'var(--dahn-slot-padding)';
     rootNodeRegion.style.display = 'flex';
     rootNodeRegion.style.flex = '1 1 auto';
     rootNodeRegion.style.minHeight = '0';
+    rootNodeRegion.style.overflow = 'hidden';
 
     const rootNode = context.childVisualizers?.get('root-node');
     if (rootNode === undefined) {

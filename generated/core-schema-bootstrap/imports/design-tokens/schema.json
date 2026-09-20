@@ -657,6 +657,7 @@
         "DisplayName": "Has Design Token Type",
         "DisplayNamePlural": "Has Design Token Type Relationships",
         "Description": "Declares the DTCG-aligned type that constrains values assigned to a DesignToken.",
+        "IsDefinitional": true,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -767,6 +768,993 @@
           "target": [
             {
               "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasFontFamily.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasFontFamily"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "FontFamily.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasFontSize.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasFontSize"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasFontWeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasFontWeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "FontWeight.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasLineHeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasLineHeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasHeadingFontWeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasHeadingFontWeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "FontWeight.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CanvasContentMinHeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CanvasContentMinHeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SlotBorderColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "SlotBorderColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SlotBorderWidth.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "SlotBorderWidth"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SlotBorderStyle.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "SlotBorderStyle"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "StrokeStyle.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SlotPadding.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "SlotPadding"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InspectorRailWidth.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "InspectorRailWidth"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "InspectorContentMinHeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "InspectorContentMinHeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertiesHeadingGap.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertiesHeadingGap"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertiesRowGap.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertiesRowGap"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertiesHeadingFontSize.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertiesHeadingFontSize"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertiesHeadingFontWeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertiesHeadingFontWeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "FontWeight.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertyColumnGap.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertyColumnGap"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertyNameMinWidth.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertyNameMinWidth"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TableCellBorderStyle.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "TableCellBorderStyle"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "StrokeStyle.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CollectionHeadingFontSize.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CollectionHeadingFontSize"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CollectionHeadingFontWeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "CollectionHeadingFontWeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "FontWeight.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TableHeaderFontWeight.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "TableHeaderFontWeight"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "FontWeight.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Duration.DesignTokenType",
+      "type": "MetaStringValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Duration",
+        "TypeNamePlural": "Durations",
+        "DisplayName": "Duration",
+        "DisplayNamePlural": "Durations",
+        "Description": "Elapsed presentation time for animations and transitions."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DesignTokenType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Design Tokens Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherPadding.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherPadding"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherPhaseGap.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherPhaseGap"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherIndicatorSize.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherIndicatorSize"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherIndicatorColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherIndicatorColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherIndicatorWidth.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherIndicatorWidth"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherIndicatorDuration.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherIndicatorDuration"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Duration.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "LauncherDismissDuration.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "LauncherDismissDuration"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Duration.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ActionSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionHoverSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ActionHoverSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ActionTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionPaddingBlock.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ActionPaddingBlock"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionPaddingInline.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ActionPaddingInline"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ActionCornerRadius.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ActionCornerRadius"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PropertiesDisclosureFocusColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PropertiesDisclosureFocusColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
             }
           ]
         },

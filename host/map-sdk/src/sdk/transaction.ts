@@ -19,6 +19,10 @@ import {
   unwrapTransientHolonReference,
 } from './references';
 import {
+  unwrapPropertyDescriptorHandle,
+  type PropertyDescriptorHandle,
+} from './descriptors';
+import {
   type ContentSet,
   extractBytes,
   extractNumber,
@@ -33,19 +37,22 @@ export type VisualizerKind =
   | 'rootedNavigation'
   | 'collection'
   | 'properties'
+  | 'property'
   | 'value'
   | 'action';
 
 /**
  * A visualization request submitted to the Rust-owned DAHN Selector Function.
  *
- * This SDK ingress currently supports Holon-backed subjects. The request form
- * intentionally leaves room for future Slot, semantic-context, and non-Holon
- * subject inputs without making TypeScript a second selector authority.
+ * This SDK ingress carries a bound holon reference. Properties uses the owner
+ * holon; Property and Value use the resolved PropertyDescriptor reference so
+ * Rust retains descriptor and ValueType authority.
  */
 export interface VisualizerSelectionRequest {
   subject: HolonReference;
   requestedKind: VisualizerKind;
+  /** Selected parent whose declared slot Rust must validate for this child. */
+  parentVisualizer?: HolonReference;
 }
 
 /** Rust-selected semantic Visualizer reference for a visualization request. */
@@ -76,6 +83,8 @@ const MAP_TRANSACTION_CONSTRUCTION = Symbol('MapTransactionConstruction');
  * each SDK method to exactly one transaction or holon command.
  */
 export class MapTransaction {
+  private materializationTail: Promise<void> = Promise.resolve();
+
   constructor(txId: TxId, token: typeof MAP_TRANSACTION_CONSTRUCTION) {
     if (token !== MAP_TRANSACTION_CONSTRUCTION) {
       throw new TypeError('MapTransaction cannot be constructed directly');
@@ -268,33 +277,61 @@ export class MapTransaction {
   async materializeVisualizer(
     selected: HolonReference,
   ): Promise<MaterializedVisualizer> {
-    const invocationDescriptor = await this.getSavedHolonByBaseKey(
-      'DanceInvocation.HolonType',
-    );
-    if (invocationDescriptor === null) {
-      throw new Error('DanceInvocation descriptor is unavailable');
-    }
-    const invocation = await this.newHolon('materialize-visualizer-invocation');
-    await invocation.withDescriptor(invocationDescriptor);
-    await invocation.withPropertyValue('DanceName' as PropertyName, {
-      StringValue: 'MaterializeVisualizer',
-    });
-    await invocation.addRelatedHolons(
-      'AffordingHolon' as RelationshipName,
-      [selected],
-    );
-    const response = await this.danceV2(invocation);
-    const bodies = await response.relatedHolons('ResponseBody' as RelationshipName);
-    if (bodies.length !== 1) {
+    // Descriptor lookup round-trips transaction pools. Keep another invocation's
+    // construction out of that round-trip so an older pool cannot replace it.
+    const pending = this.materializationTail.then(() => this.materializeVisualizerInOrder(selected));
+    this.materializationTail = pending.then(() => undefined, () => undefined);
+    return pending;
+  }
+
+  private async materializeVisualizerInOrder(
+    selected: HolonReference,
+  ): Promise<MaterializedVisualizer> {
+    let operation = 'resolve invocation descriptor';
+    try {
+      const invocationDescriptor = await this.getSavedHolonByBaseKey(
+        'DanceInvocation.HolonType',
+      );
+      if (invocationDescriptor === null) {
+        throw new Error('DanceInvocation descriptor is unavailable');
+      }
+      operation = 'create invocation';
+      const invocation = await this.newHolon('materialize-visualizer-invocation');
+      operation = 'attach invocation descriptor';
+      await invocation.withDescriptor(invocationDescriptor);
+      operation = 'set dance name';
+      await invocation.withPropertyValue('DanceName' as PropertyName, {
+        StringValue: 'MaterializeVisualizer',
+      });
+      operation = 'attach selected visualizer';
+      await invocation.addRelatedHolons(
+        'AffordingHolon' as RelationshipName,
+        [selected],
+      );
+      operation = 'execute MaterializeVisualizer dance';
+      const response = await this.danceV2(invocation);
+      operation = 'read materialization response';
+      const bodies = await response.relatedHolons('ResponseBody' as RelationshipName);
+      if (bodies.length !== 1) {
+        throw new Error(
+          `MaterializeVisualizer returned ${bodies.length} response bodies; expected one`,
+        );
+      }
+      const body = bodies.members[0];
+      const artifactHandle = await requiredStringProperty(body, 'VisualizerArtifactHandle');
+      const format = await requiredStringProperty(body, 'VisualizerModuleFormat');
+      const entrypoint = await requiredStringProperty(body, 'Entrypoint');
+      return { artifactHandle, format, entrypoint };
+    } catch (cause) {
+      const detail = cause instanceof DomainError
+        ? `${cause.message}: ${JSON.stringify(cause.payload)}`
+        : cause instanceof Error ? cause.message : String(cause);
+      const identity = JSON.stringify(unwrapHolonReference(selected));
       throw new Error(
-        `MaterializeVisualizer returned ${bodies.length} response bodies; expected one`,
+        `Visualizer ${identity} materialization failed while attempting to ${operation}: ${detail}`,
+        { cause },
       );
     }
-    const body = bodies.members[0];
-    const artifactHandle = await requiredStringProperty(body, 'VisualizerArtifactHandle');
-    const format = await requiredStringProperty(body, 'VisualizerModuleFormat');
-    const entrypoint = await requiredStringProperty(body, 'Entrypoint');
-    return { artifactHandle, format, entrypoint };
   }
 
   async danceV2(invocation: HolonReference): Promise<HolonReference> {
@@ -316,6 +353,9 @@ export class MapTransaction {
       {
         subject: unwrapHolonReference(request.subject),
         requested_kind: toVisualizerKindWire(request.requestedKind),
+        parent_visualizer: request.parentVisualizer === undefined
+          ? null
+          : unwrapHolonReference(request.parentVisualizer),
       },
     );
     return {
@@ -323,6 +363,37 @@ export class MapTransaction {
       requestedKind: fromVisualizerKindWire(wire.requested_kind),
       alternativesAvailable: wire.alternatives_available,
     };
+  }
+
+  /**
+   * Selects the Property Visualizer for a resolved PropertyDescriptor. The
+   * descriptor, rather than a raw PropertyMap entry, is the semantic subject.
+   */
+  selectPropertyVisualizer(
+    property: PropertyDescriptorHandle,
+    parentVisualizer: HolonReference,
+  ): Promise<VisualizerSelection> {
+    return this.selectVisualizer({
+      subject: unwrapPropertyDescriptorHandle(property),
+      requestedKind: 'property',
+      parentVisualizer,
+    });
+  }
+
+  /**
+   * Selects the Value Visualizer through the PropertyDescriptor's declared
+   * ValueType. Rust resolves that relationship; TypeScript does not infer a
+   * visualizer from the runtime value variant.
+   */
+  selectValueVisualizer(
+    property: PropertyDescriptorHandle,
+    parentVisualizer: HolonReference,
+  ): Promise<VisualizerSelection> {
+    return this.selectVisualizer({
+      subject: unwrapPropertyDescriptorHandle(property),
+      requestedKind: 'value',
+      parentVisualizer,
+    });
   }
 
 }
@@ -354,6 +425,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
   | 'RootedNavigation'
   | 'Collection'
   | 'Properties'
+  | 'Property'
   | 'Value'
   | 'Action' {
   if (kind === 'rootedNavigation') {
@@ -365,6 +437,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
     | 'RootedNavigation'
     | 'Collection'
     | 'Properties'
+    | 'Property'
     | 'Value'
     | 'Action';
 }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>map_sdk</title>
@@ -7,10 +7,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
-<body class="bg-gray-900">
-  <div id="loading-overlay" class="fixed top-0 left-0 w-full h-full bg-black flex flex-col justify-center items-center z-50 transition-opacity duration-500 ease-in-out">
-    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
-    <div id="loading-phases" class="text-gray-700 text-lg space-y-2" aria-live="polite"></div>
+<body>
+  <div id="loading-overlay">
+    <div class="startup-indicator" aria-hidden="true"></div>
+    <div id="loading-phases" aria-live="polite"></div>
   </div>
   <app-root></app-root>
 </body>

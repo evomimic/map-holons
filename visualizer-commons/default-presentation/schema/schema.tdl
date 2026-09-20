@@ -12,6 +12,46 @@ instance DAHN.DefaultMetaDesignSystem {
   MetaDesignSystemName "DAHN.DefaultMetaDesignSystem-v0.1.0"
   relationships {
     DefinesDesignToken -> [
+      LauncherSurfaceBackground.DesignToken,
+      LauncherTextColor.DesignToken,
+      LauncherPadding.DesignToken,
+      LauncherPhaseGap.DesignToken,
+      LauncherIndicatorSize.DesignToken,
+      LauncherIndicatorColor.DesignToken,
+      LauncherIndicatorWidth.DesignToken,
+      LauncherIndicatorDuration.DesignToken,
+      LauncherDismissDuration.DesignToken,
+      ActionSurfaceBackground.DesignToken,
+      ActionHoverSurfaceBackground.DesignToken,
+      ActionTextColor.DesignToken,
+      ActionPaddingBlock.DesignToken,
+      ActionPaddingInline.DesignToken,
+      ActionCornerRadius.DesignToken,
+
+      CanvasFontFamily.DesignToken,
+      CanvasFontSize.DesignToken,
+      CanvasFontWeight.DesignToken,
+      CanvasLineHeight.DesignToken,
+      CanvasHeadingFontWeight.DesignToken,
+      CanvasContentMinHeight.DesignToken,
+      PropertiesDisclosureFocusColor.DesignToken,
+      SlotBorderColor.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotBorderStyle.DesignToken,
+      SlotPadding.DesignToken,
+      InspectorRailWidth.DesignToken,
+      InspectorContentMinHeight.DesignToken,
+      PropertiesHeadingGap.DesignToken,
+      PropertiesRowGap.DesignToken,
+      PropertiesHeadingFontSize.DesignToken,
+      PropertiesHeadingFontWeight.DesignToken,
+      PropertyColumnGap.DesignToken,
+      PropertyNameMinWidth.DesignToken,
+      TableCellBorderStyle.DesignToken,
+      CollectionHeadingFontSize.DesignToken,
+      CollectionHeadingFontWeight.DesignToken,
+      TableHeaderFontWeight.DesignToken,
+
       CanvasGap.DesignToken,
       CanvasPadding.DesignToken,
       CanvasSurfaceBackground.DesignToken,
@@ -34,6 +74,46 @@ instance DAHN.DefaultTheme {
   relationships {
     ForMetaDesignSystem -> DAHN.DefaultMetaDesignSystem
     HasThemeTokenAssignment -> [
+      DAHN.DefaultTheme.LauncherSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherPadding.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherPhaseGap.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherIndicatorSize.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherIndicatorColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherIndicatorWidth.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherIndicatorDuration.ThemeTokenAssignment,
+      DAHN.DefaultTheme.LauncherDismissDuration.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ActionSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ActionHoverSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ActionTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ActionPaddingBlock.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ActionPaddingInline.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ActionCornerRadius.ThemeTokenAssignment,
+
+      DAHN.DefaultTheme.CanvasFontFamily.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasFontSize.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasFontWeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasLineHeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasHeadingFontWeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CanvasContentMinHeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertiesDisclosureFocusColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.SlotBorderColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.SlotBorderWidth.ThemeTokenAssignment,
+      DAHN.DefaultTheme.SlotBorderStyle.ThemeTokenAssignment,
+      DAHN.DefaultTheme.SlotPadding.ThemeTokenAssignment,
+      DAHN.DefaultTheme.InspectorRailWidth.ThemeTokenAssignment,
+      DAHN.DefaultTheme.InspectorContentMinHeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertiesHeadingGap.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertiesRowGap.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertiesHeadingFontSize.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertiesHeadingFontWeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertyColumnGap.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PropertyNameMinWidth.ThemeTokenAssignment,
+      DAHN.DefaultTheme.TableCellBorderStyle.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CollectionHeadingFontSize.ThemeTokenAssignment,
+      DAHN.DefaultTheme.CollectionHeadingFontWeight.ThemeTokenAssignment,
+      DAHN.DefaultTheme.TableHeaderFontWeight.ThemeTokenAssignment,
+
       DAHN.DefaultTheme.CanvasGap.ThemeTokenAssignment,
       DAHN.DefaultTheme.CanvasPadding.ThemeTokenAssignment,
       DAHN.DefaultTheme.CanvasSurfaceBackground.ThemeTokenAssignment,
@@ -132,5 +212,309 @@ instance DAHN.DefaultTheme.TableCellPadding.ThemeTokenAssignment {
   PresentationValue "12px"
   relationships {
     ForDesignToken -> TableCellPadding.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CanvasFontFamily.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "Arial, sans-serif"
+  relationships {
+    ForDesignToken -> CanvasFontFamily.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CanvasFontSize.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> CanvasFontSize.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CanvasFontWeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "400"
+  relationships {
+    ForDesignToken -> CanvasFontWeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CanvasLineHeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.5rem"
+  relationships {
+    ForDesignToken -> CanvasLineHeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CanvasHeadingFontWeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "700"
+  relationships {
+    ForDesignToken -> CanvasHeadingFontWeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CanvasContentMinHeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12rem"
+  relationships {
+    ForDesignToken -> CanvasContentMinHeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.SlotBorderColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#1d2430"
+  relationships {
+    ForDesignToken -> SlotBorderColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.SlotBorderWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1px"
+  relationships {
+    ForDesignToken -> SlotBorderWidth.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.SlotBorderStyle.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "solid"
+  relationships {
+    ForDesignToken -> SlotBorderStyle.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.SlotPadding.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.5rem"
+  relationships {
+    ForDesignToken -> SlotPadding.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.InspectorRailWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "11rem"
+  relationships {
+    ForDesignToken -> InspectorRailWidth.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.InspectorContentMinHeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "12rem"
+  relationships {
+    ForDesignToken -> InspectorContentMinHeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertiesHeadingGap.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.35rem"
+  relationships {
+    ForDesignToken -> PropertiesHeadingGap.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertiesRowGap.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.25rem"
+  relationships {
+    ForDesignToken -> PropertiesRowGap.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertiesHeadingFontSize.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.9rem"
+  relationships {
+    ForDesignToken -> PropertiesHeadingFontSize.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertiesHeadingFontWeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "400"
+  relationships {
+    ForDesignToken -> PropertiesHeadingFontWeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertyColumnGap.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5rem"
+  relationships {
+    ForDesignToken -> PropertyColumnGap.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertyNameMinWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "8rem"
+  relationships {
+    ForDesignToken -> PropertyNameMinWidth.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.TableCellBorderStyle.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "solid"
+  relationships {
+    ForDesignToken -> TableCellBorderStyle.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CollectionHeadingFontSize.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> CollectionHeadingFontSize.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.CollectionHeadingFontWeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "400"
+  relationships {
+    ForDesignToken -> CollectionHeadingFontWeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.TableHeaderFontWeight.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "700"
+  relationships {
+    ForDesignToken -> TableHeaderFontWeight.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#102a43"
+  relationships {
+    ForDesignToken -> LauncherSurfaceBackground.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#e0f2fe"
+  relationships {
+    ForDesignToken -> LauncherTextColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherPadding.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2rem"
+  relationships {
+    ForDesignToken -> LauncherPadding.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherPhaseGap.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5rem"
+  relationships {
+    ForDesignToken -> LauncherPhaseGap.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherIndicatorSize.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "4rem"
+  relationships {
+    ForDesignToken -> LauncherIndicatorSize.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherIndicatorColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#60a5c7"
+  relationships {
+    ForDesignToken -> LauncherIndicatorColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherIndicatorWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "4px"
+  relationships {
+    ForDesignToken -> LauncherIndicatorWidth.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherIndicatorDuration.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1s"
+  relationships {
+    ForDesignToken -> LauncherIndicatorDuration.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.LauncherDismissDuration.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5s"
+  relationships {
+    ForDesignToken -> LauncherDismissDuration.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ActionSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#245878"
+  relationships {
+    ForDesignToken -> ActionSurfaceBackground.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ActionHoverSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#173f5f"
+  relationships {
+    ForDesignToken -> ActionHoverSurfaceBackground.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ActionTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> ActionTextColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ActionPaddingBlock.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5rem"
+  relationships {
+    ForDesignToken -> ActionPaddingBlock.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ActionPaddingInline.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1rem"
+  relationships {
+    ForDesignToken -> ActionPaddingInline.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ActionCornerRadius.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.25rem"
+  relationships {
+    ForDesignToken -> ActionCornerRadius.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PropertiesDisclosureFocusColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#245878"
+  relationships {
+    ForDesignToken -> PropertiesDisclosureFocusColor.DesignToken
   }
 }

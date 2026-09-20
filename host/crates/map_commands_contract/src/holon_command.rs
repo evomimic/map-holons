@@ -90,7 +90,7 @@ pub enum ReadableHolonAction {
     GetPropertyValue { name: PropertyName },
 
     /// `ReadableHolon::related_holons(name)` → `HolonCollection`
-    GetRelatedHolons { name: RelationshipName },
+    GetRelatedHolons { name: RelationshipName, hint: holons_core::RelationshipReadHint },
 
     /// `ReadableHolon::holon_descriptor()` → descriptor reference.
     GetHolonDescriptor,

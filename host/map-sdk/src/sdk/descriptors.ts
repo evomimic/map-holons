@@ -1,9 +1,10 @@
 import type { BaseValue, PropertyName, RelationshipName } from './types';
 import { extractString } from './types';
 import type { HolonReference } from './references';
-import { CorePropertyName } from './core-names';
+import { CorePropertyName, CoreRelationshipName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
+const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, HolonReference>();
 
 /** Opaque SDK handle for a holon type descriptor. */
 export class HolonDescriptorHandle {
@@ -30,8 +31,6 @@ export class HolonDescriptorHandle {
 
 /** Opaque SDK handle for an effective property descriptor. */
 export class PropertyDescriptorHandle {
-  #reference: HolonReference;
-
   constructor(
     reference: HolonReference,
     token: typeof DESCRIPTOR_HANDLE_CONSTRUCTION,
@@ -40,13 +39,48 @@ export class PropertyDescriptorHandle {
       throw new TypeError('PropertyDescriptorHandle cannot be constructed directly');
     }
 
-    this.#reference = reference;
+    propertyDescriptorReferences.set(this, reference);
   }
 
   async propertyName(): Promise<PropertyName> {
     return requiredString(
-      this.#reference.propertyValue(CorePropertyName.PropertyName),
-      CorePropertyName.PropertyName,
+      propertyDescriptorReference(this).propertyValue(CorePropertyName.TypeName),
+      CorePropertyName.TypeName,
+    );
+  }
+
+  /** Returns the one declared ValueType governing this property descriptor. */
+  async valueType(): Promise<ValueDescriptorHandle> {
+    const valueTypes = await propertyDescriptorReference(this).relatedHolons(
+      CoreRelationshipName.ValueType,
+    );
+    if (valueTypes.length !== 1) {
+      throw new TypeError(
+        `PropertyDescriptor must have exactly one ValueType; found ${valueTypes.length}`,
+      );
+    }
+    return createValueDescriptorHandle(valueTypes.members[0]);
+  }
+}
+
+/** Opaque SDK handle for a declared ValueType descriptor. */
+export class ValueDescriptorHandle {
+  #reference: HolonReference;
+
+  constructor(
+    reference: HolonReference,
+    token: typeof DESCRIPTOR_HANDLE_CONSTRUCTION,
+  ) {
+    if (token !== DESCRIPTOR_HANDLE_CONSTRUCTION) {
+      throw new TypeError('ValueDescriptorHandle cannot be constructed directly');
+    }
+    this.#reference = reference;
+  }
+
+  async typeName(): Promise<string> {
+    return requiredString(
+      this.#reference.propertyValue(CorePropertyName.TypeName),
+      CorePropertyName.TypeName,
     );
   }
 }
@@ -68,8 +102,8 @@ export class RelationshipDescriptorHandle {
 
   async relationshipName(): Promise<RelationshipName> {
     return requiredString(
-      this.#reference.propertyValue(CorePropertyName.RelationshipName),
-      CorePropertyName.RelationshipName,
+      this.#reference.propertyValue(CorePropertyName.TypeName),
+      CorePropertyName.TypeName,
     );
   }
 }
@@ -92,6 +126,29 @@ export function createPropertyDescriptorHandle(
   reference: HolonReference,
 ): PropertyDescriptorHandle {
   return new PropertyDescriptorHandle(reference, DESCRIPTOR_HANDLE_CONSTRUCTION);
+}
+
+export function createValueDescriptorHandle(reference: HolonReference): ValueDescriptorHandle {
+  return new ValueDescriptorHandle(reference, DESCRIPTOR_HANDLE_CONSTRUCTION);
+}
+
+/**
+ * Internal transport projection for a descriptor handle already bound to one
+ * transaction. Public callers use MapTransaction's descriptor-aware selection
+ * methods rather than treating descriptor identity as an ordinary holon.
+ */
+export function unwrapPropertyDescriptorHandle(
+  handle: PropertyDescriptorHandle,
+): HolonReference {
+  return propertyDescriptorReference(handle);
+}
+
+function propertyDescriptorReference(handle: PropertyDescriptorHandle): HolonReference {
+  const reference = propertyDescriptorReferences.get(handle);
+  if (reference === undefined) {
+    throw new TypeError('PropertyDescriptorHandle is not bound to a reference');
+  }
+  return reference;
 }
 
 export function createRelationshipDescriptorHandle(

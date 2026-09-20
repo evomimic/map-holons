@@ -577,6 +577,7 @@
         "DisplayName": "For Design Token",
         "DisplayNamePlural": "For Design Token Relationships",
         "Description": "Identifies the DesignToken whose value is supplied by one ThemeTokenAssignment.",
+        "IsDefinitional": true,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -935,6 +936,120 @@
           "name": "HasThemeTokenAssignment",
           "target": [
             {
+              "$ref": "BootstrapThemeLauncherSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherPadding"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherPhaseGap"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherIndicatorSize"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherIndicatorColor"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherIndicatorWidth"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherIndicatorDuration"
+            },
+            {
+              "$ref": "BootstrapThemeLauncherDismissDuration"
+            },
+            {
+              "$ref": "BootstrapThemeActionSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeActionHoverSurfaceBackground"
+            },
+            {
+              "$ref": "BootstrapThemeActionTextColor"
+            },
+            {
+              "$ref": "BootstrapThemeActionPaddingBlock"
+            },
+            {
+              "$ref": "BootstrapThemeActionPaddingInline"
+            },
+            {
+              "$ref": "BootstrapThemeActionCornerRadius"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasFontFamily"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasFontSize"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasFontWeight"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasLineHeight"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasHeadingFontWeight"
+            },
+            {
+              "$ref": "BootstrapThemeCanvasContentMinHeight"
+            },
+            {
+              "$ref": "BootstrapThemePropertiesDisclosureFocusColor"
+            },
+            {
+              "$ref": "BootstrapThemeSlotBorderColor"
+            },
+            {
+              "$ref": "BootstrapThemeSlotBorderWidth"
+            },
+            {
+              "$ref": "BootstrapThemeSlotBorderStyle"
+            },
+            {
+              "$ref": "BootstrapThemeSlotPadding"
+            },
+            {
+              "$ref": "BootstrapThemeInspectorRailWidth"
+            },
+            {
+              "$ref": "BootstrapThemeInspectorContentMinHeight"
+            },
+            {
+              "$ref": "BootstrapThemePropertiesHeadingGap"
+            },
+            {
+              "$ref": "BootstrapThemePropertiesRowGap"
+            },
+            {
+              "$ref": "BootstrapThemePropertiesHeadingFontSize"
+            },
+            {
+              "$ref": "BootstrapThemePropertiesHeadingFontWeight"
+            },
+            {
+              "$ref": "BootstrapThemePropertyColumnGap"
+            },
+            {
+              "$ref": "BootstrapThemePropertyNameMinWidth"
+            },
+            {
+              "$ref": "BootstrapThemeTableCellBorderStyle"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionHeadingFontSize"
+            },
+            {
+              "$ref": "BootstrapThemeCollectionHeadingFontWeight"
+            },
+            {
+              "$ref": "BootstrapThemeTableHeaderFontWeight"
+            },
+            {
               "$ref": "BootstrapThemeCanvasGap"
             },
             {
@@ -994,7 +1109,7 @@
       "key": "BootstrapThemeCanvasGap",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "0.75rem"
+        "PresentationValue": "1.5rem"
       },
       "relationships": [
         {
@@ -1019,7 +1134,7 @@
       "key": "BootstrapThemeCanvasPadding",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "1.25rem"
+        "PresentationValue": "2rem"
       },
       "relationships": [
         {
@@ -1044,7 +1159,7 @@
       "key": "BootstrapThemeCanvasSurfaceBackground",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#f7f5ef"
+        "PresentationValue": "#102a43"
       },
       "relationships": [
         {
@@ -1069,7 +1184,7 @@
       "key": "BootstrapThemeCanvasTextColor",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#1d2430"
+        "PresentationValue": "#e0f2fe"
       },
       "relationships": [
         {
@@ -1094,7 +1209,7 @@
       "key": "BootstrapThemeCollectionSurfaceBackground",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#ffffff"
+        "PresentationValue": "#173f5f"
       },
       "relationships": [
         {
@@ -1119,7 +1234,7 @@
       "key": "BootstrapThemeCollectionTextColor",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#1d2430"
+        "PresentationValue": "#e0f2fe"
       },
       "relationships": [
         {
@@ -1144,7 +1259,7 @@
       "key": "BootstrapThemeCollectionHeaderSurfaceBackground",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#e9e4d8"
+        "PresentationValue": "#245878"
       },
       "relationships": [
         {
@@ -1169,7 +1284,7 @@
       "key": "BootstrapThemeTableHeaderSurfaceBackground",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#e9e4d8"
+        "PresentationValue": "#245878"
       },
       "relationships": [
         {
@@ -1194,7 +1309,7 @@
       "key": "BootstrapThemeTableHeaderTextColor",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#1d2430"
+        "PresentationValue": "#ffffff"
       },
       "relationships": [
         {
@@ -1219,7 +1334,7 @@
       "key": "BootstrapThemeTableCellBorderColor",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "#c7c0b3"
+        "PresentationValue": "#60a5c7"
       },
       "relationships": [
         {
@@ -1244,7 +1359,7 @@
       "key": "BootstrapThemeTableCellBorderWidth",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "1px"
+        "PresentationValue": "2px"
       },
       "relationships": [
         {
@@ -1269,7 +1384,7 @@
       "key": "BootstrapThemeTableCellPadding",
       "type": "ThemeTokenAssignment.HolonType",
       "properties": {
-        "PresentationValue": "0.5rem"
+        "PresentationValue": "0.75rem"
       },
       "relationships": [
         {
@@ -1277,6 +1392,956 @@
           "target": [
             {
               "$ref": "TableCellPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasFontFamily",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "Arial, sans-serif"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasFontSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasLineHeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "700"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCanvasContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeSlotBorderColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e0f2fe"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeSlotBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeSlotBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "solid"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeSlotPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeInspectorRailWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "11rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeInspectorContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "12rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "InspectorContentMinHeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertiesHeadingGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.35rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingGap.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertiesRowGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.25rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesRowGap.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertiesHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.9rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontSize.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertiesHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontWeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertyColumnGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyColumnGap.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertyNameMinWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "8rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "solid"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableCellBorderStyle.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeadingFontSize.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeCollectionHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "400"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "CollectionHeadingFontWeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeTableHeaderFontWeight",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "700"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "TableHeaderFontWeight.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#102a43"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#e0f2fe"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherPadding",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "2rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherPhaseGap",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherPhaseGap.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorSize",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "4rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorSize.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#60a5c7"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorWidth",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "4px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorWidth.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorDuration",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1s"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherIndicatorDuration.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeLauncherDismissDuration",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5s"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "LauncherDismissDuration.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeActionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#245878"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeActionHoverSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#173f5f"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeActionTextColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeActionPaddingBlock",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeActionPaddingInline",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemeActionCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.25rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BootstrapThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#60a5c7"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesDisclosureFocusColor.DesignToken"
             }
           ]
         },

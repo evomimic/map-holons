@@ -134,6 +134,24 @@
               "$ref": "CanvasGap.DesignToken"
             },
             {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            },
+            {
               "$ref": "CanvasPadding.DesignToken"
             },
             {
@@ -141,6 +159,18 @@
             },
             {
               "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
             }
           ]
         },
@@ -163,28 +193,40 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "CollectionHeadingFontWeight.DesignToken"
+            },
+            {
               "$ref": "CollectionSurfaceBackground.DesignToken"
             },
             {
               "$ref": "CollectionTextColor.DesignToken"
             },
             {
-              "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
-            },
-            {
-              "$ref": "TableHeaderSurfaceBackground.DesignToken"
-            },
-            {
-              "$ref": "TableHeaderTextColor.DesignToken"
-            },
-            {
               "$ref": "TableCellBorderColor.DesignToken"
+            },
+            {
+              "$ref": "TableCellBorderStyle.DesignToken"
             },
             {
               "$ref": "TableCellBorderWidth.DesignToken"
             },
             {
               "$ref": "TableCellPadding.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderFontWeight.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "TableHeaderTextColor.DesignToken"
             }
           ]
         },

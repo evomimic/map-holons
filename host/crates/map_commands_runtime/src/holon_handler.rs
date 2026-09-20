@@ -53,8 +53,8 @@ fn handle_read(
             Some(v) => Ok(MapResult::Value(v)),
             None => Ok(MapResult::None),
         },
-        ReadableHolonAction::GetRelatedHolons { name } => {
-            let collection_arc = target.related_holons(name)?;
+        ReadableHolonAction::GetRelatedHolons { name, hint } => {
+            let collection_arc = target.related_holons_with_hint(name, hint)?;
             let collection = collection_arc
                 .read()
                 .map_err(|e| {

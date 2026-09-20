@@ -1,3 +1,4 @@
+import { renderVisualizerRegion, unavailableVisualizerRegion } from '../runtime/visualizer-region';
 import type { CanvasApi, VisualizerMountPlan } from '../contracts/canvas';
 import type { VisualizerContext, VisualizerElement } from '../contracts/visualizers';
 import type { VisualizerRegistry } from '../registry/visualizer-registry';
@@ -58,18 +59,28 @@ export class DomCanvas implements CanvasApi {
         throw new Error(`Unsupported canvas slot '${mount.slot}'`);
       }
 
-      const definition = await this.registry.ensureLoaded(mount.visualizerId);
-      const element = document.createElement(
-        definition.componentTag,
-      ) as VisualizerElement;
+      const element = await renderVisualizerRegion(mount.visualizerId, async () => {
+        const definition = await this.registry.ensureLoaded(mount.visualizerId);
+        const element = document.createElement(
+          definition.componentTag,
+        ) as VisualizerElement;
 
-      element.setContext(this.resolveContext(mount.target));
+        element.setContext(this.resolveContext(mount.target));
+        return element;
+      });
       this.primarySlot.append(element);
     }
 
     this.hostedDancerRegion.dataset['dahnCanvasState'] =
       plan.length === 0 ? 'awaiting-home-dancer' : 'mounted';
     this.awaitingHomeDancer.hidden = plan.length > 0;
+  }
+
+  /** Keeps the Canvas usable when its home-Dancer region cannot be constructed. */
+  showUnavailable(label: string, error: unknown): void {
+    this.primarySlot.replaceChildren(unavailableVisualizerRegion(label, error));
+    this.awaitingHomeDancer.hidden = true;
+    this.hostedDancerRegion.dataset['dahnCanvasState'] = 'degraded';
   }
 
   clear(): void {

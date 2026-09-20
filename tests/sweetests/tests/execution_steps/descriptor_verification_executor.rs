@@ -634,7 +634,28 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
     let instance_property_names = property_type_names(book_descriptor.instance_properties());
     assert_contains(&instance_property_names, "Key"); // inherited from HolonType.TypeDescriptor
     assert_contains(&instance_property_names, "Title");
-    assert_eq!(instance_property_names.len(), 2);
+    assert_eq!(instance_property_names.len(), 7);
+    for (name, value_type) in [
+        ("IsPublished", "MapBooleanValueType"),
+        ("PageCount", "MapIntegerValueType"),
+        ("PublicationStatus", "PublicationStatus"),
+        ("CoverDigest", "MapBytesValueType"),
+        ("Subtitle", "MapStringValueType"),
+    ] {
+        let property = book_descriptor
+            .get_property_by_name(PropertyName(MapString::from(name)))
+            .expect("scalar descriptor lookup");
+        assert!(!property.is_required().expect("optional scalar requiredness"));
+        assert_eq!(
+            property
+                .value_type()
+                .expect("declared scalar ValueType")
+                .header()
+                .type_name()
+                .expect("ValueType name"),
+            MapString::from(value_type)
+        );
+    }
 
     let instance_relationship_names =
         relationship_base_names(book_descriptor.instance_relationships());
@@ -715,12 +736,15 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
 /// - forward: Book --AuthoredBy--> Person and Book --DescribedBy--> Book.HolonType
 /// - inverse: Person --AuthorOf--> Book and Book.HolonType --Instances--> Book
 pub async fn execute_verify_book_person_instance_links(state: &mut TestExecutionState) {
-    let holons = loaded_holons(state, "verify_book_person_instance_links").await;
+    let (context, holons) =
+        loaded_holons_with_context(state, "verify_book_person_instance_links").await;
 
     let book = find_holon_by_key(&holons, BOOK_PERSON_INVERSE_INSTANCE_BOOK_KEY);
     let person = find_holon_by_key(&holons, BOOK_PERSON_INVERSE_INSTANCE_PERSON_KEY);
     let book_type = find_holon_by_key(&holons, BOOK_DESCRIPTOR_KEY);
     let person_type = find_holon_by_key(&holons, PERSON_DESCRIPTOR_KEY);
+
+    verify_book_value_presentation(state, &context, &book).await;
 
     // Forward declared edges persisted from the staged relationships.
     assert_contains(
@@ -1229,4 +1253,116 @@ fn assert_relationship_shape(
         full_relationship_name.expect("full relationship name"),
         MapString(expected_full_name.to_string())
     );
+}
+
+/// Exercises descriptor discovery, command selection, and verified materialization
+/// against the committed Book fixture. Optional output feeds visible UI acceptance.
+async fn verify_book_value_presentation(
+    state: &mut TestExecutionState,
+    context: &Arc<TransactionContext>,
+    book: &HolonReference,
+) {
+    use holons_core::dances::MaterializedVisualizer;
+    use map_commands_contract::{VisualizerKind, VisualizerSelectionRequest};
+
+    async fn select(
+        state: &mut TestExecutionState,
+        context: &Arc<TransactionContext>,
+        subject: HolonReference,
+        kind: VisualizerKind,
+        parent: Option<HolonReference>,
+    ) -> HolonReference {
+        match state
+            .dispatch_command(
+                MapCommand::Transaction(TransactionCommand {
+                    context: context.clone(),
+                    action: TransactionAction::SelectVisualizer {
+                        request: VisualizerSelectionRequest {
+                            subject,
+                            requested_kind: kind,
+                            parent_visualizer: parent,
+                        },
+                    },
+                }),
+                "book_value_selection",
+            )
+            .await
+            .expect("Rust presentation selection")
+        {
+            MapResult::VisualizerSelection(selection) => selection.selected,
+            other => panic!("expected selected Visualizer, got {other:?}"),
+        }
+    }
+    fn materialize(
+        context: &Arc<TransactionContext>,
+        selected: &HolonReference,
+    ) -> serde_json::Value {
+        let materialized = MaterializedVisualizer::new(
+            context.materialize_visualizer(selected).expect("verified materialization"),
+        )
+        .expect("materialized response");
+        let source = context
+            .fetch_artifact(&materialized.artifact_handle().unwrap())
+            .expect("artifact capability");
+        serde_json::json!({
+            "selected": selected.key().unwrap().unwrap().0,
+            "source": String::from_utf8(source.0).expect("UTF-8 artifact"),
+            "entrypoint": materialized.entrypoint().unwrap().0,
+            "format": materialized.module_format().unwrap().0,
+        })
+    }
+    let node = select(state, context, book.clone(), VisualizerKind::Node, None).await;
+    let properties =
+        select(state, context, book.clone(), VisualizerKind::Properties, Some(node.clone())).await;
+    let mut fields = Vec::new();
+    for descriptor in book.available_properties().expect("descriptor discovery") {
+        let name = descriptor.property_name().expect("property name");
+        let property = select(
+            state,
+            context,
+            descriptor.holon().clone(),
+            VisualizerKind::Property,
+            Some(properties.clone()),
+        )
+        .await;
+        let value = select(
+            state,
+            context,
+            descriptor.holon().clone(),
+            VisualizerKind::Value,
+            Some(property.clone()),
+        )
+        .await;
+        fields.push(serde_json::json!({
+            "name": name.to_string(),
+            "value": book.property_value(&name).expect("bound value read"),
+            "valueType": descriptor.value_type().unwrap().header().type_name().unwrap().0,
+            "property": materialize(context, &property),
+            "visualizer": materialize(context, &value),
+        }));
+    }
+    for (name, expected, selected) in [
+        ("IsPublished", serde_json::json!({"BooleanValue": false}), "BooleanValue.ValueVisualizer"),
+        ("PageCount", serde_json::json!({"IntegerValue": 0}), "IntegerValue.ValueVisualizer"),
+        (
+            "PublicationStatus",
+            serde_json::json!({"EnumValue": "Draft"}),
+            "EnumValue.ValueVisualizer",
+        ),
+        (
+            "CoverDigest",
+            serde_json::json!({"BytesValue": [0, 127, 255]}),
+            "BytesValue.ValueVisualizer",
+        ),
+        ("Subtitle", serde_json::Value::Null, "StringValue.ValueVisualizer"),
+    ] {
+        let field = fields.iter().find(|field| field["name"] == name).expect("scalar field");
+        assert_eq!(field["value"], expected);
+        assert_eq!(field["visualizer"]["selected"], selected);
+    }
+    let evidence = serde_json::json!({ "node": materialize(context, &node), "properties": materialize(context, &properties), "fields": fields });
+    if let Some(path) = std::env::var_os("MAP_VALUE_PRESENTATION_EVIDENCE") {
+        std::fs::write(path, serde_json::to_vec_pretty(&evidence).unwrap())
+            .expect("write acceptance evidence");
+    }
 }

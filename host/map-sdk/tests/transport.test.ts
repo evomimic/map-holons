@@ -134,3 +134,34 @@ describe('unwrapMapResponse', () => {
     );
   });
 });
+
+
+describe('descriptor errors from the host', () => {
+  it('preserves MissingDescribedBy as a domain error', () => {
+    const response = {
+      request_id: 376,
+      result: { Err: { MissingDescribedBy: { holon: 'materialize-visualizer-invocation' } } },
+    } as unknown as MapIpcResponse;
+    expect(() => unwrapMapResponse(response)).toThrow(DomainError);
+    try {
+      unwrapMapResponse(response);
+    } catch (error) {
+      expect(error).toMatchObject({ variant: 'MissingDescribedBy' });
+    }
+  });
+});
+
+it('records operation-only IPC timing during a startup profile', async () => {
+  performance.mark('map.startup.active');
+  invokeMock.mockResolvedValue(okResponse);
+  try {
+    await invokeMapCommand(request);
+    const measures = performance.getEntriesByName('map.ipc', 'measure');
+    expect(measures).toHaveLength(1);
+    expect((measures[0] as PerformanceMeasure).detail).toBe('Space.BeginTransaction');
+    expect(measures[0].duration).toBeGreaterThanOrEqual(0);
+  } finally {
+    performance.clearMarks('map.startup.active');
+    performance.clearMeasures('map.ipc');
+  }
+});

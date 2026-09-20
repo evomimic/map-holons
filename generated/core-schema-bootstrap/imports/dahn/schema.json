@@ -284,7 +284,7 @@
               "$ref": "(Visualizer.HolonType)-[ImplementedBy]->(VisualizerImplementation.HolonType)"
             },
             {
-              "$ref": "(Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor)"
+              "$ref": "(Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor)"
             },
             {
               "$ref": "(Visualizer.HolonType)-[HasSlot]->(VisualizerSlot.HolonType)"
@@ -434,6 +434,53 @@
           ]
         },
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontFamily.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontSize.DesignToken"
+            },
+            {
+              "$ref": "CanvasFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasLineHeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasPadding.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -486,6 +533,40 @@
           ]
         },
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "InspectorContentMinHeight.DesignToken"
+            },
+            {
+              "$ref": "InspectorRailWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "HolonInspector.PropertyViewerSlot"
+            }
+          ]
+        },
+        {
           "name": "ImplementedBy",
           "target": [
             {
@@ -504,11 +585,34 @@
       ]
     },
     {
+      "key": "HolonInspector.PropertyViewerSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "PropertiesVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:32a82a5fa4faa873efbc3519263d99050c1c898db2de7cb6e099cc6e1c9b6eb1",
+        "VisualizerArtifactDigest": "sha256:0ae4d446d796d246b03611c67e1cb0412604c791f0a207ecfa843d5c7800fcc7",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -649,6 +753,26 @@
           ]
         },
         {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
           "name": "HasSlot",
           "target": [
             {
@@ -702,7 +826,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:2a848a082987045e94989ddee5cdbc3ca46ffebf316c1c6536125e682eaa9936",
+        "VisualizerArtifactDigest": "sha256:e2ba373147af80d8f271e4aa191582fb04c97f85c34c287d51a8d82bdf99855a",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -793,6 +917,279 @@
       ]
     },
     {
+      "key": "PropertyVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType",
+      "properties": {
+        "TypeName": "PropertyVisualizer",
+        "TypeNamePlural": "PropertyVisualizers",
+        "DisplayName": "Property Visualizer",
+        "DisplayNamePlural": "Property Visualizers",
+        "Description": "Concrete Visualizer Holon Type for visualizers that compose one descriptor-defined property name with a selected Value Visualizer. It does not own set-level layout."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Visualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericProperties.PropertiesVisualizer",
+      "type": "PropertiesVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "PropertiesHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "PropertiesHeadingGap.DesignToken"
+            },
+            {
+              "$ref": "PropertiesRowGap.DesignToken"
+            },
+            {
+              "$ref": "PropertiesDisclosureFocusColor.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "GenericProperties.PropertySlot"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "GenericPropertiesTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericProperties.PropertySlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "PropertyVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericPropertiesTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:49162162447f12d44362694024f5e5dfc12325f19a61226aa27efc14f0b77bcd",
+        "VisualizerImplementationKey": "dahn.properties",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericProperty.PropertyVisualizer",
+      "type": "PropertyVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "PropertyColumnGap.DesignToken"
+            },
+            {
+              "$ref": "PropertyNameMinWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "HasSlot",
+          "target": [
+            {
+              "$ref": "GenericProperty.ValueSlot"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "GenericPropertyTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericProperty.ValueSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ValueVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericPropertyTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:e12fa72f3d048e0affc49dfbb84c3b754ee1f8d506cdba3797cd5a42f76801fb",
+        "VisualizerImplementationKey": "dahn.property",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "ValueVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType",
       "properties": {
@@ -819,6 +1216,182 @@
             }
           ]
         },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "StringValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "StringValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "IntegerValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "IntegerValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BooleanValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "BooleanValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "EnumValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "EnumValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "BytesValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "BytesValueType.ValueType"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "ScalarValueTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ScalarValueTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:7b8cd6b923b5259e80248fb00dd7920571c4ab2e033d9a6cb3c6d34cf2a32dd4",
+        "VisualizerImplementationKey": "dahn.scalar-value",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      },
+      "relationships": [
         {
           "name": "OwnedBy",
           "target": [
@@ -1186,14 +1759,14 @@
       ]
     },
     {
-      "key": "(Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor)",
+      "key": "(Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "ApplicableToType",
         "TypeNamePlural": "ApplicableToTypeRelationships",
         "DisplayName": "ApplicableToType Relationship",
         "DisplayNamePlural": "ApplicableToType Relationships",
-        "Description": "Declares a subject Holon Type against which a selector evaluates a Visualizer Holon's applicability using the subject's direct descriptor and type lineage. A target of HolonType.TypeDescriptor means any ordinary subject described by a Holon Type, not descriptor holons as subjects. Additional applicability dimensions remain additive schema work.",
+        "Description": "Declares a descriptor Type against which a selector evaluates a Visualizer Holon's applicability using its type lineage. Node and Properties visualizers target HolonType lineages; Property and Value visualizers may target PropertyType and ValueType lineages.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [
@@ -1225,7 +1798,7 @@
           "name": "TargetType",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "TypeDescriptor"
             }
           ]
         },
@@ -1233,7 +1806,7 @@
           "name": "HasInverse",
           "target": [
             {
-              "$ref": "(HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)"
+              "$ref": "(TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)"
             }
           ]
         },
@@ -1256,15 +1829,16 @@
       ]
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)",
+      "key": "(TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType",
       "properties": {
         "TypeName": "HasApplicableVisualizer",
         "TypeNamePlural": "HasApplicableVisualizerRelationships",
         "DisplayName": "HasApplicableVisualizer Relationship",
         "DisplayNamePlural": "HasApplicableVisualizer Relationships",
-        "Description": "Inverse of ApplicableToType, exposing the Visualizer Holons applicable to a Holon Type.",
-        "DeletionSemantic": "Block"
+        "Description": "Inverse of ApplicableToType, exposing the Visualizer Holons applicable to a descriptor Type.",
+        "DeletionSemantic": "Block",
+        "MembershipCacheMaxAgeMillis": 30000
       },
       "relationships": [
         {
@@ -1287,7 +1861,7 @@
           "name": "SourceType",
           "target": [
             {
-              "$ref": "HolonType.TypeDescriptor"
+              "$ref": "TypeDescriptor"
             }
           ]
         },
@@ -1326,6 +1900,7 @@
         "DisplayName": "HasSlot Relationship",
         "DisplayNamePlural": "HasSlot Relationships",
         "Description": "Declares the semantic VisualizerSlots that a Visualizer requires for its internal composition.",
+        "IsDefinitional": true,
         "DeletionSemantic": "Allow"
       },
       "relationships": [

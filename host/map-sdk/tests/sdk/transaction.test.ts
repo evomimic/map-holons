@@ -415,3 +415,54 @@ describe('MapTransaction', () => {
     await expect(run()).rejects.toBe(error);
   });
 });
+
+describe('materialization transaction ordering', () => {
+  it('finishes a descriptor-bearing invocation before starting another descriptor lookup', async () => {
+    const tx = createMapTransaction(txId);
+    const selected = createHolonReference(txId, stagedReference);
+    const events: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.spyOn(tx, 'getSavedHolonByBaseKey').mockImplementation(async () => {
+      events.push('lookup');
+      return selected as never;
+    });
+    vi.spyOn(tx, 'newHolon').mockImplementation(async () => ({
+      withDescriptor: async () => { events.push('descriptor'); await gate; },
+      withPropertyValue: async () => {},
+      addRelatedHolons: async () => {},
+    }) as never);
+    vi.spyOn(tx, 'danceV2').mockImplementation(async () => {
+      events.push('dance');
+      return {
+        relatedHolons: async () => ({
+          length: 1,
+          members: [{
+            propertyValue: async (name: string) => ({ StringValue:
+              name === 'VisualizerArtifactHandle' ? 'artifact:test' :
+              name === 'VisualizerModuleFormat' ? 'ESModule' : 'default' }),
+          }],
+        }),
+      } as never;
+    });
+    const first = tx.materializeVisualizer(selected);
+    const second = tx.materializeVisualizer(selected);
+    await vi.waitFor(() => expect(events).toContain('descriptor'));
+    expect(events).toEqual(['lookup', 'descriptor']);
+    release();
+    await Promise.all([first, second]);
+    expect(events).toEqual(['lookup', 'descriptor', 'dance', 'lookup', 'descriptor', 'dance']);
+  });
+
+  it('does not poison later materializations when one fails', async () => {
+    const tx = createMapTransaction(txId);
+    const selected = createHolonReference(txId, stagedReference);
+    const lookup = vi.spyOn(tx, 'getSavedHolonByBaseKey').mockResolvedValue(null);
+    const results = await Promise.allSettled([
+      tx.materializeVisualizer(selected),
+      tx.materializeVisualizer(selected),
+    ]);
+    expect(results.map(result => result.status)).toEqual(['rejected', 'rejected']);
+    expect(lookup).toHaveBeenCalledTimes(2);
+  });
+});

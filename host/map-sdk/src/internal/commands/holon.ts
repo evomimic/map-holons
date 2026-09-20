@@ -200,6 +200,7 @@ export function readRelatedHolons(
   target: HolonReferenceWire,
   name: RelationshipName,
   options?: RequestOptionsOverrides,
+  requireFresh = false,
 ): Promise<HolonCollectionWire> {
   return runHolonCommand(
     txId,
@@ -208,6 +209,7 @@ export function readRelatedHolons(
       Read: {
         GetRelatedHolons: {
           name,
+          ...(requireFresh ? { require_fresh: true } : {}),
         },
       },
     },

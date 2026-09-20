@@ -1,7 +1,7 @@
 use base_types::MapString;
 use core_types::HolonError;
 use holons_core::core_shared_objects::transactions::TransactionContext;
-use holons_core::descriptors::{equals_or_extends, walk_extends_chain};
+use holons_core::descriptors::{equals_or_extends, walk_extends_chain, PropertyDescriptor};
 use holons_core::reference_layer::{HolonReference, ReadableHolon};
 use holons_core::Descriptor;
 use map_commands_contract::{VisualizerKind, VisualizerSelection, VisualizerSelectionRequest};
@@ -191,8 +191,12 @@ pub fn select_visualizer(
     context: &Arc<TransactionContext>,
     request: VisualizerSelectionRequest,
 ) -> Result<VisualizerSelection, HolonError> {
-    if request.requested_kind == VisualizerKind::Canvas {
-        let selected = select_canvas_visualizer(context, request.subject)?;
+    let VisualizerSelectionRequest { subject, requested_kind, parent_visualizer } = request;
+    if requested_kind == VisualizerKind::Canvas {
+        let selected = select_canvas_visualizer(context, subject)?;
+        if let Some(parent) = parent_visualizer {
+            require_parent_slot_accepts(&parent, &selected.visualizer)?;
+        }
         return Ok(VisualizerSelection {
             selected: selected.visualizer,
             requested_kind: VisualizerKind::Canvas,
@@ -200,25 +204,62 @@ pub fn select_visualizer(
         });
     }
 
-    let selected = match request.requested_kind {
-        VisualizerKind::Node => select_node_visualizer(context, request.subject)?,
-        VisualizerKind::RootedNavigation => {
-            select_rooted_navigation_visualizer(context, request.subject)?
-        }
+    let selected = match requested_kind {
+        VisualizerKind::Node => select_node_visualizer(context, subject)?,
+        VisualizerKind::RootedNavigation => select_rooted_navigation_visualizer(context, subject)?,
+        VisualizerKind::Properties => select_properties_visualizer(context, subject)?,
+        VisualizerKind::Property => select_property_visualizer(context, subject)?,
+        VisualizerKind::Value => select_value_visualizer(context, subject)?,
         kind => {
             let visualizer_key = bootstrap_visualizer_key(kind)?;
-            let _ = request.subject.holon_descriptor()?;
+            let _ = subject.holon_descriptor()?;
             HolonReference::Smart(
                 context.lookup().get_saved_holon_by_key(&MapString::from(visualizer_key))?,
             )
         }
     };
 
-    Ok(VisualizerSelection {
-        selected,
-        requested_kind: request.requested_kind,
-        alternatives_available: false,
-    })
+    if let Some(parent) = parent_visualizer {
+        require_parent_slot_accepts(&parent, &selected)?;
+    }
+
+    Ok(VisualizerSelection { selected, requested_kind, alternatives_available: false })
+}
+
+/// Ensures a Rust-selected child can occupy a semantic slot declared by the
+/// already selected parent. The UI receives only children that pass this
+/// compatibility check; it never decides that a local element fits a slot.
+fn require_parent_slot_accepts(
+    parent: &HolonReference,
+    selected_child: &HolonReference,
+) -> Result<(), HolonError> {
+    let child_type = selected_child.holon_descriptor()?.holon().clone();
+    let slots = parent
+        .related_holons(DahnRelationshipTypeName::HasSlot)?
+        .read()
+        .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+        .get_members()
+        .clone();
+
+    for slot in slots {
+        let accepted_types = slot
+            .related_holons(DahnRelationshipTypeName::AcceptsVisualizerType)?
+            .read()
+            .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+            .get_members()
+            .clone();
+        for accepted_type in accepted_types {
+            if equals_or_extends(&child_type, &accepted_type)? {
+                return Ok(());
+            }
+        }
+    }
+
+    Err(HolonError::NotImplemented(format!(
+        "Selected Visualizer {} does not satisfy any declared slot of parent {}",
+        selected_child.summarize()?,
+        parent.summarize()?,
+    )))
 }
 
 /// Selects the nearest applicable Node Visualizer by walking the subject's
@@ -243,6 +284,41 @@ fn select_rooted_navigation_visualizer(
     )
 }
 
+/// Selects the Properties Visualizer applicable to the owner holon's type.
+fn select_properties_visualizer(
+    context: &Arc<TransactionContext>,
+    subject: HolonReference,
+) -> Result<HolonReference, HolonError> {
+    select_applicable_visualizer(context, subject, "PropertiesVisualizer.HolonType", "Properties")
+}
+
+/// Selects a Property Visualizer using the resolved PropertyDescriptor itself.
+/// Property maps carry raw values only; descriptor identity supplies the
+/// requiredness and declared ValueType needed for semantic presentation.
+fn select_property_visualizer(
+    context: &Arc<TransactionContext>,
+    property_descriptor: HolonReference,
+) -> Result<HolonReference, HolonError> {
+    select_applicable_visualizer_for_type(
+        context,
+        property_descriptor,
+        "PropertyVisualizer.HolonType",
+        "Property",
+    )
+}
+
+/// Selects the Value Visualizer for the PropertyDescriptor's declared
+/// ValueType. The selector reads the bound descriptor relationship rather than
+/// deriving semantic type from a runtime BaseValue variant.
+fn select_value_visualizer(
+    context: &Arc<TransactionContext>,
+    property_descriptor: HolonReference,
+) -> Result<HolonReference, HolonError> {
+    let value_type =
+        PropertyDescriptor::from_holon(property_descriptor).value_type()?.holon().clone();
+    select_applicable_visualizer_for_type(context, value_type, "ValueVisualizer.HolonType", "Value")
+}
+
 /// Common leaf-to-root applicability walk. Role identity is supplied by the
 /// caller; this does not generalize Structure selection beyond RootedNavigation.
 fn select_applicable_visualizer(
@@ -251,10 +327,28 @@ fn select_applicable_visualizer(
     required_visualizer_type_key: &str,
     role_name: &str,
 ) -> Result<HolonReference, HolonError> {
+    let subject_type = subject.holon_descriptor()?.holon().clone();
+
+    select_applicable_visualizer_for_type(
+        context,
+        subject_type,
+        required_visualizer_type_key,
+        role_name,
+    )
+}
+
+/// Common leaf-to-root applicability walk for an already-resolved descriptor
+/// type. Property and Value selection start from descriptor identity directly;
+/// Holon-backed subjects first project their describing type above.
+fn select_applicable_visualizer_for_type(
+    context: &Arc<TransactionContext>,
+    subject_type: HolonReference,
+    required_visualizer_type_key: &str,
+    role_name: &str,
+) -> Result<HolonReference, HolonError> {
     let required_visualizer_type = HolonReference::Smart(
         context.lookup().get_saved_holon_by_key(&MapString::from(required_visualizer_type_key))?,
     );
-    let subject_type = subject.holon_descriptor()?.holon().clone();
 
     for type_descriptor in walk_extends_chain(&subject_type) {
         let type_descriptor = type_descriptor?;
@@ -345,6 +439,7 @@ fn bootstrap_visualizer_key(kind: VisualizerKind) -> Result<&'static str, HolonE
         VisualizerKind::Node
         | VisualizerKind::RootedNavigation
         | VisualizerKind::Properties
+        | VisualizerKind::Property
         | VisualizerKind::Value
         | VisualizerKind::Action => Err(HolonError::NotImplemented(format!(
             "No deterministic DAHN bootstrap selection is configured for VisualizerKind::{kind:?}"
@@ -379,6 +474,7 @@ mod tests {
     fn unsupported_kinds_fail_without_selecting_an_unrelated_visualizer() {
         assert!(bootstrap_visualizer_key(VisualizerKind::Node).is_err());
         assert!(bootstrap_visualizer_key(VisualizerKind::Properties).is_err());
+        assert!(bootstrap_visualizer_key(VisualizerKind::Property).is_err());
         assert!(bootstrap_visualizer_key(VisualizerKind::Value).is_err());
         assert!(bootstrap_visualizer_key(VisualizerKind::Action).is_err());
     }

@@ -3,6 +3,7 @@ export { CorePropertyName } from './core-names';
 export {
   HolonDescriptorHandle,
   PropertyDescriptorHandle,
+  ValueDescriptorHandle,
   RelationshipDescriptorHandle,
 } from './descriptors';
 export type {

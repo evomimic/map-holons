@@ -358,6 +358,18 @@ impl ReadableHolonImpl for HolonReference {
         }
     }
 
+    fn related_holons_with_hint_impl(
+        &self,
+        name: &RelationshipName,
+        hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        match self {
+            Self::Smart(reference) => reference.related_holons_with_hint_impl(name, hint),
+            Self::Staged(reference) => reference.related_holons_with_hint_impl(name, hint),
+            Self::Transient(reference) => reference.related_holons_with_hint_impl(name, hint),
+        }
+    }
+
     fn related_holons_impl(
         &self,
         relationship_name: &RelationshipName,

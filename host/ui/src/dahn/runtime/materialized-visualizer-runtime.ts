@@ -18,6 +18,8 @@ export type VisualizerModuleImporter = (
  * code; this runtime does not maintain a second implementation registry.
  */
 export class MaterializedVisualizerRuntime {
+  private readonly importedModules = new Map<string, Promise<VisualizerModuleExports>>();
+
   constructor(
     private readonly cache: MaterializedVisualizerCache,
     private readonly importModule: VisualizerModuleImporter = importEsModule,
@@ -25,7 +27,15 @@ export class MaterializedVisualizerRuntime {
 
   async realize(selectedVisualizer: HolonReference): Promise<unknown> {
     const module = await this.cache.get(selectedVisualizer);
-    const exports = await this.importModule(module.source);
+    // Identical materialized source has one constructor identity, including
+    // concurrent requests for different semantic Visualizers sharing code.
+    let imported = this.importedModules.get(module.source);
+    if (imported === undefined) {
+      imported = this.importModule(module.source);
+      this.importedModules.set(module.source, imported);
+      imported.catch(() => this.importedModules.delete(module.source));
+    }
+    const exports = await imported;
     const entrypoint = exports[module.entrypoint];
 
     if (entrypoint === undefined) {

@@ -59,6 +59,8 @@ function assertDesignTokenType(value: string, typeKey: string): void {
         return /^#[0-9a-fA-F]{3,8}$|^(?:rgb|hsl)a?\([^;{}@]+\)$/.test(value);
       case 'Dimension.DesignTokenType':
         return /^0$|^-?(?:\d+|\d*\.\d+)(?:px|rem|em|%|vh|vw)$/.test(value);
+      case 'Duration.DesignTokenType':
+        return /^(?:\d+|\d*\.\d+)(?:ms|s)$/.test(value);
       case 'FontWeight.DesignTokenType':
         return /^(?:normal|bold|[1-9]00)$/.test(value);
       case 'StrokeStyle.DesignTokenType':

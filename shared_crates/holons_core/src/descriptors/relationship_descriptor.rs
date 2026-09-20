@@ -37,6 +37,21 @@ impl RelationshipDescriptor {
         accessor_helpers::relationship_is_definitional(&self.holon)
     }
 
+    /// Maximum age of cached mutable membership in milliseconds. Missing or zero
+    /// requires fresh reads. This read policy is inherited along descriptor Extends.
+    pub fn membership_cache_max_age_millis(&self) -> Result<u64, HolonError> {
+        match accessor_helpers::effective_property_value(
+            &self.holon,
+            "MembershipCacheMaxAgeMillis",
+        )? {
+            None => Ok(0),
+            Some(base_types::BaseValue::IntegerValue(value)) if value.0 >= 0 => Ok(value.0 as u64),
+            _ => Err(HolonError::InvalidParameter(
+                "MembershipCacheMaxAgeMillis must be a nonnegative integer".into(),
+            )),
+        }
+    }
+
     /// Returns whether related members have schema-significant order.
     pub fn is_ordered(&self) -> Result<bool, HolonError> {
         accessor_helpers::relationship_is_ordered(&self.holon)

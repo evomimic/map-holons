@@ -48,9 +48,19 @@ instance SpaceNavigator.CanvasVisualizer {
     ImplementedBy -> SpaceNavigatorTypeScript.VisualizerImplementation
     ConsumesDesignToken -> [
       CanvasGap.DesignToken,
+      CanvasContentMinHeight.DesignToken,
+      CanvasFontFamily.DesignToken,
+      CanvasFontSize.DesignToken,
+      CanvasFontWeight.DesignToken,
+      CanvasHeadingFontWeight.DesignToken,
+      CanvasLineHeight.DesignToken,
       CanvasPadding.DesignToken,
       CanvasSurfaceBackground.DesignToken,
-      CanvasTextColor.DesignToken
+      CanvasTextColor.DesignToken,
+      SlotBorderColor.DesignToken,
+      SlotBorderStyle.DesignToken,
+      SlotBorderWidth.DesignToken,
+      SlotPadding.DesignToken,
     ]
   }
 }
@@ -60,14 +70,18 @@ instance TableCollectionVisualizer.CollectionVisualizer {
   relationships {
     ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
     ConsumesDesignToken -> [
+      CollectionHeaderSurfaceBackground.DesignToken,
+      CollectionHeadingFontSize.DesignToken,
+      CollectionHeadingFontWeight.DesignToken,
       CollectionSurfaceBackground.DesignToken,
       CollectionTextColor.DesignToken,
-      CollectionHeaderSurfaceBackground.DesignToken,
+      TableCellBorderColor.DesignToken,
+      TableCellBorderStyle.DesignToken,
+      TableCellBorderWidth.DesignToken,
+      TableCellPadding.DesignToken,
+      TableHeaderFontWeight.DesignToken,
       TableHeaderSurfaceBackground.DesignToken,
       TableHeaderTextColor.DesignToken,
-      TableCellBorderColor.DesignToken,
-      TableCellBorderWidth.DesignToken,
-      TableCellPadding.DesignToken
     ]
   }
 }

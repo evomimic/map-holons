@@ -154,6 +154,22 @@ impl HolonCacheAccess for CacheRequestRouter {
         }
     }
 
+    fn get_related_holons_with_hint(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
+        hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        match Self::get_request_route(source, &self.cache_routing_policy)? {
+            ServiceRoute::Local => self
+                .local_cache_manager
+                .read()
+                .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                .get_related_holons_with_hint(context, source, name, hint),
+        }
+    }
+
     fn get_all_related_holons(
         &self,
         context: &Arc<TransactionContext>,

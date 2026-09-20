@@ -21,7 +21,7 @@ pub use definitional_equivalence::{
 };
 pub use holon_collection_api::HolonCollectionApi;
 pub use holon_reference::HolonReference;
-pub use holon_service_api::{HolonServiceApi, RelationshipCacheScope};
+pub use holon_service_api::HolonServiceApi;
 pub use holon_staging_behavior::HolonStagingBehavior;
 pub use readable_holon::ReadableHolon;
 pub use smart_reference::SmartReference;

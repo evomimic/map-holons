@@ -71,7 +71,7 @@
     },
     {
       "path": "imports/core/property-types.json",
-      "sha256": "c698b4fa867b5528d39ce0237552c67c3567de191343500934439c33ce52dd63"
+      "sha256": "b0b18546313c97f4443db0b307e22e67ce6ea34e82efdcfa315622386027e3bd"
     },
     {
       "path": "imports/core/relationship-types.json",
@@ -79,7 +79,7 @@
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "c43193f9963e890a4a11736ab8f788e4d6356e6c20c395f5f4fa11ae1c09da31"
+      "sha256": "b137b6d0867f6f95964c1fb0ce56cdc0c539c9cbbde636a37cc6330781833d90"
     },
     {
       "path": "imports/core/validation.json",
@@ -95,7 +95,7 @@
     },
     {
       "path": "imports/dance/schema.json",
-      "sha256": "ff32d738e5821f3d52c92029e3aa822d9150f60ba2e9fcd20c367bc812c24d39"
+      "sha256": "af52f008a7bbd69c810049366ffd8722cd80c9e0725876fdd6335dd7580a7e46"
     },
     {
       "path": "imports/dancer/schema.json",
@@ -115,19 +115,19 @@
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "82c79931b7c8553bee972853598f1a9f60219573ac631c160f1af4430f000610"
+      "sha256": "b399778c944c23492efa939d6cbd3714325f9d70b665b19e36ea85b9697aa13b"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "cd7bf39c32150180c234f1ab20b93beabbb9655f0982c973984ed63968c62b3c"
+      "sha256": "b182cd909cbf00ac07f7d278cf4953b94a1ff86f9c27ba238dbfe5099a5cd01e"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "156ea3d882389959e60a09e7ab9e23c8292b9624696f56cf1bc7368e83c6757e"
+      "sha256": "d4d8c21bcefe6cc054e88bf21dd85735de1120dcbd8f26027200390faef95312"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "78d07b7f31a6fd2895b1b1e4e8b6e453817d9a0cf6cd869684b0c8135756b8ab"
+      "sha256": "0ebe6773758bb7da6ae75e11b1cd92c93e172b0ebd261eff98c14677adb42195"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -168,7 +168,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)",
+      "key": "(DanceImplementation.HolonType)-[ForDance]->(MetaDanceType.MetaHolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -198,10 +198,6 @@
     {
       "key": "(DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
-    },
-    {
-      "key": "(DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(DanceType.HolonType)-[OfferedByDancer]->(Dancer.HolonType)",
@@ -368,10 +364,6 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(HolonType.TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)",
-      "type": "MetaInverseRelationshipType.MetaRelationshipType"
-    },
-    {
       "key": "(HolonType.TypeDescriptor)-[InstanceKeyRule]->(KeyRuleType.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -474,6 +466,10 @@
     {
       "key": "(MetaConstraintType.MetaHolonType)-[ApplicableToDescriptorTypes]->(TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(MetaDanceType.MetaHolonType)-[HasImplementation]->(DanceImplementation.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(MetaDesignSystem.HolonType)-[DefinesDesignToken]->(DesignToken.HolonType)",
@@ -680,6 +676,10 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(TypeDescriptor)-[HasApplicableVisualizer]->(Visualizer.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(TypeDescriptor)-[ImplementsDance]->(DanceImplementation.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -716,7 +716,7 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
-      "key": "(Visualizer.HolonType)-[ApplicableToType]->(HolonType.TypeDescriptor)",
+      "key": "(Visualizer.HolonType)-[ApplicableToType]->(TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -774,6 +774,30 @@
     {
       "key": "AbstractMemberMinimumEnforcement.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ActionCornerRadius.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "ActionHoverSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "ActionPaddingBlock.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "ActionPaddingInline.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "ActionSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "ActionTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "ActionVisualizer.HolonType",
@@ -860,11 +884,63 @@
       "type": "MetaValidationRule.MetaHolonType"
     },
     {
+      "key": "BooleanValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
+    },
+    {
       "key": "BooleanValueType.ValueType",
       "type": "MetaValueType.MetaTypeDescriptor"
     },
     {
+      "key": "BootstrapThemeActionCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeActionHoverSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeActionPaddingBlock",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeActionPaddingInline",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeActionSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeActionTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasFontFamily",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "BootstrapThemeCanvasGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCanvasLineHeight",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -884,6 +960,14 @@
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
+      "key": "BootstrapThemeCollectionHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeCollectionHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "BootstrapThemeCollectionSurfaceBackground",
       "type": "ThemeTokenAssignment.HolonType"
     },
@@ -892,7 +976,99 @@
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
+      "key": "BootstrapThemeInspectorContentMinHeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeInspectorRailWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherDismissDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorDuration",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherIndicatorWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherPhaseGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherSurfaceBackground",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertiesDisclosureFocusColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertiesHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertiesHeadingFontWeight",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertiesHeadingGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertiesRowGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertyColumnGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePropertyNameMinWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeSlotBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeSlotBorderStyle",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeSlotBorderWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeSlotPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "BootstrapThemeTableCellBorderColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeTableCellBorderStyle",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -901,6 +1077,10 @@
     },
     {
       "key": "BootstrapThemeTableCellPadding",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeTableHeaderFontWeight",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -920,6 +1100,10 @@
       "type": "MetaValidationRule.MetaHolonType"
     },
     {
+      "key": "BytesValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
+    },
+    {
       "key": "BytesValueType.ValueType",
       "type": "MetaBytesValueType.MetaValueType"
     },
@@ -928,7 +1112,31 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "CanvasContentMinHeight.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasFontFamily.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasFontSize.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasFontWeight.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "CanvasGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasHeadingFontWeight.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CanvasLineHeight.DesignToken",
       "type": "DesignToken.HolonType"
     },
     {
@@ -957,6 +1165,14 @@
     },
     {
       "key": "CollectionHeaderSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionHeadingFontSize.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "CollectionHeadingFontWeight.DesignToken",
       "type": "DesignToken.HolonType"
     },
     {
@@ -1244,6 +1460,10 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "Duration.DesignTokenType",
+      "type": "MetaStringValueType.MetaValueType"
+    },
+    {
       "key": "EffectiveKeyRuleSelection.ValidationRule",
       "type": "HolonValidationRule.HolonType"
     },
@@ -1266,6 +1486,10 @@
     {
       "key": "EnumTokenNonRetroactivity.ValidationRule",
       "type": "EnumValueValidationRule.HolonType"
+    },
+    {
+      "key": "EnumValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
     },
     {
       "key": "EnumValueType.ValueType",
@@ -1342,6 +1566,30 @@
     {
       "key": "FormatRule.KeyRuleType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "GenericProperties.PropertiesVisualizer",
+      "type": "PropertiesVisualizer.HolonType"
+    },
+    {
+      "key": "GenericProperties.PropertySlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "GenericPropertiesTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
+      "key": "GenericProperty.PropertyVisualizer",
+      "type": "PropertyVisualizer.HolonType"
+    },
+    {
+      "key": "GenericProperty.ValueSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "GenericPropertyTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
     },
     {
       "key": "GetAllHolons.CommandType",
@@ -1432,6 +1680,10 @@
       "type": "NodeVisualizer.HolonType"
     },
     {
+      "key": "HolonInspector.PropertyViewerSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType"
     },
@@ -1496,6 +1748,14 @@
       "type": "HolonValidationRule.HolonType"
     },
     {
+      "key": "InspectorContentMinHeight.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "InspectorRailWidth.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "InstanceDeletionAllowed.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -1506,6 +1766,10 @@
     {
       "key": "IntegerValidationRule.HolonType",
       "type": "MetaValidationRule.MetaHolonType"
+    },
+    {
+      "key": "IntegerValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
     },
     {
       "key": "IntegerValueType.ValueType",
@@ -1574,6 +1838,42 @@
     {
       "key": "KeyRuleType.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "LauncherDismissDuration.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherIndicatorColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherIndicatorDuration.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherIndicatorSize.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherIndicatorWidth.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherPhaseGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "LauncherTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "Length16k.StringLengthConstraint",
@@ -1784,6 +2084,10 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "MembershipCacheMaxAgeMillis.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "MetaBytesValueType.MetaValueType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -1956,8 +2260,36 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "PropertiesDisclosureFocusColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertiesHeadingFontSize.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertiesHeadingFontWeight.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertiesHeadingGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertiesRowGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "PropertiesVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType"
+    },
+    {
+      "key": "PropertyColumnGap.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertyNameMinWidth.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "PropertyType.TypeDescriptor",
@@ -1970,6 +2302,10 @@
     {
       "key": "PropertyValueConformance.ValidationRule",
       "type": "PropertyValidationRule.HolonType"
+    },
+    {
+      "key": "PropertyVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType"
     },
     {
       "key": "ProxyId.PropertyType",
@@ -2188,6 +2524,10 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "ScalarValueTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
       "key": "Schema.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -2206,6 +2546,22 @@
     {
       "key": "SemanticAuthority.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SlotBorderColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SlotBorderStyle.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SlotBorderWidth.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "SlotPadding.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "StageNewFromClone.CommandType",
@@ -2236,6 +2592,10 @@
       "type": "MetaValidationRule.MetaHolonType"
     },
     {
+      "key": "StringValue.ValueVisualizer",
+      "type": "ValueVisualizer.HolonType"
+    },
+    {
       "key": "StringValueType.ValueType",
       "type": "MetaStringValueType.MetaValueType"
     },
@@ -2256,11 +2616,19 @@
       "type": "DesignToken.HolonType"
     },
     {
+      "key": "TableCellBorderStyle.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "TableCellBorderWidth.DesignToken",
       "type": "DesignToken.HolonType"
     },
     {
       "key": "TableCellPadding.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "TableHeaderFontWeight.DesignToken",
       "type": "DesignToken.HolonType"
     },
     {

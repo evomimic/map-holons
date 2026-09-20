@@ -366,6 +366,17 @@ fn smartlink_reference_properties(
 }
 
 impl HolonServiceApi for GuestHolonService {
+    fn relationship_cache_policy(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _source_holon_id: &HolonId,
+        _relationship_name: &RelationshipName,
+    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+        // Each guest request owns a fresh cache. Reuse within that request
+        // must not load descriptor graphs merely to decide retention.
+        Ok(holons_core::RelationshipCachePolicy::Reuse)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

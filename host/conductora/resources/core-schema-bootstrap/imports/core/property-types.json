@@ -1393,6 +1393,51 @@
           ]
         }
       ]
+    },
+    {
+      "key": "MembershipCacheMaxAgeMillis.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MembershipCacheMaxAgeMillis",
+        "TypeNamePlural": "MembershipCacheMaxAgesMillis",
+        "DisplayName": "Membership cache maximum age (ms)",
+        "DisplayNamePlural": "Membership cache maximum ages (ms)",
+        "Description": "Maximum age in milliseconds for host-cached mutable relationship membership. Missing or zero requires fresh reads; positive values permit bounded staleness. Callers may require fresh membership. Definitional declared membership remains version-bound."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -57,6 +57,21 @@
           "target": [
             {
               "$ref": "Title.PropertyType"
+            },
+            {
+              "$ref": "IsPublished.PropertyType"
+            },
+            {
+              "$ref": "PageCount.PropertyType"
+            },
+            {
+              "$ref": "PublicationStatus.PropertyType"
+            },
+            {
+              "$ref": "CoverDigest.PropertyType"
+            },
+            {
+              "$ref": "Subtitle.PropertyType"
             }
           ]
         },
@@ -413,6 +428,285 @@
           "target": [
             {
               "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "IsPublished.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "IsPublished",
+        "TypeNamePlural": "IsPublishedValues",
+        "DisplayName": "IsPublished",
+        "DisplayNamePlural": "IsPublished",
+        "Description": "Optional IsPublished for scalar presentation acceptance."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBooleanValueType.BooleanValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PageCount.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PageCount",
+        "TypeNamePlural": "PageCountValues",
+        "DisplayName": "PageCount",
+        "DisplayNamePlural": "PageCount",
+        "Description": "Optional PageCount for scalar presentation acceptance."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapIntegerValueType.IntegerValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PublicationStatus.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "PublicationStatus",
+        "TypeNamePlural": "PublicationStatusValues",
+        "DisplayName": "PublicationStatus",
+        "DisplayNamePlural": "PublicationStatus",
+        "Description": "Optional PublicationStatus for scalar presentation acceptance."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "PublicationStatus.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CoverDigest.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CoverDigest",
+        "TypeNamePlural": "CoverDigestValues",
+        "DisplayName": "CoverDigest",
+        "DisplayNamePlural": "CoverDigest",
+        "Description": "Optional CoverDigest for scalar presentation acceptance."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapBytesValueType.BytesValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Subtitle.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Subtitle",
+        "TypeNamePlural": "SubtitleValues",
+        "DisplayName": "Subtitle",
+        "DisplayNamePlural": "Subtitle",
+        "Description": "Optional Subtitle for scalar presentation acceptance."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PublicationStatus.MapEnumValueType",
+      "type": "MetaEnumValueType.MetaValueType",
+      "properties": {
+        "TypeName": "PublicationStatus",
+        "TypeNamePlural": "PublicationStatuses",
+        "DisplayName": "PublicationStatus",
+        "DisplayNamePlural": "PublicationStatuses",
+        "Description": "Publication state for Book value presentation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        },
+        {
+          "name": "Variants",
+          "target": [
+            {
+              "$ref": "PublicationStatus.MapEnumValueType.Draft"
+            },
+            {
+              "$ref": "PublicationStatus.MapEnumValueType.Published"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PublicationStatus.MapEnumValueType.Draft",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Draft",
+        "DisplayName": "Draft",
+        "Description": "Not yet published."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PublicationStatus.MapEnumValueType.Published",
+      "type": "MetaEnumVariantValueType.MetaValueType",
+      "properties": {
+        "TypeName": "Published",
+        "DisplayName": "Published",
+        "Description": "Published edition."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "MapEnumVariantValueType.EnumVariantValueType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "BookAuthorInverseSchema"
             }
           ]
         }

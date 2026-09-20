@@ -507,6 +507,7 @@ export type HolonErrorWire =
   | { InvalidUpdate: string }
   | { LoaderParsingError: string }
   | { Misc: string }
+  | { MissingDescribedBy: { holon: string } }
   | { MissingStagedCollection: string }
   | { NotAccessible: [string, string] }
   | { NotImplemented: string }
@@ -1092,6 +1093,12 @@ export function isLineageIntegrityReasonWire(
 
 export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
   return (
+    isTaggedValue(
+      value,
+      'MissingDescribedBy',
+      (candidate): candidate is { holon: string } =>
+        isRecord(candidate) && isString(candidate['holon']),
+    ) ||
     isTaggedValue(value, 'CacheError', isString) ||
     isTaggedValue(value, 'CommitFailure', isString) ||
     isTaggedValue(value, 'ConductorError', isString) ||

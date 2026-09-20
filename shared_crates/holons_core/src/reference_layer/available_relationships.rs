@@ -175,8 +175,8 @@ mod tests {
             vec![member_of.into()],
         )?;
         target_type.add_related_holons_ungoverned(
-            CoreRelationshipTypeName::TargetOf,
-            vec![authored_by.into()],
+            CoreRelationshipTypeName::SourceOf,
+            vec![authors.into()],
         )?;
 
         Ok(AvailabilityFixture { context, target_type })

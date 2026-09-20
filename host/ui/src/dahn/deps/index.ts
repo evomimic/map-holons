@@ -8,6 +8,7 @@ export type {
   HolonReference,
   PropertyName,
   PropertyDescriptorHandle,
+  ValueDescriptorHandle,
   RelationshipDescriptorHandle,
   RelationshipName,
 } from './map-sdk';

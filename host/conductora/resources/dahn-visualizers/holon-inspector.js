@@ -5,9 +5,10 @@ export default class HolonInspectorElement extends HTMLElement {
     this.style.display = 'grid';
     this.style.flex = '1 1 auto';
     this.style.minHeight = '0';
-    this.style.gridTemplateColumns = 'minmax(0, 1fr) 11rem';
-    this.style.gridTemplateRows = 'auto minmax(12rem, 1fr) auto';
-    this.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
+    this.style.overflow = 'hidden';
+    this.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
+    this.style.gridTemplateRows = 'auto minmax(0, 1fr) auto';
+    this.style.gap = 'var(--dahn-canvas-gap)';
 
     const title = document.createElement('header');
     title.dataset.holonInspectorTitle = 'true';
@@ -20,7 +21,19 @@ export default class HolonInspectorElement extends HTMLElement {
 
     const propertyViewer = document.createElement('section');
     propertyViewer.dataset.holonInspectorPropertyViewer = 'true';
-    propertyViewer.textContent = 'Property Viewer Pane';
+    propertyViewer.style.gridColumn = '1';
+    propertyViewer.style.gridRow = '2';
+    propertyViewer.style.minWidth = '0';
+    propertyViewer.style.minHeight = '0';
+    propertyViewer.style.overflow = 'hidden';
+    propertyViewer.style.display = 'flex';
+    propertyViewer.style.flexDirection = 'column';
+    const propertiesVisualizer = context.childVisualizers?.get('properties');
+    if (propertiesVisualizer === undefined) {
+      propertyViewer.textContent = 'Property Viewer Pane';
+    } else {
+      propertyViewer.append(propertiesVisualizer);
+    }
 
     const singleValueRail = document.createElement('aside');
     singleValueRail.dataset.holonInspectorSingleValueRail = 'true';
@@ -35,11 +48,20 @@ export default class HolonInspectorElement extends HTMLElement {
 
     const body = document.createElement('div');
     body.dataset.holonInspectorBody = 'true';
-    body.style.gridColumn = '1';
+    body.style.gridColumn = '1 / -1';
     body.style.gridRow = '2';
     body.style.display = 'grid';
-    body.style.gridTemplateColumns = 'minmax(0, 1fr) 11rem';
-    body.style.gap = 'var(--dahn-canvas-gap, 0.75rem)';
+    body.style.minHeight = '0';
+    body.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
+    body.style.gridTemplateRows = 'auto minmax(0, 1fr)';
+    body.style.gap = 'var(--dahn-canvas-gap)';
+    actionBar.style.gridColumn = '1';
+    actionBar.style.gridRow = '1';
+    singleValueRail.style.gridRow = '1 / span 2';
+    for (const pane of [actionBar, propertyViewer, singleValueRail, collectionTabBar]) {
+      pane.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
+      pane.style.padding = 'var(--dahn-slot-padding)';
+    }
     body.append(actionBar, propertyViewer, singleValueRail);
 
     this.replaceChildren(title, body, collectionTabBar);

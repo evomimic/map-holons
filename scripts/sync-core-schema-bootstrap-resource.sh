@@ -13,3 +13,5 @@ fi
 mkdir -p "${packaged_bundle}"
 rm -rf "${packaged_bundle}/imports"
 cp -R "${generated_bundle}/." "${packaged_bundle}/"
+
+node "${repository_root}/scripts/generate-launcher-theme.mjs"

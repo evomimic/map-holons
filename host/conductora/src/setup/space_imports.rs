@@ -50,6 +50,7 @@ pub async fn ensure_configured_space_imports(handle: &AppHandle) -> anyhow::Resu
         .ok_or_else(|| anyhow::anyhow!("MAP Commands runtime is not initialized"))?;
 
     for package_directory in import_set.imports {
+        let started = std::time::Instant::now();
         let package_directory = safe_relative_path(&package_directory)?;
         let package_root = import_root.join(package_directory);
         let manifest: SchemaImportManifest = serde_json::from_slice(
@@ -94,6 +95,14 @@ pub async fn ensure_configured_space_imports(handle: &AppHandle) -> anyhow::Resu
             )
             .await;
         runtime.session().archive_transaction(&tx_id)?;
+        if std::env::var_os("MAP_PROFILE").is_some() {
+            eprintln!(
+                "[MAP-PROFILE] package={} total_ms={:.3} succeeded={}",
+                package_directory.display(),
+                started.elapsed().as_secs_f64() * 1000.0,
+                result.is_ok()
+            );
+        }
         result?;
     }
     Ok(())

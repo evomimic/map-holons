@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use super::client_holon_service::run_future_synchronously;
+use crate::client_shared_objects::client_holon_service::run_future_synchronously;
 use base_types::MapString;
 use core_types::{ContentSet, FileData, HolonError};
 use holons_core::core_shared_objects::transactions::TransactionContext;

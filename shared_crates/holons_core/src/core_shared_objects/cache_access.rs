@@ -36,6 +36,22 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
         relationship_name: &RelationshipName,
     ) -> Result<Arc<RwLock<HolonCollection>>, HolonError>;
 
+    /// Reads membership with a caller freshness requirement.
+    fn get_related_holons_with_hint(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
+        hint: crate::RelationshipReadHint,
+    ) -> Result<Arc<RwLock<HolonCollection>>, HolonError> {
+        if hint == crate::RelationshipReadHint::RequireFresh {
+            return Err(HolonError::NotImplemented(
+                "fresh relationship reads unsupported by cache adapter".into(),
+            ));
+        }
+        self.get_related_holons(context, source, name)
+    }
+
     /// Retrieves all relationships visible from a saved source.
     fn get_all_related_holons(
         &self,

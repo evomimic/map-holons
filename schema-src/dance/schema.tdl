@@ -179,7 +179,7 @@ holon DanceImplementation.HolonType {
       DanceSummary.PropertyType,
       ImplementationName.PropertyType
     ]
-    InstanceRelationships -> (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType)
+    InstanceRelationships -> (DanceImplementation.HolonType)-[ForDance]->(MetaDanceType.MetaHolonType)
   }
 }
 
@@ -270,6 +270,7 @@ def relationship (DanceType.HolonType)-[DanceAffordedBy]->(HolonType.TypeDescrip
 
 
 inverse relationship (HolonType.TypeDescriptor)-[AffordsDance]->(DanceType.HolonType) {
+  MembershipCacheMaxAgeMillis 30000
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
   source HolonType.TypeDescriptor
@@ -324,7 +325,7 @@ inverse relationship (DanceImplementation.HolonType)-[ImplementedFor]->(TypeDesc
 }
 
 
-def relationship (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonType) {
+def relationship (DanceImplementation.HolonType)-[ForDance]->(MetaDanceType.MetaHolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> ExactlyOne.CardinalityConstraint
@@ -332,7 +333,7 @@ def relationship (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonTyp
   }
   extends DeclaredRelationshipType.RelationshipType
   source DanceImplementation.HolonType
-  target DanceType.HolonType
+  target MetaDanceType.MetaHolonType
   deletion_semantic Block
   header {
     description: "Pins a DanceImplementation to exactly one DanceType interface it satisfies."
@@ -343,10 +344,11 @@ def relationship (DanceImplementation.HolonType)-[ForDance]->(DanceType.HolonTyp
 }
 
 
-inverse relationship (DanceType.HolonType)-[HasImplementation]->(DanceImplementation.HolonType) {
+inverse relationship (MetaDanceType.MetaHolonType)-[HasImplementation]->(DanceImplementation.HolonType) {
+  MembershipCacheMaxAgeMillis 30000
   type MetaInverseRelationshipType.MetaRelationshipType
   extends InverseRelationshipType.RelationshipType
-  source DanceType.HolonType
+  source MetaDanceType.MetaHolonType
   target DanceImplementation.HolonType
   relationships {
     Constraints -> ZeroOrMore.CardinalityConstraint

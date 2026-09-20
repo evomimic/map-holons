@@ -15,6 +15,7 @@ export type {
   HolonReference,
   HolonReferenceWire,
   PropertyDescriptorHandle,
+  ValueDescriptorHandle,
   ReadableHolon,
   RelationshipDescriptorHandle,
   PropertyName,

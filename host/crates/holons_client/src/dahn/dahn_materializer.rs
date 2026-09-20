@@ -123,6 +123,13 @@ impl DahnMaterializer {
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
             "PathInspector.RootedNavigationVisualizer" => "path-inspector.js",
             "HolonInspector.NodeVisualizer" => "holon-inspector.js",
+            "GenericProperties.PropertiesVisualizer" => "properties.js",
+            "GenericProperty.PropertyVisualizer" => "property.js",
+            "StringValue.ValueVisualizer"
+            | "IntegerValue.ValueVisualizer"
+            | "BooleanValue.ValueVisualizer"
+            | "EnumValue.ValueVisualizer"
+            | "BytesValue.ValueVisualizer" => "scalar-value.js",
             "TableCollectionVisualizer.CollectionVisualizer" => "table-collection.js",
             key => {
                 return Err(HolonError::NotImplemented(format!(
@@ -231,6 +238,26 @@ mod tests {
         let materializer = DahnMaterializer::new("/artifacts".into());
 
         assert!(materializer.artifact_for(&MapString::from("untrusted.visualizer")).is_err());
+    }
+
+    #[test]
+    fn resolves_each_selected_scalar_value_role_to_the_shared_scalar_artifact() {
+        let materializer = DahnMaterializer::new("/artifacts".into());
+        for visualizer_key in [
+            "StringValue.ValueVisualizer",
+            "IntegerValue.ValueVisualizer",
+            "BooleanValue.ValueVisualizer",
+            "EnumValue.ValueVisualizer",
+            "BytesValue.ValueVisualizer",
+        ] {
+            assert_eq!(
+                materializer
+                    .artifact_for(&MapString::from(visualizer_key))
+                    .expect("selected scalar value artifact")
+                    .to_string_lossy(),
+                "/artifacts/scalar-value.js"
+            );
+        }
     }
 
     #[test]

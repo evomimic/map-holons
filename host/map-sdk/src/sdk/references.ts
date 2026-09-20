@@ -85,12 +85,14 @@ export class HolonReference implements WritableHolon {
     return internalHolon.readPropertyValue(txIdFor(this), wireRefFor(this), name);
   }
 
-  async relatedHolons(name: RelationshipName): Promise<HolonCollection> {
+  async relatedHolons(name: RelationshipName, options?: { requireFresh?: boolean }): Promise<HolonCollection> {
     const txId = txIdFor(this);
     const collection = await internalHolon.readRelatedHolons(
       txId,
       wireRefFor(this),
       name,
+      undefined,
+      options?.requireFresh ?? false,
     );
     return new HolonCollection(txId, collection);
   }

@@ -18,6 +18,7 @@ import type {
   AvailableRelationshipHandle,
   HolonDescriptorHandle,
   PropertyDescriptorHandle,
+  ValueDescriptorHandle,
 } from './descriptors';
 
 export type {
