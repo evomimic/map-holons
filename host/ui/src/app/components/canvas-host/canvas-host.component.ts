@@ -129,6 +129,7 @@ export class CanvasHostComponent implements AfterViewInit {
       if (homeDancerSelection === null) {
         // A missing declaration is the only intentional empty-Canvas state.
         profile.next('mount home Dancer');
+        profile.next('mount home Dancer');
         await canvas.mountVisualizers([]);
         this.canvasState.set('mounted');
         profile.finish('empty-canvas');
@@ -163,6 +164,7 @@ export class CanvasHostComponent implements AfterViewInit {
             nodeImplementation as CustomElementConstructor,
           );
           const view = new DahnHolonView(activeHolonSpace);
+          profile.next('classify node affordances');
           const affordances = await classifyNodeAffordances(view);
           const propertiesElement = await renderVisualizerRegion('Properties', async () => {
             profile.next('select and materialize Properties');
@@ -266,6 +268,7 @@ export class CanvasHostComponent implements AfterViewInit {
             });
             return propertiesElement;
           });
+          profile.next('select and materialize Actions');
           const actionsElement = await renderVisualizerRegion('Node actions', async () => {
             const selection = await transaction.selectVisualizer({
               subject: activeHolonSpace, requestedKind: 'action', parentVisualizer: rootNodeVisualizer,
@@ -279,6 +282,7 @@ export class CanvasHostComponent implements AfterViewInit {
             element.setContext({ target: { reference: activeHolonSpace }, holon: view, actions: affordances.actions, theme, canvas });
             return element;
           });
+          profile.next('compose root node');
           const rootNodeElement = document.createElement(nodeTag) as HTMLElement & {
             setContext(context: VisualizerContext): void;
           };
@@ -312,6 +316,7 @@ export class CanvasHostComponent implements AfterViewInit {
           canvas,
           childVisualizers: new Map([['root-node', rootNodeElement]]),
         };
+        profile.next('mount home Dancer');
         await canvas.mountVisualizers([
           {
             visualizerId: 'rooted-navigation',
