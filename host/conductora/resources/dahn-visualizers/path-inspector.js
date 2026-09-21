@@ -12,10 +12,13 @@ export default class PathInspectorElement extends HTMLElement {
     const title = document.createElement('header');
     title.dataset.pathInspectorTitle = 'true';
     title.style.gridColumn = '1 / -1';
+    title.style.color = 'var(--dahn-muted-text-color)';
     title.textContent = context.title ?? 'Path Inspector';
 
     const rootNodeRegion = document.createElement('section');
     rootNodeRegion.dataset.pathInspectorRootNode = 'true';
+    rootNodeRegion.style.background = 'var(--dahn-panel-surface-background)';
+    rootNodeRegion.style.borderRadius = 'var(--dahn-panel-corner-radius)';
     rootNodeRegion.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
     rootNodeRegion.style.padding = 'var(--dahn-slot-padding)';
     rootNodeRegion.style.display = 'flex';

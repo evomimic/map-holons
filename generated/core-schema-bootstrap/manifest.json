@@ -115,19 +115,19 @@
     },
     {
       "path": "imports/design-tokens/schema.json",
-      "sha256": "b399778c944c23492efa939d6cbd3714325f9d70b665b19e36ea85b9697aa13b"
+      "sha256": "01b1c6e80a5687cdaccb85d70df50d5d0ee489ff453f2e180bca138c40cd8505"
     },
     {
       "path": "imports/meta-design-system/schema.json",
-      "sha256": "b182cd909cbf00ac07f7d278cf4953b94a1ff86f9c27ba238dbfe5099a5cd01e"
+      "sha256": "834edecb3cd4b693d34a7631a365bfc9d5176c8887c8f7a15a811877ac73eaca"
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "d4d8c21bcefe6cc054e88bf21dd85735de1120dcbd8f26027200390faef95312"
+      "sha256": "20b700d08fa867846133573a8e39af09b06e322b1b6f68c9b85d2f83c87ff5fa"
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "0ebe6773758bb7da6ae75e11b1cd92c93e172b0ebd261eff98c14677adb42195"
+      "sha256": "fc5e4fb05c67bb34f24e4700129882afbceb5436884e889f6da60d00b89c5e8b"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -976,6 +976,18 @@
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
+      "key": "BootstrapThemeControlGap",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeFocusRingColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeFocusRingWidth",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
       "key": "BootstrapThemeInspectorContentMinHeight",
       "type": "ThemeTokenAssignment.HolonType"
     },
@@ -1017,6 +1029,22 @@
     },
     {
       "key": "BootstrapThemeLauncherTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeMutedTextColor",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemeNodeHeadingFontSize",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePanelCornerRadius",
+      "type": "ThemeTokenAssignment.HolonType"
+    },
+    {
+      "key": "BootstrapThemePanelSurfaceBackground",
       "type": "ThemeTokenAssignment.HolonType"
     },
     {
@@ -1270,6 +1298,10 @@
     {
       "key": "ContractMemberKindCompatibility.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "ControlGap.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "CrossSchemaDependenciesDeclared.ValidationRule",
@@ -1556,6 +1588,14 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "FocusRingColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "FocusRingWidth.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "FontFamily.DesignTokenType",
       "type": "MetaStringValueType.MetaValueType"
     },
@@ -1566,6 +1606,14 @@
     {
       "key": "FormatRule.KeyRuleType",
       "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "GenericActions.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType"
+    },
+    {
+      "key": "GenericActionsTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
     },
     {
       "key": "GenericProperties.PropertiesVisualizer",
@@ -1676,11 +1724,23 @@
       "type": "MetaBytesValueType.MetaValueType"
     },
     {
+      "key": "HolonInspector.ActionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "HolonInspector.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "HolonInspector.NodeVisualizer",
       "type": "NodeVisualizer.HolonType"
     },
     {
       "key": "HolonInspector.PropertyViewerSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "HolonInspector.SingleValueSlot",
       "type": "VisualizerSlot.HolonType"
     },
     {
@@ -2188,6 +2248,10 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "MutedTextColor.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
       "key": "NewHolon.CommandType",
       "type": "MetaCommandType.MetaHolonType"
     },
@@ -2198,6 +2262,10 @@
     {
       "key": "NoUndescribedProperties.ValidationRule",
       "type": "HolonValidationRule.HolonType"
+    },
+    {
+      "key": "NodeHeadingFontSize.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "NodeVisualizer.HolonType",
@@ -2234,6 +2302,14 @@
     {
       "key": "OperatorType.HolonType",
       "type": "MetaOperatorType.MetaHolonType"
+    },
+    {
+      "key": "PanelCornerRadius.DesignToken",
+      "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PanelSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType"
     },
     {
       "key": "ParameterName.PropertyType",

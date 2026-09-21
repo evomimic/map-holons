@@ -38,6 +38,7 @@ export default class PropertiesVisualizerElement extends HTMLElement {
       }
       [data-dahn-properties] [data-properties-disclosure]:hover {
         background: var(--dahn-action-hover-surface-background);
+        color: var(--dahn-action-text-color);
       }
       [data-dahn-properties] [data-properties-disclosure]:focus-visible {
         outline: var(--dahn-slot-border-width) solid var(--dahn-properties-disclosure-focus-color);
@@ -49,6 +50,7 @@ export default class PropertiesVisualizerElement extends HTMLElement {
     title.tabIndex = -1;
     Object.assign(title.style, {
       margin: '0', flex: '0 0 auto',
+      color: 'var(--dahn-muted-text-color)',
       fontWeight: 'var(--dahn-properties-heading-font-weight)',
       fontSize: 'var(--dahn-properties-heading-font-size)',
     });
@@ -76,8 +78,8 @@ export default class PropertiesVisualizerElement extends HTMLElement {
       slot.dataset.dahnPropertySlot = name;
       Object.assign(slot.style, {
         minWidth: '0', boxSizing: 'border-box',
-        border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
-        padding: 'var(--dahn-slot-padding)',
+        borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
+        padding: 'var(--dahn-action-padding-block) 0',
         visibility: 'hidden',
       });
       slot.inert = true;

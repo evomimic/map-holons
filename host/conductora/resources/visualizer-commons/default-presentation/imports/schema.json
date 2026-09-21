@@ -35,6 +35,27 @@
           "name": "DefinesDesignToken",
           "target": [
             {
+              "$ref": "PanelSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "MutedTextColor.DesignToken"
+            },
+            {
+              "$ref": "NodeHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "ControlGap.DesignToken"
+            },
+            {
+              "$ref": "FocusRingColor.DesignToken"
+            },
+            {
+              "$ref": "FocusRingWidth.DesignToken"
+            },
+            {
               "$ref": "LauncherSurfaceBackground.DesignToken"
             },
             {
@@ -206,6 +227,27 @@
         {
           "name": "HasThemeTokenAssignment",
           "target": [
+            {
+              "$ref": "DAHN.DefaultTheme.PanelSurfaceBackground.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.PanelCornerRadius.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.MutedTextColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.NodeHeadingFontSize.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.ControlGap.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.FocusRingColor.ThemeTokenAssignment"
+            },
+            {
+              "$ref": "DAHN.DefaultTheme.FocusRingWidth.ThemeTokenAssignment"
+            },
             {
               "$ref": "DAHN.DefaultTheme.LauncherSurfaceBackground.ThemeTokenAssignment"
             },
@@ -1205,6 +1247,125 @@
           "target": [
             {
               "$ref": "PropertiesDisclosureFocusColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PanelSurfaceBackground.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#ffffff"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PanelSurfaceBackground.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.PanelCornerRadius.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.875rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.MutedTextColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#526479"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "MutedTextColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.NodeHeadingFontSize.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "1.35rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "NodeHeadingFontSize.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.ControlGap.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "0.5rem"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "ControlGap.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.FocusRingColor.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "#096a64"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "FocusRingColor.DesignToken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DAHN.DefaultTheme.FocusRingWidth.ThemeTokenAssignment",
+      "type": "ThemeTokenAssignment.HolonType",
+      "properties": {
+        "PresentationValue": "2px"
+      },
+      "relationships": [
+        {
+          "name": "ForDesignToken",
+          "target": [
+            {
+              "$ref": "FocusRingWidth.DesignToken"
             }
           ]
         }

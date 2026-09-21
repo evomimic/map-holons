@@ -82,6 +82,7 @@ export interface ReadableHolon {
   propertyValue(name: PropertyName): Promise<BaseValue | null>;
   relatedHolons(name: RelationshipName): Promise<HolonCollection>;
   holonDescriptor(): Promise<HolonDescriptorHandle>;
+  availableDances(): Promise<ReadonlyArray<HolonReference>>;
   availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>>;
   availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
 }

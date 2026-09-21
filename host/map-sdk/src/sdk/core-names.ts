@@ -6,6 +6,7 @@
  */
 export const CorePropertyName = {
   TypeName: 'TypeName',
+  DisplayName: 'DisplayName',
   PropertyName: 'PropertyName',
   RelationshipName: 'RelationshipName',
 } as const;

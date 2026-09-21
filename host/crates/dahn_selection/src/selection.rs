@@ -207,6 +207,9 @@ pub fn select_visualizer(
     let selected = match requested_kind {
         VisualizerKind::Node => select_node_visualizer(context, subject)?,
         VisualizerKind::RootedNavigation => select_rooted_navigation_visualizer(context, subject)?,
+        VisualizerKind::Action => {
+            select_applicable_visualizer(context, subject, "ActionVisualizer.HolonType", "Action")?
+        }
         VisualizerKind::Properties => select_properties_visualizer(context, subject)?,
         VisualizerKind::Property => select_property_visualizer(context, subject)?,
         VisualizerKind::Value => select_value_visualizer(context, subject)?,

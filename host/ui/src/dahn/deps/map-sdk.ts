@@ -24,6 +24,7 @@ export type {
 } from '../../../../map-sdk/src';
 
 export {
+  CorePropertyName,
   MapClient,
   MapTransaction,
   MapError,

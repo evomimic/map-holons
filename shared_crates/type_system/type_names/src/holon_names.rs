@@ -61,6 +61,7 @@ impl ToDanceName for &DanceName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreHolonTypeName {
+    CardinalityConstraint,
     Collection,
     CommandType,
     CommitResponseType,

@@ -189,6 +189,15 @@ impl ValueDescriptor {
         Ok(ValueDescriptorKind::Unsupported(self.header().type_name()?.to_string()))
     }
 
+    /// Classifies the declared representation without inspecting an instance value.
+    pub fn is_array(&self) -> Result<bool, HolonError> {
+        match self.resolved_value_kind()? {
+            ValueDescriptorKind::ValueArray => Ok(true),
+            ValueDescriptorKind::Unsupported(found) => Err(self.wrong_value_kind(found)),
+            _ => Ok(false),
+        }
+    }
+
     /// Existing one-off operations resolve through their already-bound transaction.
     fn resolved_value_kind(&self) -> Result<ValueDescriptorKind, HolonError> {
         let context = self.holon.resolution_context()?;

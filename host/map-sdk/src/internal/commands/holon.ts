@@ -2,6 +2,7 @@ import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import {
   expectCollection,
+  expectEffectiveCardinality,
   expectHolonId,
   expectNone,
   expectOptionalReference,
@@ -375,4 +376,17 @@ export function withDescriptor(
     expectNone,
     options,
   );
+}
+
+/** Descriptor-only read: inclusive cardinality resolved by Rust. */
+export function readEffectiveCardinality(txId: TxId, target: HolonReferenceWire) {
+  return runHolonCommand(txId, target, { Read: 'GetEffectiveCardinality' }, expectEffectiveCardinality);
+}
+export async function readPropertyIsArray(txId: TxId, target: HolonReferenceWire): Promise<boolean> {
+  const value = await runHolonCommand(txId, target, { Read: 'GetPropertyIsArray' }, expectValue);
+  if ('BooleanValue' in value) return value.BooleanValue;
+  throw new TypeError('Expected BooleanValue result');
+}
+export function readAvailableDances(txId: TxId, target: HolonReferenceWire) {
+  return runHolonCommand(txId, target, { Read: 'GetAvailableDances' }, expectCollection);
 }

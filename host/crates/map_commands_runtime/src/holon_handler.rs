@@ -69,6 +69,29 @@ fn handle_read(
         ReadableHolonAction::GetHolonDescriptor => {
             Ok(MapResult::Reference(target.holon_descriptor()?.holon().clone()))
         }
+        ReadableHolonAction::GetEffectiveCardinality => Ok(MapResult::EffectiveCardinality(
+            holons_core::descriptors::RelationshipDescriptor::from_holon(target)
+                .effective_cardinality()?,
+        )),
+        ReadableHolonAction::GetPropertyIsArray => Ok(MapResult::Value(BaseValue::BooleanValue(
+            holons_core::descriptors::PropertyDescriptor::from_holon(target)
+                .value_type()?
+                .is_array()?
+                .into(),
+        ))),
+        ReadableHolonAction::GetAvailableDances => {
+            let members = target
+                .holon_descriptor()?
+                .afforded_dances()?
+                .into_iter()
+                .map(|descriptor| descriptor.holon().clone())
+                .collect();
+            Ok(MapResult::Collection(HolonCollection::from_parts(
+                CollectionState::Fetched,
+                members,
+                BTreeMap::new(),
+            )))
+        }
         ReadableHolonAction::GetAvailableProperties => {
             let members = target
                 .available_properties()?

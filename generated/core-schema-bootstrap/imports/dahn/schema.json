@@ -437,6 +437,9 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "MutedTextColor.DesignToken"
+            },
+            {
               "$ref": "CanvasContentMinHeight.DesignToken"
             },
             {
@@ -536,13 +539,55 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
               "$ref": "CanvasGap.DesignToken"
             },
             {
-              "$ref": "InspectorContentMinHeight.DesignToken"
+              "$ref": "CanvasHeadingFontWeight.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "ControlGap.DesignToken"
+            },
+            {
+              "$ref": "FocusRingColor.DesignToken"
+            },
+            {
+              "$ref": "FocusRingWidth.DesignToken"
             },
             {
               "$ref": "InspectorRailWidth.DesignToken"
+            },
+            {
+              "$ref": "NodeHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "PanelSurfaceBackground.DesignToken"
             },
             {
               "$ref": "SlotBorderColor.DesignToken"
@@ -563,6 +608,15 @@
           "target": [
             {
               "$ref": "HolonInspector.PropertyViewerSlot"
+            },
+            {
+              "$ref": "HolonInspector.ActionsSlot"
+            },
+            {
+              "$ref": "HolonInspector.CollectionsSlot"
+            },
+            {
+              "$ref": "HolonInspector.SingleValueSlot"
             }
           ]
         },
@@ -608,11 +662,173 @@
       ]
     },
     {
+      "key": "HolonInspector.ActionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ActionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspector.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspector.SingleValueSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "NodeVisualizer.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericActions.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "ControlGap.DesignToken"
+            },
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "GenericActionsTypeScript.VisualizerImplementation"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericActionsTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:b27dca7d3a097ca859718720fa9183fdca98c5223973409b5a3d31990f6bfa9f",
+        "VisualizerImplementationKey": "dahn.actions",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      },
+      "relationships": [
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:0ae4d446d796d246b03611c67e1cb0412604c791f0a207ecfa843d5c7800fcc7",
+        "VisualizerArtifactDigest": "sha256:4755428dcde770d6838621e0f325a3643d94a9680295356b23c2267308aef1b8",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -759,6 +975,15 @@
               "$ref": "CanvasGap.DesignToken"
             },
             {
+              "$ref": "MutedTextColor.DesignToken"
+            },
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "PanelSurfaceBackground.DesignToken"
+            },
+            {
               "$ref": "SlotBorderColor.DesignToken"
             },
             {
@@ -826,7 +1051,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:e2ba373147af80d8f271e4aa191582fb04c97f85c34c287d51a8d82bdf99855a",
+        "VisualizerArtifactDigest": "sha256:2d42b92c72abe1c0f682323d1e58bb8ec79e2f9c78f9a8079f9ca05c090b4509",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -970,6 +1195,30 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "MutedTextColor.DesignToken"
+            },
+            {
+              "$ref": "PropertiesDisclosureFocusColor.DesignToken"
+            },
+            {
               "$ref": "PropertiesHeadingFontSize.DesignToken"
             },
             {
@@ -982,34 +1231,13 @@
               "$ref": "PropertiesRowGap.DesignToken"
             },
             {
-              "$ref": "PropertiesDisclosureFocusColor.DesignToken"
-            },
-            {
-              "$ref": "CanvasTextColor.DesignToken"
-            },
-            {
-              "$ref": "ActionHoverSurfaceBackground.DesignToken"
-            },
-            {
-              "$ref": "ActionPaddingBlock.DesignToken"
-            },
-            {
-              "$ref": "ActionPaddingInline.DesignToken"
-            },
-            {
-              "$ref": "ActionCornerRadius.DesignToken"
-            },
-            {
               "$ref": "SlotBorderColor.DesignToken"
-            },
-            {
-              "$ref": "SlotBorderWidth.DesignToken"
             },
             {
               "$ref": "SlotBorderStyle.DesignToken"
             },
             {
-              "$ref": "SlotPadding.DesignToken"
+              "$ref": "SlotBorderWidth.DesignToken"
             }
           ]
         },
@@ -1067,7 +1295,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:49162162447f12d44362694024f5e5dfc12325f19a61226aa27efc14f0b77bcd",
+        "VisualizerArtifactDigest": "sha256:3b990c40934b9b99acafc087f7c2493f4f500fb1b0f2f0a5a882cf8aa9237201",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1100,22 +1328,13 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "MutedTextColor.DesignToken"
+            },
+            {
               "$ref": "PropertyColumnGap.DesignToken"
             },
             {
               "$ref": "PropertyNameMinWidth.DesignToken"
-            },
-            {
-              "$ref": "SlotBorderColor.DesignToken"
-            },
-            {
-              "$ref": "SlotBorderWidth.DesignToken"
-            },
-            {
-              "$ref": "SlotBorderStyle.DesignToken"
-            },
-            {
-              "$ref": "SlotPadding.DesignToken"
             }
           ]
         },
@@ -1173,7 +1392,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:e12fa72f3d048e0affc49dfbb84c3b754ee1f8d506cdba3797cd5a42f76801fb",
+        "VisualizerArtifactDigest": "sha256:52456174ac948bde699623c2cd363f2296b36414ccf2d3289b7f5d37352ceb28",
         "VisualizerImplementationKey": "dahn.property",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

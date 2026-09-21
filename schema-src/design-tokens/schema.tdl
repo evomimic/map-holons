@@ -546,3 +546,59 @@ instance PropertiesDisclosureFocusColor.DesignToken {
     HasDesignTokenType -> Color.DesignTokenType
   }
 }
+
+instance PanelSurfaceBackground.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PanelSurfaceBackground"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance PanelCornerRadius.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "PanelCornerRadius"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance MutedTextColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "MutedTextColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance NodeHeadingFontSize.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "NodeHeadingFontSize"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance ControlGap.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "ControlGap"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}
+
+instance FocusRingColor.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "FocusRingColor"
+  relationships {
+    HasDesignTokenType -> Color.DesignTokenType
+  }
+}
+
+instance FocusRingWidth.DesignToken {
+  type DesignToken.HolonType
+  DesignTokenName "FocusRingWidth"
+  relationships {
+    HasDesignTokenType -> Dimension.DesignTokenType
+  }
+}

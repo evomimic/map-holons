@@ -9,6 +9,7 @@ import {
   isFileData,
   isMapIpcRequest,
   isMapIpcResponse,
+  isMapResultWire,
   isPvlFieldWire,
   isPvlMalformedReasonWire,
   isPvlViolationWire,
@@ -21,7 +22,7 @@ const fixtureFiles = readdirSync(fixturesDir).sort();
 
 describe('wire type fixtures', () => {
   it('discovers the generated fixture set', () => {
-    expect(fixtureFiles.length).toBe(39);
+    expect(fixtureFiles.length).toBe(40);
   });
 
   for (const fixtureFile of fixtureFiles) {
@@ -209,4 +210,11 @@ describe('LoadHolons wire type guard', () => {
       }),
     ).toBe(false);
   });
+});
+
+it('rejects malformed effective cardinality bounds at ingress', () => {
+  for (const bounds of [{ minimum: -1, maximum: null }, { minimum: 2, maximum: 1 }, { minimum: 0, maximum: -1 }, { minimum: 0, maximum: 1.5 }, { minimum: 0, maximum: Number.MAX_SAFE_INTEGER + 1 }]) {
+    expect(isMapResultWire({ EffectiveCardinality: bounds })).toBe(false);
+  }
+  expect(isMapResultWire({ EffectiveCardinality: { minimum: 0, maximum: 0 } })).toBe(true);
 });

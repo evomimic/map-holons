@@ -1,6 +1,6 @@
 import type { BaseValue, PropertyName, RelationshipName } from './types';
 import { extractString } from './types';
-import type { HolonReference } from './references';
+import { readDescriptorCardinality, readDescriptorIsArray, type HolonReference } from './references';
 import { CorePropertyName, CoreRelationshipName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
@@ -47,6 +47,11 @@ export class PropertyDescriptorHandle {
       propertyDescriptorReference(this).propertyValue(CorePropertyName.TypeName),
       CorePropertyName.TypeName,
     );
+  }
+
+  /** Rust-owned classification of the declared property representation. */
+  isArray(): Promise<boolean> {
+    return readDescriptorIsArray(propertyDescriptorReference(this));
   }
 
   /** Returns the one declared ValueType governing this property descriptor. */
@@ -98,6 +103,16 @@ export class RelationshipDescriptorHandle {
     }
 
     this.#reference = reference;
+  }
+
+  /** Inclusive bounds resolved from all effective directional constraints. */
+  effectiveCardinality(): Promise<EffectiveCardinality> {
+    return readDescriptorCardinality(this.#reference);
+  }
+
+  /** User-facing relationship label, distinct from its binding name. */
+  async displayName(): Promise<string> {
+    return requiredString(this.#reference.propertyValue(CorePropertyName.DisplayName), CorePropertyName.DisplayName);
   }
 
   async relationshipName(): Promise<RelationshipName> {
@@ -168,4 +183,10 @@ async function requiredString(
   }
 
   return extractString(resolved);
+}
+
+/** Inclusive effective bounds; null maximum means unbounded. */
+export interface EffectiveCardinality {
+  readonly minimum: number;
+  readonly maximum: number | null;
 }

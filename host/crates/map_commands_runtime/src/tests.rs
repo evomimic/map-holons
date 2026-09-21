@@ -303,6 +303,21 @@ async fn descriptor_discovery_reads_map_to_their_runtime_result_families() {
         matches!(properties, MapResult::Collection(collection) if collection.get_members().is_empty())
     );
 
+    let dances = runtime
+        .execute_command(
+            MapCommand::Holon(HolonCommand {
+                context: Arc::clone(&context),
+                target: target.clone(),
+                action: HolonAction::Read(ReadableHolonAction::GetAvailableDances),
+            }),
+            ExecutionPolicy::default(),
+        )
+        .await
+        .expect("Dance discovery should succeed");
+    assert!(
+        matches!(dances, MapResult::Collection(collection) if collection.get_members().is_empty())
+    );
+
     let relationships = runtime
         .execute_command(
             MapCommand::Holon(HolonCommand {

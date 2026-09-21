@@ -115,6 +115,27 @@
           "name": "DefinesDesignToken",
           "target": [
             {
+              "$ref": "PanelSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "PanelCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "MutedTextColor.DesignToken"
+            },
+            {
+              "$ref": "NodeHeadingFontSize.DesignToken"
+            },
+            {
+              "$ref": "ControlGap.DesignToken"
+            },
+            {
+              "$ref": "FocusRingColor.DesignToken"
+            },
+            {
+              "$ref": "FocusRingWidth.DesignToken"
+            },
+            {
               "$ref": "LauncherSurfaceBackground.DesignToken"
             },
             {

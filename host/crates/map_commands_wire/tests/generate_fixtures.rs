@@ -34,6 +34,11 @@ use uuid::Uuid;
 fn generate_fixtures() {
     let fixtures_dir = fixtures_dir();
     fs::create_dir_all(&fixtures_dir).expect("create fixtures dir");
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-effective-cardinality.json",
+        &response(120, Ok(MapResultWire::EffectiveCardinality { minimum: 0, maximum: None })),
+    );
 
     write_fixture(
         &fixtures_dir,

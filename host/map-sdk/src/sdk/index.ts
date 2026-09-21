@@ -7,6 +7,7 @@ export {
   RelationshipDescriptorHandle,
 } from './descriptors';
 export type {
+  EffectiveCardinality,
   AvailableRelationshipHandle,
   RelationshipDirection,
 } from './descriptors';

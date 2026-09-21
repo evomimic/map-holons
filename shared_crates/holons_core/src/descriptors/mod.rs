@@ -44,7 +44,7 @@ pub use key_rule_descriptor::KeyRuleDescriptor;
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;
-pub use relationship_descriptor::{RelationshipDescriptor, TargetBinding};
+pub use relationship_descriptor::{EffectiveCardinality, RelationshipDescriptor, TargetBinding};
 pub use resolved_descriptor_roots::{resolve_core_descriptor, ResolvedValueTypeRoots};
 pub use transaction_descriptor::TransactionDescriptor;
 pub use type_header::TypeHeader;
