@@ -259,6 +259,14 @@ instance MAP.BootstrapTheme {
   relationships {
     ForMetaDesignSystem -> MAP.BootstrapMetaDesignSystem
     HasThemeTokenAssignment -> [
+      BootstrapThemePanelSurfaceBackground,
+      BootstrapThemePanelCornerRadius,
+      BootstrapThemeMutedTextColor,
+      BootstrapThemeNodeHeadingFontSize,
+      BootstrapThemeControlGap,
+      BootstrapThemeFocusRingColor,
+      BootstrapThemeFocusRingWidth,
+
       BootstrapThemeLauncherSurfaceBackground,
       BootstrapThemeLauncherTextColor,
       BootstrapThemeLauncherPadding,
@@ -318,7 +326,7 @@ instance MAP.BootstrapTheme {
 
 instance BootstrapThemeCanvasGap {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "1.5rem"
+  PresentationValue "1rem"
   relationships {
     ForDesignToken -> CanvasGap.DesignToken
   }
@@ -326,7 +334,7 @@ instance BootstrapThemeCanvasGap {
 
 instance BootstrapThemeCanvasPadding {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "2rem"
+  PresentationValue "1.5rem"
   relationships {
     ForDesignToken -> CanvasPadding.DesignToken
   }
@@ -334,7 +342,7 @@ instance BootstrapThemeCanvasPadding {
 
 instance BootstrapThemeCanvasSurfaceBackground {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#102a43"
+  PresentationValue "#0c1724"
   relationships {
     ForDesignToken -> CanvasSurfaceBackground.DesignToken
   }
@@ -342,7 +350,7 @@ instance BootstrapThemeCanvasSurfaceBackground {
 
 instance BootstrapThemeCanvasTextColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#e0f2fe"
+  PresentationValue "#e6edf5"
   relationships {
     ForDesignToken -> CanvasTextColor.DesignToken
   }
@@ -350,7 +358,7 @@ instance BootstrapThemeCanvasTextColor {
 
 instance BootstrapThemeCollectionSurfaceBackground {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#173f5f"
+  PresentationValue "#152638"
   relationships {
     ForDesignToken -> CollectionSurfaceBackground.DesignToken
   }
@@ -358,7 +366,7 @@ instance BootstrapThemeCollectionSurfaceBackground {
 
 instance BootstrapThemeCollectionTextColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#e0f2fe"
+  PresentationValue "#e6edf5"
   relationships {
     ForDesignToken -> CollectionTextColor.DesignToken
   }
@@ -366,7 +374,7 @@ instance BootstrapThemeCollectionTextColor {
 
 instance BootstrapThemeCollectionHeaderSurfaceBackground {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#245878"
+  PresentationValue "#1d3449"
   relationships {
     ForDesignToken -> CollectionHeaderSurfaceBackground.DesignToken
   }
@@ -374,7 +382,7 @@ instance BootstrapThemeCollectionHeaderSurfaceBackground {
 
 instance BootstrapThemeTableHeaderSurfaceBackground {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#245878"
+  PresentationValue "#1d3449"
   relationships {
     ForDesignToken -> TableHeaderSurfaceBackground.DesignToken
   }
@@ -390,7 +398,7 @@ instance BootstrapThemeTableHeaderTextColor {
 
 instance BootstrapThemeTableCellBorderColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#60a5c7"
+  PresentationValue "#31465b"
   relationships {
     ForDesignToken -> TableCellBorderColor.DesignToken
   }
@@ -398,7 +406,7 @@ instance BootstrapThemeTableCellBorderColor {
 
 instance BootstrapThemeTableCellBorderWidth {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "2px"
+  PresentationValue "1px"
   relationships {
     ForDesignToken -> TableCellBorderWidth.DesignToken
   }
@@ -414,7 +422,7 @@ instance BootstrapThemeTableCellPadding {
 
 instance BootstrapThemeCanvasFontFamily {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "Arial, sans-serif"
+  PresentationValue "system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
   relationships {
     ForDesignToken -> CanvasFontFamily.DesignToken
   }
@@ -422,7 +430,7 @@ instance BootstrapThemeCanvasFontFamily {
 
 instance BootstrapThemeCanvasFontSize {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "1rem"
+  PresentationValue "0.9375rem"
   relationships {
     ForDesignToken -> CanvasFontSize.DesignToken
   }
@@ -446,7 +454,7 @@ instance BootstrapThemeCanvasLineHeight {
 
 instance BootstrapThemeCanvasHeadingFontWeight {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "700"
+  PresentationValue "600"
   relationships {
     ForDesignToken -> CanvasHeadingFontWeight.DesignToken
   }
@@ -462,7 +470,7 @@ instance BootstrapThemeCanvasContentMinHeight {
 
 instance BootstrapThemeSlotBorderColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#e0f2fe"
+  PresentationValue "#31465b"
   relationships {
     ForDesignToken -> SlotBorderColor.DesignToken
   }
@@ -486,7 +494,7 @@ instance BootstrapThemeSlotBorderStyle {
 
 instance BootstrapThemeSlotPadding {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "1.5rem"
+  PresentationValue "1rem"
   relationships {
     ForDesignToken -> SlotPadding.DesignToken
   }
@@ -494,7 +502,7 @@ instance BootstrapThemeSlotPadding {
 
 instance BootstrapThemeInspectorRailWidth {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "11rem"
+  PresentationValue "14rem"
   relationships {
     ForDesignToken -> InspectorRailWidth.DesignToken
   }
@@ -510,7 +518,7 @@ instance BootstrapThemeInspectorContentMinHeight {
 
 instance BootstrapThemePropertiesHeadingGap {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "0.35rem"
+  PresentationValue "0.75rem"
   relationships {
     ForDesignToken -> PropertiesHeadingGap.DesignToken
   }
@@ -518,7 +526,7 @@ instance BootstrapThemePropertiesHeadingGap {
 
 instance BootstrapThemePropertiesRowGap {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "0.25rem"
+  PresentationValue "0"
   relationships {
     ForDesignToken -> PropertiesRowGap.DesignToken
   }
@@ -542,7 +550,7 @@ instance BootstrapThemePropertiesHeadingFontWeight {
 
 instance BootstrapThemePropertyColumnGap {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "0.5rem"
+  PresentationValue "1rem"
   relationships {
     ForDesignToken -> PropertyColumnGap.DesignToken
   }
@@ -590,7 +598,7 @@ instance BootstrapThemeTableHeaderFontWeight {
 
 instance BootstrapThemeLauncherSurfaceBackground {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#102a43"
+  PresentationValue "#0c1724"
   relationships {
     ForDesignToken -> LauncherSurfaceBackground.DesignToken
   }
@@ -598,7 +606,7 @@ instance BootstrapThemeLauncherSurfaceBackground {
 
 instance BootstrapThemeLauncherTextColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#e0f2fe"
+  PresentationValue "#e6edf5"
   relationships {
     ForDesignToken -> LauncherTextColor.DesignToken
   }
@@ -630,7 +638,7 @@ instance BootstrapThemeLauncherIndicatorSize {
 
 instance BootstrapThemeLauncherIndicatorColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#60a5c7"
+  PresentationValue "#7de2cf"
   relationships {
     ForDesignToken -> LauncherIndicatorColor.DesignToken
   }
@@ -662,7 +670,7 @@ instance BootstrapThemeLauncherDismissDuration {
 
 instance BootstrapThemeActionSurfaceBackground {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#245878"
+  PresentationValue "#234757"
   relationships {
     ForDesignToken -> ActionSurfaceBackground.DesignToken
   }
@@ -670,7 +678,7 @@ instance BootstrapThemeActionSurfaceBackground {
 
 instance BootstrapThemeActionHoverSurfaceBackground {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#173f5f"
+  PresentationValue "#2d5967"
   relationships {
     ForDesignToken -> ActionHoverSurfaceBackground.DesignToken
   }
@@ -678,7 +686,7 @@ instance BootstrapThemeActionHoverSurfaceBackground {
 
 instance BootstrapThemeActionTextColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#ffffff"
+  PresentationValue "#e6faf6"
   relationships {
     ForDesignToken -> ActionTextColor.DesignToken
   }
@@ -686,7 +694,7 @@ instance BootstrapThemeActionTextColor {
 
 instance BootstrapThemeActionPaddingBlock {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "0.5rem"
+  PresentationValue "0.625rem"
   relationships {
     ForDesignToken -> ActionPaddingBlock.DesignToken
   }
@@ -694,7 +702,7 @@ instance BootstrapThemeActionPaddingBlock {
 
 instance BootstrapThemeActionPaddingInline {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "1rem"
+  PresentationValue "0.875rem"
   relationships {
     ForDesignToken -> ActionPaddingInline.DesignToken
   }
@@ -702,7 +710,7 @@ instance BootstrapThemeActionPaddingInline {
 
 instance BootstrapThemeActionCornerRadius {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "0.25rem"
+  PresentationValue "0.5rem"
   relationships {
     ForDesignToken -> ActionCornerRadius.DesignToken
   }
@@ -710,8 +718,64 @@ instance BootstrapThemeActionCornerRadius {
 
 instance BootstrapThemePropertiesDisclosureFocusColor {
   type ThemeTokenAssignment.HolonType
-  PresentationValue "#60a5c7"
+  PresentationValue "#7de2cf"
   relationships {
     ForDesignToken -> PropertiesDisclosureFocusColor.DesignToken
+  }
+}
+
+instance BootstrapThemePanelSurfaceBackground {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#152638"
+  relationships {
+    ForDesignToken -> PanelSurfaceBackground.DesignToken
+  }
+}
+
+instance BootstrapThemePanelCornerRadius {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.875rem"
+  relationships {
+    ForDesignToken -> PanelCornerRadius.DesignToken
+  }
+}
+
+instance BootstrapThemeMutedTextColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#a5b7c9"
+  relationships {
+    ForDesignToken -> MutedTextColor.DesignToken
+  }
+}
+
+instance BootstrapThemeNodeHeadingFontSize {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.35rem"
+  relationships {
+    ForDesignToken -> NodeHeadingFontSize.DesignToken
+  }
+}
+
+instance BootstrapThemeControlGap {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5rem"
+  relationships {
+    ForDesignToken -> ControlGap.DesignToken
+  }
+}
+
+instance BootstrapThemeFocusRingColor {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#7de2cf"
+  relationships {
+    ForDesignToken -> FocusRingColor.DesignToken
+  }
+}
+
+instance BootstrapThemeFocusRingWidth {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2px"
+  relationships {
+    ForDesignToken -> FocusRingWidth.DesignToken
   }
 }

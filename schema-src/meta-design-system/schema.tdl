@@ -41,6 +41,14 @@ instance MAP.BootstrapMetaDesignSystem {
   MetaDesignSystemName "MAP Bootstrap Meta Design System"
   relationships {
     DefinesDesignToken -> [
+      PanelSurfaceBackground.DesignToken,
+      PanelCornerRadius.DesignToken,
+      MutedTextColor.DesignToken,
+      NodeHeadingFontSize.DesignToken,
+      ControlGap.DesignToken,
+      FocusRingColor.DesignToken,
+      FocusRingWidth.DesignToken,
+
       LauncherSurfaceBackground.DesignToken,
       LauncherTextColor.DesignToken,
       LauncherPadding.DesignToken,

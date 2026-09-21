@@ -12,6 +12,14 @@ instance DAHN.DefaultMetaDesignSystem {
   MetaDesignSystemName "DAHN.DefaultMetaDesignSystem-v0.1.0"
   relationships {
     DefinesDesignToken -> [
+      PanelSurfaceBackground.DesignToken,
+      PanelCornerRadius.DesignToken,
+      MutedTextColor.DesignToken,
+      NodeHeadingFontSize.DesignToken,
+      ControlGap.DesignToken,
+      FocusRingColor.DesignToken,
+      FocusRingWidth.DesignToken,
+
       LauncherSurfaceBackground.DesignToken,
       LauncherTextColor.DesignToken,
       LauncherPadding.DesignToken,
@@ -74,6 +82,14 @@ instance DAHN.DefaultTheme {
   relationships {
     ForMetaDesignSystem -> DAHN.DefaultMetaDesignSystem
     HasThemeTokenAssignment -> [
+      DAHN.DefaultTheme.PanelSurfaceBackground.ThemeTokenAssignment,
+      DAHN.DefaultTheme.PanelCornerRadius.ThemeTokenAssignment,
+      DAHN.DefaultTheme.MutedTextColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.NodeHeadingFontSize.ThemeTokenAssignment,
+      DAHN.DefaultTheme.ControlGap.ThemeTokenAssignment,
+      DAHN.DefaultTheme.FocusRingColor.ThemeTokenAssignment,
+      DAHN.DefaultTheme.FocusRingWidth.ThemeTokenAssignment,
+
       DAHN.DefaultTheme.LauncherSurfaceBackground.ThemeTokenAssignment,
       DAHN.DefaultTheme.LauncherTextColor.ThemeTokenAssignment,
       DAHN.DefaultTheme.LauncherPadding.ThemeTokenAssignment,
@@ -516,5 +532,61 @@ instance DAHN.DefaultTheme.PropertiesDisclosureFocusColor.ThemeTokenAssignment {
   PresentationValue "#245878"
   relationships {
     ForDesignToken -> PropertiesDisclosureFocusColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PanelSurfaceBackground.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#ffffff"
+  relationships {
+    ForDesignToken -> PanelSurfaceBackground.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.PanelCornerRadius.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.875rem"
+  relationships {
+    ForDesignToken -> PanelCornerRadius.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.MutedTextColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#526479"
+  relationships {
+    ForDesignToken -> MutedTextColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.NodeHeadingFontSize.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "1.35rem"
+  relationships {
+    ForDesignToken -> NodeHeadingFontSize.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.ControlGap.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "0.5rem"
+  relationships {
+    ForDesignToken -> ControlGap.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.FocusRingColor.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "#096a64"
+  relationships {
+    ForDesignToken -> FocusRingColor.DesignToken
+  }
+}
+
+instance DAHN.DefaultTheme.FocusRingWidth.ThemeTokenAssignment {
+  type ThemeTokenAssignment.HolonType
+  PresentationValue "2px"
+  relationships {
+    ForDesignToken -> FocusRingWidth.DesignToken
   }
 }

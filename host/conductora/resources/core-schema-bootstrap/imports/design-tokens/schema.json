@@ -1767,6 +1767,181 @@
           ]
         }
       ]
+    },
+    {
+      "key": "PanelSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PanelSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PanelCornerRadius.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PanelCornerRadius"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MutedTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "MutedTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NodeHeadingFontSize.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "NodeHeadingFontSize"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ControlGap.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ControlGap"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "FocusRingColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "FocusRingColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "FocusRingWidth.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "FocusRingWidth"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        },
+        {
+          "name": "OwnedBy",
+          "target": [
+            {
+              "$ref": "MAP.CoreSchemaSpace"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -28,7 +28,7 @@ describe('Property presentation artifacts', () => {
     expect(element.querySelector('input,textarea,select,button,script,[contenteditable]')).toBeNull();
   });
 
-  it('mounts named Property slots and selected Value children with nested theme borders', async () => {
+  it('mounts named Property slots and selected Value children with theme row dividers', async () => {
     const value = await artifact('scalar-value');
     value.setContext({ propertyPresentation: { value: { StringValue: 'A book' } } });
     const property = await artifact('property');
@@ -40,10 +40,11 @@ describe('Property presentation artifacts', () => {
     expect(slot.contains(property)).toBe(true);
     expect(valueSlot.contains(value)).toBe(true);
     expect(property.querySelector('[data-dahn-property-name]')?.textContent).toBe('Title');
-    for (const region of [slot, valueSlot]) {
-      expect(region.style.border).toContain('--dahn-slot-border-width');
-      expect(region.style.border).toContain('--dahn-slot-border-style');
-      expect(region.style.border).toContain('--dahn-slot-border-color');
+    expect(valueSlot.style.border).toBe('');
+    for (const region of [slot]) {
+      expect(region.style.borderBottom).toContain('--dahn-slot-border-width');
+      expect(region.style.borderBottom).toContain('--dahn-slot-border-style');
+      expect(region.style.borderBottom).toContain('--dahn-slot-border-color');
     }
   });
 

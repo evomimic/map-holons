@@ -31,6 +31,7 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
   chrome.style.borderBottom = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
   chrome.style.paddingBottom = 'var(--dahn-canvas-gap)';
   chrome.innerHTML = '<strong>MAP Canvas</strong><span>Desktop workspace</span>';
+  chrome.querySelector('span')!.style.color = 'var(--dahn-muted-text-color)';
   chrome.querySelector('strong')!.style.fontWeight = 'var(--dahn-canvas-heading-font-weight)';
 
   const hostedDancerRegion = document.createElement('section');
@@ -45,8 +46,6 @@ export function createCanvasRoot(container: HTMLElement): CanvasRootParts {
 
   const primarySlot = document.createElement('div');
   primarySlot.dataset['dahnCanvasSlot'] = 'primary';
-  primarySlot.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
-  primarySlot.style.padding = 'var(--dahn-slot-padding)';
   primarySlot.style.display = 'flex';
   primarySlot.style.flexDirection = 'column';
   primarySlot.style.flexGrow = '1';

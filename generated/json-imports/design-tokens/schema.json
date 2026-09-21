@@ -1271,6 +1271,125 @@
           ]
         }
       ]
+    },
+    {
+      "key": "PanelSurfaceBackground.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PanelSurfaceBackground"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "PanelCornerRadius.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "PanelCornerRadius"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MutedTextColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "MutedTextColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "NodeHeadingFontSize.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "NodeHeadingFontSize"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ControlGap.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "ControlGap"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "FocusRingColor.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "FocusRingColor"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Color.DesignTokenType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "FocusRingWidth.DesignToken",
+      "type": "DesignToken.HolonType",
+      "properties": {
+        "DesignTokenName": "FocusRingWidth"
+      },
+      "relationships": [
+        {
+          "name": "HasDesignTokenType",
+          "target": [
+            {
+              "$ref": "Dimension.DesignTokenType"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

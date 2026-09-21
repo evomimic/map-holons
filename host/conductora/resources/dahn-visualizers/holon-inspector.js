@@ -22,8 +22,8 @@ export default class HolonInspectorElement extends HTMLElement {
     Object.assign(button.style, { font: 'inherit', border: '0', color: 'var(--dahn-canvas-text-color)', background: 'transparent', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', borderRadius: 'var(--dahn-action-corner-radius)' });
     Object.assign(button.style, {
       border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
-      background: 'var(--dahn-action-hover-surface-background)',
-      opacity: '1',
+      background: 'var(--dahn-action-surface-background)',
+      opacity: '1', color: 'var(--dahn-action-text-color)',
       borderRadius: tab ? 'var(--dahn-action-corner-radius) var(--dahn-action-corner-radius) 0 0' : 'var(--dahn-action-corner-radius)',
       textAlign: tab ? 'center' : 'left',
     });
@@ -49,6 +49,8 @@ export default class HolonInspectorElement extends HTMLElement {
     const title = document.createElement('header');
     title.dataset.holonInspectorTitle = 'true';
     title.style.gridColumn = '1 / -1';
+    title.style.fontSize = 'var(--dahn-node-heading-font-size)';
+    title.style.fontWeight = 'var(--dahn-canvas-heading-font-weight)';
     title.textContent = context.title ?? 'Holon Inspector';
 
     const actionBar = document.createElement('section');
@@ -106,7 +108,7 @@ export default class HolonInspectorElement extends HTMLElement {
     collectionViewer.hidden = !collection;
     if (collection) {
       collectionViewer.append(collection);
-      Object.assign(collectionViewer.style, { display: 'flex', flexDirection: 'column', minHeight: '0', overflow: 'auto', padding: 'var(--dahn-slot-padding)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
+      Object.assign(collectionViewer.style, { display: 'flex', flexDirection: 'column', minHeight: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
       this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(0, 1fr)';
     }
     collectionRegion.append(collectionTabBar, collectionViewer);
@@ -124,14 +126,18 @@ export default class HolonInspectorElement extends HTMLElement {
     actionBar.style.gridColumn = '1';
     actionBar.style.gridRow = '1';
     singleValueRail.style.gridRow = '1 / span 2';
-    for (const pane of [actionBar, propertyViewer, singleValueRail]) {
+    for (const pane of [propertyViewer]) {
       pane.style.border = 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)';
       pane.style.padding = 'var(--dahn-slot-padding)';
     }
+    propertyViewer.style.borderRadius = 'var(--dahn-panel-corner-radius)';
     body.append(actionBar, propertyViewer, singleValueRail);
 
     this.layouts = [railLayout, collectionLayout];
-    this.replaceChildren(title, body, collectionRegion);
+    const style = document.createElement('style');
+    style.textContent = `[data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
+      [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
+    this.replaceChildren(style, title, body, collectionRegion);
     if (this.isConnected) this.connectedCallback();
   }
 }
@@ -143,13 +149,13 @@ function horizontalOverflow(host, controls, label) {
   Object.assign(host.style, { display: 'block', minWidth: '0', maxWidth: '100%', position: 'relative' });
   const row = document.createElement('div');
   row.dataset.overflowRow = 'true';
-  Object.assign(row.style, { display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 'var(--dahn-canvas-gap)', minWidth: '0', overflow: 'hidden' });
+  Object.assign(row.style, { display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 'var(--dahn-control-gap)', minWidth: '0', overflow: 'hidden' });
   const more = document.createElement('button');
   more.type = 'button';
   more.dataset.overflowMore = 'true';
   more.textContent = label;
   more.setAttribute('aria-expanded', 'false');
-  Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-canvas-text-color)', background: 'var(--dahn-action-hover-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
+  Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
   Object.assign(more.style, { flex: '0 0 auto', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
   const popup = document.createElement('div');
   popup.dataset.overflowPopup = 'true';
@@ -161,7 +167,7 @@ function horizontalOverflow(host, controls, label) {
   popup.tabIndex = -1;
   Object.assign(popup.style, {
     position: 'fixed', margin: '0', boxSizing: 'border-box', overflowY: 'auto',
-    padding: 'var(--dahn-slot-padding)',
+    padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)',
     color: 'var(--dahn-canvas-text-color)', background: 'var(--dahn-canvas-surface-background)',
     border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
   });
@@ -185,8 +191,10 @@ function horizontalOverflow(host, controls, label) {
   };
   more.addEventListener('click', () => {
     if (opened) { close(); return; }
+    popup.style.background = 'var(--dahn-panel-surface-background)';
     popup.replaceChildren(...hidden.map(control => {
       const copy = control.cloneNode(true);
+      copy.style.marginBottom = 'var(--dahn-control-gap)';
       copy.removeAttribute('aria-hidden'); copy.inert = false;
       Object.assign(copy.style, { position: 'static', visibility: 'visible', display: 'block', width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' });
       return copy;
@@ -227,21 +235,21 @@ function horizontalOverflow(host, controls, label) {
 }
 
 function verticalOverflow(host, controls) {
-  Object.assign(host.style, { display: 'flex', flexDirection: 'column', minHeight: '0', minWidth: '0', overflow: 'hidden', position: 'relative', gap: 'var(--dahn-canvas-gap)' });
+  Object.assign(host.style, { display: 'flex', flexDirection: 'column', minHeight: '0', minWidth: '0', overflow: 'hidden', position: 'relative', gap: 'var(--dahn-control-gap)' });
   const list = document.createElement('div');
   list.dataset.railViewport = 'true';
   list.id = `dahn-rail-${++nextOverflowId}`;
   list.setAttribute('role', 'region'); list.setAttribute('aria-label', 'Relationships');
   Object.assign(list.style, { flex: '1 1 0', minHeight: '0', minWidth: '0', overflow: 'hidden', scrollbarGutter: 'stable' });
   const rows = document.createElement('div');
-  Object.assign(rows.style, { display: 'flex', flexDirection: 'column', gap: 'var(--dahn-canvas-gap)' });
+  Object.assign(rows.style, { display: 'flex', flexDirection: 'column', gap: 'var(--dahn-control-gap)' });
   controls.forEach(control => Object.assign(control.style, { width: '100%', flex: '0 0 auto', whiteSpace: 'normal', overflowWrap: 'anywhere', minWidth: '0' }));
   rows.append(...controls); list.append(rows);
   const more = document.createElement('button');
   more.type = 'button'; more.dataset.railMore = 'true'; more.setAttribute('aria-controls', list.id); more.textContent = 'More relationships';
   Object.assign(more.style, { flex: '0 0 auto', width: '100%', maxHeight: '100%', overflow: 'hidden', whiteSpace: 'normal', overflowWrap: 'anywhere' });
   more.setAttribute('aria-expanded', 'false');
-  Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-canvas-text-color)', background: 'var(--dahn-action-hover-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
+  Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
   let expanded = false;
   const fit = () => {
     const style = getComputedStyle(host);

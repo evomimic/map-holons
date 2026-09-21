@@ -27,10 +27,13 @@ export default class ActionsElement extends HTMLElement {
       button.disabled = true;
       button.title = 'Action activation is not available yet';
       button.dataset.actionId = action.id;
-      button.style.color = 'var(--dahn-canvas-text-color)';
+      button.style.font = 'inherit';
+      button.style.border = 'var(--dahn-slot-border-width) solid var(--dahn-slot-border-color)';
+      button.style.opacity = '1';
+      button.style.color = 'var(--dahn-action-text-color)';
       button.style.padding = 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)';
       button.style.borderRadius = 'var(--dahn-action-corner-radius)';
-      button.style.background = 'var(--dahn-action-hover-surface-background)';
+      button.style.background = 'var(--dahn-action-surface-background)';
       return button;
     });
     this.layout = horizontalOverflow(this, controls, 'More actions');
@@ -46,13 +49,13 @@ function horizontalOverflow(host, controls, label) {
   Object.assign(host.style, { display: 'block', minWidth: '0', maxWidth: '100%', position: 'relative' });
   const row = document.createElement('div');
   row.dataset.overflowRow = 'true';
-  Object.assign(row.style, { display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 'var(--dahn-canvas-gap)', minWidth: '0', overflow: 'hidden' });
+  Object.assign(row.style, { display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 'var(--dahn-control-gap)', minWidth: '0', overflow: 'hidden' });
   const more = document.createElement('button');
   more.type = 'button';
   more.dataset.overflowMore = 'true';
   more.textContent = label;
   more.setAttribute('aria-expanded', 'false');
-  Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-canvas-text-color)', background: 'var(--dahn-action-hover-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
+  Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
   Object.assign(more.style, { flex: '0 0 auto', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
   const popup = document.createElement('div');
   popup.dataset.overflowPopup = 'true';
@@ -64,7 +67,7 @@ function horizontalOverflow(host, controls, label) {
   popup.tabIndex = -1;
   Object.assign(popup.style, {
     position: 'fixed', margin: '0', boxSizing: 'border-box', overflowY: 'auto',
-    padding: 'var(--dahn-slot-padding)',
+    padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)',
     color: 'var(--dahn-canvas-text-color)', background: 'var(--dahn-canvas-surface-background)',
     border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
   });
@@ -90,6 +93,7 @@ function horizontalOverflow(host, controls, label) {
     if (opened) { close(); return; }
     popup.replaceChildren(...hidden.map(control => {
       const copy = control.cloneNode(true);
+      copy.style.marginBottom = 'var(--dahn-control-gap)';
       copy.removeAttribute('aria-hidden'); copy.inert = false;
       Object.assign(copy.style, { position: 'static', visibility: 'visible', display: 'block', width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' });
       return copy;
