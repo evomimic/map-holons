@@ -73,12 +73,26 @@ pub(crate) enum SubjectLevel {
     Value,
 }
 
+/// Execution routing within a subject level, independent of binding compatibility.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum BindingDispatchRoute {
+    Subject,
+    // Reserved until the C2 handlers and canonical bindings activate together.
+    #[allow(dead_code)]
+    Descriptor,
+    #[allow(dead_code)]
+    SchemaAggregate,
+}
+
 pub(crate) struct BindingRoot {
     pub name: CoreValidationRuleName,
     pub rule: HolonReference,
     pub family: HolonReference,
     pub descriptor_family: HolonReference,
     pub level: SubjectLevel,
+    // Read when C2 descriptor and aggregate dispatch activate together.
+    #[allow(dead_code)]
+    pub route: BindingDispatchRoute,
 }
 
 pub(crate) struct BindingRoots {
@@ -143,6 +157,7 @@ impl BindingRoots {
                 family: resolve_core_descriptor(context, family)?,
                 descriptor_family: resolve_core_descriptor(context, descriptor_family)?,
                 level,
+                route: BindingDispatchRoute::Subject,
             })
         })
         .collect::<Result<_, HolonError>>()?;

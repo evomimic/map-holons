@@ -1,6 +1,8 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, ops::Range, sync::Arc};
 
-use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
+use core_types::{
+    CommitValidationViolation, CommitValidationViolationKind, HolonError, ValidationSubjectPath,
+};
 use holons_core::core_shared_objects::{holon::ValidationState, transactions::TransactionContext};
 use holons_core::{Descriptor, HolonDescriptor, HolonReference, ReadableHolon, StagedReference};
 
@@ -36,7 +38,7 @@ pub fn validate_commit_candidates(
     }
 
     let validation_context = HolonValidationContext::resolve(context)?;
-    let mut prepared_outcomes = Vec::with_capacity(candidates.len());
+    let mut assessment = PreparedAssessment::default();
     for candidate in candidates {
         if !candidate.is_live_validation_candidate()? {
             return Err(HolonError::InvalidParameter(format!(
@@ -53,26 +55,58 @@ pub fn validate_commit_candidates(
         }
         // Keep the candidate association directly; finding identities are diagnostics,
         // not lookup keys for installing staged outcomes.
-        prepared_outcomes.push((candidate, collector.into_report().violations));
+        assessment.record_candidate(candidate, collector.into_report());
     }
 
-    // No staged outcome changes until every candidate has been assessed reliably.
-    let mut report = CommitValidationReport::default();
-    for (candidate, findings) in prepared_outcomes {
-        let state = if findings.is_empty() {
-            ValidationState::Validated
-        } else if findings
-            .iter()
-            .any(|finding| matches!(finding.kind, CommitValidationViolationKind::NoDescriptor))
-        {
-            ValidationState::NoDescriptor
-        } else {
-            ValidationState::Invalid
-        };
-        report.violations.extend_from_slice(&findings);
-        candidate.replace_validation_outcome(state, findings)?;
+    assessment.install_outcomes()
+}
+
+/// Keeps installable candidate ranges separate from the complete, flat report.
+/// Aggregate findings can be appended to the report without inventing a staged carrier.
+#[derive(Default)]
+pub(crate) struct PreparedAssessment<'a> {
+    report: CommitValidationReport,
+    candidate_findings: Vec<(&'a StagedReference, Range<usize>)>,
+}
+
+impl<'a> PreparedAssessment<'a> {
+    /// Append without shifting existing candidate ranges. Report accumulation must remain
+    /// append-only until installation; aggregate findings have no staged outcome association.
+    #[allow(dead_code)] // Used by aggregate assessment when C2 activates.
+    pub(crate) fn push_aggregate(&mut self, finding: CommitValidationViolation) {
+        self.report.violations.push(finding);
     }
-    Ok(report)
+
+    pub(crate) fn record_candidate(
+        &mut self,
+        candidate: &'a StagedReference,
+        report: CommitValidationReport,
+    ) {
+        let start = self.report.violation_count();
+        self.report.violations.extend(report.violations);
+        // Keep the reference association: diagnostic identities are not installation keys.
+        self.candidate_findings.push((candidate, start..self.report.violation_count()));
+    }
+
+    /// Called only after every assessment succeeds; errors before this leave outcomes untouched.
+    pub(crate) fn install_outcomes(self) -> Result<CommitValidationReport, HolonError> {
+        let Self { report, candidate_findings } = self;
+        for (candidate, range) in candidate_findings {
+            let findings = report.violations[range].to_vec();
+            let state = if findings.is_empty() {
+                ValidationState::Validated
+            } else if findings
+                .iter()
+                .any(|finding| matches!(finding.kind, CommitValidationViolationKind::NoDescriptor))
+            {
+                ValidationState::NoDescriptor
+            } else {
+                ValidationState::Invalid
+            };
+            candidate.replace_validation_outcome(state, findings)?;
+        }
+        Ok(report)
+    }
 }
 
 /// Checks completed authored state, not a saved holon's navigation surface.

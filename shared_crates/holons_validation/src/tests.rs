@@ -836,3 +836,210 @@ fn malformed_relationship_contract_aborts_before_installing_outcomes() -> Result
     assert!(candidate.validation_findings()?.is_empty());
     Ok(())
 }
+
+#[test]
+fn aggregate_only_report_rejects_without_installing_staged_outcomes() -> Result<(), HolonError> {
+    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    let aggregate = core_types::CommitValidationViolation {
+        kind: CommitValidationViolationKind::RuleViolation { code: "AggregateTest".into() },
+        rule_key: None,
+        severity: core_types::ValidationSeverity::Error,
+        subject: ValidationSubjectPath::Holon { holon_identity: "unstaged-schema".into() },
+        descriptor_identity: None,
+        message: "Aggregate finding without a staged carrier.".into(),
+    };
+    assessment.push_aggregate(aggregate.clone());
+
+    let report = assessment.install_outcomes()?;
+    assert!(!report.is_accepted());
+    assert_eq!(report.violation_count(), 1);
+    assert_eq!(report.violations, vec![aggregate]);
+    Ok(())
+}
+
+#[test]
+fn aggregate_findings_do_not_leak_into_candidate_outcomes() -> Result<(), HolonError> {
+    let fixture = Fixture::new()?;
+    let invalid = fixture.staged_subject("invalid")?;
+    let clean = fixture.staged_subject("clean")?;
+    let candidate_report =
+        validate_commit_candidates(&fixture.context, std::slice::from_ref(&invalid))?;
+    let mut aggregate = candidate_report.violations[0].clone();
+    aggregate.subject = ValidationSubjectPath::Holon { holon_identity: "unstaged-schema".into() };
+    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    assessment.push_aggregate(aggregate.clone());
+    assessment.record_candidate(&invalid, candidate_report.clone());
+    assessment.push_aggregate(aggregate.clone());
+    assessment.record_candidate(&clean, CommitValidationReport::default());
+    assessment.push_aggregate(aggregate);
+
+    let report = assessment.install_outcomes()?;
+    assert!(!report.is_accepted());
+    assert_eq!(report.violation_count(), 4);
+    assert_eq!(invalid.validation_findings()?, candidate_report.violations);
+    assert_eq!(clean.validation_state()?, ValidationState::Validated);
+    assert!(clean.validation_findings()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn extension_binding_checks_all_matching_roots_regardless_of_order() -> Result<(), HolonError> {
+    use crate::contexts::SubjectLevel;
+    for reverse in [false, true] {
+        for admitted in [false, true] {
+            let mut fixture = Fixture::new()?;
+            let key = "Extension.ValidationRule";
+            fixture.node(key)?;
+            fixture.link(
+                key,
+                CoreRelationshipTypeName::DescribedBy,
+                "StringValidationRule.HolonType",
+            )?;
+            fixture.link("Contract", CoreRelationshipTypeName::ValidationBindings, key)?;
+            let mut context = HolonValidationContext::resolve(&fixture.context)?;
+            // Reuse two native roots that this string-only subject never dispatches.
+            // Keep names unique and leave its actual holon/property/string rules intact.
+            for (name, level, descriptor_family) in [
+                (
+                    CoreValidationRuleName::BaseValueKindMatchesInteger,
+                    SubjectLevel::Property,
+                    "HolonType.TypeDescriptor",
+                ),
+                (
+                    CoreValidationRuleName::BaseValueKindMatchesBoolean,
+                    SubjectLevel::Holon,
+                    if admitted {
+                        "HolonType.TypeDescriptor"
+                    } else {
+                        "PropertyType.TypeDescriptor"
+                    },
+                ),
+            ] {
+                let root = context
+                    .values
+                    .bindings
+                    .entries
+                    .iter_mut()
+                    .find(|root| root.name == name)
+                    .expect("fixture has canonical root");
+                root.family = fixture.nodes["StringValidationRule.HolonType"].clone();
+                root.level = level;
+                root.descriptor_family = fixture.nodes[descriptor_family].clone();
+            }
+            if reverse {
+                context.values.bindings.entries.reverse();
+            }
+            let mut subject = fixture.subject()?;
+            subject.with_property_value("Title", "present")?;
+            let mut collector = ValidationCollector::default();
+            validate_holon(HolonValidationSubject { holon: &subject }, &context, &mut collector)?;
+            assert!(collector.observations().discovered_rule_keys.contains(key));
+            assert!(!collector.observations().dispatched_rule_keys.contains(key));
+            for name in [
+                CoreValidationRuleName::NoUndescribedProperties,
+                CoreValidationRuleName::RequiredPropertyPresence,
+                CoreValidationRuleName::BaseValueKindMatchesString,
+            ] {
+                assert!(collector.observations().dispatched_rule_keys.contains(name.as_str()));
+            }
+            let report = collector.into_report();
+            assert_eq!(report.violation_count(), 1);
+            let findings = &report.violations;
+            assert_eq!(findings[0].rule_key.as_deref(), Some(key));
+            if admitted {
+                assert_eq!(
+                    findings[0].kind,
+                    CommitValidationViolationKind::UnsupportedValidationRule
+                );
+            } else {
+                assert!(matches!(&findings[0].kind,
+                    CommitValidationViolationKind::RuleViolation { code }
+                    if code == "IncompatibleValidationBinding"));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn binding_with_missing_or_ambiguous_describing_type_rejects_and_continues(
+) -> Result<(), HolonError> {
+    for ambiguous in [false, true] {
+        let mut fixture = Fixture::new()?;
+        let key = "Malformed.ValidationRule";
+        fixture.node(key)?;
+        if ambiguous {
+            let families = vec![
+                fixture.nodes["HolonValidationRule.HolonType"].clone(),
+                fixture.nodes["PropertyValidationRule.HolonType"].clone(),
+            ];
+            // Author malformed input before a describing contract governs mutation.
+            fixture
+                .nodes
+                .get_mut(key)
+                .unwrap()
+                .add_related_holons(CoreRelationshipTypeName::DescribedBy, families)?;
+        }
+        fixture.link("Contract", CoreRelationshipTypeName::ValidationBindings, key)?;
+        let candidate = fixture.staged_subject("subject")?;
+        let context = HolonValidationContext::resolve(&fixture.context)?;
+        let mut collector = ValidationCollector::default();
+        validate_holon(
+            HolonValidationSubject { holon: &HolonReference::from(&candidate) },
+            &context,
+            &mut collector,
+        )?;
+        assert!(collector.observations().discovered_rule_keys.contains(key));
+        assert!(!collector.observations().dispatched_rule_keys.contains(key));
+        assert!(collector
+            .observations()
+            .dispatched_rule_keys
+            .contains(CoreValidationRuleName::RequiredPropertyPresence.as_str()));
+        let expected = collector.into_report();
+        let report =
+            validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))?;
+        assert_eq!(report, expected);
+        assert_eq!(report.violation_count(), 2);
+        let finding = report
+            .violations
+            .iter()
+            .find(|finding| finding.rule_key.as_deref() == Some(key))
+            .unwrap();
+        assert!(matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code }
+            if code == "IncompatibleValidationBinding"));
+        assert!(finding.message.contains(if ambiguous {
+            "MultipleDescribedBy"
+        } else {
+            "MissingDescribedBy"
+        }));
+        assert!(finding.message.contains(&fixture.nodes[key].reference_id_string()));
+        assert_eq!(
+            finding.descriptor_identity,
+            Some(fixture.nodes["Contract"].reference_id_string())
+        );
+        assert_eq!(candidate.validation_state()?, ValidationState::Invalid);
+        assert_eq!(candidate.validation_findings()?, report.violations);
+    }
+    Ok(())
+}
+
+#[test]
+fn unknown_rule_family_still_fails_closed_as_unsupported() -> Result<(), HolonError> {
+    let mut fixture = Fixture::new()?;
+    let key = "Extension.ValidationRule";
+    fixture.node(key)?;
+    fixture.node("ExtensionRuleFamily")?;
+    fixture.link(key, CoreRelationshipTypeName::DescribedBy, "ExtensionRuleFamily")?;
+    fixture.link("Contract", CoreRelationshipTypeName::ValidationBindings, key)?;
+    let context = HolonValidationContext::resolve(&fixture.context)?;
+    let mut subject = fixture.subject()?;
+    subject.with_property_value("Title", "present")?;
+    let mut collector = ValidationCollector::default();
+    validate_holon(HolonValidationSubject { holon: &subject }, &context, &mut collector)?;
+    assert!(!collector.observations().dispatched_rule_keys.contains(key));
+    let report = collector.into_report();
+    assert_eq!(report.violation_count(), 1);
+    assert_eq!(report.violations[0].kind, CommitValidationViolationKind::UnsupportedValidationRule);
+    assert_eq!(report.violations[0].rule_key.as_deref(), Some(key));
+    Ok(())
+}

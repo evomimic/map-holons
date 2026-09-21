@@ -6,7 +6,8 @@ use core_types::CommitValidationViolation;
 /// mandatory, so every finding rejects the assessment regardless of severity.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CommitValidationReport {
-    /// Findings in traversal and effective-contribution order.
+    /// All findings, including aggregates without a staged carrier, in traversal
+    /// and effective-contribution order. Installation associations belong to orchestration.
     pub violations: Vec<CommitValidationViolation>,
 }
 

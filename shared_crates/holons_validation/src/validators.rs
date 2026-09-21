@@ -5,7 +5,7 @@ use holons_core::{
 };
 
 use crate::commitments::{declaring_identity, required_key};
-use crate::contexts::{BindingRoots, SubjectLevel};
+use crate::contexts::SubjectLevel;
 use crate::handlers::{finding, native_rule_kind, rule_violation};
 use crate::*;
 
@@ -34,16 +34,9 @@ pub(crate) fn resolve_holon_descriptor(
     let path = ValidationSubjectPath::Holon { holon_identity: subject.holon.reference_id_string() };
     let descriptor = match subject.holon.holon_descriptor() {
         Ok(descriptor) => descriptor,
-        Err(
-            error
-            @ (HolonError::MissingDescribedBy { .. } | HolonError::MultipleDescribedBy { .. }),
-        ) => {
-            // Stable error variant names keep the two bootstrap failures distinguishable
-            // without changing the already-published dependency-safe finding enum.
-            let reason = if matches!(error, HolonError::MissingDescribedBy { .. }) {
-                "MissingDescribedBy"
-            } else {
-                "MultipleDescribedBy"
+        Err(error) => {
+            let Some(reason) = described_by_failure(&error) else {
+                return Err(error);
             };
             finding(
                 collector,
@@ -55,9 +48,17 @@ pub(crate) fn resolve_holon_descriptor(
             );
             return Ok(None);
         }
-        Err(error) => return Err(error),
     };
     Ok(Some(descriptor))
+}
+
+/// Stable names distinguish malformed describing selections without changing the finding enum.
+fn described_by_failure(error: &HolonError) -> Option<&'static str> {
+    match error {
+        HolonError::MissingDescribedBy { .. } => Some("MissingDescribedBy"),
+        HolonError::MultipleDescribedBy { .. } => Some("MultipleDescribedBy"),
+        _ => None,
+    }
 }
 
 /// Assesses the conformance contract using the descriptor already resolved for this pass.
@@ -183,7 +184,26 @@ fn prepare_bindings(
         let binding = ResolvedValidationBinding::from(contribution);
         let key = ValidationRuleKey(required_key(&binding.rule)?);
         collector.observations.discovered_rule_keys.insert(key.0.clone());
-        if !compatible_binding(&binding, descriptor.holon(), level, &context.bindings, context)? {
+        let family = match binding.rule.holon_descriptor() {
+            Ok(family) => family,
+            Err(error) => {
+                let Some(reason) = described_by_failure(&error) else {
+                    return Err(error);
+                };
+                rule_violation(
+                    collector,
+                    &binding,
+                    path,
+                    "IncompatibleValidationBinding",
+                    format!(
+                        "{reason}: Rule {} must have exactly one describing type before dispatch: {error}",
+                        binding.rule.reference_id_string()
+                    ),
+                )?;
+                continue;
+            }
+        };
+        if !compatible_binding(&binding, &family, &key, descriptor.holon(), level, context)? {
             rule_violation(collector, &binding, path, "IncompatibleValidationBinding",
                 "The rule family, declaring descriptor, and subject kind must be compatible before dispatch.".into())?;
             continue;
@@ -205,14 +225,14 @@ fn prepare_bindings(
 
 fn compatible_binding(
     binding: &ResolvedValidationBinding,
+    family: &HolonDescriptor,
+    key: &ValidationRuleKey,
     governing: &HolonReference,
     level: SubjectLevel,
-    roots: &BindingRoots,
     context: &ValueValidationContext,
 ) -> Result<bool, HolonError> {
-    let family = binding.rule.holon_descriptor()?;
-    let key = required_key(&binding.rule)?;
-    if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key) {
+    let roots = &context.bindings;
+    if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key.0) {
         // A familiar key on another reference cannot impersonate a canonical rule.
         if binding.rule.reference_id_string() != root.rule.reference_id_string()
             || root.level != level
@@ -228,18 +248,21 @@ fn compatible_binding(
         }
         return Ok(true);
     }
-    // Unknown commitments still fail closed. Where C1 knows their family, reject
-    // malformed placement explicitly before considering handler availability.
+    // A family may have roots at several declaring descriptors or subject levels.
+    // Inspect all matching roots so their registration order cannot change placement.
+    let mut matched_family = false;
+    let mut admitted = false;
     for root in &roots.entries {
         if equals_or_extends(family.holon(), &root.family)? {
-            return Ok(root.level == level
-                && equals_or_extends(
-                    binding.declaring_descriptor.holon(),
-                    &root.descriptor_family,
-                )?);
+            matched_family = true;
+            if root.level == level
+                && equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
+            {
+                admitted = true;
+            }
         }
     }
-    Ok(true)
+    Ok(!matched_family || admitted)
 }
 
 fn mark_dispatched(
