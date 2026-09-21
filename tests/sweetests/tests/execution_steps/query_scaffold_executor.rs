@@ -6,15 +6,17 @@
 //! (`TransactionAction::DanceV2`). Every runtime record the scaffold creates is
 //! transient; nothing here is staged or committed.
 //!
-//! The input carrier built for the Dance route is a harness-side transport for
-//! the explicit runtime input (a transient holon described by
-//! `HolonCollection.HolonType` whose `CollectionMembers` are the input), not a
-//! query feature.
+//! The explicit input is a holon described by `HolonCollection.HolonType` whose
+//! `CollectionMembers` are the resolved input references. The harness mints it
+//! (`build_input_collection`) for both routes — this is the caller-side boundary
+//! from #655 — and QueryCore links `Input` to that same holon by identity.
 
 use std::sync::Arc;
 
 use holons_core::dances::DanceInvocation;
-use holons_core::query_layer::query_core::{QueryExecution, QueryReference};
+use holons_core::query_layer::query_core::{
+    HolonCollectionReference, QueryExecution, QueryReference,
+};
 use holons_prelude::prelude::*;
 use holons_test::{QueryScaffoldRoute, ResolveBy, TestExecutionState, TestReference};
 use map_commands_contract::{MapCommand, TransactionAction, TransactionCommand};
@@ -80,15 +82,22 @@ fn execute_direct(
     let root_expression =
         single_related(&query_reference, QueryRelationshipTypeName::RootExpression);
 
-    let mut input = HolonCollection::new_transient();
-    input.add_references(members.clone()).unwrap();
     let input_count = members.len();
+    let input_collection: HolonReference = build_input_collection(context, members).into();
+    let input = HolonCollectionReference::new(input_collection.clone())
+        .expect("harness collection holon should wrap as a HolonCollectionReference");
 
     // begin_execution: records exist, are Pending, and carry the definition/input links.
     let execution = query
         .begin_execution(context, input, Vec::new())
         .expect("begin_execution should create the transient runtime records");
-    assert_scaffold_shape(&execution, &query_reference, &root_expression, input_count);
+    assert_scaffold_shape(
+        &execution,
+        &query_reference,
+        &root_expression,
+        &input_collection,
+        input_count,
+    );
     assert_status(execution.instance().clone().into(), "Pending");
     assert_status(execution.root_execution().clone().into(), "Pending");
 
@@ -129,6 +138,7 @@ fn assert_scaffold_shape(
     execution: &QueryExecution,
     query_reference: &HolonReference,
     root_expression: &HolonReference,
+    input_collection: &HolonReference,
     input_count: usize,
 ) {
     let instance: HolonReference = execution.instance().clone().into();
@@ -150,9 +160,10 @@ fn assert_scaffold_shape(
         "QueryExpressionExecution.ExecutesExpression",
     );
 
-    let carrier = single_related(&root_execution, QueryRelationshipTypeName::Input);
-    assert!(carrier.is_transient(), "input carrier must be a transient holon");
-    assert_related_count(&carrier, CoreRelationshipTypeName::CollectionMembers, input_count);
+    // Identity: Input is the caller's collection holon, not a copy of it.
+    let input = single_related(&root_execution, QueryRelationshipTypeName::Input);
+    assert_same_holon(&input, input_collection, "QueryExpressionExecution.Input");
+    assert_related_count(&input, CoreRelationshipTypeName::CollectionMembers, input_count);
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +178,7 @@ async fn execute_query_dance(
     with_initial_input: bool,
     expected_error: Option<HolonErrorKind>,
 ) {
-    // Request: RequestedQuery + (optionally) InitialInput carrier.
+    // Request: RequestedQuery + (optionally) the InitialInput collection holon.
     let mut request = context
         .mutation()
         .new_holon(Some(MapString("qry1-query-dance-request".to_string())))
@@ -181,9 +192,12 @@ async fn execute_query_dance(
         .add_related_holons(QueryDanceRelationshipTypeName::RequestedQuery, vec![query_reference])
         .unwrap();
     if with_initial_input {
-        let carrier = build_input_carrier(context, members);
+        let collection = build_input_collection(context, members);
         request
-            .add_related_holons(QueryDanceRelationshipTypeName::InitialInput, vec![carrier.into()])
+            .add_related_holons(
+                QueryDanceRelationshipTypeName::InitialInput,
+                vec![collection.into()],
+            )
             .unwrap();
     }
 
@@ -243,19 +257,23 @@ async fn execute_query_dance(
     info!("Success! QueryDance routed to the QRY1 seam and propagated the expected error");
 }
 
-fn build_input_carrier(
+/// Mints the caller-side explicit input: a transient holon described by
+/// `HolonCollection.HolonType` whose `CollectionMembers` are `members`.
+fn build_input_collection(
     context: &Arc<TransactionContext>,
     members: Vec<HolonReference>,
 ) -> TransientReference {
-    let mut carrier =
-        context.mutation().new_holon(Some(MapString("qry1-initial-input".to_string()))).unwrap();
-    carrier
+    let mut collection =
+        context.mutation().new_holon(Some(MapString("qry1-input-collection".to_string()))).unwrap();
+    collection
         .with_descriptor(resolve_core_descriptor(context, HOLON_COLLECTION_DESCRIPTOR_KEY).unwrap())
         .unwrap();
     if !members.is_empty() {
-        carrier.add_related_holons(CoreRelationshipTypeName::CollectionMembers, members).unwrap();
+        collection
+            .add_related_holons(CoreRelationshipTypeName::CollectionMembers, members)
+            .unwrap();
     }
-    carrier
+    collection
 }
 
 /// The holon affording `QueryDance` (`DanceAffordedBy -> HolonSpace.HolonType`):

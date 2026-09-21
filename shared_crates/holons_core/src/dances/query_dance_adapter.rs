@@ -3,9 +3,9 @@
 //! `QueryDance.DanceType` deliberately binds no `DanceImplementation`. After
 //! ordinary binding and request/response-contract validation, the executor
 //! routes it here instead of generic `ForDance` implementation selection. The
-//! adapter maps the request's `RequestedQuery`, `InitialInput`, and
-//! `RequestParameters` onto the internal direct Query seam and propagates the
-//! error that seam produces.
+//! adapter maps the request's `RequestedQuery`, `InitialInput` (forwarded by
+//! identity as a `HolonCollectionReference`), and `RequestParameters` onto the
+//! internal direct Query seam and propagates the error that seam produces.
 //!
 //! Scaffold-only: [`invoke`] cannot succeed (its `Ok` type is `Infallible`) and
 //! the executor never mints a `QueryDanceResponse` on this route. QRY2
@@ -21,7 +21,7 @@ use crate::core_shared_objects::transactions::TransactionContext;
 use crate::dances::BoundDanceInvocation;
 use crate::descriptors::DanceDescriptor;
 use crate::query_layer::query_core::{
-    exactly_one, read_input_carrier, related_members, QueryReference,
+    exactly_one, related_members, HolonCollectionReference, QueryReference,
 };
 use crate::reference_layer::ReadableHolon;
 
@@ -51,8 +51,10 @@ pub(crate) fn invoke(
 
     let query =
         QueryReference::new(exactly_one(request, QueryDanceRelationshipTypeName::RequestedQuery)?)?;
-    let input =
-        read_input_carrier(&exactly_one(request, QueryDanceRelationshipTypeName::InitialInput)?)?;
+    let input = HolonCollectionReference::new(exactly_one(
+        request,
+        QueryDanceRelationshipTypeName::InitialInput,
+    )?)?;
     let bindings = related_members(request, QueryDanceRelationshipTypeName::RequestParameters)?;
 
     let execution = query.begin_execution(context, input, bindings)?;
