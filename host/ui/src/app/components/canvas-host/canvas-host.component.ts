@@ -1,3 +1,4 @@
+import { classifyNodeAffordances } from '../../../dahn/map-adapter/classify-node-affordances';
 import { AfterViewInit, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { DomCanvas } from '../../../dahn';
 import { DahnHolonView } from '../../../dahn/map-adapter/dahn-holon-view';
@@ -161,6 +162,8 @@ export class CanvasHostComponent implements AfterViewInit {
             'map-root-node-visualizer',
             nodeImplementation as CustomElementConstructor,
           );
+          const view = new DahnHolonView(activeHolonSpace);
+          const affordances = await classifyNodeAffordances(view);
           const propertiesElement = await renderVisualizerRegion('Properties', async () => {
             profile.next('select and materialize Properties');
             const propertiesSelection = await transaction.selectVisualizer({
@@ -181,7 +184,7 @@ export class CanvasHostComponent implements AfterViewInit {
             );
             profile.next('discover and render property fields');
             const propertyVisualizers = new Map<string, HTMLElement>();
-            for (const propertyDescriptor of await activeHolonSpace.availableProperties()) {
+            for (const propertyDescriptor of affordances.scalarProperties) {
               let propertyName = 'Property ' + (propertyVisualizers.size + 1);
               const propertyRegion = await renderVisualizerRegion('Property', async () => {
                 propertyName = await propertyDescriptor.propertyName();
@@ -263,6 +266,19 @@ export class CanvasHostComponent implements AfterViewInit {
             });
             return propertiesElement;
           });
+          const actionsElement = await renderVisualizerRegion('Node actions', async () => {
+            const selection = await transaction.selectVisualizer({
+              subject: activeHolonSpace, requestedKind: 'action', parentVisualizer: rootNodeVisualizer,
+            });
+            const implementation = await materialized.realize(selection.selected);
+            if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
+              throw new Error('Selected Action implementation does not export an HTMLElement constructor.');
+            }
+            const tag = defineCustomElementOnce('map-node-actions', implementation as CustomElementConstructor);
+            const element = document.createElement(tag) as HTMLElement & { setContext(context: VisualizerContext): void };
+            element.setContext({ target: { reference: activeHolonSpace }, holon: view, actions: affordances.actions, theme, canvas });
+            return element;
+          });
           const rootNodeElement = document.createElement(nodeTag) as HTMLElement & {
             setContext(context: VisualizerContext): void;
           };
@@ -270,10 +286,11 @@ export class CanvasHostComponent implements AfterViewInit {
             title: (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey(),
             target: { reference: activeHolonSpace },
             holon: new DahnHolonView(activeHolonSpace),
-            actions: [],
+            actions: affordances.actions,
             theme,
             canvas,
-            childVisualizers: new Map([['properties', propertiesElement]]),
+            nodeAffordances: affordances,
+            childVisualizers: new Map([['properties', propertiesElement], ['actions', actionsElement]]),
           });
           return rootNodeElement;
         });

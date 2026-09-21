@@ -74,6 +74,7 @@ export type MapResultWire =
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
   | { QualifiedRelationships: QualifiedRelationshipWire[] }
+  | { EffectiveCardinality: { minimum: number; maximum: number | null } }
   | { Value: BaseValue }
   | { HolonId: HolonId }
   | { DanceResponse: DanceResponseWire };
@@ -92,6 +93,10 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
     (hasSingleKey(value, 'TransactionCreated') &&
       isRecord(value.TransactionCreated) &&
       isNumber(value.TransactionCreated['tx_id'])) ||
+    (hasSingleKey(value, 'EffectiveCardinality') && isRecord(value.EffectiveCardinality) &&
+      Number.isSafeInteger(value.EffectiveCardinality['minimum']) && (value.EffectiveCardinality['minimum'] as number) >= 0 &&
+      (value.EffectiveCardinality['maximum'] === null ||
+        (Number.isSafeInteger(value.EffectiveCardinality['maximum']) && (value.EffectiveCardinality['maximum'] as number) >= (value.EffectiveCardinality['minimum'] as number)))) ||
     (hasSingleKey(value, 'Reference') && isHolonReferenceWire(value.Reference)) ||
     (hasSingleKey(value, 'VisualizerSelection') && isVisualizerSelectionWire(value.VisualizerSelection)) ||
     (hasSingleKey(value, 'References') &&

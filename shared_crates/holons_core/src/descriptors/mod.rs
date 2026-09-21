@@ -4,6 +4,8 @@ pub mod dance_descriptor;
 pub mod dance_response_descriptor;
 pub mod declared_relationship_descriptor;
 pub mod descriptor;
+mod effective_cardinality;
+pub use effective_cardinality::EffectiveCardinality;
 pub mod effective_relationships;
 pub mod holon_descriptor;
 pub mod holon_space_descriptor;

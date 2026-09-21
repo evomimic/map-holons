@@ -74,6 +74,9 @@ pub enum MapResult {
     /// Universal scalar return — covers MapString, MapInteger, MapBoolean, PropertyValue.
     Value(BaseValue),
 
+    /// Resolved relationship cardinality bounds.
+    EffectiveCardinality(holons_core::descriptors::EffectiveCardinality),
+
     /// Returns a holon id.
     HolonId(HolonId),
 

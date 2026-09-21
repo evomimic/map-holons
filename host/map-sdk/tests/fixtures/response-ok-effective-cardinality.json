@@ -1,0 +1,11 @@
+{
+  "request_id": 120,
+  "result": {
+    "Ok": {
+      "EffectiveCardinality": {
+        "minimum": 0,
+        "maximum": null
+      }
+    }
+  }
+}

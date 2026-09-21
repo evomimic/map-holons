@@ -5,6 +5,7 @@ import type {
   HolonCollection,
   HolonDescriptorHandle,
   HolonId,
+  HolonReference,
   PropertyDescriptorHandle,
   PropertyName,
   RelationshipName,
@@ -22,6 +23,7 @@ export interface HolonViewAccess {
   versionedKey(): Promise<string>;
   propertyValue(name: PropertyName): Promise<BaseValue | null>;
   descriptor(): Promise<HolonDescriptorHandle>;
+  availableDances(): Promise<ReadonlyArray<HolonReference>>;
   availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>>;
   availableRelationships(): Promise<ReadonlyArray<AvailableRelationshipHandle>>;
   expandRelationship(name: RelationshipName): Promise<HolonCollection>;

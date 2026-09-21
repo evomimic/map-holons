@@ -2278,6 +2278,24 @@ holon Example.HolonType {
             "HolonInspectorTypeScript.VisualizerImplementation"
         );
 
+        let slots = holon_inspector_relationships
+            .iter()
+            .find(|relationship| relationship["name"].as_str() == Some("HasSlot"))
+            .context("Holon Inspector composition slots")?;
+        for key in [
+            "HolonInspector.PropertyViewerSlot",
+            "HolonInspector.ActionsSlot",
+            "HolonInspector.CollectionsSlot",
+            "HolonInspector.SingleValueSlot",
+        ] {
+            assert!(slots["target"].as_array().unwrap().iter().any(|target| target["$ref"] == key));
+        }
+        let actions = holons
+            .iter()
+            .find(|holon| holon["key"] == "GenericActions.ActionVisualizer")
+            .context("generic Actions visualizer")?;
+        assert_eq!(actions["type"], "ActionVisualizer.HolonType");
+
         let path_inspector = holons
             .iter()
             .find(|holon| holon["key"].as_str() == Some("PathInspector.RootedNavigationVisualizer"))

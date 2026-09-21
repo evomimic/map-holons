@@ -441,6 +441,24 @@
               "$ref": "CanvasGap.DesignToken"
             },
             {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
               "$ref": "InspectorContentMinHeight.DesignToken"
             },
             {
@@ -465,6 +483,15 @@
           "target": [
             {
               "$ref": "HolonInspector.PropertyViewerSlot"
+            },
+            {
+              "$ref": "HolonInspector.ActionsSlot"
+            },
+            {
+              "$ref": "HolonInspector.CollectionsSlot"
+            },
+            {
+              "$ref": "HolonInspector.SingleValueSlot"
             }
           ]
         },
@@ -494,11 +521,128 @@
       ]
     },
     {
+      "key": "HolonInspector.ActionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "ActionVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspector.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "CollectionVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonInspector.SingleValueSlot",
+      "type": "VisualizerSlot.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "AcceptsVisualizerType",
+          "target": [
+            {
+              "$ref": "NodeVisualizer.HolonType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericActions.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType",
+      "properties": {},
+      "relationships": [
+        {
+          "name": "ApplicableToType",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ConsumesDesignToken",
+          "target": [
+            {
+              "$ref": "CanvasGap.DesignToken"
+            },
+            {
+              "$ref": "CanvasSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "SlotPadding.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderWidth.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderStyle.DesignToken"
+            },
+            {
+              "$ref": "SlotBorderColor.DesignToken"
+            },
+            {
+              "$ref": "CanvasTextColor.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionCornerRadius.DesignToken"
+            },
+            {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            }
+          ]
+        },
+        {
+          "name": "ImplementedBy",
+          "target": [
+            {
+              "$ref": "GenericActionsTypeScript.VisualizerImplementation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "GenericActionsTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType",
+      "properties": {
+        "Entrypoint": "default",
+        "VisualizerArtifactDigest": "sha256:558d846fa347146e0a43570d21d7459120859b6bcfbaabcc3cfc5233aa1165cd",
+        "VisualizerImplementationKey": "dahn.actions",
+        "VisualizerImplementationRuntime": "TypeScript",
+        "VisualizerModuleFormat": "ESModule"
+      }
+    },
+    {
       "key": "HolonInspectorTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:0ae4d446d796d246b03611c67e1cb0412604c791f0a207ecfa843d5c7800fcc7",
+        "VisualizerArtifactDigest": "sha256:ae814e47f39081e7ba4eee34655a5cdde70930ba6240abc19254944b036c64d2",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

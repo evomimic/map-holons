@@ -27,7 +27,7 @@ pub enum HolonActionWire {
 
 /// Wire-level read-only holon actions.
 ///
-/// Mirrors `ReadableHolonAction` — each variant maps to a `ReadableHolon` trait method.
+/// Mirrors `ReadableHolonAction` reference reads and descriptor queries.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ReadableHolonActionWire {
     /// `clone_holon()` → `TransientReference`
@@ -65,6 +65,9 @@ pub enum ReadableHolonActionWire {
     GetAvailableProperties,
 
     GetAvailableRelationships,
+    GetEffectiveCardinality,
+    GetPropertyIsArray,
+    GetAvailableDances,
 }
 
 /// Wire-level write (mutating) holon actions.
@@ -137,6 +140,11 @@ impl ReadableHolonActionWire {
             ReadableHolonActionWire::GetAvailableProperties => {
                 ReadableHolonAction::GetAvailableProperties
             }
+            ReadableHolonActionWire::GetEffectiveCardinality => {
+                ReadableHolonAction::GetEffectiveCardinality
+            }
+            ReadableHolonActionWire::GetPropertyIsArray => ReadableHolonAction::GetPropertyIsArray,
+            ReadableHolonActionWire::GetAvailableDances => ReadableHolonAction::GetAvailableDances,
             ReadableHolonActionWire::GetAvailableRelationships => {
                 ReadableHolonAction::GetAvailableRelationships
             }

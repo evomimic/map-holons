@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "0ebe6773758bb7da6ae75e11b1cd92c93e172b0ebd261eff98c14677adb42195"
+      "sha256": "04109fcda7e2c390f2d7811126defbb9bf02344ceded10ca080db896e2e20b87"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -1568,6 +1568,14 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "GenericActions.ActionVisualizer",
+      "type": "ActionVisualizer.HolonType"
+    },
+    {
+      "key": "GenericActionsTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
       "key": "GenericProperties.PropertiesVisualizer",
       "type": "PropertiesVisualizer.HolonType"
     },
@@ -1676,11 +1684,23 @@
       "type": "MetaBytesValueType.MetaValueType"
     },
     {
+      "key": "HolonInspector.ActionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "HolonInspector.CollectionsSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
       "key": "HolonInspector.NodeVisualizer",
       "type": "NodeVisualizer.HolonType"
     },
     {
       "key": "HolonInspector.PropertyViewerSlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "HolonInspector.SingleValueSlot",
       "type": "VisualizerSlot.HolonType"
     },
     {

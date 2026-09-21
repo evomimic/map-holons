@@ -49,6 +49,7 @@ impl HolonServiceApi for Graph {
     ) -> Result<SmartReference, HolonError> {
         let id = match key.0.as_str() {
             "PropertiesVisualizer.HolonType" => 10,
+            "ActionVisualizer.HolonType" => 13,
             "PropertyVisualizer.HolonType" => 11,
             "ValueVisualizer.HolonType" => 12,
             _ => panic!("unexpected lookup {key}"),
@@ -141,6 +142,7 @@ fn select(
     graph.edge(21, "DescribedBy", &[11]);
     let (subject, start, role) = match kind {
         VisualizerKind::Properties => (1, 2, 10),
+        VisualizerKind::Action => (1, 2, 13),
         VisualizerKind::Property => (3, 3, 11),
         VisualizerKind::Value => (3, 4, 12),
         _ => unreachable!(),
@@ -172,7 +174,12 @@ fn select(
 }
 #[test]
 fn selects_each_presentation_role_directly_and_through_inheritance() {
-    for kind in [VisualizerKind::Properties, VisualizerKind::Property, VisualizerKind::Value] {
+    for kind in [
+        VisualizerKind::Properties,
+        VisualizerKind::Property,
+        VisualizerKind::Value,
+        VisualizerKind::Action,
+    ] {
         for inherited in [false, true] {
             assert_eq!(select(kind, &[20], inherited, &[4]).unwrap(), 20);
         }
@@ -180,7 +187,12 @@ fn selects_each_presentation_role_directly_and_through_inheritance() {
 }
 #[test]
 fn reports_missing_and_ambiguous_candidates_for_every_role() {
-    for kind in [VisualizerKind::Properties, VisualizerKind::Property, VisualizerKind::Value] {
+    for kind in [
+        VisualizerKind::Properties,
+        VisualizerKind::Property,
+        VisualizerKind::Value,
+        VisualizerKind::Action,
+    ] {
         assert!(
             matches!(select(kind, &[], false, &[4]), Err(HolonError::NotImplemented(message)) if message.contains("No applicable"))
         );

@@ -103,6 +103,13 @@ export class HolonReference implements WritableHolon {
     return createHolonDescriptorHandle(createHolonReference(txId, wireRef));
   }
 
+  /** Returns effective afforded Dance references without inspecting their responses. */
+  async availableDances(): Promise<ReadonlyArray<HolonReference>> {
+    const txId = txIdFor(this);
+    const collection = await internalHolon.readAvailableDances(txId, wireRefFor(this));
+    return Object.freeze(collection.members.map(member => createHolonReference(txId, member)));
+  }
+
   async availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
     const txId = txIdFor(this);
     const collection = await internalHolon.readAvailableProperties(txId, wireRefFor(this));
@@ -270,4 +277,13 @@ function wireRefFor(reference: HolonReference): HolonReferenceWire {
   }
 
   return wireRef;
+}
+
+/** Internal descriptor-handle bridge; preserves bound reference routing. */
+export function readDescriptorCardinality(reference: HolonReference) {
+  return internalHolon.readEffectiveCardinality(txIdFor(reference), wireRefFor(reference));
+}
+/** Internal descriptor-handle bridge for Rust-owned representation classification. */
+export function readDescriptorIsArray(reference: HolonReference) {
+  return internalHolon.readPropertyIsArray(txIdFor(reference), wireRefFor(reference));
 }

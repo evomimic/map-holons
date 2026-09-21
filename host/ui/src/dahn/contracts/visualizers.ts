@@ -1,3 +1,4 @@
+import type { NodeAffordances } from './affordances';
 import type { ActionNode } from './actions';
 import type { CanvasApi } from './canvas';
 import type { HolonViewAccess } from './holon-view';
@@ -44,6 +45,8 @@ export interface VisualizerContext {
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];
+  /** Descriptor-classified, presentation-only navigation slots. */
+  nodeAffordances?: NodeAffordances;
   theme: DahnTheme;
   canvas: CanvasApi;
   /**

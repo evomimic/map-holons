@@ -226,3 +226,9 @@ export function expectDanceResponse(
 
   throw unexpectedResultVariant('DanceResponse', result);
 }
+
+/** Decode Rust-resolved inclusive cardinality bounds. */
+export function expectEffectiveCardinality(result: MapResultWire): { minimum: number; maximum: number | null } {
+  if (typeof result === 'object' && 'EffectiveCardinality' in result) return result.EffectiveCardinality;
+  throw unexpectedResultVariant('EffectiveCardinality', result);
+}

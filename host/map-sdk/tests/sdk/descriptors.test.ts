@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createPropertyDescriptorHandle } from '../../src/sdk/descriptors';
+import { createPropertyDescriptorHandle, createRelationshipDescriptorHandle } from '../../src/sdk/descriptors';
 import type { HolonReference } from '../../src/sdk/references';
 
 describe('descriptor-backed value context', () => {
@@ -21,4 +21,11 @@ describe('descriptor-backed value context', () => {
     const descriptor = createPropertyDescriptorHandle(property as unknown as HolonReference);
     await expect(descriptor.valueType()).rejects.toThrow(`exactly one ValueType; found ${count}`);
   });
+});
+
+it('uses relationship DisplayName rather than the binding name', async () => {
+  const propertyValue = vi.fn().mockResolvedValue({ StringValue: 'Owned by' });
+  const descriptor = createRelationshipDescriptorHandle({ propertyValue } as unknown as HolonReference);
+  expect(await descriptor.displayName()).toBe('Owned by');
+  expect(propertyValue).toHaveBeenCalledWith('DisplayName');
 });

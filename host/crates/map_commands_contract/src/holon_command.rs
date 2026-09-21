@@ -55,6 +55,11 @@ impl HolonAction {
             HolonAction::Read(ReadableHolonAction::GetAvailableRelationships) => {
                 "get_available_relationships"
             }
+            HolonAction::Read(ReadableHolonAction::GetEffectiveCardinality) => {
+                "get_effective_cardinality"
+            }
+            HolonAction::Read(ReadableHolonAction::GetPropertyIsArray) => "get_property_is_array",
+            HolonAction::Read(ReadableHolonAction::GetAvailableDances) => "get_available_dances",
             HolonAction::Write(_) => "holon_write",
         }
     }
@@ -62,8 +67,7 @@ impl HolonAction {
 
 /// Non-mutating holon actions.
 ///
-/// Maps 1:1 to the `ReadableHolon` trait methods in
-/// `shared_crates/holons_core/src/reference_layer/readable_holon.rs`.
+/// Exposes reference reads and bounded descriptor queries through the same ingress.
 ///
 /// Lifecycle validated via descriptor. Does not trigger snapshot persistence.
 #[derive(Debug)]
@@ -100,6 +104,13 @@ pub enum ReadableHolonAction {
 
     /// `ReadableHolon::available_relationships()` → qualified descriptors.
     GetAvailableRelationships,
+
+    /// Inclusive bounds of the target relationship descriptor.
+    GetEffectiveCardinality,
+    /// Whether the target property descriptor declares an array ValueType.
+    GetPropertyIsArray,
+    /// Effective afforded Dances of the target holon.
+    GetAvailableDances,
 }
 
 /// Mutating holon actions.

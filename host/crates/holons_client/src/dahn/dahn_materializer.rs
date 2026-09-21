@@ -123,6 +123,7 @@ impl DahnMaterializer {
             "SpaceNavigator.CanvasVisualizer" => "space-navigator.js",
             "PathInspector.RootedNavigationVisualizer" => "path-inspector.js",
             "HolonInspector.NodeVisualizer" => "holon-inspector.js",
+            "GenericActions.ActionVisualizer" => "actions.js",
             "GenericProperties.PropertiesVisualizer" => "properties.js",
             "GenericProperty.PropertyVisualizer" => "property.js",
             "StringValue.ValueVisualizer"
@@ -216,6 +217,13 @@ mod tests {
     #[test]
     fn resolves_local_artifacts_from_visualizer_semantic_keys() {
         let materializer = DahnMaterializer::new("/artifacts".into());
+        assert_eq!(
+            materializer
+                .artifact_for(&MapString::from("GenericActions.ActionVisualizer"))
+                .unwrap()
+                .to_string_lossy(),
+            "/artifacts/actions.js"
+        );
 
         assert_eq!(
             materializer

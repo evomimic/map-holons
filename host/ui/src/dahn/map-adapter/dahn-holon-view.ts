@@ -40,6 +40,10 @@ export class DahnHolonView implements HolonViewAccess {
     return this.reference.holonDescriptor();
   }
 
+  availableDances(): Promise<ReadonlyArray<HolonReference>> {
+    return this.reference.availableDances();
+  }
+
   availableProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> {
     return this.reference.availableProperties();
   }

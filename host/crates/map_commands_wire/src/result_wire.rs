@@ -54,6 +54,12 @@ pub enum MapResultWire {
     /// Universal scalar return.
     Value(BaseValue),
 
+    /// Inclusive effective bounds; absent maximum means unbounded.
+    EffectiveCardinality {
+        minimum: i64,
+        maximum: Option<i64>,
+    },
+
     /// Returns a holon id.
     HolonId(HolonId),
 
@@ -123,6 +129,10 @@ impl From<MapResult> for MapResultWire {
                         .collect(),
                 )
             }
+            MapResult::EffectiveCardinality(bounds) => MapResultWire::EffectiveCardinality {
+                minimum: bounds.minimum,
+                maximum: bounds.maximum,
+            },
             MapResult::Value(v) => MapResultWire::Value(v),
             MapResult::HolonId(id) => MapResultWire::HolonId(id),
             MapResult::DanceResponse(r) => {
@@ -137,6 +147,23 @@ mod tests {
     use super::{QualifiedRelationshipWire, RelationshipDirectionWire};
     use holons_boundary::{HolonReferenceWire, TransientReferenceWire};
     use serde_json::{from_str, to_string};
+
+    #[test]
+    fn effective_cardinality_projects_without_serializing_bound_references() {
+        for maximum in [None, Some(0), Some(1), Some(4)] {
+            let wire =
+                super::MapResultWire::from(map_commands_contract::MapResult::EffectiveCardinality(
+                    holons_core::descriptors::EffectiveCardinality { minimum: 0, maximum },
+                ));
+            let encoded = to_string(&wire).unwrap();
+            assert_eq!(from_str::<super::MapResultWire>(&encoded).unwrap(), wire);
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&encoded).unwrap()
+                    ["EffectiveCardinality"]["maximum"],
+                serde_json::json!(maximum)
+            );
+        }
+    }
 
     #[test]
     fn qualified_relationship_wire_round_trips_direction_with_its_descriptor() {

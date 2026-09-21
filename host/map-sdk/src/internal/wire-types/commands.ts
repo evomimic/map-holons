@@ -139,6 +139,9 @@ export type ReadableHolonActionWire =
   | 'GetHolonDescriptor'
   | 'GetAvailableProperties'
   | 'GetAvailableRelationships'
+  | 'GetEffectiveCardinality'
+  | 'GetPropertyIsArray'
+  | 'GetAvailableDances'
   | { GetPropertyValue: { name: PropertyName } }
   | { GetRelatedHolons: { name: RelationshipName; require_fresh?: boolean } };
 
@@ -181,6 +184,10 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetHolonDescriptor',
   'GetAvailableProperties',
   'GetAvailableRelationships',
+  'GetEffectiveCardinality',
+  'GetPropertyIsArray',
+  'GetAvailableDances',
+
 ]);
 
 const TRANSACTION_UNIT_ACTIONS = new Set([

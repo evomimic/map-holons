@@ -15,6 +15,7 @@ describe('DahnHolonView', () => {
       versionedKey: vi.fn().mockResolvedValue('alpha@1'),
       propertyValue: vi.fn().mockResolvedValue({ StringValue: 'value' }),
       holonDescriptor: vi.fn().mockResolvedValue(descriptor),
+      availableDances: vi.fn().mockResolvedValue([]),
       availableProperties: vi.fn().mockResolvedValue(properties),
       availableRelationships: vi.fn().mockResolvedValue(relationships),
       relatedHolons: vi.fn().mockResolvedValue(related),
@@ -24,6 +25,7 @@ describe('DahnHolonView', () => {
     await expect(view.key()).resolves.toBe('alpha');
     await expect(view.propertyValue('Title')).resolves.toEqual({ StringValue: 'value' });
     await expect(view.descriptor()).resolves.toBe(descriptor);
+    await expect(view.availableDances()).resolves.toEqual([]);
     await expect(view.availableProperties()).resolves.toBe(properties);
     await expect(view.availableRelationships()).resolves.toBe(relationships);
     await expect(view.expandRelationship('Contains')).resolves.toBe(related);
