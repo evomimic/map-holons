@@ -7,7 +7,7 @@
 //! transient; nothing here is staged or committed.
 //!
 //! The explicit input is a holon described by `HolonCollection.HolonType` whose
-//! `CollectionMembers` are the resolved input references. The harness mints it
+//! `CollectionMembers` are the resolved input references. The harness creates it
 //! (`build_input_collection`) for both routes — this is the caller-side boundary
 //! from #655 — and QueryCore links `Input` to that same holon by identity.
 
@@ -243,7 +243,7 @@ async fn execute_query_dance(
         }
     }
 
-    // No QueryDanceResponse was minted.
+    // No QueryDanceResponse was created.
     assert!(
         matches!(
             context
@@ -251,13 +251,13 @@ async fn execute_query_dance(
                 .get_transient_holon_by_base_key(&MapString(DANCE_RESPONSE_KEY.to_string())),
             Err(HolonError::HolonNotFound(_))
         ),
-        "no dance-response holon should be minted on the QRY1 failure path"
+        "no dance-response holon should be created on the QRY1 failure path"
     );
 
     info!("Success! QueryDance routed to the QRY1 seam and propagated the expected error");
 }
 
-/// Mints the caller-side explicit input: a transient holon described by
+/// Creates the caller-side explicit input: a transient holon described by
 /// `HolonCollection.HolonType` whose `CollectionMembers` are `members`.
 fn build_input_collection(
     context: &Arc<TransactionContext>,

@@ -259,7 +259,7 @@ impl DancesTestCase {
     /// become the explicit runtime input collection (may be empty). QRY1 has no
     /// success path, so `expected_error` must be `Some` (`NotImplemented` for the
     /// scaffold boundary, or the contract error a malformed request produces).
-    /// The step mints no fixture holon: every runtime record it creates is
+    /// The step creates no fixture holon: every runtime record it creates is
     /// transient and asserted in place by the executor.
     pub fn add_execute_query_scaffold_step(
         &mut self,

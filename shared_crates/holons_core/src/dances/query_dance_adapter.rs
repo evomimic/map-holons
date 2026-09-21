@@ -8,7 +8,7 @@
 //! internal direct Query seam and propagates the error that seam produces.
 //!
 //! Scaffold-only: [`invoke`] cannot succeed (its `Ok` type is `Infallible`) and
-//! the executor never mints a `QueryDanceResponse` on this route. QRY2
+//! the executor never creates a `QueryDanceResponse` on this route. QRY2
 //! introduces the success path together with the first operators.
 
 use std::convert::Infallible;

@@ -17,7 +17,7 @@
 //! The caller supplies its input as a holon described by `HolonCollection` (a
 //! first-class holon, wrapped as [`HolonCollectionReference`]). QueryCore links
 //! `QueryExpressionExecution.Input` to that same holon by identity; it never
-//! copies members or mints a replacement collection. Runtime `HolonCollection`
+//! copies members or creates a replacement collection. Runtime `HolonCollection`
 //! member views are inflated only by operators that iterate (QRY2+).
 
 use std::sync::Arc;
@@ -37,7 +37,7 @@ const HOLON_COLLECTION_TYPE_NAME: &str = "HolonCollection";
 const EXECUTION_INSTANCE_DESCRIPTOR_KEY: &str = "ExecutionInstance.HolonType";
 const QUERY_EXPRESSION_EXECUTION_DESCRIPTOR_KEY: &str = "QueryExpressionExecution.HolonType";
 
-/// Keys of the transient runtime records minted per invocation.
+/// Keys of the transient runtime records created per invocation.
 const EXECUTION_INSTANCE_KEY: &str = "execution-instance";
 const QUERY_EXPRESSION_EXECUTION_KEY: &str = "query-expression-execution";
 
