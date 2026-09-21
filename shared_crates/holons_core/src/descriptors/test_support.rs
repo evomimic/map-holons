@@ -275,3 +275,65 @@ pub(crate) fn new_declared_relationship_descriptor_holon(
     descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
     Ok(descriptor)
 }
+
+/// Authors a direct describing edge, including self-description in meta-type fixtures.
+pub(crate) fn describe(
+    holon: &mut TransientReference,
+    descriptor: &HolonReference,
+) -> Result<(), HolonError> {
+    holon.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![descriptor.clone()])?;
+    Ok(())
+}
+
+/// Builds a local kind designation and optional lineage without inferring a category from names.
+pub(crate) fn new_kind_descriptor(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    parent: Option<&HolonReference>,
+    anchor: bool,
+) -> Result<TransientReference, HolonError> {
+    let mut holon = new_descriptor_holon(context, key, key, "")?;
+    holon.with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, anchor)?;
+    if let Some(parent) = parent {
+        holon.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone()])?;
+    }
+    Ok(holon)
+}
+
+/// Builds a typed Schema instance; membership remains authored on its owners.
+pub(crate) fn new_schema_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    schema_type: &HolonReference,
+) -> Result<TransientReference, HolonError> {
+    let mut holon = new_test_holon(context, key)?;
+    describe(&mut holon, schema_type)?;
+    Ok(holon)
+}
+
+/// Authors either ownership namespace without manufacturing inverse occurrences.
+pub(crate) fn own(
+    holon: &mut TransientReference,
+    owner: &HolonReference,
+    kind: super::SchemaOwnershipKind,
+) -> Result<(), HolonError> {
+    let relationship = match kind {
+        super::SchemaOwnershipKind::Component => CoreRelationshipTypeName::ComponentOf,
+        super::SchemaOwnershipKind::Rule => CoreRelationshipTypeName::RuleOf,
+    };
+    holon.add_related_holons(relationship, vec![owner.clone()])?;
+    Ok(())
+}
+
+/// Builds a configured constraint through its direct describing contract.
+pub(crate) fn new_constraint_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    constraint_type: &HolonReference,
+    owner: &HolonReference,
+) -> Result<TransientReference, HolonError> {
+    let mut holon = new_test_holon(context, key)?;
+    describe(&mut holon, constraint_type)?;
+    own(&mut holon, owner, super::SchemaOwnershipKind::Rule)?;
+    Ok(holon)
+}

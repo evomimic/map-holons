@@ -47,6 +47,11 @@ impl<'a> TypeHeader<'a> {
         self.require_bool(CorePropertyTypeName::IsAbstractType)
     }
 
+    /// Returns the required local anchor designation, without property inheritance.
+    pub fn defines_instance_type_kind(&self) -> Result<bool, HolonError> {
+        self.require_bool(CorePropertyTypeName::DefinesInstanceTypeKind)
+    }
+
     fn require_string(&self, prop: CorePropertyTypeName) -> Result<MapString, HolonError> {
         // Required string fields share the same missing-vs-wrong-type semantics.
         accessor_helpers::require_string(self.holon, prop)
