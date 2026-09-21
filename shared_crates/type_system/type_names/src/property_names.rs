@@ -112,12 +112,14 @@ pub enum CorePropertyTypeName {
     Arity,
     CommitRequestStatus,
     CommitsAttempted,
+    ConstraintName,
     Context,
     DanceDescription,
     DanceDiagnosticSeverity,
     DanceName,
     DanceSummary,
     DefaultValue,
+    DefinesInstanceTypeKind,
     DeletionSemantic,
     Description,
     DiagnosticCode,
@@ -147,12 +149,17 @@ pub enum CorePropertyTypeName {
     MapBytes,
     MapInteger,
     MapString,
+    Maximum,
+    MaximumIsInclusive,
+    Minimum,
+    MinimumIsInclusive,
     OperatorCategory,
     ProxyKey,
     ProxyId,
     PropertyName,
     RelationshipName,
     ResponseStatusCode,
+    SchemaName,
     SpaceName,
     StartUtf8ByteOffset,
     TotalBundles,
@@ -219,6 +226,21 @@ impl CorePropertyTypeName {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capability_two_variants_convert_to_expected_strings() {
+        for (name, expected) in [
+            (CorePropertyTypeName::DefinesInstanceTypeKind, "DefinesInstanceTypeKind"),
+            (CorePropertyTypeName::Minimum, "Minimum"),
+            (CorePropertyTypeName::Maximum, "Maximum"),
+            (CorePropertyTypeName::MinimumIsInclusive, "MinimumIsInclusive"),
+            (CorePropertyTypeName::MaximumIsInclusive, "MaximumIsInclusive"),
+            (CorePropertyTypeName::ConstraintName, "ConstraintName"),
+            (CorePropertyTypeName::SchemaName, "SchemaName"),
+        ] {
+            assert_eq!(name.as_property_name().to_string(), expected);
+        }
+    }
 
     #[test]
     fn test_variant_string_conversion() {

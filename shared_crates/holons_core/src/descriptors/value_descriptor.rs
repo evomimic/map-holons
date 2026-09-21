@@ -177,7 +177,7 @@ impl ValueDescriptor {
         &self,
         roots: &super::ResolvedValueTypeRoots,
     ) -> Result<ValueDescriptorKind, HolonError> {
-        super::resolved_descriptor_roots::assert_descriptor_reference_compatible(
+        crate::reference_layer::assert_reference_transaction_compatible(
             &self.holon,
             &roots.context,
         )?;

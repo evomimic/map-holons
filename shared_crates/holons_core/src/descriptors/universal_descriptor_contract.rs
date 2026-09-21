@@ -4,11 +4,9 @@ use std::sync::Arc;
 use core_types::HolonError;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::resolved_descriptor_roots::{
-    assert_descriptor_reference_compatible, resolve_core_descriptor,
-};
+use crate::descriptors::resolved_descriptor_roots::resolve_core_descriptor;
 use crate::descriptors::{equals_or_extends, Descriptor, HolonDescriptor, TypeHeader};
-use crate::reference_layer::HolonReference;
+use crate::reference_layer::{assert_reference_transaction_compatible, HolonReference};
 
 /// Universal property and relationship identities for one validation pass.
 ///
@@ -38,8 +36,8 @@ impl UniversalDescriptorContract {
         meta_type: &HolonDescriptor,
         descriptor_root: HolonReference,
     ) -> Result<Self, HolonError> {
-        assert_descriptor_reference_compatible(meta_type.holon(), context)?;
-        assert_descriptor_reference_compatible(&descriptor_root, context)?;
+        assert_reference_transaction_compatible(meta_type.holon(), context)?;
+        assert_reference_transaction_compatible(&descriptor_root, context)?;
         let mut member_ids = HashSet::new();
         for property in meta_type.instance_properties()? {
             member_ids.insert(property.holon().reference_id_string());
@@ -60,8 +58,8 @@ impl UniversalDescriptorContract {
         holon: &HolonReference,
         member: &HolonReference,
     ) -> Result<bool, HolonError> {
-        assert_descriptor_reference_compatible(holon, &self.context)?;
-        assert_descriptor_reference_compatible(member, &self.context)?;
+        assert_reference_transaction_compatible(holon, &self.context)?;
+        assert_reference_transaction_compatible(member, &self.context)?;
         let is_abstract = equals_or_extends(holon, &self.descriptor_root)?
             && TypeHeader::new(holon).is_abstract_type()?;
         Ok(!is_abstract || self.member_ids.contains(&member.reference_id_string()))

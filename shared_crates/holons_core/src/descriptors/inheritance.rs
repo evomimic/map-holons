@@ -46,6 +46,11 @@ pub(crate) fn inheritance_rule(relationship: &CoreRelationshipTypeName) -> Inher
         | CoreRelationshipTypeName::ValidationBindings
         | CoreRelationshipTypeName::Constraints => InheritanceRule::Additive,
         CoreRelationshipTypeName::InstanceKeyRule => InheritanceRule::Override,
+        // These explicit Local arms document C2 vocabulary; the fallback has the same
+        // behavior. DS-SCHEMA-003 assigns Local to every unlisted relationship, so
+        // the wildcard is intentional (DevDocs descriptor-semantics-rules §2.3).
+        CoreRelationshipTypeName::ApplicableToDescriptorTypes
+        | CoreRelationshipTypeName::Components => InheritanceRule::Local,
         _ => InheritanceRule::Local,
     }
 }
@@ -114,10 +119,9 @@ pub(crate) fn described_by_descriptor(
     match members.as_slice() {
         [] => Ok(None),
         [single] => Ok(Some(single.clone())),
-        _ => Err(HolonError::DuplicateError(
-            "DescribedBy".into(),
-            "Expected exactly one descriptor target".into(),
-        )),
+        many => {
+            Err(HolonError::MultipleDescribedBy { holon: holon.summarize()?, count: many.len() })
+        }
     }
 }
 
@@ -290,6 +294,29 @@ mod tests {
 
     fn expected_relationship_kind() -> String {
         format!("{} or {}", declared_relationship_type_name(), inverse_relationship_type_name())
+    }
+
+    #[test]
+    fn describing_helper_preserves_absence_and_reports_structured_ambiguity(
+    ) -> Result<(), HolonError> {
+        let context = build_context();
+        let mut subject = new_test_holon(&context, "subject")?;
+        let first = HolonReference::from(new_test_holon(&context, "first")?);
+        let second = HolonReference::from(new_test_holon(&context, "second")?);
+        assert!(described_by_descriptor(&subject.clone().into())?.is_none());
+        subject.add_related_holons(
+            CoreRelationshipTypeName::DescribedBy,
+            vec![first.clone(), second],
+        )?;
+        let reference = HolonReference::from(subject);
+        let error = described_by_descriptor(&reference).expect_err("two describers are ambiguous");
+        assert_eq!(error, reference.holon_descriptor().err().expect("ambiguous describing type"));
+        assert!(matches!(error, HolonError::MultipleDescribedBy { count: 2, .. }));
+
+        let mut singular = new_test_holon(&context, "singular")?;
+        singular.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![first.clone()])?;
+        assert_eq!(described_by_descriptor(&singular.into())?, Some(first));
+        Ok(())
     }
 
     #[test]
@@ -707,6 +734,12 @@ mod tests {
             inheritance_rule(&CoreRelationshipTypeName::InstanceKeyRule),
             InheritanceRule::Override
         );
-        assert_eq!(inheritance_rule(&CoreRelationshipTypeName::Variants), InheritanceRule::Local);
+        for relationship in [
+            CoreRelationshipTypeName::Variants,
+            CoreRelationshipTypeName::ApplicableToDescriptorTypes,
+            CoreRelationshipTypeName::Components,
+        ] {
+            assert_eq!(inheritance_rule(&relationship), InheritanceRule::Local);
+        }
     }
 }
