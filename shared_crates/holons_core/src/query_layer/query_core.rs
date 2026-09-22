@@ -10,9 +10,9 @@
 //!   linked to the definition, the invocation's focal space, and the optional
 //!   caller-supplied input;
 //! - `Pending -> Running -> Complete | Failed` status progression;
-//! - execution of the root expression: `SeedHolons` and `Expand`, with
-//!   `HolonError::NotImplemented` for every other concrete kind and for a root
-//!   that carries `Next` (chaining is a later slice).
+//! - execution of the root expression and each `Next` successor in turn —
+//!   `SeedHolons` (root only) and `Expand` — with `HolonError::NotImplemented`
+//!   for every other concrete kind.
 //!
 //! Focal space is invocation context, not definition state: it is recorded only
 //! on the transient `ExecutionInstance`. Nothing is ever written onto the
@@ -34,6 +34,7 @@
 //! preserve storage order and duplicate occurrences; the collection's keyed
 //! index is never used to deduplicate.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use base_types::{BaseValue, MapEnumValue, MapString};
@@ -149,7 +150,7 @@ impl QueryReference {
 
         let mut root_execution = new_runtime_record(
             context,
-            QUERY_EXPRESSION_EXECUTION_KEY,
+            &format!("{QUERY_EXPRESSION_EXECUTION_KEY}-0"),
             QUERY_EXPRESSION_EXECUTION_DESCRIPTOR_KEY,
         )?;
         root_execution.add_related_holons(
@@ -165,7 +166,12 @@ impl QueryReference {
             vec![root_execution.clone().into()],
         )?;
 
-        Ok(QueryExecution { instance, root_execution, root_expression, root_kind })
+        Ok(QueryExecution {
+            instance,
+            executions: vec![root_execution],
+            root_expression,
+            root_kind,
+        })
     }
 }
 
@@ -194,7 +200,9 @@ impl QueryReference {
 #[derive(Debug)]
 pub struct QueryExecution {
     instance: TransientReference,
-    root_execution: TransientReference,
+    /// One record per executed step, in chain order. The root is `executions[0]`;
+    /// later entries are created as the `Next` walk reaches them.
+    executions: Vec<TransientReference>,
     root_expression: HolonReference,
     root_kind: ExpressionKind,
 }
@@ -207,70 +215,126 @@ impl QueryExecution {
 
     /// The transient root `QueryExpressionExecution` record.
     pub fn root_execution(&self) -> &TransientReference {
-        &self.root_execution
+        &self.executions[0]
     }
 
-    /// Executes the root expression and records its result.
+    /// The transient `QueryExpressionExecution` records in chain order.
+    pub fn executions(&self) -> &[TransientReference] {
+        &self.executions
+    }
+
+    /// Executes the root expression and each `Next` successor in turn.
     ///
-    /// Both records progress to `Running`; on success the members are
-    /// materialized into a transient `HolonCollection` holon linked as
-    /// `QueryExpressionExecution.Result` and `ExecutionInstance.ExecutionResult`,
-    /// both records become `Complete`, and that collection is returned. On any
-    /// failure both records become `Failed`, no `Result` is written, and the
-    /// error propagates unchanged.
+    /// Every record progresses to `Running` as its step begins. On success each
+    /// step's members are materialized into a transient `HolonCollection` holon
+    /// linked as that step's `Result`, the step becomes `Complete`, and the
+    /// holon becomes the next step's `Input` by identity. The final step's
+    /// result is also linked as `ExecutionInstance.ExecutionResult` and
+    /// returned. On any failure the failing step and the instance become
+    /// `Failed`, no `Result` is written for that step, no `ExecutionResult` is
+    /// recorded, later steps are never created, and the error propagates
+    /// unchanged.
     pub fn run(mut self) -> Result<HolonCollectionReference, HolonError> {
         set_status(&mut self.instance, ExecutionStatus::Running)?;
-        set_status(&mut self.root_execution, ExecutionStatus::Running)?;
 
-        match self.execute_root() {
+        match self.execute_chain() {
             Ok(result) => {
-                set_status(&mut self.root_execution, ExecutionStatus::Complete)?;
                 set_status(&mut self.instance, ExecutionStatus::Complete)?;
                 Ok(result)
             }
             Err(error) => {
-                set_status(&mut self.root_execution, ExecutionStatus::Failed)?;
+                // The failing step is the last one created; earlier steps keep
+                // the `Complete` they legitimately reached.
+                if let Some(step) = self.executions.last_mut() {
+                    set_status(step, ExecutionStatus::Failed)?;
+                }
                 set_status(&mut self.instance, ExecutionStatus::Failed)?;
                 Err(error)
             }
         }
     }
 
-    fn execute_root(&mut self) -> Result<HolonCollectionReference, HolonError> {
-        // Chaining over `Next` is a later slice; refuse rather than silently
-        // executing only the root of a longer expression.
-        if zero_or_one(&self.root_expression, QueryRelationshipTypeName::Next)?.is_some() {
-            return Err(HolonError::NotImplemented("QueryExpression chaining (Next)".to_string()));
-        }
-
+    fn execute_chain(&mut self) -> Result<HolonCollectionReference, HolonError> {
         let context = self.instance.bound_context();
-        let members = match &self.root_kind {
-            ExpressionKind::SeedHolons => seed_holons(&context, &self.instance.clone().into())?,
-            ExpressionKind::Expand => {
-                let input = HolonCollectionReference(exactly_one(
-                    &self.root_execution.clone().into(),
-                    QueryRelationshipTypeName::Input,
-                )?);
-                expand(&context, &input.members()?, &expansion_name(&self.root_expression)?)?
-            }
-            ExpressionKind::Unsupported(type_name) => {
-                return Err(HolonError::NotImplemented(format!(
-                    "QueryExpression execution: {type_name}"
-                )))
-            }
-        };
+        let mut expression = self.root_expression.clone();
+        let mut kind = self.root_kind.clone();
+        // `Next` cardinality permits a cycle (`A -Next-> B -Next-> A` satisfies
+        // both `Next` and `Previous` as ZeroOrOne), which no schema or commit
+        // check rejects. Terminate on the repeated expression rather than
+        // looping forever; this is not a result-size guard — fan-out across a
+        // chain is expected until the predicate/operator track lands.
+        let mut visited = HashSet::new();
+        visited.insert(expression.reference_id_string());
 
-        let result = new_collection_holon(&context, QUERY_RESULT_KEY, members)?;
-        let result_reference: HolonReference = result.into();
-        self.root_execution.add_related_holons(
-            QueryRelationshipTypeName::Result,
-            vec![result_reference.clone()],
-        )?;
-        self.instance.add_related_holons(
-            QueryRelationshipTypeName::ExecutionResult,
-            vec![result_reference.clone()],
-        )?;
-        Ok(HolonCollectionReference(result_reference))
+        loop {
+            let step = self.executions.len() - 1;
+            set_status(&mut self.executions[step], ExecutionStatus::Running)?;
+
+            let members = match &kind {
+                ExpressionKind::SeedHolons if step > 0 => {
+                    return Err(HolonError::InvalidParameter(
+                        "SeedHolons is a source expression and must be the root".to_string(),
+                    ))
+                }
+                ExpressionKind::SeedHolons => seed_holons(&context, &self.instance.clone().into())?,
+                ExpressionKind::Expand => {
+                    // Root: the caller's collection. Non-root: the predecessor's
+                    // result, linked when this record was created.
+                    let input = HolonCollectionReference(exactly_one(
+                        &self.executions[step].clone().into(),
+                        QueryRelationshipTypeName::Input,
+                    )?);
+                    expand(&context, &input.members()?, &expansion_name(&expression)?)?
+                }
+                ExpressionKind::Unsupported(type_name) => {
+                    return Err(HolonError::NotImplemented(format!(
+                        "QueryExpression execution: {type_name}"
+                    )))
+                }
+            };
+
+            let result =
+                new_collection_holon(&context, &format!("{QUERY_RESULT_KEY}-{step}"), members)?;
+            let result_reference: HolonReference = result.into();
+            self.executions[step].add_related_holons(
+                QueryRelationshipTypeName::Result,
+                vec![result_reference.clone()],
+            )?;
+            set_status(&mut self.executions[step], ExecutionStatus::Complete)?;
+
+            let Some(next) = zero_or_one(&expression, QueryRelationshipTypeName::Next)? else {
+                self.instance.add_related_holons(
+                    QueryRelationshipTypeName::ExecutionResult,
+                    vec![result_reference.clone()],
+                )?;
+                return Ok(HolonCollectionReference(result_reference));
+            };
+            if !visited.insert(next.reference_id_string()) {
+                return Err(HolonError::InvalidParameter(format!(
+                    "QueryExpression chain revisits {} through Next; the expression graph is cyclic",
+                    next.summarize()?
+                )));
+            }
+
+            kind = ExpressionKind::classify(&next)?;
+            let mut record = new_runtime_record(
+                &context,
+                &format!("{QUERY_EXPRESSION_EXECUTION_KEY}-{}", step + 1),
+                QUERY_EXPRESSION_EXECUTION_DESCRIPTOR_KEY,
+            )?;
+            record
+                .add_related_holons(
+                    QueryRelationshipTypeName::ExecutesExpression,
+                    vec![next.clone()],
+                )?
+                .add_related_holons(QueryRelationshipTypeName::Input, vec![result_reference])?;
+            self.instance.add_related_holons(
+                QueryRelationshipTypeName::ExpressionExecutions,
+                vec![record.clone().into()],
+            )?;
+            self.executions.push(record);
+            expression = next;
+        }
     }
 }
 
@@ -577,7 +641,8 @@ mod tests {
     //   4  InverseRelationshipType
     //   5  ExecutionInstance.HolonType, 6 QueryExpressionExecution.HolonType,
     //   7  HolonCollection.HolonType   (resolved by key for the runtime records)
-    //   10, 11, 12  owned holons
+    //   10, 11, 12  owned holons, described as Books so a chain can navigate
+    //               off them: 10 AuthoredBy -> [24], 11 -> [29], 12 -> none
     //
     // Expand graph — a declared name licensed on the source type and an inverse
     // name reached through the target type's materialized SourceOf index:
@@ -691,6 +756,12 @@ mod tests {
             (rel(1, CoreRelationshipTypeName::Owns), vec![id(10), id(11), id(12), id(11)]),
             (rel(2, CoreRelationshipTypeName::SourceOf), vec![id(3)]),
             (rel(3, CoreRelationshipTypeName::Extends), vec![id(4)]),
+            // Owned holons are Books, so `SeedHolons -Next-> Expand` is navigable.
+            (rel(10, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
+            (rel(11, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
+            (rel(12, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
+            (authored_by(10), vec![id(24)]),
+            (authored_by(11), vec![id(29)]),
             // Expand: declared AuthoredBy licensed on BookType
             (rel(20, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
             (rel(27, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
@@ -875,30 +946,193 @@ mod tests {
         );
     }
 
+    /// Links `expression -Next-> next`.
+    fn chain(expression: &mut TransientReference, next: &TransientReference) {
+        expression.add_related_holons(QueryRelationshipTypeName::Next, vec![next.into()]).unwrap();
+    }
+
     #[test]
-    fn next_on_root_is_not_implemented() {
+    fn next_chain_threads_each_result_into_the_successor_input() {
         let fixture = build_fixture();
+        // SeedHolons(Owns) -> Expand(AuthoredBy). Owns is [10, 11, 12, 11] —
+        // 12 has no author and 11 appears twice, so the duplicate propagates.
         let mut seed = fixture.described("seed", SEED_HOLONS_TYPE_NAME);
-        let next = fixture.described("next", EXPAND_TYPE_NAME);
-        seed.add_related_holons(QueryRelationshipTypeName::Next, vec![next.into()]).unwrap();
+        let expand = fixture.expand("expand", "AuthoredBy");
+        chain(&mut seed, &expand);
         let query = fixture.query_with_root(&seed);
 
         let execution = query
             .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
             .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+        let result = execution.run().unwrap();
+
+        // Two records, in chain order, both Complete.
+        let records =
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        assert_eq!(records.len(), 2, "one record per step");
+        for record in &records {
+            assert_eq!(
+                record.property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+                Some(BaseValue::EnumValue(ExecutionStatus::Complete.as_enum_value()))
+            );
+        }
+
+        // The successor consumes its predecessor's Result holon by identity.
+        let first_result = exactly_one(&records[0], QueryRelationshipTypeName::Result).unwrap();
+        let second_input = exactly_one(&records[1], QueryRelationshipTypeName::Input).unwrap();
+        assert_eq!(
+            second_input.reference_id_string(),
+            first_result.reference_id_string(),
+            "non-root Input IS the predecessor's Result holon"
+        );
+
+        // ExecutionResult is the last step's result, not the first's.
+        let second_result = exactly_one(&records[1], QueryRelationshipTypeName::Result).unwrap();
+        let execution_result =
+            exactly_one(&instance, QueryRelationshipTypeName::ExecutionResult).unwrap();
+        assert_eq!(execution_result.reference_id_string(), second_result.reference_id_string());
+        assert_eq!(
+            result.as_holon_reference().reference_id_string(),
+            second_result.reference_id_string()
+        );
+
+        let members = related_members(
+            result.as_holon_reference(),
+            CoreRelationshipTypeName::CollectionMembers,
+        )
+        .unwrap();
+        assert_eq!(
+            ids_of(&members),
+            vec![id(24), id(29), id(29)],
+            "10 -> person-1, 11 -> person-2, 12 -> none, 11 again -> person-2"
+        );
+    }
+
+    #[test]
+    fn next_chain_runs_three_steps() {
+        let fixture = build_fixture();
+        // Expand(AuthoredBy) -> Expand(AuthorOf) -> Expand(AuthoredBy):
+        // book-a's authors, their books, then those books' authors.
+        let mut first = fixture.expand("first", "AuthoredBy");
+        let mut second = fixture.expand("second", "AuthorOf");
+        let third = fixture.expand("third", "AuthoredBy");
+        chain(&mut second, &third);
+        chain(&mut first, &second);
+        let query = fixture.query_with_root(&first);
+        let input = fixture.collection_of("chain-input", &[20]);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+        let result = execution.run().unwrap();
+
+        assert_eq!(
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions)
+                .unwrap()
+                .len(),
+            3
+        );
+        // [person-1, person-2] -> person-1 authors [book-a, book-b], person-2
+        // has no AuthorOf occurrence -> [person-1, person-2, person-1].
+        let members = related_members(
+            result.as_holon_reference(),
+            CoreRelationshipTypeName::CollectionMembers,
+        )
+        .unwrap();
+        assert_eq!(ids_of(&members), vec![id(24), id(29), id(24)]);
+    }
+
+    #[test]
+    fn seed_holons_off_root_is_a_contract_error() {
+        let fixture = build_fixture();
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        let seed = fixture.described("seed", SEED_HOLONS_TYPE_NAME);
+        chain(&mut expand, &seed);
+        let query = fixture.query_with_root(&expand);
+        let input = fixture.collection_of("chain-input", &[20]);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
         let instance = execution.instance().clone();
-        let root_execution = execution.root_execution().clone();
 
         let error = execution.run().unwrap_err();
-        assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
+        assert!(matches!(error, HolonError::InvalidParameter(_)), "unexpected error: {error:?}");
         assert_eq!(status_of(&instance), "Failed");
-        assert_eq!(status_of(&root_execution), "Failed");
         assert!(related_members(
-            &HolonReference::from(root_execution),
-            QueryRelationshipTypeName::Result
+            &HolonReference::from(instance),
+            QueryRelationshipTypeName::ExecutionResult
         )
         .unwrap()
         .is_empty());
+    }
+
+    #[test]
+    fn mid_chain_failure_keeps_earlier_steps_complete_and_records_no_result() {
+        let fixture = build_fixture();
+        let mut first = fixture.expand("first", "AuthoredBy");
+        let second = fixture.expand("second", "NoSuchRelationship");
+        chain(&mut first, &second);
+        let query = fixture.query_with_root(&first);
+        let input = fixture.collection_of("chain-input", &[20]);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::DescriptorDeclarationNotFound { name, .. }
+                if name == "NoSuchRelationship"),
+            "unexpected error: {error:?}"
+        );
+
+        let records =
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        assert_eq!(records.len(), 2, "the failing step exists; no step after it was created");
+        assert_eq!(
+            records[0].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Complete.as_enum_value())),
+            "a step that legitimately completed keeps Complete"
+        );
+        assert_eq!(
+            records[1].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+        );
+        assert!(related_members(&records[1], QueryRelationshipTypeName::Result)
+            .unwrap()
+            .is_empty());
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn cyclic_next_chain_terminates_with_a_contract_error() {
+        let fixture = build_fixture();
+        // `Next`/`Previous` are both ZeroOrOne, so A -> B -> A is structurally
+        // legal; the walk must terminate rather than loop forever.
+        let mut first = fixture.expand("first", "AuthoredBy");
+        let mut second = fixture.expand("second", "AuthorOf");
+        chain(&mut second, &first);
+        chain(&mut first, &second);
+        let query = fixture.query_with_root(&first);
+        let input = fixture.collection_of("chain-input", &[20]);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance = execution.instance().clone();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::InvalidParameter(message) if message.contains("cyclic")),
+            "unexpected error: {error:?}"
+        );
+        assert_eq!(status_of(&instance), "Failed");
     }
 
     #[test]
