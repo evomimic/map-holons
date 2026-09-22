@@ -147,7 +147,6 @@ export type ReadableHolonActionWire =
   | 'GetInstanceProperties'
   | 'GetPropertyValueKind'
   | { GetDescribedRelatedHolons: { name: RelationshipName } }
-  | { GetValidatedPropertyValue: { name: PropertyName } }
   | { GetPropertyValue: { name: PropertyName } }
   | { GetRelatedHolons: { name: RelationshipName; require_fresh?: boolean } };
 
@@ -248,7 +247,6 @@ export function isReadableHolonActionWire(
     (typeof value === 'string' &&
       READABLE_HOLON_UNIT_ACTIONS.has(value as ReadableHolonActionWire)) ||
     (hasSingleKey(value, 'GetDescribedRelatedHolons') && isStringFieldObject(value.GetDescribedRelatedHolons, 'name')) ||
-    (hasSingleKey(value, 'GetValidatedPropertyValue') && isStringFieldObject(value.GetValidatedPropertyValue, 'name')) ||
     (hasSingleKey(value, 'GetPropertyValue') &&
       isStringFieldObject(value.GetPropertyValue, 'name')) ||
     (hasSingleKey(value, 'GetRelatedHolons') &&

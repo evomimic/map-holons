@@ -260,5 +260,9 @@ fn selects_described_collections_including_empty_and_single_member() {
 fn collection_selection_checks_the_destination_slot_not_any_parent_slot() {
     assert!(select_collection(0, 2, false, true).is_err());
     assert!(select_collection(0, 9, true, true).is_err());
-    assert!(select_collection(1, 2, true, false).is_err());
+}
+
+#[test]
+fn collection_selection_does_not_validate_member_types_on_read() {
+    assert!(select_collection(800, 2, true, false).is_ok());
 }

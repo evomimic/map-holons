@@ -65,8 +65,8 @@ export default class HolonInspectorElement extends HTMLElement {
     viewer.hidden = update.state === 'unresolved';
     viewer.setAttribute('aria-busy', String(update.state === 'loading'));
     if (viewer.hidden) return;
-    Object.assign(viewer.style, { display: 'flex', flexDirection: 'column', minHeight: '0', minWidth: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
-    this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(0, 1fr)';
+    Object.assign(viewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', minWidth: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
+    this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(20rem, 3fr)';
     if (update.content) viewer.replaceChildren(update.content);
     else {
       const status = document.createElement('p');
@@ -165,8 +165,8 @@ export default class HolonInspectorElement extends HTMLElement {
     collectionViewer.hidden = !collection;
     if (collection) {
       collectionViewer.append(collection);
-      Object.assign(collectionViewer.style, { display: 'flex', flexDirection: 'column', minHeight: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
-      this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(0, 1fr)';
+      Object.assign(collectionViewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
+      this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(20rem, 3fr)';
     }
     collectionRegion.append(collectionTabBar, collectionViewer);
     Object.assign(collectionTabBar.style, { borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', paddingTop: 'var(--dahn-action-padding-block)', flexShrink: '0' });
@@ -192,7 +192,7 @@ export default class HolonInspectorElement extends HTMLElement {
 
     this.layouts = [railLayout, collectionLayout];
     const style = document.createElement('style');
-    style.textContent = `[data-dahn-holon-inspector] [role="tab"][aria-selected="true"] { background: var(--dahn-action-hover-surface-background) !important; }
+    style.textContent = `[data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
       [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
     this.replaceChildren(style, title, body, collectionRegion);
@@ -256,7 +256,6 @@ function horizontalOverflow(host, controls, label) {
       copy.tabIndex = 0;
       if (!copy.disabled) copy.addEventListener('click', () => {
         control.click(); close(); more.focus();
-        more.setAttribute('aria-label', `${label}: ${control.textContent} selected`);
       });
       copy.style.marginBottom = 'var(--dahn-control-gap)';
       copy.removeAttribute('aria-hidden'); copy.inert = false;
@@ -282,12 +281,30 @@ function horizontalOverflow(host, controls, label) {
     const widths = controls.map(control => control.getBoundingClientRect().width);
     const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, widths.length - 1) * gap;
     const overflow = total > width;
-    const budget = overflow ? Math.max(0, width - more.getBoundingClientRect().width - gap) : width;
-    let count = 0, used = 0;
-    for (const value of widths) {
-      const next = used + (count ? gap : 0) + value;
-      if (next > budget) break;
-      used = next; count++;
+    const setMoreLabel = selected => {
+      more.textContent = selected ? `${selected.textContent} ▾` : label;
+      more.dataset.overflowSelected = String(!!selected);
+      more.setAttribute('aria-label', selected ? `${label}: ${selected.textContent} selected` : label);
+      more.title = selected ? selected.textContent : label;
+    };
+    const fittingCount = () => {
+      const budget = overflow ? Math.max(0, width - more.getBoundingClientRect().width - gap) : width;
+      let count = 0, used = 0;
+      for (const value of widths) {
+        const next = used + (count ? gap : 0) + value;
+        if (next > budget) break;
+        used = next; count++;
+      }
+      return count;
+    };
+    // Determine hidden selection using the normal disclosure width first, so
+    // changing its label cannot repeatedly hide and reveal the selected tab.
+    setMoreLabel(null);
+    let count = fittingCount();
+    const selected = controls.slice(count).find(control => control.getAttribute('aria-selected') === 'true');
+    if (selected) {
+      setMoreLabel(selected);
+      count = Math.min(count, fittingCount());
     }
     hidden = controls.slice(count);
     controls.forEach((control, index) => show(control, index < count));
@@ -295,6 +312,7 @@ function horizontalOverflow(host, controls, label) {
     show(more, overflow);
     close();
   };
+  controls.forEach(control => control.addEventListener('click', fit));
   return { fit, elements: [host, row, more, ...controls], connect() { document.addEventListener('keydown', escape); document.addEventListener('pointerdown', outside); }, dispose() { close(); document.removeEventListener('keydown', escape); document.removeEventListener('pointerdown', outside); } };
 }
 

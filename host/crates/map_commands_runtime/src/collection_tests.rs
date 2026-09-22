@@ -205,7 +205,7 @@ async fn retrieves_described_declared_and_inverse_collections_through_bound_refe
 }
 
 #[tokio::test]
-async fn default_values_follow_each_property_descriptors_value_type() {
+async fn reads_actual_default_values_with_different_scalar_types() {
     let mut graph = Graph::default();
     // Both rows share a broad DefaultValue definition but declare different ValueTypes.
     graph.edge(1, "DescribedBy", &[3]);
@@ -223,9 +223,7 @@ async fn default_values_follow_each_property_descriptors_value_type() {
             read(
                 &context,
                 id,
-                ReadableHolonAction::GetValidatedPropertyValue {
-                    name: PropertyName("DefaultValue".into())
-                }
+                ReadableHolonAction::GetPropertyValue { name: PropertyName("DefaultValue".into()) }
             )
             .await
             .unwrap(),
@@ -238,7 +236,7 @@ async fn default_values_follow_each_property_descriptors_value_type() {
 }
 
 #[tokio::test]
-async fn rejects_incompatible_values_and_preserves_absence() {
+async fn reads_actual_values_without_validation_and_preserves_absence() {
     let mut graph = Graph::default();
     graph.edge(1, "DescribedBy", &[3]);
     graph.edge(2, "DescribedBy", &[3]);
@@ -247,18 +245,21 @@ async fn rejects_incompatible_values_and_preserves_absence() {
     graph.edge(4, "ValueType", &[30]);
     graph.property(1, "Name", BaseValue::IntegerValue(7.into()));
     let context = graph.context();
-    assert!(read(
-        &context,
-        1,
-        ReadableHolonAction::GetValidatedPropertyValue { name: PropertyName("Name".into()) }
-    )
-    .await
-    .is_err());
+    assert!(matches!(
+        read(
+            &context,
+            1,
+            ReadableHolonAction::GetPropertyValue { name: PropertyName("Name".into()) }
+        )
+        .await
+        .unwrap(),
+        MapResult::Value(BaseValue::IntegerValue(_))
+    ));
     assert!(matches!(
         read(
             &context,
             2,
-            ReadableHolonAction::GetValidatedPropertyValue { name: PropertyName("Name".into()) }
+            ReadableHolonAction::GetPropertyValue { name: PropertyName("Name".into()) }
         )
         .await
         .unwrap(),

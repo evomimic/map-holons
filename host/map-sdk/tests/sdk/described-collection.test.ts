@@ -25,7 +25,7 @@ beforeEach(() => {
         if (read === 'GetInstanceProperties') result = { Collection: { state: 'Fetched', members: [descriptorWire], keyed_index: {} } };
         if (read === 'GetPropertyValueKind') result = { Value: { StringValue: 'AnyBaseValue' } };
         if (typeof read === 'object' && 'GetPropertyValue' in read) result = { Value: { StringValue: read.GetPropertyValue.name === 'DisplayName' ? 'Default Value' : 'DefaultValue' } };
-        if (typeof read === 'object' && 'GetValidatedPropertyValue' in read) result = { Value: { IntegerValue: 7 } };
+        if (typeof read === 'object' && 'GetPropertyValue' in read && read.GetPropertyValue.name === 'DefaultValue') result = { Value: { IntegerValue: 7 } };
       }
     }
     if ('Transaction' in request.command) result = { VisualizerSelection: { selected: descriptorWire, requested_kind: 'Collection', alternatives_available: false } };
@@ -41,7 +41,7 @@ it.each([0, 1, 3])('carries %i members and their declared type through the actua
   const [property] = await collection.elementType.instanceProperties();
   expect(await property.displayName()).toBe('Default Value');
   expect(await property.valueKind()).toBe('AnyBaseValue');
-  if (size) expect(await collection.members[0].validatedPropertyValue('DefaultValue')).toEqual({ IntegerValue: 7 });
+  if (size) expect(await collection.members[0].propertyValue('DefaultValue')).toEqual({ IntegerValue: 7 });
   const selection = await transaction.selectCollectionVisualizer(collection, owner, owner);
   expect(selection.requestedKind).toBe('collection');
   const last = calls.at(-1)!;

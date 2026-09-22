@@ -13,7 +13,7 @@ const importer = (source: string) => import(`data:text/javascript;base64,${Buffe
 const wait = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 const property = (name: string, kind = 'StringValue', array = false) => ({ propertyName: async () => name, displayName: async () => `${name} heading`, valueKind: async () => kind, isArray: async () => array });
 function collection(count: number) {
-  const members = Array.from({ length: count }, (_, index) => ({ validatedPropertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
+  const members = Array.from({ length: count }, (_, index) => ({ propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
   return { length: count, elementType: { instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { relationshipName: async () => name } } } as CollectionAffordance);
@@ -36,7 +36,7 @@ beforeEach(() => {
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
 
 describe('selected collection activation', () => {
-  it.each([0, 1, 3])('lazily materializes the real table for %i members, including inverse outbound navigation', async count => {
+  it.each([0, 1, 3, 800])('lazily materializes the real table for %i members, including inverse outbound navigation', async count => {
     const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(collection(count));
     expect(f.owner.describedRelatedHolons).not.toHaveBeenCalled();
     const updates: CollectionUpdate[] = [];
@@ -72,7 +72,7 @@ describe('selected collection activation', () => {
     expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
     finish(collection(1)); await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
     expect(updates.filter(update => update.content)).toHaveLength(1);
-    expect(updates.at(-1)?.content?.textContent).toContain('B');
+    expect(updates.at(-1)?.content?.querySelector('table')?.getAttribute('aria-label')).toBe('B');
     const disposed = fixture(); let end!: (value: ReturnType<typeof collection>) => void;
     disposed.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { end = resolve; }));
     const publish = vi.fn(); disposed.activation.activate(tab('C'), 'slot', publish); await wait();
@@ -87,7 +87,7 @@ describe('selected collection activation', () => {
     if (stage === 'materialization') f.materialize.mockRejectedValueOnce(new Error('artifact failed'));
     if (stage === 'property') {
       const broken = collection(1);
-      const member = [...broken][0]; member.validatedPropertyValue.mockRejectedValueOnce(new Error('incompatible value'));
+      const member = [...broken][0]; member.propertyValue.mockRejectedValueOnce(new Error('property read failed'));
       f.owner.describedRelatedHolons.mockResolvedValueOnce(broken);
     }
     const updates: CollectionUpdate[] = [];
@@ -108,7 +108,7 @@ describe('selected collection activation', () => {
     const tabs = node.querySelectorAll<HTMLButtonElement>('[role=tab]'); tabs[0].click();
     await vi.waitFor(() => expect(viewer.dataset.collectionState).toBe('loaded'));
     viewer.scrollTop = 90;
-    tabs[1].click(); await vi.waitFor(() => expect(viewer.textContent).toContain('B'));
+    tabs[1].click(); await vi.waitFor(() => expect(viewer.querySelector('table')?.getAttribute('aria-label')).toBe('B'));
     expect(node.querySelector('input')).toBe(properties); expect(properties.value).toBe('retained');
     expect(tabs[1].getAttribute('aria-selected')).toBe('true');
     expect(viewer.scrollTop).toBe(0);

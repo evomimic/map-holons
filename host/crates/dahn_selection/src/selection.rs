@@ -492,13 +492,6 @@ pub fn select_collection_visualizer(
 ) -> Result<VisualizerSelection, HolonError> {
     let _ = holons_core::descriptors::HolonDescriptor::from_holon(collection.element_type.clone())
         .instance_properties()?;
-    for member in collection.members.get_members() {
-        if !equals_or_extends(member.holon_descriptor()?.holon(), &collection.element_type)? {
-            return Err(HolonError::InvalidParameter(
-                "Collection member does not conform to its declared element type".into(),
-            ));
-        }
-    }
     let slots = parent
         .related_holons(DahnRelationshipTypeName::HasSlot)?
         .read()

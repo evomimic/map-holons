@@ -83,7 +83,8 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   const tabs = ['One', 'Two', 'Three'].map(label => ({ kind: 'relationship', label, relationship: { direction: 'declared' } }));
   node.setContext({ collectionActivation: { activate, dispose }, nodeAffordances: { collections: tabs } });
   const row = node.querySelector<HTMLElement>('[data-overflow-row]')!;
-  Object.defineProperty(row, 'clientWidth', { value: 200 }); row.style.gap = '10px';
+  let width = 200;
+  Object.defineProperty(row, 'clientWidth', { get: () => width }); row.style.gap = '10px';
   const controls = [...row.querySelectorAll<HTMLButtonElement>('[role=tab]')];
   const more = row.querySelector<HTMLButtonElement>('[data-overflow-more]')!;
   controls.forEach(control => measure(control, 80)); measure(more, 100);
@@ -96,5 +97,17 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   expect(activate).toHaveBeenCalledWith(tabs[1], 'HolonInspector.CollectionsSlot', expect.any(Function));
   expect(popup.hidden).toBe(true); expect(document.activeElement).toBe(more);
   expect(controls[1].getAttribute('aria-selected')).toBe('true');
+  expect(more.textContent).toBe('Two ▾');
+  expect(more.dataset.overflowSelected).toBe('true');
+  controls[0].click();
+  expect(more.textContent).toBe('More collections');
+  expect(more.dataset.overflowSelected).toBe('false');
+  controls[1].click();
+  width = 300; observers.forEach(cb => cb()); flush();
+  expect(more.inert).toBe(true);
+  expect(more.textContent).toBe('More collections');
+  width = 200; observers.forEach(cb => cb()); flush();
+  expect(more.textContent).toBe('Two ▾');
+  expect(more.dataset.overflowSelected).toBe('true');
   node.remove(); expect(dispose).toHaveBeenCalledOnce();
 });

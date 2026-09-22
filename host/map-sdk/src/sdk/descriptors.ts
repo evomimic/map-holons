@@ -23,6 +23,11 @@ export class HolonDescriptorHandle {
     this.#reference = reference;
   }
 
+  /** User-facing name of this HolonType. */
+  displayName(): Promise<string> {
+    return requiredString(this.#reference.propertyValue(CorePropertyName.DisplayName), CorePropertyName.DisplayName);
+  }
+
   async typeName(): Promise<string> {
     return requiredString(
       this.#reference.propertyValue(CorePropertyName.TypeName),

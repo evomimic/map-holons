@@ -69,9 +69,6 @@ impl HolonAction {
             HolonAction::Read(ReadableHolonAction::GetPropertyValueKind) => {
                 "get_property_value_kind"
             }
-            HolonAction::Read(ReadableHolonAction::GetValidatedPropertyValue { .. }) => {
-                "get_validated_property_value"
-            }
             HolonAction::Write(_) => "holon_write",
         }
     }
@@ -129,8 +126,6 @@ pub enum ReadableHolonAction {
     GetInstanceProperties,
     /// Declared scalar representation of a property descriptor.
     GetPropertyValueKind,
-    /// Read an authored value and check its declared ValueType.
-    GetValidatedPropertyValue { name: PropertyName },
 }
 
 /// Mutating holon actions.

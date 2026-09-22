@@ -43,7 +43,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const rowIds = [];
         for (const member of collection) {
             rowIds.push(crypto.randomUUID());
-            for (const column of columns) column.values.push(await member.validatedPropertyValue(column.id));
+            for (const column of columns) column.values.push(await member.propertyValue(column.id));
         }
         this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns } });
     }
@@ -87,7 +87,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         this.dataset['collectionKind'] = presentation.kind;
         this.disconnectedCallback();
         this.expanded = false;
-        Object.assign(this.style, { display: 'block', minWidth: '0', maxWidth: '100%' });
+        Object.assign(this.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', minWidth: '0', maxWidth: '100%', overflow: 'hidden' });
         this.replaceChildren(this.render(presentation));
         if (this.isConnected) this.connectedCallback();
     }
@@ -96,22 +96,14 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         section.dataset['tableCollection'] = 'root';
         section.style.backgroundColor = 'var(--dahn-collection-surface-background)';
         section.style.color = 'var(--dahn-collection-text-color)';
-        const headerRegion = document.createElement('header');
-        headerRegion.dataset['tableCollection'] = 'header-region';
-        headerRegion.style.backgroundColor =
-            'var(--dahn-collection-header-surface-background)';
-        headerRegion.style.padding = 'var(--dahn-table-cell-padding)';
-        const heading = document.createElement('h2');
-        heading.dataset['tableCollection'] = 'header';
-        heading.textContent = presentation.displayName;
-        heading.style.margin = '0';
-        heading.style.fontSize = 'var(--dahn-collection-heading-font-size)';
-        heading.style.fontWeight = 'var(--dahn-collection-heading-font-weight)';
-        headerRegion.append(heading);
+        Object.assign(section.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', minWidth: '0' });
         const table = document.createElement('table');
         table.dataset['tableCollection'] = 'table';
+        table.setAttribute('aria-label', presentation.displayName);
         table.style.borderCollapse = 'separate';
         table.style.borderSpacing = '0';
+        table.style.borderTop = 'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
+        table.style.borderLeft = table.style.borderTop;
         table.style.width = 'max-content';
         this.table = table;
         const headerRow = document.createElement('tr');
@@ -125,10 +117,13 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
                 'var(--dahn-table-header-surface-background)';
             header.style.borderBottom =
                 'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
+            header.style.borderRight = header.style.borderBottom;
+            header.style.textAlign = 'left';
             header.style.color = 'var(--dahn-table-header-text-color)';
-            header.style.padding = 'var(--dahn-table-cell-padding)';
+            header.style.padding = 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)';
             header.style.whiteSpace = 'nowrap';
-            if (column.id === 'Key') Object.assign(header.style, { position: 'sticky', left: '0', zIndex: '2' });
+            Object.assign(header.style, { position: 'sticky', top: '0', zIndex: '2' });
+            if (column.id === 'Key') Object.assign(header.style, { left: '0', zIndex: '3' });
             headerRow.append(header);
         }
         const head = document.createElement('thead');
@@ -143,7 +138,8 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
                 cell.textContent = formatStaticValue(column.values[rowIndex]);
                 cell.style.borderBottom =
                     'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
-                cell.style.padding = 'var(--dahn-table-cell-padding)';
+                cell.style.borderRight = cell.style.borderBottom;
+                cell.style.padding = 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)';
                 Object.assign(cell.style, { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
                 if (column.id === 'Key') Object.assign(cell.style, { position: 'sticky', left: '0', zIndex: '1', background: 'var(--dahn-collection-surface-background)' });
                 row.append(cell);
@@ -153,7 +149,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         table.append(head, body);
         const viewport = document.createElement('div');
         viewport.dataset.tableCollection = 'viewport';
-        Object.assign(viewport.style, { minWidth: '0', maxWidth: '100%', overflowX: 'hidden' });
+        Object.assign(viewport.style, { flex: '1 1 0', minHeight: '0', minWidth: '0', maxWidth: '100%', overflowX: 'hidden', overflowY: 'auto' });
         viewport.tabIndex = 0;
         viewport.setAttribute('aria-label', 'Collection columns');
         viewport.append(table);
@@ -161,15 +157,14 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const more = document.createElement('button');
         more.type = 'button'; more.textContent = 'More columns';
         more.dataset.tableCollection = 'more';
-        Object.assign(more.style, { font: 'inherit', color: 'inherit', background: 'transparent', border: 'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)', padding: 'var(--dahn-table-cell-padding)', cursor: 'pointer', maxWidth: '100%' });
+        Object.assign(more.style, { font: 'inherit', color: 'inherit', background: 'transparent', border: 'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)', padding: 'calc(var(--dahn-table-cell-padding) / 3) calc(var(--dahn-table-cell-padding) * 2 / 3)', cursor: 'pointer', maxWidth: '100%', flexShrink: '0', alignSelf: 'flex-start' });
         more.setAttribute('aria-expanded', 'false');
         more.addEventListener('click', () => {
             this.expanded = true; more.setAttribute('aria-expanded', 'true');
             this.fitColumns(); viewport.focus();
         });
         this.more = more;
-        headerRegion.append(more);
-        section.append(headerRegion, viewport);
+        section.append(more, viewport);
         if (!presentation.rowIds.length) {
             const empty = document.createElement('p');
             empty.setAttribute('role', 'status'); empty.textContent = 'No items';

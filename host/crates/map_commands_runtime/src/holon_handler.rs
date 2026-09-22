@@ -75,22 +75,6 @@ fn handle_read(
             };
             Ok(MapResult::Value(BaseValue::StringValue(name.into())))
         }
-        ReadableHolonAction::GetValidatedPropertyValue { name } => {
-            let property = target.holon_descriptor()?.get_property_by_name(&name)?;
-            match target.property_value(&name)? {
-                None => Ok(MapResult::None),
-                Some(value) => {
-                    property.value_type()?.is_valid(&value)?;
-                    // A PropertyDescriptor's authored default is governed by its own ValueType.
-                    if name.to_string() == "DefaultValue" {
-                        holons_core::descriptors::PropertyDescriptor::from_holon(target)
-                            .value_type()?
-                            .is_valid(&value)?;
-                    }
-                    Ok(MapResult::Value(value))
-                }
-            }
-        }
         ReadableHolonAction::CloneHolon => {
             let transient = context.clone_holon(&target)?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))

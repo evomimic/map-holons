@@ -401,6 +401,3 @@ export function readInstanceProperties(txId: TxId, target: HolonReferenceWire) {
 export function readPropertyValueKind(txId: TxId, target: HolonReferenceWire) {
   return runHolonCommand(txId, target, { Read: 'GetPropertyValueKind' }, expectValue);
 }
-export function readValidatedPropertyValue(txId: TxId, target: HolonReferenceWire, name: PropertyName) {
-  return runHolonCommand(txId, target, { Read: { GetValidatedPropertyValue: { name } } }, expectOptionalValue);
-}

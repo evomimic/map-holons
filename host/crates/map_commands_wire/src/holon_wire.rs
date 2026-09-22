@@ -73,9 +73,6 @@ pub enum ReadableHolonActionWire {
     },
     GetInstanceProperties,
     GetPropertyValueKind,
-    GetValidatedPropertyValue {
-        name: PropertyName,
-    },
 }
 
 /// Wire-level write (mutating) holon actions.
@@ -133,9 +130,6 @@ impl ReadableHolonActionWire {
             }
             ReadableHolonActionWire::GetPropertyValueKind => {
                 ReadableHolonAction::GetPropertyValueKind
-            }
-            ReadableHolonActionWire::GetValidatedPropertyValue { name } => {
-                ReadableHolonAction::GetValidatedPropertyValue { name }
             }
             ReadableHolonActionWire::CloneHolon => ReadableHolonAction::CloneHolon,
             ReadableHolonActionWire::Summarize => ReadableHolonAction::Summarize,

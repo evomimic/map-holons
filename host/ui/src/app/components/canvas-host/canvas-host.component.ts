@@ -291,9 +291,11 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
           };
           const collectionActivation = new NodeCollectionActivation(transaction, activeHolonSpace, rootNodeVisualizer, materialized);
           this.collectionOccurrences.add(collectionActivation);
+          const typeDisplayName = await (await activeHolonSpace.holonDescriptor()).displayName();
+          const holonKey = (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey();
           rootNodeElement.setContext({
             collectionActivation,
-            title: (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey(),
+            title: `${typeDisplayName}: ${holonKey}`,
             target: { reference: activeHolonSpace },
             holon: new DahnHolonView(activeHolonSpace),
             actions: affordances.actions,

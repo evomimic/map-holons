@@ -59,7 +59,8 @@ describe('TableCollectionVisualizerElement', () => {
     }));
 
     expect(element.dataset['collectionKind']).toBe('scalar');
-    expect(element.querySelector<HTMLElement>('[data-table-collection="header"]')?.textContent).toBe('Priority');
+    expect(element.querySelector('h2')).toBeNull();
+    expect(element.querySelector('table')?.getAttribute('aria-label')).toBe('Priority');
     expect(element.querySelectorAll('th')).toHaveLength(1);
     expect(element.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(element.querySelectorAll('tbody td')).toHaveLength(2);

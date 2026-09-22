@@ -102,11 +102,6 @@ export class HolonReference implements WritableHolon {
     return new DescribedHolonCollection(txIdFor(this), await internalHolon.readDescribedRelatedHolons(txIdFor(this), wireRefFor(this), name));
   }
 
-  /** Reads authored data, checking the declared ValueType without applying defaults. */
-  validatedPropertyValue(name: PropertyName): Promise<BaseValue | null> {
-    return internalHolon.readValidatedPropertyValue(txIdFor(this), wireRefFor(this), name);
-  }
-
   async holonDescriptor(): Promise<HolonDescriptorHandle> {
     const txId = txIdFor(this);
     const wireRef = await internalHolon.readHolonDescriptor(txId, wireRefFor(this));
