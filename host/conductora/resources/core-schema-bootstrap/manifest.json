@@ -107,11 +107,11 @@
     },
     {
       "path": "imports/query/schema.json",
-      "sha256": "3b23dcdaa7be832fd576a3383e3f450583e2ca9801c1ad3ed9c1d5d4f3d4afd6"
+      "sha256": "ead0039d2ae7a87a4b1af6d0fd5dcc35acf47a44addb051ea1b7067075f27eb5"
     },
     {
       "path": "imports/query-dance/schema.json",
-      "sha256": "0a498b670725274a7259bb5b5e7eae043d756d21694be58b56de049b54f93ea2"
+      "sha256": "e5eade3f0b9f66381d0f42453f18a407403bf5de4878af7be6547f5d7d54a659"
     },
     {
       "path": "imports/design-tokens/schema.json",
@@ -276,6 +276,14 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(ExecutionInstance.HolonType)-[FocalSpace]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Expand.HolonType)-[ExpansionPredicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(FormatRule.KeyRuleType)-[TemplateParameters]->(PropertyType.TypeDescriptor)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -330,6 +338,10 @@
     {
       "key": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[FocalSpaceFor]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(HolonSpace.HolonType)-[OffersTheme]->(Theme.HolonType)",
@@ -600,6 +612,14 @@
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "(QueryPredicate.HolonType)-[ExpansionPredicateFor]->(Expand.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[SeedPredicateFor]->(SeedHolons.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
       "key": "(QuerySubTree.HolonType)-[Subtree]->(QueryExpression.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
@@ -630,6 +650,10 @@
     {
       "key": "(Schema.HolonType)-[Rules]->(Rule.HolonType)",
       "type": "MetaInverseRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Theme.HolonType)-[ForMetaDesignSystem]->(MetaDesignSystem.HolonType)",
@@ -1568,6 +1592,14 @@
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
     {
+      "key": "Expand.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "ExpansionRelationshipName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor"
+    },
+    {
       "key": "ExplicitKeylessBaseline.ValidationRule",
       "type": "HolonValidationRule.HolonType"
     },
@@ -2452,6 +2484,10 @@
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
+      "key": "QueryPredicate.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
       "key": "QuerySubTree.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
@@ -2617,6 +2653,10 @@
     },
     {
       "key": "SchemaNameRule.KeyRuleType",
+      "type": "MetaHolonType.MetaTypeDescriptor"
+    },
+    {
+      "key": "SeedHolons.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor"
     },
     {
