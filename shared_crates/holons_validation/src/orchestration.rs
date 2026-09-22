@@ -74,6 +74,7 @@ impl<'a> PreparedAssessment<'a> {
     /// append-only until installation; aggregate findings have no staged outcome association.
     #[allow(dead_code)] // Used by aggregate assessment when C2 activates.
     pub(crate) fn push_aggregate(&mut self, finding: CommitValidationViolation) {
+        self.report.unattached_indices.push(self.report.violations.len());
         self.report.violations.push(finding);
     }
 

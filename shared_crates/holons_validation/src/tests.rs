@@ -854,6 +854,7 @@ fn aggregate_only_report_rejects_without_installing_staged_outcomes() -> Result<
     assert!(!report.is_accepted());
     assert_eq!(report.violation_count(), 1);
     assert_eq!(report.violations, vec![aggregate]);
+    assert_eq!(report.unattached_findings()?, vec![&report.violations[0]]);
     Ok(())
 }
 
@@ -871,14 +872,51 @@ fn aggregate_findings_do_not_leak_into_candidate_outcomes() -> Result<(), HolonE
     assessment.record_candidate(&invalid, candidate_report.clone());
     assessment.push_aggregate(aggregate.clone());
     assessment.record_candidate(&clean, CommitValidationReport::default());
-    assessment.push_aggregate(aggregate);
+    assessment.push_aggregate(aggregate.clone());
 
     let report = assessment.install_outcomes()?;
     assert!(!report.is_accepted());
     assert_eq!(report.violation_count(), 4);
+    assert_eq!(report.unattached_findings()?, vec![&aggregate; 3]);
     assert_eq!(invalid.validation_findings()?, candidate_report.violations);
     assert_eq!(clean.validation_state()?, ValidationState::Validated);
     assert!(clean.validation_findings()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn identical_candidate_and_aggregate_findings_keep_distinct_carriers() -> Result<(), HolonError> {
+    let fixture = Fixture::new()?;
+    let candidate = fixture.staged_subject("candidate")?;
+    let candidate_report =
+        validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))?;
+    let finding = candidate_report.violations[0].clone();
+    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    assessment.record_candidate(&candidate, candidate_report);
+    assessment.push_aggregate(finding.clone());
+
+    let report = assessment.install_outcomes()?;
+    assert_eq!(report.violations, vec![finding.clone(), finding.clone()]);
+    assert_eq!(candidate.validation_findings()?, vec![finding.clone()]);
+    assert_eq!(report.unattached_findings()?, vec![&finding]);
+    Ok(())
+}
+
+#[test]
+fn invalidated_unattached_position_returns_error_without_panicking() -> Result<(), HolonError> {
+    let finding = core_types::CommitValidationViolation {
+        kind: CommitValidationViolationKind::RuleViolation { code: "AggregateTest".into() },
+        rule_key: None,
+        severity: core_types::ValidationSeverity::Error,
+        subject: ValidationSubjectPath::Holon { holon_identity: "schema".into() },
+        descriptor_identity: None,
+        message: "Schema finding".into(),
+    };
+    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    assessment.push_aggregate(finding);
+    let mut report = assessment.install_outcomes()?;
+    report.violations.clear();
+    assert!(matches!(report.unattached_findings(), Err(HolonError::CommitFailure(_))));
     Ok(())
 }
 

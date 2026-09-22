@@ -35,6 +35,6 @@ impl ValidationCollector {
 
     /// Finishes a successfully completed pass; do not call after an operational error.
     pub fn into_report(self) -> CommitValidationReport {
-        CommitValidationReport { violations: self.violations }
+        CommitValidationReport::from_candidate(self.violations)
     }
 }
