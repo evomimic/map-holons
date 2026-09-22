@@ -92,6 +92,10 @@ pub enum QueryInputSpec {
     None,
     /// An explicit `HolonCollection` holon whose members are these fixture references.
     Collection(Vec<TestReference>),
+    /// One source holon through the direct single-holon convenience, which
+    /// normalizes it into a transient singleton collection inside QueryCore.
+    /// Direct route only: the Dance contract stays collection-shaped.
+    SingleHolon(TestReference),
 }
 
 /// What an `ExecuteQuery` step asserts after the run.

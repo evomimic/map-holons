@@ -10,9 +10,9 @@
 //!   linked to the definition, the invocation's focal space, and the optional
 //!   caller-supplied input;
 //! - `Pending -> Running -> Complete | Failed` status progression;
-//! - execution of the root expression: `SeedHolons` (QRY2a) and `Expand`
-//!   (QRY2b), with `HolonError::NotImplemented` for every other concrete kind
-//!   and for a root that carries `Next` (chaining is a later slice).
+//! - execution of the root expression: `SeedHolons` and `Expand`, with
+//!   `HolonError::NotImplemented` for every other concrete kind and for a root
+//!   that carries `Next` (chaining is a later slice).
 //!
 //! Focal space is invocation context, not definition state: it is recorded only
 //! on the transient `ExecutionInstance`. Nothing is ever written onto the
@@ -36,7 +36,7 @@
 
 use std::sync::Arc;
 
-use base_types::{MapEnumValue, MapString};
+use base_types::{BaseValue, MapEnumValue, MapString};
 use core_types::{HolonError, RelationshipName};
 use type_names::{
     CoreRelationshipTypeName, QueryPropertyTypeName, QueryRelationshipTypeName, ToRelationshipName,
@@ -60,6 +60,7 @@ const HOLON_COLLECTION_DESCRIPTOR_KEY: &str = "HolonCollection.HolonType";
 const EXECUTION_INSTANCE_KEY: &str = "execution-instance";
 const QUERY_EXPRESSION_EXECUTION_KEY: &str = "query-expression-execution";
 const QUERY_RESULT_KEY: &str = "query-result";
+const QUERY_INPUT_COLLECTION_KEY: &str = "query-input-collection";
 
 /// Typed entry over a saved or staged holon described as `Query`.
 #[derive(Debug, Clone)]
@@ -88,6 +89,15 @@ impl HolonCollectionReference {
     /// Returns the underlying collection holon reference.
     pub fn as_holon_reference(&self) -> &HolonReference {
         &self.0
+    }
+
+    /// Inflates the runtime member view of this collection holon.
+    ///
+    /// Only operators that iterate call this; the holon itself stays the
+    /// identity carrier across every boundary. Members come back in authored
+    /// order with duplicate occurrences intact.
+    pub fn members(&self) -> Result<Vec<HolonReference>, HolonError> {
+        related_members(&self.0, CoreRelationshipTypeName::CollectionMembers)
     }
 }
 
@@ -159,6 +169,27 @@ impl QueryReference {
     }
 }
 
+/// Explicit direct-invocation convenience for a single source holon.
+///
+/// Normalizes `source` into a transient singleton `HolonCollection` holon and
+/// delegates to the canonical collection-reference path, so QueryCore and every
+/// expression continue to consume collection references only. Deliberately not
+/// a `From<HolonReference>` conversion and not available on the Dance route:
+/// the wire/schema contract stays collection-shaped.
+impl QueryReference {
+    pub fn begin_execution_for_holon(
+        &self,
+        context: &Arc<TransactionContext>,
+        focal_space: FocalSpaceReference,
+        source: HolonReference,
+        bindings: Vec<HolonReference>,
+    ) -> Result<QueryExecution, HolonError> {
+        let collection = new_collection_holon(context, QUERY_INPUT_COLLECTION_KEY, vec![source])?;
+        let input = HolonCollectionReference(collection.into());
+        self.begin_execution(context, focal_space, Some(input), bindings)
+    }
+}
+
 /// Transient runtime state for one Query invocation.
 #[derive(Debug)]
 pub struct QueryExecution {
@@ -216,7 +247,11 @@ impl QueryExecution {
         let members = match &self.root_kind {
             ExpressionKind::SeedHolons => seed_holons(&context, &self.instance.clone().into())?,
             ExpressionKind::Expand => {
-                return Err(HolonError::NotImplemented("Expand (QRY2b)".to_string()))
+                let input = HolonCollectionReference(exactly_one(
+                    &self.root_execution.clone().into(),
+                    QueryRelationshipTypeName::Input,
+                )?);
+                expand(&context, &input.members()?, &expansion_name(&self.root_expression)?)?
             }
             ExpressionKind::Unsupported(type_name) => {
                 return Err(HolonError::NotImplemented(format!(
@@ -303,6 +338,40 @@ fn expand_one(
     source.holon_descriptor()?.resolve_available_relationship(relationship_name.clone())?;
     let collection = context.fetch_related_holons(&source.holon_id()?, relationship_name)?;
     Ok(collection.get_members().clone())
+}
+
+/// `Expand`: navigates every source member over `relationship_name`.
+///
+/// Each member resolves the name through its own `HolonDescriptor`, so declared
+/// and inverse navigation are both available and the descriptor's errors
+/// (`DescriptorDeclarationNotFound`, `AmbiguousRelationshipTraversal`,
+/// `UnsupportedStagedTraversal`) propagate unchanged. There is no whole-collection
+/// preflight: the first failing member fails the execution. Results append in
+/// source-traversal order then storage order; a member with no targets
+/// contributes nothing and is not an error.
+fn expand(
+    context: &Arc<TransactionContext>,
+    sources: &[HolonReference],
+    relationship_name: &RelationshipName,
+) -> Result<Vec<HolonReference>, HolonError> {
+    let mut members = Vec::new();
+    for source in sources {
+        members.extend(expand_one(context, source, relationship_name)?);
+    }
+    Ok(members)
+}
+
+/// Reads the relationship name an `Expand` definition navigates.
+fn expansion_name(expression: &HolonReference) -> Result<RelationshipName, HolonError> {
+    match expression.property_value(QueryPropertyTypeName::ExpansionRelationshipName)? {
+        Some(BaseValue::StringValue(name)) => Ok(RelationshipName(name)),
+        Some(other) => {
+            Err(HolonError::UnexpectedValueType(format!("{other:?}"), "String".to_string()))
+        }
+        None => Err(HolonError::EmptyField(
+            QueryPropertyTypeName::ExpansionRelationshipName.as_property_name().to_string(),
+        )),
+    }
 }
 
 /// Materializes `members` as a transient holon described by `HolonCollection`,
@@ -499,7 +568,7 @@ mod tests {
         );
     }
 
-    // ---- QRY2a execution fixture -------------------------------------------
+    // ---- QRY2 execution fixture ---------------------------------------------
     //
     // Saved graph (ids are LocalId byte values):
     //   1  space            DescribedBy -> 2 ; Owns -> [10, 11, 12, 11]  (duplicate on purpose)
@@ -509,6 +578,19 @@ mod tests {
     //   5  ExecutionInstance.HolonType, 6 QueryExpressionExecution.HolonType,
     //   7  HolonCollection.HolonType   (resolved by key for the runtime records)
     //   10, 11, 12  owned holons
+    //
+    // Expand graph — a declared name licensed on the source type and an inverse
+    // name reached through the target type's materialized SourceOf index:
+    //   20 book-a   DescribedBy -> 21 ; AuthoredBy -> [24, 29]
+    //   27 book-b   DescribedBy -> 21 ; AuthoredBy -> [24]
+    //   28 book-c   DescribedBy -> 21 ; (no AuthoredBy occurrence — legal empty)
+    //   21 BookType      InstanceRelationships -> [22]
+    //   22 AuthoredBy declared   Extends -> [23]
+    //   23 DeclaredRelationshipType
+    //   24 person-1  DescribedBy -> 25 ; AuthorOf -> [20, 27]
+    //   29 person-2  DescribedBy -> 25
+    //   25 PersonType     SourceOf -> [26]
+    //   26 AuthorOf inverse       Extends -> [4]
     // Definitions (Query, SeedHolons, Expand, …) are transient, described by
     // transient descriptors: the runtime classifies by descriptor type name only.
 
@@ -527,6 +609,18 @@ mod tests {
 
     fn rel(source: u8, name: CoreRelationshipTypeName) -> (HolonId, RelationshipName) {
         (id(source), name.to_relationship_name())
+    }
+
+    fn named(source: u8, name: &str) -> (HolonId, RelationshipName) {
+        (id(source), RelationshipName(MapString(name.to_string())))
+    }
+
+    fn authored_by(source: u8) -> (HolonId, RelationshipName) {
+        named(source, "AuthoredBy")
+    }
+
+    fn author_of(source: u8) -> (HolonId, RelationshipName) {
+        named(source, "AuthorOf")
     }
 
     struct Fixture {
@@ -570,6 +664,22 @@ mod tests {
             (10, properties(&[("Key", "owned-a")])),
             (11, properties(&[("Key", "owned-b")])),
             (12, properties(&[("Key", "owned-c")])),
+            (20, properties(&[("Key", "book-a")])),
+            (21, properties(&[("Key", "Book.HolonType"), ("TypeName", "Book")])),
+            (22, properties(&[("Key", "AuthoredBy.Declared"), ("TypeName", "AuthoredBy")])),
+            (
+                23,
+                properties(&[
+                    ("Key", "DeclaredRelationshipType.RelationshipType"),
+                    ("TypeName", "DeclaredRelationshipType"),
+                ]),
+            ),
+            (24, properties(&[("Key", "person-1")])),
+            (25, properties(&[("Key", "Person.HolonType"), ("TypeName", "Person")])),
+            (26, properties(&[("Key", "AuthorOf.Inverse"), ("TypeName", "AuthorOf")])),
+            (27, properties(&[("Key", "book-b")])),
+            (28, properties(&[("Key", "book-c")])),
+            (29, properties(&[("Key", "person-2")])),
         ]
         .into_iter()
         .map(|(value, properties)| {
@@ -581,6 +691,20 @@ mod tests {
             (rel(1, CoreRelationshipTypeName::Owns), vec![id(10), id(11), id(12), id(11)]),
             (rel(2, CoreRelationshipTypeName::SourceOf), vec![id(3)]),
             (rel(3, CoreRelationshipTypeName::Extends), vec![id(4)]),
+            // Expand: declared AuthoredBy licensed on BookType
+            (rel(20, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
+            (rel(27, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
+            (rel(28, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
+            (rel(21, CoreRelationshipTypeName::InstanceRelationships), vec![id(22)]),
+            (rel(22, CoreRelationshipTypeName::Extends), vec![id(23)]),
+            (authored_by(20), vec![id(24), id(29)]),
+            (authored_by(27), vec![id(24)]),
+            // Expand: inverse AuthorOf reached through PersonType's SourceOf index
+            (rel(24, CoreRelationshipTypeName::DescribedBy), vec![id(25)]),
+            (rel(29, CoreRelationshipTypeName::DescribedBy), vec![id(25)]),
+            (rel(25, CoreRelationshipTypeName::SourceOf), vec![id(26)]),
+            (rel(26, CoreRelationshipTypeName::Extends), vec![id(4)]),
+            (author_of(24), vec![id(20), id(27)]),
         ]);
         let context = build_context_with_saved_holons(snapshots, relationships);
         let space = HolonReference::smart_from_id(context.space_read_handle(), id(1));
@@ -616,6 +740,36 @@ mod tests {
         fn collection(&self, key: &str) -> HolonCollectionReference {
             let holon = self.described(key, HOLON_COLLECTION_TYPE_NAME);
             HolonCollectionReference::new(holon.into()).unwrap()
+        }
+
+        /// A saved holon in the fixture graph.
+        fn saved(&self, value: u8) -> HolonReference {
+            HolonReference::smart_from_id(self.context.space_read_handle(), id(value))
+        }
+
+        /// A collection holon whose members are the given saved holons, in order.
+        fn collection_of(&self, key: &str, members: &[u8]) -> HolonCollectionReference {
+            let mut holon = self.described(key, HOLON_COLLECTION_TYPE_NAME);
+            let members: Vec<HolonReference> =
+                members.iter().map(|value| self.saved(*value)).collect();
+            if !members.is_empty() {
+                holon
+                    .add_related_holons(CoreRelationshipTypeName::CollectionMembers, members)
+                    .unwrap();
+            }
+            HolonCollectionReference::new(holon.into()).unwrap()
+        }
+
+        /// An `Expand` definition navigating `relationship_name`.
+        fn expand(&self, key: &str, relationship_name: &str) -> TransientReference {
+            let mut expression = self.described(key, EXPAND_TYPE_NAME);
+            expression
+                .with_property_value(
+                    QueryPropertyTypeName::ExpansionRelationshipName,
+                    MapString(relationship_name.to_string()),
+                )
+                .unwrap();
+            expression
         }
     }
 
@@ -768,22 +922,200 @@ mod tests {
         assert_eq!(status_of(&instance), "Failed");
     }
 
-    #[test]
-    fn expand_root_is_not_implemented_until_qry2b() {
-        let fixture = build_fixture();
-        let expand = fixture.described("expand", EXPAND_TYPE_NAME);
+    /// Runs an `Expand` root over `sources` and returns the result members.
+    fn run_expand(
+        fixture: &Fixture,
+        relationship_name: &str,
+        sources: &[u8],
+    ) -> Result<Vec<HolonReference>, HolonError> {
+        let expand = fixture.expand("expand", relationship_name);
         let query = fixture.query_with_root(&expand);
+        let input = fixture.collection_of("expand-input", sources);
+        let execution = query.begin_execution(
+            &fixture.context,
+            fixture.focal_space(),
+            Some(input),
+            Vec::new(),
+        )?;
+        let result = execution.run()?;
+        related_members(result.as_holon_reference(), CoreRelationshipTypeName::CollectionMembers)
+    }
 
+    #[test]
+    fn expand_declared_name_preserves_source_and_target_order() {
+        let fixture = build_fixture();
+        // book-a -> [person-1, person-2], book-b -> [person-1], book-c -> none.
+        let members = run_expand(&fixture, "AuthoredBy", &[20, 27, 28]).unwrap();
+        assert_eq!(
+            ids_of(&members),
+            vec![id(24), id(29), id(24)],
+            "source order then storage order, duplicates retained, empty contributes nothing"
+        );
+    }
+
+    #[test]
+    fn expand_inverse_name_resolves_through_descriptor() {
+        let fixture = build_fixture();
+        let members = run_expand(&fixture, "AuthorOf", &[24]).unwrap();
+        assert_eq!(ids_of(&members), vec![id(20), id(27)]);
+    }
+
+    #[test]
+    fn expand_over_an_empty_input_is_an_empty_result() {
+        let fixture = build_fixture();
+        assert!(run_expand(&fixture, "AuthoredBy", &[]).unwrap().is_empty());
+    }
+
+    #[test]
+    fn expand_unknown_name_propagates_descriptor_error() {
+        let fixture = build_fixture();
+        let expand = fixture.expand("expand", "NoSuchRelationship");
+        let query = fixture.query_with_root(&expand);
+        let input = fixture.collection_of("expand-input", &[20]);
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance = execution.instance().clone();
+        let root_execution = execution.root_execution().clone();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::DescriptorDeclarationNotFound { name, .. }
+                if name == "NoSuchRelationship"),
+            "unexpected error: {error:?}"
+        );
+        assert_eq!(status_of(&instance), "Failed");
+        assert_eq!(status_of(&root_execution), "Failed");
+        assert!(related_members(
+            &HolonReference::from(root_execution),
+            QueryRelationshipTypeName::Result
+        )
+        .unwrap()
+        .is_empty());
+    }
+
+    #[test]
+    fn expand_unsaved_endpoint_propagates_unsupported_staged_traversal() {
+        let fixture = build_fixture();
+        // A member described by a transient descriptor has no materialized
+        // SourceOf index, so inverse discovery is not answerable yet.
+        let member = fixture.described("unsaved-member", "UnsavedType");
+        let mut input_holon = fixture.described("expand-input", HOLON_COLLECTION_TYPE_NAME);
+        input_holon
+            .add_related_holons(CoreRelationshipTypeName::CollectionMembers, vec![member.into()])
+            .unwrap();
+        let expand = fixture.expand("expand", "AuthorOf");
+        let query = fixture.query_with_root(&expand);
         let execution = query
             .begin_execution(
                 &fixture.context,
                 fixture.focal_space(),
-                Some(fixture.collection("caller-input")),
+                Some(HolonCollectionReference::new(input_holon.into()).unwrap()),
                 Vec::new(),
             )
             .unwrap();
+
         let error = execution.run().unwrap_err();
-        assert!(matches!(error, HolonError::NotImplemented(_)), "unexpected error: {error:?}");
+        assert!(
+            matches!(error, HolonError::UnsupportedStagedTraversal { .. }),
+            "unexpected error: {error:?}"
+        );
+    }
+
+    #[test]
+    fn expand_without_a_relationship_name_is_an_empty_field() {
+        let fixture = build_fixture();
+        // `ExpansionRelationshipName` is schema-required, but a definition can
+        // reach the runtime without it; fail on the definition, not the data.
+        let expand = fixture.described("expand", EXPAND_TYPE_NAME);
+        let query = fixture.query_with_root(&expand);
+        let input = fixture.collection_of("expand-input", &[20]);
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+
+        let error = execution.run().unwrap_err();
+        assert!(matches!(error, HolonError::EmptyField(_)), "unexpected error: {error:?}");
+    }
+
+    #[test]
+    fn single_holon_convenience_wraps_a_transient_singleton_collection() {
+        let fixture = build_fixture();
+        let expand = fixture.expand("expand", "AuthoredBy");
+        let query = fixture.query_with_root(&expand);
+
+        let execution = query
+            .begin_execution_for_holon(
+                &fixture.context,
+                fixture.focal_space(),
+                fixture.saved(20),
+                Vec::new(),
+            )
+            .unwrap();
+        let root_execution: HolonReference = execution.root_execution().clone().into();
+
+        // Input is a HolonCollection holon holding the source, never the source itself.
+        let input = exactly_one(&root_execution, QueryRelationshipTypeName::Input).unwrap();
+        require_described_as(&input, HOLON_COLLECTION_TYPE_NAME)
+            .expect("the convenience wraps its source in a collection holon");
+        let input_members =
+            related_members(&input, CoreRelationshipTypeName::CollectionMembers).unwrap();
+        assert_eq!(ids_of(&input_members), vec![id(20)]);
+
+        let result = execution.run().unwrap();
+        let members = related_members(
+            result.as_holon_reference(),
+            CoreRelationshipTypeName::CollectionMembers,
+        )
+        .unwrap();
+        assert_eq!(ids_of(&members), vec![id(24), id(29)]);
+    }
+
+    #[test]
+    fn predicates_are_not_read_by_either_operator() {
+        let fixture = build_fixture();
+        // Attaching a predicate payload changes nothing: QRY2 supplies no
+        // evaluation and no storage pushdown.
+        let predicate = fixture.described("predicate", "QueryPredicate");
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        expand
+            .add_related_holons(
+                RelationshipName(MapString("ExpansionPredicate".to_string())),
+                vec![predicate.clone().into()],
+            )
+            .unwrap();
+        let query = fixture.query_with_root(&expand);
+        let input = fixture.collection_of("expand-input", &[20, 27]);
+        let result = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap()
+            .run()
+            .unwrap();
+        let members = related_members(
+            result.as_holon_reference(),
+            CoreRelationshipTypeName::CollectionMembers,
+        )
+        .unwrap();
+        assert_eq!(ids_of(&members), vec![id(24), id(29), id(24)], "unfiltered by the predicate");
+
+        let mut seed = fixture.described("seed", SEED_HOLONS_TYPE_NAME);
+        seed.add_related_holons(
+            RelationshipName(MapString("SeedPredicate".to_string())),
+            vec![predicate.into()],
+        )
+        .unwrap();
+        let seed_query = fixture.query_with_root(&seed);
+        let seed_result = seed_query
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap()
+            .run()
+            .unwrap();
+        let seed_members = related_members(
+            seed_result.as_holon_reference(),
+            CoreRelationshipTypeName::CollectionMembers,
+        )
+        .unwrap();
+        assert_eq!(ids_of(&seed_members), vec![id(10), id(11), id(12), id(11)]);
     }
 
     #[test]
