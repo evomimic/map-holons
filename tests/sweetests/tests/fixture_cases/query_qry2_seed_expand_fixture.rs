@@ -89,7 +89,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         &fixture_context,
         &mut fixture_holons,
         PERSON_1_KEY,
-        PropertyMap::new(),
+        instance_properties("Name", "Qry2 Person One"),
         &person_type,
         "Person",
     )?;
@@ -98,7 +98,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         &fixture_context,
         &mut fixture_holons,
         PERSON_2_KEY,
-        PropertyMap::new(),
+        instance_properties("Name", "Qry2 Person Two"),
         &person_type,
         "Person",
     )?;
@@ -107,7 +107,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         &fixture_context,
         &mut fixture_holons,
         BOOK_A_KEY,
-        PropertyMap::new(),
+        instance_properties("Title", "Qry2 Book A"),
         &book_type,
         "Book",
     )?;
@@ -124,7 +124,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         &fixture_context,
         &mut fixture_holons,
         BOOK_B_KEY,
-        PropertyMap::new(),
+        instance_properties("Title", "Qry2 Book B"),
         &book_type,
         "Book",
     )?;
@@ -141,7 +141,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         &fixture_context,
         &mut fixture_holons,
         BOOK_C_KEY,
-        PropertyMap::new(),
+        instance_properties("Title", "Qry2 Book C"),
         &book_type,
         "Book",
     )?;
@@ -382,6 +382,15 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
     test_case.finalize(&fixture_context, &fixture_holons)?;
 
     Ok(test_case)
+}
+
+/// Properties for a Book/Person instance. `Title` is `IsValueRequired` on
+/// `Book.HolonType`, so a title-less Book is rejected at commit validation.
+fn instance_properties(property_name: &str, value: &str) -> PropertyMap {
+    let mut properties = PropertyMap::new();
+    properties
+        .insert(property_name.to_property_name(), MapString(value.to_string()).to_base_value());
+    properties
 }
 
 /// Properties for an `Expand` definition navigating `relationship_name`.
