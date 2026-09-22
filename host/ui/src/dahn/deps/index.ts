@@ -1,6 +1,8 @@
 export type {
   BaseValue,
   AvailableRelationshipHandle,
+  DescribedHolonCollection,
+  ScalarValueKind,
   HolonCollection,
   HolonDescriptorHandle,
   HolonId,

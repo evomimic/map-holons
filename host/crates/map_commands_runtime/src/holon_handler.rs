@@ -25,6 +25,72 @@ fn handle_read(
     action: ReadableHolonAction,
 ) -> Result<MapResult, HolonError> {
     match action {
+        ReadableHolonAction::GetDescribedRelatedHolons { name } => {
+            let relationship = target.holon_descriptor()?.resolve_available_relationship(&name)?;
+            let available = target.available_relationships()?.into_iter().any(|candidate| {
+                candidate.descriptor.holon().reference_id_string()
+                    == relationship.descriptor.holon().reference_id_string()
+            });
+            if !available {
+                return Err(HolonError::InvalidState(
+                    "Relationship is unavailable in this lifecycle state".into(),
+                ));
+            }
+            let element_type = relationship.descriptor.target_type()?.holon().clone();
+            let members = target
+                .related_holons_with_hint(name, holons_core::RelationshipReadHint::SchemaDefault)?
+                .read()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+                .clone();
+            Ok(MapResult::DescribedCollection(map_commands_contract::DescribedHolonCollection {
+                members,
+                element_type,
+            }))
+        }
+        ReadableHolonAction::GetInstanceProperties => {
+            let members = holons_core::descriptors::HolonDescriptor::from_holon(target)
+                .instance_properties()?
+                .into_iter()
+                .map(|property| property.holon().clone())
+                .collect();
+            Ok(MapResult::Collection(HolonCollection::from_parts(
+                CollectionState::Fetched,
+                members,
+                BTreeMap::new(),
+            )))
+        }
+        ReadableHolonAction::GetPropertyValueKind => {
+            use holons_core::descriptors::ValueDescriptorKind;
+            let kind = holons_core::descriptors::PropertyDescriptor::from_holon(target)
+                .value_type()?
+                .value_kind(&holons_core::descriptors::ResolvedValueTypeRoots::resolve(context)?)?;
+            let name = match kind {
+                ValueDescriptorKind::BaseValue(kind) => format!("{kind}Value"),
+                ValueDescriptorKind::AnyBaseValue => "AnyBaseValue".into(),
+                _ => {
+                    return Err(HolonError::InvalidParameter(
+                        "Expected scalar property descriptor".into(),
+                    ))
+                }
+            };
+            Ok(MapResult::Value(BaseValue::StringValue(name.into())))
+        }
+        ReadableHolonAction::GetValidatedPropertyValue { name } => {
+            let property = target.holon_descriptor()?.get_property_by_name(&name)?;
+            match target.property_value(&name)? {
+                None => Ok(MapResult::None),
+                Some(value) => {
+                    property.value_type()?.is_valid(&value)?;
+                    // A PropertyDescriptor's authored default is governed by its own ValueType.
+                    if name.to_string() == "DefaultValue" {
+                        holons_core::descriptors::PropertyDescriptor::from_holon(target)
+                            .value_type()?
+                            .is_valid(&value)?;
+                    }
+                    Ok(MapResult::Value(value))
+                }
+            }
+        }
         ReadableHolonAction::CloneHolon => {
             let transient = context.clone_holon(&target)?;
             Ok(MapResult::Reference(HolonReference::Transient(transient)))

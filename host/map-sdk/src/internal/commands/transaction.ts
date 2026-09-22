@@ -443,3 +443,10 @@ export function selectVisualizer(
     options,
   );
 }
+
+export function selectCollectionVisualizer(
+  txId: TxId,
+  request: { collection: import('../wire-types/results').DescribedHolonCollectionWire; parent_visualizer: HolonReferenceWire; slot: HolonReferenceWire },
+): Promise<VisualizerSelectionWire> {
+  return runTransactionCommand(txId, { SelectCollectionVisualizer: request }, expectVisualizerSelection);
+}

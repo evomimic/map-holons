@@ -482,3 +482,55 @@ mod tests {
         assert!(bootstrap_visualizer_key(VisualizerKind::Action).is_err());
     }
 }
+
+/// Selects a collection implementation without depending on its producer.
+pub fn select_collection_visualizer(
+    context: &Arc<TransactionContext>,
+    collection: map_commands_contract::DescribedHolonCollection,
+    parent: HolonReference,
+    slot: HolonReference,
+) -> Result<VisualizerSelection, HolonError> {
+    let _ = holons_core::descriptors::HolonDescriptor::from_holon(collection.element_type.clone())
+        .instance_properties()?;
+    for member in collection.members.get_members() {
+        if !equals_or_extends(member.holon_descriptor()?.holon(), &collection.element_type)? {
+            return Err(HolonError::InvalidParameter(
+                "Collection member does not conform to its declared element type".into(),
+            ));
+        }
+    }
+    let slots = parent
+        .related_holons(DahnRelationshipTypeName::HasSlot)?
+        .read()
+        .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+        .get_members()
+        .clone();
+    if !slots.iter().any(|candidate| candidate.reference_id_string() == slot.reference_id_string())
+    {
+        return Err(HolonError::InvalidParameter(
+            "Collection slot does not belong to its parent".into(),
+        ));
+    }
+    let selected = HolonReference::Smart(context.lookup().get_saved_holon_by_key(
+        &MapString::from(bootstrap_visualizer_key(VisualizerKind::Collection)?),
+    )?);
+    let child_type = selected.holon_descriptor()?.holon().clone();
+    let accepted = slot
+        .related_holons(DahnRelationshipTypeName::AcceptsVisualizerType)?
+        .read()
+        .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?
+        .get_members()
+        .clone();
+    for accepted_type in accepted {
+        if equals_or_extends(&child_type, &accepted_type)? {
+            return Ok(VisualizerSelection {
+                selected,
+                requested_kind: VisualizerKind::Collection,
+                alternatives_available: false,
+            });
+        }
+    }
+    Err(HolonError::InvalidParameter(
+        "Selected Collection Visualizer is incompatible with the destination slot".into(),
+    ))
+}

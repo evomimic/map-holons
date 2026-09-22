@@ -1,4 +1,4 @@
-export { HolonCollection } from './collection';
+export { DescribedHolonCollection, HolonCollection } from './collection';
 export { CorePropertyName } from './core-names';
 export {
   HolonDescriptorHandle,
@@ -7,6 +7,7 @@ export {
   RelationshipDescriptorHandle,
 } from './descriptors';
 export type {
+  ScalarValueKind,
   EffectiveCardinality,
   AvailableRelationshipHandle,
   RelationshipDirection,

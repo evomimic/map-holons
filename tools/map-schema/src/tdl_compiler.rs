@@ -2169,7 +2169,7 @@ holon Example.HolonType {
     #[test]
     fn core_schema_check_accepts_tdl_v09_corpus() -> Result<()> {
         let fixture_root = fixture_dir();
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 22);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 23);
 
         let diagnostics = check_inputs(&[fixture_root])?;
 
@@ -2191,8 +2191,8 @@ holon Example.HolonType {
         let parsed = parse_inputs(&[fixture_root.clone()])?;
         let compilation = build_r6_compilation(parsed)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 22);
-        assert_eq!(compilation.files.len(), 22);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 23);
+        assert_eq!(compilation.files.len(), 23);
         assert!(compilation
             .files
             .iter()
@@ -2207,8 +2207,8 @@ holon Example.HolonType {
         let out_dir = temp_out_dir();
         let compiled_files = compile_inputs(&[fixture_root.clone()], &out_dir)?;
 
-        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 22);
-        assert_eq!(compiled_files.len(), 22);
+        assert_eq!(discovered_tdl_file_count(&fixture_root)?, 23);
+        assert_eq!(compiled_files.len(), 23);
 
         let root_json = fs::read_to_string(out_dir.join("core/root.json"))?;
         assert!(root_json.contains(r#""TypeName""#));

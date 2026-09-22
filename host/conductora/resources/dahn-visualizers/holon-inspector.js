@@ -7,6 +7,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.scheduleLayout();
   }
   disconnectedCallback() {
+    this.collectionActivation?.dispose();
     this.observer?.disconnect();
     if (this.frame != null) cancelAnimationFrame(this.frame);
     this.frame = null;
@@ -28,14 +29,65 @@ export default class HolonInspectorElement extends HTMLElement {
       textAlign: tab ? 'center' : 'left',
     });
     button.textContent = item.label;
-    button.disabled = true;
-    button.title = 'Navigation activation is not available yet';
+    button.disabled = !(tab && item.kind === 'relationship' && this.collectionActivation);
+    if (!button.disabled) {
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-selected', 'false');
+      button.tabIndex = this.collectionControls.length ? -1 : 0;
+      button.id = `dahn-collection-tab-${++nextOverflowId}`;
+      button.setAttribute('aria-controls', this.collectionPanelId);
+      const activate = () => {
+        this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
+        this.collectionViewer.setAttribute('aria-labelledby', button.id);
+        this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => this.updateCollection(update));
+      };
+      button.addEventListener('click', activate);
+      button.addEventListener('keydown', event => {
+        const visible = this.collectionControls.filter(control => !control.inert);
+        const index = visible.indexOf(button);
+        let next;
+        if (event.key === 'ArrowRight') next = visible[(index + 1) % visible.length];
+        if (event.key === 'ArrowLeft') next = visible[(index + visible.length - 1) % visible.length];
+        if (event.key === 'Home') next = visible[0];
+        if (event.key === 'End') next = visible.at(-1);
+        if (next) { event.preventDefault(); next.focus(); }
+      });
+      this.collectionControls.push(button);
+    }
+    button.title = button.disabled ? 'Navigation activation is not available yet' : item.label;
     if (item.relationship) button.dataset.relationshipDirection = item.relationship.direction;
     return button;
   }
 
+  updateCollection(update) {
+    const viewer = this.collectionViewer;
+    viewer.dataset.collectionState = update.state;
+    viewer.hidden = update.state === 'unresolved';
+    viewer.setAttribute('aria-busy', String(update.state === 'loading'));
+    if (viewer.hidden) return;
+    Object.assign(viewer.style, { display: 'flex', flexDirection: 'column', minHeight: '0', minWidth: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
+    this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(0, 1fr)';
+    if (update.content) viewer.replaceChildren(update.content);
+    else {
+      const status = document.createElement('p');
+      status.setAttribute('role', update.state === 'error' ? 'alert' : 'status');
+      status.textContent = update.message ?? 'Loading collection…';
+      viewer.replaceChildren(status);
+      if (update.retry) {
+        const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry';
+        retry.addEventListener('click', update.retry); viewer.append(retry);
+      }
+    }
+    viewer.scrollTop = 0;
+    viewer.scrollLeft = 0;
+    this.scheduleLayout();
+  }
+
   setContext(context) {
     this.disconnectedCallback();
+    this.collectionActivation = context.collectionActivation;
+    this.collectionControls = [];
+    this.collectionPanelId = `dahn-collection-panel-${++nextOverflowId}`;
     this.dataset.visualizerId = 'holon-inspector';
     this.dataset.dahnHolonInspector = 'true';
     this.style.display = 'grid';
@@ -95,12 +147,17 @@ export default class HolonInspectorElement extends HTMLElement {
     collectionTabBar.style.gap = 'var(--dahn-canvas-gap)';
     collectionTabBar.dataset.holonInspectorCollectionsSlot = 'true';
     collectionTabBar.setAttribute('aria-label', 'Collections');
+    collectionTabBar.setAttribute('role', 'tablist');
     const collectionLayout = horizontalOverflow(collectionTabBar, (context.nodeAffordances?.collections ?? []).map(item => this.navigationControl(item, true)), 'More collections');
 
     const collectionRegion = document.createElement('section');
     collectionRegion.dataset.holonInspectorCollectionRegion = 'true';
     Object.assign(collectionRegion.style, { gridColumn: '1 / -1', minHeight: '0', minWidth: '0', display: 'flex', flexDirection: 'column' });
     const collectionViewer = document.createElement('section');
+    this.collectionViewer = collectionViewer;
+    collectionViewer.id = this.collectionPanelId;
+    collectionViewer.setAttribute('role', 'tabpanel');
+    collectionViewer.dataset.collectionState = 'unresolved';
     collectionViewer.dataset.holonInspectorCollectionViewer = 'true';
     collectionViewer.setAttribute('aria-label', 'Collection viewer');
     const collection = context.childVisualizers?.get('collections');
@@ -135,7 +192,8 @@ export default class HolonInspectorElement extends HTMLElement {
 
     this.layouts = [railLayout, collectionLayout];
     const style = document.createElement('style');
-    style.textContent = `[data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
+    style.textContent = `[data-dahn-holon-inspector] [role="tab"][aria-selected="true"] { background: var(--dahn-action-hover-surface-background) !important; }
+      [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
     this.replaceChildren(style, title, body, collectionRegion);
     if (this.isConnected) this.connectedCallback();
@@ -144,7 +202,7 @@ export default class HolonInspectorElement extends HTMLElement {
 
 let nextOverflowId = 0;
 
-// A disclosure is presentation-only; the contained semantic controls stay disabled.
+// Overflow entries forward intent to their original controls and preserve selected state.
 function horizontalOverflow(host, controls, label) {
   Object.assign(host.style, { display: 'block', minWidth: '0', maxWidth: '100%', position: 'relative' });
   const row = document.createElement('div');
@@ -194,6 +252,12 @@ function horizontalOverflow(host, controls, label) {
     popup.style.background = 'var(--dahn-panel-surface-background)';
     popup.replaceChildren(...hidden.map(control => {
       const copy = control.cloneNode(true);
+      copy.removeAttribute('id');
+      copy.tabIndex = 0;
+      if (!copy.disabled) copy.addEventListener('click', () => {
+        control.click(); close(); more.focus();
+        more.setAttribute('aria-label', `${label}: ${control.textContent} selected`);
+      });
       copy.style.marginBottom = 'var(--dahn-control-gap)';
       copy.removeAttribute('aria-hidden'); copy.inert = false;
       Object.assign(copy.style, { position: 'static', visibility: 'visible', display: 'block', width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' });

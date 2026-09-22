@@ -76,3 +76,25 @@ it('expands only the bounded vertical rail and recomputes its visible prefix on 
   expect(buttons.every(button => !button.inert)).toBe(true);
   expect(more.inert).toBe(true);
 });
+
+it('activates overflow relationship tabs and preserves keyboard access after selection', async () => {
+  const node = await artifact('holon-inspector');
+  const activate = vi.fn(); const dispose = vi.fn();
+  const tabs = ['One', 'Two', 'Three'].map(label => ({ kind: 'relationship', label, relationship: { direction: 'declared' } }));
+  node.setContext({ collectionActivation: { activate, dispose }, nodeAffordances: { collections: tabs } });
+  const row = node.querySelector<HTMLElement>('[data-overflow-row]')!;
+  Object.defineProperty(row, 'clientWidth', { value: 200 }); row.style.gap = '10px';
+  const controls = [...row.querySelectorAll<HTMLButtonElement>('[role=tab]')];
+  const more = row.querySelector<HTMLButtonElement>('[data-overflow-more]')!;
+  controls.forEach(control => measure(control, 80)); measure(more, 100);
+  document.body.append(node); flush();
+  more.click();
+  const popup = node.querySelector<HTMLElement>('[data-overflow-popup]')!;
+  const entry = popup.querySelector<HTMLButtonElement>('button')!;
+  expect(entry.disabled).toBe(false); expect(entry.tabIndex).toBe(0);
+  entry.click();
+  expect(activate).toHaveBeenCalledWith(tabs[1], 'HolonInspector.CollectionsSlot', expect.any(Function));
+  expect(popup.hidden).toBe(true); expect(document.activeElement).toBe(more);
+  expect(controls[1].getAttribute('aria-selected')).toBe('true');
+  node.remove(); expect(dispose).toHaveBeenCalledOnce();
+});

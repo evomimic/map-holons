@@ -1,5 +1,6 @@
+import { NodeCollectionActivation } from '../../../dahn/runtime/collection-activation';
 import { classifyNodeAffordances } from '../../../dahn/map-adapter/classify-node-affordances';
-import { AfterViewInit, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, OnDestroy, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { DomCanvas } from '../../../dahn';
 import { DahnHolonView } from '../../../dahn/map-adapter/dahn-holon-view';
 import { DefaultVisualizerRegistry } from '../../../dahn/registry/default-visualizer-registry';
@@ -37,7 +38,9 @@ import { dismissStartupOverlay } from '../../startup-overlay';
     }
   `,
 })
-export class CanvasHostComponent implements AfterViewInit {
+export class CanvasHostComponent implements AfterViewInit, OnDestroy {
+  private readonly collectionOccurrences = new Set<NodeCollectionActivation>();
+  ngOnDestroy(): void { this.collectionOccurrences.forEach(occurrence => occurrence.dispose()); this.collectionOccurrences.clear(); }
   @ViewChild('canvasHost') private readonly canvasHost?: ElementRef<HTMLElement>;
 
   private readonly applicationSession = inject(ApplicationSessionService);
@@ -286,7 +289,10 @@ export class CanvasHostComponent implements AfterViewInit {
           const rootNodeElement = document.createElement(nodeTag) as HTMLElement & {
             setContext(context: VisualizerContext): void;
           };
+          const collectionActivation = new NodeCollectionActivation(transaction, activeHolonSpace, rootNodeVisualizer, materialized);
+          this.collectionOccurrences.add(collectionActivation);
           rootNodeElement.setContext({
+            collectionActivation,
             title: (await activeHolonSpace.key()) ?? await activeHolonSpace.versionedKey(),
             target: { reference: activeHolonSpace },
             holon: new DahnHolonView(activeHolonSpace),

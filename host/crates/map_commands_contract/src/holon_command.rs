@@ -60,6 +60,18 @@ impl HolonAction {
             }
             HolonAction::Read(ReadableHolonAction::GetPropertyIsArray) => "get_property_is_array",
             HolonAction::Read(ReadableHolonAction::GetAvailableDances) => "get_available_dances",
+            HolonAction::Read(ReadableHolonAction::GetDescribedRelatedHolons { .. }) => {
+                "get_described_related_holons"
+            }
+            HolonAction::Read(ReadableHolonAction::GetInstanceProperties) => {
+                "get_instance_properties"
+            }
+            HolonAction::Read(ReadableHolonAction::GetPropertyValueKind) => {
+                "get_property_value_kind"
+            }
+            HolonAction::Read(ReadableHolonAction::GetValidatedPropertyValue { .. }) => {
+                "get_validated_property_value"
+            }
             HolonAction::Write(_) => "holon_write",
         }
     }
@@ -111,6 +123,14 @@ pub enum ReadableHolonAction {
     GetPropertyIsArray,
     /// Effective afforded Dances of the target holon.
     GetAvailableDances,
+    /// Collection membership together with its declared target type.
+    GetDescribedRelatedHolons { name: RelationshipName },
+    /// Effective properties of the target HolonType, not its metatype.
+    GetInstanceProperties,
+    /// Declared scalar representation of a property descriptor.
+    GetPropertyValueKind,
+    /// Read an authored value and check its declared ValueType.
+    GetValidatedPropertyValue { name: PropertyName },
 }
 
 /// Mutating holon actions.
