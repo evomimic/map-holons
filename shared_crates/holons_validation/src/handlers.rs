@@ -133,6 +133,20 @@ pub(crate) fn native_rule_kind(name: CoreValidationRuleName) -> Option<core_type
         BaseValueKindMatchesBoolean => Some(BaseValueKind::Boolean),
         BaseValueKindMatchesBytes => Some(BaseValueKind::Bytes),
         BaseValueKindMatchesEnum => Some(BaseValueKind::Enum),
-        RequiredPropertyPresence | NoUndescribedProperties => None,
+        RequiredPropertyPresence
+        | NoUndescribedProperties
+        | AtMostOneDirectParent
+        | AcyclicExtendsLineage
+        | ExtendsLineageTerminatesAtTypeDescriptor
+        | UniqueTypeDescriptorRoot
+        | LocalInstanceKindAnchorDesignation
+        | InstanceKindAnchorsAreAbstract
+        | TypeDescriptorRootKindException
+        | DescribingCategoryCompatibility
+        | DescriptorMetaTypeCorrespondence
+        | NoInheritedMemberRedeclaration
+        | UniqueSemanticMemberNames
+        | WellFormedEffectiveMemberDefinitions
+        | ContractMemberKindCompatibility => None,
     }
 }

@@ -1,9 +1,9 @@
-//! Canonical identities of the first active Core validation rules.
+//! Canonical identities of Core validation rules with registered handlers.
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-/// Fixed Commit rules supported by the initial holon/property/value cohort.
+/// Fixed Commit rule identities. Canonical bindings activate independently.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, EnumIter)]
 pub enum CoreValidationRuleName {
     /// DS-PROP-001: required effective properties must be present.
@@ -20,6 +20,32 @@ pub enum CoreValidationRuleName {
     BaseValueKindMatchesBytes,
     /// Enum values use the native enum representation.
     BaseValueKindMatchesEnum,
+    /// DS-STRUCT-002: at most one direct Extends parent.
+    AtMostOneDirectParent,
+    /// DS-STRUCT-003: Extends lineage has no cycle.
+    AcyclicExtendsLineage,
+    /// DS-STRUCT-004: parented lineage reaches TypeDescriptor.
+    ExtendsLineageTerminatesAtTypeDescriptor,
+    /// DS-STRUCT-005: TypeDescriptor is the unique descriptor root.
+    UniqueTypeDescriptorRoot,
+    /// DS-KIND-001: local instance-kind anchor designation.
+    LocalInstanceKindAnchorDesignation,
+    /// DS-KIND-002: kind anchors are abstract.
+    InstanceKindAnchorsAreAbstract,
+    /// DS-KIND-003: only TypeDescriptor lacks an instance kind.
+    TypeDescriptorRootKindException,
+    /// DS-KIND-004: describing category matches the graph-derived requirement.
+    DescribingCategoryCompatibility,
+    /// DS-KIND-005: descriptor status corresponds to a meta-type describer.
+    DescriptorMetaTypeCorrespondence,
+    /// DS-CONTRACT-001: inherited member identities are not redeclared.
+    NoInheritedMemberRedeclaration,
+    /// DS-CONTRACT-002: semantic names are unique within each member namespace.
+    UniqueSemanticMemberNames,
+    /// DS-CONTRACT-003: effective member definitions have C2 structure.
+    WellFormedEffectiveMemberDefinitions,
+    /// DS-CONTRACT-004: member instance kinds match their contract positions.
+    ContractMemberKindCompatibility,
 }
 
 impl CoreValidationRuleName {
@@ -40,6 +66,33 @@ impl CoreValidationRuleName {
             Self::BaseValueKindMatchesBoolean => "BaseValueKindMatchesBoolean.ValidationRule",
             Self::BaseValueKindMatchesBytes => "BaseValueKindMatchesBytes.ValidationRule",
             Self::BaseValueKindMatchesEnum => "BaseValueKindMatchesEnum.ValidationRule",
+            Self::AtMostOneDirectParent => "AtMostOneDirectParent.ValidationRule",
+            Self::AcyclicExtendsLineage => "AcyclicExtendsLineage.ValidationRule",
+            Self::ExtendsLineageTerminatesAtTypeDescriptor => {
+                "ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule"
+            }
+            Self::UniqueTypeDescriptorRoot => "UniqueTypeDescriptorRoot.ValidationRule",
+            Self::LocalInstanceKindAnchorDesignation => {
+                "LocalInstanceKindAnchorDesignation.ValidationRule"
+            }
+            Self::InstanceKindAnchorsAreAbstract => "InstanceKindAnchorsAreAbstract.ValidationRule",
+            Self::TypeDescriptorRootKindException => {
+                "TypeDescriptorRootKindException.ValidationRule"
+            }
+            Self::DescribingCategoryCompatibility => {
+                "DescribingCategoryCompatibility.ValidationRule"
+            }
+            Self::DescriptorMetaTypeCorrespondence => {
+                "DescriptorMetaTypeCorrespondence.ValidationRule"
+            }
+            Self::NoInheritedMemberRedeclaration => "NoInheritedMemberRedeclaration.ValidationRule",
+            Self::UniqueSemanticMemberNames => "UniqueSemanticMemberNames.ValidationRule",
+            Self::WellFormedEffectiveMemberDefinitions => {
+                "WellFormedEffectiveMemberDefinitions.ValidationRule"
+            }
+            Self::ContractMemberKindCompatibility => {
+                "ContractMemberKindCompatibility.ValidationRule"
+            }
         }
     }
 }

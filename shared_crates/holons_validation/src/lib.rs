@@ -11,6 +11,7 @@
 mod collector;
 mod commitments;
 mod contexts;
+mod descriptor_rules;
 mod handlers;
 mod orchestration;
 mod prospective;
@@ -22,6 +23,7 @@ mod validators;
 pub use collector::{ValidationCollector, ValidationObservations};
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
 pub use contexts::{HolonValidationContext, PropertyValidationContext, ValueValidationContext};
+pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
 pub use orchestration::validate_commit_candidates;
 pub use prospective::{
     competing_replacement_findings, resolve_validation_anchor, resolve_validation_anchor_in_view,

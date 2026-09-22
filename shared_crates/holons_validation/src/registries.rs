@@ -3,9 +3,9 @@ use holons_core::HolonDescriptor;
 use type_names::CoreValidationRuleName;
 
 use crate::{
-    handlers, HolonValidationSubject, PropertyValidationContext, PropertyValidationSubject,
-    ResolvedConstraint, ResolvedValidationBinding, ValidationCollector, ValueValidationContext,
-    ValueValidationSubject,
+    descriptor_rules, handlers, HolonValidationSubject, PropertyValidationContext,
+    PropertyValidationSubject, ResolvedConstraint, ResolvedValidationBinding, ValidationCollector,
+    ValueValidationContext, ValueValidationSubject,
 };
 
 /// Canonical fully qualified schema key of a validation rule.
@@ -28,6 +28,12 @@ pub enum ValidationInvocation<'a> {
         descriptor: &'a HolonDescriptor,
         /// Identity-only diagnostic path.
         path: &'a ValidationSubjectPath,
+    },
+    /// Descriptor-kernel products prepared once for one subject assessment.
+    Descriptor {
+        binding: &'a ResolvedValidationBinding,
+        path: &'a ValidationSubjectPath,
+        products: &'a descriptor_rules::DescriptorRuleProducts,
     },
     /// Complete-contract property, even when its value is absent.
     Property {
@@ -74,7 +80,7 @@ pub type StaticConstraintHandler = fn(
 pub struct StaticRuleRegistry;
 
 impl StaticRuleRegistry {
-    /// Looks up exactly the initial seven canonical rule identities.
+    /// Looks up every implemented canonical rule; binding activation is separate.
     pub fn lookup(key: &ValidationRuleKey) -> Option<StaticRuleHandler> {
         use CoreValidationRuleName::*;
         match CoreValidationRuleName::from_key(&key.0)? {
@@ -85,6 +91,37 @@ impl StaticRuleRegistry {
             | BaseValueKindMatchesBoolean
             | BaseValueKindMatchesBytes
             | BaseValueKindMatchesEnum => Some(handlers::base_value_kind_matches),
+            AtMostOneDirectParent => Some(descriptor_rules::at_most_one_direct_parent),
+            AcyclicExtendsLineage => Some(descriptor_rules::acyclic_extends_lineage),
+            ExtendsLineageTerminatesAtTypeDescriptor => {
+                Some(descriptor_rules::extends_lineage_terminates_at_type_descriptor)
+            }
+            UniqueTypeDescriptorRoot => Some(descriptor_rules::unique_type_descriptor_root),
+            LocalInstanceKindAnchorDesignation => {
+                Some(descriptor_rules::local_instance_kind_anchor_designation)
+            }
+            InstanceKindAnchorsAreAbstract => {
+                Some(descriptor_rules::instance_kind_anchors_are_abstract)
+            }
+            TypeDescriptorRootKindException => {
+                Some(descriptor_rules::type_descriptor_root_kind_exception)
+            }
+            DescribingCategoryCompatibility => {
+                Some(descriptor_rules::describing_category_compatibility)
+            }
+            DescriptorMetaTypeCorrespondence => {
+                Some(descriptor_rules::descriptor_meta_type_correspondence)
+            }
+            NoInheritedMemberRedeclaration => {
+                Some(descriptor_rules::no_inherited_member_redeclaration)
+            }
+            UniqueSemanticMemberNames => Some(descriptor_rules::unique_semantic_member_names),
+            WellFormedEffectiveMemberDefinitions => {
+                Some(descriptor_rules::well_formed_effective_member_definitions)
+            }
+            ContractMemberKindCompatibility => {
+                Some(descriptor_rules::contract_member_kind_compatibility)
+            }
         }
     }
 }

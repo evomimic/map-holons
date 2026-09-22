@@ -58,7 +58,7 @@ pub use inheritance::{
 pub use inverse_relationship_descriptor::InverseRelationshipDescriptor;
 pub use inverse_resolution::resolve_inverse_relationship_name;
 pub use key_rule_descriptor::KeyRuleDescriptor;
-pub use kind_semantics::{DescribingCompatibility, DescriptorKindRoots};
+pub use kind_semantics::{DescribingCompatibility, DescriptorKindRoots, KindResolutionError};
 pub use operator_category::OperatorCategory;
 pub use operator_descriptor::OperatorDescriptor;
 pub use property_descriptor::PropertyDescriptor;

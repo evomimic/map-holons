@@ -902,6 +902,418 @@ fn identical_candidate_and_aggregate_findings_keep_distinct_carriers() -> Result
     Ok(())
 }
 
+fn c2_kind_roots(fixture: &mut Fixture) -> Result<holons_core::DescriptorKindRoots, HolonError> {
+    use type_names::CorePropertyTypeName;
+    fixture.node("MetaHolonType.MetaTypeDescriptor")?;
+    fixture.link(
+        "MetaTypeDescriptor.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "MetaHolonType.MetaTypeDescriptor",
+        CoreRelationshipTypeName::Extends,
+        "MetaTypeDescriptor.HolonType",
+    )?;
+    for (key, anchor) in [
+        ("TypeDescriptor", false),
+        ("HolonType.TypeDescriptor", true),
+        ("MetaTypeDescriptor.HolonType", false),
+        ("MetaHolonType.MetaTypeDescriptor", false),
+        ("PropertyType.TypeDescriptor", true),
+        ("Contract", false),
+    ] {
+        fixture
+            .nodes
+            .get_mut(key)
+            .unwrap()
+            .with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, anchor)?;
+    }
+    fixture
+        .nodes
+        .get_mut("HolonType.TypeDescriptor")
+        .unwrap()
+        .with_property_value(CorePropertyTypeName::IsAbstractType, true)?;
+    holons_core::DescriptorKindRoots::from_resolved(
+        &fixture.context,
+        fixture.nodes["TypeDescriptor"].clone(),
+        fixture.nodes["HolonType.TypeDescriptor"].clone(),
+        fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
+        fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone(),
+    )
+}
+
+fn dispatch_c2_rule(
+    fixture: &mut Fixture,
+    rule: CoreValidationRuleName,
+    products: &DescriptorRuleProducts,
+    subject: &HolonReference,
+) -> Result<Vec<core_types::CommitValidationViolation>, HolonError> {
+    fixture.node(rule.as_str())?;
+    let binding = ResolvedValidationBinding {
+        rule: fixture.nodes[rule.as_str()].clone(),
+        declaring_descriptor: holons_core::HolonDescriptor::from_holon(
+            fixture.nodes["MetaTypeDescriptor.HolonType"].clone(),
+        ),
+    };
+    let path = ValidationSubjectPath::Holon { holon_identity: subject.reference_id_string() };
+    let mut collector = ValidationCollector::default();
+    StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).unwrap()(
+        ValidationInvocation::Descriptor { binding: &binding, path: &path, products },
+        &mut collector,
+    )?;
+    Ok(collector.into_report().violations)
+}
+
+#[test]
+fn all_thirteen_c2_handlers_are_registered_but_have_no_native_value_kind() {
+    use CoreValidationRuleName::*;
+    for rule in [
+        AtMostOneDirectParent,
+        AcyclicExtendsLineage,
+        ExtendsLineageTerminatesAtTypeDescriptor,
+        UniqueTypeDescriptorRoot,
+        LocalInstanceKindAnchorDesignation,
+        InstanceKindAnchorsAreAbstract,
+        TypeDescriptorRootKindException,
+        DescribingCategoryCompatibility,
+        DescriptorMetaTypeCorrespondence,
+        NoInheritedMemberRedeclaration,
+        UniqueSemanticMemberNames,
+        WellFormedEffectiveMemberDefinitions,
+        ContractMemberKindCompatibility,
+    ] {
+        assert!(StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).is_some());
+        assert_eq!(crate::handlers::native_rule_kind(rule), None);
+    }
+}
+
+#[test]
+fn structural_handler_reports_multiple_parents_from_drained_kernel_diagnosis(
+) -> Result<(), HolonError> {
+    use holons_core::StructuralPrerequisites;
+    let mut fixture = Fixture::new()?;
+    fixture.node("OtherParent")?;
+    fixture.link("Contract", CoreRelationshipTypeName::Extends, "OtherParent")?;
+    let subject = fixture.nodes["Contract"].clone();
+    let prerequisites =
+        StructuralPrerequisites::assess(&subject, &fixture.nodes["TypeDescriptor"])?;
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_structure(&prerequisites, &fixture.nodes["TypeDescriptor"]);
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::AtMostOneDirectParent,
+        &products,
+        &subject,
+    )?;
+    assert_eq!(findings.len(), 1);
+    assert!(
+        matches!(&findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-STRUCT-002")
+    );
+    assert!(findings[0].message.contains("2 direct Extends parents"));
+    Ok(())
+}
+
+#[test]
+fn structural_handlers_translate_cycle_termination_and_root_defects() -> Result<(), HolonError> {
+    use holons_core::StructuralPrerequisites;
+    for (rule, code, subject_key) in [
+        (CoreValidationRuleName::AcyclicExtendsLineage, "DS-STRUCT-003", "A"),
+        (
+            CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
+            "DS-STRUCT-004",
+            "Child",
+        ),
+        (CoreValidationRuleName::UniqueTypeDescriptorRoot, "DS-STRUCT-005", "TypeDescriptor"),
+    ] {
+        let mut fixture = Fixture::new()?;
+        match subject_key {
+            "A" => {
+                fixture.node("A")?;
+                fixture.node("B")?;
+                fixture.link("A", CoreRelationshipTypeName::Extends, "B")?;
+                fixture.link("B", CoreRelationshipTypeName::Extends, "A")?;
+            }
+            "Child" => {
+                fixture.node("Child")?;
+                fixture.node("Unrooted")?;
+                fixture.link("Child", CoreRelationshipTypeName::Extends, "Unrooted")?;
+            }
+            "TypeDescriptor" => {
+                fixture.node("Unrooted")?;
+                fixture.link("TypeDescriptor", CoreRelationshipTypeName::Extends, "Unrooted")?;
+            }
+            _ => unreachable!(),
+        }
+        let subject = fixture.nodes[subject_key].clone();
+        let prerequisites =
+            StructuralPrerequisites::assess(&subject, &fixture.nodes["TypeDescriptor"])?;
+        let mut products = DescriptorRuleProducts::default();
+        products.prepare_structure(&prerequisites, &fixture.nodes["TypeDescriptor"]);
+        let findings = dispatch_c2_rule(&mut fixture, rule, &products, &subject)?;
+        assert!(findings.iter().any(|finding| matches!(&finding.kind,
+            CommitValidationViolationKind::RuleViolation { code: actual } if actual == code)));
+    }
+    Ok(())
+}
+
+#[test]
+fn rootless_holon_is_not_inferred_to_be_a_descriptor_from_its_meta_type() -> Result<(), HolonError>
+{
+    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    let mut fixture = Fixture::new()?;
+    let roots = c2_kind_roots(&mut fixture)?;
+    fixture.node("Rootless")?;
+    fixture.link(
+        "Rootless",
+        CoreRelationshipTypeName::DescribedBy,
+        "MetaHolonType.MetaTypeDescriptor",
+    )?;
+    let subject = fixture.nodes["Rootless"].clone();
+    let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_structure(&prerequisites, &roots.type_descriptor);
+    products.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    assert!(dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::UniqueTypeDescriptorRoot,
+        &products,
+        &subject
+    )?
+    .is_empty());
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
+        &products,
+        &subject,
+    )?;
+    assert_eq!(findings.len(), 1);
+    assert!(matches!(&findings[0].kind,
+        CommitValidationViolationKind::RuleViolation { code } if code == "DS-KIND-005"));
+    Ok(())
+}
+
+#[test]
+fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<(), HolonError> {
+    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    let mut fixture = Fixture::new()?;
+    let roots = c2_kind_roots(&mut fixture)?;
+    let subject = fixture.nodes["Contract"].clone();
+    let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
+    fixture
+        .nodes
+        .get_mut("Contract")
+        .unwrap()
+        .remove_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind)?;
+    let mut missing = DescriptorRuleProducts::default();
+    missing.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    assert_eq!(
+        dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
+            &missing,
+            &subject,
+        )?
+        .len(),
+        1
+    );
+    fixture
+        .nodes
+        .get_mut("Contract")
+        .unwrap()
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
+    let mut non_abstract = DescriptorRuleProducts::default();
+    non_abstract.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    assert_eq!(
+        dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
+            &non_abstract,
+            &subject,
+        )?
+        .len(),
+        1
+    );
+    Ok(())
+}
+
+#[test]
+fn kind_handlers_reject_an_ordinary_holon_with_an_incompatible_describer() -> Result<(), HolonError>
+{
+    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    let mut fixture = Fixture::new()?;
+    let roots = c2_kind_roots(&mut fixture)?;
+    let mut subject = fixture.context.mutation().new_holon(Some("ordinary".into()))?;
+    subject.with_descriptor(fixture.nodes["StringValueType.ValueType"].clone())?;
+    let subject: HolonReference = subject.into();
+    let prerequisites = StructuralPrerequisites::assess(&subject, &roots.type_descriptor)?;
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::DescribingCategoryCompatibility,
+        &products,
+        &subject,
+    )?;
+    assert_eq!(findings.len(), 1);
+    assert!(
+        matches!(&findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-KIND-004")
+    );
+    Ok(())
+}
+
+#[test]
+fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion(
+) -> Result<(), HolonError> {
+    use holons_core::{CurrentDescriptorReader, StructuralPrerequisites};
+    let mut fixture = Fixture::new()?;
+    let roots = c2_kind_roots(&mut fixture)?;
+    let meta_holon = fixture.nodes["MetaHolonType.MetaTypeDescriptor"].clone();
+    fixture
+        .nodes
+        .get_mut("MetaHolonType.MetaTypeDescriptor")
+        .unwrap()
+        .add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![meta_holon.clone()])?;
+    let prerequisites = StructuralPrerequisites::assess(&meta_holon, &roots.type_descriptor)?;
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
+    assert!(dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
+        &products,
+        &meta_holon,
+    )?
+    .is_empty());
+
+    let root = fixture.nodes["TypeDescriptor"].clone();
+    let root_prerequisites = StructuralPrerequisites::assess(&root, &root)?;
+    let mut root_products = DescriptorRuleProducts::default();
+    root_products.prepare_kind(&root_prerequisites, &roots, &CurrentDescriptorReader)?;
+    assert!(dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::TypeDescriptorRootKindException,
+        &root_products,
+        &root,
+    )?
+    .is_empty());
+    fixture
+        .nodes
+        .get_mut("TypeDescriptor")
+        .unwrap()
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
+    let mut invalid_root_products = DescriptorRuleProducts::default();
+    invalid_root_products.prepare_kind(&root_prerequisites, &roots, &CurrentDescriptorReader)?;
+    assert_eq!(
+        dispatch_c2_rule(
+            &mut fixture,
+            CoreValidationRuleName::TypeDescriptorRootKindException,
+            &invalid_root_products,
+            &root,
+        )?
+        .len(),
+        1
+    );
+    Ok(())
+}
+
+#[test]
+fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
+) -> Result<(), HolonError> {
+    use holons_core::{ContractContributions, CurrentDescriptorReader};
+    let mut fixture = Fixture::new()?;
+    let roots = c2_kind_roots(&mut fixture)?;
+    fixture.node("Subtype")?;
+    fixture.link("Subtype", CoreRelationshipTypeName::Extends, "Contract")?;
+    fixture.link("Subtype", CoreRelationshipTypeName::InstanceProperties, "Title.PropertyType")?;
+    fixture.node("Alias.PropertyType")?;
+    fixture
+        .nodes
+        .get_mut("Alias.PropertyType")
+        .unwrap()
+        .with_property_value("TypeName", "Title")?;
+    fixture.link(
+        "Alias.PropertyType",
+        CoreRelationshipTypeName::Extends,
+        "PropertyType.TypeDescriptor",
+    )?;
+    fixture.link("Subtype", CoreRelationshipTypeName::InstanceProperties, "Alias.PropertyType")?;
+    fixture.node("WrongKind")?;
+    fixture
+        .nodes
+        .get_mut("WrongKind")
+        .unwrap()
+        .with_property_value("TypeName", "Wrong")?
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
+    fixture.link("WrongKind", CoreRelationshipTypeName::Extends, "StringValueType.ValueType")?;
+    fixture.link("WrongKind", CoreRelationshipTypeName::ValueType, "StringValueType.ValueType")?;
+    fixture.link("Subtype", CoreRelationshipTypeName::InstanceProperties, "WrongKind")?;
+    fixture.node("BadValue.PropertyType")?;
+    fixture
+        .nodes
+        .get_mut("BadValue.PropertyType")
+        .unwrap()
+        .with_property_value("TypeName", "BadValue")?
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, false)?;
+    fixture.link(
+        "BadValue.PropertyType",
+        CoreRelationshipTypeName::Extends,
+        "PropertyType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "BadValue.PropertyType",
+        CoreRelationshipTypeName::ValueType,
+        "PropertyType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "Subtype",
+        CoreRelationshipTypeName::InstanceProperties,
+        "BadValue.PropertyType",
+    )?;
+    let subject = fixture.nodes["Subtype"].clone();
+    let contributions = ContractContributions::resolve(&subject)?;
+    let contract_roots = crate::descriptor_rules::ContractKindRoots {
+        property: fixture.nodes["PropertyType.TypeDescriptor"].clone(),
+        relationship: fixture.nodes["DeclaredRelationshipType"].clone(),
+        value: fixture.nodes["StringValueType.ValueType"].clone(),
+    };
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_contract(&contributions, &roots, &contract_roots, &CurrentDescriptorReader)?;
+    for (rule, code) in [
+        (CoreValidationRuleName::NoInheritedMemberRedeclaration, "DS-CONTRACT-001"),
+        (CoreValidationRuleName::UniqueSemanticMemberNames, "DS-CONTRACT-002"),
+        (CoreValidationRuleName::WellFormedEffectiveMemberDefinitions, "DS-CONTRACT-003"),
+        (CoreValidationRuleName::ContractMemberKindCompatibility, "DS-CONTRACT-004"),
+    ] {
+        let findings = dispatch_c2_rule(&mut fixture, rule, &products, &subject)?;
+        assert!(findings.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code: actual } if actual == code)));
+        if rule == CoreValidationRuleName::UniqueSemanticMemberNames {
+            assert!(findings.iter().any(|finding| finding
+                .message
+                .contains(&fixture.nodes["Contract"].reference_id_string())
+                && finding.message.contains(&subject.reference_id_string())));
+        }
+        if rule == CoreValidationRuleName::WellFormedEffectiveMemberDefinitions {
+            for edge in ["SourceType", "TargetType"] {
+                assert_eq!(
+                    findings
+                        .iter()
+                        .filter(|finding| finding
+                            .message
+                            .contains(&format!("exactly one {edge} target")))
+                        .count(),
+                    1
+                );
+            }
+        }
+        if rule == CoreValidationRuleName::ContractMemberKindCompatibility {
+            assert!(findings
+                .iter()
+                .any(|finding| finding.message.contains("property ValueType target")));
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn invalidated_unattached_position_returns_error_without_panicking() -> Result<(), HolonError> {
     let finding = core_types::CommitValidationViolation {
@@ -1247,8 +1659,9 @@ fn competition_diagnostics_are_deterministic_bounded_and_replaceable() -> Result
     // two-phase carrier can already install and replace these per-candidate findings.
     let mut assessment = crate::orchestration::PreparedAssessment::default();
     for candidate in &candidates {
-        let mut report = CommitValidationReport::default();
-        report.violations = findings.iter().filter(|finding| matches!(&finding.subject, ValidationSubjectPath::Holon { holon_identity } if holon_identity == &candidate.reference_id_string())).cloned().collect();
+        let report = CommitValidationReport::from_candidate(
+            findings.iter().filter(|finding| matches!(&finding.subject, ValidationSubjectPath::Holon { holon_identity } if holon_identity == &candidate.reference_id_string())).cloned().collect(),
+        );
         assessment.record_candidate(candidate, report);
     }
     assert!(!assessment.install_outcomes()?.is_accepted());

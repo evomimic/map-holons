@@ -520,3 +520,76 @@ fn saved_lineage_recognizes_staged_replacement_root() -> Result<(), HolonError> 
     assert!(roots.is_descriptor(diagnosis.valid_lineage().unwrap()).unwrap());
     Ok(())
 }
+
+#[test]
+fn kind_designation_diagnosis_distinguishes_bad_values_from_field_shaped_read_errors(
+) -> Result<(), HolonError> {
+    struct FailingReader {
+        target: HolonReference,
+        wrong_type: bool,
+    }
+    impl DescriptorReader for FailingReader {
+        type Error = HolonError;
+        fn select(&self, reference: &HolonReference) -> Result<HolonReference, HolonError> {
+            if same_definition(reference, &self.target) {
+                return Err(if self.wrong_type {
+                    HolonError::UnexpectedValueType(
+                        "unreadable reference".into(),
+                        "reference".into(),
+                    )
+                } else {
+                    HolonError::EmptyField("unreadable reference".into())
+                });
+            }
+            Ok(reference.clone())
+        }
+        fn operational_error(error: &HolonError) -> Option<&HolonError> {
+            Some(error)
+        }
+    }
+
+    let context = build_context();
+    let roots = kind_roots(&context)?;
+    let mut subject = new_test_holon(&context, "missing-local-designation")?;
+    subject.add_related_holons(R::Extends, vec![roots.holon_type.clone()])?;
+    describe(&mut subject, &roots.meta_holon_type)?;
+    let reference: HolonReference = subject.clone().into();
+    let prerequisites = StructuralPrerequisites::assess(&reference, &roots.type_descriptor)?;
+    let lineage = prerequisites.subject_lineage.valid_lineage().unwrap();
+    for wrong_type in [false, true] {
+        if wrong_type {
+            subject.with_property_value(P::DefinesInstanceTypeKind, "false")?;
+        }
+        for result in [
+            roots.assess_instance_type_kind(lineage).map(|_| ()),
+            roots.assess_describing_lineages_compatible(&prerequisites).map(|_| ()),
+        ] {
+            let Err(KindResolutionError::InvalidDesignation { descriptor, error }) = result else {
+                panic!("readable malformed designation must retain its cause");
+            };
+            assert!(same_definition(&descriptor, &reference));
+            assert!(match error {
+                HolonError::EmptyField(_) => !wrong_type,
+                HolonError::UnexpectedValueType(..) => wrong_type,
+                _ => false,
+            });
+        }
+    }
+
+    subject.with_property_value(P::DefinesInstanceTypeKind, false)?;
+    for wrong_type in [false, true] {
+        let roots = roots
+            .clone()
+            .with_reader(FailingReader { target: roots.holon_type.clone(), wrong_type });
+        for result in [
+            roots.assess_instance_type_kind(lineage).map(|_| ()),
+            roots.assess_describing_lineages_compatible(&prerequisites).map(|_| ()),
+        ] {
+            assert!(
+                matches!(result, Err(KindResolutionError::Read(_))),
+                "an unreadable ancestor remains operational regardless of its error variant"
+            );
+        }
+    }
+    Ok(())
+}
