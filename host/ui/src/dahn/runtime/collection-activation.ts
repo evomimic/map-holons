@@ -1,3 +1,4 @@
+import { INSPECT_HOLON_EVENT, type CollectionInteractionElement, type InspectHolonIntent } from '../contracts/visualizers';
 import type { CollectionAffordance } from '../contracts/affordances';
 import type { DescribedHolonCollection, HolonReference, MapTransaction } from '../deps';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
@@ -23,12 +24,13 @@ function serialize(transaction: MapTransaction, work: () => Promise<void>): void
   transactionQueues.set(transaction, next.catch(() => {}));
 }
 
-type CollectionElement = HTMLElement & {
+type CollectionElement = CollectionInteractionElement & {
   setCollection(collection: DescribedHolonCollection, title: string): Promise<void>;
 };
 
 /** Owns one Node occurrence's lazy collection lifecycle, never its layout. */
 export class NodeCollectionActivation implements CollectionActivation {
+  private content?: CollectionElement;
   private generation = 0;
   private disposed = false;
   private selected: CollectionAffordance | undefined;
@@ -47,6 +49,8 @@ export class NodeCollectionActivation implements CollectionActivation {
   }
 
   private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotKey: string, publish: (update: CollectionUpdate) => void): void {
+    this.content?.setInspectHolonHandler(null);
+    this.content = undefined;
     const generation = ++this.generation;
     const current = () => !this.disposed && generation === this.generation;
     publish({ state: 'loading' });
@@ -75,6 +79,14 @@ export class NodeCollectionActivation implements CollectionActivation {
         stage = 'Property retrieval / presentation';
         await element.setCollection(collection, affordance.label);
         if (!current()) return;
+        if (typeof element.setInspectHolonHandler !== 'function') throw new Error('Selected implementation has no collection interaction binding');
+        element.setInspectHolonHandler(reference => {
+          if (!current() || !element.isConnected) return;
+          element.dispatchEvent(new CustomEvent<InspectHolonIntent>(INSPECT_HOLON_EVENT, {
+            bubbles: true, composed: true, detail: { reference, source: element },
+          }));
+        });
+        this.content = element;
         publish({ state: collection.length === 0 ? 'loaded-empty' : 'loaded', content: element });
       } catch (error) {
         if (!current()) return;
@@ -87,5 +99,9 @@ export class NodeCollectionActivation implements CollectionActivation {
     });
   }
 
-  dispose(): void { this.disposed = true; ++this.generation; }
+  dispose(): void {
+    this.disposed = true; ++this.generation;
+    this.content?.setInspectHolonHandler(null);
+    this.content = undefined;
+  }
 }

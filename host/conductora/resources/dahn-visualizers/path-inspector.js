@@ -1,5 +1,14 @@
 export default class PathInspectorElement extends HTMLElement {
+  constructor() {
+    super();
+    // The nearest Path Inspector owns interpretation for its composed slots.
+    this.addEventListener('dahn-inspect-holon', event => {
+      event.stopPropagation();
+      if (this.isConnected && this.contains(event.detail.source)) this.onInspectHolon?.(event.detail);
+    });
+  }
   setContext(context) {
+    this.onInspectHolon = context.onInspectHolon;
     this.dataset.visualizerId = 'path-inspector';
     this.dataset.dahnPathInspector = 'true';
     this.style.display = 'grid';

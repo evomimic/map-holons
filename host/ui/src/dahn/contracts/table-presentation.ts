@@ -3,9 +3,9 @@ import type { BaseValue, MapString } from '../deps';
 /**
  * Opaque, collection-scoped identity for a logical table row.
  *
- * The static table does not display or interact with this identity. Keeping it
- * in the presentation contract lets later filtering and ordering preserve row
- * identity without making array position semantic.
+ * The table uses this identity for occurrence-local selection. Keeping it in
+ * the presentation contract lets filtering and ordering preserve row identity
+ * without making array position semantic.
  */
 export type TableRowId = MapString;
 
@@ -57,7 +57,8 @@ export interface HolonPropertyMapTablePresentation extends TablePresentationBase
  * Input to the Table Collection Visualizer.
  *
  * It deliberately contains presentation values only: no collection-origin
- * metadata, transport types, or storage/runtime handles enter the renderer.
+ * metadata, transport types, or runtime handles are embedded in this projection.
+ * A renderer receiving a described collection retains its member handles separately.
  */
 export type TablePresentation =
   | ScalarTablePresentation

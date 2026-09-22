@@ -29,10 +29,42 @@ function assertPresentation(presentation) {
         }
     }
 }
-/** Static, read-only renderer for a provenance-free table presentation. */
+/** Read-only collection renderer with occurrence-local selection and inspection intent. */
 export default class TableCollectionVisualizerElement extends HTMLElement {
+    generation = 0;
+    members = new Map();
+    selectedRow = undefined;
+    setInspectHolonHandler(handler) {
+        this.inspectHolon = handler;
+        if (handler === null) this.members.clear();
+    }
+    selectRow(row) {
+        this.selectedRow = row.dataset.rowId;
+        for (const candidate of this.table.tBodies[0].rows) {
+            const selected = candidate === row;
+            candidate.setAttribute('aria-selected', String(selected));
+            candidate.tabIndex = selected ? 0 : -1;
+            for (const cell of candidate.cells) {
+                cell.style.background = selected ? 'var(--dahn-action-hover-surface-background)' : 'var(--dahn-collection-surface-background)';
+                cell.style.color = selected ? 'var(--dahn-action-text-color)' : 'var(--dahn-collection-text-color)';
+                cell.style.boxShadow = selected ? 'inset 0 -2px var(--dahn-action-text-color)' : '';
+            }
+        }
+    }
+    activateRow(row) {
+        this.selectRow(row);
+        const reference = this.members.get(row.dataset.rowId);
+        if (reference !== undefined && this.isConnected) this.inspectHolon?.(reference);
+    }
     // The selected renderer owns its generic projection, independently of the producer.
     async setCollection(collection, title) {
+        const generation = ++this.generation;
+        this.members.clear();
+        this.selectedRow = undefined;
+        this.observer?.disconnect();
+        this.table = undefined;
+        this.replaceChildren();
+        const members = new Map();
         const columns = [];
         for (const property of await collection.elementType.instanceProperties()) {
             if (await property.isArray()) continue;
@@ -42,10 +74,14 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         if (keyIndex > 0) columns.unshift(...columns.splice(keyIndex, 1));
         const rowIds = [];
         for (const member of collection) {
-            rowIds.push(crypto.randomUUID());
+            const rowId = crypto.randomUUID();
+            rowIds.push(rowId);
+            members.set(rowId, member);
             for (const column of columns) column.values.push(await member.propertyValue(column.id));
         }
+        if (generation !== this.generation) return;
         this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns } });
+        this.members = members;
     }
     connectedCallback() {
         this.observer?.disconnect();
@@ -83,6 +119,9 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             throw new Error('Table Collection Visualizer requires a collection presentation.');
         }
         assertPresentation(presentation);
+        ++this.generation;
+        this.members.clear();
+        this.selectedRow = undefined;
         this.dataset['visualizerId'] = 'table-collection';
         this.dataset['collectionKind'] = presentation.kind;
         this.disconnectedCallback();
@@ -100,6 +139,8 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const table = document.createElement('table');
         table.dataset['tableCollection'] = 'table';
         table.setAttribute('aria-label', presentation.displayName);
+        table.setAttribute('role', 'grid');
+        table.setAttribute('aria-multiselectable', 'false');
         table.style.borderCollapse = 'separate';
         table.style.borderSpacing = '0';
         table.style.borderTop = 'var(--dahn-table-cell-border-width) var(--dahn-table-cell-border-style) var(--dahn-table-cell-border-color)';
@@ -132,6 +173,36 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         for (const [rowIndex, rowId] of presentation.rowIds.entries()) {
             const row = document.createElement('tr');
             row.dataset['rowId'] = rowId;
+            row.tabIndex = rowIndex === 0 ? 0 : -1;
+            row.setAttribute('aria-selected', 'false');
+            // Old DOM rows must never operate on a replacement input.
+            const current = () => this.table === table && row.parentElement === table.tBodies[0];
+            row.addEventListener('click', event => {
+                if (event.button !== 0 || !current()) return;
+                this.selectRow(row); row.focus();
+            });
+            row.addEventListener('mousedown', event => {
+                // Cancel native word/paragraph selection before it competes with activation.
+                // The first press remains available for normal text dragging.
+                if (event.button === 0 && event.detail > 1 && current()) event.preventDefault();
+            });
+            row.addEventListener('dblclick', event => {
+                if (event.button === 0 && current()) this.activateRow(row);
+            });
+            row.addEventListener('keydown', event => {
+                if (!current() || event.altKey || event.ctrlKey || event.metaKey) return;
+                const rows = [...table.tBodies[0].rows];
+                const index = rows.indexOf(row);
+                const next = { ArrowDown: Math.min(index + 1, rows.length - 1), ArrowUp: Math.max(index - 1, 0), Home: 0, End: rows.length - 1 }[event.key];
+                if (next !== undefined) {
+                    event.preventDefault(); this.selectRow(rows[next]); rows[next].focus();
+                    rows[next].scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+                } else if (event.key === ' ' || event.key === 'Enter') {
+                    event.preventDefault();
+                    if (event.key === ' ') this.selectRow(row);
+                    else if (!event.repeat) this.activateRow(row);
+                }
+            });
             for (const column of presentation.columns) {
                 const cell = document.createElement('td');
                 cell.dataset['columnId'] = column.id;
@@ -150,7 +221,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const viewport = document.createElement('div');
         viewport.dataset.tableCollection = 'viewport';
         Object.assign(viewport.style, { flex: '1 1 0', minHeight: '0', minWidth: '0', maxWidth: '100%', overflowX: 'hidden', overflowY: 'auto' });
-        viewport.tabIndex = 0;
+        viewport.tabIndex = presentation.rowIds.length ? -1 : 0;
         viewport.setAttribute('aria-label', 'Collection columns');
         viewport.append(table);
         this.viewport = viewport;
