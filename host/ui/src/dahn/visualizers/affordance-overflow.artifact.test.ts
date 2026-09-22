@@ -97,6 +97,7 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   expect(activate).toHaveBeenCalledWith(tabs[1], 'HolonInspector.CollectionsSlot', expect.any(Function));
   expect(popup.hidden).toBe(true); expect(document.activeElement).toBe(more);
   expect(controls[1].getAttribute('aria-selected')).toBe('true');
+  expect(controls.map(control => control.tabIndex)).toEqual([0, -1, -1]);
   expect(more.textContent).toBe('Two ▾');
   expect(more.dataset.overflowSelected).toBe('true');
   controls[0].click();
@@ -105,8 +106,10 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   controls[1].click();
   width = 300; observers.forEach(cb => cb()); flush();
   expect(more.inert).toBe(true);
+  expect(controls.map(control => control.tabIndex)).toEqual([-1, 0, -1]);
   expect(more.textContent).toBe('More collections');
   width = 200; observers.forEach(cb => cb()); flush();
+  expect(controls.map(control => control.tabIndex)).toEqual([0, -1, -1]);
   expect(more.textContent).toBe('Two ▾');
   expect(more.dataset.overflowSelected).toBe('true');
   node.remove(); expect(dispose).toHaveBeenCalledOnce();

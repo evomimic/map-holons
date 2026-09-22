@@ -308,6 +308,11 @@ function horizontalOverflow(host, controls, label) {
     }
     hidden = controls.slice(count);
     controls.forEach((control, index) => show(control, index < count));
+    // A hidden selection must not remove the visible tab strip from keyboard navigation.
+    const tabs = controls.filter(control => control.getAttribute('role') === 'tab' && !control.disabled);
+    const visibleTabs = tabs.filter(control => !control.inert);
+    const tabStop = visibleTabs.find(control => control.getAttribute('aria-selected') === 'true') ?? visibleTabs[0];
+    tabs.forEach(control => { control.tabIndex = control === tabStop ? 0 : -1; });
     if (!overflow && document.activeElement === more) { host.tabIndex = -1; host.focus(); }
     show(more, overflow);
     close();

@@ -828,7 +828,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:1e5204850fad882e3ed83fa88c4154e0f987076d372407512ce13ba86aa995b5",
+        "VisualizerArtifactDigest": "sha256:d31148ff2e7de10ce885fe441323bed9e3fc6b664b3fd33de464d8c19823d1f1",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
