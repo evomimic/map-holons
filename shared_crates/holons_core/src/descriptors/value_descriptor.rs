@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use crate::descriptors::inheritance::equals_or_extends;
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     supported_operators as collect_supported_operators,
     supports_operator as descriptor_supports_operator,
@@ -177,16 +176,27 @@ impl ValueDescriptor {
         &self,
         roots: &super::ResolvedValueTypeRoots,
     ) -> Result<ValueDescriptorKind, HolonError> {
+        self.value_kind_with_reader(roots, &super::CurrentDescriptorReader)
+    }
+
+    /// Resolves native kind using the assessment's selected lineage content.
+    pub fn value_kind_with_reader<R: super::DescriptorReader>(
+        &self,
+        roots: &super::ResolvedValueTypeRoots,
+        reader: &R,
+    ) -> Result<ValueDescriptorKind, R::Error> {
         crate::reference_layer::assert_reference_transaction_compatible(
             &self.holon,
             &roots.context,
         )?;
         for (root, kind) in &roots.families {
-            if equals_or_extends(&self.holon, root)? {
+            if super::equals_or_extends_with_reader(&self.holon, root, reader)? {
                 return Ok(kind.clone());
             }
         }
-        Ok(ValueDescriptorKind::Unsupported(self.header().type_name()?.to_string()))
+        Ok(ValueDescriptorKind::Unsupported(
+            TypeHeader::new(&reader.select(&self.holon)?).type_name()?.to_string(),
+        ))
     }
 
     /// Classifies the declared representation without inspecting an instance value.

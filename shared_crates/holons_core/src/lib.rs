@@ -24,14 +24,16 @@ pub use core_types::HolonError;
 pub use descriptors::{
     ancestors, applicable_descriptor_types, classify_relationship_direction, constraint_applies_to,
     effective_relationship_declaration, effective_relationship_targets, equals_or_extends,
-    resolve_core_descriptor, resolve_describing_type, resolve_schema_ownership, schema_components,
-    schema_dependencies, schema_rules, walk_extends_chain, ContractContributions,
-    DescribingCompatibility, DescribingTypeResolution, Descriptor, DescriptorKindRoots,
+    resolve_core_descriptor, resolve_describing_type, resolve_schema_ownership, same_definition,
+    schema_components, schema_dependencies, schema_rules, walk_extends_chain, AssessmentReadError,
+    ContractContributions, CurrentDescriptorReader, DescribingCompatibility,
+    DescribingTypeResolution, Descriptor, DescriptorKindRoots, DescriptorReader,
     EffectiveRelationshipMember, ExtendsIter, ExtendsLineageDefect, ExtendsLineageDiagnosis,
-    HolonDescriptor, HolonSpaceDescriptor, PropertyDescriptor, RelationshipDescriptor,
-    RelationshipDirection, ResolvedValueTypeRoots, SchemaOwnershipKind, SchemaOwnershipResolution,
-    StructuralPrerequisites, TransactionDescriptor, TypeHeader, UniversalDescriptorContract,
-    ValidExtendsLineage, ValueDescriptor, ValueDescriptorKind,
+    HolonDescriptor, HolonSpaceDescriptor, PropertyDescriptor, ProspectiveDescriptorReader,
+    ProspectiveSelection, RelationshipDescriptor, RelationshipDirection, ResolvedValueTypeRoots,
+    SchemaOwnershipKind, SchemaOwnershipResolution, StructuralPrerequisites, TransactionDescriptor,
+    TypeHeader, UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor,
+    ValueDescriptorKind,
 };
 pub use reference_layer::{
     assert_reference_transaction_compatible, CompletionOutcome, Divergence, EquivalenceOutcome,

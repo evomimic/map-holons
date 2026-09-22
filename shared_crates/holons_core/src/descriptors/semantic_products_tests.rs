@@ -457,3 +457,66 @@ fn staged_ownership_and_local_dependencies_need_no_materialized_inverses() -> Re
     assert!(schema_dependencies(&child.into())?.is_empty());
     Ok(())
 }
+
+#[test]
+fn saved_lineage_recognizes_staged_replacement_root() -> Result<(), HolonError> {
+    use crate::core_shared_objects::holon::SavedHolon;
+    use base_types::{BaseValue, MapInteger, MapString};
+    use core_types::{HolonId, LocalId, PropertyMap};
+    use std::collections::HashMap;
+    use type_names::{ToPropertyName, ToRelationshipName};
+    let root_id = HolonId::Local(LocalId(vec![1; 39]));
+    let child_id = HolonId::Local(LocalId(vec![2; 39]));
+    let saved = ["TypeDescriptor", "Child"]
+        .iter()
+        .enumerate()
+        .map(|(i, key)| {
+            SavedHolon::new(
+                LocalId(vec![i as u8 + 1; 39]),
+                PropertyMap::from([(
+                    "Key".to_property_name(),
+                    BaseValue::StringValue(MapString((*key).into())),
+                )]),
+                None,
+                MapInteger(1),
+            )
+        })
+        .collect();
+    let context = build_context_with_saved_holons(
+        saved,
+        HashMap::from([(
+            (child_id.clone(), R::Extends.to_relationship_name()),
+            vec![root_id.clone()],
+        )]),
+    );
+    let saved_root = crate::SmartReference::new_from_id(context.space_read_handle(), root_id);
+    let child = HolonReference::smart_from_id(context.space_read_handle(), child_id);
+    let replacement: HolonReference = stage_update_snapshot(
+        &context,
+        saved_root.holon_id().local_id().clone(),
+        new_test_holon(&context, "TypeDescriptor")?,
+    )?
+    .into();
+    let roots = DescriptorKindRoots::from_resolved(
+        &context,
+        replacement.clone(),
+        replacement.clone(),
+        replacement.clone(),
+        replacement.clone(),
+    )?;
+    // Ordinary reads retain saved identity and do not substitute staged content.
+    assert!(!same_definition(&child, &replacement));
+    assert!(!equals_or_extends(&saved_root.clone().into(), &replacement)?);
+    assert!(matches!(
+        ExtendsLineageDiagnosis::assess(&child, &replacement)?.defects.as_slice(),
+        [ExtendsLineageDefect::WrongTermination { .. }]
+    ));
+    let HolonReference::Staged(staged) = &replacement else { panic!("staged replacement") };
+    let reader = ProspectiveDescriptorReader::new(&context, std::slice::from_ref(staged))?;
+    let roots = roots.with_reader(&reader);
+    let diagnosis =
+        ExtendsLineageDiagnosis::assess_with_reader(&child, &replacement, &reader).unwrap();
+    assert!(diagnosis.defects.is_empty(), "prospective lineage terminates at selected root");
+    assert!(roots.is_descriptor(diagnosis.valid_lineage().unwrap()).unwrap());
+    Ok(())
+}

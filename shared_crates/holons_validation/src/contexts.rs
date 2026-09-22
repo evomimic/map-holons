@@ -56,6 +56,18 @@ impl HolonValidationContext {
 }
 
 impl ValueValidationContext {
+    /// Prepares the existing active cohort with prospective reference semantics.
+    /// This does not resolve or activate any of the later C2 rule roots.
+    pub fn resolve_in_view(
+        context: &Arc<TransactionContext>,
+        reader: &holons_core::ProspectiveDescriptorReader,
+    ) -> Result<Self, holons_core::AssessmentReadError> {
+        Ok(Self {
+            roots: ResolvedValueTypeRoots::resolve_with_reader(context, reader)?,
+            bindings: BindingRoots::resolve_in_view(context, reader)?,
+        })
+    }
+
     /// Resolves immutable anchors for a standalone value or property pass.
     pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
         Ok(Self {
@@ -101,6 +113,21 @@ pub(crate) struct BindingRoots {
 
 impl BindingRoots {
     fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
+        Self::resolve_using(|key| resolve_core_descriptor(context, key))
+    }
+
+    fn resolve_in_view(
+        context: &Arc<TransactionContext>,
+        reader: &holons_core::ProspectiveDescriptorReader,
+    ) -> Result<Self, holons_core::AssessmentReadError> {
+        Self::resolve_using(|key| {
+            crate::prospective::resolve_validation_anchor_in_view(context, key, reader)
+        })
+    }
+
+    fn resolve_using<E>(
+        mut resolve: impl FnMut(&str) -> Result<HolonReference, E>,
+    ) -> Result<Self, E> {
         use CoreValidationRuleName::*;
         use SubjectLevel::*;
         // Names are confined to resolution. Placement and rule selection thereafter
@@ -153,14 +180,14 @@ impl BindingRoots {
         .map(|(name, family, descriptor_family, level)| {
             Ok(BindingRoot {
                 name,
-                rule: resolve_core_descriptor(context, name.as_str())?,
-                family: resolve_core_descriptor(context, family)?,
-                descriptor_family: resolve_core_descriptor(context, descriptor_family)?,
+                rule: resolve(name.as_str())?,
+                family: resolve(family)?,
+                descriptor_family: resolve(descriptor_family)?,
                 level,
                 route: BindingDispatchRoute::Subject,
             })
         })
-        .collect::<Result<_, HolonError>>()?;
+        .collect::<Result<_, E>>()?;
         Ok(Self { entries })
     }
 }

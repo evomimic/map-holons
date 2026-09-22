@@ -2,7 +2,7 @@
 use super::{
     accessor_helpers::lock_error,
     definition_identity::{lineage_contains, same_definition},
-    walk_extends_chain,
+    walk_extends_chain_with_reader, CurrentDescriptorReader, DescriptorReader,
 };
 use crate::reference_layer::{HolonReference, ReadableHolon};
 use core_types::HolonError;
@@ -20,7 +20,16 @@ pub enum DescribingTypeResolution {
 pub fn resolve_describing_type(
     subject: &HolonReference,
 ) -> Result<DescribingTypeResolution, HolonError> {
-    let targets = local_targets(subject, CoreRelationshipTypeName::DescribedBy)?;
+    resolve_describing_type_with_reader(subject, &CurrentDescriptorReader)
+}
+
+/// Reads direct describing targets through the assessment's replacement selection.
+pub fn resolve_describing_type_with_reader<R: DescriptorReader>(
+    subject: &HolonReference,
+    reader: &R,
+) -> Result<DescribingTypeResolution, R::Error> {
+    let targets =
+        local_targets_with_reader(subject, CoreRelationshipTypeName::DescribedBy, reader)?;
     Ok(match targets.as_slice() {
         [] => DescribingTypeResolution::Missing,
         [one] => DescribingTypeResolution::Unique(one.clone()),
@@ -32,9 +41,18 @@ pub(super) fn local_targets(
     subject: &HolonReference,
     relationship: CoreRelationshipTypeName,
 ) -> Result<Vec<HolonReference>, HolonError> {
+    local_targets_with_reader(subject, relationship, &CurrentDescriptorReader)
+}
+
+pub(super) fn local_targets_with_reader<R: DescriptorReader>(
+    subject: &HolonReference,
+    relationship: CoreRelationshipTypeName,
+    reader: &R,
+) -> Result<Vec<HolonReference>, R::Error> {
+    let subject = reader.select(subject)?;
     let collection = subject.related_holons(relationship)?;
     let members = collection.read().map_err(lock_error)?.get_members().clone();
-    Ok(members)
+    members.iter().map(|member| reader.select(member)).collect()
 }
 
 /// Stable graph defects, distinct from failures to read the graph.
@@ -77,37 +95,50 @@ impl ExtendsLineageDiagnosis {
     /// Applies to any holon, without requiring descriptor classification.
     /// The designated root is supplied by the assessment's resolved identities.
     pub fn assess(subject: &HolonReference, root: &HolonReference) -> Result<Self, HolonError> {
+        Self::assess_with_reader(subject, root, &CurrentDescriptorReader)
+    }
+
+    /// Diagnoses selected prospective content using the existing kernel lineage walk.
+    pub fn assess_with_reader<R: DescriptorReader>(
+        subject: &HolonReference,
+        root: &HolonReference,
+        reader: &R,
+    ) -> Result<Self, R::Error> {
+        let root = reader.select(root)?;
         let mut lineage = Vec::new();
         let mut defects = Vec::new();
-        for step in walk_extends_chain(subject) {
+        for step in walk_extends_chain_with_reader(subject, reader) {
             match step {
                 Ok(holon) => lineage.push(holon),
-                Err(HolonError::MultipleExtends { count, .. }) => {
-                    defects.push(ExtendsLineageDefect::MultipleParents {
-                        subject: lineage
-                            .last()
-                            .expect("iterator yields subject before defect")
-                            .clone(),
-                        count,
-                    });
-                }
-                Err(HolonError::CyclicExtends { descriptor }) => {
-                    defects.push(ExtendsLineageDefect::Cycle {
-                        path: lineage.clone(),
-                        repeated_descriptor: descriptor,
-                    })
-                }
-                Err(error) => return Err(error),
+                Err(error) => match R::operational_error(&error) {
+                    Some(HolonError::MultipleExtends { count, .. }) => {
+                        defects.push(ExtendsLineageDefect::MultipleParents {
+                            subject: lineage
+                                .last()
+                                .expect("iterator yields subject before defect")
+                                .clone(),
+                            count: *count,
+                        })
+                    }
+                    Some(HolonError::CyclicExtends { descriptor }) => {
+                        defects.push(ExtendsLineageDefect::Cycle {
+                            path: lineage.clone(),
+                            repeated_descriptor: descriptor.clone(),
+                        })
+                    }
+                    _ => return Err(error),
+                },
             }
         }
         let completed = defects.is_empty();
         // A root reached before a defect must still satisfy its own local invariant.
-        if lineage_contains(&lineage, root)
-            && !local_targets(root, CoreRelationshipTypeName::Extends)?.is_empty()
+        if lineage_contains(&lineage, &root)
+            && !local_targets_with_reader(&root, CoreRelationshipTypeName::Extends, reader)?
+                .is_empty()
         {
             defects.push(ExtendsLineageDefect::RootHasParent);
         }
-        if completed && lineage.len() > 1 && !same_definition(lineage.last().unwrap(), root) {
+        if completed && lineage.len() > 1 && !same_definition(lineage.last().unwrap(), &root) {
             defects.push(ExtendsLineageDefect::WrongTermination {
                 terminal: lineage.last().unwrap().clone(),
             });
@@ -133,16 +164,25 @@ impl StructuralPrerequisites {
     /// Diagnoses the subject and its unique direct describer without classifying either.
     /// Self-description reuses the subject diagnosis instead of recursively validating.
     pub fn assess(subject: &HolonReference, root: &HolonReference) -> Result<Self, HolonError> {
-        let describing_type = resolve_describing_type(subject)?;
-        let subject_lineage = ExtendsLineageDiagnosis::assess(subject, root)?;
+        Self::assess_with_reader(subject, root, &CurrentDescriptorReader)
+    }
+
+    /// Diagnoses selected prospective content using the existing kernel lineage walk.
+    pub fn assess_with_reader<R: DescriptorReader>(
+        subject: &HolonReference,
+        root: &HolonReference,
+        reader: &R,
+    ) -> Result<Self, R::Error> {
+        let describing_type = resolve_describing_type_with_reader(subject, reader)?;
+        let subject_lineage = ExtendsLineageDiagnosis::assess_with_reader(subject, root, reader)?;
         let governing_lineage = match &describing_type {
             DescribingTypeResolution::Unique(descriptor)
-                if same_definition(descriptor, subject) =>
+                if same_definition(descriptor, &subject_lineage.lineage[0]) =>
             {
                 Some(subject_lineage.clone())
             }
             DescribingTypeResolution::Unique(descriptor) => {
-                Some(ExtendsLineageDiagnosis::assess(descriptor, root)?)
+                Some(ExtendsLineageDiagnosis::assess_with_reader(descriptor, root, reader)?)
             }
             _ => None,
         };

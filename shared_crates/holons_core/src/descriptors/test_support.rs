@@ -51,10 +51,20 @@ impl HolonServiceApi for TestHolonService {
 
     fn fetch_all_related_holons_internal(
         &self,
-        _context: &Arc<TransactionContext>,
-        _source_id: &HolonId,
+        context: &Arc<TransactionContext>,
+        source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        unreachable_in_descriptor_tests()
+        if !self.saved_holons.contains_key(source_id) {
+            return unreachable_in_descriptor_tests();
+        }
+        let mut result = RelationshipMap::new_empty();
+        for (source, name) in self.saved_relationships.keys() {
+            if source == source_id {
+                let collection = self.fetch_related_holons_internal(context, source_id, name)?;
+                result.insert(name.clone(), Arc::new(std::sync::RwLock::new(collection)));
+            }
+        }
+        Ok(result)
     }
 
     fn fetch_holon_internal(
@@ -336,4 +346,19 @@ pub(crate) fn new_constraint_holon(
     describe(&mut holon, constraint_type)?;
     own(&mut holon, owner, super::SchemaOwnershipKind::Rule)?;
     Ok(holon)
+}
+
+/// Restores an explicit update snapshot, allowing malformed semantic content in kernel tests.
+/// The normal staging path requires a complete describing contract before cloning saved state.
+pub(crate) fn stage_update_snapshot(
+    context: &Arc<TransactionContext>,
+    source: LocalId,
+    input: TransientReference,
+) -> Result<StagedReference, HolonError> {
+    use crate::core_shared_objects::holon::StagedHolon;
+    let model = input.raw_holon_clone_model()?;
+    let staged = context.mutation().stage_new_holon(input)?;
+    *staged.get_holon_to_commit(context)?.write().unwrap() =
+        Holon::Staged(StagedHolon::new_for_update_from_clone_model(model, source)?);
+    Ok(staged)
 }

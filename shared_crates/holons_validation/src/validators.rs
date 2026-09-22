@@ -1,6 +1,6 @@
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
 use holons_core::{
-    equals_or_extends, Descriptor, HolonDescriptor, HolonReference, ReadableHolon, ValueDescriptor,
+    Descriptor, HolonDescriptor, HolonReference, ReadableHolon, ValueDescriptor,
     ValueDescriptorKind,
 };
 
@@ -231,19 +231,46 @@ fn compatible_binding(
     level: SubjectLevel,
     context: &ValueValidationContext,
 ) -> Result<bool, HolonError> {
+    compatible_binding_with_reader(
+        binding,
+        family,
+        key,
+        governing,
+        level,
+        context,
+        &holons_core::CurrentDescriptorReader,
+    )
+}
+
+fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
+    binding: &ResolvedValidationBinding,
+    family: &HolonDescriptor,
+    key: &ValidationRuleKey,
+    governing: &HolonReference,
+    level: SubjectLevel,
+    context: &ValueValidationContext,
+    reader: &R,
+) -> Result<bool, R::Error> {
+    use holons_core::descriptors::equals_or_extends_with_reader;
     let roots = &context.bindings;
     if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key.0) {
         // A familiar key on another reference cannot impersonate a canonical rule.
-        if binding.rule.reference_id_string() != root.rule.reference_id_string()
-            || root.level != level
-            || !equals_or_extends(family.holon(), &root.family)?
-            || !equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
+        if !holons_core::same_definition(
+            &reader.select(&binding.rule)?,
+            &reader.select(&root.rule)?,
+        ) || root.level != level
+            || !equals_or_extends_with_reader(family.holon(), &root.family, reader)?
+            || !equals_or_extends_with_reader(
+                binding.declaring_descriptor.holon(),
+                &root.descriptor_family,
+                reader,
+            )?
         {
             return Ok(false);
         }
         if let Some(expected) = native_rule_kind(root.name) {
-            return Ok(ValueDescriptor::from_holon(governing.clone())
-                .value_kind(&context.roots)?
+            return Ok(ValueDescriptor::from_holon(reader.select(governing)?)
+                .value_kind_with_reader(&context.roots, reader)?
                 == ValueDescriptorKind::BaseValue(expected));
         }
         return Ok(true);
@@ -253,10 +280,14 @@ fn compatible_binding(
     let mut matched_family = false;
     let mut admitted = false;
     for root in &roots.entries {
-        if equals_or_extends(family.holon(), &root.family)? {
+        if equals_or_extends_with_reader(family.holon(), &root.family, reader)? {
             matched_family = true;
             if root.level == level
-                && equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
+                && equals_or_extends_with_reader(
+                    binding.declaring_descriptor.holon(),
+                    &root.descriptor_family,
+                    reader,
+                )?
             {
                 admitted = true;
             }
@@ -301,4 +332,33 @@ fn assess_constraints(
         }
     }
     Ok(())
+}
+
+/// C2 preparation uses the selected rule's own describing edge, never a saved family
+/// resolved before replacement selection. Activation belongs with the C2 cohort.
+#[allow(dead_code)]
+pub(crate) fn compatible_binding_in_view(
+    binding: &ResolvedValidationBinding,
+    governing: &HolonReference,
+    level: SubjectLevel,
+    context: &ValueValidationContext,
+    reader: &holons_core::ProspectiveDescriptorReader,
+) -> Result<bool, holons_core::AssessmentReadError> {
+    use holons_core::{DescribingTypeResolution, DescriptorReader};
+    let rule = reader.select(&binding.rule)?;
+    let key = ValidationRuleKey(required_key(&rule)?);
+    let DescribingTypeResolution::Unique(family) =
+        holons_core::descriptors::resolve_describing_type_with_reader(&rule, reader)?
+    else {
+        return Ok(false);
+    };
+    compatible_binding_with_reader(
+        binding,
+        &HolonDescriptor::from_holon(family),
+        &key,
+        governing,
+        level,
+        context,
+        reader,
+    )
 }

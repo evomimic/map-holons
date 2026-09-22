@@ -1043,3 +1043,207 @@ fn unknown_rule_family_still_fails_closed_as_unsupported() -> Result<(), HolonEr
     assert_eq!(report.violations[0].rule_key.as_deref(), Some(key));
     Ok(())
 }
+
+#[test]
+fn split_saved_schema_and_staged_binding_roots_are_compatible() -> Result<(), HolonError> {
+    use crate::contexts::SubjectLevel;
+    use crate::validators::compatible_binding_in_view;
+    use holons_core::{ProspectiveDescriptorReader, ReadableHolon};
+    let fixture = Fixture::new()?.saved_snapshot()?;
+    // Earlier definitions are persisted; a later subject is staged independently.
+    let mut subject = fixture.staged_subject("later-subject")?;
+    subject.with_property_value("Title", "valid")?;
+    assert!(validate_commit_candidates(&fixture.context, &[subject])?.is_accepted());
+
+    let rule_key = CoreValidationRuleName::NoUndescribedProperties.as_str();
+    let rule_update = fixture.replacement(rule_key)?;
+    let family_update = fixture.replacement("HolonValidationRule.HolonType")?;
+    let descriptor_update = fixture.replacement("HolonType.TypeDescriptor")?;
+    let reader = ProspectiveDescriptorReader::new(
+        &fixture.context,
+        &[rule_update.clone(), family_update, descriptor_update],
+    )?;
+    let context = ValueValidationContext::resolve_in_view(&fixture.context, &reader).unwrap();
+    let binding = ResolvedValidationBinding {
+        rule: fixture.nodes[rule_key].clone(),
+        declaring_descriptor: holons_core::HolonDescriptor::from_holon(
+            fixture.nodes["HolonType.TypeDescriptor"].clone(),
+        ),
+    };
+    assert!(compatible_binding_in_view(
+        &binding,
+        &fixture.nodes["Contract"],
+        SubjectLevel::Holon,
+        &context,
+        &reader
+    )
+    .unwrap());
+    assert!(!holons_core::same_definition(&binding.rule, &rule_update.clone().into()));
+    assert!(holons_core::same_definition(
+        &holons_core::DescriptorReader::select(&reader, &binding.rule).unwrap(),
+        &rule_update.into()
+    ));
+    // Content selection must also apply to effective binding discovery, not just equality.
+    let contributions = holons_core::descriptors::effective_relationship_targets_with_reader(
+        &fixture.nodes["Contract"],
+        CoreRelationshipTypeName::ValidationBindings,
+        &reader,
+    )
+    .unwrap();
+    assert_eq!(contributions.len(), 1);
+    assert!(matches!(&contributions[0].member, HolonReference::Staged(_)));
+    assert!(matches!(&contributions[0].declared_on, HolonReference::Staged(_)));
+    assert_eq!(contributions[0].member.key()?.unwrap().to_string(), rule_key);
+    Ok(())
+}
+
+#[test]
+fn binding_family_and_constraint_type_use_replacement_content() -> Result<(), HolonError> {
+    use holons_core::{
+        EffectiveRelationshipMember, HolonCollection, HolonCollectionApi,
+        ProspectiveDescriptorReader,
+    };
+    use std::sync::{Arc, RwLock};
+    use type_names::ToRelationshipName;
+    let fixture = Fixture::new()?.saved_snapshot()?;
+    let rule_key = CoreValidationRuleName::NoUndescribedProperties.as_str();
+    let wrong_family = fixture.nodes["PropertyValidationRule.HolonType"].clone();
+    let update = fixture.replacement_with(rule_key, |model| {
+        let mut members = HolonCollection::new_transient();
+        members.add_references(vec![wrong_family.clone()])?;
+        model.relationships.as_mut().unwrap().insert(
+            CoreRelationshipTypeName::DescribedBy.to_relationship_name(),
+            Arc::new(RwLock::new(members)),
+        );
+        Ok(())
+    })?;
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &[update])?;
+    let context = ValueValidationContext::resolve_in_view(&fixture.context, &reader).unwrap();
+    let binding = ResolvedValidationBinding {
+        rule: fixture.nodes[rule_key].clone(),
+        declaring_descriptor: holons_core::HolonDescriptor::from_holon(
+            fixture.nodes["HolonType.TypeDescriptor"].clone(),
+        ),
+    };
+    assert!(!crate::validators::compatible_binding_in_view(
+        &binding,
+        &fixture.nodes["Contract"],
+        crate::contexts::SubjectLevel::Holon,
+        &context,
+        &reader
+    )
+    .unwrap());
+    let constraint = ResolvedConstraint::with_reader(
+        EffectiveRelationshipMember {
+            member: binding.rule,
+            declared_on: fixture.nodes["HolonType.TypeDescriptor"].clone(),
+        },
+        &reader,
+    )
+    .unwrap();
+    assert!(holons_core::same_definition(constraint.constraint_type.holon(), &wrong_family));
+    Ok(())
+}
+
+#[test]
+fn competition_diagnostics_are_deterministic_bounded_and_replaceable() -> Result<(), HolonError> {
+    use holons_core::{AssessmentReadError, ProspectiveDescriptorReader};
+    let fixture = Fixture::new()?.saved_snapshot()?;
+    let key = CoreValidationRuleName::NoUndescribedProperties.as_str();
+    let mut candidates = vec![fixture.replacement(key)?, fixture.replacement(key)?];
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    let first = competing_replacement_findings(&reader);
+    assert_eq!(first.len(), 2);
+    let context = ValueValidationContext::resolve(&fixture.context);
+    // The old key lookup is deliberately not the prospective resolution path.
+    assert!(matches!(context, Err(HolonError::DuplicateError(..))));
+    let resolved = holons_core::descriptors::resolve_core_descriptor_with_reader(
+        &fixture.context,
+        key,
+        &reader,
+    );
+    assert!(matches!(resolved, Err(AssessmentReadError::Contested { .. })));
+    assert!(matches!(
+        ValueValidationContext::resolve_in_view(&fixture.context, &reader),
+        Err(AssessmentReadError::Contested { .. })
+    ));
+    let baseline_length = first.iter().map(|finding| finding.message.len()).max().unwrap();
+    candidates.reverse();
+    assert_eq!(
+        first,
+        competing_replacement_findings(&ProspectiveDescriptorReader::new(
+            &fixture.context,
+            &candidates
+        )?)
+    );
+    for _ in 0..18 {
+        candidates.push(fixture.replacement(key)?);
+    }
+    let findings = competing_replacement_findings(&ProspectiveDescriptorReader::new(
+        &fixture.context,
+        &candidates,
+    )?);
+    assert_eq!(findings.len(), candidates.len());
+    let mut identities: Vec<_> =
+        candidates.iter().map(|candidate| candidate.reference_id_string()).collect();
+    identities.sort();
+    for finding in &findings {
+        assert!(
+            matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "CompetingStagedReplacements")
+        );
+        assert!(finding.rule_key.is_none());
+        assert!(finding.descriptor_identity.is_none());
+        let ValidationSubjectPath::Holon { holon_identity } = &finding.subject else {
+            panic!("candidate subject")
+        };
+        let other = if holon_identity == &identities[0] { &identities[1] } else { &identities[0] };
+        assert!(finding.message.contains(holon_identity));
+        assert!(finding.message.contains(other));
+        assert!(finding.message.contains("20 live replacements"));
+        assert!(finding
+            .message
+            .contains(&format!("{}", holons_core::ReadableHolon::holon_id(&fixture.nodes[key])?)));
+        assert!(finding.message.len() <= baseline_length + 1, "only the count gains a digit");
+    }
+    // Phase 8 will call this preparation before installing outcomes. The existing
+    // two-phase carrier can already install and replace these per-candidate findings.
+    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    for candidate in &candidates {
+        let mut report = CommitValidationReport::default();
+        report.violations = findings.iter().filter(|finding| matches!(&finding.subject, ValidationSubjectPath::Holon { holon_identity } if holon_identity == &candidate.reference_id_string())).cloned().collect();
+        assessment.record_candidate(candidate, report);
+    }
+    assert!(!assessment.install_outcomes()?.is_accepted());
+    for candidate in &candidates[1..] {
+        candidate.abandon_staged_changes(&fixture.context)?;
+    }
+    let retry = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    assert!(competing_replacement_findings(&retry).is_empty());
+    let mut assessment = crate::orchestration::PreparedAssessment::default();
+    assessment.record_candidate(&candidates[0], CommitValidationReport::default());
+    assert!(assessment.install_outcomes()?.is_accepted());
+    Ok(())
+}
+
+#[test]
+fn missing_new_validation_anchor_is_a_deliberate_schema_incompatibility() -> Result<(), HolonError>
+{
+    let mut fixture = Fixture::new()?;
+    let key = "AtMostOneDirectParent.ValidationRule";
+    assert!(
+        matches!(resolve_validation_anchor(&fixture.context, key), Err(holons_core::AssessmentReadError::SchemaIncompatible { missing_anchor }) if missing_anchor == key)
+    );
+    fixture.node(key)?;
+    assert!(holons_core::same_definition(
+        &resolve_validation_anchor(&fixture.context, key).unwrap(),
+        &fixture.nodes[key]
+    ));
+    // Split bootstrap can find this anchor saved while later definitions are staged.
+    let mut saved = fixture.saved_snapshot()?;
+    saved.node("LaterDefinition")?;
+    assert!(holons_core::same_definition(
+        &resolve_validation_anchor(&saved.context, key).unwrap(),
+        &saved.nodes[key]
+    ));
+    Ok(())
+}

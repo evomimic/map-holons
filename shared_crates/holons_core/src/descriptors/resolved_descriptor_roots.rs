@@ -24,6 +24,23 @@ impl ResolvedValueTypeRoots {
     /// Resolves the seven canonical Core family roots through transaction lookup.
     /// Staged definitions take precedence; only absence permits persisted lookup.
     pub fn resolve(context: &Arc<TransactionContext>) -> Result<Self, HolonError> {
+        Self::resolve_using(context, |key| resolve_core_descriptor(context, key))
+    }
+
+    /// Resolves all value anchors through the same prospective replacement index.
+    pub fn resolve_with_reader<R: super::DescriptorReader>(
+        context: &Arc<TransactionContext>,
+        reader: &R,
+    ) -> Result<Self, R::Error> {
+        Self::resolve_using(context, |key| {
+            resolve_core_descriptor_with_reader(context, key, reader)
+        })
+    }
+
+    fn resolve_using<E>(
+        context: &Arc<TransactionContext>,
+        mut resolve: impl FnMut(&str) -> Result<HolonReference, E>,
+    ) -> Result<Self, E> {
         let families = [
             ("StringValueType.ValueType", ValueDescriptorKind::BaseValue(BaseValueKind::String)),
             ("IntegerValueType.ValueType", ValueDescriptorKind::BaseValue(BaseValueKind::Integer)),
@@ -34,8 +51,8 @@ impl ResolvedValueTypeRoots {
             ("ValueArrayValueType.ValueType", ValueDescriptorKind::ValueArray),
         ]
         .into_iter()
-        .map(|(key, kind)| Ok((resolve_core_descriptor(context, key)?, kind)))
-        .collect::<Result<Vec<_>, HolonError>>()?;
+        .map(|(key, kind)| Ok((resolve(key)?, kind)))
+        .collect::<Result<Vec<_>, E>>()?;
         Ok(Self { families, context: Arc::clone(context) })
     }
 }
@@ -123,4 +140,40 @@ mod tests {
             Err(HolonError::HolonNotFound(_))
         ));
     }
+}
+
+/// Resolves a canonical key for prospective assessment, distinguishing competing updates
+/// from unrelated same-key definitions. Selection never chooses one competitor's content.
+pub fn resolve_core_descriptor_with_reader<R: super::DescriptorReader>(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    reader: &R,
+) -> Result<HolonReference, R::Error> {
+    let key = MapString(key.to_owned());
+    let staged = match context.lookup().get_staged_holons_by_base_key(&key) {
+        Ok(staged) => staged,
+        Err(HolonError::HolonNotFound(_)) => Vec::new(),
+        Err(error) => return Err(error.into()),
+    };
+    let mut live = Vec::new();
+    for candidate in staged {
+        if candidate.is_live_validation_candidate()? {
+            live.push(HolonReference::from(candidate));
+        }
+    }
+    let Some(first) = live.first() else {
+        return reader.select(&context.lookup().get_saved_holon_by_key(&key)?.into());
+    };
+    let identity = crate::ProspectiveIdentity::for_reference(first, context)?;
+    for other in &live[1..] {
+        if crate::ProspectiveIdentity::for_reference(other, context)? != identity {
+            // Unrelated creates do not acquire canonical identity by sharing a key.
+            // Anchor resolution cannot choose which is Core; preserve the existing
+            // ambiguous-key operational error until the owning key invariant diagnoses it.
+            return Err(
+                HolonError::DuplicateError("Core descriptor key".into(), key.to_string()).into()
+            );
+        }
+    }
+    reader.select(first)
 }

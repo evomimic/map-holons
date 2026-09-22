@@ -1,4 +1,9 @@
-use std::{any::Any, collections::BTreeMap, sync::Arc};
+use holons_core::core_shared_objects::transient_holon_manager::ToHolonCloneModel;
+use std::{
+    any::Any,
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 use base_types::MapString;
 use core_types::{HolonError, HolonId, LocalId, RelationshipName};
@@ -6,15 +11,18 @@ use holons_core::core_shared_objects::{
     space_manager::HolonSpaceManager, transactions::TransactionContext, Holon,
 };
 use holons_core::{
-    HolonCollection, HolonReference, HolonServiceApi, RelationshipMap, ServiceRoutingPolicy,
-    StagedReference, TransientReference, WritableHolon,
+    HolonCollection, HolonCollectionApi, HolonReference, HolonServiceApi, ReadableHolon,
+    RelationshipMap, ServiceRoutingPolicy, StagedReference, TransientReference, WritableHolon,
 };
 use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
-/// In-memory fixture service: any attempt to reach storage fails the test.
-#[derive(Debug)]
-struct NoStorage;
-impl HolonServiceApi for NoStorage {
+/// Explicit saved snapshots only; unexpected writes and unbounded reads fail tests.
+#[derive(Debug, Default)]
+struct FixtureStorage {
+    holons: HashMap<HolonId, holons_core::core_shared_objects::holon::SavedHolon>,
+    relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+}
+impl HolonServiceApi for FixtureStorage {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -34,25 +42,44 @@ impl HolonServiceApi for NoStorage {
     }
     fn fetch_all_related_holons_internal(
         &self,
-        _: &Arc<TransactionContext>,
-        _: &HolonId,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        panic!("unexpected storage traversal")
+        let mut result = RelationshipMap::new_empty();
+        for (id, name) in self.relationships.keys() {
+            if id == source {
+                let collection = self.fetch_related_holons_internal(context, source, name)?;
+                result.insert(name.clone(), Arc::new(std::sync::RwLock::new(collection)));
+            }
+        }
+        Ok(result)
     }
     fn fetch_holon_internal(
         &self,
         _: &Arc<TransactionContext>,
-        _: &HolonId,
+        id: &HolonId,
     ) -> Result<Holon, HolonError> {
-        panic!("unexpected storage read")
+        Ok(Holon::Saved(self.holons.get(id).expect("unexpected storage read").clone()))
     }
     fn fetch_related_holons_internal(
         &self,
-        _: &Arc<TransactionContext>,
-        _: &HolonId,
-        _: &RelationshipName,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
-        panic!("unexpected storage relationship read")
+        assert!(self.holons.contains_key(source), "unexpected storage relationship read");
+        let mut collection = HolonCollection::new_transient();
+        if let Some(targets) = self.relationships.get(&(source.clone(), name.clone())) {
+            collection.add_references(
+                targets
+                    .iter()
+                    .map(|id| {
+                        HolonReference::smart_from_id(context.space_read_handle(), id.clone())
+                    })
+                    .collect(),
+            )?;
+        }
+        Ok(collection)
     }
     fn get_all_holons_internal(
         &self,
@@ -69,9 +96,20 @@ impl HolonServiceApi for NoStorage {
     }
     fn get_saved_holon_by_key_internal(
         &self,
-        _: &Arc<TransactionContext>,
+        context: &Arc<TransactionContext>,
         key: &MapString,
     ) -> Result<holons_core::SmartReference, HolonError> {
+        use type_names::ToPropertyName;
+        for (id, holon) in &self.holons {
+            if holon.property_map().get(&"Key".to_property_name())
+                == Some(&base_types::BaseValue::StringValue(key.clone()))
+            {
+                return Ok(holons_core::SmartReference::new_from_id(
+                    context.space_read_handle(),
+                    id.clone(),
+                ));
+            }
+        }
         Err(HolonError::HolonNotFound(key.to_string()))
     }
 }
@@ -80,6 +118,7 @@ impl HolonServiceApi for NoStorage {
 pub(super) struct Fixture {
     pub context: Arc<TransactionContext>,
     pub nodes: BTreeMap<String, HolonReference>,
+    saved_storage: Option<Arc<FixtureStorage>>,
 }
 
 pub(super) const RULES: [(CoreValidationRuleName, &str, &str); 7] = {
@@ -112,12 +151,12 @@ impl Fixture {
     pub fn empty() -> Result<Self, HolonError> {
         let manager = Arc::new(HolonSpaceManager::new_with_managers(
             None,
-            Arc::new(NoStorage),
+            Arc::new(FixtureStorage::default()),
             None,
             ServiceRoutingPolicy::BlockExternal,
         ));
         let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
-        Ok(Self { context, nodes: BTreeMap::new() })
+        Ok(Self { context, nodes: BTreeMap::new(), saved_storage: None })
     }
 
     pub fn new() -> Result<Self, HolonError> {
@@ -214,5 +253,91 @@ impl Fixture {
         let mut subject = self.context.mutation().stage_new_holon(subject)?;
         subject.with_descriptor(self.nodes["Contract"].clone())?;
         Ok(subject)
+    }
+}
+
+impl Fixture {
+    /// Saves the fixture graph as service snapshots and opens a fresh empty Nursery.
+    /// All relationship endpoints are rebound as saved references on read.
+    pub fn saved_snapshot(&self) -> Result<Self, HolonError> {
+        use holons_core::core_shared_objects::holon::SavedHolon;
+        let ids: BTreeMap<_, _> = self
+            .nodes
+            .keys()
+            .enumerate()
+            .map(|(index, key)| (key.clone(), HolonId::Local(LocalId(vec![index as u8 + 1; 39]))))
+            .collect();
+        let mut storage = FixtureStorage::default();
+        for (key, reference) in &self.nodes {
+            let model = reference.holon_clone_model()?;
+            let id = ids[key].clone();
+            storage.holons.insert(
+                id.clone(),
+                SavedHolon::new(id.local_id().clone(), model.properties, None, model.version),
+            );
+            if let Some(relationships) = model.relationships {
+                for (name, members) in relationships.iter() {
+                    let targets = members
+                        .read()
+                        .unwrap()
+                        .get_members()
+                        .iter()
+                        .map(|target| Ok(ids[&target.key()?.unwrap().to_string()].clone()))
+                        .collect::<Result<Vec<_>, HolonError>>()?;
+                    storage.relationships.insert((id.clone(), name), targets);
+                }
+            }
+        }
+        let storage = Arc::new(storage);
+        let manager = Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            storage.clone(),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ));
+        let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
+        let nodes = ids
+            .into_iter()
+            .map(|(key, id)| (key, HolonReference::smart_from_id(context.space_read_handle(), id)))
+            .collect();
+        Ok(Self { context, nodes, saved_storage: Some(storage) })
+    }
+
+    /// Restores an update snapshot for a saved schema definition without requiring its
+    /// complete meta-contract. Tests can deliberately author malformed replacements.
+    pub fn replacement(&self, key: &str) -> Result<StagedReference, HolonError> {
+        self.replacement_with(key, |_| Ok(()))
+    }
+
+    pub fn replacement_with(
+        &self,
+        key: &str,
+        edit: impl FnOnce(
+            &mut holons_core::core_shared_objects::holon::HolonCloneModel,
+        ) -> Result<(), HolonError>,
+    ) -> Result<StagedReference, HolonError> {
+        use holons_core::core_shared_objects::holon::{HolonCloneModel, StagedHolon};
+        let saved = &self.nodes[key];
+        let HolonReference::Smart(reference) = saved else { panic!("saved fixture required") };
+        let mut model = HolonCloneModel {
+            version: base_types::MapInteger(2),
+            original_id: None,
+            properties: reference.into_model()?.property_map,
+            relationships: Some(
+                self.saved_storage
+                    .as_ref()
+                    .unwrap()
+                    .fetch_all_related_holons_internal(&self.context, &saved.holon_id()?)?,
+            ),
+        };
+        edit(&mut model)?;
+        let transient = self.context.mutation().new_holon(Some(MapString(key.into())))?;
+        let staged = self.context.mutation().stage_new_holon(transient)?;
+        *staged.get_holon_to_commit(&self.context)?.write().unwrap() =
+            Holon::Staged(StagedHolon::new_for_update_from_clone_model(
+                model,
+                saved.holon_id()?.local_id().clone(),
+            )?);
+        Ok(staged)
     }
 }
