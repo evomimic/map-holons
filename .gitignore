@@ -42,6 +42,7 @@ workspaces/**/target/**/
 .notes/
 .claude/
 .running
+.claude/
 settings.json
 
 # Holochain local run files
