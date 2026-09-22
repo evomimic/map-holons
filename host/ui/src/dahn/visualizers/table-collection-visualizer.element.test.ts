@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { DahnTheme } from '../contracts/themes';
 import type { TablePresentation } from '../contracts/table-presentation';
 import type { VisualizerContext } from '../contracts/visualizers';
-import {
-  TABLE_COLLECTION_VISUALIZER_TAG,
-  TableCollectionVisualizerElement,
-} from './table-collection-visualizer.element';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const source = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/table-collection.js'), 'utf8');
+const artifact = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const TABLE_COLLECTION_VISUALIZER_TAG = artifact.TABLE_COLLECTION_VISUALIZER_TAG;
+type TableCollectionVisualizerElement = HTMLElement & { setContext(context: VisualizerContext): void };
+const TableCollectionVisualizerElement = artifact.default as new () => TableCollectionVisualizerElement;
+
 
 const THEME: DahnTheme = {
   themeKey: 'DAHN.DefaultTheme',
@@ -55,7 +59,8 @@ describe('TableCollectionVisualizerElement', () => {
     }));
 
     expect(element.dataset['collectionKind']).toBe('scalar');
-    expect(element.querySelector<HTMLElement>('[data-table-collection="header"]')?.textContent).toBe('Priority');
+    expect(element.querySelector('h2')).toBeNull();
+    expect(element.querySelector('table')?.getAttribute('aria-label')).toBe('Priority');
     expect(element.querySelectorAll('th')).toHaveLength(1);
     expect(element.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(element.querySelectorAll('tbody td')).toHaveLength(2);
@@ -123,4 +128,36 @@ describe('TableCollectionVisualizerElement', () => {
       }],
     }))).toThrow('has 2 values for 1 rows');
   });
+});
+
+it('allows descriptor-authorized mixed defaults while distinguishing missing values', () => {
+  const element = createTableCollectionVisualizer();
+  element.setContext(context({ kind: 'holon-property-map', displayName: 'Properties', rowIds: ['a', 'b', 'c'], columns: [{ id: 'DefaultValue', displayName: 'Default Value', valueType: 'AnyBaseValue', values: [{ StringValue: 'hello' }, { IntegerValue: 3 }, null] }] }));
+  expect([...element.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['hello', '3', 'n/a']);
+  expect(() => element.setContext(context({ kind: 'holon-property-map', displayName: 'Invalid', rowIds: ['a'], columns: [{ id: 'Name', displayName: 'Name', valueType: 'StringValue', values: [{ IntegerValue: 3 }] }] }))).toThrow('outside StringValue');
+});
+
+it('fits a column prefix, reveals additional columns on request, and pins Key', () => {
+  const original = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class { observe() {} disconnect() {} unobserve() {} };
+  try {
+    const element = createTableCollectionVisualizer() as TableCollectionVisualizerElement & { fitColumns(): void };
+    element.setContext(context({ kind: 'holon-property-map', displayName: 'People', rowIds: ['a'], columns: ['Key', 'Name', 'Description'].map(id => ({ id, displayName: id, valueType: 'StringValue', values: [{ StringValue: id }] })) }));
+    const viewport = element.querySelector<HTMLElement>('[data-table-collection=viewport]')!;
+    Object.defineProperty(viewport, 'clientWidth', { value: 200 });
+    const more = element.querySelector<HTMLButtonElement>('[data-table-collection=more]')!;
+    more.getBoundingClientRect = () => ({ width: 70 }) as DOMRect;
+    const headers = [...element.querySelectorAll('th')];
+    headers.forEach(header => header.getBoundingClientRect = () => ({ width: 100 }) as DOMRect);
+    document.body.append(element);
+    expect(headers.map(header => header.hidden)).toEqual([false, true, true]);
+    expect(more.hidden).toBe(false);
+    more.click();
+    expect(headers.every(header => !header.hidden)).toBe(true);
+    expect(viewport.style.overflowX).toBe('auto');
+    expect(element.querySelector<HTMLElement>('td[data-column-id=Key]')?.style.position).toBe('sticky');
+    expect(headers[0].style.position).toBe('sticky');
+    expect(document.activeElement).toBe(viewport);
+    element.remove();
+  } finally { globalThis.ResizeObserver = original; }
 });

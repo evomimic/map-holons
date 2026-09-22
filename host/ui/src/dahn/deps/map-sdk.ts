@@ -8,6 +8,8 @@ export type {
   BaseValue,
   ContentSet,
   FileData,
+  DescribedHolonCollection,
+  ScalarValueKind,
   HolonCollection,
   HolonDescriptorHandle,
   HolonId,

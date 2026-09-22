@@ -1,0 +1,43 @@
+{
+  "request_id": 122,
+  "command": {
+    "Transaction": {
+      "tx_id": 41,
+      "action": {
+        "SelectCollectionVisualizer": {
+          "collection": {
+            "members": {
+              "state": "Fetched",
+              "members": [],
+              "keyed_index": {}
+            },
+            "element_type": {
+              "Transient": {
+                "tx_id": 41,
+                "id": "00000000-0000-0000-0000-000000000000"
+              }
+            }
+          },
+          "parent_visualizer": {
+            "Transient": {
+              "tx_id": 41,
+              "id": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "slot": {
+            "Transient": {
+              "tx_id": 41,
+              "id": "00000000-0000-0000-0000-000000000000"
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "marker_id": null,
+    "marker_label": null,
+    "snapshot_after": false,
+    "disable_undo": false
+  }
+}

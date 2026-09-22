@@ -25,14 +25,15 @@ export type TableValueType =
   | 'BooleanValue'
   | 'IntegerValue'
   | 'EnumValue'
-  | 'BytesValue';
+  | 'BytesValue'
+  | 'AnyBaseValue';
 
 /** One ordered column in a provenance-free table presentation. */
 export interface TableColumn {
   id: TableColumnId;
   displayName: MapString;
   valueType: TableValueType;
-  values: readonly BaseValue[];
+  values: readonly (BaseValue | null)[];
 }
 
 interface TablePresentationBase {

@@ -34,6 +34,38 @@ use uuid::Uuid;
 fn generate_fixtures() {
     let fixtures_dir = fixtures_dir();
     fs::create_dir_all(&fixtures_dir).expect("create fixtures dir");
+    let described = map_commands_wire::DescribedHolonCollectionWire {
+        members: HolonCollectionWire {
+            state: CollectionState::Fetched,
+            members: vec![],
+            keyed_index: BTreeMap::new(),
+        },
+        element_type: HolonReferenceWire::Transient(TransientReferenceWire::new(
+            TxId::from_str("41").unwrap(),
+            TemporaryId(Uuid::nil()),
+        )),
+    };
+    write_fixture(
+        &fixtures_dir,
+        "response-ok-described-collection.json",
+        &response(121, Ok(MapResultWire::DescribedCollection(described.clone()))),
+    );
+    write_fixture(
+        &fixtures_dir,
+        "request-tx-select-collection.json",
+        &request(
+            122,
+            tx_command(
+                41,
+                TransactionActionWire::SelectCollectionVisualizer {
+                    collection: described.clone(),
+                    parent_visualizer: described.element_type.clone(),
+                    slot: described.element_type.clone(),
+                },
+            ),
+            default_options(),
+        ),
+    );
     write_fixture(
         &fixtures_dir,
         "response-ok-effective-cardinality.json",

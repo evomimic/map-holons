@@ -1,3 +1,4 @@
+import type { CollectionActivation } from '../runtime/collection-activation';
 import type { NodeAffordances } from './affordances';
 import type { ActionNode } from './actions';
 import type { CanvasApi } from './canvas';
@@ -47,6 +48,8 @@ export interface VisualizerContext {
   actions: ActionNode[];
   /** Descriptor-classified, presentation-only navigation slots. */
   nodeAffordances?: NodeAffordances;
+  /** Occurrence-local collection orchestration supplied by the composition owner. */
+  collectionActivation?: CollectionActivation;
   theme: DahnTheme;
   canvas: CanvasApi;
   /**

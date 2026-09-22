@@ -45,6 +45,14 @@ pub async fn handle_transaction(
             let response = execute_dance_v2(context, invocation).await?;
             Ok(MapResult::Reference(HolonReference::from(response)))
         }
+        TransactionAction::SelectCollectionVisualizer { collection, parent_visualizer, slot } => {
+            Ok(MapResult::VisualizerSelection(dahn_selection::select_collection_visualizer(
+                context,
+                collection,
+                parent_visualizer,
+                slot,
+            )?))
+        }
         TransactionAction::SelectVisualizer { request } => {
             Ok(MapResult::VisualizerSelection(dahn_selection::select_visualizer(context, request)?))
         }

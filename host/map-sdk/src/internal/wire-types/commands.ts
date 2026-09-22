@@ -1,3 +1,4 @@
+import { type DescribedHolonCollectionWire, isDescribedHolonCollectionWire } from './results';
 import {
   type DanceRequestWire,
   type DanceV2InvocationWire,
@@ -99,6 +100,7 @@ export type TransactionActionWire =
   | { Dance: DanceRequestWire }
   | { DanceV2: { invocation: DanceV2InvocationWire } }
   | { SelectVisualizer: VisualizerSelectionRequestWire }
+  | { SelectCollectionVisualizer: { collection: DescribedHolonCollectionWire; parent_visualizer: HolonReferenceWire; slot: HolonReferenceWire } }
   | { FetchArtifact: { handle: string } }
   | 'GetAllHolons'
   | { GetSavedHolonByBaseKey: { key: string } }
@@ -142,6 +144,9 @@ export type ReadableHolonActionWire =
   | 'GetEffectiveCardinality'
   | 'GetPropertyIsArray'
   | 'GetAvailableDances'
+  | 'GetInstanceProperties'
+  | 'GetPropertyValueKind'
+  | { GetDescribedRelatedHolons: { name: RelationshipName } }
   | { GetPropertyValue: { name: PropertyName } }
   | { GetRelatedHolons: { name: RelationshipName; require_fresh?: boolean } };
 
@@ -187,6 +192,8 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetEffectiveCardinality',
   'GetPropertyIsArray',
   'GetAvailableDances',
+  'GetInstanceProperties',
+  'GetPropertyValueKind',
 
 ]);
 
@@ -239,6 +246,7 @@ export function isReadableHolonActionWire(
   return (
     (typeof value === 'string' &&
       READABLE_HOLON_UNIT_ACTIONS.has(value as ReadableHolonActionWire)) ||
+    (hasSingleKey(value, 'GetDescribedRelatedHolons') && isStringFieldObject(value.GetDescribedRelatedHolons, 'name')) ||
     (hasSingleKey(value, 'GetPropertyValue') &&
       isStringFieldObject(value.GetPropertyValue, 'name')) ||
     (hasSingleKey(value, 'GetRelatedHolons') &&
@@ -293,6 +301,10 @@ export function isTransactionActionWire(
     (hasSingleKey(value, 'DanceV2') &&
       isRecord(value.DanceV2) &&
       isDanceV2InvocationWire(value.DanceV2['invocation'])) ||
+    (hasSingleKey(value, 'SelectCollectionVisualizer') && isRecord(value.SelectCollectionVisualizer) &&
+      isDescribedHolonCollectionWire(value.SelectCollectionVisualizer['collection']) &&
+      isHolonReferenceWire(value.SelectCollectionVisualizer['parent_visualizer']) &&
+      isHolonReferenceWire(value.SelectCollectionVisualizer['slot'])) ||
     (hasSingleKey(value, 'SelectVisualizer') &&
       isRecord(value.SelectVisualizer) &&
       isHolonReferenceWire(value.SelectVisualizer['subject']) &&

@@ -232,3 +232,9 @@ export function expectEffectiveCardinality(result: MapResultWire): { minimum: nu
   if (typeof result === 'object' && 'EffectiveCardinality' in result) return result.EffectiveCardinality;
   throw unexpectedResultVariant('EffectiveCardinality', result);
 }
+
+/** Decodes a described collection without losing its empty-result type. */
+export function expectDescribedCollection(result: MapResultWire) {
+  if (typeof result !== 'string' && 'DescribedCollection' in result) return result.DescribedCollection;
+  throw unexpectedResultVariant('DescribedCollection', result);
+}

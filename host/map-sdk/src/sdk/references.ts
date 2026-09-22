@@ -6,7 +6,7 @@ import type {
   TransientReferenceWire,
   TxId,
 } from '../internal/wire-types/references';
-import { HolonCollection } from './collection';
+import { DescribedHolonCollection, HolonCollection } from './collection';
 import {
   createHolonDescriptorHandle,
   createPropertyDescriptorHandle,
@@ -95,6 +95,11 @@ export class HolonReference implements WritableHolon {
       options?.requireFresh ?? false,
     );
     return new HolonCollection(txId, collection);
+  }
+
+  /** Retrieves membership and its declared target type through Rust. */
+  async describedRelatedHolons(name: RelationshipName): Promise<DescribedHolonCollection> {
+    return new DescribedHolonCollection(txIdFor(this), await internalHolon.readDescribedRelatedHolons(txIdFor(this), wireRefFor(this), name));
   }
 
   async holonDescriptor(): Promise<HolonDescriptorHandle> {
@@ -286,4 +291,14 @@ export function readDescriptorCardinality(reference: HolonReference) {
 /** Internal descriptor-handle bridge for Rust-owned representation classification. */
 export function readDescriptorIsArray(reference: HolonReference) {
   return internalHolon.readPropertyIsArray(txIdFor(reference), wireRefFor(reference));
+}
+
+/** Internal descriptor bridge; inheritance is resolved only in Rust. */
+export async function readInstanceProperties(reference: HolonReference) {
+  const txId = txIdFor(reference);
+  const collection = await internalHolon.readInstanceProperties(txId, wireRefFor(reference));
+  return Object.freeze(collection.members.map(member => createPropertyDescriptorHandle(createHolonReference(txId, member))));
+}
+export async function readPropertyValueKind(reference: HolonReference): Promise<string> {
+  return extractString(await internalHolon.readPropertyValueKind(txIdFor(reference), wireRefFor(reference)));
 }
