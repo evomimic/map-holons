@@ -16,8 +16,17 @@ pub(crate) fn effective_property_value<T: ToPropertyName>(
     descriptor: &HolonReference,
     property_name: T,
 ) -> Result<Option<BaseValue>, HolonError> {
+    effective_property_value_with_reader(descriptor, property_name, &super::CurrentDescriptorReader)
+}
+
+/// Uses the same inheritance policy while selecting prospective descriptor content.
+pub fn effective_property_value_with_reader<T: ToPropertyName, R: super::DescriptorReader>(
+    descriptor: &HolonReference,
+    property_name: T,
+    reader: &R,
+) -> Result<Option<BaseValue>, R::Error> {
     let name = property_name.to_property_name();
-    for ancestor in walk_extends_chain(descriptor) {
+    for ancestor in super::walk_extends_chain_with_reader(descriptor, reader) {
         if let Some(value) = ancestor?.property_value(&name)? {
             return Ok(Some(value));
         }

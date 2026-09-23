@@ -230,6 +230,11 @@ pub fn stage_new_version_fixture() -> Result<DancesTestCase, HolonError> {
     // Stage a second version from the same original holon in order to verify that:
     // a. get_staged_holon_by_base_key returns an error (>1 staged holon with that key)
     // b. get_staged_holons_by_base_key correctly returns BOTH staged holons
+    // Staging competing versions is supported for lookup and reconciliation. Commit
+    // rejects two live replacements of one saved source in the same attempt. This
+    // fixture deliberately ends without committing them; a future Commit step must
+    // expect rejection or first reconcile and abandon the extra candidate. Branches
+    // created across separate Commits remain supported.
 
     let _version_2_token = test_case.add_stage_new_version_step(
         &mut fixture_holons,

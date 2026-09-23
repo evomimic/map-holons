@@ -17,6 +17,8 @@ pub struct ValidationObservations {
     pub constraint_attachment_count: usize,
     /// Distinct configured constraints declaration-checked in the assessment's Schema scope.
     pub constraint_declaration_count: usize,
+    /// Distinct affected Schemas assessed in this Commit attempt.
+    pub schema_assessment_count: usize,
 }
 
 /// Ordered aggregation owned by the caller, never by a parent holon.
@@ -35,6 +37,10 @@ impl ValidationCollector {
     /// Coverage evidence remains separate from semantic acceptance.
     pub fn observations(&self) -> &ValidationObservations {
         &self.observations
+    }
+
+    pub(crate) fn violations(&self) -> &[CommitValidationViolation] {
+        &self.violations
     }
 
     /// Finishes a successfully completed pass; do not call after an operational error.

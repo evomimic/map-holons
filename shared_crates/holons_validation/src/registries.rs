@@ -18,6 +18,18 @@ pub struct ConstraintTypeKey(pub String);
 
 /// Typed dispatch inputs preserve the downward-only dependency boundary.
 pub enum ValidationInvocation<'a> {
+    /// Selected prospective facts evaluated by the same C1 handlers.
+    Prepared {
+        binding: &'a ResolvedValidationBinding,
+        path: &'a ValidationSubjectPath,
+        subject: &'a crate::PreparedRuleSubject,
+    },
+    /// Aggregate products computed once for a Schema, even when it is unstaged.
+    Schema {
+        binding: &'a ResolvedValidationBinding,
+        path: &'a ValidationSubjectPath,
+        products: &'a crate::schema_rules::SchemaRuleProducts,
+    },
     /// Whole-holon policy against its governing descriptor.
     Holon {
         /// Selected effective binding, including declaration provenance.
@@ -84,6 +96,10 @@ impl StaticRuleRegistry {
     pub fn lookup(key: &ValidationRuleKey) -> Option<StaticRuleHandler> {
         use CoreValidationRuleName::*;
         match CoreValidationRuleName::from_key(&key.0)? {
+            SchemaDependenciesAcyclic => Some(crate::schema_rules::schema_dependencies_acyclic),
+            CrossSchemaDependenciesDeclared => {
+                Some(crate::schema_rules::cross_schema_dependencies_declared)
+            }
             InheritedValueConstraintNonRelaxation => {
                 Some(descriptor_rules::inherited_constraint_non_relaxation)
             }

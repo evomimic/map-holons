@@ -1704,3 +1704,6 @@ fn missing_new_validation_anchor_is_a_deliberate_schema_incompatibility() -> Res
     ));
     Ok(())
 }
+
+#[path = "schema_assessment_tests.rs"]
+mod schema_assessment;

@@ -1,4 +1,8 @@
-use std::{collections::HashSet, ops::Range, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Range,
+    sync::Arc,
+};
 
 use core_types::{
     CommitValidationViolation, CommitValidationViolationKind, HolonError, ValidationSubjectPath,
@@ -13,8 +17,11 @@ use crate::{
     CommitValidationReport, HolonValidationContext, HolonValidationSubject, ValidationCollector,
 };
 
-/// Assesses every supplied live candidate on every call and installs replacement
-/// outcomes only after the whole assessment completes.
+/// Builds a prospective replacement index before assessment and installs replacement
+/// outcomes only after the whole assessment completes. Competition rejects uniformly
+/// across live holons; independent checks continue. The C2 readiness entry point adds
+/// bounded Schema scopes at the Phase 9 activation boundary, routing their findings
+/// by primary subject without staging unchanged Schemas.
 ///
 /// The caller derives candidates from the complete Nursery using
 /// `StagedReference::is_live_validation_candidate`. All candidates must belong to the
@@ -37,6 +44,14 @@ pub fn validate_commit_candidates(
         return Ok(CommitValidationReport::default());
     }
 
+    check_candidates(candidates)?;
+    // Identity grouping precedes anchor lookup: competing updates to a rule anchor
+    // must reject semantically, not escape as a duplicate-key lookup error.
+    let reader = holons_core::ProspectiveDescriptorReader::new(context, candidates)?;
+    let competition = crate::competing_replacement_findings(&reader);
+    if !competition.is_empty() {
+        return assess_competition(context, candidates, &reader, competition);
+    }
     let validation_context = HolonValidationContext::resolve(context)?;
     let mut assessment = PreparedAssessment::default();
     for candidate in candidates {
@@ -70,9 +85,40 @@ pub(crate) struct PreparedAssessment<'a> {
 }
 
 impl<'a> PreparedAssessment<'a> {
+    /// Partition a multi-subject scope before creating installable ranges. Only exact
+    /// live staged subject identities are carriers; all other findings stay unattached.
+    pub(crate) fn from_scope(
+        candidates: &'a [StagedReference],
+        report: CommitValidationReport,
+    ) -> Result<Self, HolonError> {
+        check_candidates(candidates)?;
+        // Diagnostic strings route findings; candidate distinctness uses temporary IDs
+        // in the shared input check above.
+        let indices: HashMap<_, _> = candidates
+            .iter()
+            .enumerate()
+            .map(|(index, candidate)| (candidate.reference_id_string(), index))
+            .collect();
+        let mut groups = vec![Vec::new(); candidates.len()];
+        let mut assessment = Self::default();
+        for finding in report.violations {
+            if let Some(index) =
+                subject_identity(&finding.subject).and_then(|identity| indices.get(identity))
+            {
+                groups[*index].push(finding);
+            } else {
+                assessment.push_aggregate(finding);
+            }
+        }
+        for (candidate, findings) in candidates.iter().zip(groups) {
+            assessment
+                .record_candidate(candidate, CommitValidationReport::from_candidate(findings));
+        }
+        Ok(assessment)
+    }
+
     /// Append without shifting existing candidate ranges. Report accumulation must remain
     /// append-only until installation; aggregate findings have no staged outcome association.
-    #[allow(dead_code)] // Used by aggregate assessment when C2 activates.
     pub(crate) fn push_aggregate(&mut self, finding: CommitValidationViolation) {
         self.report.unattached_indices.push(self.report.violations.len());
         self.report.violations.push(finding);
@@ -150,4 +196,92 @@ fn validate_authored_relationships(
         }
     }
     Ok(())
+}
+
+/// The structured primary subject determines the staged carrier, never collector order.
+pub(crate) fn subject_identity(subject: &ValidationSubjectPath) -> Option<&str> {
+    match subject {
+        ValidationSubjectPath::Holon { holon_identity }
+        | ValidationSubjectPath::Property { holon_identity, .. }
+        | ValidationSubjectPath::Value { holon_identity, .. } => Some(holon_identity),
+        ValidationSubjectPath::Relationship { source_identity, .. } => Some(source_identity),
+        ValidationSubjectPath::Transaction => None,
+    }
+}
+
+pub(crate) fn check_candidates(candidates: &[StagedReference]) -> Result<(), HolonError> {
+    let mut seen = HashSet::new();
+    for candidate in candidates {
+        if !candidate.is_live_validation_candidate()? || !seen.insert(candidate.temporary_id()) {
+            return Err(HolonError::InvalidParameter(format!(
+                "Commit validation requires distinct live candidates: {}",
+                candidate.reference_id_string()
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Competition is schema-independent and activates in Phase 8. Continue independent C1
+/// checks, but never read a contested definition through the legacy current-view path.
+fn assess_competition(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+    reader: &holons_core::ProspectiveDescriptorReader,
+    competition: Vec<CommitValidationViolation>,
+) -> Result<CommitValidationReport, HolonError> {
+    use crate::assessment_support::{blocked, recover, recover_transaction};
+    let mut collector = ValidationCollector::default();
+    for finding in competition {
+        collector.record(finding);
+    }
+    let values = recover_transaction(
+        crate::ValueValidationContext::resolve_in_view(context, reader),
+        &mut collector,
+    )?;
+    let universal = recover_transaction(
+        holons_core::UniversalDescriptorContract::resolve_with_reader(context, reader),
+        &mut collector,
+    )?;
+    for candidate in candidates {
+        let subject = HolonReference::from(candidate);
+        if !crate::readiness::contract_content_available(context, &subject, reader, &mut collector)?
+        {
+            continue;
+        }
+        let Some(descriptor) =
+            resolve_holon_descriptor(HolonValidationSubject { holon: &subject }, &mut collector)?
+        else {
+            continue;
+        };
+        let (Some(values), Some(universal)) = (&values, &universal) else {
+            blocked(
+                &mut collector,
+                &subject,
+                "A required validation anchor has contested content.".into(),
+            );
+            continue;
+        };
+        let result = crate::prospective_validation::prepare_bindings(
+            descriptor.holon(),
+            crate::contexts::SubjectLevel::Holon,
+            values,
+            reader,
+            &crate::assessment_support::path(&subject),
+            &mut collector,
+        );
+        if let Some(bindings) = recover(result, &subject, &mut collector)? {
+            let result = crate::prospective_validation::assess_subject(
+                &subject,
+                descriptor.holon(),
+                &bindings,
+                values,
+                universal,
+                reader,
+                &mut collector,
+            );
+            recover(result, &subject, &mut collector)?;
+        }
+    }
+    PreparedAssessment::from_scope(candidates, collector.into_report())?.install_outcomes()
 }

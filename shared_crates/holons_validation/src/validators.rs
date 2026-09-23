@@ -242,7 +242,7 @@ fn compatible_binding(
     )
 }
 
-fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
+pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
     binding: &ResolvedValidationBinding,
     family: &HolonDescriptor,
     key: &ValidationRuleKey,

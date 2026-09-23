@@ -92,3 +92,5 @@ pub use assessment_reader::{
 
 #[cfg(test)]
 mod prospective_tests;
+
+pub use accessor_helpers::effective_property_value_with_reader;

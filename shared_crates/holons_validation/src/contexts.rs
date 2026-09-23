@@ -125,6 +125,111 @@ impl BindingRoots {
         })
     }
 
+    // Deliberately separate from resolve(): Phase 9 activates this cohort with its TDL.
+    pub(crate) fn add_c2_in_view(
+        &mut self,
+        context: &Arc<TransactionContext>,
+        reader: &holons_core::ProspectiveDescriptorReader,
+    ) -> Result<(), holons_core::AssessmentReadError> {
+        use CoreValidationRuleName::*;
+        for (name, descriptor_family, route) in [
+            (
+                AtMostOneDirectParent,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                AcyclicExtendsLineage,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                ExtendsLineageTerminatesAtTypeDescriptor,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                UniqueTypeDescriptorRoot,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                LocalInstanceKindAnchorDesignation,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                InstanceKindAnchorsAreAbstract,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                TypeDescriptorRootKindException,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                DescribingCategoryCompatibility,
+                "HolonType.TypeDescriptor",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                DescriptorMetaTypeCorrespondence,
+                "HolonType.TypeDescriptor",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                NoInheritedMemberRedeclaration,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                UniqueSemanticMemberNames,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                WellFormedEffectiveMemberDefinitions,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                ContractMemberKindCompatibility,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (
+                InheritedValueConstraintNonRelaxation,
+                "MetaTypeDescriptor.HolonType",
+                BindingDispatchRoute::Descriptor,
+            ),
+            (SchemaDependenciesAcyclic, "Schema.HolonType", BindingDispatchRoute::SchemaAggregate),
+            (
+                CrossSchemaDependenciesDeclared,
+                "Schema.HolonType",
+                BindingDispatchRoute::SchemaAggregate,
+            ),
+        ] {
+            self.entries.push(BindingRoot {
+                name,
+                rule: crate::resolve_validation_anchor_in_view(context, name.as_str(), reader)?,
+                family: crate::resolve_validation_anchor_in_view(
+                    context,
+                    "HolonValidationRule.HolonType",
+                    reader,
+                )?,
+                descriptor_family: crate::resolve_validation_anchor_in_view(
+                    context,
+                    descriptor_family,
+                    reader,
+                )?,
+                level: SubjectLevel::Holon,
+                route,
+            });
+        }
+        Ok(())
+    }
+
     fn resolve_using<E>(
         mut resolve: impl FnMut(&str) -> Result<HolonReference, E>,
     ) -> Result<Self, E> {

@@ -48,6 +48,10 @@ pub enum CoreValidationRuleName {
     ContractMemberKindCompatibility,
     /// DS-CONSTRAINT-001: inherited effective constraint obligations remain intact.
     InheritedValueConstraintNonRelaxation,
+    /// DS-SCHEMA-001: versioned dependencies are acyclic.
+    SchemaDependenciesAcyclic,
+    /// DS-SCHEMA-002: authored cross-schema references have direct dependencies.
+    CrossSchemaDependenciesDeclared,
 }
 
 impl CoreValidationRuleName {
@@ -61,6 +65,10 @@ impl CoreValidationRuleName {
     /// Fully qualified schema key; display labels never select a handler.
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::SchemaDependenciesAcyclic => "SchemaDependenciesAcyclic.ValidationRule",
+            Self::CrossSchemaDependenciesDeclared => {
+                "CrossSchemaDependenciesDeclared.ValidationRule"
+            }
             Self::InheritedValueConstraintNonRelaxation => {
                 "InheritedValueConstraintNonRelaxation.ValidationRule"
             }

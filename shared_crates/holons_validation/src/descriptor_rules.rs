@@ -446,6 +446,57 @@ impl DescriptorRuleProducts {
         Ok(())
     }
 
+    pub(crate) fn append(&mut self, other: Self) {
+        for (rule, diagnostics) in other.diagnostics {
+            self.diagnostics.entry(rule).or_default().extend(diagnostics);
+        }
+    }
+
+    pub(crate) fn has_findings(&self) -> bool {
+        !self.diagnostics.is_empty()
+    }
+
+    /// Universal prerequisites must remain reachable even when the chosen describer
+    /// cannot inherit their bindings. Emit only rules not already dispatched here.
+    pub(crate) fn emit_prerequisites(
+        &self,
+        path: &core_types::ValidationSubjectPath,
+        dispatched: &std::collections::HashSet<CoreValidationRuleName>,
+        collector: &mut ValidationCollector,
+    ) {
+        use CoreValidationRuleName::*;
+        for (rule, code) in [
+            (AtMostOneDirectParent, "DS-STRUCT-002"),
+            (AcyclicExtendsLineage, "DS-STRUCT-003"),
+            (ExtendsLineageTerminatesAtTypeDescriptor, "DS-STRUCT-004"),
+            (UniqueTypeDescriptorRoot, "DS-STRUCT-005"),
+            (DescribingCategoryCompatibility, "DS-KIND-004"),
+            (DescriptorMetaTypeCorrespondence, "DS-KIND-005"),
+        ] {
+            if dispatched.contains(&rule) {
+                continue;
+            }
+            for diagnostic in self.diagnostics.get(&rule).into_iter().flatten() {
+                let kind = match diagnostic.kind {
+                    DiagnosticKind::Violation => {
+                        CommitValidationViolationKind::RuleViolation { code: code.into() }
+                    }
+                    DiagnosticKind::UnresolvedDependency => {
+                        CommitValidationViolationKind::UnresolvedLocalDependency
+                    }
+                };
+                finding(
+                    collector,
+                    kind,
+                    Some(rule.as_str().into()),
+                    path,
+                    None,
+                    diagnostic.message.clone(),
+                );
+            }
+        }
+    }
+
     fn emit(
         &self,
         rule: CoreValidationRuleName,

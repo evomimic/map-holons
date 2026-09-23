@@ -50,20 +50,31 @@ pub(crate) fn required_property_presence(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    let ValidationInvocation::Property { binding, subject, context } = invocation else {
-        return Err(wrong_invocation("property"));
+    let (binding, path, missing_required, name, identity) = match invocation {
+        ValidationInvocation::Property { binding, subject, context } => (
+            binding,
+            subject.path,
+            subject.value.is_none()
+                && context.enforce_minimum
+                && subject.descriptor.is_required()?,
+            subject.descriptor.property_name()?.to_string(),
+            subject.descriptor.holon().reference_id_string(),
+        ),
+        ValidationInvocation::Prepared {
+            binding,
+            path,
+            subject:
+                crate::PreparedRuleSubject::Property { missing_required, name, descriptor_identity },
+        } => (binding, path, *missing_required, name.clone(), descriptor_identity.clone()),
+        _ => return Err(wrong_invocation("property")),
     };
-    if subject.value.is_none() && context.enforce_minimum && subject.descriptor.is_required()? {
+    if missing_required {
         rule_violation(
             collector,
             binding,
-            subject.path,
+            path,
             "DS-PROP-001",
-            format!(
-                "Supply required property {} (descriptor {}).",
-                subject.descriptor.property_name()?,
-                subject.descriptor.holon().reference_id_string()
-            ),
+            format!("Supply required property {name} (descriptor {identity})."),
         )?;
     }
     Ok(RuleOutcome::Continue)
@@ -74,15 +85,26 @@ pub(crate) fn no_undescribed_properties(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    let ValidationInvocation::Holon { binding, subject, descriptor, path } = invocation else {
-        return Err(wrong_invocation("holon"));
-    };
-    if !descriptor.allows_additional_properties()? {
-        for name in subject.holon.undescribed_property_names()? {
-            rule_violation(collector, binding, path, "DS-PROP-003", format!(
-                "Property {name} is populated but is not described; remove it or declare it in the effective property contract."
-            ))?;
+    let (binding, path, names) = match invocation {
+        ValidationInvocation::Holon { binding, subject, descriptor, path } => {
+            let names = if descriptor.allows_additional_properties()? {
+                Vec::new()
+            } else {
+                subject.holon.undescribed_property_names()?
+            };
+            (binding, path, names)
         }
+        ValidationInvocation::Prepared {
+            binding,
+            path,
+            subject: crate::PreparedRuleSubject::Holon { undescribed_properties },
+        } => (binding, path, undescribed_properties.clone()),
+        _ => return Err(wrong_invocation("holon")),
+    };
+    for name in names {
+        rule_violation(collector, binding, path, "DS-PROP-003", format!(
+            "Property {name} is populated but is not described; remove it or declare it in the effective property contract."
+        ))?;
     }
     Ok(RuleOutcome::Continue)
 }
@@ -93,12 +115,23 @@ pub(crate) fn base_value_kind_matches(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
-    let ValidationInvocation::Value { binding, subject, context } = invocation else {
-        return Err(wrong_invocation("value"));
+    let (binding, path, expected, actual, identity) = match invocation {
+        ValidationInvocation::Value { binding, subject, context } => (
+            binding,
+            subject.path,
+            subject.descriptor.value_kind(&context.roots)?,
+            subject.value.kind(),
+            subject.descriptor.holon().reference_id_string(),
+        ),
+        ValidationInvocation::Prepared {
+            binding,
+            path,
+            subject: crate::PreparedRuleSubject::Value { expected, actual, descriptor_identity },
+        } => (binding, path, expected.clone(), *actual, descriptor_identity.clone()),
+        _ => return Err(wrong_invocation("value")),
     };
-    let expected = subject.descriptor.value_kind(&context.roots)?;
     let compatible = match &expected {
-        ValueDescriptorKind::BaseValue(kind) => *kind == subject.value.kind(),
+        ValueDescriptorKind::BaseValue(kind) => *kind == actual,
         ValueDescriptorKind::AnyBaseValue => true,
         ValueDescriptorKind::ValueArray | ValueDescriptorKind::Unsupported(_) => false,
     };
@@ -106,13 +139,9 @@ pub(crate) fn base_value_kind_matches(
         rule_violation(
             collector,
             binding,
-            subject.path,
+            path,
             "BaseValueKindMismatch",
-            format!(
-                "Expected {expected:?}, found {:?} for value descriptor {}.",
-                subject.value.kind(),
-                subject.descriptor.holon().reference_id_string()
-            ),
+            format!("Expected {expected:?}, found {actual:?} for value descriptor {identity}."),
         )?;
         return Ok(RuleOutcome::StopValueEvaluation);
     }
@@ -148,6 +177,8 @@ pub(crate) fn native_rule_kind(name: CoreValidationRuleName) -> Option<core_type
         | UniqueSemanticMemberNames
         | WellFormedEffectiveMemberDefinitions
         | ContractMemberKindCompatibility
-        | InheritedValueConstraintNonRelaxation => None,
+        | InheritedValueConstraintNonRelaxation
+        | SchemaDependenciesAcyclic
+        | CrossSchemaDependenciesDeclared => None,
     }
 }

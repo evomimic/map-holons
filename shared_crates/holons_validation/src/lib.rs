@@ -8,6 +8,7 @@
 //! complete supplied candidate set before replacing staged outcomes, preserving operational
 //! errors separately. No entry point invokes Commit or persists holons.
 
+mod assessment_support;
 mod collector;
 mod commitments;
 mod constraint_declarations;
@@ -16,8 +17,12 @@ mod descriptor_rules;
 mod handlers;
 mod orchestration;
 mod prospective;
+mod prospective_validation;
+mod readiness;
 mod registries;
 mod report;
+mod schema_rules;
+mod schema_view;
 mod subjects;
 mod validators;
 
@@ -35,7 +40,10 @@ pub use registries::{
     StaticRuleHandler, StaticRuleRegistry, ValidationInvocation, ValidationRuleKey,
 };
 pub use report::CommitValidationReport;
-pub use subjects::{HolonValidationSubject, PropertyValidationSubject, ValueValidationSubject};
+pub use schema_rules::SchemaRuleProducts;
+pub use subjects::{
+    HolonValidationSubject, PreparedRuleSubject, PropertyValidationSubject, ValueValidationSubject,
+};
 pub use validators::{validate_holon, validate_property, validate_value};
 
 #[cfg(test)]
