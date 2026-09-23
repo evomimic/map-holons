@@ -671,8 +671,8 @@ fn readiness_fixture() -> Result<Fixture, HolonError> {
 }
 
 #[test]
-fn c2_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract() -> Result<(), HolonError>
-{
+fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
+) -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let mut subject = fixture.staged_subject("instance")?;
     subject.with_property_value("Title", "ready")?;
@@ -706,7 +706,7 @@ fn c2_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract() -> R
 }
 
 #[test]
-fn c2_operational_failure_after_preparation_preserves_prior_outcomes() -> Result<(), HolonError> {
+fn commit_assessment_operational_failure_preserves_prior_outcomes() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let subject = fixture.staged_subject("previously-rejected")?;
     let old = crate::readiness::validate_commit_candidates(

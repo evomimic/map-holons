@@ -43,8 +43,12 @@ impl ReferenceGroup {
 
 fn grouped_references(groups: HashMap<ProspectiveIdentity, ReferenceGroup>) -> Vec<ReferenceGroup> {
     let mut groups: Vec<_> = groups.into_iter().collect();
-    // Diagnostic reference strings are truncated; order by the full typed identity.
-    groups.sort_by_cached_key(|(identity, group)| (format!("{identity:?}"), group.example.clone()));
+    // Diagnostic reference strings are truncated; order by complete identity bytes.
+    groups.sort_by_cached_key(|(identity, _)| match identity {
+        ProspectiveIdentity::Saved(id) => (0, id.to_canonical_bytes()),
+        ProspectiveIdentity::Staged(id) => (1, id.0.as_bytes().to_vec()),
+        ProspectiveIdentity::Transient(id) => (2, id.0.as_bytes().to_vec()),
+    });
     groups.into_iter().map(|(_, group)| group).collect()
 }
 impl SchemaRuleProducts {
