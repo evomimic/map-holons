@@ -118,6 +118,17 @@ pub async fn execute_commit(
                         .0,
                     0
                 );
+                assert_eq!(
+                    commit_response_ref
+                        .related_holons(CoreRelationshipTypeName::HasValidationFinding)
+                        .unwrap()
+                        .read()
+                        .unwrap()
+                        .get_count()
+                        .0,
+                    0,
+                    "accepted Commit has no unattached findings"
+                );
                 for candidate in &candidates {
                     assert_eq!(candidate.validation_state().unwrap(), ValidationState::Validated);
                     assert!(
@@ -142,9 +153,17 @@ pub async fn execute_commit(
                 let rejected = commit_response_ref
                     .related_holons(CoreRelationshipTypeName::RejectedHolons)
                     .expect("RejectedHolons relationship");
+                let rejected_count = rejected.read().unwrap().get_count().0;
+                let carrier_count = commit_response_ref
+                    .related_holons(CoreRelationshipTypeName::HasValidationFinding)
+                    .expect("HasValidationFinding relationship")
+                    .read()
+                    .unwrap()
+                    .get_count()
+                    .0;
                 assert!(
-                    rejected.read().unwrap().get_count().0 > 0,
-                    "rejection must identify finding-bearing candidates"
+                    rejected_count + carrier_count > 0,
+                    "rejection must expose at least one finding"
                 );
                 return;
             }
@@ -243,6 +262,7 @@ pub fn execute_verify_commit_rejection(
                 ExpectedValidationSubject::Value(property) => {
                     ValidationSubjectPath::Value { holon_identity: identity.clone(), property }
                 }
+                ExpectedValidationSubject::Transaction => ValidationSubjectPath::Transaction,
             };
             assert_eq!(actual.kind, expected.kind);
             assert_eq!(actual.rule_key, expected.rule_key);
@@ -255,5 +275,22 @@ pub fn execute_verify_commit_rejection(
         actual_ids, expected_ids,
         "RejectedHolons must identify exactly the expected staged candidates"
     );
+    let carriers = response.related_holons(CoreRelationshipTypeName::HasValidationFinding).unwrap();
+    let carrier_members = carriers.read().unwrap().get_members().to_vec();
+    for carrier in &carrier_members {
+        assert!(matches!(carrier, HolonReference::Transient(_)));
+        for field in [
+            CorePropertyTypeName::ViolationKind,
+            CorePropertyTypeName::Severity,
+            CorePropertyTypeName::SubjectKind,
+            CorePropertyTypeName::Message,
+        ] {
+            assert!(
+                carrier.property_value(field).unwrap().is_some(),
+                "finding carrier is incomplete"
+            );
+        }
+    }
+    finding_count += carrier_members.len() as i64;
     assert_eq!(finding_count, expected_violation_count.0);
 }

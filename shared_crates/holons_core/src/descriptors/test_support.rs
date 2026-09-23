@@ -207,17 +207,13 @@ pub(crate) fn new_descriptor_holon(
     Ok(descriptor)
 }
 
-/// Creates a holon-type descriptor with the required Phase B structural flags.
+/// Creates a holon-type descriptor with the shared descriptor header.
 pub(crate) fn new_holon_type_descriptor(
     context: &Arc<TransactionContext>,
     key: &str,
     type_name: &str,
 ) -> Result<TransientReference, HolonError> {
-    let mut descriptor = new_descriptor_holon(context, key, type_name, "Holon")?;
-    descriptor
-        .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
-        .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
-    Ok(descriptor)
+    new_descriptor_holon(context, key, type_name, "Holon")
 }
 
 /// Creates a property descriptor with structural fields and its value type edge.

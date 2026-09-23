@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use super::commit_validation_findings::{make_finding_holons_best_effort, HAS_VALIDATION_FINDING};
+use super::commit_validation_findings::make_finding_holons_best_effort;
 use crate::persistence_layer::{
     expand_from_source, expand_from_source_by_key, get_holon, persist_holon, put_smartlink_cached,
     SmartLinkWriteContext,
@@ -293,7 +293,10 @@ pub fn commit(
         response_reference.with_property_value(CommitRequestStatus, "Rejected")?;
         response_reference.add_related_holons(RejectedHolons, rejected_holons)?;
         if !unattached_findings.is_empty() {
-            response_reference.add_related_holons(HAS_VALIDATION_FINDING, unattached_findings)?;
+            response_reference.add_related_holons(
+                CoreRelationshipTypeName::HasValidationFinding,
+                unattached_findings,
+            )?;
         }
         response_reference.add_related_holons(SavedHolons, Vec::new())?;
         log_commit_response("Rejected", attempted_count, &[], rejected_count, 0);

@@ -106,8 +106,6 @@ impl ToPropertyName for &PropertyName {
 
 #[derive(Debug, Clone, VariantNames)]
 pub enum CorePropertyTypeName {
-    AllowsAdditionalProperties,
-    AllowsAdditionalRelationships,
     AllowsDuplicates,
     Arity,
     CommitRequestStatus,
@@ -169,6 +167,18 @@ pub enum CorePropertyTypeName {
     TypeName,
     TypeNamePlural,
     ValidationViolationCount,
+    ViolationKind,
+    RuleIdentity,
+    RuleCode,
+    ConstraintIdentity,
+    ConstraintTypeIdentity,
+    Severity,
+    SubjectKind,
+    HolonIdentity,
+    MemberName,
+    TargetIdentity,
+    Message,
+    DescriptorIdentity,
     HolonsCommitted,
 }
 
@@ -251,14 +261,6 @@ mod tests {
         assert_eq!(
             PropertyName(MapString("AllowsDuplicates".to_string())),
             CorePropertyTypeName::AllowsDuplicates.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("AllowsAdditionalProperties".to_string())),
-            CorePropertyTypeName::AllowsAdditionalProperties.as_property_name()
-        );
-        assert_eq!(
-            PropertyName(MapString("AllowsAdditionalRelationships".to_string())),
-            CorePropertyTypeName::AllowsAdditionalRelationships.as_property_name()
         );
         assert_eq!(
             PropertyName(MapString("Description".to_string())),

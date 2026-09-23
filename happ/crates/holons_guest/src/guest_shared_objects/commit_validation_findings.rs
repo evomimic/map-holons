@@ -11,10 +11,6 @@ use holons_core::{
     HolonReference, WritableHolon,
 };
 
-/// Relationship on a CommitResponse containing findings without a staged carrier.
-/// Its canonical declaration is activated with the C2 schema projection.
-pub(super) const HAS_VALIDATION_FINDING: &str = "HasValidationFinding";
-
 /// Project each unattached finding into a transient holon. Descriptor resolution is
 /// best effort while bootstrap has not yet installed the carrier descriptor; creating
 /// or populating a carrier is required and any failure remains operational.

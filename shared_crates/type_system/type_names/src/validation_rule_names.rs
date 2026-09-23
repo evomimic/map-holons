@@ -3,12 +3,12 @@
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-/// Fixed Commit rule identities. Canonical bindings activate independently.
+/// Fixed Commit rule identities resolved through the canonical binding inventory.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, EnumIter)]
 pub enum CoreValidationRuleName {
     /// DS-PROP-001: required effective properties must be present.
     RequiredPropertyPresence,
-    /// DS-PROP-003: populated properties must obey the additional-property policy.
+    /// DS-PROP-003: populated properties must belong to the effective contract.
     NoUndescribedProperties,
     /// String values use the native string representation.
     BaseValueKindMatchesString,
@@ -42,7 +42,7 @@ pub enum CoreValidationRuleName {
     NoInheritedMemberRedeclaration,
     /// DS-CONTRACT-002: semantic names are unique within each member namespace.
     UniqueSemanticMemberNames,
-    /// DS-CONTRACT-003: effective member definitions have C2 structure.
+    /// DS-CONTRACT-003: effective member definitions have required structure.
     WellFormedEffectiveMemberDefinitions,
     /// DS-CONTRACT-004: member instance kinds match their contract positions.
     ContractMemberKindCompatibility,

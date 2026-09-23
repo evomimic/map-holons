@@ -86,12 +86,8 @@ pub(crate) fn no_undescribed_properties(
     collector: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
     let (binding, path, names) = match invocation {
-        ValidationInvocation::Holon { binding, subject, descriptor, path } => {
-            let names = if descriptor.allows_additional_properties()? {
-                Vec::new()
-            } else {
-                subject.holon.undescribed_property_names()?
-            };
+        ValidationInvocation::Holon { binding, subject, descriptor: _, path } => {
+            let names = subject.holon.undescribed_property_names()?;
             (binding, path, names)
         }
         ValidationInvocation::Prepared {
@@ -110,7 +106,7 @@ pub(crate) fn no_undescribed_properties(
 }
 
 /// All five rules reuse the kernel's kind-only classifier. Calling `is_valid()`
-/// here would accidentally execute configured semantics outside this cohort.
+/// here would execute configured semantics outside native-kind validation.
 pub(crate) fn base_value_kind_matches(
     invocation: ValidationInvocation<'_>,
     collector: &mut ValidationCollector,

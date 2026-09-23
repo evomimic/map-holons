@@ -208,6 +208,14 @@ fn prepare_bindings(
                 "The rule family, declaring descriptor, and subject kind must be compatible before dispatch.".into())?;
             continue;
         }
+        // Standalone subject validation dispatches only subject-level handlers.
+        // Commit prepares descriptor and Schema products through its prospective view.
+        if context.bindings.entries.iter().any(|root| {
+            root.name.as_str() == key.0
+                && root.route != crate::contexts::BindingDispatchRoute::Subject
+        }) {
+            continue;
+        }
         match StaticRuleRegistry::lookup(&key) {
             Some(handler) => prepared.push((binding, handler)),
             None => finding(
@@ -304,7 +312,7 @@ fn mark_dispatched(
     Ok(())
 }
 
-/// C1 has no configured evaluators. Reaching a constraint is a blocking finding,
+/// No configured evaluators are registered. Reaching a constraint is a blocking finding,
 /// independent of whether its type is one the future capability will support.
 fn assess_constraints(
     descriptor: &HolonDescriptor,
@@ -334,9 +342,8 @@ fn assess_constraints(
     Ok(())
 }
 
-/// C2 preparation uses the selected rule's own describing edge, never a saved family
-/// resolved before replacement selection. Activation belongs with the C2 cohort.
-#[allow(dead_code)]
+/// Prospective binding checks use the selected rule's own describing edge.
+#[cfg(test)]
 pub(crate) fn compatible_binding_in_view(
     binding: &ResolvedValidationBinding,
     governing: &HolonReference,

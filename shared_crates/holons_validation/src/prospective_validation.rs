@@ -1,4 +1,4 @@
-//! Reader-aware traversal for the C2 Commit gate. Rule evaluation stays in existing handlers.
+//! Reader-aware traversal for the Commit gate. Rule evaluation stays in existing handlers.
 use crate::{
     assessment_support::{blocked, path, recover},
     commitments::{required_key, ResolvedConstraint},

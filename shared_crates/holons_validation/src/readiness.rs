@@ -1,4 +1,4 @@
-//! Prospective C2 orchestration. Activation is deliberately separate from the C1 public gate.
+//! Commit assessment through prospective replacement selection.
 use crate::{
     assessment_support::{blocked, path, recover, recover_transaction, targets},
     contexts::SubjectLevel,
@@ -24,8 +24,7 @@ use std::{
 };
 use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
-/// Explicit activation dependencies. Resolving these is deferred until Phase 9; the public
-/// C1 entry point never asks a pre-C2 schema to supply the new mandatory rule anchors.
+/// Graph roots and rule anchors shared by one Commit assessment.
 pub(crate) struct ReadinessContext {
     kinds: DescriptorKindRoots,
     contracts: ContractKindRoots,
@@ -66,8 +65,7 @@ impl ReadinessContext {
             cardinality: resolve("CardinalityConstraint.ConstraintType")?,
             unique_items: resolve("UniqueItemsConstraint.ConstraintType")?,
         };
-        let mut values = ValueValidationContext::resolve_in_view(context, reader)?;
-        values.bindings.add_c2_in_view(context, reader)?;
+        let values = ValueValidationContext::resolve_in_view(context, reader)?;
         Ok(Self {
             kinds,
             contracts,
@@ -94,8 +92,7 @@ struct SubjectPreparation {
 /// Report-only until the final installation. A scope is discarded in full on operational failure.
 /// No unchanged Schema is staged; no saved definition is mutated. The view may include an
 /// unchanged ForUpdate candidate whose eventual persistence outcome is NoAction.
-#[allow(dead_code)] // Public Commit switches to this entry point with the Phase 9 schema activation.
-pub(crate) fn assess_c2(
+pub fn validate_commit_candidates(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
 ) -> Result<CommitValidationReport, HolonError> {
@@ -696,38 +693,4 @@ fn commitment_order(
             observed: 0,
         },
     ))
-}
-
-/// Contention preflight for the still-active C1 gate. Only definition dependencies
-/// are followed; instance relationship targets are outside this bounded check.
-pub(crate) fn contract_content_available(
-    context: &Arc<TransactionContext>,
-    subject: &HolonReference,
-    reader: &ProspectiveDescriptorReader,
-    collector: &mut ValidationCollector,
-) -> Result<bool, HolonError> {
-    let mut pending = vec![subject.clone()];
-    let mut visited = HashSet::new();
-    let mut available = true;
-    while let Some(reference) = pending.pop() {
-        if !visited.insert(ProspectiveIdentity::for_reference(&reference, context)?) {
-            continue;
-        }
-        let Some(selected) = recover(reader.select(&reference), subject, collector)? else {
-            available = false;
-            continue;
-        };
-        for edge in [
-            CoreRelationshipTypeName::DescribedBy,
-            CoreRelationshipTypeName::Extends,
-            CoreRelationshipTypeName::InstanceProperties,
-            CoreRelationshipTypeName::InstanceRelationships,
-            CoreRelationshipTypeName::ValueType,
-            CoreRelationshipTypeName::ValidationBindings,
-            CoreRelationshipTypeName::Constraints,
-        ] {
-            pending.extend(targets(&selected, edge)?);
-        }
-    }
-    Ok(available)
 }

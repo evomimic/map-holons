@@ -11,9 +11,9 @@ pub struct ValidationObservations {
     pub discovered_rule_keys: BTreeSet<String>,
     /// Rule keys whose compatible handlers actually ran.
     pub dispatched_rule_keys: BTreeSet<String>,
-    /// Number of effective constraints reached at C1 subject levels.
+    /// Number of effective constraints reached during subject evaluation.
     pub effective_constraint_count: usize,
-    /// Effective attachments inspected by C2 declaration assessment, including reused constraints.
+    /// Effective attachments inspected by declaration assessment, including reused constraints.
     pub constraint_attachment_count: usize,
     /// Distinct configured constraints declaration-checked in the assessment's Schema scope.
     pub constraint_declaration_count: usize,

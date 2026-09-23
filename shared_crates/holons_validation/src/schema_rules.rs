@@ -23,6 +23,30 @@ use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationR
 pub struct SchemaRuleProducts {
     diagnostics: BTreeMap<CoreValidationRuleName, Vec<String>>,
 }
+
+/// One diagnostic per affected identity, with a bounded example of the authored edges.
+struct ReferenceGroup {
+    definition: HolonReference,
+    owner_count: usize,
+    count: usize,
+    example: (String, String, String),
+}
+
+impl ReferenceGroup {
+    fn add(&mut self, example: (String, String, String)) {
+        self.count += 1;
+        if example < self.example {
+            self.example = example;
+        }
+    }
+}
+
+fn grouped_references(groups: HashMap<ProspectiveIdentity, ReferenceGroup>) -> Vec<ReferenceGroup> {
+    let mut groups: Vec<_> = groups.into_iter().collect();
+    // Diagnostic reference strings are truncated; order by the full typed identity.
+    groups.sort_by_cached_key(|(identity, group)| (format!("{identity:?}"), group.example.clone()));
+    groups.into_iter().map(|(_, group)| group).collect()
+}
 impl SchemaRuleProducts {
     pub(crate) fn record(&mut self, rule: CoreValidationRuleName, message: String) {
         self.diagnostics.entry(rule).or_default().push(message);
@@ -100,6 +124,8 @@ pub(crate) fn cross_schema_references(
         .map(|target| ProspectiveIdentity::for_reference(target, context))
         .collect::<Result<HashSet<_>, _>>()?;
     let mut owners = HashMap::new();
+    let mut ambiguous = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
+    let mut missing_dependencies = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
     for source in view.components.iter().chain(&view.rules) {
         let Some(edges) = recover(authored_targets(source, reader), &view.schema, collector)?
         else {
@@ -129,20 +155,53 @@ pub(crate) fn cross_schema_references(
                 workset.ownership.get(&target_id).or_else(|| owners.get(&target_id)).ok_or_else(
                     || HolonError::CommitFailure("Missing assessed ownership".into()),
                 )?;
-            if target_owners.len() != 1 {
-                blocked(collector, &view.schema, format!(
-                    "Cannot check authored {} -[{name}]-> {}: target has {} prospective owners.",
-                    source.reference_id_string(), target.reference_id_string(), target_owners.len()));
+            // Spaces, Schema holons, and other unowned instances are outside this rule.
+            // A staged definition missing required ownership is diagnosed by the workset.
+            if target_owners.is_empty() {
+                continue;
+            }
+            let example =
+                (source.reference_id_string(), name.to_string(), target.reference_id_string());
+            if target_owners.len() > 1 {
+                ambiguous
+                    .entry(target_id)
+                    .or_insert_with(|| ReferenceGroup {
+                        definition: target.clone(),
+                        owner_count: target_owners.len(),
+                        count: 0,
+                        example: example.clone(),
+                    })
+                    .add(example);
                 continue;
             }
             let owner = &target_owners[0];
             let owner_id = ProspectiveIdentity::for_reference(owner, context)?;
             if owner_id != local && !direct.contains(&owner_id) {
-                products.record(CoreValidationRuleName::CrossSchemaDependenciesDeclared, format!(
-                    "Schema {} must directly DependsOn {} for authored {} -[{name}]-> {}; transitive reachability is insufficient.",
-                    view.schema.reference_id_string(), owner.reference_id_string(), source.reference_id_string(), target.reference_id_string()));
+                missing_dependencies
+                    .entry(owner_id)
+                    .or_insert_with(|| ReferenceGroup {
+                        definition: owner.clone(),
+                        owner_count: 1,
+                        count: 0,
+                        example: example.clone(),
+                    })
+                    .add(example);
             }
         }
+    }
+    for group in grouped_references(ambiguous) {
+        let (source, name, target) = group.example;
+        blocked(collector, &view.schema, format!(
+            "Cannot check {} authored reference(s) to {}: target has {} prospective owners; for example {source} -[{name}]-> {target}.",
+            group.count, group.definition.reference_id_string(), group.owner_count
+        ));
+    }
+    for group in grouped_references(missing_dependencies) {
+        let (source, name, target) = group.example;
+        products.record(CoreValidationRuleName::CrossSchemaDependenciesDeclared, format!(
+            "Schema {} must directly DependsOn {} for {} authored reference(s); for example {source} -[{name}]-> {target}. Transitive reachability is insufficient.",
+            view.schema.reference_id_string(), group.definition.reference_id_string(), group.count
+        ));
     }
     Ok(())
 }

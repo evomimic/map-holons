@@ -18,7 +18,7 @@ pub struct ConstraintTypeKey(pub String);
 
 /// Typed dispatch inputs preserve the downward-only dependency boundary.
 pub enum ValidationInvocation<'a> {
-    /// Selected prospective facts evaluated by the same C1 handlers.
+    /// Selected prospective facts evaluated by the same subject handlers.
     Prepared {
         binding: &'a ResolvedValidationBinding,
         path: &'a ValidationSubjectPath,
@@ -80,7 +80,7 @@ pub enum RuleOutcome {
 pub type StaticRuleHandler =
     fn(ValidationInvocation<'_>, &mut ValidationCollector) -> Result<RuleOutcome, HolonError>;
 
-/// Internal configured-constraint evaluator contract; C1 registers no evaluators.
+/// Internal configured-constraint evaluator contract; no evaluators are registered.
 pub type StaticConstraintHandler = fn(
     &ResolvedConstraint,
     ValueValidationSubject<'_>,
@@ -92,7 +92,7 @@ pub type StaticConstraintHandler = fn(
 pub struct StaticRuleRegistry;
 
 impl StaticRuleRegistry {
-    /// Looks up every implemented canonical rule; binding activation is separate.
+    /// Looks up every implemented canonical rule; binding discovery is separate.
     pub fn lookup(key: &ValidationRuleKey) -> Option<StaticRuleHandler> {
         use CoreValidationRuleName::*;
         match CoreValidationRuleName::from_key(&key.0)? {
@@ -145,11 +145,11 @@ impl StaticRuleRegistry {
     }
 }
 
-/// Internal constraint dispatch; every reached constraint fails closed in C1.
+/// Internal constraint dispatch; every reached constraint fails closed during subject evaluation.
 pub struct StaticConstraintRegistry;
 
 impl StaticConstraintRegistry {
-    /// No configured value or cardinality evaluator belongs to this cohort.
+    /// No configured value or cardinality evaluator is registered.
     pub fn lookup(_key: &ConstraintTypeKey) -> Option<StaticConstraintHandler> {
         None
     }

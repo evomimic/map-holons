@@ -7,8 +7,7 @@ use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, ToPropertyName}
 
 /// Runtime wrapper for property descriptors.
 ///
-/// This remains a thin view in Phase 1/2 so later value-type behavior can land
-/// on a stable wrapper without changing call-site types.
+/// This wrapper exposes property descriptor fields through the shared descriptor kernel.
 pub struct PropertyDescriptor {
     holon: HolonReference,
 }

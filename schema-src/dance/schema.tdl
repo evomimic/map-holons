@@ -1128,11 +1128,183 @@ holon CommitResponse.Projection {
     ]
     InstanceRelationships -> [
       (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor),
-      (CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor)
+      (CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor),
+      (CommitResponse.Projection)-[HasValidationFinding]->(CommitValidationFinding.Projection)
     ]
   }
 }
 
+
+holon CommitValidationFinding.Projection {
+  type MetaHolonType.MetaTypeDescriptor
+  extends Projection.HolonType
+  header {
+    description: "Transient projection of a Commit validation finding whose subject has no staged carrier."
+    display_name: "Commit Validation Finding"
+    display_plural: "Commit Validation Findings"
+    plural: "CommitValidationFindings"
+  }
+  relationships {
+    InstanceProperties -> [
+      ViolationKind.PropertyType,
+      RuleIdentity.PropertyType,
+      RuleCode.PropertyType,
+      ConstraintIdentity.PropertyType,
+      ConstraintTypeIdentity.PropertyType,
+      Severity.PropertyType,
+      SubjectKind.PropertyType,
+      HolonIdentity.PropertyType,
+      MemberName.PropertyType,
+      TargetIdentity.PropertyType,
+      Message.PropertyType,
+      DescriptorIdentity.PropertyType
+    ]
+  }
+}
+
+property ViolationKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected ViolationKind field of a Commit validation finding."
+    display_name: "ViolationKind"
+    display_plural: "ViolationKind"
+    plural: "ViolationKind"
+  }
+}
+
+property RuleIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected RuleIdentity field of a Commit validation finding."
+    display_name: "RuleIdentity"
+    display_plural: "RuleIdentity"
+    plural: "RuleIdentity"
+  }
+}
+
+property RuleCode.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected RuleCode field of a Commit validation finding."
+    display_name: "RuleCode"
+    display_plural: "RuleCode"
+    plural: "RuleCode"
+  }
+}
+
+property ConstraintIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected ConstraintIdentity field of a Commit validation finding."
+    display_name: "ConstraintIdentity"
+    display_plural: "ConstraintIdentity"
+    plural: "ConstraintIdentity"
+  }
+}
+
+property ConstraintTypeIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected ConstraintTypeIdentity field of a Commit validation finding."
+    display_name: "ConstraintTypeIdentity"
+    display_plural: "ConstraintTypeIdentity"
+    plural: "ConstraintTypeIdentity"
+  }
+}
+
+property Severity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected Severity field of a Commit validation finding."
+    display_name: "Severity"
+    display_plural: "Severity"
+    plural: "Severity"
+  }
+}
+
+property SubjectKind.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected SubjectKind field of a Commit validation finding."
+    display_name: "SubjectKind"
+    display_plural: "SubjectKind"
+    plural: "SubjectKind"
+  }
+}
+
+property HolonIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected HolonIdentity field of a Commit validation finding."
+    display_name: "HolonIdentity"
+    display_plural: "HolonIdentity"
+    plural: "HolonIdentity"
+  }
+}
+
+property MemberName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected MemberName field of a Commit validation finding."
+    display_name: "MemberName"
+    display_plural: "MemberName"
+    plural: "MemberName"
+  }
+}
+
+property TargetIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected TargetIdentity field of a Commit validation finding."
+    display_name: "TargetIdentity"
+    display_plural: "TargetIdentity"
+    plural: "TargetIdentity"
+  }
+}
+
+property Message.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected Message field of a Commit validation finding."
+    display_name: "Message"
+    display_plural: "Message"
+    plural: "Message"
+  }
+}
+
+property DescriptorIdentity.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  header {
+    description: "Projected DescriptorIdentity field of a Commit validation finding."
+    display_name: "DescriptorIdentity"
+    display_plural: "DescriptorIdentity"
+    plural: "DescriptorIdentity"
+  }
+}
 
 property CommitsAttempted.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
@@ -1216,6 +1388,41 @@ property CommitRequestStatus.PropertyType {
   }
 }
 
+
+relationship (CommitResponse.Projection)-[HasValidationFinding]->(CommitValidationFinding.Projection) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> ValidationFindingOf
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source CommitResponse.Projection
+  target CommitValidationFinding.Projection
+  deletion_semantic Allow
+  header {
+    description: "Findings without a staged candidate carrier returned by Commit."
+    display_name: "HasValidationFinding"
+    display_plural: "HasValidationFindings"
+    plural: "HasValidationFindings"
+  }
+}
+
+inverse relationship (CommitValidationFinding.Projection)-[ValidationFindingOf]->(CommitResponse.Projection) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source CommitValidationFinding.Projection
+  target CommitResponse.Projection
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse link from a finding to its Commit response."
+    display_name: "ValidationFindingOf"
+    display_plural: "ValidationFindingOf"
+    plural: "ValidationFindingOf"
+  }
+}
 
 relationship (CommitResponse.Projection)-[SavedHolons]->(HolonType.TypeDescriptor) {
   type MetaDeclaredRelationshipType.MetaRelationshipType

@@ -225,11 +225,212 @@ fn direct_dependencies_are_required_for_components_and_owned_rules() -> Result<(
         &mut collector,
     )?;
     let report = collector.into_report();
-    assert_eq!(report.violations.len(), 2);
+    assert_eq!(report.violations.len(), 1);
     assert!(report.violations.iter().all(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-SCHEMA-002")));
-    assert!(report.violations.iter().any(|finding| finding
-        .message
-        .contains(&fixture.nodes["OwnedRule"].reference_id_string())));
+    assert!(report.violations[0].message.contains("2 authored reference(s)"));
+    assert!(report.violations[0].message.contains(&fixture.nodes["C"].reference_id_string()));
+    Ok(())
+}
+
+#[test]
+fn schema_references_ignore_space_instances_and_schema_targets() -> Result<(), HolonError> {
+    let mut fixture = schema_fixture()?;
+    fixture.node("Space")?;
+    fixture.link("Space", CoreRelationshipTypeName::OwnedBy, "Space")?;
+    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
+    fixture.link("Member", CoreRelationshipTypeName::OwnedBy, "Space")?;
+    fixture.link("Member", CoreRelationshipTypeName::ValueType, "B")?;
+    describe_schemas(&mut fixture)?;
+    let candidate = staged(&fixture.nodes["Member"]);
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &[candidate])?;
+    let mut collector = ValidationCollector::default();
+    let workset = SchemaWorkset::prepare(
+        &fixture.context,
+        &reader,
+        &fixture.nodes["Schema.HolonType"],
+        &[],
+        &[owned(&fixture, "Member", SchemaOwnershipKind::Component)],
+        &mut collector,
+    )?;
+    let mut products = SchemaRuleProducts::default();
+    cross_schema_references(
+        &fixture.context,
+        &reader,
+        &workset.schemas[0],
+        &workset,
+        &mut products,
+        &mut collector,
+    )?;
+    assert!(!products.has_findings());
+    assert!(collector.into_report().is_accepted());
+    assert_eq!(
+        fixture.nodes["Space"]
+            .related_holons(CoreRelationshipTypeName::OwnedBy)?
+            .read()
+            .unwrap()
+            .get_count()
+            .0,
+        1,
+        "the space self-reference remains authored but is outside the Schema component workset"
+    );
+    Ok(())
+}
+
+#[test]
+fn same_schema_component_reference_needs_no_dependency() -> Result<(), HolonError> {
+    let mut fixture = schema_fixture()?;
+    for key in ["Member", "OtherMember"] {
+        fixture.link(key, CoreRelationshipTypeName::ComponentOf, "A")?;
+    }
+    fixture.link("Member", CoreRelationshipTypeName::ValueType, "OtherMember")?;
+    describe_schemas(&mut fixture)?;
+    let candidates = [staged(&fixture.nodes["Member"]), staged(&fixture.nodes["OtherMember"])];
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    let mut collector = ValidationCollector::default();
+    let workset = SchemaWorkset::prepare(
+        &fixture.context,
+        &reader,
+        &fixture.nodes["Schema.HolonType"],
+        &[],
+        &[
+            owned(&fixture, "Member", SchemaOwnershipKind::Component),
+            owned(&fixture, "OtherMember", SchemaOwnershipKind::Component),
+        ],
+        &mut collector,
+    )?;
+    let mut products = SchemaRuleProducts::default();
+    cross_schema_references(
+        &fixture.context,
+        &reader,
+        &workset.schemas[0],
+        &workset,
+        &mut products,
+        &mut collector,
+    )?;
+    assert!(!products.has_findings());
+    assert!(collector.into_report().is_accepted());
+    Ok(())
+}
+
+#[test]
+fn direct_dependency_covers_cross_schema_component_reference() -> Result<(), HolonError> {
+    let mut fixture = schema_fixture()?;
+    fixture.link("A", CoreRelationshipTypeName::DependsOn, "B")?;
+    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
+    fixture.link("Foreign", CoreRelationshipTypeName::ComponentOf, "B")?;
+    fixture.link("Member", CoreRelationshipTypeName::ValueType, "Foreign")?;
+    describe_schemas(&mut fixture)?;
+    let candidates = [staged(&fixture.nodes["Member"]), staged(&fixture.nodes["Foreign"])];
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    let mut collector = ValidationCollector::default();
+    let workset = SchemaWorkset::prepare(
+        &fixture.context,
+        &reader,
+        &fixture.nodes["Schema.HolonType"],
+        &[],
+        &[
+            owned(&fixture, "Member", SchemaOwnershipKind::Component),
+            owned(&fixture, "Foreign", SchemaOwnershipKind::Component),
+        ],
+        &mut collector,
+    )?;
+    let a = workset
+        .schemas
+        .iter()
+        .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
+        .unwrap();
+    let mut products = SchemaRuleProducts::default();
+    cross_schema_references(&fixture.context, &reader, a, &workset, &mut products, &mut collector)?;
+    assert!(!products.has_findings());
+    assert!(collector.into_report().is_accepted());
+    Ok(())
+}
+
+#[test]
+fn missing_target_ownership_keeps_its_own_finding() -> Result<(), HolonError> {
+    let mut fixture = schema_fixture()?;
+    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
+    fixture.link("Member", CoreRelationshipTypeName::ValueType, "Foreign")?;
+    describe_schemas(&mut fixture)?;
+    let candidates = [staged(&fixture.nodes["Member"]), staged(&fixture.nodes["Foreign"])];
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    let mut collector = ValidationCollector::default();
+    let workset = SchemaWorkset::prepare(
+        &fixture.context,
+        &reader,
+        &fixture.nodes["Schema.HolonType"],
+        &[],
+        &[
+            owned(&fixture, "Member", SchemaOwnershipKind::Component),
+            owned(&fixture, "Foreign", SchemaOwnershipKind::Component),
+        ],
+        &mut collector,
+    )?;
+    let mut products = SchemaRuleProducts::default();
+    cross_schema_references(
+        &fixture.context,
+        &reader,
+        &workset.schemas[0],
+        &workset,
+        &mut products,
+        &mut collector,
+    )?;
+    assert!(!products.has_findings());
+    let report = collector.into_report();
+    assert_eq!(report.violation_count(), 1);
+    assert!(
+        matches!(&report.violations[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "SchemaOwnership")
+    );
+    assert_eq!(report.violations[0].subject, path(&fixture.nodes["Foreign"]));
+    Ok(())
+}
+
+#[test]
+fn ambiguous_target_ownership_blocks_once_per_target() -> Result<(), HolonError> {
+    let mut fixture = schema_fixture()?;
+    fixture.link("Member", CoreRelationshipTypeName::ComponentOf, "A")?;
+    fixture.link("OwnedRule", CoreRelationshipTypeName::RuleOf, "A")?;
+    for owner in ["B", "C"] {
+        fixture.link("Foreign", CoreRelationshipTypeName::ComponentOf, owner)?;
+    }
+    for source in ["Member", "OwnedRule"] {
+        fixture.link(source, CoreRelationshipTypeName::ValueType, "Foreign")?;
+    }
+    describe_schemas(&mut fixture)?;
+    let candidates = [
+        staged(&fixture.nodes["Member"]),
+        staged(&fixture.nodes["OwnedRule"]),
+        staged(&fixture.nodes["Foreign"]),
+    ];
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    let mut collector = ValidationCollector::default();
+    let workset = SchemaWorkset::prepare(
+        &fixture.context,
+        &reader,
+        &fixture.nodes["Schema.HolonType"],
+        &[],
+        &[
+            owned(&fixture, "Member", SchemaOwnershipKind::Component),
+            owned(&fixture, "OwnedRule", SchemaOwnershipKind::Rule),
+            owned(&fixture, "Foreign", SchemaOwnershipKind::Component),
+        ],
+        &mut collector,
+    )?;
+    let a = workset
+        .schemas
+        .iter()
+        .find(|view| holons_core::same_definition(&view.schema, &fixture.nodes["A"]))
+        .unwrap();
+    let mut products = SchemaRuleProducts::default();
+    cross_schema_references(&fixture.context, &reader, a, &workset, &mut products, &mut collector)?;
+    assert!(!products.has_findings());
+    let report = collector.into_report();
+    assert_eq!(report.violation_count(), 2);
+    assert!(report.violations.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "SchemaOwnership")));
+    assert!(report.violations.iter().any(|finding| {
+        finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+            && finding.message.contains("2 authored reference(s)")
+    }));
     Ok(())
 }
 
@@ -308,7 +509,7 @@ fn schema_scoped_findings_install_on_their_subject_in_either_candidate_order(
 #[test]
 fn public_gate_rejects_identical_competitors_and_preserves_independent_findings(
 ) -> Result<(), HolonError> {
-    let mut fixture = Fixture::new()?;
+    let mut fixture = readiness_fixture()?;
     fixture.node("Existing")?;
     fixture.link("Existing", CoreRelationshipTypeName::DescribedBy, "Contract")?;
     let fixture = fixture.saved_snapshot()?;
@@ -340,7 +541,7 @@ fn public_gate_rejects_identical_competitors_and_preserves_independent_findings(
 
 #[test]
 fn operational_scope_failure_preserves_prior_installed_outcomes() -> Result<(), HolonError> {
-    let fixture = Fixture::new()?;
+    let fixture = readiness_fixture()?;
     let candidate = fixture.staged_subject("prior")?;
     let old = validate_commit_candidates(&fixture.context, std::slice::from_ref(&candidate))?;
     let foreign = Fixture::new()?;
@@ -360,8 +561,7 @@ fn operational_scope_failure_preserves_prior_installed_outcomes() -> Result<(), 
     Ok(())
 }
 
-/// Complete only the roots and member structure consumed by the isolated C2 gate.
-/// Canonical bindings and corpus assertions remain unchanged until Phase 9.
+/// Complete the roots and member structure consumed by prospective Commit assessment.
 fn readiness_fixture() -> Result<Fixture, HolonError> {
     let mut fixture = Fixture::new()?;
     c2_kind_roots(&mut fixture)?;
@@ -476,10 +676,16 @@ fn c2_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract() -> R
     let mut fixture = readiness_fixture()?;
     let mut subject = fixture.staged_subject("instance")?;
     subject.with_property_value("Title", "ready")?;
-    assert!(crate::readiness::assess_c2(&fixture.context, std::slice::from_ref(&subject))?
-        .is_accepted());
+    assert!(crate::readiness::validate_commit_candidates(
+        &fixture.context,
+        std::slice::from_ref(&subject)
+    )?
+    .is_accepted());
     fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
-    let report = crate::readiness::assess_c2(&fixture.context, std::slice::from_ref(&subject))?;
+    let report = crate::readiness::validate_commit_candidates(
+        &fixture.context,
+        std::slice::from_ref(&subject),
+    )?;
     assert!(!report.is_accepted());
     assert!(subject
         .validation_findings()?
@@ -490,8 +696,11 @@ fn c2_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract() -> R
         .get_mut("Title.PropertyType")
         .unwrap()
         .with_property_value("TypeName", "Title")?;
-    assert!(crate::readiness::assess_c2(&fixture.context, std::slice::from_ref(&subject))?
-        .is_accepted());
+    assert!(crate::readiness::validate_commit_candidates(
+        &fixture.context,
+        std::slice::from_ref(&subject)
+    )?
+    .is_accepted());
     assert!(subject.validation_findings()?.is_empty());
     Ok(())
 }
@@ -500,7 +709,10 @@ fn c2_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract() -> R
 fn c2_operational_failure_after_preparation_preserves_prior_outcomes() -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
     let subject = fixture.staged_subject("previously-rejected")?;
-    let old = crate::readiness::assess_c2(&fixture.context, std::slice::from_ref(&subject))?;
+    let old = crate::readiness::validate_commit_candidates(
+        &fixture.context,
+        std::slice::from_ref(&subject),
+    )?;
     assert!(!old.is_accepted());
     // A reference bound to a foreign transaction is an inability to assess reliably,
     // not a readable descriptor invariant violation.
@@ -509,7 +721,11 @@ fn c2_operational_failure_after_preparation_preserves_prior_outcomes() -> Result
         CoreRelationshipTypeName::InstanceProperties,
         vec![foreign.nodes["Title.PropertyType"].clone()],
     )?;
-    assert!(crate::readiness::assess_c2(&fixture.context, std::slice::from_ref(&subject)).is_err());
+    assert!(crate::readiness::validate_commit_candidates(
+        &fixture.context,
+        std::slice::from_ref(&subject)
+    )
+    .is_err());
     assert_eq!(subject.validation_findings()?, old.violations);
     Ok(())
 }
@@ -558,7 +774,10 @@ fn unstaged_schema_cycle_reaches_the_carrier_and_blocks_its_staged_component(
         "MetaHolonType.MetaTypeDescriptor",
     )?;
     let candidate = staged(&fixture.nodes["StagedComponent"]);
-    let report = crate::readiness::assess_c2(&fixture.context, std::slice::from_ref(&candidate))?;
+    let report = crate::readiness::validate_commit_candidates(
+        &fixture.context,
+        std::slice::from_ref(&candidate),
+    )?;
     let aggregates = report.unattached_findings()?;
     let cycles = aggregates.iter().filter(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-SCHEMA-001")).collect::<Vec<_>>();
     assert_eq!(cycles.len(), 1, "one assessment of the affected owner");
@@ -615,7 +834,7 @@ fn contested_shared_anchors_use_transaction_carriers_in_either_candidate_order(
         let first = fixture.replacement(anchor)?;
         let second = fixture.replacement(anchor)?;
         let independent = fixture.staged_subject("independent")?;
-        for assess in [validate_commit_candidates, crate::readiness::assess_c2] {
+        for assess in [validate_commit_candidates] {
             let mut previous = None;
             for candidates in [
                 [independent.clone(), first.clone(), second.clone()],

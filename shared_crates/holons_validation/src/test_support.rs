@@ -114,7 +114,7 @@ impl HolonServiceApi for FixtureStorage {
     }
 }
 
-/// A small graph with real bound references and all canonical C1 anchors.
+/// A small graph with real bound references and the canonical rule anchors.
 pub(super) struct Fixture {
     pub context: Arc<TransactionContext>,
     pub nodes: BTreeMap<String, HolonReference>,
@@ -180,6 +180,29 @@ impl Fixture {
             fixture.link(target, CoreRelationshipTypeName::Extends, "TypeDescriptor")?;
             fixture.link(target, CoreRelationshipTypeName::ValidationBindings, rule.as_str())?;
         }
+        // Standalone subject tests bind only subject rules. The binding inventory
+        // still resolves all descriptor and Schema rule identities for placement checks.
+        for rule in [
+            CoreValidationRuleName::AtMostOneDirectParent,
+            CoreValidationRuleName::AcyclicExtendsLineage,
+            CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
+            CoreValidationRuleName::UniqueTypeDescriptorRoot,
+            CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
+            CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
+            CoreValidationRuleName::TypeDescriptorRootKindException,
+            CoreValidationRuleName::DescribingCategoryCompatibility,
+            CoreValidationRuleName::DescriptorMetaTypeCorrespondence,
+            CoreValidationRuleName::NoInheritedMemberRedeclaration,
+            CoreValidationRuleName::UniqueSemanticMemberNames,
+            CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
+            CoreValidationRuleName::ContractMemberKindCompatibility,
+            CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
+            CoreValidationRuleName::SchemaDependenciesAcyclic,
+            CoreValidationRuleName::CrossSchemaDependenciesDeclared,
+        ] {
+            fixture.node(rule.as_str())?;
+        }
+        fixture.node("Schema.HolonType")?;
         fixture.link("Contract", CoreRelationshipTypeName::Extends, "HolonType.TypeDescriptor")?;
         for (key, name) in [("Title.PropertyType", "Title"), ("Key.PropertyType", "Key")] {
             fixture.nodes.get_mut(key).unwrap().with_property_value("TypeName", name)?;

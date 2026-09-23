@@ -37,9 +37,7 @@
         "display_name": "Book",
         "display_name_plural": "Books",
         "description": "A book.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {
@@ -77,9 +75,7 @@
         "display_name": "Person",
         "display_name_plural": "People",
         "description": "A person.",
-        "is_abstract_type": false,
-        "allows_additional_properties": false,
-        "allows_additional_relationships": false
+        "is_abstract_type": false
       },
       "relationships": [
         {

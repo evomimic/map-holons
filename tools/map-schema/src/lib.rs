@@ -570,8 +570,6 @@ fn canonical_loader_fact_property_name(name: &str) -> String {
         "display_name_plural" => "DisplayNamePlural",
         "description" => "Description",
         "is_abstract_type" => "IsAbstractType",
-        "allows_additional_properties" => "AllowsAdditionalProperties",
-        "allows_additional_relationships" => "AllowsAdditionalRelationships",
         "is_definitional" => "IsDefinitional",
         "is_ordered" => "IsOrdered",
         "allows_duplicates" => "AllowsDuplicates",
@@ -940,8 +938,6 @@ fn ordered_loader_fact_properties(properties: &BTreeMap<String, Value>) -> Vec<(
         "DeletionSemantic",
         "IsValueRequired",
         "DefaultValue",
-        "AllowsAdditionalProperties",
-        "AllowsAdditionalRelationships",
     ];
     order_loader_fact_entries(properties, &preferred)
 }

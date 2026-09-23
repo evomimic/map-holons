@@ -150,10 +150,6 @@ fn minimally_described_transient(
     descriptor
         .with_property_value("TypeName", "ReadableType")
         .and_then(|descriptor| descriptor.with_property_value("IsAbstractType", false))
-        .and_then(|descriptor| descriptor.with_property_value("AllowsAdditionalProperties", false))
-        .and_then(|descriptor| {
-            descriptor.with_property_value("AllowsAdditionalRelationships", false)
-        })
         .expect("populate descriptor header");
 
     let mut target = context

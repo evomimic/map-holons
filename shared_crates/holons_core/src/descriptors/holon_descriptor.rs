@@ -49,23 +49,6 @@ impl HolonDescriptor {
         effective_relationship_targets(&self.holon, CoreRelationshipTypeName::ValidationBindings)
     }
 
-    /// Returns the nearest inherited additional-property policy, defaulting to false.
-    pub fn allows_additional_properties(&self) -> Result<bool, HolonError> {
-        accessor_helpers::additional_member_policy(
-            &self.holon,
-            CorePropertyTypeName::AllowsAdditionalProperties,
-        )
-    }
-
-    /// Returns the nearest inherited additional-relationship policy, defaulting to false.
-    /// This descriptor policy is available before Capability 4 adds relationship validation.
-    pub fn allows_additional_relationships(&self) -> Result<bool, HolonError> {
-        accessor_helpers::additional_member_policy(
-            &self.holon,
-            CorePropertyTypeName::AllowsAdditionalRelationships,
-        )
-    }
-
     /// Returns whether instances described by this type may be deleted.
     ///
     /// A false declaration on any descriptor in the self-first `Extends`
@@ -541,107 +524,6 @@ mod tests {
         assert!(matches!(
             source.holon_descriptor(),
             Err(HolonError::MultipleDescribedBy { count, .. }) if count == 2
-        ));
-
-        Ok(())
-    }
-
-    #[test]
-    fn structural_flags_return_required_boolean_values() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut holon = new_descriptor_holon(&context, "structural-flags", "BookType")?;
-        holon
-            .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, true)?
-            .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
-
-        let descriptor = HolonDescriptor::from_holon(holon.into());
-
-        assert!(descriptor.allows_additional_properties()?);
-        assert!(!descriptor.allows_additional_relationships()?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn additional_property_policy_defaults_to_false() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut holon = new_descriptor_holon(&context, "missing-structural-flag", "BookType")?;
-        holon.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
-
-        let descriptor = HolonDescriptor::from_holon(holon.into());
-
-        assert!(!descriptor.allows_additional_properties()?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn additional_property_policy_inherits_and_allows_local_override() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut parent = new_descriptor_holon(&context, "policy-parent", "Parent")?;
-        parent.with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, true)?;
-        let mut child = new_descriptor_holon(&context, "policy-child", "Child")?;
-        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.into()])?;
-        let descriptor = HolonDescriptor::from_holon((&child).into());
-        assert!(descriptor.allows_additional_properties()?);
-        child.with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?;
-        assert!(!descriptor.allows_additional_properties()?);
-        Ok(())
-    }
-
-    #[test]
-    fn additional_relationship_policy_defaults_to_false() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut holon =
-            new_descriptor_holon(&context, "missing-relationship-structural-flag", "BookType")?;
-        holon.with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, true)?;
-
-        let descriptor = HolonDescriptor::from_holon(holon.into());
-
-        assert!(!descriptor.allows_additional_relationships()?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn additional_relationship_policy_inherits_overrides_and_rejects_malformed_values(
-    ) -> Result<(), HolonError> {
-        let context = build_context();
-        let mut parent = new_descriptor_holon(&context, "relationship-policy-parent", "Parent")?;
-        parent.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
-        let mut child = new_descriptor_holon(&context, "relationship-policy-child", "Child")?;
-        child.add_related_holons(CoreRelationshipTypeName::Extends, vec![(&parent).into()])?;
-        let descriptor = HolonDescriptor::from_holon((&child).into());
-        assert!(descriptor.allows_additional_relationships()?);
-        child.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
-        assert!(!descriptor.allows_additional_relationships()?);
-        child.remove_property_value(CorePropertyTypeName::AllowsAdditionalRelationships)?;
-        parent.with_property_value(
-            CorePropertyTypeName::AllowsAdditionalRelationships,
-            "malformed",
-        )?;
-        assert!(matches!(descriptor.allows_additional_relationships(),
-            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"));
-        // A valid local override wins even when an ancestor's declaration is malformed.
-        child.with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, true)?;
-        assert!(descriptor.allows_additional_relationships()?);
-        Ok(())
-    }
-
-    #[test]
-    fn structural_flags_error_when_required_boolean_has_wrong_type() -> Result<(), HolonError> {
-        let context = build_context();
-        let mut holon = new_descriptor_holon(&context, "wrong-type-structural-flag", "BookType")?;
-        holon.with_property_value(
-            CorePropertyTypeName::AllowsAdditionalProperties,
-            "not-a-boolean",
-        )?;
-
-        let descriptor = HolonDescriptor::from_holon(holon.into());
-
-        assert!(matches!(
-            descriptor.allows_additional_properties(),
-            Err(HolonError::UnexpectedValueType(_, expected)) if expected == "Boolean"
         ));
 
         Ok(())

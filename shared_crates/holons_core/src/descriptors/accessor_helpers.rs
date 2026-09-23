@@ -34,19 +34,6 @@ pub fn effective_property_value_with_reader<T: ToPropertyName, R: super::Descrip
     Ok(None)
 }
 
-/// Reads an inherited additional-member policy, closing the contract when absent.
-/// Malformed Boolean values and operational failures do not silently become false.
-pub(crate) fn additional_member_policy(
-    descriptor: &HolonReference,
-    property_name: CorePropertyTypeName,
-) -> Result<bool, HolonError> {
-    match effective_property_value(descriptor, property_name)? {
-        Some(BaseValue::BooleanValue(value)) => Ok(value.0),
-        Some(other) => Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into())),
-        None => Ok(false),
-    }
-}
-
 /// Returns a required string property from a descriptor holon.
 pub(crate) fn require_string<T: ToPropertyName>(
     holon: &HolonReference,

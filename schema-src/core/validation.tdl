@@ -531,7 +531,7 @@ instance InheritedValueConstraintNonRelaxation.ValidationRule {
   ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-CONSTRAINT-001"
-  ValidationRuleDescription "A ValueType subtype must not relax a value constraint inherited through its Extends lineage."
+  ValidationRuleDescription "A descriptor subtype must retain every applicable inherited constraint in its combined effective constraint set; local constraints may add further obligations."
   rule_of "MAP Core Schema-v0.0.7"
 }
 

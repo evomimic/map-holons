@@ -95,8 +95,6 @@ struct TdlSchema {
     literal_properties: TdlLiteralObject,
     literal_relationships: Vec<LiteralRelationship>,
     header: Option<DescriptorHeader>,
-    allows_additional_properties: bool,
-    allows_additional_relationships: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -121,8 +119,6 @@ struct TdlDescriptor {
     deletion_semantic: Option<String>,
     is_ordered: bool,
     allows_duplicates: bool,
-    allows_additional_properties: bool,
-    allows_additional_relationships: bool,
     is_definitional: bool,
     variants: Vec<String>,
     variant_of: Option<String>,
@@ -435,12 +431,6 @@ fn lower_r6_schema_holon(schema: &TdlSchema) -> Result<R6Holon> {
     for (name, value) in schema.literal_properties.iter() {
         holon.property(name.clone(), literal_to_json(value))?;
     }
-    if schema.allows_additional_properties {
-        holon.property("AllowsAdditionalProperties", json!(true))?;
-    }
-    if schema.allows_additional_relationships {
-        holon.property("AllowsAdditionalRelationships", json!(true))?;
-    }
     for dependency in &schema.dependencies {
         holon.relationship("DependsOn", dependency.clone());
     }
@@ -471,12 +461,6 @@ fn lower_r6_descriptor_holon(descriptor: &TdlDescriptor, schema_name: &str) -> R
     }
     if descriptor.allows_duplicates {
         holon.property("AllowsDuplicates", json!(true))?;
-    }
-    if descriptor.allows_additional_properties {
-        holon.property("AllowsAdditionalProperties", json!(true))?;
-    }
-    if descriptor.allows_additional_relationships {
-        holon.property("AllowsAdditionalRelationships", json!(true))?;
     }
     let uses_cardinality_shorthand =
         descriptor.min_cardinality.is_some() || descriptor.max_cardinality.is_some();
@@ -766,8 +750,6 @@ fn canonical_property_name(name: &str) -> String {
         "display_name_plural" => "DisplayNamePlural",
         "description" => "Description",
         "is_abstract_type" => "IsAbstractType",
-        "allows_additional_properties" => "AllowsAdditionalProperties",
-        "allows_additional_relationships" => "AllowsAdditionalRelationships",
         "is_definitional" => "IsDefinitional",
         "is_ordered" => "IsOrdered",
         "allows_duplicates" => "AllowsDuplicates",
@@ -795,8 +777,6 @@ fn ordered_properties(properties: BTreeMap<String, Value>) -> serde_json::Map<St
         "DeletionSemantic",
         "IsValueRequired",
         "DefaultValue",
-        "AllowsAdditionalProperties",
-        "AllowsAdditionalRelationships",
     ];
     order_map(properties, &preferred)
 }
@@ -1000,8 +980,6 @@ impl<'a> Parser<'a> {
         let mut dependencies = Vec::new();
         let mut literal_properties = TdlLiteralObject::new();
         let mut literal_relationships = Vec::new();
-        let mut allows_additional_properties = false;
-        let mut allows_additional_relationships = false;
         let mut block_header: Option<DescriptorHeader> = None;
 
         if header.has_block || self.try_consume_open_brace()? {
@@ -1029,12 +1007,6 @@ impl<'a> Parser<'a> {
                             return Err(anyhow!("unexpected schema relationship line: {}", line));
                         }
                     }
-                } else if current == "allows_additional_properties" {
-                    allows_additional_properties = true;
-                    self.consume_trimmed();
-                } else if current == "allows_additional_relationships" {
-                    allows_additional_relationships = true;
-                    self.consume_trimmed();
                 } else if current.starts_with("header") {
                     block_header = Some(self.parse_header_block()?);
                 } else {
@@ -1049,8 +1021,6 @@ impl<'a> Parser<'a> {
             literal_properties,
             literal_relationships,
             header: block_header.or(header.header),
-            allows_additional_properties,
-            allows_additional_relationships,
         })
     }
 
@@ -1081,8 +1051,6 @@ impl<'a> Parser<'a> {
             deletion_semantic: None,
             is_ordered: false,
             allows_duplicates: false,
-            allows_additional_properties: false,
-            allows_additional_relationships: false,
             is_definitional: parsed.is_definitional,
             variants: Vec::new(),
             variant_of,
@@ -1183,16 +1151,6 @@ impl<'a> Parser<'a> {
                         descriptor.allows_duplicates = true;
                         self.consume_trimmed();
                     }
-                    "allows_additional_properties" => {
-                        clauses.mark("allows_additional_properties", &declaration_name)?;
-                        descriptor.allows_additional_properties = true;
-                        self.consume_trimmed();
-                    }
-                    "allows_additional_relationships" => {
-                        clauses.mark("allows_additional_relationships", &declaration_name)?;
-                        descriptor.allows_additional_relationships = true;
-                        self.consume_trimmed();
-                    }
                     s if s.starts_with("deletion_semantic ") => {
                         clauses.mark("deletion_semantic", &declaration_name)?;
                         descriptor.deletion_semantic =
@@ -1285,8 +1243,6 @@ impl<'a> Parser<'a> {
             deletion_semantic: None,
             is_ordered: false,
             allows_duplicates: false,
-            allows_additional_properties: false,
-            allows_additional_relationships: false,
             is_definitional: false,
             variants: Vec::new(),
             variant_of,
@@ -1565,8 +1521,6 @@ struct DescriptorClauseTracker {
     cardinality: bool,
     ordered: bool,
     duplicates: bool,
-    allows_additional_properties: bool,
-    allows_additional_relationships: bool,
     deletion_semantic: bool,
 }
 
@@ -1585,8 +1539,6 @@ impl DescriptorClauseTracker {
             "cardinality" => &mut self.cardinality,
             "ordered" => &mut self.ordered,
             "duplicates" => &mut self.duplicates,
-            "allows_additional_properties" => &mut self.allows_additional_properties,
-            "allows_additional_relationships" => &mut self.allows_additional_relationships,
             "deletion_semantic" => &mut self.deletion_semantic,
             _ => unreachable!("untracked TDL singleton clause"),
         };
@@ -1798,16 +1750,6 @@ fn apply_literal_properties_to_tdl_descriptor(descriptor: &mut TdlDescriptor) ->
         .get("is_abstract_type")
         .and_then(|value| value.as_bool())
         .unwrap_or(descriptor.is_abstract);
-    descriptor.allows_additional_properties = descriptor
-        .literal_properties
-        .get("allows_additional_properties")
-        .and_then(|value| value.as_bool())
-        .unwrap_or(descriptor.allows_additional_properties);
-    descriptor.allows_additional_relationships = descriptor
-        .literal_properties
-        .get("allows_additional_relationships")
-        .and_then(|value| value.as_bool())
-        .unwrap_or(descriptor.allows_additional_relationships);
     descriptor.is_definitional = descriptor
         .literal_properties
         .get("is_definitional")

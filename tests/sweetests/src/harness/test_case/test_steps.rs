@@ -58,6 +58,7 @@ pub enum ExpectedValidationSubject {
     Holon,
     Property(String),
     Value(String),
+    Transaction,
 }
 
 /// Stable finding expectations deliberately omit diagnostic message text.

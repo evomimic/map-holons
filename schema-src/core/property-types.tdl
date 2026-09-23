@@ -21,36 +21,6 @@ property AllowsDuplicates.PropertyType {
 }
 
 
-property AllowsAdditionalProperties.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value MapBooleanValueType.BooleanValueType
-  IsValueRequired true
-  DefaultValue false
-  header {
-    description: "If true, instances may include properties not explicitly listed by the descriptor."
-    display_name: "allows_additional_properties"
-    display_plural: "allows_additional_properties"
-    plural: "AllowsAdditionalProperties"
-  }
-}
-
-
-property AllowsAdditionalRelationships.PropertyType {
-  type MetaPropertyType.MetaTypeDescriptor
-  extends PropertyType.TypeDescriptor
-  value MapBooleanValueType.BooleanValueType
-  IsValueRequired true
-  DefaultValue false
-  header {
-    description: "If true, instances may include relationships not explicitly listed by the descriptor."
-    display_name: "allows_additional_relationships"
-    display_plural: "allows_additional_relationships"
-    plural: "AllowsAdditionalRelationships"
-  }
-}
-
-
 property DeletionSemantic.PropertyType {
   type MetaPropertyType.MetaTypeDescriptor
   extends PropertyType.TypeDescriptor

@@ -1,4 +1,4 @@
-//! C2 declaration assessment. This module never calls a subject constraint evaluator.
+//! Constraint declaration assessment. This module never calls a subject constraint evaluator.
 //! DS-CONSTRAINT-001 prepares a seeded rule product; -002 and -003 are fixed checks.
 //! Instantiate one assessment per prospective Schema, then discard it before mutation.
 
@@ -22,7 +22,7 @@ use type_names::{
 use crate::{handlers::finding, DescriptorRuleProducts, ValidationCollector};
 
 /// Canonical identities resolved by orchestration, using its prospective reader.
-/// No roots are resolved eagerly or activated by constructing the C1 context.
+/// Roots are resolved for the Commit assessment scope.
 pub struct ConstraintDeclarationRoots {
     /// Designated TypeDescriptor root used for structural diagnosis.
     pub type_descriptor: HolonReference,
@@ -52,9 +52,9 @@ struct CheckedConstraint {
 /// This collector spans subjects: Phase 8 must route each finding by its structured
 /// subject before installation, never install the whole scope on its first candidate.
 ///
-/// Own-contract C1 validation of constraint holons remains a separate orchestration step.
+/// Own-contract subject validation of constraint holons remains a separate orchestration step.
 /// This pass adds strict parameter membership and family configuration invariants; it
-/// neither evaluates attached constraints nor replaces the shared C1/C3/C4 validators.
+/// neither evaluates attached constraints nor replaces the shared subject validators.
 pub struct ConstraintDeclarationAssessment<'a, Reader: DescriptorReader> {
     roots: ConstraintDeclarationRoots,
     reader: &'a Reader,

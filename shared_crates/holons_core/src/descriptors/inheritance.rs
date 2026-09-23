@@ -48,11 +48,13 @@ pub(crate) fn inheritance_rule(relationship: &CoreRelationshipTypeName) -> Inher
         | CoreRelationshipTypeName::ValidationBindings
         | CoreRelationshipTypeName::Constraints => InheritanceRule::Additive,
         CoreRelationshipTypeName::InstanceKeyRule => InheritanceRule::Override,
-        // These explicit Local arms document C2 vocabulary; the fallback has the same
+        // These explicit Local arms document navigation vocabulary; the fallback has the same
         // behavior. DS-SCHEMA-003 assigns Local to every unlisted relationship, so
         // the wildcard is intentional (DevDocs descriptor-semantics-rules §2.3).
         CoreRelationshipTypeName::ApplicableToDescriptorTypes
-        | CoreRelationshipTypeName::Components => InheritanceRule::Local,
+        | CoreRelationshipTypeName::Components
+        | CoreRelationshipTypeName::HasValidationFinding
+        | CoreRelationshipTypeName::ValidationFindingOf => InheritanceRule::Local,
         _ => InheritanceRule::Local,
     }
 }
@@ -786,6 +788,8 @@ mod tests {
             CoreRelationshipTypeName::Variants,
             CoreRelationshipTypeName::ApplicableToDescriptorTypes,
             CoreRelationshipTypeName::Components,
+            CoreRelationshipTypeName::HasValidationFinding,
+            CoreRelationshipTypeName::ValidationFindingOf,
         ] {
             assert_eq!(inheritance_rule(&relationship), InheritanceRule::Local);
         }

@@ -1,4 +1,4 @@
-//! Prepared C2 diagnostics. Public Commit orchestration activates these in the readiness phase.
+//! Prospective identity diagnostics for Commit assessment.
 use core_types::{
     CommitValidationViolation, CommitValidationViolationKind, HolonError, ValidationSeverity,
     ValidationSubjectPath,
@@ -54,7 +54,7 @@ pub fn competing_replacement_findings(
 }
 
 /// Resolves a required validation anchor with a deliberate schema-upgrade diagnostic.
-/// C2 activation must use this for new anchors; do not eagerly require them in C1.
+/// Resolve anchors through the prospective replacement view.
 pub fn resolve_validation_anchor(
     context: &Arc<TransactionContext>,
     key: &str,

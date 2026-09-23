@@ -1,4 +1,4 @@
-//! Prepared C2 descriptor facts and their fixed rule handlers.
+//! Prepared descriptor facts and their fixed rule handlers.
 //!
 //! Preparation is split by family so a structural finding survives an unavailable
 //! kind or contract product. Commit orchestration supplies one product set per
@@ -239,7 +239,7 @@ impl DescriptorRuleProducts {
     /// Assess the contract defined by this descriptor, preserving additive
     /// contribution identity and provenance before name normalization.
     ///
-    /// DS-CONTRACT-003 covers these C2 fields: required singular `TypeName` on
+    /// DS-CONTRACT-003 covers these structural fields: required singular `TypeName` on
     /// each member; required singular `ValueType` on property members; and
     /// required singular `SourceType` and `TargetType` on relationship members.
     /// Optional scalar fields are singular by the property map representation.
@@ -526,7 +526,7 @@ impl DescriptorRuleProducts {
     }
 }
 
-/// Required structural edges and any C2 kind policy for their selected targets.
+/// Required structural edges and any kind policy for their selected targets.
 /// Endpoint compatibility is deliberately absent: it belongs to C4.
 struct MemberNamespace<'a> {
     name: &'static str,
