@@ -83,6 +83,39 @@ beforeEach(() => {
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
 
 describe('vertical traversal through selected artifacts', () => {
+  it('compresses whole rows on traversal and restores retained Nodes exclusively from their title bars', async () => {
+    const f = await fixture();
+    const rows = await openCollection(f.root.element);
+    activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const allocations = () => [...f.element.querySelectorAll<HTMLElement>('[data-path-occurrence]')].map(region => region.dataset.rowAllocation);
+    expect(allocations()).toEqual(['partial', 'expanded']);
+    const child = f.path()[1];
+    const childRows = await openCollection(child.element);
+    activate(childRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    expect(allocations()).toEqual(['compact', 'partial', 'expanded']);
+    const retained = [...f.path()];
+    const calls = { selection: f.selectVisualizer.mock.calls.length, materialize: f.materialize.mock.calls.length, read: f.rootSubject.describedRelatedHolons.mock.calls.length };
+    const table = f.root.element.querySelector('table');
+    const title = (element: HTMLElement) => element.querySelector<HTMLButtonElement>('[data-holon-inspector-title] button')!;
+    title(child.element).click();
+    expect(allocations()).toEqual(['compact', 'expanded', 'compact']);
+    title(f.root.element).click();
+    expect(allocations()).toEqual(['expanded', 'compact', 'compact']);
+    title(retained[2].element).click();
+    expect(allocations()).toEqual(['compact', 'compact', 'expanded']);
+    title(f.root.element).click();
+    expect(f.path()).toEqual(retained);
+    expect(f.root.element.querySelector('table')).toBe(table);
+    expect(rows[0].getAttribute('aria-selected')).toBe('true');
+    expect(f.selectVisualizer).toHaveBeenCalledTimes(calls.selection);
+    expect(f.materialize).toHaveBeenCalledTimes(calls.materialize);
+    expect(f.rootSubject.describedRelatedHolons).toHaveBeenCalledTimes(calls.read);
+    // A continued path still cannot be overwritten after restoration.
+    activate(rows[1]);
+    expect(f.path()).toEqual(retained);
+    expect(allocations()).toEqual(['expanded', 'compact', 'compact']);
+  });
+
   it('opens recursively, preserves source instances, and records separate occurrence and semantic identities', async () => {
     const f = await fixture(); const rows = await openCollection(f.root.element);
     const table = f.root.element.querySelector('table');

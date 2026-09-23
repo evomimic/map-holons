@@ -12,6 +12,10 @@ export interface VerticalProvenance {
 /** A Path Inspector projection item; semantic handles remain bound SDK handles. */
 export interface PathOccurrence {
   id: string;
+  /** Optional projection band identity, independent of occurrence and Holon identity. */
+  rowId?: string;
+  /** One-based projected column; omitted for the initial vertical path. */
+  column?: number;
   subject: HolonReference;
   selectedVisualizer: HolonReference;
   provenance?: VerticalProvenance;

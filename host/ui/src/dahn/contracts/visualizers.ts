@@ -109,4 +109,8 @@ export interface VisualizerContext {
  */
 export interface VisualizerElement extends HTMLElement {
   setContext(context: VisualizerContext): void;
+  /** Parent-owned external height; the selected child owns responsive thresholds. */
+  setSpatialBudget?(budget: { height: number }): void;
+  /** Semantic request to restore the containing row, independent of child layout. */
+  setRowExpansionHandler?(handler: () => void): void;
 }
