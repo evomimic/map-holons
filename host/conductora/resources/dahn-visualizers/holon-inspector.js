@@ -37,9 +37,9 @@ export default class HolonInspectorElement extends HTMLElement {
       button.id = `dahn-collection-tab-${++nextOverflowId}`;
       button.setAttribute('aria-controls', this.collectionPanelId);
       const activate = () => {
+        if (this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => this.updateCollection(update)) === false) return;
         this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
         this.collectionViewer.setAttribute('aria-labelledby', button.id);
-        this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => this.updateCollection(update));
       };
       button.addEventListener('click', activate);
       button.addEventListener('keydown', event => {

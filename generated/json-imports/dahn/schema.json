@@ -672,7 +672,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:d31148ff2e7de10ce885fe441323bed9e3fc6b664b3fd33de464d8c19823d1f1",
+        "VisualizerArtifactDigest": "sha256:fd54b6837c385e55f2c0ecb80d119d86849ceae834b794ada52361a408d6ae08",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -782,6 +782,18 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "ActionPaddingBlock.DesignToken"
+            },
+            {
+              "$ref": "ActionPaddingInline.DesignToken"
+            },
+            {
+              "$ref": "ActionSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
               "$ref": "CanvasGap.DesignToken"
             },
             {
@@ -845,7 +857,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:b8d9abbb70c1d3404b05edf1253ad6e7f8fa3fd90e6ed314ce95f86120302283",
+        "VisualizerArtifactDigest": "sha256:b7c03488e77fa258ec642edb58f9924b8bc030fae7b429f0788b586f70011120",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

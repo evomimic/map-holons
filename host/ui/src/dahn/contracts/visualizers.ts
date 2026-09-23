@@ -1,3 +1,4 @@
+import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
 import type { NodeAffordances } from './affordances';
 import type { ActionNode } from './actions';
@@ -65,8 +66,10 @@ export interface VisualizerDefinition {
 export interface VisualizerContext {
   /** Human-readable occurrence identity supplied by the parent composition. */
   title?: string;
-  /** Path Inspector interaction boundary; child placement is a later consumer. */
+  /** Path Inspector interaction boundary for occurrence-aware traversal. */
   onInspectHolon?: (intent: InspectHolonIntent) => void;
+  /** Retained vertical topology projected by the selected Path Inspector. */
+  navigation?: PathNavigation;
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];
