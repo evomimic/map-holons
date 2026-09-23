@@ -1,5 +1,6 @@
 import type { InspectHolonIntent } from '../contracts/visualizers';
-import type { PathNavigation, PathOccurrence, VerticalProvenance } from '../contracts/path-navigation';
+import type { PathFocus, PathNavigation, PathOccurrence, VerticalProvenance } from '../contracts/path-navigation';
+import type { CollectionAffordance } from '../contracts/affordances';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { RealizedNode } from './realize-node';
 import { serializeTransaction } from './transaction-queue';
@@ -7,6 +8,11 @@ import { serializeTransaction } from './transaction-queue';
 interface Occurrence extends PathOccurrence {
   node: RealizedNode;
   child?: Occurrence;
+  alternatives: Occurrence[];
+  collections: Map<CollectionAffordance, string>;
+  subjectIdentity?: string;
+  depth: number;
+  column: number;
   generation: number;
   traversed: boolean;
 }
@@ -14,11 +20,11 @@ interface Occurrence extends PathOccurrence {
 let nextOccurrence = 0;
 const identity = () => `dahn-occurrence-${++nextOccurrence}`;
 
-/** Owns one recursive vertical path. Alternative retained paths are deferred. */
+/** Owns vertical continuations and their sparse projection, independently of focus. */
 export class VerticalNavigation implements PathNavigation {
   private readonly root: Occurrence;
-  private readonly collections = new WeakMap<HTMLElement, string>();
-  private readonly listeners = new Set<(occurrences: readonly PathOccurrence[]) => void>();
+  private readonly listeners = new Set<(occurrences: readonly PathOccurrence[], focus: PathFocus) => void>();
+  private focus: PathFocus;
   private disposed = false;
 
   constructor(
@@ -29,63 +35,88 @@ export class VerticalNavigation implements PathNavigation {
     selectedVisualizer: HolonReference,
     private readonly realize: (subject: HolonReference, selected: HolonReference) => Promise<RealizedNode>,
   ) {
-    this.root = this.occurrence(root, subject, selectedVisualizer);
+    this.root = this.occurrence(root, subject, selectedVisualizer, 0, 1);
+    this.focus = { occurrenceId: this.root.id, mode: 'restore' };
   }
 
-  subscribe(render: (occurrences: readonly PathOccurrence[]) => void): () => void {
+  subscribe(render: (occurrences: readonly PathOccurrence[], focus: PathFocus) => void): () => void {
     if (this.disposed) return () => {};
     this.listeners.add(render);
-    render(this.path());
+    render(this.path(), this.focus);
     return () => this.listeners.delete(render);
   }
 
+  private continuations(owner: Occurrence): Occurrence[] {
+    return owner.child ? [owner.child, ...owner.alternatives] : owner.alternatives;
+  }
+
+  private subtree(root: Occurrence): Occurrence[] {
+    return [root, ...this.continuations(root).flatMap(child => this.subtree(child))];
+  }
+
   private path(): Occurrence[] {
-    const result: Occurrence[] = [];
-    for (let node: Occurrence | undefined = this.root; node; node = node.child) result.push(node);
-    return result;
+    return this.subtree(this.root).sort((a, b) => a.depth - b.depth || a.column - b.column);
   }
 
   private publish(): void {
-    if (!this.disposed) for (const render of this.listeners) render(this.path());
+    if (!this.disposed) for (const render of this.listeners) render(this.path(), this.focus);
   }
 
-  private occurrence(node: RealizedNode, subject: HolonReference, selectedVisualizer: HolonReference, provenance?: VerticalProvenance): Occurrence {
-    const occurrence: Occurrence = { id: identity(), subject, selectedVisualizer, provenance, element: node.element, node, pending: false, generation: 0, traversed: false };
+  /** Restores an existing occurrence without moving it or changing its provenance. */
+  restore(occurrenceId: string): void {
+    if (this.disposed || !this.path().some(item => item.id === occurrenceId)) return;
+    this.focus = { occurrenceId, mode: 'restore' };
+    this.publish();
+  }
+
+  private occurrence(node: RealizedNode, subject: HolonReference, selectedVisualizer: HolonReference, depth: number, column: number, provenance?: VerticalProvenance, subjectIdentity?: string): Occurrence {
+    const occurrence: Occurrence = {
+      id: identity(), rowId: `depth-${depth}`, depth, column, subject, subjectIdentity,
+      selectedVisualizer, provenance, element: node.element, node, pending: false,
+      generation: 0, traversed: false, alternatives: [], collections: new Map(),
+    };
     node.collectionActivation.setBeforeChange(() => {
-      if (this.disposed || !this.canReplace(occurrence)) return false;
-      // A new source invalidates its pending realization and any unextended leaf.
+      if (this.disposed) return false;
+      // Tabs retire a live source, not the navigation it previously produced.
       ++occurrence.generation;
       occurrence.pending = false;
       occurrence.message = undefined;
       occurrence.retry = undefined;
-      if (occurrence.child) this.release(occurrence.child);
-      occurrence.child = undefined;
       this.publish();
       return true;
     });
     return occurrence;
   }
 
-  private canReplace(owner: Occurrence): boolean {
-    if (owner.child?.traversed || owner.child?.pending) {
-      owner.message = 'This path continues below. Opening another path is not available yet.';
-      owner.retry = undefined;
-      this.publish();
-      return false;
+  private install(owner: Occurrence, candidate: Occurrence): void {
+    const previous = owner.child;
+    if (previous?.traversed) {
+      // Insert a whole band first. Only the canonical vertical path still in the
+      // anchor's column moves into it; already displaced descendants shift with
+      // their existing columns and keep their original semantic attachments.
+      for (const item of this.path()) if (item.column > owner.column) ++item.column;
+      for (const item of this.subtree(previous)) if (item.column === owner.column) ++item.column;
+      owner.alternatives.push(previous);
+    } else if (previous) {
+      this.release(previous);
     }
-    return true;
+    owner.child = candidate;
+    owner.traversed = true;
+    this.focus = { occurrenceId: candidate.id, mode: 'traverse' };
   }
 
   /** Accepts only a live source owned by this Path Inspector. */
   inspect(intent: InspectHolonIntent): void {
     if (this.disposed || !intent.source.isConnected) return;
-    const owner = this.path().find(item => item.node.collectionActivation.sourceAffordance(intent.source));
-    if (!owner || this.path().some(item => item.pending) || !this.canReplace(owner)) return;
+    const path = this.path();
+    const owner = path.find(item => item.node.collectionActivation.sourceAffordance(intent.source));
+    if (!owner || path.some(item => item.pending)) return;
     const affordance = owner.node.collectionActivation.sourceAffordance(intent.source)!;
-    let collectionOccurrenceId = this.collections.get(intent.source);
+    // Affordances belong to the mounted Node and survive Collection DOM reloads.
+    let collectionOccurrenceId = owner.collections.get(affordance);
     if (!collectionOccurrenceId) {
       collectionOccurrenceId = identity();
-      this.collections.set(intent.source, collectionOccurrenceId);
+      owner.collections.set(affordance, collectionOccurrenceId);
     }
     const provenance: VerticalProvenance = { kind: 'collection-member', parentOccurrenceId: owner.id, collectionOccurrenceId, affordance };
     const generation = ++owner.generation;
@@ -99,14 +130,24 @@ export class VerticalNavigation implements PathNavigation {
       if (!current()) return;
       let candidate: RealizedNode | undefined;
       try {
+        // SDK handle objects can change when a collection reloads. Compare the
+        // public semantic ID, including external Space identity, never its label.
+        const id = await intent.reference.holonId();
+        const subjectIdentity = JSON.stringify('Local' in id ? ['local', id.Local] : ['external', id.External.space_id, id.External.local_id]);
+        if (!current()) return;
+        const retained = this.continuations(owner).find(item => item.subjectIdentity === subjectIdentity
+          && item.provenance?.collectionOccurrenceId === collectionOccurrenceId);
+        if (retained) {
+          owner.message = undefined;
+          this.focus = { occurrenceId: retained.id, mode: 'restore' };
+          return;
+        }
         const selection = await this.transaction.selectVisualizer({ subject: intent.reference, requestedKind: 'node', parentVisualizer: this.parentVisualizer });
         if (!current()) return;
         candidate = await this.realize(intent.reference, selection.selected);
         if (!current()) { candidate.collectionActivation.dispose(); return; }
-        // Replacement becomes visible only after successful realization.
-        if (owner.child) this.release(owner.child);
-        owner.child = this.occurrence(candidate, intent.reference, selection.selected, provenance);
-        owner.traversed = true;
+        // No coordinates or retained state change until realization succeeds.
+        this.install(owner, this.occurrence(candidate, intent.reference, selection.selected, owner.depth + 1, owner.column, provenance, subjectIdentity));
         owner.message = undefined;
       } catch (error) {
         candidate?.collectionActivation.dispose();
@@ -122,7 +163,7 @@ export class VerticalNavigation implements PathNavigation {
   private release(occurrence: Occurrence): void {
     ++occurrence.generation;
     occurrence.node.collectionActivation.dispose();
-    if (occurrence.child) this.release(occurrence.child);
+    for (const child of this.continuations(occurrence)) this.release(child);
   }
 
   dispose(): void {

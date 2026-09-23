@@ -42,6 +42,74 @@ describe('Path Inspector visualizer artifact', () => {
     expect(element.querySelector('[data-path-occurrence="c"]').dataset.rowAllocation).toBe('compact');
     expect(element.querySelector('[data-path-occurrence="a"]').firstChild).toBe(a);
   });
+  it('restores explicit focus in place and keeps retained columns wide enough to scan', async () => {
+    const Path = await loadPathInspector();
+    customElements.define('test-path-retained-focus', class extends Path {});
+    const element = document.createElement('test-path-retained-focus') as any;
+    const root = { id: 'root', rowId: 'r0', column: 1, element: document.createElement('section') };
+    const retained = { id: 'retained', rowId: 'r1', column: 2, element: document.createElement('section'), provenance: { parentOccurrenceId: 'root' } };
+    const active = { id: 'active', rowId: 'r1', column: 1, element: document.createElement('section'), provenance: { parentOccurrenceId: 'root' } };
+    let publish: (items: any[], focus: any) => void = () => {};
+    element.setContext({ navigation: { subscribe(render: typeof publish) {
+      publish = render;
+      render([root, active, retained], { occurrenceId: 'active', mode: 'traverse' });
+      return () => {};
+    } } });
+    const viewport = element.querySelector('[data-path-inspector-viewport]');
+    const region = element.querySelector('[data-path-occurrence="retained"]');
+    region.scrollIntoView = vi.fn();
+    const focus = { occurrenceId: 'retained', mode: 'restore' };
+    publish([root, active, retained], focus);
+    expect(region.dataset.focused).toBe('true');
+    expect(region.style.gridRow).toBe('2');
+    expect(region.style.gridColumn).toBe('2');
+    expect(retained.element.parentElement).toBe(region);
+    expect(region.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(element.querySelector('[data-path-occurrence="root"]').dataset.rowAllocation).toBe('compact');
+    publish([root, { ...active, pending: true }, retained], focus);
+    expect(region.scrollIntoView).toHaveBeenCalledTimes(1);
+    element.viewportWidth = 240;
+    element.allocateRows();
+    expect(viewport.style.overflowX).toBe('auto');
+    expect(viewport.style.gridTemplateColumns).toBe('repeat(2, 320px)');
+    expect(retained.element.parentElement).toBe(region);
+  });
+  it('draws lineage from recorded parents across sparse columns and reallocates connectors without replacing Nodes', async () => {
+    const Path = await loadPathInspector();
+    customElements.define('test-path-lineage', class extends Path {});
+    const element = document.createElement('test-path-lineage') as any;
+    const node = (id: string, rowId: string, column: number, parentOccurrenceId?: string) => ({
+      id, rowId, column, element: document.createElement('section'),
+      provenance: parentOccurrenceId ? { parentOccurrenceId } : undefined,
+    });
+    const root = node('space', 'r0', 1);
+    const theme = node('theme', 'r1', 1, 'space');
+    const dancer = node('dancer', 'r1', 2, 'space');
+    const dance = node('dance', 'r2', 2, 'dancer');
+    let publish: (items: any[], focus: any) => void = () => {};
+    element.setContext({ navigation: { subscribe(render: typeof publish) {
+      publish = render;
+      render([root, theme, dancer, dance], { occurrenceId: 'dance', mode: 'traverse' });
+      return () => {};
+    } } });
+    const overlay = element.querySelector('[data-path-lineage]');
+    expect(overlay.style.pointerEvents).toBe('none');
+    expect(overlay.getAttribute('aria-hidden')).toBe('true');
+    const edges = () => [...overlay.querySelectorAll('path')].map((path: any) => [path.dataset.lineageParent, path.dataset.lineageChild]);
+    expect(edges()).toEqual([['space', 'theme'], ['space', 'dancer'], ['dancer', 'dance']]);
+    const route = () => overlay.querySelector('[data-lineage-child="dancer"]').getAttribute('d');
+    const before = route();
+    publish([root, theme, dancer, dance], { occurrenceId: 'space', mode: 'restore' });
+    expect(route()).not.toBe(before);
+    expect(dancer.element.parentElement?.dataset.pathOccurrence).toBe('dancer');
+    const restored = route();
+    element.viewportWidth = 400;
+    element.allocateRows();
+    expect(route()).not.toBe(restored);
+    expect(edges()).toEqual([['space', 'theme'], ['space', 'dancer'], ['dancer', 'dance']]);
+    publish([root, theme], { occurrenceId: 'theme', mode: 'restore' });
+    expect(edges()).toEqual([['space', 'theme']]);
+  });
   it('allocates a bounded root Node region owned by the Path Inspector', async () => {
     const PathInspector = await loadPathInspector();
     const tagName = 'map-path-inspector-artifact-test';

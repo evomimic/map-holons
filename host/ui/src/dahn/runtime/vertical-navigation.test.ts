@@ -21,6 +21,7 @@ const property = { propertyName: async () => 'Name', displayName: async () => 'N
 const relationship = (name: string) => ({ direction: 'declared', descriptor: { relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum: null }) } });
 function subject(name: string) {
   return {
+    holonId: async () => ({ Local: [...name].map(char => char.charCodeAt(0)) }),
     key: async () => name,
     versionedKey: async () => name,
     propertyValue: vi.fn(async () => ({ StringValue: name })),
@@ -110,10 +111,12 @@ describe('vertical traversal through selected artifacts', () => {
     expect(f.selectVisualizer).toHaveBeenCalledTimes(calls.selection);
     expect(f.materialize).toHaveBeenCalledTimes(calls.materialize);
     expect(f.rootSubject.describedRelatedHolons).toHaveBeenCalledTimes(calls.read);
-    // A continued path still cannot be overwritten after restoration.
     activate(rows[1]);
-    expect(f.path()).toEqual(retained);
-    expect(allocations()).toEqual(['expanded', 'compact', 'compact']);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    expect(retained.every(item => f.path().includes(item))).toBe(true);
+    expect(retained[1].column).toBe(2);
+    expect(retained[2].column).toBe(2);
+    expect(f.path()[1].column).toBe(1);
   });
 
   it('opens recursively, preserves source instances, and records separate occurrence and semantic identities', async () => {
@@ -144,56 +147,170 @@ describe('vertical traversal through selected artifacts', () => {
     expect((f.element.querySelector('[data-path-inspector-viewport]') as HTMLElement).style.overflowY).toBe('auto');
   });
 
-  it('replaces an unextended leaf, then blocks alternatives and tab changes once its path continues', async () => {
+  it('replaces leaves, retains traversed paths, and restores matching members without reselection', async () => {
     const f = await fixture(); const rows = await openCollection(f.root.element);
+    const table = f.root.element.querySelector('table');
     activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
     const firstChild = f.path()[1];
-    const originalProvenance = firstChild.provenance;
     activate(rows[1]); await vi.waitFor(() => expect(f.path()[1].subject).toBe(f.b));
     expect(firstChild.element.isConnected).toBe(false);
-    const child = f.path()[1]; expect(child.id).not.toBe(firstChild.id);
-    expect(child.provenance).toEqual(originalProvenance);
+    const child = f.path()[1];
+    expect(child.id).not.toBe(firstChild.id);
+    expect(child.provenance).toEqual(firstChild.provenance);
     const childRows = await openCollection(child.element); activate(childRows[0]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(3));
-    const saved = f.path().map(item => item.id);
-    const calls = nodeSelections(f).length;
-    activate(rows[0]);
-    f.root.element.querySelectorAll<HTMLButtonElement>('[role=tab]')[1].click();
-    expect(f.path().map(item => item.id)).toEqual(saved);
-    expect(nodeSelections(f)).toHaveLength(calls);
-    expect(f.path()[0].message).toContain('Opening another path is not available');
-    expect(f.root.element.querySelector('[aria-selected=true][role=tab]')?.textContent).toBe('Members');
-    expect(f.rootSubject.describedRelatedHolons).toHaveBeenCalledTimes(1);
+    const descendant = f.path()[2];
+    const provenance = child.provenance;
+    activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    const alternative = f.path()[1];
+    expect(alternative.subject).toBe(f.a);
+    expect(alternative.column).toBe(1);
+    expect(child.column).toBe(2); expect(descendant.column).toBe(2);
+    expect(child.provenance).toBe(provenance);
+    expect(descendant.provenance?.parentOccurrenceId).toBe(child.id);
+    expect(f.root.element.querySelector('table')).toBe(table);
     expect(rows[0].getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('keeps an occurrence retained after its current leaf is removed by a tab change', async () => {
-    const f = await fixture(); const rows = await openCollection(f.root.element);
-    activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
-    const child = f.path()[1];
-    const children = await openCollection(child.element);
-    activate(children[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
-    await openCollection(child.element, 1);
-    expect(f.path()).toHaveLength(2);
+    expect(child.element.isConnected).toBe(true);
+    const calls = nodeSelections(f).length;
+    const coordinates = f.path().map(item => [item.id, item.rowId, item.column]);
     activate(rows[1]);
-    expect(f.path()[1]).toBe(child);
-    expect(f.path()[0].message).toContain('Opening another path is not available');
+    await vi.waitFor(() => expect(f.element.querySelector(`[data-path-occurrence="${child.id}"]`)?.getAttribute('data-focused')).toBe('true'));
+    expect(nodeSelections(f)).toHaveLength(calls);
+    expect(f.path().map(item => [item.id, item.rowId, item.column])).toEqual(coordinates);
+    expect(f.path()).toContain(alternative);
+    // Restoring again after another row's expansion is an explicit focus request.
+    f.navigation.restore(f.path()[0].id);
+    activate(rows[1]);
+    await vi.waitFor(() => expect(f.element.querySelector(`[data-path-occurrence="${child.id}"]`)?.getAttribute('data-row-allocation')).toBe('expanded'));
   });
 
-  it('removes a replaceable leaf when its source tab changes and rejects stale sources', async () => {
+  it('preserves topology on tab changes, rejects stale sources, and matches reloaded semantic handles', async () => {
     const f = await fixture(); const rows = await openCollection(f.root.element);
     const oldSource = rows[0].closest('[data-visualizer-id]') as HTMLElement;
     activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
-    const old = f.path()[1];
-    const oldCollectionId = old.provenance!.collectionOccurrenceId;
+    const child = f.path()[1];
+    const childRows = await openCollection(child.element); activate(childRows[1]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    const retained = [...f.path()];
     const nextRows = await openCollection(f.root.element, 1);
-    expect(f.path()).toHaveLength(1); expect(old.element.isConnected).toBe(false);
+    expect(f.path()).toEqual(retained);
     f.root.element.append(oldSource);
     f.navigation.inspect({ reference: f.b as never, source: oldSource });
-    expect(f.path()).toHaveLength(1); oldSource.remove();
-    activate(nextRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    expect(f.path()[0].pending).toBe(false); oldSource.remove();
+    // The same Holon reached from a different affordance is a new occurrence.
+    activate(nextRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    expect(f.path()[1].subject).toBe(f.a);
     expect(f.path()[1].provenance?.affordance.label).toBe('Other');
-    expect(f.path()[1].provenance?.collectionOccurrenceId).not.toBe(oldCollectionId);
+    expect(f.path()[1].provenance?.collectionOccurrenceId).not.toBe(child.provenance?.collectionOccurrenceId);
+    const reloadedA = { ...f.a };
+    f.rootSubject.describedRelatedHolons.mockResolvedValue(collection([reloadedA, f.b]));
+    const returnedRows = await openCollection(f.root.element);
+    const calls = nodeSelections(f).length;
+    activate(returnedRows[0]);
+    await vi.waitFor(() => expect(f.element.querySelector(`[data-path-occurrence="${child.id}"]`)?.getAttribute('data-focused')).toBe('true'));
+    expect(nodeSelections(f)).toHaveLength(calls);
+    expect(f.path()).toHaveLength(4);
+    expect(child.column).toBe(2);
+    expect(child.provenance).toBe(retained[1].provenance);
+  });
+
+  it('keeps an untraversed child on a tab change until another member is activated', async () => {
+    const f = await fixture(); const rows = await openCollection(f.root.element);
+    activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const old = f.path()[1];
+    const nextRows = await openCollection(f.root.element, 1);
+    expect(f.path()[1]).toBe(old); expect(old.element.isConnected).toBe(true);
+    expect(old.provenance?.affordance.label).toBe('Members');
+    activate(nextRows[1]); await vi.waitFor(() => expect(f.path()[1].subject).toBe(f.b));
+    expect(f.path()).toHaveLength(2);
+    expect(old.element.isConnected).toBe(false);
+    expect(f.path()[1].provenance?.affordance.label).toBe('Other');
+  });
+
+  it('inserts repeated and nested alternatives without collisions and traverses displaced anchors', async () => {
+    const f = await fixture(); const rootRows = await openCollection(f.root.element);
+    activate(rootRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const a = f.path()[1]; const aRows = await openCollection(a.element);
+    activate(aRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    const b = f.path()[2]; const bRows = await openCollection(b.element);
+    activate(bRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    const bottom = f.path()[3];
+    activate(aRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(5));
+    const nested = f.path().find(item => item.provenance?.parentOccurrenceId === a.id && item.column === 1)!;
+    expect([a.column, b.column, bottom.column, nested.column]).toEqual([1, 2, 2, 1]);
+    activate(rootRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(6));
+    const canonical = f.path()[1];
+    expect([a.column, b.column, bottom.column, nested.column]).toEqual([2, 3, 3, 2]);
+    const canonicalRows = await openCollection(canonical.element);
+    activate(canonicalRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(7));
+    activate(rootRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(8));
+    expect([canonical.column, a.column, b.column, bottom.column, nested.column]).toEqual([2, 3, 4, 4, 3]);
+    // Continue a leaf in a displaced column, then branch from its displaced owner.
+    const nestedRows = await openCollection(nested.element);
+    activate(nestedRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(9));
+    activate(aRows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(10));
+    expect(a.column).toBe(3); expect(nested.column).toBe(4); expect(b.column).toBe(5);
+    expect(bottom.column).toBe(5);
+    const positions = f.path().map(item => `${item.rowId}:${item.column}`);
+    expect(new Set(positions).size).toBe(positions.length);
+    for (const item of [a, b, bottom, nested, canonical]) expect(item.element.isConnected).toBe(true);
+    expect(bottom.provenance?.parentOccurrenceId).toBe(b.id);
+    expect(b.provenance?.parentOccurrenceId).toBe(a.id);
+    const regions = [...f.element.querySelectorAll<HTMLElement>('[data-path-occurrence]')];
+    expect(regions).toHaveLength(10);
+    expect(regions.find(region => region.style.gridRow === '1' && region.style.gridColumn === '2')).toBeUndefined();
+    const dispose = f.path().map(item => vi.spyOn((item as any).node.collectionActivation, 'dispose'));
+    f.navigation.dispose(); f.navigation.dispose();
+    for (const spy of dispose) expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains coordinates and all descendants when an alternative fails, then inserts only on retry success', async () => {
+    const f = await fixture(); const rows = await openCollection(f.root.element);
+    activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const childRows = await openCollection(f.path()[1].element);
+    activate(childRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    const retained = [...f.path()];
+    f.selectVisualizer.mockRejectedValueOnce(new Error('selection failed'));
+    activate(rows[1]); await vi.waitFor(() => expect(f.path()[0].retry).toBeDefined());
+    expect(f.path()).toEqual(retained);
+    expect(f.path().map(item => item.column)).toEqual([1, 1, 1]);
+    f.path()[0].retry!(); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    expect(retained[1].column).toBe(2); expect(retained[2].column).toBe(2);
+  });
+
+  it('cancels stale alternative realization on tab changes without moving the retained path', async () => {
+    const f = await fixture(); const rows = await openCollection(f.root.element);
+    activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const childRows = await openCollection(f.path()[1].element);
+    activate(childRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    const retained = [...f.path()];
+    const gate = deferred<void>();
+    const original = f.realize.getMockImplementation()!;
+    let candidate: Awaited<ReturnType<typeof realizeNode>> | undefined;
+    f.realize.mockImplementationOnce(async (ref, selected) => { candidate = await original(ref, selected); await gate.promise; return candidate; });
+    activate(rows[1]); await vi.waitFor(() => expect(candidate).toBeDefined());
+    const dispose = vi.spyOn(candidate!.collectionActivation, 'dispose');
+    f.root.element.querySelectorAll<HTMLButtonElement>('[role=tab]')[1].click();
+    gate.resolve();
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledTimes(1));
+    expect(f.path()).toEqual(retained);
+    expect(f.path().map(item => item.column)).toEqual([1, 1, 1]);
+    expect(candidate!.element.isConnected).toBe(false);
+    expect(f.path()[0].pending).toBe(false);
+  });
+
+  it('distinguishes external Spaces even when members have identical local IDs and labels', async () => {
+    const f = await fixture();
+    Object.assign(f.a, { holonId: async () => ({ External: { local_id: [1], space_id: [10] } }) });
+    Object.assign(f.b, { holonId: async () => ({ External: { space_id: [20], local_id: [1] } }), key: f.a.key });
+    const rows = await openCollection(f.root.element);
+    activate(rows[0]); await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const a = f.path()[1];
+    const childRows = await openCollection(a.element);
+    activate(childRows[2]); await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    expect(f.path()[1].subject).toBe(f.b);
+    expect(a.column).toBe(2);
   });
 
   it.each(['selection', 'materialization', 'descriptor'])('keeps an existing leaf on %s failure and allows retry', async stage => {
