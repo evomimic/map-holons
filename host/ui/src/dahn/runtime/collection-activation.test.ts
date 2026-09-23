@@ -116,3 +116,55 @@ describe('selected collection activation', () => {
     node.remove(); expect(viewer.parentElement).not.toBeNull();
   });
 });
+
+it('delivers one member intent to Path Inspector, isolates occurrences, and revokes old bindings', async () => {
+  const f = fixture(); const data = collection(2); const members = [...data];
+  // Identical display values must not collapse member identity.
+  members.forEach(member => member.propertyValue.mockImplementation(async () => ({ StringValue: 'same' })));
+  f.owner.describedRelatedHolons.mockResolvedValue(data);
+  const nodeModule = await importer(nodeSource);
+  const pathModule = await importer(await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/path-inspector.js'), 'utf8'));
+  const node = document.createElement(defineCustomElementOnce('test-interactive-node', nodeModule.default)) as HTMLElement & { setContext(context: unknown): void };
+  const path = document.createElement(defineCustomElementOnce('test-interactive-path', pathModule.default)) as HTMLElement & { setContext(context: unknown): void };
+  const inspect = vi.fn();
+  node.setContext({ collectionActivation: f.activation, childVisualizers: new Map([['properties', document.createElement('section')]]), nodeAffordances: { collections: [tab('A'), tab('B')] } });
+  path.setContext({ onInspectHolon: inspect, childVisualizers: new Map([['root-node', node]]) });
+  document.body.append(path);
+  const tabs = node.querySelectorAll<HTMLButtonElement>('[role=tab]'); tabs[0].click();
+  await vi.waitFor(() => expect(node.querySelector('tbody tr')).not.toBeNull());
+  const source = node.querySelector('table')!.closest('[data-visualizer-id]')!;
+  const rows = [...source.querySelectorAll<HTMLTableRowElement>('tbody tr')];
+  rows[0].click(); rows[1].click(); rows[1].click();
+  expect(inspect).not.toHaveBeenCalled();
+  expect(rows.map(row => row.getAttribute('aria-selected'))).toEqual(['false', 'true']);
+  rows[1].dispatchEvent(new MouseEvent('dblclick', { bubbles: true, button: 0 }));
+  expect(inspect).toHaveBeenCalledExactlyOnceWith({ reference: members[1], source });
+  expect(node.parentElement).toBe(path.querySelector('[data-path-inspector-root-node]'));
+  expect(path.querySelectorAll('[data-dahn-holon-inspector]')).toHaveLength(1);
+  expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
+  expect(members[1].propertyValue).toHaveBeenCalledTimes(2);
+
+  const second = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime);
+  const updates: CollectionUpdate[] = [];
+  second.activate(tab('A'), 'slot', update => updates.push(update));
+  await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
+  const other = updates.at(-1)!.content!; node.append(other);
+  const otherRows = other.querySelectorAll<HTMLTableRowElement>('tbody tr');
+  expect(otherRows[1].getAttribute('aria-selected')).toBe('false');
+  otherRows[0].click(); otherRows[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  expect(inspect).toHaveBeenLastCalledWith({ reference: members[0], source: other });
+  expect(rows[1].getAttribute('aria-selected')).toBe('true');
+  second.dispose(); otherRows[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  expect(inspect).toHaveBeenCalledTimes(2);
+
+  other.remove();
+  tabs[1].click();
+  // Even reattaching superseded content must not restore its owner binding.
+  node.append(source); rows[1].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(inspect).toHaveBeenCalledTimes(2); source.remove();
+  await vi.waitFor(() => expect(node.querySelector('table[aria-label=B]')).not.toBeNull());
+  tabs[0].click();
+  await vi.waitFor(() => expect(node.querySelector('table[aria-label=A]')).not.toBeNull());
+  expect([...node.querySelectorAll('table[aria-label=A] tr[aria-selected]')].every(row => row.getAttribute('aria-selected') === 'false')).toBe(true);
+  path.remove();
+});

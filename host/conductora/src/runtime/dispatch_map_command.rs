@@ -5,6 +5,7 @@ use map_commands_contract::MapCommand;
 use map_commands_runtime::{ExecutionPolicy, Runtime};
 use map_commands_wire::{MapCommandWire, MapIpcRequest, MapIpcResponse, MapResultWire};
 use tauri::{command, State};
+use tracing::Instrument;
 
 use crate::setup::core_schema_bootstrap::CoreSchemaBootstrapGate;
 
@@ -15,6 +16,7 @@ use crate::setup::core_schema_bootstrap::CoreSchemaBootstrapGate;
 pub type RuntimeState = RwLock<Option<Runtime>>;
 
 #[command]
+#[tracing::instrument(target = "map_profile", level = "debug", name = "ipc.dispatch", skip_all, fields(request_id = request.request_id.value()))]
 pub async fn dispatch_map_command(
     request: MapIpcRequest,
     runtime_state: State<'_, RuntimeState>,
@@ -46,7 +48,8 @@ async fn dispatch_inner(
     options: map_commands_wire::RequestOptions,
     runtime_state: &RuntimeState,
 ) -> Result<map_commands_contract::MapResult, HolonError> {
-    let runtime = load_runtime(runtime_state)?;
+    let runtime = tracing::debug_span!(target: "map_profile", "ipc.load_runtime")
+        .in_scope(|| load_runtime(runtime_state))?;
 
     let runtime = runtime.ok_or_else(|| {
         HolonError::ServiceNotAvailable("MAP Commands Runtime not initialized".to_string())
@@ -56,10 +59,16 @@ async fn dispatch_inner(
 
     // Bind wire → domain before runtime execution so compatibility-only
     // ingress payloads never leak below the adapter seam.
-    let command = bind_command(&runtime, command)?;
+    let command = tracing::debug_span!(target: "map_profile", "ipc.bind")
+        .in_scope(|| bind_command(&runtime, command))?;
 
     // Execute via runtime (policy enforcement + handler routing)
-    runtime.execute_command(command, translate_request_options(options)).await
+    let execution_span =
+        tracing::debug_span!(target: "map_profile", "ipc.execute", command = command.label());
+    runtime
+        .execute_command(command, translate_request_options(options))
+        .instrument(execution_span)
+        .await
 }
 
 fn load_runtime(runtime_state: &RuntimeState) -> Result<Option<Runtime>, HolonError> {
@@ -82,7 +91,8 @@ fn wrap_response(
     request_id: map_commands_wire::RequestId,
     result: Result<map_commands_contract::MapResult, HolonError>,
 ) -> MapIpcResponse {
-    let wire_result = result.map(MapResultWire::from);
+    let wire_result = tracing::debug_span!(target: "map_profile", "ipc.project_response")
+        .in_scope(|| result.map(MapResultWire::from));
 
     // Always Ok — all domain errors are inside the envelope.
     MapIpcResponse { request_id, result: wire_result }

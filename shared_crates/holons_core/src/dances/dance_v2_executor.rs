@@ -51,6 +51,7 @@ impl ResolvedDanceV2Invocation {
 /// declares no `DanceImplementation` and is routed, after ordinary binding and
 /// contract validation, to the internal direct Query seam. In QRY1 that route
 /// is scaffold-only: it always yields an error and never creates a response.
+#[tracing::instrument(target = "map_profile", level = "debug", name = "dance.execute", skip_all)]
 pub async fn execute_dance_v2(
     context: &Arc<TransactionContext>,
     invocation: DanceInvocation,
@@ -62,7 +63,8 @@ pub async fn execute_dance_v2(
     }
 
     let resolved = resolve_bound_dance_v2_invocation(bound_invocation)?;
-    let response_body = resolved.implementation.invoke(context, &resolved.bound_invocation)?;
+    let response_body = tracing::debug_span!(target: "map_profile", "dance.invoke")
+        .in_scope(|| resolved.implementation.invoke(context, &resolved.bound_invocation))?;
     build_resolved_dance_v2_response(context, &resolved, response_body)
 }
 
@@ -79,14 +81,27 @@ pub fn resolve_dance_v2_invocation(
 }
 
 /// Binds the invocation to its descriptor-backed contract and validates it.
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "dance.bind_and_validate",
+    skip_all
+)]
 fn bind_and_validate(invocation: DanceInvocation) -> Result<BoundDanceInvocation, HolonError> {
-    let bound_invocation = invocation.bind()?;
+    let bound_invocation =
+        tracing::debug_span!(target: "map_profile", "dance.bind").in_scope(|| invocation.bind())?;
     validate_bound_invocation(&bound_invocation)?;
     Ok(bound_invocation)
 }
 
 /// Selects the currently available implementation for an already validated
 /// invocation.
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "dance.resolve_implementation",
+    skip_all
+)]
 fn resolve_bound_dance_v2_invocation(
     bound_invocation: BoundDanceInvocation,
 ) -> Result<ResolvedDanceV2Invocation, HolonError> {
@@ -96,6 +111,12 @@ fn resolve_bound_dance_v2_invocation(
 }
 
 /// Constructs the descriptor-governed response for an already invoked Dance.
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "dance.build_response",
+    skip_all
+)]
 pub fn build_resolved_dance_v2_response(
     context: &Arc<TransactionContext>,
     resolved: &ResolvedDanceV2Invocation,
@@ -159,16 +180,24 @@ fn build_response_reference(
     DanceResponseReference::new(response.into())
 }
 
+#[tracing::instrument(target = "map_profile", level = "debug", name = "dance.validate", skip_all)]
 fn validate_bound_invocation(
     bound_invocation: &crate::dances::BoundDanceInvocation,
 ) -> Result<(), HolonError> {
     validate_request_contract(bound_invocation)?;
     validate_affording_holon_contract(bound_invocation)?;
     validate_invocation_source(bound_invocation)?;
-    validate_response_descriptor(&bound_invocation.response_type()?)?;
+    tracing::debug_span!(target: "map_profile", "dance.validate_response_contract")
+        .in_scope(|| validate_response_descriptor(&bound_invocation.response_type()?))?;
     Ok(())
 }
 
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "dance.validate_request_contract",
+    skip_all
+)]
 fn validate_request_contract(
     bound_invocation: &crate::dances::BoundDanceInvocation,
 ) -> Result<(), HolonError> {
@@ -199,6 +228,12 @@ fn validate_request_contract(
     }
 }
 
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "dance.validate_affording_holon_contract",
+    skip_all
+)]
 fn validate_affording_holon_contract(
     bound_invocation: &crate::dances::BoundDanceInvocation,
 ) -> Result<(), HolonError> {
@@ -221,6 +256,12 @@ fn validate_invocation_source(
     Ok(())
 }
 
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "dance.validate_response_descriptor",
+    skip_all
+)]
 fn validate_response_descriptor(
     response_descriptor: &DanceResponseDescriptor,
 ) -> Result<(), HolonError> {

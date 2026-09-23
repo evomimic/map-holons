@@ -193,6 +193,12 @@
           "name": "ConsumesDesignToken",
           "target": [
             {
+              "$ref": "ActionHoverSurfaceBackground.DesignToken"
+            },
+            {
+              "$ref": "ActionTextColor.DesignToken"
+            },
+            {
               "$ref": "CollectionHeaderSurfaceBackground.DesignToken"
             },
             {
@@ -256,7 +262,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:e64a38c5c285392d2b2ef7beef9457f7e49f0691538803d160f35cf69873b46f",
+        "VisualizerArtifactDigest": "sha256:7910ed7d04123a7fbc733df5ae439719726d215a754b32a611390119475b95f1",
         "VisualizerImplementationKey": "dahn.table-collection",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"

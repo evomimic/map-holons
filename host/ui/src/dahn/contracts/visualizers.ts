@@ -1,3 +1,4 @@
+import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
 import type { NodeAffordances } from './affordances';
 import type { ActionNode } from './actions';
@@ -6,7 +7,29 @@ import type { HolonViewAccess } from './holon-view';
 import type { DahnTarget } from './targets';
 import type { DahnTheme } from './themes';
 import type { TablePresentation } from './table-presentation';
-import type { BaseValue } from '../deps';
+import type { BaseValue, HolonReference } from '../deps';
+
+/** Inspection intent delivered to the Path Inspector, never a MAP command.
+ * The source element identifies a live Collection occurrence, independent of
+ * semantic identity and grid position. The reference is the original SDK handle.
+ */
+export interface InspectHolonIntent {
+  reference: HolonReference;
+  source: HTMLElement;
+}
+
+/** Selected Collection implementations report intent through this local binding.
+ * A null handler revokes delivery when their owning lifecycle is superseded.
+ */
+export interface CollectionInteractionElement extends HTMLElement {
+  setInspectHolonHandler(handler: ((reference: HolonReference) => void) | null): void;
+}
+
+/** Runtime-to-Path-Inspector DOM event; bubbles through Node composition.
+ * Path Inspector consumes it and owns its interpretation. No navigation occurs
+ * in the Collection or Node lifecycle adapter.
+ */
+export const INSPECT_HOLON_EVENT = 'dahn-inspect-holon';
 
 /**
  * Target classification metadata for a visualizer realized into the canvas.
@@ -43,6 +66,10 @@ export interface VisualizerDefinition {
 export interface VisualizerContext {
   /** Human-readable occurrence identity supplied by the parent composition. */
   title?: string;
+  /** Path Inspector interaction boundary for occurrence-aware traversal. */
+  onInspectHolon?: (intent: InspectHolonIntent) => void;
+  /** Retained vertical topology projected by the selected Path Inspector. */
+  navigation?: PathNavigation;
   target: DahnTarget;
   holon: HolonViewAccess;
   actions: ActionNode[];

@@ -1,3 +1,5 @@
+import { serializeTransaction } from './transaction-queue';
+import { INSPECT_HOLON_EVENT, type CollectionInteractionElement, type InspectHolonIntent } from '../contracts/visualizers';
 import type { CollectionAffordance } from '../contracts/affordances';
 import type { DescribedHolonCollection, HolonReference, MapTransaction } from '../deps';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
@@ -11,27 +13,30 @@ export interface CollectionUpdate {
   retry?: () => void;
 }
 export interface CollectionActivation {
-  activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): void;
+  activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): boolean | void;
   dispose(): void;
 }
 
-// All occurrences sharing a transaction use the same ordered operation stream.
-const transactionQueues = new WeakMap<MapTransaction, Promise<void>>();
-function serialize(transaction: MapTransaction, work: () => Promise<void>): void {
-  const previous = transactionQueues.get(transaction) ?? Promise.resolve();
-  const next = previous.then(work);
-  transactionQueues.set(transaction, next.catch(() => {}));
-}
-
-type CollectionElement = HTMLElement & {
+type CollectionElement = CollectionInteractionElement & {
   setCollection(collection: DescribedHolonCollection, title: string): Promise<void>;
 };
 
 /** Owns one Node occurrence's lazy collection lifecycle, never its layout. */
 export class NodeCollectionActivation implements CollectionActivation {
+  private content?: CollectionElement;
   private generation = 0;
   private disposed = false;
   private selected: CollectionAffordance | undefined;
+
+  private beforeChange?: () => boolean;
+
+  /** Lets the navigation owner protect provenance before a source tab changes. */
+  setBeforeChange(handler: () => boolean): void { this.beforeChange = handler; }
+
+  /** Resolves only the currently live Collection occurrence, never stale DOM. */
+  sourceAffordance(source: HTMLElement): CollectionAffordance | undefined {
+    return !this.disposed && this.content === source ? this.selected : undefined;
+  }
 
   constructor(
     private readonly transaction: MapTransaction,
@@ -40,17 +45,22 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly materialized: MaterializedVisualizerRuntime,
   ) {}
 
-  activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): void {
-    if (this.disposed || affordance.kind !== 'relationship' || this.selected === affordance) return;
+  activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): boolean {
+    if (this.disposed || affordance.kind !== 'relationship') return false;
+    if (this.selected === affordance) return true;
+    if (this.beforeChange?.() === false) return false;
     this.selected = affordance;
     this.load(affordance, slotKey, publish);
+    return true;
   }
 
   private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotKey: string, publish: (update: CollectionUpdate) => void): void {
+    this.content?.setInspectHolonHandler(null);
+    this.content = undefined;
     const generation = ++this.generation;
     const current = () => !this.disposed && generation === this.generation;
     publish({ state: 'loading' });
-    serialize(this.transaction, async () => {
+    void serializeTransaction(this.transaction, async () => {
       if (!current()) return;
       let stage = 'Membership retrieval';
       try {
@@ -75,6 +85,14 @@ export class NodeCollectionActivation implements CollectionActivation {
         stage = 'Property retrieval / presentation';
         await element.setCollection(collection, affordance.label);
         if (!current()) return;
+        if (typeof element.setInspectHolonHandler !== 'function') throw new Error('Selected implementation has no collection interaction binding');
+        element.setInspectHolonHandler(reference => {
+          if (!current() || !element.isConnected) return;
+          element.dispatchEvent(new CustomEvent<InspectHolonIntent>(INSPECT_HOLON_EVENT, {
+            bubbles: true, composed: true, detail: { reference, source: element },
+          }));
+        });
+        this.content = element;
         publish({ state: collection.length === 0 ? 'loaded-empty' : 'loaded', content: element });
       } catch (error) {
         if (!current()) return;
@@ -87,5 +105,10 @@ export class NodeCollectionActivation implements CollectionActivation {
     });
   }
 
-  dispose(): void { this.disposed = true; ++this.generation; }
+  dispose(): void {
+    this.disposed = true; ++this.generation;
+    this.beforeChange = undefined;
+    this.content?.setInspectHolonHandler(null);
+    this.content = undefined;
+  }
 }
