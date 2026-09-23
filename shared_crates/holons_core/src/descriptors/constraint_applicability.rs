@@ -1,7 +1,7 @@
 use super::definition_identity::lineage_contains;
 use super::{
     effective_relationship_targets_with_reader, walk_extends_chain_with_reader,
-    CurrentDescriptorReader, DescriptorReader,
+    CurrentDescriptorReader, DescriptorReader, ValidExtendsLineage,
 };
 use crate::reference_layer::HolonReference;
 use core_types::HolonError;
@@ -45,8 +45,26 @@ pub fn constraint_applies_to_with_reader<R: DescriptorReader>(
 ) -> Result<bool, R::Error> {
     let lineage =
         walk_extends_chain_with_reader(descriptor, reader).collect::<Result<Vec<_>, _>>()?;
+    applies_to_members(constraint_type, &lineage, reader)
+}
+
+/// Reuses a diagnosed lineage when many constraint attachments share one subject.
+/// The supplied lineage and applicability targets must use the same prospective reader.
+pub fn constraint_applies_to_lineage_with_reader<R: DescriptorReader>(
+    constraint_type: &HolonReference,
+    lineage: ValidExtendsLineage<'_>,
+    reader: &R,
+) -> Result<bool, R::Error> {
+    applies_to_members(constraint_type, lineage.members(), reader)
+}
+
+fn applies_to_members<R: DescriptorReader>(
+    constraint_type: &HolonReference,
+    lineage: &[HolonReference],
+    reader: &R,
+) -> Result<bool, R::Error> {
     for target in applicable_descriptor_types_with_reader(constraint_type, reader)? {
-        if lineage_contains(&lineage, &target) {
+        if lineage_contains(lineage, &target) {
             return Ok(true);
         }
     }

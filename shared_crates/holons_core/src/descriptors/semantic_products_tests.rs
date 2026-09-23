@@ -593,3 +593,34 @@ fn kind_designation_diagnosis_distinguishes_bad_values_from_field_shaped_read_er
     }
     Ok(())
 }
+
+#[test]
+fn effective_constraint_contributions_preserve_parent_identity_and_provenance(
+) -> Result<(), HolonError> {
+    let context = build_context();
+    let root: HolonReference = new_kind_descriptor(&context, "root", None, false)?.into();
+    let mut parent = new_kind_descriptor(&context, "parent", Some(&root), true)?;
+    let mut child = new_kind_descriptor(&context, "child", Some(&parent.clone().into()), false)?;
+    let inherited: HolonReference = new_test_holon(&context, "inherited")?.into();
+    let broader: HolonReference = new_test_holon(&context, "broader")?.into();
+    parent.add_related_holons(R::Constraints, vec![inherited.clone()])?;
+    child.add_related_holons(R::Constraints, vec![broader])?;
+    let subject: HolonReference = child.into();
+    let diagnosis = ExtendsLineageDiagnosis::assess(&subject, &root)?;
+    let mut contributions = ConstraintContributions::resolve_with_reader(
+        diagnosis.valid_lineage().unwrap(),
+        &CurrentDescriptorReader,
+    )?;
+    assert_eq!(contributions.inherited.len(), 1);
+    assert_eq!(contributions.effective.len(), 2);
+    assert!(contributions.missing_inherited().is_empty());
+    assert!(same_definition(&contributions.inherited[0].member, &inherited));
+    assert!(same_definition(&contributions.inherited[0].declared_on, &parent.into()));
+    // Explicit malformed product bypasses additive authoring: replacing provenance
+    // is as invalid as removing the inherited identity entirely.
+    contributions.effective[0].declared_on = subject;
+    assert_eq!(contributions.missing_inherited().len(), 1);
+    contributions.effective.clear();
+    assert_eq!(contributions.missing_inherited().len(), 1);
+    Ok(())
+}

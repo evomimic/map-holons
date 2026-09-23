@@ -46,6 +46,8 @@ pub enum CoreValidationRuleName {
     WellFormedEffectiveMemberDefinitions,
     /// DS-CONTRACT-004: member instance kinds match their contract positions.
     ContractMemberKindCompatibility,
+    /// DS-CONSTRAINT-001: inherited effective constraint obligations remain intact.
+    InheritedValueConstraintNonRelaxation,
 }
 
 impl CoreValidationRuleName {
@@ -59,6 +61,9 @@ impl CoreValidationRuleName {
     /// Fully qualified schema key; display labels never select a handler.
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::InheritedValueConstraintNonRelaxation => {
+                "InheritedValueConstraintNonRelaxation.ValidationRule"
+            }
             Self::RequiredPropertyPresence => "RequiredPropertyPresence.ValidationRule",
             Self::NoUndescribedProperties => "NoUndescribedProperties.ValidationRule",
             Self::BaseValueKindMatchesString => "BaseValueKindMatchesString.ValidationRule",

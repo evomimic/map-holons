@@ -2,6 +2,7 @@ pub(crate) mod accessor_helpers;
 mod assessment_reader;
 pub mod command_descriptor;
 mod constraint_applicability;
+mod constraint_contributions;
 mod contract_contributions;
 pub mod dance_descriptor;
 pub mod dance_response_descriptor;
@@ -38,8 +39,9 @@ pub mod value_descriptor_subtypes;
 pub use command_descriptor::CommandDescriptor;
 pub use constraint_applicability::{
     applicable_descriptor_types, applicable_descriptor_types_with_reader, constraint_applies_to,
-    constraint_applies_to_with_reader,
+    constraint_applies_to_lineage_with_reader, constraint_applies_to_with_reader,
 };
+pub use constraint_contributions::ConstraintContributions;
 pub use contract_contributions::ContractContributions;
 pub use dance_descriptor::DanceDescriptor;
 pub use dance_response_descriptor::DanceResponseDescriptor;

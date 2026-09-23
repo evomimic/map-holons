@@ -147,6 +147,7 @@ pub(crate) fn native_rule_kind(name: CoreValidationRuleName) -> Option<core_type
         | NoInheritedMemberRedeclaration
         | UniqueSemanticMemberNames
         | WellFormedEffectiveMemberDefinitions
-        | ContractMemberKindCompatibility => None,
+        | ContractMemberKindCompatibility
+        | InheritedValueConstraintNonRelaxation => None,
     }
 }

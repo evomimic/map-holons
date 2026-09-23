@@ -55,14 +55,14 @@ pub struct DescriptorRuleProducts {
 }
 
 impl DescriptorRuleProducts {
-    fn violation(&mut self, rule: CoreValidationRuleName, message: String) {
+    pub(crate) fn violation(&mut self, rule: CoreValidationRuleName, message: String) {
         self.diagnostics
             .entry(rule)
             .or_default()
             .push(PreparedDiagnostic { kind: DiagnosticKind::Violation, message });
     }
 
-    fn unresolved(&mut self, rule: CoreValidationRuleName, message: String) {
+    pub(crate) fn unresolved(&mut self, rule: CoreValidationRuleName, message: String) {
         self.diagnostics
             .entry(rule)
             .or_default()
@@ -574,4 +574,17 @@ pub(crate) fn contract_member_kind_compatibility(
     c: &mut ValidationCollector,
 ) -> Result<RuleOutcome, HolonError> {
     run(i, c, CoreValidationRuleName::ContractMemberKindCompatibility, "DS-CONTRACT-004")
+}
+
+/// Dispatches the prepared combined-set preservation result, without evaluating any constraint.
+pub(crate) fn inherited_constraint_non_relaxation(
+    invocation: ValidationInvocation<'_>,
+    collector: &mut ValidationCollector,
+) -> Result<RuleOutcome, HolonError> {
+    run(
+        invocation,
+        collector,
+        CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
+        "DS-CONSTRAINT-001",
+    )
 }

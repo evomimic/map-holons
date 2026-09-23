@@ -84,6 +84,9 @@ impl StaticRuleRegistry {
     pub fn lookup(key: &ValidationRuleKey) -> Option<StaticRuleHandler> {
         use CoreValidationRuleName::*;
         match CoreValidationRuleName::from_key(&key.0)? {
+            InheritedValueConstraintNonRelaxation => {
+                Some(descriptor_rules::inherited_constraint_non_relaxation)
+            }
             RequiredPropertyPresence => Some(handlers::required_property_presence),
             NoUndescribedProperties => Some(handlers::no_undescribed_properties),
             BaseValueKindMatchesString

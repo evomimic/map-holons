@@ -1,3 +1,6 @@
+#[path = "constraint_declarations_tests.rs"]
+mod constraint_declarations;
+
 #[path = "test_support.rs"]
 mod fixture;
 
@@ -711,14 +714,17 @@ fn unresolved_constraint_type_is_an_incomplete_assessment() -> Result<(), HolonE
     let descriptor =
         ValueDescriptor::from_holon(fixture.nodes["StringValueType.ValueType"].clone());
     let value = BaseValue::StringValue(MapString("present".into()));
+    let mut collector = ValidationCollector::default();
     assert!(matches!(
         validate_value(
             ValueValidationSubject { descriptor: &descriptor, value: &value, path: &value_path() },
             &context,
-            &mut ValidationCollector::default(),
+            &mut collector,
         ),
         Err(HolonError::MissingDescribedBy { .. })
     ));
+    assert_eq!(collector.observations().effective_constraint_count, 1);
+    assert_eq!(collector.observations().constraint_declaration_count, 0);
     Ok(())
 }
 

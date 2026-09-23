@@ -10,6 +10,7 @@
 
 mod collector;
 mod commitments;
+mod constraint_declarations;
 mod contexts;
 mod descriptor_rules;
 mod handlers;
@@ -22,6 +23,7 @@ mod validators;
 
 pub use collector::{ValidationCollector, ValidationObservations};
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
+pub use constraint_declarations::{ConstraintDeclarationAssessment, ConstraintDeclarationRoots};
 pub use contexts::{HolonValidationContext, PropertyValidationContext, ValueValidationContext};
 pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
 pub use orchestration::validate_commit_candidates;
