@@ -1,4 +1,11 @@
 export default class HolonInspectorElement extends HTMLElement {
+  setSingularNavigationState(state) {
+    for (const [affordance, button] of this.singularControls ?? []) {
+      button.setAttribute('aria-pressed', String(state.active === affordance));
+      button.setAttribute('aria-busy', String(state.state === 'loading' && state.attempted === affordance));
+      button.dataset.singularState = state.attempted === affordance ? state.state : state.active === affordance ? 'loaded' : 'unresolved';
+    }
+  }
   setRowExpansionHandler(handler) { this.expandRow = handler; }
   setSpatialBudget(budget) {
     this.allocatedHeight = budget.height;
@@ -50,8 +57,8 @@ export default class HolonInspectorElement extends HTMLElement {
       textAlign: tab ? 'center' : 'left',
     });
     button.textContent = item.label;
-    button.disabled = !(tab && item.kind === 'relationship' && this.collectionActivation);
-    if (!button.disabled) {
+    button.disabled = tab ? !(item.kind === 'relationship' && this.collectionActivation) : !this.activateRelationship;
+    if (!button.disabled && tab) {
       button.setAttribute('role', 'tab');
       button.setAttribute('aria-selected', 'false');
       button.tabIndex = this.collectionControls.length ? -1 : 0;
@@ -74,6 +81,13 @@ export default class HolonInspectorElement extends HTMLElement {
         if (next) { event.preventDefault(); next.focus(); }
       });
       this.collectionControls.push(button);
+    }
+    if (!tab && !button.disabled) {
+      button.dataset.singularRelationship = 'true';
+      button.dataset.singularState = 'unresolved';
+      button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('click', () => this.activateRelationship(item));
+      this.singularControls.set(item, button);
     }
     button.title = button.disabled ? 'Navigation activation is not available yet' : item.label;
     if (item.relationship) button.dataset.relationshipDirection = item.relationship.direction;
@@ -108,6 +122,8 @@ export default class HolonInspectorElement extends HTMLElement {
     this.disconnectedCallback();
     this.collectionActivation = context.collectionActivation;
     this.collectionControls = [];
+    this.singularControls = new Map();
+    this.activateRelationship = context.activateRelationship;
     this.collectionPanelId = `dahn-collection-panel-${++nextOverflowId}`;
     this.dataset.visualizerId = 'holon-inspector';
     this.dataset.dahnHolonInspector = 'true';
@@ -224,7 +240,7 @@ export default class HolonInspectorElement extends HTMLElement {
 
     this.layouts = [railLayout, collectionLayout];
     const style = document.createElement('style');
-    style.textContent = `[data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
+    style.textContent = `[data-dahn-holon-inspector] [data-singular-relationship][aria-pressed="true"], [data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
       [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
     this.replaceChildren(style, title, body, collectionRegion);

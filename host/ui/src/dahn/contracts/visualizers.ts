@@ -1,6 +1,6 @@
 import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
-import type { NodeAffordances } from './affordances';
+import type { NodeAffordances, RelationshipAffordance } from './affordances';
 import type { ActionNode } from './actions';
 import type { CanvasApi } from './canvas';
 import type { HolonViewAccess } from './holon-view';
@@ -17,6 +17,22 @@ export interface InspectHolonIntent {
   reference: HolonReference;
   source: HTMLElement;
 }
+
+/** A live Node asks its owning Path Inspector to follow a classified relationship. */
+export interface TraverseRelationshipIntent {
+  source: HTMLElement;
+  affordance: RelationshipAffordance;
+}
+
+/** Occurrence-local presentation feedback; semantic membership stays Rust-owned. */
+export interface SingularNavigationState {
+  state: 'unresolved' | 'loading' | 'loaded-empty' | 'loaded' | 'error';
+  active?: RelationshipAffordance;
+  attempted?: RelationshipAffordance;
+}
+
+/** Singular interaction counterpart to collection-member inspection. */
+export const TRAVERSE_RELATIONSHIP_EVENT = 'dahn-traverse-relationship';
 
 /** Selected Collection implementations report intent through this local binding.
  * A null handler revokes delivery when their owning lifecycle is superseded.
@@ -68,7 +84,11 @@ export interface VisualizerContext {
   title?: string;
   /** Path Inspector interaction boundary for occurrence-aware traversal. */
   onInspectHolon?: (intent: InspectHolonIntent) => void;
-  /** Retained vertical topology projected by the selected Path Inspector. */
+  /** Singular traversal intent delivered to the owning Path Inspector. */
+  onTraverseRelationship?: (intent: TraverseRelationshipIntent) => void;
+  /** Selected Node interaction binding; the Node supplies the classified affordance. */
+  activateRelationship?: (affordance: RelationshipAffordance) => void;
+  /** Retained navigation topology projected by the selected Path Inspector. */
   navigation?: PathNavigation;
   target: DahnTarget;
   holon: HolonViewAccess;
@@ -109,6 +129,8 @@ export interface VisualizerContext {
  */
 export interface VisualizerElement extends HTMLElement {
   setContext(context: VisualizerContext): void;
+  /** Reflects active and attempted singular navigation without rebuilding the Node. */
+  setSingularNavigationState?(state: SingularNavigationState): void;
   /** Parent-owned external height; the selected child owns responsive thresholds. */
   setSpatialBudget?(budget: { height: number }): void;
   /** Semantic request to restore the containing row, independent of child layout. */

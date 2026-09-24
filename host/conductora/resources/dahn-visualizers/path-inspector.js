@@ -2,6 +2,10 @@ export default class PathInspectorElement extends HTMLElement {
   constructor() {
     super();
     // The nearest Path Inspector owns interpretation for its composed slots.
+    this.addEventListener('dahn-traverse-relationship', event => {
+      event.stopPropagation();
+      if (this.isConnected && this.contains(event.detail.source)) this.onTraverseRelationship?.(event.detail);
+    });
     this.addEventListener('dahn-inspect-holon', event => {
       event.stopPropagation();
       if (this.isConnected && this.contains(event.detail.source)) this.onInspectHolon?.(event.detail);
@@ -28,6 +32,7 @@ export default class PathInspectorElement extends HTMLElement {
   setContext(context) {
     this.disconnectedCallback();
     this.onInspectHolon = context.onInspectHolon;
+    this.onTraverseRelationship = context.onTraverseRelationship;
     this.navigation = context.navigation;
     this.dataset.visualizerId = 'path-inspector';
     this.dataset.dahnPathInspector = 'true';
@@ -136,6 +141,14 @@ export default class PathInspectorElement extends HTMLElement {
       line.dataset.lineageParent = parent.id;
       line.dataset.lineageChild = child.id;
       line.setAttribute('d', `M ${sourceX} ${sourceY} V ${elbowY} H ${targetX} V ${targetY} M ${targetX - 7} ${targetY - 8} L ${targetX} ${targetY} L ${targetX + 7} ${targetY - 8}`);
+      if (child.provenance?.kind === 'singular-relationship') {
+        const startX = ((parent.column ?? 1) - 1) * (columnWidth + columnGap) + columnWidth;
+        const endX = ((child.column ?? 1) - 1) * (columnWidth + columnGap) - 4;
+        const startY = tops[parentRow] + heights[parentRow] / 2;
+        const endY = tops[childRow] + heights[childRow] / 2;
+        const elbowX = startX + columnGap / 2;
+        line.setAttribute('d', `M ${startX} ${startY} H ${elbowX} V ${endY} H ${endX} M ${endX - 8} ${endY - 7} L ${endX} ${endY} L ${endX - 8} ${endY + 7}`);
+      }
       line.setAttribute('fill', 'none');
       line.setAttribute('stroke', 'currentColor');
       line.setAttribute('stroke-width', '5');

@@ -1,18 +1,20 @@
+import type { RelationshipAffordance } from '../contracts/affordances';
 import { NodeCollectionActivation } from './collection-activation';
 import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
 import { DahnHolonView } from '../map-adapter/dahn-holon-view';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import { renderVisualizerRegion } from './visualizer-region';
-import type { VisualizerContext } from '../contracts/visualizers';
+import { TRAVERSE_RELATIONSHIP_EVENT, type VisualizerContext, type TraverseRelationshipIntent } from '../contracts/visualizers';
 import type { CanvasApi } from '../contracts/canvas';
 import type { DahnTheme } from '../contracts/themes';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 
-/** A realized Node owns its independent collection lifecycle. */
+/** A realized Node owns its collection lifecycle and classified interaction inputs. */
 export interface RealizedNode {
   element: HTMLElement;
   collectionActivation: NodeCollectionActivation;
+  singularRelationships: readonly RelationshipAffordance[];
 }
 
 /** Composes any already-selected Node, including the startup-selected root.
@@ -168,6 +170,11 @@ export async function realizeNode(
   try {
     element.setContext({
       collectionActivation,
+      activateRelationship: affordance => {
+        if (element.isConnected) element.dispatchEvent(new CustomEvent<TraverseRelationshipIntent>(TRAVERSE_RELATIONSHIP_EVENT, {
+          bubbles: true, composed: true, detail: { source: element, affordance },
+        }));
+      },
       title: `${typeDisplayName}: ${holonKey}`,
       target: { reference: subject },
       holon: new DahnHolonView(subject),
@@ -181,5 +188,5 @@ export async function realizeNode(
     collectionActivation.dispose();
     throw error;
   }
-  return { element, collectionActivation };
+  return { element, collectionActivation, singularRelationships: affordances.singularRelationships };
 }

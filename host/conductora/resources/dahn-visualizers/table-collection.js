@@ -70,6 +70,11 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             if (await property.isArray()) continue;
             columns.push({ id: await property.propertyName(), displayName: await property.displayName(), valueType: await property.valueKind(), values: [] });
         }
+        // Descriptor classification anchors can expose no instance columns.
+        // Keep their holon members identifiable through the public bound handle,
+        // without treating the anchor as the members' describing meta-type.
+        const identityOnly = columns.length === 0;
+        if (identityOnly) columns.push({ id: 'Key', displayName: 'Key', valueType: 'StringValue', values: [] });
         const keyIndex = columns.findIndex(column => column.id === 'Key');
         if (keyIndex > 0) columns.unshift(...columns.splice(keyIndex, 1));
         const rowIds = [];
@@ -77,7 +82,11 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             const rowId = crypto.randomUUID();
             rowIds.push(rowId);
             members.set(rowId, member);
-            for (const column of columns) column.values.push(await member.propertyValue(column.id));
+            if (identityOnly) {
+                columns[0].values.push({ StringValue: (await member.key()) ?? await member.versionedKey() });
+            } else {
+                for (const column of columns) column.values.push(await member.propertyValue(column.id));
+            }
         }
         if (generation !== this.generation) return;
         this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns } });

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { VerticalNavigation } from './vertical-navigation';
+import { PathNavigator } from './path-navigator';
 import { realizeNode } from './realize-node';
 import { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
@@ -18,7 +18,7 @@ const artifacts = Object.fromEntries(await Promise.all(
 const selected = (key: string) => ({ key: async () => key }) as HolonReference;
 const visualizers = { node: selected('holon-inspector'), properties: selected('properties'), action: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
-const relationship = (name: string) => ({ direction: 'declared', descriptor: { relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum: null }) } });
+const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
 function subject(name: string) {
   return {
     holonId: async () => ({ Local: [...name].map(char => char.charCodeAt(0)) }),
@@ -27,9 +27,10 @@ function subject(name: string) {
     propertyValue: vi.fn(async () => ({ StringValue: name })),
     holonDescriptor: async () => ({ displayName: async () => 'Example' }),
     availableProperties: async () => [property],
-    availableRelationships: async () => [relationship('Members'), relationship('Other')],
+    availableRelationships: async () => [relationship('Members'), relationship('Other'), relationship('First', 1), relationship('Second', 1), relationship('Third', 1)],
     availableDances: async () => [],
     describedRelatedHolons: vi.fn(),
+    relatedHolons: vi.fn(),
   };
 }
 function collection(members: ReturnType<typeof subject>[]) {
@@ -43,7 +44,10 @@ function deferred<T>() {
 
 async function fixture() {
   const rootSubject = subject('root'); const a = subject('A'); const b = subject('B');
-  for (const ref of [rootSubject, a, b]) ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
+  for (const ref of [rootSubject, a, b]) {
+    ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
+    ref.relatedHolons.mockImplementation(async name => collection([name === 'First' ? a : name === 'Second' ? b : rootSubject]));
+  }
   const selectVisualizer = vi.fn(async (request: { requestedKind: 'node' | 'properties' | 'action' }) => ({ selected: visualizers[request.requestedKind] }));
   const transaction = {
     selectVisualizer,
@@ -57,12 +61,12 @@ async function fixture() {
   const realize = vi.fn((ref: HolonReference, selected: HolonReference) => realizeNode(transaction, runtime, ref, selected, {} as never, {} as never));
   const root = await realize(rootSubject as never, visualizers.node);
   const parent = selected('path-inspector');
-  const navigation = new VerticalNavigation(transaction, parent, root, rootSubject as never, visualizers.node, realize);
+  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, realize);
   let occurrences: readonly PathOccurrence[] = [];
   navigation.subscribe(path => { occurrences = [...path]; });
   const Path = (await importer(artifacts['path-inspector'])).default;
   const element = document.createElement(defineCustomElementOnce('test-vertical-path', Path)) as VisualizerElement;
-  element.setContext({ navigation, onInspectHolon: intent => navigation.inspect(intent), childVisualizers: new Map([['root-node', root.element]]) } as never);
+  element.setContext({ navigation, onInspectHolon: intent => navigation.inspect(intent), onTraverseRelationship: intent => navigation.traverseRelationship(intent), childVisualizers: new Map([['root-node', root.element]]) } as never);
   document.body.append(element);
   return { navigation, element, root, rootSubject, a, b, transaction, selectVisualizer, runtime, materialize, realize, parent, path: () => occurrences };
 }
@@ -355,4 +359,200 @@ describe('vertical traversal through selected artifacts', () => {
     await vi.waitFor(() => expect(dispose).toHaveBeenCalled());
     expect(f.path()).toHaveLength(1); expect(candidate!.element.isConnected).toBe(false);
   });
+});
+
+
+function rail(element: HTMLElement, index = 0): HTMLButtonElement {
+  return element.querySelectorAll<HTMLButtonElement>('[data-singular-relationship]')[index];
+}
+async function right(f: Awaited<ReturnType<typeof fixture>>, source: PathOccurrence, index = 0) {
+  rail(source.element, index).click();
+  await vi.waitFor(() => expect(source.pending).toBe(false));
+  return f.path().find(item => item.provenance?.kind === 'singular-relationship'
+    && item.provenance.parentOccurrenceId === source.id && item.provenance.affordance.label === ['First', 'Second', 'Third'][index])!;
+}
+
+describe('singular traversal through selected artifacts', () => {
+  it('retrieves lazily, selects a Node normally, replaces leaves and restores without reselection', async () => {
+    const f = await fixture(); const root = f.path()[0];
+    expect(f.rootSubject.relatedHolons).not.toHaveBeenCalled();
+    expect(f.path()).toHaveLength(1);
+    expect(rail(root.element).disabled).toBe(false);
+    const a = await right(f, root);
+    expect(f.rootSubject.relatedHolons).toHaveBeenCalledWith('First');
+    expect(a.subject).toBe(f.a);
+    expect(a.rowId).toBe(root.rowId); expect(a.column).toBe(2);
+    expect(a.provenance).toMatchObject({ kind: 'singular-relationship', parentOccurrenceId: root.id, affordance: { label: 'First' } });
+    expect(a.provenance).not.toHaveProperty('collectionOccurrenceId');
+    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', parentVisualizer: f.parent });
+    expect(rail(root.element).getAttribute('aria-pressed')).toBe('true');
+    const calls = nodeSelections(f).length;
+    await right(f, root);
+    expect(nodeSelections(f)).toHaveLength(calls);
+    expect(f.path()).toHaveLength(2);
+    const b = await right(f, root, 1);
+    expect(a.element.isConnected).toBe(false);
+    expect(b.rowId).toBe(root.rowId); expect(b.column).toBe(2);
+    expect(root.element.isConnected).toBe(true);
+    expect(f.path()).toHaveLength(2);
+    expect(rail(root.element).getAttribute('aria-pressed')).toBe('false');
+    expect(rail(root.element, 1).getAttribute('aria-pressed')).toBe('true');
+    const edge = f.element.querySelector(`[data-lineage-child="${b.id}"]`)!;
+    expect(edge.getAttribute('d')).toMatch(/^M [\d.]+ [\d.]+ H /);
+    const regions = [...f.element.querySelectorAll<HTMLElement>('[data-path-occurrence]')];
+    expect(regions.map(region => region.style.gridRow)).toEqual(['1', '1']);
+  });
+
+  it('retains vertical descendants on horizontal switching, inserts repeated rows and restores retained children', async () => {
+    const f = await fixture(); const root = f.path()[0];
+    const a = await right(f, root);
+    const rows = await openCollection(a.element); activate(rows[1]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    const descendant = f.path().find(item => item.provenance?.parentOccurrenceId === a.id)!;
+    const ids = [a.id, descendant.id], provenance = [a.provenance, descendant.provenance];
+    const b = await right(f, root, 1);
+    expect(b.rowId).toBe(root.rowId);
+    expect(a.rowId).not.toBe(root.rowId);
+    expect((a as any).row).toBe(1); expect((descendant as any).row).toBe(2);
+    expect([a.column, descendant.column, b.column]).toEqual([2, 2, 2]);
+    expect([a.id, descendant.id]).toEqual(ids);
+    expect([a.provenance, descendant.provenance]).toEqual(provenance);
+    expect(rows[1].getAttribute('aria-selected')).toBe('true');
+    const bRows = await openCollection(b.element); activate(bRows[0]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(5));
+    const c = await right(f, root, 2);
+    expect((b as any).row).toBe(1); expect((a as any).row).toBe(3);
+    expect(c.rowId).toBe(root.rowId);
+    const positions = f.path().map(item => `${item.rowId}:${item.column}`);
+    expect(new Set(positions).size).toBe(positions.length);
+    const coordinates = f.path().map(item => [item.id, item.rowId, item.column]);
+    const calls = nodeSelections(f).length;
+    await right(f, root);
+    expect(nodeSelections(f)).toHaveLength(calls);
+    expect(f.path().map(item => [item.id, item.rowId, item.column])).toEqual(coordinates);
+    expect(f.element.querySelector(`[data-path-occurrence="${a.id}"]`)?.getAttribute('data-focused')).toBe('true');
+    expect(a.element.isConnected && descendant.element.isConnected).toBe(true);
+  });
+
+  it('opens from displaced vertical anchors and preserves both axes through mixed insertions', async () => {
+    const f = await fixture(); const root = f.path()[0];
+    const rows = await openCollection(root.element); activate(rows[0]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+    const a = f.path()[1]; const childRows = await openCollection(a.element); activate(childRows[1]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    activate(rows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    expect(a.column).toBe(2);
+    const horizontal = await right(f, a);
+    expect(horizontal.rowId).toBe(a.rowId); expect(horizontal.column).toBe(3);
+    const horizontalRows = await openCollection(horizontal.element); activate(horizontalRows[2]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(6));
+    const retained = f.path().find(item => item.provenance?.parentOccurrenceId === horizontal.id)!;
+    const alternative = await right(f, a, 1);
+    expect(alternative.rowId).toBe(a.rowId);
+    expect((horizontal as any).row).toBe((a as any).row + 1);
+    expect(retained.provenance?.parentOccurrenceId).toBe(horizontal.id);
+    expect(retained.column).toBe(horizontal.column);
+    expect(new Set(f.path().map(item => `${item.rowId}:${item.column}`)).size).toBe(f.path().length);
+    expect(f.path().every(item => item.element.isConnected)).toBe(true);
+  });
+
+  it('keeps empty and inconsistent singular relationships on the rail without destroying the active child', async () => {
+    const f = await fixture(); const root = f.path()[0]; const a = await right(f, root);
+    f.rootSubject.relatedHolons.mockResolvedValueOnce(collection([]));
+    await right(f, root, 1);
+    expect(f.path()).toEqual([root, a]);
+    expect(root.message).toContain('Second: no target');
+    expect(rail(root.element, 1).dataset.singularState).toBe('loaded-empty');
+    expect(rail(root.element).getAttribute('aria-pressed')).toBe('true');
+    f.rootSubject.relatedHolons.mockResolvedValueOnce(collection([f.a, f.b]));
+    await right(f, root, 1);
+    expect(root.message).toContain('Expected at most one target');
+    expect(rail(root.element, 1).dataset.singularState).toBe('error');
+    expect(f.path()).toEqual([root, a]);
+    expect(rail(root.element, 1).disabled).toBe(false);
+    root.retry!(); await vi.waitFor(() => expect(f.path()[1].subject).toBe(f.b));
+  });
+
+  it.each(['retrieval', 'selection', 'materialization'])('retains the complete path on %s failure and inserts only after retry', async stage => {
+    const f = await fixture(); const root = f.path()[0]; const a = await right(f, root);
+    const rows = await openCollection(a.element); activate(rows[1]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+    const coordinates = f.path().map(item => [item.id, item.rowId, item.column]);
+    if (stage === 'retrieval') f.rootSubject.relatedHolons.mockRejectedValueOnce(new Error('retrieval failed'));
+    if (stage === 'selection') f.selectVisualizer.mockRejectedValueOnce(new Error('selection failed'));
+    if (stage === 'materialization') vi.spyOn(f.runtime, 'realize').mockRejectedValueOnce(new Error('materialization failed'));
+    await right(f, root, 1);
+    expect(root.retry).toBeDefined();
+    expect(root.message).toContain('Second:');
+    expect(f.path().map(item => [item.id, item.rowId, item.column])).toEqual(coordinates);
+    root.retry!(); await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+    expect((a as any).row).toBe(1);
+  });
+
+  it('deduplicates pending work, rejects foreign affordances and disposes candidates after teardown', async () => {
+    const f = await fixture(); const root = f.path()[0];
+    f.navigation.traverseRelationship({ source: root.element, affordance: { label: 'foreign' } as never });
+    expect(f.rootSubject.relatedHolons).not.toHaveBeenCalled();
+    const gate = deferred<void>(); const original = f.realize.getMockImplementation()!;
+    let candidate: Awaited<ReturnType<typeof realizeNode>> | undefined;
+    f.realize.mockImplementationOnce(async (ref, selected) => { candidate = await original(ref, selected); await gate.promise; return candidate; });
+    rail(root.element).click(); rail(root.element).click();
+    await vi.waitFor(() => expect(candidate).toBeDefined());
+    expect(f.rootSubject.relatedHolons).toHaveBeenCalledTimes(1);
+    expect(rail(root.element).getAttribute('aria-busy')).toBe('true');
+    const dispose = vi.spyOn(candidate!.collectionActivation, 'dispose');
+    f.element.remove(); gate.resolve();
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledTimes(1));
+    expect(f.path()).toHaveLength(1); expect(candidate!.element.isConnected).toBe(false);
+  });
+});
+
+
+it('preserves horizontal continuations when vertical branching inserts columns before them', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const a = await right(f, root);
+  const aRows = await openCollection(a.element); activate(aRows[1]);
+  await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+  const descendant = f.path().find(item => item.provenance?.parentOccurrenceId === a.id)!;
+  const rootRows = await openCollection(root.element); activate(rootRows[0]);
+  await vi.waitFor(() => expect(f.path()).toHaveLength(4));
+  const down = f.path().find(item => item.provenance?.kind === 'collection-member' && item.provenance.parentOccurrenceId === root.id)!;
+  const downRows = await openCollection(down.element); activate(downRows[1]);
+  await vi.waitFor(() => expect(f.path()).toHaveLength(5));
+  activate(rootRows[1]); await vi.waitFor(() => expect(f.path()).toHaveLength(6));
+  expect(a.column).toBe(3); expect(descendant.column).toBe(3);
+  const next = await right(f, root, 1);
+  expect(next.column).toBe(2);
+  expect(a.column).toBe(4); expect(descendant.column).toBe(4);
+  expect(descendant.provenance?.parentOccurrenceId).toBe(a.id);
+  expect(new Set(f.path().map(item => `${item.rowId}:${item.column}`)).size).toBe(f.path().length);
+});
+
+it('keeps separate occurrences for the same target through distinct singular affordances and sources', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const first = await right(f, root);
+  const rows = await openCollection(first.element); activate(rows[1]);
+  await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+  f.rootSubject.relatedHolons.mockResolvedValueOnce(collection([f.a]));
+  const second = await right(f, root, 1);
+  expect(second.subject).toBe(first.subject); expect(second.id).not.toBe(first.id);
+  expect(second.provenance?.affordance.label).toBe('Second');
+  const third = await right(f, first);
+  expect(third.subject).toBe(first.subject); expect(third.id).not.toBe(first.id);
+  expect(third.provenance?.parentOccurrenceId).toBe(first.id);
+});
+
+it('does not invalidate singular work when the source changes collection tabs', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const gate = deferred<ReturnType<typeof collection>>();
+  f.rootSubject.relatedHolons.mockReturnValueOnce(gate.promise);
+  rail(root.element).click();
+  await vi.waitFor(() => expect(f.rootSubject.relatedHolons).toHaveBeenCalledTimes(1));
+  root.element.querySelector<HTMLButtonElement>('[role=tab]')!.click();
+  expect(f.rootSubject.describedRelatedHolons).not.toHaveBeenCalled();
+  gate.resolve(collection([f.a]));
+  await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+  await vi.waitFor(() => expect(root.element.querySelector('tbody tr')).not.toBeNull());
+  expect(root.pending).toBe(false);
+  expect(root.message).toBeUndefined();
 });
