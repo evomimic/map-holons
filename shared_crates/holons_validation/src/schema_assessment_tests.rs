@@ -513,8 +513,15 @@ fn public_gate_rejects_identical_competitors_and_preserves_independent_findings(
     fixture.node("Existing")?;
     fixture.link("Existing", CoreRelationshipTypeName::DescribedBy, "Contract")?;
     let fixture = fixture.saved_snapshot()?;
-    let first = fixture.replacement("Existing")?;
-    let second = fixture.replacement("Existing")?;
+    let mut first = fixture.replacement("Existing")?;
+    let mut second = fixture.replacement("Existing")?;
+    // Both candidates have the same valid subject content; competition is their only defect.
+    for candidate in [&mut first, &mut second] {
+        candidate.with_property_value("Title", "ready")?;
+        for property in ["TypeName", "IsAbstractType", "IsValueRequired"] {
+            candidate.remove_property_value(property)?;
+        }
+    }
     let independent = fixture.staged_subject("independent")?;
     let report = validate_commit_candidates(
         &fixture.context,
@@ -522,16 +529,17 @@ fn public_gate_rejects_identical_competitors_and_preserves_independent_findings(
     )?;
     assert!(!report.is_accepted());
     for candidate in [&first, &second] {
-        assert!(candidate.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "CompetingStagedReplacements")));
+        let findings = candidate.validation_findings()?;
+        assert_eq!(findings.len(), 1, "candidate has only its competition finding");
+        assert!(
+            matches!(&findings[0].kind, CommitValidationViolationKind::RuleViolation { code } if code == "CompetingStagedReplacements")
+        );
+        assert_eq!(findings[0].subject, path(&candidate.clone().into()));
+        assert!(findings[0].rule_key.is_none());
     }
     assert!(independent.validation_findings()?.iter().any(|finding| matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-PROP-001")));
     second.abandon_staged_changes(&fixture.context)?;
-    let mut first = first;
     first.with_property_value("Title", "corrected")?;
-    // Strip fixture-only metadata that is not part of the ordinary Contract.
-    for property in ["TypeName", "IsAbstractType", "IsValueRequired"] {
-        first.remove_property_value(property)?;
-    }
     assert!(
         validate_commit_candidates(&fixture.context, std::slice::from_ref(&first))?.is_accepted()
     );
@@ -671,6 +679,73 @@ fn readiness_fixture() -> Result<Fixture, HolonError> {
 }
 
 #[test]
+fn staged_descriptor_with_unnamed_effective_member_reports_contract_finding(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.link(
+        "MetaTypeDescriptor.HolonType",
+        CoreRelationshipTypeName::ValidationBindings,
+        CoreValidationRuleName::WellFormedEffectiveMemberDefinitions.as_str(),
+    )?;
+    fixture.link(
+        "Contract",
+        CoreRelationshipTypeName::DescribedBy,
+        "MetaHolonType.MetaTypeDescriptor",
+    )?;
+    fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
+    let descriptor = staged(&fixture.nodes["Contract"]);
+
+    let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&descriptor))?;
+    assert!(!report.is_accepted());
+    assert!(descriptor.validation_findings()?.iter().any(|finding| {
+        matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-CONTRACT-003")
+            && finding.rule_key.as_deref()
+                == Some(CoreValidationRuleName::WellFormedEffectiveMemberDefinitions.as_str())
+            && finding.subject == path(&fixture.nodes["Contract"])
+            && finding.message.contains(&fixture.nodes["Title.PropertyType"].reference_id_string())
+    }));
+    Ok(())
+}
+
+#[test]
+fn ordinary_holon_lineage_defect_is_reported_before_descriptor_classification(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("UnrootedParent")?;
+    let transient = fixture.context.mutation().new_holon(Some("ordinary-parented".into()))?;
+    let mut subject = fixture.context.mutation().stage_new_holon(transient)?;
+    subject.add_related_holons(
+        CoreRelationshipTypeName::Extends,
+        vec![fixture.nodes["UnrootedParent"].clone()],
+    )?;
+    subject.with_descriptor(fixture.nodes["Contract"].clone())?;
+    subject.with_property_value("Title", "present")?;
+    let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert!(!report.is_accepted());
+    assert!(subject.validation_findings()?.iter().any(|finding| {
+        matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-STRUCT-004")
+            && finding.subject == path(&subject.clone().into())
+    }));
+    Ok(())
+}
+
+#[test]
+fn unique_describer_with_malformed_lineage_blocks_its_ordinary_subject() -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("SecondParent")?;
+    let mut subject = fixture.staged_subject("invalid-governor")?;
+    subject.with_property_value("Title", "present")?;
+    fixture.link("Contract", CoreRelationshipTypeName::Extends, "SecondParent")?;
+    let report = validate_commit_candidates(&fixture.context, std::slice::from_ref(&subject))?;
+    assert!(!report.is_accepted());
+    assert!(subject.validation_findings()?.iter().any(|finding| {
+        finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+            && finding.message.contains(&fixture.nodes["Contract"].reference_id_string())
+    }));
+    Ok(())
+}
+
+#[test]
 fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
 ) -> Result<(), HolonError> {
     let mut fixture = readiness_fixture()?;
@@ -691,6 +766,9 @@ fn commit_readiness_accepts_valid_subject_and_reassesses_a_corrected_contract(
         .validation_findings()?
         .iter()
         .any(|finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
+    assert!(subject.validation_findings()?.iter().all(|finding| {
+        !matches!(&finding.kind, CommitValidationViolationKind::RuleViolation { code } if code == "DS-CONTRACT-003")
+    }), "an unstaged malformed descriptor blocks its dependent subject");
     fixture
         .nodes
         .get_mut("Title.PropertyType")
@@ -821,6 +899,34 @@ fn contested_members_keep_saved_membership_without_selecting_a_competitor() -> R
         .violations
         .iter()
         .all(|finding| finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency));
+    Ok(())
+}
+
+#[test]
+fn contested_schema_keeps_saved_aggregate_identity_without_selecting_a_competitor(
+) -> Result<(), HolonError> {
+    let mut fixture = schema_fixture()?;
+    describe_schemas(&mut fixture)?;
+    let fixture = fixture.saved_snapshot()?;
+    let first = fixture.replacement("A")?;
+    let second = fixture.replacement("A")?;
+    let reader =
+        ProspectiveDescriptorReader::new(&fixture.context, &[first.clone(), second.clone()])?;
+    let mut collector = ValidationCollector::default();
+    let workset = SchemaWorkset::prepare(
+        &fixture.context,
+        &reader,
+        &fixture.nodes["Schema.HolonType"],
+        &[first.into(), second.into()],
+        &[],
+        &mut collector,
+    )?;
+    assert_eq!(workset.schemas.len(), 1);
+    assert!(matches!(&workset.schemas[0].schema, HolonReference::Smart(_)));
+    assert!(collector.into_report().violations.iter().any(|finding| {
+        finding.kind == CommitValidationViolationKind::UnresolvedLocalDependency
+            && finding.subject == path(&fixture.nodes["A"])
+    }));
     Ok(())
 }
 

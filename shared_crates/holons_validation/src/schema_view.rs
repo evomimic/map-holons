@@ -1,6 +1,6 @@
 //! Bounded Schema scheduling and separate prospective ownership collections.
 use crate::{
-    assessment_support::{blocked, path, recover, targets},
+    assessment_support::{path, recover, targets},
     handlers::finding,
     ValidationCollector,
 };
@@ -11,7 +11,7 @@ use holons_core::{
         resolve_schema_ownership_with_reader, SchemaOwnershipKind, SchemaOwnershipResolution,
     },
     DescriptorReader, HolonReference, ProspectiveDescriptorReader, ProspectiveIdentity,
-    StagedReference,
+    ProspectiveSelection, StagedReference,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -57,6 +57,8 @@ impl SchemaWorkset {
         }
         for candidate in owned {
             let identity = ProspectiveIdentity::for_reference(&candidate.subject, context)?;
+            let contested =
+                matches!(reader.selection(&candidate.subject)?, ProspectiveSelection::Contested(_));
             // Discover the old owner from saved content, never through replacement selection.
             // Removing membership affects that Schema even if prospective ownership is invalid.
             if let ProspectiveIdentity::Saved(source) = &identity {
@@ -86,10 +88,14 @@ impl SchemaWorkset {
                 collector,
             )?
             else {
-                ownership.insert(identity, Vec::new());
+                if !contested {
+                    ownership.insert(identity, Vec::new());
+                }
                 continue;
             };
-            changed.insert(identity.clone());
+            if !contested {
+                changed.insert(identity.clone());
+            }
             let (owners, defect) = match resolution {
                 SchemaOwnershipResolution::OwnedBy(owner) => (vec![owner], None),
                 SchemaOwnershipResolution::Missing => {
@@ -123,23 +129,29 @@ impl SchemaWorkset {
             for owner in &owners {
                 let owner_id = ProspectiveIdentity::for_reference(owner, context)?;
                 schedule(context, owner, &mut scheduled, &mut schemas)?;
-                staged_members
-                    .entry((owner_id, is_rule(candidate.kind)))
-                    .or_default()
-                    .push(candidate.subject.clone());
+                if !contested {
+                    staged_members
+                        .entry((owner_id, is_rule(candidate.kind)))
+                        .or_default()
+                        .push(candidate.subject.clone());
+                }
             }
-            ownership.insert(identity, owners);
+            if !contested {
+                ownership.insert(identity, owners);
+            }
         }
         for view in &mut schemas {
             let identity = ProspectiveIdentity::for_reference(&view.schema, context)?;
+            if matches!(reader.selection(&view.schema)?, ProspectiveSelection::Contested(_)) {
+                if let ProspectiveIdentity::Saved(source) = &identity {
+                    // The Schema's own staged candidates may be assessed individually, but
+                    // neither can supply its aggregate content in this Commit attempt.
+                    view.schema =
+                        HolonReference::smart_from_id(context.space_read_handle(), source.clone());
+                }
+            }
             if let Some(selected) = recover(reader.select(&view.schema), &view.schema, collector)? {
                 view.schema = selected;
-            } else {
-                blocked(
-                    collector,
-                    &view.schema,
-                    "Schema aggregate has no authoritative prospective definition.".into(),
-                );
             }
             // Read persisted inverse membership from the saved source. A staged Schema clone
             // intentionally omits materialized inverses and is not a complete membership view.

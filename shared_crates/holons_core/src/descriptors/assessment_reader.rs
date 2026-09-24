@@ -1,7 +1,7 @@
 //! Explicit content selection for descriptor assessment; ordinary reference reads are unchanged.
 use crate::core_shared_objects::transactions::TransactionContext;
 use crate::{HolonReference, ProspectiveIdentity, StagedReference};
-use core_types::{HolonError, HolonId};
+use core_types::{HolonError, HolonId, TemporaryId};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -65,6 +65,7 @@ impl DescriptorReader for CurrentDescriptorReader {
 pub struct ProspectiveDescriptorReader {
     context: Arc<TransactionContext>,
     replacements: HashMap<HolonId, Arc<[StagedReference]>>,
+    live_candidates: HashSet<TemporaryId>,
 }
 impl ProspectiveDescriptorReader {
     /// Groups explicit update ancestry in O(n); committed/abandoned entries are excluded.
@@ -89,6 +90,7 @@ impl ProspectiveDescriptorReader {
         Ok(Self {
             context: Arc::clone(context),
             replacements: grouped.into_iter().map(|(id, members)| (id, members.into())).collect(),
+            live_candidates: seen,
         })
     }
 
@@ -124,10 +126,17 @@ impl DescriptorReader for ProspectiveDescriptorReader {
             match self.replacements.get(&source).map(AsRef::as_ref) {
                 Some([single]) => return Ok(single.into()),
                 Some(candidates) if candidates.len() > 1 => {
+                    // A named live staged candidate has determinate content. Only a read
+                    // through the saved source needs to choose between its successors.
+                    if let HolonReference::Staged(staged) = reference {
+                        if self.live_candidates.contains(&staged.temporary_id()) {
+                            return Ok(reference.clone());
+                        }
+                    }
                     return Err(AssessmentReadError::Contested {
                         source: source.clone(),
                         candidates: Arc::clone(&self.replacements[&source]),
-                    })
+                    });
                 }
                 _ => {
                     // A finished update is not authoritative prospective content. Its saved

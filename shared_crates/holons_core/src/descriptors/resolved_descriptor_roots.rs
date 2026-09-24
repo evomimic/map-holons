@@ -175,5 +175,19 @@ pub fn resolve_core_descriptor_with_reader<R: super::DescriptorReader>(
             );
         }
     }
+    if live.len() > 1 {
+        return match identity {
+            crate::ProspectiveIdentity::Saved(source) => {
+                // A key lookup names the saved definition, not either staged handle.
+                // Ask the reader to select its successor so competition remains visible.
+                let saved = HolonReference::smart_from_id(context.space_read_handle(), source);
+                reader.select(&saved)
+            }
+            _ => {
+                Err(HolonError::DuplicateError("Core descriptor key".into(), key.to_string())
+                    .into())
+            }
+        };
+    }
     reader.select(first)
 }

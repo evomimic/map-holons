@@ -45,7 +45,7 @@ fn saved_fixture() -> (Arc<TransactionContext>, Vec<HolonReference>) {
 }
 
 #[test]
-fn selection_uses_full_ancestry_and_never_selects_contested_content() -> Result<(), HolonError> {
+fn selection_uses_full_ancestry_and_blocks_ambiguous_source_reads() -> Result<(), HolonError> {
     let (context, saved) = saved_fixture();
     let source = saved[0].holon_id()?.local_id().clone();
     let first =
@@ -67,7 +67,14 @@ fn selection_uses_full_ancestry_and_never_selects_contested_content() -> Result<
         assert!(
             matches!(reader.selection(reference)?, ProspectiveSelection::Contested(members) if members.len() == 2)
         );
-        assert!(matches!(reader.select(reference), Err(AssessmentReadError::Contested { .. })));
+    }
+    assert!(matches!(reader.select(&saved[0]), Err(AssessmentReadError::Contested { .. })));
+    for candidate in [&first, &second] {
+        let selected = reader.select(&candidate.clone().into()).unwrap();
+        assert_eq!(
+            selected.reference_id_string(),
+            HolonReference::from(candidate).reference_id_string()
+        );
     }
     assert!(matches!(
         resolve_core_descriptor_with_reader(&context, "saved-0", &reader),

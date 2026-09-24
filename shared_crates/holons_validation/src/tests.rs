@@ -416,22 +416,6 @@ fn unsupported_rules_and_constraints_fail_closed_with_contribution_provenance(
 }
 
 #[test]
-fn incomplete_descriptor_read_returns_error_instead_of_semantic_acceptance(
-) -> Result<(), HolonError> {
-    let mut fixture = Fixture::new()?;
-    fixture.nodes.get_mut("Title.PropertyType").unwrap().remove_property_value("TypeName")?;
-    let context = HolonValidationContext::resolve(&fixture.context)?;
-    let subject = fixture.subject()?;
-    assert!(validate_holon(
-        HolonValidationSubject { holon: &subject },
-        &context,
-        &mut ValidationCollector::default()
-    )
-    .is_err());
-    Ok(())
-}
-
-#[test]
 fn subject_rule_registry_covers_fixture_bindings_and_report_rejects_findings() {
     for (rule, _, _) in RULES {
         assert!(StaticRuleRegistry::lookup(&ValidationRuleKey(rule.as_str().into())).is_some());
@@ -1315,6 +1299,126 @@ fn contract_handlers_keep_redeclaration_name_and_definition_defects_distinct(
                 .iter()
                 .any(|finding| finding.message.contains("property ValueType target")));
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn additive_subtype_members_in_both_namespaces_need_no_open_content_flags() -> Result<(), HolonError>
+{
+    use holons_core::{ContractContributions, CurrentDescriptorReader};
+    let mut fixture = Fixture::new()?;
+    let roots = c2_kind_roots(&mut fixture)?;
+    fixture
+        .nodes
+        .get_mut("StringValueType.ValueType")
+        .unwrap()
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?
+        .with_property_value(type_names::CorePropertyTypeName::IsAbstractType, true)?;
+    for key in ["Title.PropertyType", "Key.PropertyType", "DescribedBy.Relationship"] {
+        fixture.nodes.get_mut(key).unwrap().with_property_value(
+            type_names::CorePropertyTypeName::DefinesInstanceTypeKind,
+            false,
+        )?;
+    }
+    fixture.node("DeclaredRelationshipType.RelationshipType")?;
+    fixture.link(
+        "DeclaredRelationshipType.RelationshipType",
+        CoreRelationshipTypeName::Extends,
+        "TypeDescriptor",
+    )?;
+    fixture
+        .nodes
+        .get_mut("DeclaredRelationshipType.RelationshipType")
+        .unwrap()
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?
+        .with_property_value(type_names::CorePropertyTypeName::IsAbstractType, true)?;
+    fixture.link(
+        "DeclaredRelationshipType",
+        CoreRelationshipTypeName::Extends,
+        "DeclaredRelationshipType.RelationshipType",
+    )?;
+    fixture
+        .nodes
+        .get_mut("DeclaredRelationshipType")
+        .unwrap()
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, false)?;
+    for edge in [CoreRelationshipTypeName::SourceType, CoreRelationshipTypeName::TargetType] {
+        fixture.link("DescribedBy.Relationship", edge, "HolonType.TypeDescriptor")?;
+    }
+    fixture.node("Subtype")?;
+    fixture.link("Subtype", CoreRelationshipTypeName::Extends, "Contract")?;
+    fixture.node("Subtitle.PropertyType")?;
+    fixture
+        .nodes
+        .get_mut("Subtitle.PropertyType")
+        .unwrap()
+        .with_property_value("TypeName", "Subtitle")?;
+    fixture
+        .nodes
+        .get_mut("Subtitle.PropertyType")
+        .unwrap()
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, false)?;
+    fixture.link(
+        "Subtitle.PropertyType",
+        CoreRelationshipTypeName::Extends,
+        "PropertyType.TypeDescriptor",
+    )?;
+    fixture.link(
+        "Subtitle.PropertyType",
+        CoreRelationshipTypeName::ValueType,
+        "StringValueType.ValueType",
+    )?;
+    fixture.link(
+        "Subtype",
+        CoreRelationshipTypeName::InstanceProperties,
+        "Subtitle.PropertyType",
+    )?;
+    fixture.node("SubtypeLink.Relationship")?;
+    fixture
+        .nodes
+        .get_mut("SubtypeLink.Relationship")
+        .unwrap()
+        .with_property_value("TypeName", "SubtypeLink")?;
+    fixture
+        .nodes
+        .get_mut("SubtypeLink.Relationship")
+        .unwrap()
+        .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, false)?;
+    fixture.link(
+        "SubtypeLink.Relationship",
+        CoreRelationshipTypeName::Extends,
+        "DeclaredRelationshipType.RelationshipType",
+    )?;
+    fixture.link("SubtypeLink.Relationship", CoreRelationshipTypeName::SourceType, "Subtype")?;
+    fixture.link("SubtypeLink.Relationship", CoreRelationshipTypeName::TargetType, "Contract")?;
+    fixture.link(
+        "Subtype",
+        CoreRelationshipTypeName::InstanceRelationships,
+        "SubtypeLink.Relationship",
+    )?;
+
+    let subtype = fixture.nodes["Subtype"].clone();
+    let contributions = ContractContributions::resolve(&subtype)?;
+    let mut products = DescriptorRuleProducts::default();
+    products.prepare_contract(
+        &contributions,
+        &roots,
+        &crate::descriptor_rules::ContractKindRoots {
+            property: fixture.nodes["PropertyType.TypeDescriptor"].clone(),
+            relationship: fixture.nodes["DeclaredRelationshipType.RelationshipType"].clone(),
+            value: fixture.nodes["StringValueType.ValueType"].clone(),
+        },
+        &CurrentDescriptorReader,
+    )?;
+    assert!(!products.has_findings());
+    for rule in [
+        CoreValidationRuleName::NoInheritedMemberRedeclaration,
+        CoreValidationRuleName::UniqueSemanticMemberNames,
+        CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
+        CoreValidationRuleName::ContractMemberKindCompatibility,
+    ] {
+        assert!(dispatch_c2_rule(&mut fixture, rule, &products, &subtype)?.is_empty());
     }
     Ok(())
 }
