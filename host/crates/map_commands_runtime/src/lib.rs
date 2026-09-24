@@ -9,3 +9,6 @@ pub use runtime_session::RuntimeSession;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod collection_tests;

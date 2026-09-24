@@ -15,6 +15,14 @@ import {
 } from './references';
 import type { VisualizerKindWire } from './commands';
 
+export interface DescribedHolonCollectionWire {
+  members: HolonCollectionWire;
+  element_type: HolonReferenceWire;
+}
+export function isDescribedHolonCollectionWire(value: unknown): value is DescribedHolonCollectionWire {
+  return isRecord(value) && isHolonCollectionWire(value['members']) && isHolonReferenceWire(value['element_type']);
+}
+
 export type RelationshipDirectionWire = 'Declared' | 'Inverse';
 
 export interface QualifiedRelationshipWire {
@@ -73,6 +81,7 @@ export type MapResultWire =
   | { VisualizerSelection: VisualizerSelectionWire }
   | { References: HolonReferenceWire[] }
   | { Collection: HolonCollectionWire }
+  | { DescribedCollection: DescribedHolonCollectionWire }
   | { QualifiedRelationships: QualifiedRelationshipWire[] }
   | { EffectiveCardinality: { minimum: number; maximum: number | null } }
   | { Value: BaseValue }
@@ -102,6 +111,7 @@ export function isMapResultWire(value: unknown): value is MapResultWire {
     (hasSingleKey(value, 'References') &&
       Array.isArray(value.References) &&
       value.References.every(isHolonReferenceWire)) ||
+    (hasSingleKey(value, 'DescribedCollection') && isDescribedHolonCollectionWire(value.DescribedCollection)) ||
     (hasSingleKey(value, 'Collection') &&
       isHolonCollectionWire(value.Collection)) ||
     (hasSingleKey(value, 'QualifiedRelationships') &&

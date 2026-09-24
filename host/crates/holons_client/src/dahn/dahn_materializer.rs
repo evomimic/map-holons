@@ -45,6 +45,12 @@ impl DahnMaterializer {
 
     /// Resolves and verifies the selected Visualizer through this host service's
     /// local artifact backend, then returns a transient opaque artifact handle.
+    #[tracing::instrument(
+        target = "map_profile",
+        level = "debug",
+        name = "visualizer.materialize",
+        skip_all
+    )]
     pub fn materialize(
         &self,
         context: &Arc<TransactionContext>,
@@ -55,7 +61,10 @@ impl DahnMaterializer {
                 "Materialize requires a selected Visualizer with a stable key".to_string(),
             )
         })?;
-        let implementation = require_single_implementation(visualizer)?;
+        tracing::debug!(target: "map_profile", visualizer = %visualizer_key);
+        let implementation =
+            tracing::debug_span!(target: "map_profile", "visualizer.implementation")
+                .in_scope(|| require_single_implementation(visualizer))?;
         let expected_digest = required_string_property(
             &implementation,
             DahnPropertyTypeName::VisualizerArtifactDigest,
@@ -67,39 +76,55 @@ impl DahnMaterializer {
         let entrypoint =
             required_string_property(&implementation, CorePropertyTypeName::Entrypoint)?;
         let artifact = self.artifact_for(&visualizer_key)?;
-        let bytes = fs::read(&artifact).map_err(|error| {
-            HolonError::NotImplemented(format!(
-                "Unable to materialize Visualizer `{visualizer_key}` from {}: {error}",
-                artifact.display()
-            ))
-        })?;
-        let actual_digest = MapString(format!("sha256:{}", hex::encode(Sha256::digest(&bytes))));
+        let bytes = tracing::debug_span!(target: "map_profile", "visualizer.read_artifact")
+            .in_scope(|| fs::read(&artifact))
+            .map_err(|error| {
+                HolonError::NotImplemented(format!(
+                    "Unable to materialize Visualizer `{visualizer_key}` from {}: {error}",
+                    artifact.display()
+                ))
+            })?;
+        let actual_digest = tracing::debug_span!(target: "map_profile", "visualizer.verify_digest")
+            .in_scope(|| MapString(format!("sha256:{}", hex::encode(Sha256::digest(&bytes)))));
         if actual_digest != expected_digest {
             return Err(HolonError::InvalidState(format!(
                 "Visualizer artifact digest mismatch for `{visualizer_key}`: expected {expected_digest}, found {actual_digest}"
             )));
         }
 
-        let handle = MapString(format!("artifact:{}", Uuid::new_v4()));
-        self.issued_artifacts
-            .lock()
-            .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
-            .insert(
-                handle.clone(),
-                IssuedArtifact { transaction_id: context.tx_id().value(), bytes: MapBytes(bytes) },
-            );
+        let handle = tracing::debug_span!(target: "map_profile", "visualizer.issue_handle")
+            .in_scope(|| -> Result<MapString, HolonError> {
+                let handle = MapString(format!("artifact:{}", Uuid::new_v4()));
+                self.issued_artifacts
+                    .lock()
+                    .map_err(|error| HolonError::FailedToAcquireLock(format!("{error}")))?
+                    .insert(
+                        handle.clone(),
+                        IssuedArtifact {
+                            transaction_id: context.tx_id().value(),
+                            bytes: MapBytes(bytes),
+                        },
+                    );
+                Ok(handle)
+            })?;
 
-        let descriptor = context
-            .lookup()
-            .get_saved_holon_by_key(&MapString::from("MaterializedVisualizer.Projection"))?;
-        let mut body =
-            context.mutation().new_holon(Some(MapString::from("materialized-visualizer")))?;
-        body.with_descriptor(HolonReference::from(descriptor))?;
-        let mut materialized = MaterializedVisualizer::new(HolonReference::from(body))?;
-        materialized.set_artifact_handle(handle)?;
-        materialized.set_module_format(module_format)?;
-        materialized.set_entrypoint(entrypoint)?;
-        Ok(materialized.into_inner())
+        let descriptor =
+            tracing::debug_span!(target: "map_profile", "visualizer.projection_descriptor")
+                .in_scope(|| {
+                    context.lookup().get_saved_holon_by_key(&MapString::from(
+                        "MaterializedVisualizer.Projection",
+                    ))
+                })?;
+        tracing::debug_span!(target: "map_profile", "visualizer.build_projection").in_scope(|| {
+            let mut body =
+                context.mutation().new_holon(Some(MapString::from("materialized-visualizer")))?;
+            body.with_descriptor(HolonReference::from(descriptor))?;
+            let mut materialized = MaterializedVisualizer::new(HolonReference::from(body))?;
+            materialized.set_artifact_handle(handle)?;
+            materialized.set_module_format(module_format)?;
+            materialized.set_entrypoint(entrypoint)?;
+            Ok(materialized.into_inner())
+        })
     }
 
     /// Consumes a handle issued to this transaction and returns the already
@@ -194,6 +219,12 @@ fn require_single_implementation(
     }
 }
 
+#[tracing::instrument(
+    target = "map_profile",
+    level = "debug",
+    name = "visualizer.metadata_property",
+    skip_all
+)]
 fn required_string_property<T: ToPropertyName>(
     holon: &HolonReference,
     property_name: T,

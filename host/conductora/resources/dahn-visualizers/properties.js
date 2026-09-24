@@ -45,17 +45,8 @@ export default class PropertiesVisualizerElement extends HTMLElement {
         outline-offset: calc(-1 * var(--dahn-slot-border-width));
       }
     `;
-    const title = document.createElement('h2');
-    title.textContent = context.title ?? 'Properties';
-    title.tabIndex = -1;
-    Object.assign(title.style, {
-      margin: '0', flex: '0 0 auto',
-      color: 'var(--dahn-muted-text-color)',
-      fontWeight: 'var(--dahn-properties-heading-font-weight)',
-      fontSize: 'var(--dahn-properties-heading-font-size)',
-    });
-
     const list = document.createElement('div');
+    list.tabIndex = -1;
     list.id = `dahn-properties-list-${++nextPropertiesId}`;
     list.dataset.dahnPropertiesList = 'true';
     list.setAttribute('role', 'region');
@@ -110,8 +101,8 @@ export default class PropertiesVisualizerElement extends HTMLElement {
       list.scrollTop = 0;
       this.scheduleLayout();
     });
-    this.parts = { title, list, properties, footer, button, label, chevron };
-    this.replaceChildren(style, title, list, footer);
+    this.parts = { list, properties, footer, button, label, chevron };
+    this.replaceChildren(style, list, footer);
     this.setFooterVisible(false);
     if (this.isConnected) this.observeLayout();
   }
@@ -133,7 +124,7 @@ export default class PropertiesVisualizerElement extends HTMLElement {
     if (!this.parts) return;
     this.observer?.disconnect();
     this.observer = new ResizeObserver(() => this.scheduleLayout());
-    for (const element of [this, this.parts.title, this.parts.list, this.parts.properties, this.parts.footer, ...this.rows]) {
+    for (const element of [this, this.parts.list, this.parts.properties, this.parts.footer, ...this.rows]) {
       this.observer.observe(element);
     }
     this.scheduleLayout();
@@ -148,11 +139,11 @@ export default class PropertiesVisualizerElement extends HTMLElement {
   }
 
   fitRows() {
-    const { title, list, properties, footer, button, label, chevron } = this.parts;
+    const { list, properties, footer, button, label, chevron } = this.parts;
     const gap = parseFloat(getComputedStyle(this).rowGap) || 0;
     const rowGap = parseFloat(getComputedStyle(properties).rowGap) || 0;
     const heights = this.rows.map(row => row.getBoundingClientRect().height);
-    const available = Math.max(0, this.clientHeight - title.getBoundingClientRect().height - gap);
+    const available = Math.max(0, this.clientHeight);
     const total = heights.reduce((sum, height) => sum + height, 0) + Math.max(0, heights.length - 1) * rowGap;
     const overflowing = total > available;
     const budget = overflowing ? Math.max(0, available - footer.getBoundingClientRect().height - gap) : available;
@@ -167,22 +158,17 @@ export default class PropertiesVisualizerElement extends HTMLElement {
     if (!overflowing) {
       this.expanded = false;
     }
-    const compact = overflowing && this.clientHeight < title.getBoundingClientRect().height + footer.getBoundingClientRect().height + 2 * gap;
+    const compact = overflowing && this.clientHeight < footer.getBoundingClientRect().height + gap;
     const layoutState = `${count}:${overflowing}:${compact}:${this.expanded}`;
     if (this.layoutState === layoutState) return;
     this.layoutState = layoutState;
-    Object.assign(title.style, {
-      position: compact ? 'absolute' : 'static', width: '100%',
-      visibility: compact ? 'hidden' : 'visible',
-    });
-    title.setAttribute('aria-hidden', String(compact));
     // At tiny allocations prioritize the disclosure itself. The list remains
     // measurable at its real width, but has no visible viewport.
     Object.assign(list.style, {
       position: compact ? 'absolute' : 'static',
       width: '100%', height: compact ? '0' : '',
     });
-    if (!overflowing && document.activeElement === button) title.focus({ preventScroll: true });
+    if (!overflowing && document.activeElement === button) list.focus({ preventScroll: true });
     this.setFooterVisible(overflowing);
     list.style.overflowY = this.expanded ? 'auto' : 'hidden';
     list.tabIndex = this.expanded ? 0 : -1;

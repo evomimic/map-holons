@@ -52,6 +52,7 @@ impl HolonServiceApi for Graph {
             "ActionVisualizer.HolonType" => 13,
             "PropertyVisualizer.HolonType" => 11,
             "ValueVisualizer.HolonType" => 12,
+            "TableCollectionVisualizer.CollectionVisualizer" => 20,
             _ => panic!("unexpected lookup {key}"),
         };
         match Self::reference(context, id) {
@@ -209,4 +210,59 @@ fn value_selection_requires_exactly_one_declared_value_type() {
         select(VisualizerKind::Value, &[20], false, &[4, 6]),
         Err(HolonError::MultipleRelatedHolons { count: 2, .. })
     ));
+}
+
+fn select_collection(
+    count: usize,
+    slot: u8,
+    accepts_collection: bool,
+    compatible_member: bool,
+) -> Result<map_commands_contract::VisualizerSelection, HolonError> {
+    let mut graph = Graph::default();
+    graph.edge(1, "HasSlot", &[2, 3]);
+    graph.edge(2, "AcceptsVisualizerType", &[if accepts_collection { 14 } else { 11 }]);
+    graph.edge(3, "AcceptsVisualizerType", &[14]);
+    graph.edge(20, "DescribedBy", &[14]);
+    graph.edge(5, "DescribedBy", &[if compatible_member { 4 } else { 6 }]);
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(graph),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let collection = map_commands_contract::DescribedHolonCollection {
+        members: HolonCollection::from_parts(
+            holons_core::CollectionState::Fetched,
+            (0..count).map(|_| Graph::reference(&context, 5)).collect(),
+            Default::default(),
+        ),
+        element_type: Graph::reference(&context, 4),
+    };
+    dahn_selection::select_collection_visualizer(
+        &context,
+        collection,
+        Graph::reference(&context, 1),
+        Graph::reference(&context, slot),
+    )
+}
+
+#[test]
+fn selects_described_collections_including_empty_and_single_member() {
+    for count in [0, 1, 3] {
+        let result = select_collection(count, 2, true, true).unwrap();
+        assert_eq!(result.requested_kind, VisualizerKind::Collection);
+        assert_eq!(result.selected.holon_id().unwrap().local_id().0[0], 20);
+    }
+}
+
+#[test]
+fn collection_selection_checks_the_destination_slot_not_any_parent_slot() {
+    assert!(select_collection(0, 2, false, true).is_err());
+    assert!(select_collection(0, 9, true, true).is_err());
+}
+
+#[test]
+fn collection_selection_does_not_validate_member_types_on_read() {
+    assert!(select_collection(800, 2, true, false).is_ok());
 }

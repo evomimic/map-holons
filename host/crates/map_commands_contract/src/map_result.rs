@@ -67,6 +67,8 @@ pub enum MapResult {
 
     /// Canonical plural command result carrier.
     Collection(HolonCollection),
+    /// Provenance-independent collection subject with an explicit element type.
+    DescribedCollection(DescribedHolonCollection),
 
     /// Ordered lifecycle-valid relationship descriptors with their directions.
     QualifiedRelationships(Vec<QualifiedRelationshipResult>),
@@ -89,4 +91,11 @@ pub struct VisualizerSelection {
     pub selected: HolonReference,
     pub requested_kind: VisualizerKind,
     pub alternatives_available: bool,
+}
+
+/// A collection whose declared element type survives empty membership.
+#[derive(Debug)]
+pub struct DescribedHolonCollection {
+    pub members: HolonCollection,
+    pub element_type: HolonReference,
 }

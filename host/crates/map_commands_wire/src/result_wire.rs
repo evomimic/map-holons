@@ -47,6 +47,7 @@ pub enum MapResultWire {
 
     /// Canonical plural command result carrier at the IPC boundary.
     Collection(HolonCollectionWire),
+    DescribedCollection(DescribedHolonCollectionWire),
 
     /// Ordered lifecycle-valid relationship descriptors and their directions.
     QualifiedRelationships(Vec<QualifiedRelationshipWire>),
@@ -100,6 +101,12 @@ impl From<RelationshipDirection> for RelationshipDirectionWire {
 impl From<MapResult> for MapResultWire {
     fn from(result: MapResult) -> Self {
         match result {
+            MapResult::DescribedCollection(collection) => {
+                MapResultWire::DescribedCollection(DescribedHolonCollectionWire {
+                    members: HolonCollectionWire::from(&collection.members),
+                    element_type: HolonReferenceWire::from(&collection.element_type),
+                })
+            }
             MapResult::None => MapResultWire::None,
             MapResult::UndoComplete => MapResultWire::UndoComplete,
             MapResult::RedoComplete => MapResultWire::RedoComplete,
@@ -182,4 +189,11 @@ mod tests {
 
         assert_eq!(decoded, relationship);
     }
+}
+
+/// Transport projection of a described collection; references bind at ingress.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DescribedHolonCollectionWire {
+    pub members: HolonCollectionWire,
+    pub element_type: HolonReferenceWire,
 }
