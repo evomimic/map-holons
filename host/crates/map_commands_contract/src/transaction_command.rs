@@ -54,6 +54,12 @@ pub enum TransactionAction {
 
     /// Resolves a visualization request through the Rust-owned DAHN Selector Function.
     SelectVisualizer { request: VisualizerSelectionRequest },
+    /// Select for a described plural subject and a specific parent slot.
+    SelectCollectionVisualizer {
+        collection: super::DescribedHolonCollection,
+        parent_visualizer: HolonReference,
+        slot: HolonReference,
+    },
 
     /// Retrieves verified bytes for an opaque artifact capability issued by a
     /// materialization Dance in this transaction.
@@ -168,7 +174,8 @@ impl TransactionAction {
                     requires_commit_guard: false,
                 }
             }
-            TransactionAction::SelectVisualizer { .. } => {
+            TransactionAction::SelectCollectionVisualizer { .. }
+            | TransactionAction::SelectVisualizer { .. } => {
                 CommandLifecyclePolicy::transaction_read_only()
             }
             TransactionAction::FetchArtifact { .. } => {
@@ -207,6 +214,7 @@ impl TransactionAction {
             TransactionAction::LoadHolons { .. } => "load_holons",
             TransactionAction::Dance(_) => "dance",
             TransactionAction::DanceV2 { .. } => "dance_v2",
+            TransactionAction::SelectCollectionVisualizer { .. } => "select_collection_visualizer",
             TransactionAction::SelectVisualizer { .. } => "select_visualizer",
             TransactionAction::FetchArtifact { .. } => "fetch_artifact",
             TransactionAction::GetAllHolons => "get_all_holons",

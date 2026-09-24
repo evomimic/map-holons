@@ -1,6 +1,6 @@
 import type { BaseValue, PropertyName, RelationshipName } from './types';
 import { extractString } from './types';
-import { readDescriptorCardinality, readDescriptorIsArray, type HolonReference } from './references';
+import { readInstanceProperties, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, type HolonReference } from './references';
 import { CorePropertyName, CoreRelationshipName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
@@ -8,6 +8,8 @@ const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, Holon
 
 /** Opaque SDK handle for a holon type descriptor. */
 export class HolonDescriptorHandle {
+  /** Effective instance properties, in runtime-provided order. */
+  instanceProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> { return readInstanceProperties(this.#reference); }
   #reference: HolonReference;
 
   constructor(
@@ -19,6 +21,11 @@ export class HolonDescriptorHandle {
     }
 
     this.#reference = reference;
+  }
+
+  /** User-facing name of this HolonType. */
+  displayName(): Promise<string> {
+    return requiredString(this.#reference.propertyValue(CorePropertyName.DisplayName), CorePropertyName.DisplayName);
   }
 
   async typeName(): Promise<string> {
@@ -47,6 +54,18 @@ export class PropertyDescriptorHandle {
       propertyDescriptorReference(this).propertyValue(CorePropertyName.TypeName),
       CorePropertyName.TypeName,
     );
+  }
+
+  /** Display heading is separate from the property's binding name. */
+  displayName(): Promise<string> {
+    return requiredString(propertyDescriptorReference(this).propertyValue(CorePropertyName.DisplayName), CorePropertyName.DisplayName);
+  }
+
+  /** Rust-owned scalar kind; AnyBaseValue permits descriptor-authorized mixed cells. */
+  async valueKind(): Promise<ScalarValueKind> {
+    const kind = await readPropertyValueKind(propertyDescriptorReference(this));
+    if (!['StringValue', 'BooleanValue', 'IntegerValue', 'EnumValue', 'BytesValue', 'AnyBaseValue'].includes(kind)) throw new TypeError(`Unsupported property representation: ${kind}`);
+    return kind as ScalarValueKind;
   }
 
   /** Rust-owned classification of the declared property representation. */
@@ -190,3 +209,5 @@ export interface EffectiveCardinality {
   readonly minimum: number;
   readonly maximum: number | null;
 }
+
+export type ScalarValueKind = 'StringValue' | 'BooleanValue' | 'IntegerValue' | 'EnumValue' | 'BytesValue' | 'AnyBaseValue';

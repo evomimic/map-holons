@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 type HolonInspectorElement = HTMLElement & {
   setContext(context: { title?: string; childVisualizers?: ReadonlyMap<string, HTMLElement> }): void;
@@ -17,6 +17,34 @@ async function loadHolonInspector(): Promise<new () => HolonInspectorElement> {
 }
 
 describe('Holon Inspector visualizer artifact', () => {
+  it('adapts retained child slots to budgets and keeps late collection updates compressed', async () => {
+    const Node = await loadHolonInspector();
+    customElements.define('test-node-height-budget', class extends Node {});
+    const element = document.createElement('test-node-height-budget') as any;
+    const properties = document.createElement('section');
+    const collection = document.createElement('section');
+    collection.dataset.selectedRow = 'retained';
+    element.setContext({ title: 'H1', childVisualizers: new Map([['properties', properties], ['collections', collection]]) });
+    const expand = vi.fn();
+    element.setRowExpansionHandler(expand);
+    element.setSpatialBudget({ height: 190 });
+    expect(element.querySelector('[data-holon-inspector-body]').style.display).toBe('none');
+    expect(element.querySelector('[data-holon-inspector-collection-region]').style.display).toBe('flex');
+    element.querySelector('header button').click();
+    expect(expand).toHaveBeenCalledOnce();
+    element.setSpatialBudget({ height: 46 });
+    expect(element.querySelector('[data-holon-inspector-collection-region]').inert).toBe(true);
+    element.updateCollection({ state: 'loaded', content: collection });
+    expect(element.querySelector('[data-holon-inspector-collection-region]').style.display).toBe('none');
+    element.setSpatialBudget({ height: 500 });
+    expect(element.querySelector('[data-holon-inspector-body]').style.display).toBe('grid');
+    expect(element.querySelector('[data-holon-inspector-collection-region]').inert).toBe(false);
+    expect(element.contains(properties)).toBe(true);
+    expect(element.contains(collection)).toBe(true);
+    expect(collection.dataset.selectedRow).toBe('retained');
+    element.querySelector('header button').click();
+    expect(expand).toHaveBeenCalledOnce();
+  });
   it('allocates explicit responsive regions for its immediate child concerns', async () => {
     const HolonInspector = await loadHolonInspector();
     const tagName = 'map-holon-inspector-artifact-test';

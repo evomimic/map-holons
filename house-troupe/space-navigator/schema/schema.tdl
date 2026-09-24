@@ -70,6 +70,8 @@ instance TableCollectionVisualizer.CollectionVisualizer {
   relationships {
     ImplementedBy -> TableCollectionTypeScript.VisualizerImplementation
     ConsumesDesignToken -> [
+      ActionHoverSurfaceBackground.DesignToken,
+      ActionTextColor.DesignToken,
       CollectionHeaderSurfaceBackground.DesignToken,
       CollectionHeadingFontSize.DesignToken,
       CollectionHeadingFontWeight.DesignToken,
@@ -99,7 +101,7 @@ instance TableCollectionTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.table-collection"
-  VisualizerArtifactDigest "sha256:5dcc1482113e5a09275fb4f3b0226b93474c12e9524679dcad3409c1ef1cc4da"
+  VisualizerArtifactDigest "sha256:7910ed7d04123a7fbc733df5ae439719726d215a754b32a611390119475b95f1"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

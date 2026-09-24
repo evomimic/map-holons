@@ -31,8 +31,6 @@ async function fixture(heights: number[], initialHeight: number) {
   let height = initialHeight;
   Object.defineProperty(element, 'clientHeight', { get: () => height });
   element.style.gap = '4px';
-  const title = element.querySelector('h2')!;
-  vi.spyOn(title, 'getBoundingClientRect').mockImplementation(() => rect(20));
   const footer = element.querySelector('footer')!;
   vi.spyOn(footer, 'getBoundingClientRect').mockImplementation(() => rect(30));
   const rows = [...element.querySelectorAll<HTMLElement>('[data-dahn-property-slot]')];
@@ -50,7 +48,7 @@ const visible = (rows: HTMLElement[]) => rows.filter(row => row.style.visibility
 
 describe('bounded Properties disclosure', () => {
   it('shows an exact-fitting ordered prefix and reserves the footer', async () => {
-    const f = await fixture([40, 50, 60], 153); // 153 - heading/gap 24 - footer/gap 34 = 95
+    const f = await fixture([40, 50, 60], 129); // 129 - footer/gap 34 = 95
     expect(visible(f.rows)).toEqual(f.rows.slice(0, 2));
     expect(f.button.textContent).toContain('Show 1 more property');
     expect(f.rows[2].inert).toBe(true);
@@ -61,14 +59,14 @@ describe('bounded Properties disclosure', () => {
   });
 
   it('shows all rows and omits the footer when everything fits without it', async () => {
-    const f = await fixture([40, 50, 60], 184);
+    const f = await fixture([40, 50, 60], 160);
     expect(visible(f.rows)).toEqual(f.rows);
     expect(f.footer.style.position).toBe('absolute');
     expect(f.footer.inert).toBe(true);
   });
 
   it('expands only the list, retains focus, and collapses back to the prefix', async () => {
-    const f = await fixture([40, 50, 60], 153);
+    const f = await fixture([40, 50, 60], 129);
     f.button.focus(); f.button.click(); flush();
     expect(visible(f.rows)).toEqual(f.rows);
     expect(f.list.style.overflowY).toBe('auto');
@@ -84,18 +82,18 @@ describe('bounded Properties disclosure', () => {
 
   it('recomputes after allocation and row-height changes without reordering', async () => {
     const heights = [40, 50, 60];
-    const f = await fixture(heights, 153);
+    const f = await fixture(heights, 129);
     heights[0] = 90; resized(); flush();
     expect(visible(f.rows)).toEqual(f.rows.slice(0, 1));
     f.button.focus();
     f.resize(300);
-    expect(document.activeElement).toBe(f.element.querySelector('h2'));
+    expect(document.activeElement).toBe(f.list);
     expect(visible(f.rows)).toEqual(f.rows);
     f.resize(80);
     expect(visible(f.rows)).toHaveLength(0);
     expect(f.button.textContent).toContain('Show 3 more properties');
-    f.resize(40);
-    expect(f.element.querySelector('h2')!.style.visibility).toBe('hidden');
+    f.resize(20);
+    expect(f.element.querySelector('h2')).toBeNull();
     expect(f.footer.inert).toBe(false);
   });
 
