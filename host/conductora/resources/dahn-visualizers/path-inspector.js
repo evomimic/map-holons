@@ -64,6 +64,8 @@ export default class PathInspectorElement extends HTMLElement {
     this.lineage.setAttribute('aria-hidden', 'true');
     Object.assign(this.lineage.style, { position: 'absolute', left: '0', top: '0', pointerEvents: 'none', overflow: 'hidden', color: 'var(--dahn-muted-text-color)' });
     viewport.append(this.lineage);
+    this.pendingSourceId = undefined;
+    this.pendingRegion = undefined;
     this.regions = new Map();
     this.rowAllocations = new Map();
     this.occurrences = [];
@@ -97,12 +99,12 @@ export default class PathInspectorElement extends HTMLElement {
     // Status chrome remains bounded and recoverable even on a compact row.
     const statusHeights = rows.map(id => Math.max(0, ...this.occurrences.filter(item => this.rowId(item) === id).map(item => {
       const status = this.regions.get(item.id).querySelector('[data-path-occurrence-status]');
-      return item.message ? Math.min(64, status.scrollHeight || 32) : 0;
+      return item.message && !(item.pending && item.requestAxis === 'horizontal') ? Math.min(64, status.scrollHeight || 32) : 0;
     })));
     const contextHeight = rows.reduce((sum, id) => sum + (this.rowAllocations.get(id) === 'compact' ? 48 : this.rowAllocations.get(id) === 'partial' ? partialHeight : 0), 0);
     const gap = parseFloat(getComputedStyle(this.viewport).rowGap) || 40;
     const heights = rows.map(id => this.rowAllocations.get(id) === 'compact' ? 48 : this.rowAllocations.get(id) === 'partial' ? partialHeight : Math.max(320, viewportHeight - contextHeight - gap * (rows.length - 1) - statusHeights.reduce((sum, height) => sum + height, 0)));
-    const columns = Math.max(...this.occurrences.map(item => item.column ?? 1));
+    const columns = Math.max(...this.occurrences.map(item => (item.column ?? 1) + (item.pending && item.requestAxis === 'horizontal' ? 1 : 0)));
     // Until horizontal compression is introduced, retain a useful full-width
     // allocation per column and let the viewport scan the persistent grid.
     const width = Math.max(320, this.viewportWidth || this.viewport.clientWidth || 640);
@@ -119,6 +121,13 @@ export default class PathInspectorElement extends HTMLElement {
     });
     const columnGap = parseFloat(getComputedStyle(this.viewport).columnGap) || 16;
     const columnWidth = columns === 1 ? (this.viewportWidth || this.viewport.clientWidth || 640) : width;
+    const pending = this.occurrences.find(item => item.id === this.pendingSourceId);
+    if (pending && this.pendingRegion) {
+      this.pendingRegion.style.gridRow = String(rows.indexOf(this.rowId(pending)) + 1);
+      this.pendingRegion.style.gridColumn = String((pending.column ?? 1) + 1);
+    }
+    this.columnWidth = columnWidth;
+    this.columnGap = columnGap;
     this.renderLineage(rows, heights.map((height, index) => height + statusHeights[index]), columnWidth, gap, columnGap, columns);
   }
   renderLineage(rows, heights, columnWidth, rowGap, columnGap, columns) {
@@ -158,6 +167,28 @@ export default class PathInspectorElement extends HTMLElement {
     }
   }
   renderPath(occurrences, focus) {
+    const pending = occurrences.find(item => item.pending && item.requestAxis === 'horizontal');
+    const pendingChanged = pending?.id !== this.pendingSourceId;
+    this.pendingSourceId = pending?.id;
+    if (pending) {
+      if (!this.pendingRegion) {
+        this.pendingRegion = document.createElement('div');
+        this.pendingRegion.setAttribute('role', 'status');
+        Object.assign(this.pendingRegion.style, {
+          alignSelf: 'start', zIndex: '1', minWidth: '0', padding: 'var(--dahn-control-gap)',
+          background: 'var(--dahn-panel-surface-background)', color: 'var(--dahn-muted-text-color)',
+          border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)',
+          borderRadius: 'var(--dahn-panel-corner-radius)', pointerEvents: 'none',
+        });
+        this.viewport.append(this.pendingRegion);
+      }
+      // This is feedback for an attempt, never a topology occurrence or edge.
+      this.pendingRegion.dataset.pathPendingSource = pending.id;
+      this.pendingRegion.textContent = pending.message ?? 'Opening holon…';
+    } else {
+      this.pendingRegion?.remove();
+      this.pendingRegion = undefined;
+    }
     const previousIds = new Set(this.occurrences.map(item => item.id));
     const added = occurrences.filter(item => !previousIds.has(item.id));
     this.occurrences = occurrences;
@@ -213,7 +244,7 @@ export default class PathInspectorElement extends HTMLElement {
       region.dataset.focused = String(occurrence.id === focus?.occurrenceId);
       region.setAttribute('aria-busy', String(!!occurrence.pending));
       const status = region.querySelector('[data-path-occurrence-status]');
-      status.hidden = !occurrence.message;
+      status.hidden = !occurrence.message || (occurrence.pending && occurrence.requestAxis === 'horizontal');
       status.textContent = occurrence.message ?? '';
       if (occurrence.retry) {
         const retry = document.createElement('button');
@@ -224,6 +255,21 @@ export default class PathInspectorElement extends HTMLElement {
       }
     });
     this.allocateRows();
-    if (focusChanged && frontier) this.regions.get(frontier.id)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    if (pendingChanged && pending) {
+      this.pendingRegion.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+      const childLeft = (pending.column ?? 1) * (this.columnWidth + this.columnGap);
+      this.viewport.scrollLeft = Math.min(this.viewport.scrollLeft, Math.max(0, childLeft - this.columnGap - 48));
+    }
+    if (focusChanged && frontier) {
+      this.regions.get(frontier.id)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+      if (frontier.provenance?.kind === 'singular-relationship') {
+        // Nearest alignment of a viewport-wide Node hides its incoming arrow.
+        // Keep the approach gutter and a source-side context strip recoverable
+        // without changing full column widths or introducing X compression.
+        const childLeft = ((frontier.column ?? 1) - 1) * (this.columnWidth + this.columnGap);
+        const approachLeft = Math.max(0, childLeft - this.columnGap - 48);
+        this.viewport.scrollLeft = Math.min(this.viewport.scrollLeft, approachLeft);
+      }
+    }
   }
 }

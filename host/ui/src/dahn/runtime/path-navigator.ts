@@ -12,7 +12,6 @@ interface Occurrence extends PathOccurrence {
   right?: Occurrence;
   horizontalAlternatives: Occurrence[];
   singular: SingularNavigationState;
-  requestAxis?: 'vertical' | 'horizontal';
   collections: Map<CollectionAffordance, string>;
   subjectIdentity?: string;
   /** Zero-based projection row, independent of traversal depth. */

@@ -131,3 +131,90 @@ describe('Path Inspector visualizer artifact', () => {
     expect(region?.querySelector('[data-root-node-fixture]')).not.toBeNull();
   });
 });
+
+it('routes recursive horizontal and mixed lineage from provenance through displacement and allocation changes', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-horizontal-lineage', class extends Path {});
+  const element = document.createElement('test-path-horizontal-lineage') as any;
+  const node = (id: string, rowId: string, column: number, parent?: string, kind = 'singular-relationship') => ({
+    id, rowId, column, element: document.createElement('section'),
+    provenance: parent ? { parentOccurrenceId: parent, kind } : undefined,
+  });
+  const a = node('a', 'r0', 1), b = node('b', 'r0', 2, 'a'), c = node('c', 'r0', 3, 'b');
+  const down = node('down', 'r1', 3, 'c', 'collection-member');
+  let publish: (items: any[], focus: any) => void = () => {};
+  element.setContext({ navigation: { subscribe(render: typeof publish) {
+    publish = render;
+    render([a, b, c, down], { occurrenceId: 'down', mode: 'traverse' });
+    return () => {};
+  } } });
+  const overlay = element.querySelector('[data-path-lineage]');
+  const edge = (id: string) => overlay.querySelector(`[data-lineage-child="${id}"]`);
+  const coordinates = (id: string) => edge(id).getAttribute('d').match(/-?\d+(?:\.\d+)?/g).map(Number);
+  const horizontal = (id: string, parent: string, displaced: boolean) => {
+    const path = edge(id);
+    expect(path.dataset.lineageParent).toBe(parent);
+    expect(path.getAttribute('stroke-width')).toBe('5');
+    expect(path.getAttribute('stroke-linecap')).toBe('round');
+    expect(path.getAttribute('stroke-linejoin')).toBe('round');
+    // Source, elbow, target, and the two arms of the rightward arrowhead.
+    const [sourceX, sourceY, elbowX, targetY, targetX, armX, armY, tipX, tipY, otherX, otherY] = coordinates(id);
+    expect(sourceX).toBeLessThan(elbowX);
+    expect(elbowX).toBeLessThan(targetX);
+    if (displaced) expect(targetY).toBeGreaterThan(sourceY);
+    else expect(targetY).toBe(sourceY);
+    expect(tipX).toBe(targetX); expect(tipY).toBe(targetY);
+    expect(armX).toBeLessThan(tipX); expect(otherX).toBeLessThan(tipX);
+    expect(armY).toBeLessThan(tipY); expect(otherY).toBeGreaterThan(tipY);
+  };
+  horizontal('b', 'a', false); horizontal('c', 'b', false);
+  expect(edge('down').dataset.lineageParent).toBe('c');
+  expect(edge('down').getAttribute('d')).toMatch(/^M [\d.]+ [\d.]+ V /);
+  const before = edge('c').getAttribute('d');
+  publish([a, b, c, down], { occurrenceId: 'a', mode: 'restore' });
+  horizontal('c', 'b', false);
+  expect(edge('c').getAttribute('d')).not.toBe(before);
+  const alternative = node('alternative', 'r0', 2, 'a');
+  b.rowId = c.rowId = 'retained'; down.rowId = 'lower';
+  publish([a, alternative, b, c, down], { occurrenceId: 'alternative', mode: 'traverse' });
+  horizontal('b', 'a', true); horizontal('c', 'b', false);
+  const displaced = edge('b').getAttribute('d');
+  element.viewportWidth = 360; element.viewportHeight = 480; element.allocateRows();
+  horizontal('b', 'a', true);
+  expect(edge('b').getAttribute('d')).not.toBe(displaced);
+  expect(overlay.parentElement).toBe(element.viewport);
+  expect(overlay.style.pointerEvents).toBe('none');
+  element.viewport.scrollLeft = 300; element.viewport.scrollTop = 100;
+  element.viewport.dispatchEvent(new Event('scroll'));
+  horizontal('b', 'a', true);
+  expect(c.element.parentElement?.dataset.pathOccurrence).toBe('c');
+  expect(overlay.querySelectorAll('path')).toHaveLength(4);
+});
+
+it('keeps the incoming horizontal connector inside the viewport when focusing a full-width child', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-focus-lineage', class extends Path {});
+  const element = document.createElement('test-path-focus-lineage') as any;
+  const root = { id: 'root', rowId: 'r0', column: 1, element: document.createElement('section') };
+  const child = { id: 'child', rowId: 'r0', column: 2, element: document.createElement('section'), provenance: { kind: 'singular-relationship', parentOccurrenceId: 'root' } };
+  let publish: (items: any[], focus: any) => void = () => {};
+  element.setContext({ navigation: { subscribe(render: typeof publish) {
+    publish = render; render([root], { occurrenceId: 'root', mode: 'restore' }); return () => {};
+  } } });
+  // Model the browser's nearest alignment: a viewport-wide child hides its
+  // incoming connector just to the left of the new scroll position.
+  const previousScrollIntoView = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function (this: HTMLElement) {
+    element.viewport.scrollLeft = this.dataset.pathOccurrence === 'child' ? 656 : 0;
+  };
+  try {
+    publish([root, child], { occurrenceId: 'child', mode: 'traverse' });
+    expect(element.viewport.scrollLeft).toBeLessThan(640);
+    expect(element.viewport.scrollLeft).toBeGreaterThan(0);
+    const scroll = element.viewport.scrollLeft;
+    publish([root, child], element.focus);
+    expect(element.viewport.scrollLeft).toBe(scroll);
+    publish([root, child], { occurrenceId: 'root', mode: 'restore' });
+    expect(element.viewport.scrollLeft).toBe(0);
+  } finally { Element.prototype.scrollIntoView = previousScrollIntoView; }
+});

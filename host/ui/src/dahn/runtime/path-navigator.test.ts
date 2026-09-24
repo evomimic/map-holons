@@ -556,3 +556,152 @@ it('does not invalidate singular work when the source changes collection tabs', 
   expect(root.pending).toBe(false);
   expect(root.message).toBeUndefined();
 });
+
+describe('recursive horizontal navigation', () => {
+  it('follows distinct targets, retains local collections and continues down then right', async () => {
+    const f = await fixture(); const root = f.path()[0];
+    const c = subject('C');
+    c.relatedHolons.mockResolvedValue(collection([f.rootSubject]));
+    c.describedRelatedHolons.mockResolvedValue(collection([f.a]));
+    f.a.relatedHolons.mockResolvedValue(collection([f.b]));
+    f.b.relatedHolons.mockResolvedValue(collection([c]));
+    const a = await right(f, root);
+    const rows = await openCollection(a.element);
+    rows[1].click();
+    const table = a.element.querySelector('table');
+    const b = await right(f, a);
+    const last = await right(f, b);
+    const chain = [root, a, b, last];
+    expect(chain.map(item => item.subject)).toEqual([f.rootSubject, f.a, f.b, c]);
+    expect(chain.map(item => item.column)).toEqual([1, 2, 3, 4]);
+    expect(new Set(chain.map(item => item.rowId)).size).toBe(1);
+    expect(new Set(chain.map(item => item.id)).size).toBe(4);
+    for (const [index, item] of chain.entries()) {
+      expect(item.element.isConnected).toBe(true);
+      expect(rail(item.element).disabled).toBe(false);
+      expect(item.element.querySelector('[role=tab]')).not.toBeNull();
+      if (index) {
+        expect(item.provenance).toMatchObject({ kind: 'singular-relationship', parentOccurrenceId: chain[index - 1].id, affordance: { label: 'First' } });
+        expect(f.element.querySelector(`[data-lineage-child="${item.id}"]`)?.getAttribute('data-lineage-parent')).toBe(chain[index - 1].id);
+      }
+    }
+    expect(nodeSelections(f).map(([request]) => request)).toEqual([f.a, f.b, c].map(subject => ({ subject, requestedKind: 'node', parentVisualizer: f.parent })));
+    expect(f.a.relatedHolons).toHaveBeenCalledWith('First');
+    expect(f.b.relatedHolons).toHaveBeenCalledWith('First');
+    expect(c.relatedHolons).not.toHaveBeenCalled();
+    expect(a.element.querySelector('table')).toBe(table);
+    expect(rows[1].getAttribute('aria-selected')).toBe('true');
+    expect(f.element.querySelector(`[data-path-occurrence="${last.id}"]`)?.getAttribute('data-focused')).toBe('true');
+    activate(rows[1]);
+    await vi.waitFor(() => expect(f.path()).toHaveLength(5));
+    const down = f.path().find(item => item.provenance?.kind === 'collection-member' && item.provenance.parentOccurrenceId === a.id)!;
+    expect(down.subject).toBe(b.subject);
+    expect(down.id).not.toBe(b.id);
+    const across = await right(f, down);
+    expect(across.subject).toBe(c);
+    expect(across.rowId).toBe(down.rowId);
+    expect(across.provenance?.parentOccurrenceId).toBe(down.id);
+    expect(chain.every(item => f.path().includes(item) && item.element.isConnected)).toBe(true);
+    expect(new Set(f.path().map(item => `${item.rowId}:${item.column}`)).size).toBe(f.path().length);
+  });
+
+  it('retains and resumes a displaced horizontal chain with independent repeated Holon occurrences', async () => {
+    const f = await fixture(); const root = f.path()[0];
+    const a = await right(f, root);
+    const repeatedRoot = await right(f, a, 2);
+    expect(repeatedRoot.subject).toBe(root.subject);
+    expect(repeatedRoot.id).not.toBe(root.id);
+    const rows = await openCollection(repeatedRoot.element, 1);
+    rows[1].click();
+    expect(root.element.querySelector('table')).toBeNull();
+    const provenance = repeatedRoot.provenance;
+    const alternative = await right(f, root, 1);
+    expect(alternative.rowId).toBe(root.rowId);
+    expect(a.rowId).toBe(repeatedRoot.rowId);
+    expect(a.rowId).not.toBe(root.rowId);
+    expect(repeatedRoot.provenance).toBe(provenance);
+    const next = await right(f, repeatedRoot);
+    expect(next.subject).toBe(a.subject);
+    expect(next.id).not.toBe(a.id);
+    expect(next.provenance?.parentOccurrenceId).toBe(repeatedRoot.id);
+    expect(rows[1].getAttribute('aria-selected')).toBe('true');
+    const count = f.path().length;
+    await right(f, a, 2);
+    expect(f.path()).toHaveLength(count);
+    expect(f.element.querySelector(`[data-path-occurrence="${repeatedRoot.id}"]`)?.getAttribute('data-focused')).toBe('true');
+  });
+
+  it.each(['empty', 'selection', 'materialization'])('preserves a recursive continuation on deeper %s and retries failures', async stage => {
+    const f = await fixture(); const root = f.path()[0];
+    const a = await right(f, root); const b = await right(f, a, 1);
+    await right(f, b);
+    const snapshot = f.path().map(item => [item.id, item.rowId, item.column, item.provenance]);
+    if (stage === 'empty') f.b.relatedHolons.mockResolvedValueOnce(collection([]));
+    if (stage === 'selection') f.selectVisualizer.mockRejectedValueOnce(new Error('selection failed'));
+    if (stage === 'materialization') vi.spyOn(f.runtime, 'realize').mockRejectedValueOnce(new Error('materialization failed'));
+    await right(f, b, 2);
+    expect(f.path().map(item => [item.id, item.rowId, item.column, item.provenance])).toEqual(snapshot);
+    expect(f.element.querySelectorAll('[data-lineage-child]')).toHaveLength(3);
+    if (stage === 'empty') expect(b.message).toContain('no target');
+    else {
+      expect(b.retry).toBeDefined();
+      b.retry!(); await vi.waitFor(() => expect(b.pending).toBe(false));
+      expect(b.message).toBeUndefined();
+      expect(f.path()).toHaveLength(4);
+    }
+  });
+});
+
+it('disposes stale realization at a deeper horizontal source without publishing a new edge', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const a = await right(f, root); const b = await right(f, a, 1);
+  const before = f.path().map(item => [item.id, item.rowId, item.column]);
+  const gate = deferred<void>(); const original = f.realize.getMockImplementation()!;
+  let candidate: Awaited<ReturnType<typeof realizeNode>> | undefined;
+  f.realize.mockImplementationOnce(async (ref, selected) => {
+    candidate = await original(ref, selected); await gate.promise; return candidate;
+  });
+  rail(b.element).click();
+  await vi.waitFor(() => expect(candidate).toBeDefined());
+  expect(f.element.querySelectorAll('[data-lineage-child]')).toHaveLength(2);
+  const dispose = vi.spyOn(candidate!.collectionActivation, 'dispose');
+  f.element.remove(); gate.resolve();
+  await vi.waitFor(() => expect(dispose).toHaveBeenCalledTimes(1));
+  expect(f.path().map(item => [item.id, item.rowId, item.column])).toEqual(before);
+  expect(candidate!.element.isConnected).toBe(false);
+});
+
+it('shows horizontal opening feedback in the destination slot without publishing or replacing a child', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  const a = await right(f, root);
+  const gate = deferred<ReturnType<typeof collection>>();
+  f.a.relatedHolons.mockReturnValueOnce(gate.promise);
+  rail(a.element).click();
+  await vi.waitFor(() => expect(a.pending).toBe(true));
+  const pending = f.element.querySelector<HTMLElement>('[data-path-pending-source]')!;
+  expect(pending.dataset.pathPendingSource).toBe(a.id);
+  expect(pending.getAttribute('role')).toBe('status');
+  expect(pending.textContent).toContain('Opening First');
+  expect(pending.style.gridRow).toBe('1');
+  expect(pending.style.gridColumn).toBe('3');
+  expect(f.element.querySelector(`[data-path-occurrence="${a.id}"] [data-path-occurrence-status]`)?.hasAttribute('hidden')).toBe(true);
+  expect(f.path()).toHaveLength(2);
+  expect(f.element.querySelectorAll('[data-lineage-child]')).toHaveLength(1);
+  gate.resolve(collection([f.b]));
+  await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+  expect(f.element.querySelector('[data-path-pending-source]')).toBeNull();
+  const b = f.path()[2];
+  expect(b.column).toBe(3);
+
+  const empty = deferred<ReturnType<typeof collection>>();
+  f.a.relatedHolons.mockReturnValueOnce(empty.promise);
+  rail(a.element, 1).click();
+  await vi.waitFor(() => expect(a.pending).toBe(true));
+  expect(b.element.isConnected).toBe(true);
+  expect(f.path()).toHaveLength(3);
+  empty.resolve(collection([]));
+  await vi.waitFor(() => expect(a.pending).toBe(false));
+  expect(f.element.querySelector('[data-path-pending-source]')).toBeNull();
+  expect(b.element.isConnected).toBe(true);
+  expect(a.message).toContain('no target');
+});

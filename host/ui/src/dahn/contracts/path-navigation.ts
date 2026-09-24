@@ -33,6 +33,8 @@ export interface PathOccurrence {
   message?: string;
   retry?: () => void;
   pending: boolean;
+  /** Axis of the current attempt, used to place traversal feedback. */
+  requestAxis?: 'vertical' | 'horizontal';
 }
 
 /** An explicit focus request; status updates reuse it without changing allocation. */
