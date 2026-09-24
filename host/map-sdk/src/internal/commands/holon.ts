@@ -2,6 +2,7 @@ import type { RequestOptionsOverrides } from '../request-context';
 import { buildRequest } from '../request-context';
 import {
   expectCollection,
+  expectDescribedCollection,
   expectEffectiveCardinality,
   expectHolonId,
   expectNone,
@@ -389,4 +390,14 @@ export async function readPropertyIsArray(txId: TxId, target: HolonReferenceWire
 }
 export function readAvailableDances(txId: TxId, target: HolonReferenceWire) {
   return runHolonCommand(txId, target, { Read: 'GetAvailableDances' }, expectCollection);
+}
+
+export function readDescribedRelatedHolons(txId: TxId, target: HolonReferenceWire, name: RelationshipName) {
+  return runHolonCommand(txId, target, { Read: { GetDescribedRelatedHolons: { name } } }, expectDescribedCollection);
+}
+export function readInstanceProperties(txId: TxId, target: HolonReferenceWire) {
+  return runHolonCommand(txId, target, { Read: 'GetInstanceProperties' }, expectCollection);
+}
+export function readPropertyValueKind(txId: TxId, target: HolonReferenceWire) {
+  return runHolonCommand(txId, target, { Read: 'GetPropertyValueKind' }, expectValue);
 }

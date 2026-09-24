@@ -65,6 +65,11 @@ pub enum TransactionActionWire {
     },
 
     SelectVisualizer(VisualizerSelectionRequestWire),
+    SelectCollectionVisualizer {
+        collection: crate::DescribedHolonCollectionWire,
+        parent_visualizer: HolonReferenceWire,
+        slot: HolonReferenceWire,
+    },
 
     /// Fetches verified bytes for an opaque artifact capability issued by a
     /// materialization Dance in this transaction.
@@ -237,6 +242,18 @@ impl TransactionActionWire {
             TransactionActionWire::DanceV2 { invocation } => {
                 Ok(TransactionAction::DanceV2 { invocation: invocation.bind(context)? })
             }
+            TransactionActionWire::SelectCollectionVisualizer {
+                collection,
+                parent_visualizer,
+                slot,
+            } => Ok(TransactionAction::SelectCollectionVisualizer {
+                collection: map_commands_contract::DescribedHolonCollection {
+                    members: collection.members.bind(context)?,
+                    element_type: collection.element_type.bind(context)?,
+                },
+                parent_visualizer: parent_visualizer.bind(context)?,
+                slot: slot.bind(context)?,
+            }),
             TransactionActionWire::SelectVisualizer(request) => {
                 Ok(TransactionAction::SelectVisualizer {
                     request: VisualizerSelectionRequest {

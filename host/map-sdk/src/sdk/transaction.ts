@@ -9,7 +9,7 @@ import type {
   SmartReferenceWire,
   TxId,
 } from '../internal';
-import { HolonCollection } from './collection';
+import { DescribedHolonCollection, unwrapDescribedCollection, HolonCollection } from './collection';
 import {
   createHolonReference,
   createTransientHolonReference,
@@ -346,6 +346,14 @@ export class MapTransaction {
    * Submits a visualization request. Rust selects the concrete Visualizer;
    * TypeScript may only materialize and render that selected identity.
    */
+  async selectCollectionVisualizer(collection: DescribedHolonCollection, parentVisualizer: HolonReference, slot: HolonReference): Promise<VisualizerSelection> {
+    const txId = txIdFor(this);
+    const wire = await internalTransaction.selectCollectionVisualizer(txId, {
+      collection: unwrapDescribedCollection(collection), parent_visualizer: unwrapHolonReference(parentVisualizer), slot: unwrapHolonReference(slot),
+    });
+    return { selected: createHolonReference(txId, wire.selected), requestedKind: fromVisualizerKindWire(wire.requested_kind), alternativesAvailable: wire.alternatives_available };
+  }
+
   async selectVisualizer(request: VisualizerSelectionRequest): Promise<VisualizerSelection> {
     const txId = txIdFor(this);
     const wire = await internalTransaction.selectVisualizer(

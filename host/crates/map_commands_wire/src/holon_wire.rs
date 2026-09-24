@@ -68,6 +68,11 @@ pub enum ReadableHolonActionWire {
     GetEffectiveCardinality,
     GetPropertyIsArray,
     GetAvailableDances,
+    GetDescribedRelatedHolons {
+        name: RelationshipName,
+    },
+    GetInstanceProperties,
+    GetPropertyValueKind,
 }
 
 /// Wire-level write (mutating) holon actions.
@@ -117,6 +122,15 @@ impl HolonActionWire {
 impl ReadableHolonActionWire {
     fn bind(self) -> ReadableHolonAction {
         match self {
+            ReadableHolonActionWire::GetDescribedRelatedHolons { name } => {
+                ReadableHolonAction::GetDescribedRelatedHolons { name }
+            }
+            ReadableHolonActionWire::GetInstanceProperties => {
+                ReadableHolonAction::GetInstanceProperties
+            }
+            ReadableHolonActionWire::GetPropertyValueKind => {
+                ReadableHolonAction::GetPropertyValueKind
+            }
             ReadableHolonActionWire::CloneHolon => ReadableHolonAction::CloneHolon,
             ReadableHolonActionWire::Summarize => ReadableHolonAction::Summarize,
             ReadableHolonActionWire::GetHolonId => ReadableHolonAction::GetHolonId,

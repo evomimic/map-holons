@@ -7,6 +7,7 @@
 mod selection;
 
 pub use selection::{
-    select_bootstrap_canvas, select_home_dancer, select_visualizer, BootstrapCanvasSelection,
-    HomeDancerRuntime, HomeDancerSelection, HomeDancerSelectionContext, RuntimeCanvasVisualizer,
+    select_bootstrap_canvas, select_collection_visualizer, select_home_dancer, select_visualizer,
+    BootstrapCanvasSelection, HomeDancerRuntime, HomeDancerSelection, HomeDancerSelectionContext,
+    RuntimeCanvasVisualizer,
 };
