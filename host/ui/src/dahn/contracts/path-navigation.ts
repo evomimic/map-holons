@@ -12,6 +12,10 @@ export interface VerticalProvenance {
 /** A Path Inspector projection item; semantic handles remain bound SDK handles. */
 export interface PathOccurrence {
   id: string;
+  /** Optional projection band identity, independent of occurrence and Holon identity. */
+  rowId?: string;
+  /** One-based projected column; omitted for the initial vertical path. */
+  column?: number;
   subject: HolonReference;
   selectedVisualizer: HolonReference;
   provenance?: VerticalProvenance;
@@ -21,8 +25,15 @@ export interface PathOccurrence {
   pending: boolean;
 }
 
+/** An explicit focus request; status updates reuse it without changing allocation. */
+export interface PathFocus {
+  occurrenceId: string;
+  mode: 'traverse' | 'restore';
+}
+
 /** The selected Path Inspector renders a topology without reconstructing Nodes. */
 export interface PathNavigation {
-  subscribe(render: (occurrences: readonly PathOccurrence[]) => void): () => void;
+  subscribe(render: (occurrences: readonly PathOccurrence[], focus: PathFocus) => void): () => void;
+  restore(occurrenceId: string): void;
   dispose(): void;
 }
