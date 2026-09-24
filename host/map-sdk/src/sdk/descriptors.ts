@@ -134,6 +134,12 @@ export class RelationshipDescriptorHandle {
     return requiredString(this.#reference.propertyValue(CorePropertyName.DisplayName), CorePropertyName.DisplayName);
   }
 
+  /** Optional descriptive text from this directional relationship descriptor. */
+  async description(): Promise<string | null> {
+    const value = await this.#reference.propertyValue(CorePropertyName.Description);
+    return value === null ? null : extractString(value);
+  }
+
   async relationshipName(): Promise<RelationshipName> {
     return requiredString(
       this.#reference.propertyValue(CorePropertyName.TypeName),

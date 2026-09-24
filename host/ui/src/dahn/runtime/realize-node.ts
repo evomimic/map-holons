@@ -176,6 +176,7 @@ export async function realizeNode(
         }));
       },
       title: `${typeDisplayName}: ${holonKey}`,
+      holonKey,
       target: { reference: subject },
       holon: new DahnHolonView(subject),
       actions: affordances.actions,

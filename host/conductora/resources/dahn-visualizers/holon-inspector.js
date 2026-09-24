@@ -6,25 +6,47 @@ export default class HolonInspectorElement extends HTMLElement {
       button.dataset.singularState = state.attempted === affordance ? state.state : state.active === affordance ? 'loaded' : 'unresolved';
     }
   }
-  setRowExpansionHandler(handler) { this.expandRow = handler; }
+  setOccurrenceRestorationHandler(handler) { this.restoreOccurrence = handler; }
   setSpatialBudget(budget) {
     this.allocatedHeight = budget.height;
-    this.adaptHeight();
+    this.allocatedWidth = budget.width;
+    this.adaptBudget();
   }
-  adaptHeight() {
-    if (!this.body) return;
+  adaptBudget() {
+    if (!this.body || !this.singleValueRail) return;
     const height = this.allocatedHeight ?? Infinity;
     const compact = height < 80;
     const partial = height < 280;
+    const width = this.allocatedWidth ?? Infinity;
+    const narrow = width < 300;
+    const compactWidth = width < 100;
+    const hideBody = partial || compactWidth;
+    const hideCollection = compact || compactWidth;
     const active = document.activeElement;
-    if ((partial && this.body.contains(active)) || (compact && this.collectionRegion.contains(active))) this.titleControl.focus();
-    this.body.style.display = partial ? 'none' : 'grid';
-    this.body.inert = partial;
-    this.collectionRegion.style.display = compact ? 'none' : 'flex';
-    this.collectionRegion.inert = compact;
-    this.titleControl.setAttribute('aria-expanded', String(!partial));
-    this.titleControl.setAttribute('aria-label', `${partial ? 'Expand row: ' : ''}${this.titleText}`);
-    this.style.gridTemplateRows = compact ? 'minmax(0, 1fr)' : partial ? 'auto minmax(0, 1fr)' : this.collectionViewer.hidden ? 'auto minmax(0, 1fr) auto' : 'auto minmax(0, 2fr) minmax(0, 3fr)';
+    if ((hideBody && this.body.contains(active)) || (hideCollection && this.collectionRegion.contains(active))
+      || (narrow && (this.propertyViewer.contains(active) || this.actionBar.contains(active)))) this.titleControl.focus();
+    this.body.style.display = hideBody ? 'none' : 'grid';
+    this.body.inert = hideBody;
+    this.propertyViewer.style.display = narrow ? 'none' : 'flex';
+    this.propertyViewer.inert = narrow;
+    this.actionBar.style.display = narrow ? 'none' : 'block';
+    this.actionBar.inert = narrow;
+    this.body.style.gridTemplateColumns = narrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
+    this.singleValueRail.style.gridColumn = narrow ? '1' : '2';
+    this.collectionRegion.style.display = hideCollection ? 'none' : 'flex';
+    this.collectionRegion.inert = hideCollection;
+    this.titleControl.textContent = compactWidth && compact ? this.keyInitials : narrow ? this.holonKey : this.titleText;
+    this.titleControl.style.fontSize = compactWidth && compact ? 'var(--dahn-canvas-font-size)' : 'inherit';
+    this.titleControl.style.padding = compactWidth ? '0 var(--dahn-control-gap)' : '0 var(--dahn-slot-padding)';
+    this.titleControl.setAttribute('aria-expanded', String(!partial && !narrow));
+    this.titleControl.setAttribute('aria-label', `${partial || narrow ? 'Restore occurrence: ' : ''}${this.titleText}`);
+    this.titleControl.style.writingMode = compactWidth && !compact ? 'vertical-rl' : 'horizontal-tb';
+    this.titleControl.style.textOverflow = 'ellipsis';
+    this.titleControl.style.whiteSpace = 'nowrap';
+    this.titleControl.style.overflow = 'hidden';
+    this.titleControl.title = this.titleText;
+    this.style.gridTemplateColumns = 'minmax(0, 1fr)';
+    this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'auto minmax(0, 1fr)' : this.collectionViewer.hidden ? 'auto minmax(0, 1fr) auto' : 'auto minmax(0, 2fr) minmax(0, 3fr)';
     if (this.isConnected) this.scheduleLayout();
   }
   connectedCallback() {
@@ -89,7 +111,7 @@ export default class HolonInspectorElement extends HTMLElement {
       button.addEventListener('click', () => this.activateRelationship(item));
       this.singularControls.set(item, button);
     }
-    button.title = button.disabled ? 'Navigation activation is not available yet' : item.label;
+    button.title = item.description?.trim() || (button.disabled ? 'Navigation activation is not available yet' : item.label);
     if (item.relationship) button.dataset.relationshipDirection = item.relationship.direction;
     return button;
   }
@@ -101,7 +123,7 @@ export default class HolonInspectorElement extends HTMLElement {
     viewer.setAttribute('aria-busy', String(update.state === 'loading'));
     if (viewer.hidden) return;
     Object.assign(viewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', minWidth: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
-    this.adaptHeight();
+    this.adaptBudget();
     if (update.content) viewer.replaceChildren(update.content);
     else {
       const status = document.createElement('p');
@@ -130,6 +152,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.style.display = 'grid';
     this.style.flex = '1 1 auto';
     this.style.minHeight = '0';
+    this.style.minWidth = '0';
     this.style.overflow = 'hidden';
     this.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
     this.style.gridTemplateRows = 'auto minmax(0, 1fr) auto';
@@ -138,20 +161,26 @@ export default class HolonInspectorElement extends HTMLElement {
     const title = document.createElement('header');
     title.dataset.holonInspectorTitle = 'true';
     title.style.gridColumn = '1 / -1';
+    title.style.minWidth = '0';
+    title.style.minHeight = '0';
+    title.style.overflow = 'hidden';
     title.style.fontSize = 'var(--dahn-node-heading-font-size)';
     title.style.fontWeight = 'var(--dahn-canvas-heading-font-weight)';
     title.style.background = 'var(--dahn-action-surface-background)';
     title.style.color = 'var(--dahn-action-text-color)';
     this.titleText = context.title ?? 'Holon Inspector';
+    this.holonKey = context.holonKey ?? this.titleText;
+    this.keyInitials = keyInitials(this.holonKey);
     const titleControl = document.createElement('button');
     this.titleControl = titleControl;
     titleControl.type = 'button';
     titleControl.textContent = this.titleText;
     Object.assign(titleControl.style, { width: '100%', height: '100%', minHeight: '40px', textAlign: 'left', font: 'inherit', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer', padding: '0 var(--dahn-slot-padding)' });
-    titleControl.addEventListener('click', () => { if ((this.allocatedHeight ?? Infinity) < 280) this.expandRow?.(); });
+    titleControl.addEventListener('click', () => { if ((this.allocatedHeight ?? Infinity) < 280 || (this.allocatedWidth ?? Infinity) < 300) this.restoreOccurrence?.(); });
     title.append(titleControl);
 
     const actionBar = document.createElement('section');
+    this.actionBar = actionBar;
     actionBar.dataset.holonInspectorActionBar = 'true';
     actionBar.style.minWidth = '0';
     actionBar.style.overflow = 'hidden';
@@ -160,6 +189,7 @@ export default class HolonInspectorElement extends HTMLElement {
     else actionBar.textContent = 'No actions';
 
     const propertyViewer = document.createElement('section');
+    this.propertyViewer = propertyViewer;
     propertyViewer.dataset.holonInspectorPropertyViewer = 'true';
     propertyViewer.style.gridColumn = '1';
     propertyViewer.style.gridRow = '2';
@@ -176,6 +206,7 @@ export default class HolonInspectorElement extends HTMLElement {
     }
 
     const singleValueRail = document.createElement('aside');
+    this.singleValueRail = singleValueRail;
     singleValueRail.dataset.holonInspectorSingleValueRail = 'true';
     singleValueRail.style.gridColumn = '2';
     singleValueRail.style.gridRow = '2';
@@ -213,7 +244,7 @@ export default class HolonInspectorElement extends HTMLElement {
     if (collection) {
       collectionViewer.append(collection);
       Object.assign(collectionViewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
-      this.adaptHeight();
+      this.adaptBudget();
     }
     collectionRegion.append(collectionTabBar, collectionViewer);
     Object.assign(collectionTabBar.style, { borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', paddingTop: 'var(--dahn-action-padding-block)', flexShrink: '0' });
@@ -244,9 +275,19 @@ export default class HolonInspectorElement extends HTMLElement {
       [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
     this.replaceChildren(style, title, body, collectionRegion);
-    this.adaptHeight();
+    this.adaptBudget();
     if (this.isConnected) this.connectedCallback();
   }
+}
+
+// Key separators and camel-case boundaries supply readable initials without
+// treating a type label or an acronym's individual letters as separate words.
+function keyInitials(key) {
+  const words = key
+    .replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, '$1 $2')
+    .replace(/([\p{Ll}\p{Nd}])(\p{Lu})/gu, '$1 $2')
+    .match(/[\p{L}\p{N}]+/gu);
+  return words?.map(word => Array.from(word)[0]).join('').toLocaleUpperCase() || key;
 }
 
 let nextOverflowId = 0;
@@ -334,7 +375,7 @@ function horizontalOverflow(host, controls, label) {
       more.textContent = selected ? `${selected.textContent} ▾` : label;
       more.dataset.overflowSelected = String(!!selected);
       more.setAttribute('aria-label', selected ? `${label}: ${selected.textContent} selected` : label);
-      more.title = selected ? selected.textContent : label;
+      more.title = selected ? selected.title || selected.textContent : label;
     };
     const fittingCount = () => {
       const budget = overflow ? Math.max(0, width - more.getBoundingClientRect().width - gap) : width;

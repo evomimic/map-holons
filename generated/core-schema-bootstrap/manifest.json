@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "44f01ef2ec0860bedf9596fcb5dfe51b23c46e647dc75ee84beaeefc48a927f3"
+      "sha256": "91be4845c16ca4895d4e98aef4ae6c07ee1dc7452e7280c8655ceef112bfe962"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",

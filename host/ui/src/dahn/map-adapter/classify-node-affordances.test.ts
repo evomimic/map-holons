@@ -5,7 +5,7 @@ import type { HolonViewAccess } from '../contracts/holon-view';
 function fixture() {
   const property = (name: string, array: boolean) => ({ propertyName: async () => name, isArray: async () => array });
   const relationship = (label: string, maximum: number | null, direction = 'declared') => ({
-    direction, descriptor: { displayName: async () => label, effectiveCardinality: async () => ({ minimum: 0, maximum }) },
+    direction, descriptor: { description: async () => 'Relationship description', displayName: async () => label, effectiveCardinality: async () => ({ minimum: 0, maximum }) },
   });
   return {
     availableProperties: vi.fn().mockResolvedValue([property('Name', false), property('Tags', true)]),
@@ -21,6 +21,8 @@ describe('descriptor-driven Node classification', () => {
     const result = await classifyNodeAffordances(view as unknown as HolonViewAccess);
     expect(result.scalarProperties).toHaveLength(1);
     expect(result.singularRelationships.map(x => x.label)).toEqual(['Parent']);
+    expect(result.singularRelationships[0].description).toBe('Relationship description');
+    expect(result.collections[2]).toMatchObject({ description: 'Relationship description' });
     expect(result.collections.map(x => x.label)).toEqual(['Tags', 'Children', 'Sources']);
     expect(result.collections[2]).toMatchObject({ relationship: { direction: 'inverse' } });
     expect(result.actions).toMatchObject([{ kind: 'action', label: 'Friendly dance' }]);

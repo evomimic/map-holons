@@ -21,7 +21,7 @@ describe('Path Inspector visualizer artifact', () => {
     const Path = await loadPathInspector();
     customElements.define('test-path-row-budgets', class extends Path {});
     const element = document.createElement('test-path-row-budgets') as any;
-    const child = () => Object.assign(document.createElement('section'), { setSpatialBudget: vi.fn(), setRowExpansionHandler: vi.fn() });
+    const child = () => Object.assign(document.createElement('section'), { setSpatialBudget: vi.fn(), setOccurrenceRestorationHandler: vi.fn() });
     const a = child(), b = child(), c = child();
     let publish: (items: any[]) => void = () => {};
     const root = { id: 'a', rowId: 'shared', column: 1, element: a };
@@ -29,10 +29,10 @@ describe('Path Inspector visualizer artifact', () => {
     const next = { id: 'c', rowId: 'next', element: c, provenance: { parentOccurrenceId: 'a' } };
     element.setContext({ navigation: { subscribe(render: typeof publish) { publish = render; render([root, peer]); return () => {}; } } });
     publish([root, peer, next]);
-    expect(a.setSpatialBudget.mock.lastCall).toEqual(b.setSpatialBudget.mock.lastCall);
+    expect(a.setSpatialBudget.mock.lastCall![0].height).toEqual(b.setSpatialBudget.mock.lastCall![0].height);
     expect(a.setSpatialBudget.mock.lastCall![0].height).toBeLessThan(c.setSpatialBudget.mock.lastCall![0].height);
-    a.setRowExpansionHandler.mock.lastCall![0]();
-    expect(a.setSpatialBudget.mock.lastCall).toEqual(b.setSpatialBudget.mock.lastCall);
+    a.setOccurrenceRestorationHandler.mock.lastCall![0]();
+    expect(a.setSpatialBudget.mock.lastCall![0].height).toEqual(b.setSpatialBudget.mock.lastCall![0].height);
     expect(c.setSpatialBudget.mock.lastCall![0].height).toBeLessThan(a.setSpatialBudget.mock.lastCall![0].height);
     publish([root, peer, { ...next, pending: true }]);
     element.viewportHeight = 480;
@@ -71,7 +71,7 @@ describe('Path Inspector visualizer artifact', () => {
     element.viewportWidth = 240;
     element.allocateRows();
     expect(viewport.style.overflowX).toBe('auto');
-    expect(viewport.style.gridTemplateColumns).toBe('repeat(2, 320px)');
+    expect(viewport.style.gridTemplateColumns).toBe('64px 320px');
     expect(retained.element.parentElement).toBe(region);
   });
   it('draws lineage from recorded parents across sparse columns and reallocates connectors without replacing Nodes', async () => {
@@ -217,4 +217,45 @@ it('keeps the incoming horizontal connector inside the viewport when focusing a 
     publish([root, child], { occurrenceId: 'root', mode: 'restore' });
     expect(element.viewport.scrollLeft).toBe(0);
   } finally { Element.prototype.scrollIntoView = previousScrollIntoView; }
+});
+
+it('derives independent column and row budgets from occurrence focus after column insertion', async () => {
+  const Path = await loadPathInspector();
+  customElements.define('test-path-orthogonal-budgets', class extends Path {});
+  const element = document.createElement('test-path-orthogonal-budgets') as any;
+  const node = (id: string, rowId: string, column: number, parent?: string) => ({
+    id, rowId, column, element: Object.assign(document.createElement('section'), { setSpatialBudget: vi.fn() }),
+    provenance: parent ? { parentOccurrenceId: parent, kind: 'singular-relationship' } : undefined,
+  });
+  const a = node('a', 'r0', 1), b = node('b', 'r0', 2, 'a'), c = node('c', 'r0', 3, 'b');
+  const down = node('down', 'r1', 3, 'c');
+  let publish: (items: any[], focus: any) => void = () => {};
+  element.setContext({ navigation: { subscribe(render: typeof publish) {
+    publish = render; render([a, b, c, down], { occurrenceId: 'c', mode: 'traverse' }); return () => {};
+  } } });
+  const budget = (node: typeof a) => node.element.setSpatialBudget.mock.lastCall![0];
+  expect(budget(a).width).toBeLessThan(budget(b).width);
+  expect(budget(b).width).toBeLessThan(budget(c).width);
+  expect(budget(c).width).toBe(budget(down).width);
+  expect(budget(a).height).toBe(budget(c).height);
+  expect(budget(down).height).toBeLessThan(budget(c).height);
+  const width = budget(c).width;
+  element.viewportHeight = 1000; element.allocateRows();
+  expect(budget(c).width).toBe(width);
+  const height = budget(c).height;
+  element.viewportWidth = 1000; element.allocateRows();
+  expect(budget(c).height).toBe(height);
+  expect(budget(c).width).toBeGreaterThan(width);
+  const focus = { occurrenceId: 'a', mode: 'restore' };
+  publish([a, b, c, down], focus);
+  expect(budget(a).width).toBeGreaterThan(budget(c).width);
+  expect(budget(down).height).toBeLessThan(budget(a).height);
+  // An inserted contextual column cannot steal the restored occurrence's budget.
+  a.column = 2; b.column = 3; c.column = down.column = 4;
+  const inserted = node('inserted', 'r2', 1);
+  publish([inserted, a, b, c, down], focus);
+  expect(budget(a).width).toBeGreaterThan(budget(inserted).width);
+  expect(budget(a).width).toBeGreaterThan(budget(b).width);
+  expect(a.element.parentElement?.dataset.pathOccurrence).toBe('a');
+  expect(b.provenance?.parentOccurrenceId).toBe('a');
 });

@@ -18,7 +18,7 @@ const artifacts = Object.fromEntries(await Promise.all(
 const selected = (key: string) => ({ key: async () => key }) as HolonReference;
 const visualizers = { node: selected('holon-inspector'), properties: selected('properties'), action: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
-const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
+const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
 function subject(name: string) {
   return {
     holonId: async () => ({ Local: [...name].map(char => char.charCodeAt(0)) }),

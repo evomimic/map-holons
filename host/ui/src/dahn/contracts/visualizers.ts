@@ -82,6 +82,8 @@ export interface VisualizerDefinition {
 export interface VisualizerContext {
   /** Human-readable occurrence identity supplied by the parent composition. */
   title?: string;
+  /** Node identity without its type label, for responsive title presentation. */
+  holonKey?: string;
   /** Path Inspector interaction boundary for occurrence-aware traversal. */
   onInspectHolon?: (intent: InspectHolonIntent) => void;
   /** Singular traversal intent delivered to the owning Path Inspector. */
@@ -131,8 +133,8 @@ export interface VisualizerElement extends HTMLElement {
   setContext(context: VisualizerContext): void;
   /** Reflects active and attempted singular navigation without rebuilding the Node. */
   setSingularNavigationState?(state: SingularNavigationState): void;
-  /** Parent-owned external height; the selected child owns responsive thresholds. */
-  setSpatialBudget?(budget: { height: number }): void;
-  /** Semantic request to restore the containing row, independent of child layout. */
-  setRowExpansionHandler?(handler: () => void): void;
+  /** Parent-owned external dimensions; the selected child owns responsive thresholds. */
+  setSpatialBudget?(budget: { width?: number; height: number }): void;
+  /** Semantic request to restore the containing occurrence, independent of child layout. */
+  setOccurrenceRestorationHandler?(handler: () => void): void;
 }
