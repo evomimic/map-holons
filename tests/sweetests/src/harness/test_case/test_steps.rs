@@ -84,6 +84,8 @@ pub struct ExpectedCommitCarrierFinding {
     pub schema_key: String,
     pub rule_code: String,
     pub rule_key: String,
+    /// Staged rejections that accompany the carrier, including their findings.
+    pub expected_rejected_holons: Vec<ExpectedRejectedHolon>,
 }
 
 /// How an `ExecuteQueryScaffold` step reaches the QRY1 direct Query seam.

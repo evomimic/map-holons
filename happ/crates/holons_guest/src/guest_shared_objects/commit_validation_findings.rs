@@ -26,8 +26,11 @@ pub(super) fn make_finding_holons_best_effort<'a>(
 
     let descriptor = resolve_core_descriptor(context, "CommitValidationFinding.Projection").ok();
     let mut carriers = Vec::with_capacity(findings.len());
-    for finding in findings {
-        let mut carrier = context.mutation().new_holon(None)?;
+    for (index, finding) in findings.into_iter().enumerate() {
+        // HolonPool currently requires a key to register a transient. These allocation
+        // keys belong only to response carriers, which are never staged or persisted.
+        let key = MapString(format!("commit-validation-finding-{index}"));
+        let mut carrier = context.mutation().new_holon(Some(key))?;
         if let Some(descriptor) = &descriptor {
             carrier.with_descriptor(descriptor.clone())?;
         }

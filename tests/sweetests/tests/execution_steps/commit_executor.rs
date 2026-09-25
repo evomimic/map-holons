@@ -129,6 +129,32 @@ pub async fn execute_commit(
                 ),
                 Err(e) => panic!("commit: failed to read CommitRequestStatus: {:?}", e),
             };
+            // A status mismatch is the hardest failure in this suite to diagnose: the assertion
+            // compares two strings, while the findings that explain the status live on the staged
+            // handles and on the response carrier. Report both before asserting. These use
+            // `println!` rather than tracing so that no `RUST_LOG` filter can suppress the
+            // explanation of a failure.
+            if actual_status != expected_status.to_string() {
+                println!("---- commit status mismatch: expected {expected_status}, got {actual_status} ----");
+                for candidate in &candidates {
+                    println!(
+                        "candidate {} state={:?} findings={:#?}",
+                        candidate.reference_id_string(),
+                        candidate.validation_state().unwrap(),
+                        candidate.validation_findings().unwrap(),
+                    );
+                }
+                match commit_response_ref
+                    .related_holons(CoreRelationshipTypeName::HasValidationFinding)
+                {
+                    Ok(carriers) => println!(
+                        "unattached carrier findings: {:#?}",
+                        carriers.read().unwrap().get_members()
+                    ),
+                    Err(error) => println!("carrier findings unavailable: {error:?}"),
+                }
+                println!("---- end commit status mismatch ----");
+            }
             assert_eq!(
                 actual_status,
                 expected_status.to_string(),
@@ -289,6 +315,34 @@ pub fn execute_verify_commit_rejection(
     );
     let rejected = response.related_holons(CoreRelationshipTypeName::RejectedHolons).unwrap();
     let members = rejected.read().unwrap().get_members().to_vec();
+    let mut finding_count = assert_rejected_holons(state, &members, rejected_holons);
+    let carriers = response.related_holons(CoreRelationshipTypeName::HasValidationFinding).unwrap();
+    let carrier_members = carriers.read().unwrap().get_members().to_vec();
+    for carrier in &carrier_members {
+        assert!(matches!(carrier, HolonReference::Transient(_)));
+        for field in [
+            CorePropertyTypeName::ViolationKind,
+            CorePropertyTypeName::Severity,
+            CorePropertyTypeName::SubjectKind,
+            CorePropertyTypeName::Message,
+        ] {
+            assert!(
+                carrier.property_value(field).unwrap().is_some(),
+                "finding carrier is incomplete"
+            );
+        }
+    }
+    finding_count += carrier_members.len() as i64;
+    assert_eq!(finding_count, expected_violation_count.0);
+}
+
+/// Checks both the rejected identities and each staged candidate's finding details.
+fn assert_rejected_holons(
+    state: &TestExecutionState,
+    members: &[HolonReference],
+    rejected_holons: Vec<ExpectedRejectedHolon>,
+) -> i64 {
+    let context = state.context();
     let mut actual_ids: Vec<_> =
         members.iter().map(|reference| reference.reference_id_string()).collect();
     let mut expected_ids = Vec::new();
@@ -342,24 +396,7 @@ pub fn execute_verify_commit_rejection(
         actual_ids, expected_ids,
         "RejectedHolons must identify exactly the expected staged candidates"
     );
-    let carriers = response.related_holons(CoreRelationshipTypeName::HasValidationFinding).unwrap();
-    let carrier_members = carriers.read().unwrap().get_members().to_vec();
-    for carrier in &carrier_members {
-        assert!(matches!(carrier, HolonReference::Transient(_)));
-        for field in [
-            CorePropertyTypeName::ViolationKind,
-            CorePropertyTypeName::Severity,
-            CorePropertyTypeName::SubjectKind,
-            CorePropertyTypeName::Message,
-        ] {
-            assert!(
-                carrier.property_value(field).unwrap().is_some(),
-                "finding carrier is incomplete"
-            );
-        }
-    }
-    finding_count += carrier_members.len() as i64;
-    assert_eq!(finding_count, expected_violation_count.0);
+    finding_count
 }
 
 /// Reads the transient carrier exactly as a client would after public Commit.
@@ -383,6 +420,12 @@ pub fn execute_verify_commit_carrier_finding(
         response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
         Some(BaseValue::StringValue(MapString("Rejected".into())))
     );
+    let rejected = response
+        .related_holons(CoreRelationshipTypeName::RejectedHolons)
+        .expect("RejectedHolons relationship");
+    let rejected_members = rejected.read().unwrap().get_members().to_vec();
+    let staged_count =
+        assert_rejected_holons(state, &rejected_members, expected.expected_rejected_holons);
     let carriers = response
         .related_holons(CoreRelationshipTypeName::HasValidationFinding)
         .expect("HasValidationFinding relationship");
@@ -422,24 +465,10 @@ pub fn execute_verify_commit_carrier_finding(
     assert!(
         matches!(message, Some(BaseValue::StringValue(MapString(ref value))) if !value.is_empty())
     );
-    let staged_count: usize = response
-        .related_holons(CoreRelationshipTypeName::RejectedHolons)
-        .unwrap()
-        .read()
-        .unwrap()
-        .get_members()
-        .iter()
-        .map(|member| {
-            let HolonReference::Staged(candidate) = member else {
-                panic!("RejectedHolons must contain staged candidates")
-            };
-            candidate.validation_findings().unwrap().len()
-        })
-        .sum();
     assert_eq!(
         response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
         Some(BaseValue::IntegerValue(MapInteger(
-            (staged_count + carriers.read().unwrap().get_count().0 as usize) as i64
+            staged_count + carriers.read().unwrap().get_count().0
         ))),
         "the transaction count includes staged and carrier findings"
     );

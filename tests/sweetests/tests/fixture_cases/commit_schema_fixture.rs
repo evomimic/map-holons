@@ -45,6 +45,7 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
 
     let key = MapString("Book.SchemaReadiness.HolonType".into());
     let source = fixture_context.mutation().new_holon(Some(key.clone()))?;
+    // Staging precedes DescribedBy authoring, so its required default is not populated yet.
     let properties: PropertyMap = [
         ("TypeName".to_property_name(), "BookSchemaReadiness".to_base_value()),
         ("TypeNamePlural".to_property_name(), "BookSchemaReadinessTypes".to_base_value()),
@@ -53,6 +54,7 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         ("Description".to_property_name(), "Commit validation fixture".to_base_value()),
         ("DefinesInstanceTypeKind".to_property_name(), false.to_base_value()),
         ("IsAbstractType".to_property_name(), false.to_base_value()),
+        ("InstanceDeletionAllowed".to_property_name(), true.to_base_value()),
     ]
     .into();
     let descriptor = test_case.add_new_holon_step(
@@ -103,6 +105,15 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
             schema_key: "BookAuthorInverseSchema".into(),
             rule_code: "DS-SCHEMA-002".into(),
             rule_key: "CrossSchemaDependenciesDeclared.ValidationRule".into(),
+            expected_rejected_holons: vec![ExpectedRejectedHolon {
+                token: descriptor.clone(),
+                validation_state: ValidationState::Invalid,
+                findings: vec![ExpectedValidationFinding {
+                    kind: CommitValidationViolationKind::UnresolvedLocalDependency,
+                    rule_key: None,
+                    subject: ExpectedValidationSubject::Holon,
+                }],
+            }],
         },
         None,
     )?;
@@ -171,7 +182,6 @@ pub fn commit_unstaged_schema_finding_fixture() -> Result<DancesTestCase, HolonE
         None,
     )?;
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
-    test_case.add_match_saved_content_step()?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }

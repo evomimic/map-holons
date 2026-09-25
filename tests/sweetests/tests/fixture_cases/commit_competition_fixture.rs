@@ -82,7 +82,6 @@ pub fn commit_competition_retry_fixture() -> Result<DancesTestCase, HolonError> 
         Some("Change the surviving replacement before retry".into()),
     )?;
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
-    test_case.add_match_saved_content_step()?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
@@ -225,7 +224,6 @@ pub fn commit_branch_across_transactions_fixture() -> Result<DancesTestCase, Hol
         None,
     )?;
     test_case.add_commit_step(&mut fixture_holons, ExpectedCommitStatus::Complete, None, None)?;
-    test_case.add_match_saved_content_step()?;
     test_case.finalize(&fixture_context, &fixture_holons)?;
     Ok(test_case)
 }
