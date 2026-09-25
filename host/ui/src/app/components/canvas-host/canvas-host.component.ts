@@ -1,5 +1,5 @@
 import { realizeNode } from '../../../dahn/runtime/realize-node';
-import { VerticalNavigation } from '../../../dahn/runtime/vertical-navigation';
+import { PathNavigator } from '../../../dahn/runtime/path-navigator';
 import { AfterViewInit, OnDestroy, Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { DomCanvas } from '../../../dahn';
 import { DahnHolonView } from '../../../dahn/map-adapter/dahn-holon-view';
@@ -39,7 +39,7 @@ import { dismissStartupOverlay } from '../../startup-overlay';
   `,
 })
 export class CanvasHostComponent implements AfterViewInit, OnDestroy {
-  private navigation?: VerticalNavigation;
+  private navigation?: PathNavigator;
   private destroyed = false;
   ngOnDestroy(): void { this.destroyed = true; this.navigation?.dispose(); }
   @ViewChild('canvasHost') private readonly canvasHost?: ElementRef<HTMLElement>;
@@ -154,10 +154,10 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
           throw new Error('Selected RootedNavigation implementation does not export an HTMLElement constructor.');
         }
         const pathTag = defineCustomElementOnce('map-rooted-navigation-visualizer', pathImplementation as CustomElementConstructor);
-        let navigation: VerticalNavigation | undefined;
+        let navigation: PathNavigator | undefined;
         const rootNodeElement = await renderVisualizerRegion('Root node', async () => {
           const root = await realizeNode(transaction, materialized, activeHolonSpace, rootNodeVisualizer, theme, canvas, stage => profile.next(stage));
-          navigation = new VerticalNavigation(transaction, rootedNavigationVisualizer, root, activeHolonSpace, rootNodeVisualizer,
+          navigation = new PathNavigator(transaction, rootedNavigationVisualizer, root, activeHolonSpace, rootNodeVisualizer,
             (subject, selected) => realizeNode(transaction, materialized, subject, selected, theme, canvas));
           this.navigation = navigation;
           return root.element;
@@ -181,6 +181,7 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
           childVisualizers: new Map([['root-node', rootNodeElement]]),
           navigation,
           onInspectHolon: intent => navigation?.inspect(intent),
+          onTraverseRelationship: intent => navigation?.traverseRelationship(intent),
         };
         if (this.destroyed) { navigation?.dispose(); return; }
         profile.next('mount home Dancer');

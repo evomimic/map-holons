@@ -19,8 +19,9 @@ export async function classifyNodeAffordances(holon: HolonViewAccess): Promise<N
     const { maximum } = await relationship.descriptor.effectiveCardinality();
     if (maximum === 0) continue;
     const label = await relationship.descriptor.displayName();
-    if (maximum === 1) singularRelationships.push({ label, relationship });
-    else collections.push({ kind: 'relationship', label, relationship });
+    const description = (await relationship.descriptor.description())?.trim() || undefined;
+    if (maximum === 1) singularRelationships.push({ label, description, relationship });
+    else collections.push({ kind: 'relationship', label, description, relationship });
   }
   for (const dance of await holon.availableDances()) {
     const id = await dance.versionedKey();

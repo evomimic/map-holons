@@ -28,11 +28,19 @@
 //! `Expand` requires exactly one `HolonCollectionReference`. When present, the
 //! caller's collection holon is linked as `Input` by identity; it is never copied.
 //!
-//! Storage boundary: operators resolve the requested relationship through the
+//! Read boundary: operators resolve the requested relationship through the
 //! source member's `HolonDescriptor` (declared or inverse navigation) and then
-//! read that relationship through the transaction-bound Holon service. Results
-//! preserve storage order and duplicate occurrences; the collection's keyed
-//! index is never used to deduplicate.
+//! read that relationship through the source reference's ordinary
+//! `related_holons` operation, so relationship-cache eligibility, TTL, and any
+//! explicit caller freshness requirement govern reuse. The read preserves
+//! member order and duplicate occurrences, and the collection's keyed index is
+//! never used to deduplicate.
+//!
+//! Predicate contract: `SeedHolons.SeedPredicate` and `Expand.ExpansionPredicate`
+//! are attachment points whose evaluation is a later slice. Until filtered
+//! expansion exists, an attached predicate is refused with
+//! `HolonError::NotImplemented` rather than silently answered with unfiltered
+//! members. Both operators apply the same rule.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -276,15 +284,23 @@ impl QueryExecution {
                         "SeedHolons is a source expression and must be the root".to_string(),
                     ))
                 }
-                ExpressionKind::SeedHolons => seed_holons(&context, &self.instance.clone().into())?,
+                ExpressionKind::SeedHolons => {
+                    seed_holons(&expression, &self.instance.clone().into())?
+                }
                 ExpressionKind::Expand => {
+                    // Every step is checked, not just the root: a predicate
+                    // attached to a chained successor must be refused too.
+                    reject_attached_predicate(
+                        &expression,
+                        QueryRelationshipTypeName::ExpansionPredicate,
+                    )?;
                     // Root: the caller's collection. Non-root: the predecessor's
                     // result, linked when this record was created.
                     let input = HolonCollectionReference(exactly_one(
                         &self.executions[step].clone().into(),
                         QueryRelationshipTypeName::Input,
                     )?);
-                    expand(&context, &input.members()?, &expansion_name(&expression)?)?
+                    expand(&input.members()?, &expansion_name(&expression)?)?
                 }
                 ExpressionKind::Unsupported(type_name) => {
                     return Err(HolonError::NotImplemented(format!(
@@ -379,29 +395,52 @@ impl ExpressionKind {
 }
 
 /// `SeedHolons`: expands the focal space recorded on the execution instance over
-/// its `Owns` relationship. The relationship is resolved through the space's
-/// descriptor first so an unsupported or ambiguous name surfaces as the
+/// its `Owns` relationship, unfiltered. The relationship is resolved through the
+/// space's descriptor first so an unsupported or ambiguous name surfaces as the
 /// descriptor's own error rather than as an empty result.
+///
+/// This is a thin wrapper: it supplies the focal space and `Owns`, and otherwise
+/// shares [`expand_one`] with `Expand`. A `SeedPredicate` selects filtered
+/// expansion, which does not exist yet, so it is refused here.
 fn seed_holons(
-    context: &Arc<TransactionContext>,
+    root_expression: &HolonReference,
     instance: &HolonReference,
 ) -> Result<Vec<HolonReference>, HolonError> {
+    reject_attached_predicate(root_expression, QueryRelationshipTypeName::SeedPredicate)?;
     let focal_space = exactly_one(instance, QueryRelationshipTypeName::FocalSpace)?;
     let owns = CoreRelationshipTypeName::Owns.to_relationship_name();
-    expand_one(context, &focal_space, &owns)
+    expand_one(&focal_space, &owns)
 }
 
-/// Resolves `relationship_name` as effective outbound navigation from `source`'s
-/// descriptor, then reads that relationship for `source` through the Holon
-/// service. Returns the members in storage order, duplicates included.
+/// Unfiltered expansion. Resolves `relationship_name` as effective outbound
+/// navigation from `source`'s descriptor, then reads that relationship through
+/// `source`'s ordinary `related_holons` operation, which applies the established
+/// relationship-cache policy. Returns the members in read order, duplicates
+/// included.
 fn expand_one(
-    context: &Arc<TransactionContext>,
     source: &HolonReference,
     relationship_name: &RelationshipName,
 ) -> Result<Vec<HolonReference>, HolonError> {
     source.holon_descriptor()?.resolve_available_relationship(relationship_name.clone())?;
-    let collection = context.fetch_related_holons(&source.holon_id()?, relationship_name)?;
-    Ok(collection.get_members().clone())
+    related_members(source, relationship_name)
+}
+
+/// Refuses an attached predicate instead of answering with unfiltered members.
+///
+/// Predicate evaluation is a later slice. Returning the unfiltered result would
+/// silently ignore a caller-supplied filter, so the operator fails and its
+/// execution records stay `Failed` with no `Result`.
+fn reject_attached_predicate<T: ToRelationshipName + Clone>(
+    expression: &HolonReference,
+    predicate_relationship: T,
+) -> Result<(), HolonError> {
+    let relationship_name = predicate_relationship.clone().to_relationship_name().to_string();
+    if zero_or_one(expression, predicate_relationship)?.is_some() {
+        return Err(HolonError::NotImplemented(format!(
+            "predicate evaluation ({relationship_name})"
+        )));
+    }
+    Ok(())
 }
 
 /// `Expand`: navigates every source member over `relationship_name`.
@@ -413,14 +452,16 @@ fn expand_one(
 /// preflight: the first failing member fails the execution. Results append in
 /// source-traversal order then storage order; a member with no targets
 /// contributes nothing and is not an error.
+///
+/// Unfiltered, like [`expand_one`] it delegates to: an attached
+/// `ExpansionPredicate` is refused by the operator before this is reached.
 fn expand(
-    context: &Arc<TransactionContext>,
     sources: &[HolonReference],
     relationship_name: &RelationshipName,
 ) -> Result<Vec<HolonReference>, HolonError> {
     let mut members = Vec::new();
     for source in sources {
-        members.extend(expand_one(context, source, relationship_name)?);
+        members.extend(expand_one(source, relationship_name)?);
     }
     Ok(members)
 }
@@ -548,7 +589,7 @@ pub(crate) fn zero_or_one<T: ToRelationshipName + Clone>(
 mod tests {
     use std::collections::HashMap;
 
-    use base_types::{BaseValue, MapInteger};
+    use base_types::{BaseValue, MapBoolean, MapInteger};
     use core_types::{HolonId, LocalId, PropertyMap};
     use type_names::ToPropertyName;
 
@@ -672,6 +713,18 @@ mod tests {
             .collect()
     }
 
+    /// Like [`properties`], plus boolean entries. A declared `RelationshipType`
+    /// descriptor must carry `IsDefinitional`: the cache-policy classifier reads
+    /// it to choose between `Reuse` and an age-bounded policy, so a declared name
+    /// read through the ordinary relationship path fails without it.
+    fn properties_with_flags(values: &[(&str, &str)], flags: &[(&str, bool)]) -> PropertyMap {
+        let mut map = properties(values);
+        for (name, value) in flags {
+            map.insert(name.to_property_name(), BaseValue::BooleanValue(MapBoolean(*value)));
+        }
+        map
+    }
+
     fn rel(source: u8, name: CoreRelationshipTypeName) -> (HolonId, RelationshipName) {
         (id(source), name.to_relationship_name())
     }
@@ -731,7 +784,13 @@ mod tests {
             (12, properties(&[("Key", "owned-c")])),
             (20, properties(&[("Key", "book-a")])),
             (21, properties(&[("Key", "Book.HolonType"), ("TypeName", "Book")])),
-            (22, properties(&[("Key", "AuthoredBy.Declared"), ("TypeName", "AuthoredBy")])),
+            (
+                22,
+                properties_with_flags(
+                    &[("Key", "AuthoredBy.Declared"), ("TypeName", "AuthoredBy")],
+                    &[("IsDefinitional", false)],
+                ),
+            ),
             (
                 23,
                 properties(&[
@@ -1111,6 +1170,57 @@ mod tests {
     }
 
     #[test]
+    fn predicate_on_a_chained_successor_is_not_implemented() {
+        let fixture = build_fixture();
+        // The root carries no predicate and would succeed on its own; only the
+        // successor carries one. A root-only check would run the whole chain and
+        // return a result that silently ignored the filter.
+        let mut first = fixture.expand("first", "AuthoredBy");
+        let mut second = fixture.expand("second", "AuthorOf");
+        let predicate = fixture.described("predicate", "QueryPredicate");
+        second
+            .add_related_holons(
+                QueryRelationshipTypeName::ExpansionPredicate,
+                vec![predicate.into()],
+            )
+            .unwrap();
+        chain(&mut first, &second);
+        let query = fixture.query_with_root(&first);
+        let input = fixture.collection_of("chain-input", &[20]);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::NotImplemented(detail)
+                if detail.contains("ExpansionPredicate")),
+            "a predicate on a chained successor is refused, not ignored: {error:?}"
+        );
+
+        let records =
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        assert_eq!(records.len(), 2, "the refused step exists; no step after it was created");
+        assert_eq!(
+            records[0].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Complete.as_enum_value())),
+            "the predicate-free root step still completed"
+        );
+        assert_eq!(
+            records[1].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+        );
+        assert!(related_members(&records[1], QueryRelationshipTypeName::Result)
+            .unwrap()
+            .is_empty());
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
     fn cyclic_next_chain_terminates_with_a_contract_error() {
         let fixture = build_fixture();
         // `Next`/`Previous` are both ZeroOrOne, so A -> B -> A is structurally
@@ -1133,6 +1243,59 @@ mod tests {
             "unexpected error: {error:?}"
         );
         assert_eq!(status_of(&instance), "Failed");
+    }
+
+    #[test]
+    fn attached_seed_predicate_is_not_implemented() {
+        let fixture = build_fixture();
+        let mut seed = fixture.described("seed", SEED_HOLONS_TYPE_NAME);
+        let predicate = fixture.described("predicate", "QueryPredicate");
+        seed.add_related_holons(QueryRelationshipTypeName::SeedPredicate, vec![predicate.into()])
+            .unwrap();
+        let query = fixture.query_with_root(&seed);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap();
+        let instance = execution.instance().clone();
+        let root_execution = execution.root_execution().clone();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::NotImplemented(detail) if detail.contains("SeedPredicate")),
+            "an attached predicate is refused, not silently ignored: {error:?}"
+        );
+        assert_eq!(status_of(&instance), "Failed");
+        assert_eq!(status_of(&root_execution), "Failed");
+        assert!(
+            related_members(
+                &HolonReference::from(root_execution),
+                QueryRelationshipTypeName::Result
+            )
+            .unwrap()
+            .is_empty(),
+            "a refused execution records no Result"
+        );
+        assert!(related_members(
+            &HolonReference::from(instance),
+            QueryRelationshipTypeName::ExecutionResult
+        )
+        .unwrap()
+        .is_empty());
+    }
+
+    #[test]
+    fn repeated_expansion_preserves_order_and_duplicates() {
+        let fixture = build_fixture();
+        let owns = CoreRelationshipTypeName::Owns.to_relationship_name();
+
+        // First read populates the relationship cache under its own policy;
+        // the second may be served from it. Both must agree member for member.
+        let first = expand_one(&fixture.space, &owns).unwrap();
+        let second = expand_one(&fixture.space, &owns).unwrap();
+
+        assert_eq!(ids_of(&first), vec![id(10), id(11), id(12), id(11)]);
+        assert_eq!(ids_of(&second), ids_of(&first));
     }
 
     #[test]
@@ -1306,50 +1469,48 @@ mod tests {
     }
 
     #[test]
-    fn predicates_are_not_read_by_either_operator() {
+    fn attached_expansion_predicate_is_not_implemented() {
         let fixture = build_fixture();
-        // Attaching a predicate payload changes nothing: QRY2 supplies no
-        // evaluation and no storage pushdown.
         let predicate = fixture.described("predicate", "QueryPredicate");
         let mut expand = fixture.expand("expand", "AuthoredBy");
         expand
             .add_related_holons(
-                RelationshipName(MapString("ExpansionPredicate".to_string())),
-                vec![predicate.clone().into()],
+                QueryRelationshipTypeName::ExpansionPredicate,
+                vec![predicate.into()],
             )
             .unwrap();
         let query = fixture.query_with_root(&expand);
         let input = fixture.collection_of("expand-input", &[20, 27]);
-        let result = query
-            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
-            .unwrap()
-            .run()
-            .unwrap();
-        let members = related_members(
-            result.as_holon_reference(),
-            CoreRelationshipTypeName::CollectionMembers,
-        )
-        .unwrap();
-        assert_eq!(ids_of(&members), vec![id(24), id(29), id(24)], "unfiltered by the predicate");
 
-        let mut seed = fixture.described("seed", SEED_HOLONS_TYPE_NAME);
-        seed.add_related_holons(
-            RelationshipName(MapString("SeedPredicate".to_string())),
-            vec![predicate.into()],
-        )
-        .unwrap();
-        let seed_query = fixture.query_with_root(&seed);
-        let seed_result = seed_query
-            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
-            .unwrap()
-            .run()
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
             .unwrap();
-        let seed_members = related_members(
-            seed_result.as_holon_reference(),
-            CoreRelationshipTypeName::CollectionMembers,
+        let instance = execution.instance().clone();
+        let root_execution = execution.root_execution().clone();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::NotImplemented(detail)
+                if detail.contains("ExpansionPredicate")),
+            "an attached predicate is refused, not silently ignored: {error:?}"
+        );
+        assert_eq!(status_of(&instance), "Failed");
+        assert_eq!(status_of(&root_execution), "Failed");
+        assert!(
+            related_members(
+                &HolonReference::from(root_execution),
+                QueryRelationshipTypeName::Result
+            )
+            .unwrap()
+            .is_empty(),
+            "a refused execution records no Result"
+        );
+        assert!(related_members(
+            &HolonReference::from(instance),
+            QueryRelationshipTypeName::ExecutionResult
         )
-        .unwrap();
-        assert_eq!(ids_of(&seed_members), vec![id(10), id(11), id(12), id(11)]);
+        .unwrap()
+        .is_empty());
     }
 
     #[test]

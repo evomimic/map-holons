@@ -144,6 +144,10 @@ fn execute_direct(
         ResolvedInput::SingleHolon(source) => Some(source.clone()),
         _ => None,
     };
+    // `SingleHolon` also yields no harness-held collection, so absence of one
+    // does not by itself mean the execution records no `Input`. Only a genuine
+    // `None` (a source root) must record none at all.
+    let expects_absent_input = matches!(input, ResolvedInput::None);
     let input_collection: Option<HolonReference> = match input {
         ResolvedInput::None | ResolvedInput::SingleHolon(_) => None,
         ResolvedInput::Collection(members) => {
@@ -178,7 +182,14 @@ fn execute_direct(
             return;
         }
     };
-    assert_shape(&execution, &query_reference, &root_expression, &space, input_collection.as_ref());
+    assert_shape(
+        &execution,
+        &query_reference,
+        &root_expression,
+        &space,
+        input_collection.as_ref(),
+        expects_absent_input,
+    );
     if let Some(source) = &single_source {
         assert_singleton_input(&execution, source);
     }
@@ -215,6 +226,7 @@ fn assert_shape(
     root_expression: &HolonReference,
     space: &HolonReference,
     input_collection: Option<&HolonReference>,
+    expects_absent_input: bool,
 ) {
     let instance: HolonReference = execution.instance().clone().into();
     let root_execution: HolonReference = execution.root_execution().clone().into();
@@ -240,10 +252,15 @@ fn assert_shape(
         "QueryExpressionExecution.ExecutesExpression",
     );
 
-    // Identity: Input is the caller's collection holon, not a copy of it — or absent.
+    // Identity: Input is the caller's collection holon, not a copy of it — or,
+    // for a source root, absent entirely. The single-holon convenience is
+    // neither: it builds its own singleton inside QueryCore, which
+    // `assert_singleton_input` checks separately.
     if let Some(collection) = input_collection {
         let input = single_related(&root_execution, QueryRelationshipTypeName::Input);
         assert_same_holon(&input, collection, "QueryExpressionExecution.Input");
+    } else if expects_absent_input {
+        assert_related_count(&root_execution, QueryRelationshipTypeName::Input, 0);
     }
 }
 

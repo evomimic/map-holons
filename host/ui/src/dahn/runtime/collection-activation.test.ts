@@ -168,3 +168,37 @@ it('delivers one member intent to Path Inspector, isolates occurrences, and revo
   expect([...node.querySelectorAll('table[aria-label=A] tr[aria-selected]')].every(row => row.getAttribute('aria-selected') === 'false')).toBe(true);
   path.remove();
 });
+
+it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visible when their classification anchor supplies no scalar columns', async name => {
+  // Core's PropertyType / DeclaredRelationshipType anchors classify descriptors;
+  // their own InstanceProperties are empty. Their members are still real holons.
+  const keys = name === 'InstanceProperties' ? ['TypeName.PropertyType', 'DisplayName.PropertyType'] : ['InstanceProperties', 'InstanceRelationships'];
+  const members = keys.map(key => ({ key: vi.fn(async () => key), versionedKey: vi.fn(async () => `${key}@1`), propertyValue: vi.fn() }));
+  const described = { length: members.length, elementType: { instanceProperties: async () => [] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
+  const updates: CollectionUpdate[] = [];
+  f.activation.activate(tab(name), 'slot', update => updates.push(update));
+  await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
+  const element = updates.at(-1)!.content!;
+  document.body.append(element);
+  expect(element.querySelectorAll('tbody tr')).toHaveLength(2);
+  expect([...element.querySelectorAll('tbody td')].map(cell => cell.textContent)).toEqual(keys);
+  expect(element.textContent).not.toContain('No items');
+  const inspect = vi.fn(); element.addEventListener('dahn-inspect-holon', inspect);
+  element.querySelector('tbody tr')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  expect(inspect.mock.calls[0][0].detail.reference).toBe(members[0]);
+});
+
+it.each([0, 1])('renders the identity-only projection for %i members, including an unkeyed holon', async count => {
+  const member = { key: vi.fn(async () => null), versionedKey: vi.fn(async () => 'unkeyed-reference@1') };
+  const described = { length: count, elementType: { instanceProperties: async () => [] }, [Symbol.iterator]: () => (count ? [member] : [])[Symbol.iterator]() };
+  const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
+  const updates: CollectionUpdate[] = [];
+  f.activation.activate(tab('Descriptors'), 'slot', update => updates.push(update));
+  await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
+  const element = updates.at(-1)!.content!;
+  expect(element.querySelector('th')?.textContent).toBe('Key');
+  expect(element.querySelectorAll('tbody tr')).toHaveLength(count);
+  if (count) expect(element.querySelector('td')?.textContent).toBe('unkeyed-reference@1');
+  else expect(element.textContent).toContain('No items');
+});
