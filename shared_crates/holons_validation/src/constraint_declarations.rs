@@ -49,8 +49,8 @@ struct CheckedConstraint {
 /// An Err invalidates the entire pass: discard its collector, products, and this assessment.
 /// Reuse one collector for the scope; a fresh collector requires a fresh assessment,
 /// because repeated declarations reuse their first result without emitting it again.
-/// This collector spans subjects: Phase 8 must route each finding by its structured
-/// subject before installation, never install the whole scope on its first candidate.
+/// This collector spans subjects: outcome installation must route each finding by its
+/// structured subject, never install the whole scope on its first candidate.
 ///
 /// Own-contract subject validation of constraint holons remains a separate orchestration step.
 /// This pass adds strict parameter membership and family configuration invariants; it

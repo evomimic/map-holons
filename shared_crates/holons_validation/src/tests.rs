@@ -1764,8 +1764,8 @@ fn competition_diagnostics_are_deterministic_bounded_and_replaceable() -> Result
             .contains(&format!("{}", holons_core::ReadableHolon::holon_id(&fixture.nodes[key])?)));
         assert!(finding.message.len() <= baseline_length + 1, "only the count gains a digit");
     }
-    // Phase 8 will call this preparation before installing outcomes. The existing
-    // two-phase carrier can already install and replace these per-candidate findings.
+    // Commit orchestration prepares an assessment before installing outcomes. Its
+    // two-phase carrier installs and replaces these per-candidate findings.
     let mut assessment = crate::orchestration::PreparedAssessment::default();
     for candidate in &candidates {
         let report = CommitValidationReport::from_candidate(

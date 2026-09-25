@@ -243,7 +243,8 @@ impl DescriptorRuleProducts {
     /// each member; required singular `ValueType` on property members; and
     /// required singular `SourceType` and `TargetType` on relationship members.
     /// Optional scalar fields are singular by the property map representation.
-    /// Constraint declaration configuration is checked in Phase 7.
+    /// Constraint declaration configuration is checked by the Schema-scoped
+    /// constraint declaration assessment, not here.
     /// Default/key/value policies continue in C3; inverse, endpoint, collection,
     /// and governed occurrence policies continue in C4.
     pub fn prepare_contract<R: DescriptorReader>(
