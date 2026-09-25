@@ -1,4 +1,54 @@
 export default class HolonInspectorElement extends HTMLElement {
+  setSingularNavigationState(state) {
+    for (const [affordance, button] of this.singularControls ?? []) {
+      button.setAttribute('aria-pressed', String(state.active === affordance));
+      button.setAttribute('aria-busy', String(state.state === 'loading' && state.attempted === affordance));
+      button.dataset.singularState = state.attempted === affordance ? state.state : state.active === affordance ? 'loaded' : 'unresolved';
+    }
+  }
+  setOccurrenceRestorationHandler(handler) { this.restoreOccurrence = handler; }
+  setSpatialBudget(budget) {
+    this.allocatedHeight = budget.height;
+    this.allocatedWidth = budget.width;
+    this.adaptBudget();
+  }
+  adaptBudget() {
+    if (!this.body || !this.singleValueRail) return;
+    const height = this.allocatedHeight ?? Infinity;
+    const compact = height < 80;
+    const partial = height < 280;
+    const width = this.allocatedWidth ?? Infinity;
+    const narrow = width < 300;
+    const compactWidth = width < 100;
+    const hideBody = partial || compactWidth;
+    const hideCollection = compact || compactWidth;
+    const active = document.activeElement;
+    if ((hideBody && this.body.contains(active)) || (hideCollection && this.collectionRegion.contains(active))
+      || (narrow && (this.propertyViewer.contains(active) || this.actionBar.contains(active)))) this.titleControl.focus();
+    this.body.style.display = hideBody ? 'none' : 'grid';
+    this.body.inert = hideBody;
+    this.propertyViewer.style.display = narrow ? 'none' : 'flex';
+    this.propertyViewer.inert = narrow;
+    this.actionBar.style.display = narrow ? 'none' : 'block';
+    this.actionBar.inert = narrow;
+    this.body.style.gridTemplateColumns = narrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
+    this.singleValueRail.style.gridColumn = narrow ? '1' : '2';
+    this.collectionRegion.style.display = hideCollection ? 'none' : 'flex';
+    this.collectionRegion.inert = hideCollection;
+    this.titleControl.textContent = compactWidth && compact ? this.keyInitials : narrow ? this.holonKey : this.titleText;
+    this.titleControl.style.fontSize = compactWidth && compact ? 'var(--dahn-canvas-font-size)' : 'inherit';
+    this.titleControl.style.padding = compactWidth ? '0 var(--dahn-control-gap)' : '0 var(--dahn-slot-padding)';
+    this.titleControl.setAttribute('aria-expanded', String(!partial && !narrow));
+    this.titleControl.setAttribute('aria-label', `${partial || narrow ? 'Restore occurrence: ' : ''}${this.titleText}`);
+    this.titleControl.style.writingMode = compactWidth && !compact ? 'vertical-rl' : 'horizontal-tb';
+    this.titleControl.style.textOverflow = 'ellipsis';
+    this.titleControl.style.whiteSpace = 'nowrap';
+    this.titleControl.style.overflow = 'hidden';
+    this.titleControl.title = this.titleText;
+    this.style.gridTemplateColumns = 'minmax(0, 1fr)';
+    this.style.gridTemplateRows = compact || compactWidth ? 'minmax(0, 1fr)' : partial ? 'auto minmax(0, 1fr)' : this.collectionViewer.hidden ? 'auto minmax(0, 1fr) auto' : 'auto minmax(0, 2fr) minmax(0, 3fr)';
+    if (this.isConnected) this.scheduleLayout();
+  }
   connectedCallback() {
     if (!this.layouts) return;
     this.observer?.disconnect();
@@ -14,7 +64,7 @@ export default class HolonInspectorElement extends HTMLElement {
     this.layouts?.forEach(layout => layout.dispose());
   }
   scheduleLayout() {
-    if (this.frame != null) return;
+    if (!this.isConnected || this.frame != null) return;
     this.frame = requestAnimationFrame(() => { this.frame = null; if (this.isConnected) this.layouts.forEach(layout => layout.fit()); });
   }
   navigationControl(item, tab = false) {
@@ -29,8 +79,8 @@ export default class HolonInspectorElement extends HTMLElement {
       textAlign: tab ? 'center' : 'left',
     });
     button.textContent = item.label;
-    button.disabled = !(tab && item.kind === 'relationship' && this.collectionActivation);
-    if (!button.disabled) {
+    button.disabled = tab ? !(item.kind === 'relationship' && this.collectionActivation) : !this.activateRelationship;
+    if (!button.disabled && tab) {
       button.setAttribute('role', 'tab');
       button.setAttribute('aria-selected', 'false');
       button.tabIndex = this.collectionControls.length ? -1 : 0;
@@ -54,7 +104,14 @@ export default class HolonInspectorElement extends HTMLElement {
       });
       this.collectionControls.push(button);
     }
-    button.title = button.disabled ? 'Navigation activation is not available yet' : item.label;
+    if (!tab && !button.disabled) {
+      button.dataset.singularRelationship = 'true';
+      button.dataset.singularState = 'unresolved';
+      button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('click', () => this.activateRelationship(item));
+      this.singularControls.set(item, button);
+    }
+    button.title = item.description?.trim() || (button.disabled ? 'Navigation activation is not available yet' : item.label);
     if (item.relationship) button.dataset.relationshipDirection = item.relationship.direction;
     return button;
   }
@@ -66,7 +123,7 @@ export default class HolonInspectorElement extends HTMLElement {
     viewer.setAttribute('aria-busy', String(update.state === 'loading'));
     if (viewer.hidden) return;
     Object.assign(viewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', minWidth: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
-    this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(20rem, 3fr)';
+    this.adaptBudget();
     if (update.content) viewer.replaceChildren(update.content);
     else {
       const status = document.createElement('p');
@@ -87,12 +144,15 @@ export default class HolonInspectorElement extends HTMLElement {
     this.disconnectedCallback();
     this.collectionActivation = context.collectionActivation;
     this.collectionControls = [];
+    this.singularControls = new Map();
+    this.activateRelationship = context.activateRelationship;
     this.collectionPanelId = `dahn-collection-panel-${++nextOverflowId}`;
     this.dataset.visualizerId = 'holon-inspector';
     this.dataset.dahnHolonInspector = 'true';
     this.style.display = 'grid';
     this.style.flex = '1 1 auto';
     this.style.minHeight = '0';
+    this.style.minWidth = '0';
     this.style.overflow = 'hidden';
     this.style.gridTemplateColumns = 'minmax(0, 1fr) var(--dahn-inspector-rail-width)';
     this.style.gridTemplateRows = 'auto minmax(0, 1fr) auto';
@@ -101,11 +161,26 @@ export default class HolonInspectorElement extends HTMLElement {
     const title = document.createElement('header');
     title.dataset.holonInspectorTitle = 'true';
     title.style.gridColumn = '1 / -1';
+    title.style.minWidth = '0';
+    title.style.minHeight = '0';
+    title.style.overflow = 'hidden';
     title.style.fontSize = 'var(--dahn-node-heading-font-size)';
     title.style.fontWeight = 'var(--dahn-canvas-heading-font-weight)';
-    title.textContent = context.title ?? 'Holon Inspector';
+    title.style.background = 'var(--dahn-action-surface-background)';
+    title.style.color = 'var(--dahn-action-text-color)';
+    this.titleText = context.title ?? 'Holon Inspector';
+    this.holonKey = context.holonKey ?? this.titleText;
+    this.keyInitials = keyInitials(this.holonKey);
+    const titleControl = document.createElement('button');
+    this.titleControl = titleControl;
+    titleControl.type = 'button';
+    titleControl.textContent = this.titleText;
+    Object.assign(titleControl.style, { width: '100%', height: '100%', minHeight: '40px', textAlign: 'left', font: 'inherit', color: 'inherit', background: 'transparent', border: '0', cursor: 'pointer', padding: '0 var(--dahn-slot-padding)' });
+    titleControl.addEventListener('click', () => { if ((this.allocatedHeight ?? Infinity) < 280 || (this.allocatedWidth ?? Infinity) < 300) this.restoreOccurrence?.(); });
+    title.append(titleControl);
 
     const actionBar = document.createElement('section');
+    this.actionBar = actionBar;
     actionBar.dataset.holonInspectorActionBar = 'true';
     actionBar.style.minWidth = '0';
     actionBar.style.overflow = 'hidden';
@@ -114,6 +189,7 @@ export default class HolonInspectorElement extends HTMLElement {
     else actionBar.textContent = 'No actions';
 
     const propertyViewer = document.createElement('section');
+    this.propertyViewer = propertyViewer;
     propertyViewer.dataset.holonInspectorPropertyViewer = 'true';
     propertyViewer.style.gridColumn = '1';
     propertyViewer.style.gridRow = '2';
@@ -130,6 +206,7 @@ export default class HolonInspectorElement extends HTMLElement {
     }
 
     const singleValueRail = document.createElement('aside');
+    this.singleValueRail = singleValueRail;
     singleValueRail.dataset.holonInspectorSingleValueRail = 'true';
     singleValueRail.style.gridColumn = '2';
     singleValueRail.style.gridRow = '2';
@@ -151,6 +228,7 @@ export default class HolonInspectorElement extends HTMLElement {
     const collectionLayout = horizontalOverflow(collectionTabBar, (context.nodeAffordances?.collections ?? []).map(item => this.navigationControl(item, true)), 'More collections');
 
     const collectionRegion = document.createElement('section');
+    this.collectionRegion = collectionRegion;
     collectionRegion.dataset.holonInspectorCollectionRegion = 'true';
     Object.assign(collectionRegion.style, { gridColumn: '1 / -1', minHeight: '0', minWidth: '0', display: 'flex', flexDirection: 'column' });
     const collectionViewer = document.createElement('section');
@@ -166,12 +244,13 @@ export default class HolonInspectorElement extends HTMLElement {
     if (collection) {
       collectionViewer.append(collection);
       Object.assign(collectionViewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
-      this.style.gridTemplateRows = 'auto minmax(0, 2fr) minmax(20rem, 3fr)';
+      this.adaptBudget();
     }
     collectionRegion.append(collectionTabBar, collectionViewer);
     Object.assign(collectionTabBar.style, { borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', paddingTop: 'var(--dahn-action-padding-block)', flexShrink: '0' });
 
     const body = document.createElement('div');
+    this.body = body;
     body.dataset.holonInspectorBody = 'true';
     body.style.gridColumn = '1 / -1';
     body.style.gridRow = '2';
@@ -192,12 +271,23 @@ export default class HolonInspectorElement extends HTMLElement {
 
     this.layouts = [railLayout, collectionLayout];
     const style = document.createElement('style');
-    style.textContent = `[data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
+    style.textContent = `[data-dahn-holon-inspector] [data-singular-relationship][aria-pressed="true"], [data-dahn-holon-inspector] [role="tab"][aria-selected="true"], [data-dahn-holon-inspector] [data-overflow-selected="true"] { background: var(--dahn-action-text-color) !important; color: var(--dahn-action-surface-background) !important; font-weight: bold; }
       [data-dahn-holon-inspector] button:enabled:hover { background: var(--dahn-action-hover-surface-background) !important; }
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
     this.replaceChildren(style, title, body, collectionRegion);
+    this.adaptBudget();
     if (this.isConnected) this.connectedCallback();
   }
+}
+
+// Key separators and camel-case boundaries supply readable initials without
+// treating a type label or an acronym's individual letters as separate words.
+function keyInitials(key) {
+  const words = key
+    .replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, '$1 $2')
+    .replace(/([\p{Ll}\p{Nd}])(\p{Lu})/gu, '$1 $2')
+    .match(/[\p{L}\p{N}]+/gu);
+  return words?.map(word => Array.from(word)[0]).join('').toLocaleUpperCase() || key;
 }
 
 let nextOverflowId = 0;
@@ -285,7 +375,7 @@ function horizontalOverflow(host, controls, label) {
       more.textContent = selected ? `${selected.textContent} ▾` : label;
       more.dataset.overflowSelected = String(!!selected);
       more.setAttribute('aria-label', selected ? `${label}: ${selected.textContent} selected` : label);
-      more.title = selected ? selected.textContent : label;
+      more.title = selected ? selected.title || selected.textContent : label;
     };
     const fittingCount = () => {
       const budget = overflow ? Math.max(0, width - more.getBoundingClientRect().width - gap) : width;

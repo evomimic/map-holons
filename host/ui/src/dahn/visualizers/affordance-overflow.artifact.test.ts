@@ -114,3 +114,30 @@ it('activates overflow relationship tabs and preserves keyboard access after sel
   expect(more.dataset.overflowSelected).toBe('true');
   node.remove(); expect(dispose).toHaveBeenCalledOnce();
 });
+
+
+it('activates singular entries exposed by rail disclosure and reflects occurrence feedback', async () => {
+  const element = await artifact('holon-inspector');
+  const activate = vi.fn();
+  const entries = ['First', 'Second', 'Third'].map(label => ({ label, relationship: { direction: 'declared' } }));
+  element.setContext({ activateRelationship: activate, nodeAffordances: { singularRelationships: entries } });
+  const rail = element.querySelector<HTMLElement>('[data-holon-inspector-single-value-rail]')!;
+  const controls = [...rail.querySelectorAll<HTMLButtonElement>('[data-singular-relationship]')];
+  const more = rail.querySelector<HTMLButtonElement>('[data-rail-more]')!;
+  Object.defineProperty(rail, 'clientHeight', { get: () => 75 });
+  controls.forEach(control => measure(control, 100, 30)); measure(more, 100, 20);
+  document.body.append(element); flush();
+  expect(controls[2].inert).toBe(true);
+  more.click();
+  expect(controls[2].inert).toBe(false);
+  controls[2].focus(); controls[2].click();
+  expect(activate).toHaveBeenCalledWith(entries[2]);
+  expect(document.activeElement).toBe(controls[2]);
+  (element as any).setSingularNavigationState({ state: 'loading', active: entries[0], attempted: entries[2] });
+  expect(controls[0].getAttribute('aria-pressed')).toBe('true');
+  expect(controls[2].getAttribute('aria-busy')).toBe('true');
+  (element as any).setSingularNavigationState({ state: 'loaded', active: entries[2], attempted: entries[2] });
+  expect(controls[0].getAttribute('aria-pressed')).toBe('false');
+  expect(controls[2].getAttribute('aria-pressed')).toBe('true');
+  expect(controls[2].getAttribute('aria-busy')).toBe('false');
+});
