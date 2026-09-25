@@ -43,7 +43,7 @@ Consult before making architectural assumptions:
 * `ARCHITECTURE.md` — workspace and execution-context boundaries.
 * `CONTEXT.md` and folder-local context/design notes — current vocabulary and subsystem intent.
 * `README.md` — setup and developer documentation.
-* Active issue/spec/PR text — task-specific intended behavior.
+* Active issue/spec/PR text — task-specific intended behavior. Use it to understand the change, but prefer enduring architectural and functional vocabulary in code and comments over issue numbers or implementation-plan terminology.
 
 Call out conflicts instead of silently choosing an interpretation. Search existing code and docs
 before creating a new module, path, or architectural seam.
@@ -214,9 +214,13 @@ Holochain dictates MSRV. Keep dependency changes deliberate, auditable, and repr
 * Keep MAP newtypes (`MapString`, `MapBoolean`, `MapInteger`, `BaseValue`, etc.) at
   persistence/API boundaries; use primitives internally where appropriate.
 * Keep `lib.rs` and `mod.rs` to wiring and re-exports, not business logic or type definitions.
-* Prefer descriptive names. Avoid abbreviations unless they are already idiomatic in this codebase.
-* Comments should explain intent, invariants, or why a step exists, not narrate code.
-* Use `///` doc comments for public items.
+* Prefer descriptive, durable names based on domain concepts, architectural roles, or behavior. 
+  Avoid abbreviations unless they are already idiomatic in this codebase, and avoid names tied 
+  to issue numbers or implementation-plan phases.
+* Comments should explain enduring intent, invariants, or why a step exists, not narrate code 
+  or preserve task-specific implementation history.
+* Use `///` doc comments for public items and for private functions whose purpose or contract 
+  is not obvious from their name and implementation.
 * Preserve existing descriptive comments unless explicitly asked to remove them.
 
 Comment style:
