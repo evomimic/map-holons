@@ -650,6 +650,13 @@ mod tests {
     /// descriptor must carry `IsDefinitional`: the cache-policy classifier reads
     /// it to choose between `Reuse` and an age-bounded policy, so a declared name
     /// read through the ordinary relationship path fails without it.
+    ///
+    /// Values here mirror the real descriptor being modelled, not
+    /// `descriptors::test_support`'s generic `false`. `AuthoredBy` is
+    /// `IsDefinitional: true` in `generated/json-imports/test/`, so the fixture
+    /// exercises the same `Reuse` policy production does. Do not "normalize" it
+    /// to `false`: that silently moves these tests onto the `Fresh` path and
+    /// leaves declared-relationship cache reuse untested.
     fn properties_with_flags(values: &[(&str, &str)], flags: &[(&str, bool)]) -> PropertyMap {
         let mut map = properties(values);
         for (name, value) in flags {
@@ -721,7 +728,7 @@ mod tests {
                 22,
                 properties_with_flags(
                     &[("Key", "AuthoredBy.Declared"), ("TypeName", "AuthoredBy")],
-                    &[("IsDefinitional", false)],
+                    &[("IsDefinitional", true)],
                 ),
             ),
             (
@@ -736,6 +743,7 @@ mod tests {
             (26, properties(&[("Key", "AuthorOf.Inverse"), ("TypeName", "AuthorOf")])),
             (27, properties(&[("Key", "book-b")])),
             (28, properties(&[("Key", "book-c")])),
+            (30, properties(&[("Key", "book-d")])),
             (29, properties(&[("Key", "person-2")])),
         ]
         .into_iter()
@@ -752,10 +760,14 @@ mod tests {
             (rel(20, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
             (rel(27, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
             (rel(28, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
+            (rel(30, CoreRelationshipTypeName::DescribedBy), vec![id(21)]),
             (rel(21, CoreRelationshipTypeName::InstanceRelationships), vec![id(22)]),
             (rel(22, CoreRelationshipTypeName::Extends), vec![id(23)]),
             (authored_by(20), vec![id(24), id(29)]),
             (authored_by(27), vec![id(24)]),
+            // book-d repeats person-1: a duplicate *within one* membership entry, so a
+            // second read served from the cache must reproduce it in place.
+            (authored_by(30), vec![id(24), id(29), id(24)]),
             // Expand: inverse AuthorOf reached through PersonType's SourceOf index
             (rel(24, CoreRelationshipTypeName::DescribedBy), vec![id(25)]),
             (rel(29, CoreRelationshipTypeName::DescribedBy), vec![id(25)]),
@@ -1000,15 +1012,25 @@ mod tests {
     #[test]
     fn repeated_expansion_preserves_order_and_duplicates() {
         let fixture = build_fixture();
-        let owns = CoreRelationshipTypeName::Owns.to_relationship_name();
 
-        // First read populates the relationship cache under its own policy;
-        // the second may be served from it. Both must agree member for member.
+        // Inverse name: resolution finds no declared descriptor, so policy falls
+        // back to `Fresh` and each read refetches.
+        let owns = CoreRelationshipTypeName::Owns.to_relationship_name();
         let first = expand_one(&fixture.space, &owns).unwrap();
         let second = expand_one(&fixture.space, &owns).unwrap();
-
         assert_eq!(ids_of(&first), vec![id(10), id(11), id(12), id(11)]);
-        assert_eq!(ids_of(&second), ids_of(&first));
+        assert_eq!(ids_of(&second), ids_of(&first), "the refetched read agrees member for member");
+
+        // Declared name marked `IsDefinitional`: policy is `Reuse`, so the entry is
+        // retained and the second read is served from the cache. This is the path
+        // the bypass used to skip, and `book-d`'s membership repeats `person-1`, so
+        // it exercises order *and* an in-entry duplicate surviving the sealed view.
+        let authored_by = RelationshipName(MapString("AuthoredBy".to_string()));
+        let book_d = fixture.saved(30);
+        let first = expand_one(&book_d, &authored_by).unwrap();
+        let second = expand_one(&book_d, &authored_by).unwrap();
+        assert_eq!(ids_of(&first), vec![id(24), id(29), id(24)]);
+        assert_eq!(ids_of(&second), ids_of(&first), "the cached read agrees member for member");
     }
 
     #[test]
