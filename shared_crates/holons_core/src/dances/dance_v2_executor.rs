@@ -52,8 +52,6 @@ impl ResolvedDanceV2Invocation {
 /// contract validation, to the internal direct Query seam. Its result
 /// collection holon becomes the `QueryDanceResponse` body through the same
 /// response construction every other Dance uses.
-/// contract validation, to the internal direct Query seam. In QRY1 that route
-/// is scaffold-only: it always yields an error and never creates a response.
 #[tracing::instrument(target = "map_profile", level = "debug", name = "dance.execute", skip_all)]
 pub async fn execute_dance_v2(
     context: &Arc<TransactionContext>,
