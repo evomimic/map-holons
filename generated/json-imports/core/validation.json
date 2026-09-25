@@ -1810,7 +1810,7 @@
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-PROP-003",
         "ValidationLevel": "Holon",
-        "ValidationRuleDescription": "Every unbound property must be permitted by the effective additional-property policy."
+        "ValidationRuleDescription": "An unbound instance property is invalid; a populated property must be declared by the effective property contract."
       },
       "relationships": [
         {

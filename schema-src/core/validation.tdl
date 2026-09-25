@@ -675,7 +675,7 @@ instance NoUndescribedProperties.ValidationRule {
   ValidationLevel Holon
   DeterminismClass Deterministic
   SemanticAuthority "DS-PROP-003"
-  ValidationRuleDescription "Every unbound property must be permitted by the effective additional-property policy."
+  ValidationRuleDescription "An unbound instance property is invalid; a populated property must be declared by the effective property contract."
   rule_of "MAP Core Schema-v0.0.7"
 }
 
