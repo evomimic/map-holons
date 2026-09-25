@@ -1096,16 +1096,17 @@ fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<
         .remove_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind)?;
     let mut missing = DescriptorRuleProducts::default();
     missing.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
-    assert_eq!(
-        dispatch_c2_rule(
-            &mut fixture,
-            CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
-            &missing,
-            &subject,
-        )?
-        .len(),
-        1
-    );
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
+        &missing,
+        &subject,
+    )?;
+    assert_eq!(findings.len(), 1);
+    assert!(findings.iter().any(|finding| matches!(
+        &finding.kind,
+        CommitValidationViolationKind::RuleViolation { code } if code == "DS-KIND-001"
+    )));
     fixture
         .nodes
         .get_mut("Contract")
@@ -1113,16 +1114,17 @@ fn kind_handlers_diagnose_local_anchor_designation_and_abstractness() -> Result<
         .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
     let mut non_abstract = DescriptorRuleProducts::default();
     non_abstract.prepare_kind(&prerequisites, &roots, &CurrentDescriptorReader)?;
-    assert_eq!(
-        dispatch_c2_rule(
-            &mut fixture,
-            CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
-            &non_abstract,
-            &subject,
-        )?
-        .len(),
-        1
-    );
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::InstanceKindAnchorsAreAbstract,
+        &non_abstract,
+        &subject,
+    )?;
+    assert_eq!(findings.len(), 1);
+    assert!(findings.iter().any(|finding| matches!(
+        &finding.kind,
+        CommitValidationViolationKind::RuleViolation { code } if code == "DS-KIND-002"
+    )));
     Ok(())
 }
 
@@ -1192,16 +1194,17 @@ fn kind_handlers_cover_the_root_exception_and_self_description_without_recursion
         .with_property_value(type_names::CorePropertyTypeName::DefinesInstanceTypeKind, true)?;
     let mut invalid_root_products = DescriptorRuleProducts::default();
     invalid_root_products.prepare_kind(&root_prerequisites, &roots, &CurrentDescriptorReader)?;
-    assert_eq!(
-        dispatch_c2_rule(
-            &mut fixture,
-            CoreValidationRuleName::TypeDescriptorRootKindException,
-            &invalid_root_products,
-            &root,
-        )?
-        .len(),
-        1
-    );
+    let findings = dispatch_c2_rule(
+        &mut fixture,
+        CoreValidationRuleName::TypeDescriptorRootKindException,
+        &invalid_root_products,
+        &root,
+    )?;
+    assert_eq!(findings.len(), 1);
+    assert!(findings.iter().any(|finding| matches!(
+        &finding.kind,
+        CommitValidationViolationKind::RuleViolation { code } if code == "DS-KIND-003"
+    )));
     Ok(())
 }
 
