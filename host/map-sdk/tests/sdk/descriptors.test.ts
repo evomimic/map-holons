@@ -29,3 +29,11 @@ it('uses relationship DisplayName rather than the binding name', async () => {
   expect(await descriptor.displayName()).toBe('Owned by');
   expect(propertyValue).toHaveBeenCalledWith('DisplayName');
 });
+
+it('reads optional relationship descriptions through the bound descriptor', async () => {
+  const propertyValue = vi.fn().mockResolvedValueOnce({ StringValue: 'The owning HolonSpace.' }).mockResolvedValueOnce(null);
+  const descriptor = createRelationshipDescriptorHandle({ propertyValue } as unknown as HolonReference);
+  expect(await descriptor.description()).toBe('The owning HolonSpace.');
+  expect(propertyValue).toHaveBeenCalledWith('Description');
+  expect(await descriptor.description()).toBeNull();
+});

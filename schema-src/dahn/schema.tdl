@@ -268,7 +268,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:5267ed7c5064c3b96fefbf33c0d827145333e44c80cac9bcf16b79cd84811c56"
+  VisualizerArtifactDigest "sha256:9e64a917222f25a24ba5677da1d2cafa7ac28a9bc8cb4372faea5d608714600a"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -343,7 +343,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:578211a23bcff35b0a5cc143e3d9e7b4ead9fd88e61cbf3f1687fc9fc6180fb8"
+  VisualizerArtifactDigest "sha256:16483d1985be0734ad8f86d9d134232f4600a228f9d9f6e03e569c2584e10d67"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }

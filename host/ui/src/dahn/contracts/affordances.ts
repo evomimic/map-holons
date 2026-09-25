@@ -10,8 +10,9 @@ export interface NodeAffordances {
 }
 export interface RelationshipAffordance {
   label: string;
+  description?: string;
   relationship: AvailableRelationshipHandle;
 }
 export type CollectionAffordance =
   | { kind: 'property'; label: string; property: PropertyDescriptorHandle }
-  | { kind: 'relationship'; label: string; relationship: AvailableRelationshipHandle };
+  | { kind: 'relationship'; label: string; description?: string; relationship: AvailableRelationshipHandle };
