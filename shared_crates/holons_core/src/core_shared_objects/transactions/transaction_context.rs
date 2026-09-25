@@ -23,7 +23,7 @@ use super::{
     TransactionLifecycleState, TransientHolonBehavior, TransientHolonManager,
     TransientManagerAccess, TransientReference, TxId,
 };
-use crate::core_shared_objects::{HolonCollection, SpaceReadHandle};
+use crate::core_shared_objects::SpaceReadHandle;
 
 /// Transaction-scoped operations used for lifecycle/access policy checks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -346,21 +346,6 @@ impl TransactionContext {
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
         self.get_holon_service().fetch_holon_internal(self, id)
-    }
-
-    /// Reads one relationship's members for a saved source directly from the
-    /// Holon service.
-    ///
-    /// This is a fresh storage read that deliberately bypasses the relationship
-    /// cache: query operators (QRY2) consume the storage-returned member order and
-    /// duplicate occurrences as-is, which the cached, sealed `related_holons`
-    /// view does not promise.
-    pub(crate) fn fetch_related_holons(
-        self: &Arc<Self>,
-        source_id: &HolonId,
-        relationship_name: &core_types::RelationshipName,
-    ) -> Result<HolonCollection, HolonError> {
-        self.get_holon_service().fetch_related_holons_internal(self, source_id, relationship_name)
     }
 
     pub(crate) fn new_transient_from_clone_model(

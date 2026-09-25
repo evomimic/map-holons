@@ -229,6 +229,7 @@ pub enum QueryRelationshipTypeName {
     Next,
     Result,
     RootExpression,
+    SeedPredicate,
 }
 
 impl QueryRelationshipTypeName {
