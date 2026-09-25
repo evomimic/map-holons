@@ -25,6 +25,19 @@ export class MaterializedVisualizerRuntime {
     private readonly importModule: VisualizerModuleImporter = importEsModule,
   ) {}
 
+  /** Resolve an implementation-declared composition point within its owner's HasSlot. */
+  async slot(parent: HolonReference, role: string): Promise<HolonReference> {
+    const implementation = await this.realize(parent) as { compositionSlots?: Record<string, string> };
+    const key = implementation.compositionSlots?.[role];
+    if (!key) throw new Error(`Selected Visualizer does not declare composition slot ${role}`);
+    const matches: HolonReference[] = [];
+    for (const slot of await parent.relatedHolons('HasSlot')) {
+      if (await slot.key() === key) matches.push(slot);
+    }
+    if (matches.length !== 1) throw new Error(`Expected one owned composition slot ${key}, found ${matches.length}`);
+    return matches[0];
+  }
+
   async realize(selectedVisualizer: HolonReference): Promise<unknown> {
     const module = await this.cache.get(selectedVisualizer);
     // Identical materialized source has one constructor identity, including

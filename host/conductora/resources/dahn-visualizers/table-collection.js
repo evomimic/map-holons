@@ -7,6 +7,15 @@ function formatStaticValue(value) {
     const payload = Object.values(value)[0];
     return Array.isArray(payload) ? payload.join(', ') : String(payload);
 }
+const sortableKinds = new Set(['StringValue', 'IntegerValue', 'BooleanValue']);
+function eligible(column) { return sortableKinds.has(column.valueType); }
+function compareValues(left, right, direction) {
+    // Missing cells remain last even when the value comparison is reversed.
+    if (left === null || right === null) return left === right ? 0 : left === null ? 1 : -1;
+    const a = Object.values(left)[0], b = Object.values(right)[0];
+    const comparison = a < b ? -1 : a > b ? 1 : 0;
+    return direction === 'ascending' ? comparison : -comparison;
+}
 function assertPresentation(presentation) {
     if (presentation.kind === 'scalar' &&
         presentation.columns.length !== 1) {
@@ -34,6 +43,52 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
     generation = 0;
     members = new Map();
     selectedRow = undefined;
+    getCollectionViewState() {
+        return { kind: 'table-sort-v1', sort: this.sort ? { ...this.sort } : null };
+    }
+    restoreCollectionViewState(state) {
+        const sort = state?.kind === 'table-sort-v1' ? state.sort : null;
+        const column = this.presentation?.columns.find(column => column.id === sort?.columnId && eligible(column));
+        this.sort = column && ['ascending', 'descending'].includes(sort.direction)
+            ? { columnId: column.id, direction: sort.direction } : this.defaultSort();
+        this.applySort();
+    }
+    defaultSort() {
+        const column = this.presentation?.columns.find(column => column.id === this.presentation.defaultSortColumnId && eligible(column));
+        return column ? { columnId: column.id, direction: 'ascending' } : null;
+    }
+    sortBy(columnId, direction) {
+        const column = this.presentation.columns.find(column => column.id === columnId && eligible(column));
+        if (!column) return;
+        this.sort = { columnId, direction: direction ?? (this.sort?.columnId === columnId && this.sort.direction === 'ascending' ? 'descending' : 'ascending') };
+        this.applySort();
+    }
+    applySort() {
+        if (!this.table) return;
+        const presentation = this.presentation;
+        const column = presentation.columns.find(column => column.id === this.sort?.columnId);
+        const indices = presentation.rowIds.map((_, index) => index);
+        if (column) indices.sort((a, b) => compareValues(column.values[a], column.values[b], this.sort.direction) || a - b);
+        const focused = this.contains(document.activeElement) ? document.activeElement : null;
+        this.table.tBodies[0].append(...indices.map(index => this.rowElements.get(presentation.rowIds[index])));
+        if (focused) focused.focus({ preventScroll: true });
+        if (this.selectedRow === undefined && !focused?.matches('tr')) {
+            [...this.table.tBodies[0].rows].forEach((row, index) => row.tabIndex = index === 0 ? 0 : -1);
+        }
+        for (const header of this.table.tHead.rows[0].cells) {
+            const active = header.dataset.columnId === this.sort?.columnId;
+            header.removeAttribute('aria-sort');
+            if (active) header.setAttribute('aria-sort', this.sort.direction);
+            for (const button of header.querySelectorAll('[data-sort-direction]')) {
+                const selected = active && button.dataset.sortDirection === this.sort.direction;
+                button.setAttribute('aria-pressed', String(selected));
+                button.style.background = selected ? 'var(--dahn-action-hover-surface-background)' : 'transparent';
+                button.style.fontWeight = selected ? 'bold' : 'normal';
+            }
+        }
+        this.sortStatus.textContent = column ? `Sorted by ${column.displayName}, ${this.sort.direction}` : this.presentation.manualOrderUnavailable ? 'Manual order unavailable · supplied order' : 'Supplied order';
+        this.fitColumns();
+    }
     setInspectHolonHandler(handler) {
         this.inspectHolon = handler;
         if (handler === null) this.members.clear();
@@ -57,13 +112,33 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         if (reference !== undefined && this.isConnected) this.inspectHolon?.(reference);
     }
     // The selected renderer owns its generic projection, independently of the producer.
-    async setCollection(collection, title) {
+    async setCollection(collection, title, ordering = { isOrdered: false }) {
         const generation = ++this.generation;
         this.members.clear();
         this.selectedRow = undefined;
         this.observer?.disconnect();
         this.table = undefined;
         this.replaceChildren();
+        let keyed = false;
+        try {
+            keyed = await collection.elementType.hasInstanceKey();
+        } catch (error) {
+            // Classification anchors such as DeclaredRelationshipType are not
+            // the describing HolonTypes of their members and may have no key rule.
+            // Only that declared-target case falls back to concrete member types.
+            if (error?.code !== 'DOMAIN_ERROR' || error.variant !== 'NoEffectiveKeyRule') throw error;
+        }
+        // Broad relationship targets (for example Owns) may declare a keyless
+        // baseline while the concrete member types define instance keys.
+        if (!keyed) {
+            for (const member of collection) {
+                if (generation !== this.generation) return;
+                if (await (await member.holonDescriptor()).hasInstanceKey()) {
+                    keyed = true;
+                    break;
+                }
+            }
+        }
         const members = new Map();
         const columns = [];
         for (const property of await collection.elementType.instanceProperties()) {
@@ -74,7 +149,9 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         // Keep their holon members identifiable through the public bound handle,
         // without treating the anchor as the members' describing meta-type.
         const identityOnly = columns.length === 0;
-        if (identityOnly) columns.push({ id: 'Key', displayName: 'Key', valueType: 'StringValue', values: [] });
+        if (identityOnly || (keyed && !columns.some(column => column.id === 'Key'))) {
+            columns.unshift({ id: 'Key', displayName: 'Key', valueType: 'StringValue', values: [] });
+        }
         const keyIndex = columns.findIndex(column => column.id === 'Key');
         if (keyIndex > 0) columns.unshift(...columns.splice(keyIndex, 1));
         const rowIds = [];
@@ -82,14 +159,17 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             const rowId = crypto.randomUUID();
             rowIds.push(rowId);
             members.set(rowId, member);
-            if (identityOnly) {
-                columns[0].values.push({ StringValue: (await member.key()) ?? await member.versionedKey() });
-            } else {
-                for (const column of columns) column.values.push(await member.propertyValue(column.id));
+            for (const column of columns) {
+                if (column.id === 'Key' && keyed) {
+                    const key = await member.key();
+                    column.values.push(key === null ? null : { StringValue: key });
+                } else if (identityOnly) {
+                    columns[0].values.push({ StringValue: (await member.key()) ?? await member.versionedKey() });
+                } else column.values.push(await member.propertyValue(column.id));
             }
         }
         if (generation !== this.generation) return;
-        this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns } });
+        this.setContext({ collectionPresentation: { kind: 'holon-property-map', displayName: title, rowIds, columns, defaultSortColumnId: keyed && !ordering.isOrdered ? 'Key' : undefined, manualOrderUnavailable: ordering.isOrdered } });
         this.members = members;
     }
     connectedCallback() {
@@ -128,6 +208,8 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             throw new Error('Table Collection Visualizer requires a collection presentation.');
         }
         assertPresentation(presentation);
+        this.presentation = presentation;
+        this.sort = this.defaultSort();
         ++this.generation;
         this.members.clear();
         this.selectedRow = undefined;
@@ -137,6 +219,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         this.expanded = false;
         Object.assign(this.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', minWidth: '0', maxWidth: '100%', overflow: 'hidden' });
         this.replaceChildren(this.render(presentation));
+        this.applySort();
         if (this.isConnected) this.connectedCallback();
     }
     render(presentation) {
@@ -162,7 +245,33 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             header.scope = 'col';
             header.style.fontWeight = 'var(--dahn-table-header-font-weight)';
             header.dataset['columnId'] = column.id;
-            header.textContent = column.displayName;
+            if (eligible(column)) {
+                const control = document.createElement('button');
+                control.type = 'button';
+                control.textContent = column.displayName;
+                control.setAttribute('aria-label', `Sort by ${column.displayName}`);
+                Object.assign(control.style, { font: 'inherit', color: 'inherit', background: 'transparent', border: '0', padding: '0', cursor: 'pointer' });
+                control.addEventListener('click', () => {
+                    if (this.table === table) this.sortBy(column.id);
+                });
+                control.title = `Toggle ${column.displayName} sort direction`;
+                control.dataset.sortToggle = '';
+                header.append(control);
+                for (const [direction, arrow] of [['ascending', '↑'], ['descending', '↓']]) {
+                    const choice = document.createElement('button');
+                    choice.type = 'button';
+                    choice.textContent = arrow;
+                    choice.dataset.sortDirection = direction;
+                    choice.setAttribute('aria-label', `Sort ${column.displayName} ${direction}`);
+                    choice.setAttribute('aria-pressed', 'false');
+                    choice.title = `Sort ${column.displayName} ${direction}`;
+                    Object.assign(choice.style, { font: 'inherit', fontSize: '0.75em', lineHeight: '1.2', color: 'inherit', background: 'transparent', border: '1px solid currentColor', borderRadius: '2px', marginLeft: '3px', padding: '0 3px', cursor: 'pointer' });
+                    choice.addEventListener('click', () => {
+                        if (this.table === table) this.sortBy(column.id, direction);
+                    });
+                    header.append(choice);
+                }
+            } else header.textContent = column.displayName;
             header.style.backgroundColor =
                 'var(--dahn-table-header-surface-background)';
             header.style.borderBottom =
@@ -179,6 +288,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
         const head = document.createElement('thead');
         head.append(headerRow);
         const body = document.createElement('tbody');
+        this.rowElements = new Map();
         for (const [rowIndex, rowId] of presentation.rowIds.entries()) {
             const row = document.createElement('tr');
             row.dataset['rowId'] = rowId;
@@ -224,6 +334,7 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
                 if (column.id === 'Key') Object.assign(cell.style, { position: 'sticky', left: '0', zIndex: '1', background: 'var(--dahn-collection-surface-background)' });
                 row.append(cell);
             }
+            this.rowElements.set(rowId, row);
             body.append(row);
         }
         table.append(head, body);
@@ -244,7 +355,12 @@ export default class TableCollectionVisualizerElement extends HTMLElement {
             this.fitColumns(); viewport.focus();
         });
         this.more = more;
-        section.append(more, viewport);
+        const sortStatus = document.createElement('div');
+        sortStatus.dataset.tableCollection = 'sort-status';
+        sortStatus.setAttribute('role', 'status');
+        Object.assign(sortStatus.style, { flexShrink: '0', overflowWrap: 'anywhere' });
+        this.sortStatus = sortStatus;
+        section.append(sortStatus, more, viewport);
         if (!presentation.rowIds.length) {
             const empty = document.createElement('p');
             empty.setAttribute('role', 'status'); empty.textContent = 'No items';

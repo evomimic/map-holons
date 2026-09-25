@@ -1,4 +1,5 @@
 export default class PathInspectorElement extends HTMLElement {
+  static compositionSlots = { node: 'PathInspector.RootNodeSlot' };
   constructor() {
     super();
     // The nearest Path Inspector owns interpretation for its composed slots.

@@ -36,7 +36,7 @@ export type VisualizerKind =
   | 'node'
   | 'rootedNavigation'
   | 'collection'
-  | 'properties'
+  | 'propertyMap'
   | 'property'
   | 'value'
   | 'action';
@@ -44,14 +44,15 @@ export type VisualizerKind =
 /**
  * A visualization request submitted to the Rust-owned DAHN Selector Function.
  *
- * This SDK ingress carries a bound holon reference. Properties uses the owner
+ * This SDK ingress carries a bound holon reference. PropertyMap uses the owner
  * holon; Property and Value use the resolved PropertyDescriptor reference so
  * Rust retains descriptor and ValueType authority.
  */
 export interface VisualizerSelectionRequest {
+  slot: HolonReference;
   subject: HolonReference;
   requestedKind: VisualizerKind;
-  /** Selected parent whose declared slot Rust must validate for this child. */
+  /** Selected parent whose HasSlot must contain the supplied slot. */
   parentVisualizer?: HolonReference;
 }
 
@@ -360,6 +361,7 @@ export class MapTransaction {
       txId,
       {
         subject: unwrapHolonReference(request.subject),
+        slot: unwrapHolonReference(request.slot),
         requested_kind: toVisualizerKindWire(request.requestedKind),
         parent_visualizer: request.parentVisualizer === undefined
           ? null
@@ -380,10 +382,12 @@ export class MapTransaction {
   selectPropertyVisualizer(
     property: PropertyDescriptorHandle,
     parentVisualizer: HolonReference,
+    slot: HolonReference,
   ): Promise<VisualizerSelection> {
     return this.selectVisualizer({
       subject: unwrapPropertyDescriptorHandle(property),
       requestedKind: 'property',
+      slot,
       parentVisualizer,
     });
   }
@@ -396,10 +400,12 @@ export class MapTransaction {
   selectValueVisualizer(
     property: PropertyDescriptorHandle,
     parentVisualizer: HolonReference,
+    slot: HolonReference,
   ): Promise<VisualizerSelection> {
     return this.selectVisualizer({
       subject: unwrapPropertyDescriptorHandle(property),
       requestedKind: 'value',
+      slot,
       parentVisualizer,
     });
   }
@@ -407,6 +413,7 @@ export class MapTransaction {
 }
 
 function fromVisualizerKindWire(kind: ReturnType<typeof toVisualizerKindWire>): VisualizerKind {
+  if (kind === 'PropertyMap') return 'propertyMap';
   return kind === 'RootedNavigation'
     ? 'rootedNavigation'
     : kind.toLowerCase() as VisualizerKind;
@@ -432,7 +439,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
   | 'Node'
   | 'RootedNavigation'
   | 'Collection'
-  | 'Properties'
+  | 'PropertyMap'
   | 'Property'
   | 'Value'
   | 'Action' {
@@ -444,7 +451,7 @@ function toVisualizerKindWire(kind: VisualizerKind):
     | 'Node'
     | 'RootedNavigation'
     | 'Collection'
-    | 'Properties'
+    | 'PropertyMap'
     | 'Property'
     | 'Value'
     | 'Action';

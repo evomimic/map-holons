@@ -57,7 +57,7 @@ export type VisualizerKindWire =
   | 'Node'
   | 'RootedNavigation'
   | 'Collection'
-  | 'Properties'
+  | 'PropertyMap'
   | 'Property'
   | 'Value'
   | 'Action';
@@ -70,6 +70,7 @@ export type VisualizerKindWire =
  * Slot context, and other policy inputs without changing that authority.
  */
 export interface VisualizerSelectionRequestWire {
+  slot: HolonReferenceWire;
   subject: HolonReferenceWire;
   requested_kind: VisualizerKindWire;
   parent_visualizer: HolonReferenceWire | null;
@@ -143,6 +144,8 @@ export type ReadableHolonActionWire =
   | 'GetAvailableRelationships'
   | 'GetEffectiveCardinality'
   | 'GetPropertyIsArray'
+  | 'GetHasInstanceKey'
+  | 'GetRelationshipIsOrdered'
   | 'GetAvailableDances'
   | 'GetInstanceProperties'
   | 'GetPropertyValueKind'
@@ -191,6 +194,8 @@ const READABLE_HOLON_UNIT_ACTIONS = new Set<ReadableHolonActionWire>([
   'GetAvailableRelationships',
   'GetEffectiveCardinality',
   'GetPropertyIsArray',
+  'GetHasInstanceKey',
+  'GetRelationshipIsOrdered',
   'GetAvailableDances',
   'GetInstanceProperties',
   'GetPropertyValueKind',
@@ -308,6 +313,7 @@ export function isTransactionActionWire(
     (hasSingleKey(value, 'SelectVisualizer') &&
       isRecord(value.SelectVisualizer) &&
       isHolonReferenceWire(value.SelectVisualizer['subject']) &&
+      isHolonReferenceWire(value.SelectVisualizer['slot']) &&
       (value.SelectVisualizer['parent_visualizer'] === undefined ||
         value.SelectVisualizer['parent_visualizer'] === null ||
         isHolonReferenceWire(value.SelectVisualizer['parent_visualizer'])) &&
@@ -315,7 +321,7 @@ export function isTransactionActionWire(
         value.SelectVisualizer['requested_kind'] === 'Node' ||
         value.SelectVisualizer['requested_kind'] === 'RootedNavigation' ||
         value.SelectVisualizer['requested_kind'] === 'Collection' ||
-        value.SelectVisualizer['requested_kind'] === 'Properties' ||
+        value.SelectVisualizer['requested_kind'] === 'PropertyMap' ||
         value.SelectVisualizer['requested_kind'] === 'Property' ||
         value.SelectVisualizer['requested_kind'] === 'Value' ||
         value.SelectVisualizer['requested_kind'] === 'Action')) ||

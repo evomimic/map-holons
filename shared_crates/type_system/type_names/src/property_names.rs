@@ -135,6 +135,7 @@ pub enum CorePropertyTypeName {
     HolonsStaged,
     InstanceDeletionAllowed,
     IsAbstractType,
+    DefinesInstanceTypeKind,
     IsDefinitional,
     IsOrdered,
     IsRequired,
