@@ -1,3 +1,4 @@
+import { NavigationProfile } from './navigation-profile';
 import type { InspectHolonIntent, TraverseRelationshipIntent, SingularNavigationState, VisualizerElement } from '../contracts/visualizers';
 import type { PathFocus, PathNavigation, PathOccurrence, VerticalProvenance, TraversalProvenance, SingularProvenance } from '../contracts/path-navigation';
 import type { CollectionAffordance } from '../contracts/affordances';
@@ -37,7 +38,8 @@ export class PathNavigator implements PathNavigation {
     root: RealizedNode,
     subject: HolonReference,
     selectedVisualizer: HolonReference,
-    private readonly realize: (subject: HolonReference, selected: HolonReference) => Promise<RealizedNode>,
+    private readonly nodeSlot: HolonReference,
+    private readonly realize: (subject: HolonReference, selected: HolonReference, onStage?: (stage: string) => void) => Promise<RealizedNode>,
   ) {
     this.root = this.occurrence(root, subject, selectedVisualizer, 0, 1);
     this.focus = { occurrenceId: this.root.id, mode: 'restore' };
@@ -164,7 +166,7 @@ export class PathNavigator implements PathNavigation {
           this.focus = { occurrenceId: retained.id, mode: 'restore' };
           return;
         }
-        const selection = await this.transaction.selectVisualizer({ subject: intent.reference, requestedKind: 'node', parentVisualizer: this.parentVisualizer });
+        const selection = await this.transaction.selectVisualizer({ subject: intent.reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
         if (!current()) return;
         candidate = await this.realize(intent.reference, selection.selected);
         if (!current()) { candidate.collectionActivation.dispose(); return; }
@@ -231,32 +233,42 @@ export class PathNavigator implements PathNavigation {
     owner.retry = undefined;
     this.singularState(owner, { ...owner.singular, state: 'loading', attempted: affordance });
     this.publish();
+    const profile = NavigationProfile.start();
+    let outcome = 'cancelled';
     void serializeTransaction(this.transaction, async () => {
-      if (!current()) return;
+      if (!current()) { profile?.finish('cancelled'); return; }
+      profile?.begin();
       let candidate: RealizedNode | undefined;
       try {
         const name = await affordance.relationship.descriptor.relationshipName();
         if (!current()) return;
+        profile?.next('target retrieval');
         const members = await owner.subject.relatedHolons(name);
         if (!current()) return;
         if (members.length > 1) throw new Error(`Expected at most one target, received ${members.length}`);
         if (members.length === 0) {
+          outcome = 'empty';
           owner.message = `${affordance.label}: no target. Existing navigation is unchanged.`;
           this.singularState(owner, { ...owner.singular, state: 'loaded-empty' });
           return;
         }
         const reference = [...members][0];
+        profile?.next('target identity');
         const id = await reference.holonId();
         const subjectIdentity = JSON.stringify('Local' in id ? ['local', id.Local] : ['external', id.External.space_id, id.External.local_id]);
         if (!current()) return;
         const retained = [owner.right, ...owner.horizontalAlternatives].find(item => item?.subjectIdentity === subjectIdentity
           && item.provenance?.affordance === affordance);
         if (retained) {
+          outcome = 'retained';
           this.focus = { occurrenceId: retained.id, mode: 'restore' };
         } else {
-          const selection = await this.transaction.selectVisualizer({ subject: reference, requestedKind: 'node', parentVisualizer: this.parentVisualizer });
+          profile?.next('select node');
+          const selection = await this.transaction.selectVisualizer({ subject: reference, requestedKind: 'node', slot: this.nodeSlot, parentVisualizer: this.parentVisualizer });
           if (!current()) return;
-          candidate = await this.realize(reference, selection.selected);
+          candidate = await this.realize(reference, selection.selected, stage => profile?.next(stage));
+          outcome = 'new node';
+          profile?.next('install node');
           if (!current()) { candidate.collectionActivation.dispose(); return; }
           const provenance: SingularProvenance = { kind: 'singular-relationship', parentOccurrenceId: owner.id, affordance };
           this.installRight(owner, this.occurrence(candidate, reference, selection.selected, owner.row, owner.column + 1, provenance, subjectIdentity));
@@ -264,13 +276,16 @@ export class PathNavigator implements PathNavigation {
         owner.message = undefined;
         this.singularState(owner, { state: 'loaded', active: affordance, attempted: affordance });
       } catch (error) {
+        outcome = 'error';
         candidate?.collectionActivation.dispose();
         if (!current()) return;
         owner.message = `${affordance.label}: ${error instanceof Error ? error.message : String(error)}. Existing navigation is unchanged.`;
         this.singularState(owner, { ...owner.singular, state: 'error' });
         owner.retry = () => { if (current()) this.traverseRelationship(intent); };
       } finally {
+        profile?.next('publish and synchronous mount');
         if (current()) { owner.pending = false; this.publish(); }
+        profile?.finish(current() ? outcome : 'cancelled');
       }
     });
   }

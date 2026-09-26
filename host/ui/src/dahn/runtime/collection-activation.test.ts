@@ -13,10 +13,10 @@ const importer = (source: string) => import(`data:text/javascript;base64,${Buffe
 const wait = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 const property = (name: string, kind = 'StringValue', array = false) => ({ propertyName: async () => name, displayName: async () => `${name} heading`, valueKind: async () => kind, isArray: async () => array });
 function collection(count: number) {
-  const members = Array.from({ length: count }, (_, index) => ({ propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
-  return { length: count, elementType: { instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  const members = Array.from({ length: count }, (_, index) => ({ holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async (name: string) => name === 'Key' ? { StringValue: `row-${index}` } : null) }));
+  return { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
-const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { relationshipName: async () => name } } } as CollectionAffordance);
+const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, relationshipName: async () => name } } } as CollectionAffordance);
 function fixture() {
   const owner = { describedRelatedHolons: vi.fn(async () => collection(2)) };
   const selected = { key: async () => 'table' };
@@ -47,7 +47,7 @@ describe('selected collection activation', () => {
     expect(f.transaction.selectCollectionVisualizer).toHaveBeenCalledWith(expect.objectContaining({ length: count }), f.parent, f.slot);
     expect(updates.at(-1)?.state).toBe(count ? 'loaded' : 'loaded-empty');
     const element = updates.at(-1)!.content!;
-    expect([...element.querySelectorAll('th')].map(cell => cell.textContent)).toEqual(['Key heading', 'Name heading']);
+    expect([...element.querySelectorAll('th')].map(cell => cell.querySelector('[data-sort-toggle]')?.textContent ?? cell.textContent)).toEqual(['Key heading', 'Name heading']);
     expect(element.querySelectorAll('tbody tr')).toHaveLength(count);
     if (count) expect(element.textContent).toContain('n/a');
     expect(f.materialize).toHaveBeenCalledOnce();
@@ -173,8 +173,8 @@ it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visib
   // Core's PropertyType / DeclaredRelationshipType anchors classify descriptors;
   // their own InstanceProperties are empty. Their members are still real holons.
   const keys = name === 'InstanceProperties' ? ['TypeName.PropertyType', 'DisplayName.PropertyType'] : ['InstanceProperties', 'InstanceRelationships'];
-  const members = keys.map(key => ({ key: vi.fn(async () => key), versionedKey: vi.fn(async () => `${key}@1`), propertyValue: vi.fn() }));
-  const described = { length: members.length, elementType: { instanceProperties: async () => [] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  const members = keys.map(key => ({ holonDescriptor: async () => ({ hasInstanceKey: async () => false }), key: vi.fn(async () => key), versionedKey: vi.fn(async () => `${key}@1`), propertyValue: vi.fn() }));
+  const described = { length: members.length, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
   const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
   const updates: CollectionUpdate[] = [];
   f.activation.activate(tab(name), 'slot', update => updates.push(update));
@@ -190,15 +190,123 @@ it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visib
 });
 
 it.each([0, 1])('renders the identity-only projection for %i members, including an unkeyed holon', async count => {
-  const member = { key: vi.fn(async () => null), versionedKey: vi.fn(async () => 'unkeyed-reference@1') };
-  const described = { length: count, elementType: { instanceProperties: async () => [] }, [Symbol.iterator]: () => (count ? [member] : [])[Symbol.iterator]() };
+  const member = { holonDescriptor: async () => ({ hasInstanceKey: async () => false }), key: vi.fn(async () => null), versionedKey: vi.fn(async () => 'unkeyed-reference@1') };
+  const described = { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => (count ? [member] : [])[Symbol.iterator]() };
   const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
   const updates: CollectionUpdate[] = [];
   f.activation.activate(tab('Descriptors'), 'slot', update => updates.push(update));
   await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
   const element = updates.at(-1)!.content!;
-  expect(element.querySelector('th')?.textContent).toBe('Key');
+  expect(element.querySelector('th [data-sort-toggle]')?.textContent).toBe('Key');
   expect(element.querySelectorAll('tbody tr')).toHaveLength(count);
   if (count) expect(element.querySelector('td')?.textContent).toBe('unkeyed-reference@1');
   else expect(element.textContent).toContain('No items');
+});
+
+it('restores independent tab sorts after fresh projection and keeps sorted activation bound to the member', async () => {
+  const f = fixture(); const a = tab('A'), b = tab('B');
+  const updates: CollectionUpdate[] = [];
+  const publish = (update: CollectionUpdate) => { updates.push(update); if (update.content) document.body.replaceChildren(update.content); };
+  const activate = async (affordance: CollectionAffordance) => {
+    f.activation.activate(affordance, 'slot', publish);
+    await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
+    return updates.at(-1)!.content!;
+  };
+  const first = await activate(a);
+  const sort = (element: HTMLElement) => element.querySelector<HTMLButtonElement>('th[data-column-id="Key"] button')!.click();
+  sort(first); sort(first);
+  expect(first.querySelector('tbody td')?.textContent).toBe('row-1');
+  const second = await activate(b); sort(second);
+  const restored = await activate(a);
+  expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(3);
+  expect(restored).not.toBe(first);
+  expect(restored.querySelector('th')?.getAttribute('aria-sort')).toBe('descending');
+  expect(restored.querySelector('tbody td')?.textContent).toBe('row-1');
+  const received = vi.fn(); restored.addEventListener('dahn-inspect-holon', received);
+  restored.querySelector('tbody tr')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(received).toHaveBeenCalledOnce();
+  const members = [...await f.owner.describedRelatedHolons.mock.results[2].value];
+  expect(received.mock.calls[0][0].detail.reference).toBe(members[1]);
+  first.querySelector('tbody tr')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  expect(received).toHaveBeenCalledOnce();
+  const restoredB = await activate(b);
+  expect(restoredB.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
+  const other = new NodeCollectionActivation(f.transaction as never, f.owner as never, f.parent as never, f.runtime);
+  other.activate(a, 'slot', publish);
+  await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
+  expect(updates.at(-1)!.content!.querySelector('[aria-sort]')).toBeNull();
+  f.activation.dispose(); other.dispose();
+});
+
+it('uses the element type key rule and actual keys for default ordering', async () => {
+  const f = fixture();
+  const members = ['b', 'a'].map(key => ({ key: async () => key, propertyValue: async () => ({ StringValue: 'unrelated label' }) }));
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { hasInstanceKey: async () => true, instanceProperties: async () => [property('Name')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
+  const publish = vi.fn(); f.activation.activate(tab('Keyed'), 'slot', publish);
+  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
+  const table = publish.mock.lastCall![0].content as HTMLElement;
+  expect([...table.querySelectorAll('td[data-column-id="Key"]')].map(cell => cell.textContent)).toEqual(['a', 'b']);
+  expect(table.querySelector('th[data-column-id="Key"]')?.getAttribute('aria-sort')).toBe('ascending');
+});
+
+it('keeps ordered collections readable while reporting deferred manual order', async () => {
+  const f = fixture(); const ordered = tab('Ordered');
+  if (ordered.kind !== 'relationship') throw new Error('Expected relationship');
+  ordered.relationship.descriptor.isOrdered = async () => true;
+  const publish = vi.fn(); f.activation.activate(ordered, 'slot', publish);
+  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('loaded'));
+  const element = publish.mock.lastCall![0].content as HTMLElement;
+  expect(element.querySelector('[data-table-collection="sort-status"]')?.textContent).toBe('Manual order unavailable · supplied order');
+  expect(element.querySelectorAll('tbody tr')).toHaveLength(2);
+  element.querySelector<HTMLButtonElement>('button[aria-label="Sort Key heading ascending"]')!.click();
+  expect(element.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
+});
+
+it('defaults a broad Owns collection to actual member keys when concrete types are keyed', async () => {
+  const f = fixture();
+  const members = ['Zebra.HolonType', 'Alpha.PropertyType'].map(key => ({
+    key: async () => key,
+    holonDescriptor: async () => ({ hasInstanceKey: async () => true }),
+    propertyValue: async () => ({ StringValue: key }),
+  }));
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property('Key')] }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
+  const publish = vi.fn(); f.activation.activate(tab('Owns'), 'slot', publish);
+  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
+  const table = publish.mock.lastCall![0].content as HTMLElement;
+  expect([...table.querySelectorAll('td[data-column-id="Key"]')].map(cell => cell.textContent)).toEqual(['Alpha.PropertyType', 'Zebra.HolonType']);
+  expect(table.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
+});
+
+it('renders InstanceRelationships when its classification anchor has no instance key rule', async () => {
+  const f = fixture();
+  const members = ['ZRelationship', 'ARelationship'].map(key => ({
+    key: async () => key,
+    holonDescriptor: async () => ({ hasInstanceKey: async () => true }),
+    propertyValue: vi.fn(),
+  }));
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 2, elementType: {
+    hasInstanceKey: async () => { throw Object.assign(new Error('No effective key rule'), { code: 'DOMAIN_ERROR', variant: 'NoEffectiveKeyRule' }); },
+    instanceProperties: async () => [],
+  }, [Symbol.iterator]: () => members[Symbol.iterator]() } as never);
+  const publish = vi.fn(); f.activation.activate(tab('InstanceRelationships'), 'slot', publish);
+  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].content).toBeDefined());
+  const table = publish.mock.lastCall![0].content as HTMLElement;
+  expect([...table.querySelectorAll('td')].map(cell => cell.textContent)).toEqual(['ARelationship', 'ZRelationship']);
+  expect(table.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
+});
+
+it.each(['declared-malformed', 'concrete-missing'])('does not hide a %s key-policy failure', async failure => {
+  const f = fixture();
+  const missing = () => Object.assign(new Error('Missing concrete key rule'), { code: 'DOMAIN_ERROR', variant: 'NoEffectiveKeyRule' });
+  const member = { holonDescriptor: async () => ({ hasInstanceKey: async () => { throw missing(); } }) };
+  f.owner.describedRelatedHolons.mockResolvedValue({ length: 1, elementType: {
+    hasInstanceKey: async () => {
+      if (failure === 'declared-malformed') throw new Error('Malformed declared key rule');
+      return false;
+    },
+    instanceProperties: async () => [],
+  }, [Symbol.iterator]: () => [member][Symbol.iterator]() } as never);
+  const publish = vi.fn(); f.activation.activate(tab('InstanceRelationships'), 'slot', publish);
+  await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('error'));
+  expect(publish.mock.lastCall![0].message).toContain(failure === 'declared-malformed' ? 'Malformed declared key rule' : 'Missing concrete key rule');
 });

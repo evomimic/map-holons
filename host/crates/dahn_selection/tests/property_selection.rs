@@ -17,6 +17,7 @@ use std::{any::Any, collections::HashMap, sync::Arc};
 #[derive(Debug, Default)]
 struct Graph {
     edges: HashMap<(u8, String), Vec<u8>>,
+    anchors: Vec<u8>,
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
@@ -48,12 +49,8 @@ impl HolonServiceApi for Graph {
         key: &MapString,
     ) -> Result<SmartReference, HolonError> {
         let id = match key.0.as_str() {
-            "PropertiesVisualizer.HolonType" => 10,
-            "ActionVisualizer.HolonType" => 13,
-            "PropertyVisualizer.HolonType" => 11,
-            "ValueVisualizer.HolonType" => 12,
             "TableCollectionVisualizer.CollectionVisualizer" => 20,
-            _ => panic!("unexpected lookup {key}"),
+            _ => panic!("unexpected canonical role lookup {key}"),
         };
         match Self::reference(context, id) {
             HolonReference::Smart(reference) => Ok(reference),
@@ -66,6 +63,10 @@ impl HolonServiceApi for Graph {
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
         let mut properties = PropertyMap::new();
+        properties.insert(
+            PropertyName("DefinesInstanceTypeKind".into()),
+            BaseValue::BooleanValue(self.anchors.contains(&id.local_id().0[0]).into()),
+        );
         properties.insert(
             PropertyName("Key".into()),
             BaseValue::StringValue(MapString(format!("node-{}", id.local_id().0[0]))),
@@ -142,12 +143,13 @@ fn select(
     graph.edge(3, "HasApplicableVisualizer", &[21]);
     graph.edge(21, "DescribedBy", &[11]);
     let (subject, start, role) = match kind {
-        VisualizerKind::Properties => (1, 2, 10),
+        VisualizerKind::PropertyMap => (1, 2, 10),
         VisualizerKind::Action => (1, 2, 13),
         VisualizerKind::Property => (3, 3, 11),
         VisualizerKind::Value => (3, 4, 12),
         _ => unreachable!(),
     };
+    graph.edge(30, "AcceptsVisualizerType", &[role]);
     if inherited {
         graph.edge(start, "HasApplicableVisualizer", &[]);
         graph.edge(start, "Extends", &[5]);
@@ -169,6 +171,7 @@ fn select(
             subject: Graph::reference(&context, subject),
             requested_kind: kind,
             parent_visualizer: None,
+            slot: Graph::reference(&context, 30),
         },
     )?;
     Ok(result.selected.holon_id()?.local_id().0[0])
@@ -176,7 +179,7 @@ fn select(
 #[test]
 fn selects_each_presentation_role_directly_and_through_inheritance() {
     for kind in [
-        VisualizerKind::Properties,
+        VisualizerKind::PropertyMap,
         VisualizerKind::Property,
         VisualizerKind::Value,
         VisualizerKind::Action,
@@ -189,7 +192,7 @@ fn selects_each_presentation_role_directly_and_through_inheritance() {
 #[test]
 fn reports_missing_and_ambiguous_candidates_for_every_role() {
     for kind in [
-        VisualizerKind::Properties,
+        VisualizerKind::PropertyMap,
         VisualizerKind::Property,
         VisualizerKind::Value,
         VisualizerKind::Action,
@@ -265,4 +268,74 @@ fn collection_selection_checks_the_destination_slot_not_any_parent_slot() {
 #[test]
 fn collection_selection_does_not_validate_member_types_on_read() {
     assert!(select_collection(800, 2, true, false).is_ok());
+}
+
+fn slot_select(graph: Graph, slot: u8, parent: Option<u8>) -> Result<u8, HolonError> {
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        Arc::new(graph),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let result = dahn_selection::select_visualizer(
+        &context,
+        VisualizerSelectionRequest {
+            subject: Graph::reference(&context, 1),
+            requested_kind: VisualizerKind::Property,
+            slot: Graph::reference(&context, slot),
+            parent_visualizer: parent.map(|id| Graph::reference(&context, id)),
+        },
+    )?;
+    Ok(result.selected.holon_id()?.local_id().0[0])
+}
+
+fn slot_graph() -> Graph {
+    let mut graph = Graph::default();
+    graph.edge(1, "Extends", &[2]);
+    graph.edge(2, "Extends", &[3]);
+    graph.anchors.push(2);
+    graph.edge(30, "AcceptsVisualizerType", &[10]);
+    graph.edge(31, "AcceptsVisualizerType", &[11]);
+    graph.edge(40, "HasSlot", &[30]);
+    graph.edge(20, "DescribedBy", &[12]);
+    graph.edge(12, "Extends", &[10]);
+    graph.edge(21, "DescribedBy", &[11]);
+    graph.edge(22, "DescribedBy", &[10]);
+    graph
+}
+
+#[test]
+fn slot_selection_filters_by_accepted_type_and_prefers_leaf() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[21, 20]);
+    graph.edge(2, "HasApplicableVisualizer", &[22]);
+    assert_eq!(slot_select(graph, 30, Some(40)).unwrap(), 20);
+}
+
+#[test]
+fn slot_selection_evaluates_anchor_but_never_crosses_it() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[21]);
+    graph.edge(2, "HasApplicableVisualizer", &[20]);
+    assert_eq!(slot_select(graph, 30, None).unwrap(), 20);
+    let mut graph = slot_graph();
+    graph.edge(3, "HasApplicableVisualizer", &[20]);
+    assert!(
+        matches!(slot_select(graph, 30, None), Err(HolonError::NotImplemented(message)) if message.contains("TypeKind"))
+    );
+}
+
+#[test]
+fn slot_selection_rejects_foreign_slots_empty_contracts_and_ambiguity() {
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20]);
+    assert!(matches!(slot_select(graph, 31, Some(40)), Err(HolonError::InvalidParameter(_))));
+    assert!(matches!(slot_select(slot_graph(), 99, None), Err(HolonError::InvalidParameter(_))));
+    let mut graph = slot_graph();
+    graph.edge(1, "HasApplicableVisualizer", &[20, 22]);
+    assert!(matches!(
+        slot_select(graph, 30, None),
+        Err(HolonError::MultipleRelatedHolons { count: 2, .. })
+    ));
 }

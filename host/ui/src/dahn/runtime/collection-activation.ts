@@ -18,12 +18,13 @@ export interface CollectionActivation {
 }
 
 type CollectionElement = CollectionInteractionElement & {
-  setCollection(collection: DescribedHolonCollection, title: string): Promise<void>;
+  setCollection(collection: DescribedHolonCollection, title: string, ordering: { isOrdered: boolean }): Promise<void>;
 };
 
 /** Owns one Node occurrence's lazy collection lifecycle, never its layout. */
 export class NodeCollectionActivation implements CollectionActivation {
   private content?: CollectionElement;
+  private readonly viewStates = new Map<CollectionAffordance, unknown>();
   private generation = 0;
   private disposed = false;
   private selected: CollectionAffordance | undefined;
@@ -49,6 +50,9 @@ export class NodeCollectionActivation implements CollectionActivation {
     if (this.disposed || affordance.kind !== 'relationship') return false;
     if (this.selected === affordance) return true;
     if (this.beforeChange?.() === false) return false;
+    if (this.selected && this.content?.getCollectionViewState) {
+      this.viewStates.set(this.selected, this.content.getCollectionViewState());
+    }
     this.selected = affordance;
     this.load(affordance, slotKey, publish);
     return true;
@@ -83,7 +87,11 @@ export class NodeCollectionActivation implements CollectionActivation {
         const element = document.createElement(tag) as CollectionElement;
         if (typeof element.setCollection !== 'function') throw new Error('Selected implementation has no described-collection input');
         stage = 'Property retrieval / presentation';
-        await element.setCollection(collection, affordance.label);
+        const isOrdered = await affordance.relationship.descriptor.isOrdered();
+        if (!current()) return;
+        await element.setCollection(collection, affordance.label, { isOrdered });
+        if (!current()) return;
+        element.restoreCollectionViewState?.(this.viewStates.get(affordance));
         if (!current()) return;
         if (typeof element.setInspectHolonHandler !== 'function') throw new Error('Selected implementation has no collection interaction binding');
         element.setInspectHolonHandler(reference => {
@@ -108,6 +116,7 @@ export class NodeCollectionActivation implements CollectionActivation {
   dispose(): void {
     this.disposed = true; ++this.generation;
     this.beforeChange = undefined;
+    this.viewStates.clear();
     this.content?.setInspectHolonHandler(null);
     this.content = undefined;
   }

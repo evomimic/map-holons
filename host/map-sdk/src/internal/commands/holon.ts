@@ -388,6 +388,18 @@ export async function readPropertyIsArray(txId: TxId, target: HolonReferenceWire
   if ('BooleanValue' in value) return value.BooleanValue;
   throw new TypeError('Expected BooleanValue result');
 }
+/** Descriptor-only read: schema-significant relationship ordering resolved by Rust. */
+export async function readRelationshipIsOrdered(txId: TxId, target: HolonReferenceWire): Promise<boolean> {
+  const value = await runHolonCommand(txId, target, { Read: 'GetRelationshipIsOrdered' }, expectValue);
+  if ('BooleanValue' in value) return value.BooleanValue;
+  throw new TypeError('Expected BooleanValue result');
+}
+/** Descriptor-only read: effective key policy resolved by Rust. */
+export async function readHasInstanceKey(txId: TxId, target: HolonReferenceWire): Promise<boolean> {
+  const value = await runHolonCommand(txId, target, { Read: 'GetHasInstanceKey' }, expectValue);
+  if ('BooleanValue' in value) return value.BooleanValue;
+  throw new TypeError('Expected BooleanValue result');
+}
 export function readAvailableDances(txId: TxId, target: HolonReferenceWire) {
   return runHolonCommand(txId, target, { Read: 'GetAvailableDances' }, expectCollection);
 }

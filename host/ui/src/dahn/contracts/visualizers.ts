@@ -38,6 +38,10 @@ export const TRAVERSE_RELATIONSHIP_EVENT = 'dahn-traverse-relationship';
  * A null handler revokes delivery when their owning lifecycle is superseded.
  */
 export interface CollectionInteractionElement extends HTMLElement {
+  /** Opaque implementation-owned view state; never semantic membership or handles. */
+  getCollectionViewState?(): unknown;
+  /** Restore view state after fresh projection; implementations validate their own format. */
+  restoreCollectionViewState?(state: unknown): void;
   setInspectHolonHandler(handler: ((reference: HolonReference) => void) | null): void;
 }
 

@@ -51,7 +51,7 @@
   "imports": [
     {
       "path": "imports/core/abstract-value-types.json",
-      "sha256": "70585cfa4b5c39fc3e3eb1b838ab0685daad93d189c303cbbadf13a16077b33e"
+      "sha256": "9b2c5da91bdf7037f5edb8b76bbbc07a00811a149d7e1327a9b65891ee814229"
     },
     {
       "path": "imports/core/concrete-value-types.json",
@@ -127,7 +127,7 @@
     },
     {
       "path": "imports/dahn/schema.json",
-      "sha256": "91be4845c16ca4895d4e98aef4ae6c07ee1dc7452e7280c8655ceef112bfe962"
+      "sha256": "bc4e564a6daed15384b3945e88d3168ff2ef5ab89be59abce49db319df6fb981"
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
@@ -1420,6 +1420,18 @@
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
+      "key": "DefaultPropertyMapVisualizer.PropertyMapVisualizer",
+      "type": "PropertyMapVisualizer.HolonType"
+    },
+    {
+      "key": "DefaultPropertyMapVisualizer.PropertySlot",
+      "type": "VisualizerSlot.HolonType"
+    },
+    {
+      "key": "DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation",
+      "type": "VisualizerImplementation.HolonType"
+    },
+    {
       "key": "DefaultValue.PropertyType",
       "type": "MetaPropertyType.MetaTypeDescriptor"
     },
@@ -1648,18 +1660,6 @@
       "type": "VisualizerImplementation.HolonType"
     },
     {
-      "key": "GenericProperties.PropertiesVisualizer",
-      "type": "PropertiesVisualizer.HolonType"
-    },
-    {
-      "key": "GenericProperties.PropertySlot",
-      "type": "VisualizerSlot.HolonType"
-    },
-    {
-      "key": "GenericPropertiesTypeScript.VisualizerImplementation",
-      "type": "VisualizerImplementation.HolonType"
-    },
-    {
       "key": "GenericProperty.PropertyVisualizer",
       "type": "PropertyVisualizer.HolonType"
     },
@@ -1768,7 +1768,7 @@
       "type": "NodeVisualizer.HolonType"
     },
     {
-      "key": "HolonInspector.PropertyViewerSlot",
+      "key": "HolonInspector.PropertyMapSlot",
       "type": "VisualizerSlot.HolonType"
     },
     {
@@ -2388,12 +2388,12 @@
       "type": "DesignToken.HolonType"
     },
     {
-      "key": "PropertiesVisualizer.HolonType",
-      "type": "MetaVisualizerType.MetaHolonType"
-    },
-    {
       "key": "PropertyColumnGap.DesignToken",
       "type": "DesignToken.HolonType"
+    },
+    {
+      "key": "PropertyMapVisualizer.HolonType",
+      "type": "MetaVisualizerType.MetaHolonType"
     },
     {
       "key": "PropertyNameMinWidth.DesignToken",

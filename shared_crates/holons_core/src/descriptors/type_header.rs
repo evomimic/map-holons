@@ -1,6 +1,6 @@
 use crate::descriptors::accessor_helpers;
-use crate::reference_layer::HolonReference;
-use base_types::MapString;
+use crate::reference_layer::{HolonReference, ReadableHolon};
+use base_types::{BaseValue, MapString};
 use core_types::HolonError;
 use type_names::CorePropertyTypeName;
 
@@ -45,6 +45,18 @@ impl<'a> TypeHeader<'a> {
     /// Returns whether the descriptor is marked abstract.
     pub fn is_abstract_type(&self) -> Result<bool, HolonError> {
         self.require_bool(CorePropertyTypeName::IsAbstractType)
+    }
+
+    /// Returns the local kind-anchor designation, using its required default false.
+    /// An ancestor's designation must never be inherited as this descriptor's value.
+    pub fn defines_instance_type_kind(&self) -> Result<bool, HolonError> {
+        match self.holon.property_value(CorePropertyTypeName::DefinesInstanceTypeKind)? {
+            Some(BaseValue::BooleanValue(value)) => Ok(value.0),
+            None => Ok(false),
+            Some(other) => {
+                Err(HolonError::UnexpectedValueType(format!("{other:?}"), "Boolean".into()))
+            }
+        }
     }
 
     fn require_string(&self, prop: CorePropertyTypeName) -> Result<MapString, HolonError> {

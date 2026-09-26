@@ -1271,7 +1271,16 @@ async fn verify_book_value_presentation(
         subject: HolonReference,
         kind: VisualizerKind,
         parent: Option<HolonReference>,
+        slot_key: &str,
     ) -> HolonReference {
+        // Exercise the same explicit composition contract as the materialized UI.
+        // Selection validates that child slots belong to the supplied parent.
+        let slot = HolonReference::Smart(
+            context
+                .lookup()
+                .get_saved_holon_by_key(&MapString::from(slot_key))
+                .expect("composition slot"),
+        );
         match state
             .dispatch_command(
                 MapCommand::Transaction(TransactionCommand {
@@ -1281,6 +1290,7 @@ async fn verify_book_value_presentation(
                             subject,
                             requested_kind: kind,
                             parent_visualizer: parent,
+                            slot,
                         },
                     },
                 }),
@@ -1311,9 +1321,24 @@ async fn verify_book_value_presentation(
             "format": materialized.module_format().unwrap().0,
         })
     }
-    let node = select(state, context, book.clone(), VisualizerKind::Node, None).await;
-    let properties =
-        select(state, context, book.clone(), VisualizerKind::Properties, Some(node.clone())).await;
+    let node = select(
+        state,
+        context,
+        book.clone(),
+        VisualizerKind::Node,
+        None,
+        "PathInspector.RootNodeSlot",
+    )
+    .await;
+    let properties = select(
+        state,
+        context,
+        book.clone(),
+        VisualizerKind::PropertyMap,
+        Some(node.clone()),
+        "HolonInspector.PropertyMapSlot",
+    )
+    .await;
     let mut fields = Vec::new();
     for descriptor in book.available_properties().expect("descriptor discovery") {
         let name = descriptor.property_name().expect("property name");
@@ -1323,6 +1348,7 @@ async fn verify_book_value_presentation(
             descriptor.holon().clone(),
             VisualizerKind::Property,
             Some(properties.clone()),
+            "DefaultPropertyMapVisualizer.PropertySlot",
         )
         .await;
         let value = select(
@@ -1331,6 +1357,7 @@ async fn verify_book_value_presentation(
             descriptor.holon().clone(),
             VisualizerKind::Value,
             Some(property.clone()),
+            "GenericProperty.ValueSlot",
         )
         .await;
         fields.push(serde_json::json!({

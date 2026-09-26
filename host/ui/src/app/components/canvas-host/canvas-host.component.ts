@@ -157,8 +157,8 @@ export class CanvasHostComponent implements AfterViewInit, OnDestroy {
         let navigation: PathNavigator | undefined;
         const rootNodeElement = await renderVisualizerRegion('Root node', async () => {
           const root = await realizeNode(transaction, materialized, activeHolonSpace, rootNodeVisualizer, theme, canvas, stage => profile.next(stage));
-          navigation = new PathNavigator(transaction, rootedNavigationVisualizer, root, activeHolonSpace, rootNodeVisualizer,
-            (subject, selected) => realizeNode(transaction, materialized, subject, selected, theme, canvas));
+          navigation = new PathNavigator(transaction, rootedNavigationVisualizer, root, activeHolonSpace, rootNodeVisualizer, await materialized.slot(rootedNavigationVisualizer, 'node'),
+            (subject, selected, onStage) => realizeNode(transaction, materialized, subject, selected, theme, canvas, onStage));
           this.navigation = navigation;
           return root.element;
         });

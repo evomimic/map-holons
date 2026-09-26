@@ -27,16 +27,22 @@ export class MaterializedVisualizerCache {
   constructor(private readonly materializer: VisualizerMaterializer) {}
 
   async get(selectedVisualizer: HolonReference): Promise<MaterializedVisualizerModule> {
+    const active = performance.getEntriesByName('map.navigation.active', 'mark').at(-1) as PerformanceMark | undefined;
+    const started = performance.now();
     const key = await selectedVisualizer.key();
     if (key === null) {
       throw new Error('A materialized Visualizer must have a stable semantic key');
     }
     let pending = this.modules.get(key);
+    const hit = pending !== undefined;
     if (pending === undefined) {
       pending = this.materializer.materialize(selectedVisualizer);
       this.modules.set(key, pending);
       pending.catch(() => this.modules.delete(key));
     }
-    return pending;
+    try { return await pending; } finally {
+      if (active) performance.measure('map.navigation.module', { start: started, end: performance.now(),
+        detail: { run: active.detail, key, hit } });
+    }
   }
 }

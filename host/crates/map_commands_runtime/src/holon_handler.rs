@@ -123,6 +123,19 @@ fn handle_read(
             holons_core::descriptors::RelationshipDescriptor::from_holon(target)
                 .effective_cardinality()?,
         )),
+        ReadableHolonAction::GetHasInstanceKey => Ok(MapResult::Value(BaseValue::BooleanValue(
+            (!holons_core::descriptors::HolonDescriptor::from_holon(target)
+                .effective_key_rule()?
+                .is_keyless()?)
+            .into(),
+        ))),
+        ReadableHolonAction::GetRelationshipIsOrdered => {
+            Ok(MapResult::Value(BaseValue::BooleanValue(
+                holons_core::descriptors::RelationshipDescriptor::from_holon(target)
+                    .is_ordered()?
+                    .into(),
+            )))
+        }
         ReadableHolonAction::GetPropertyIsArray => Ok(MapResult::Value(BaseValue::BooleanValue(
             holons_core::descriptors::PropertyDescriptor::from_holon(target)
                 .value_type()?

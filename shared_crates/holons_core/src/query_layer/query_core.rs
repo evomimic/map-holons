@@ -278,22 +278,20 @@ impl QueryExecution {
             let step = self.executions.len() - 1;
             set_status(&mut self.executions[step], ExecutionStatus::Running)?;
 
+            // Position is a contract violation independent of any predicate, so
+            // it is reported first.
+            if matches!(kind, ExpressionKind::SeedHolons) && step > 0 {
+                return Err(HolonError::InvalidParameter(
+                    "SeedHolons is a source expression and must be the root".to_string(),
+                ));
+            }
+            // Every step is checked, not just the root: a predicate attached to a
+            // chained successor must be refused too.
+            reject_attached_predicates(&expression)?;
+
             let members = match &kind {
-                ExpressionKind::SeedHolons if step > 0 => {
-                    return Err(HolonError::InvalidParameter(
-                        "SeedHolons is a source expression and must be the root".to_string(),
-                    ))
-                }
-                ExpressionKind::SeedHolons => {
-                    seed_holons(&expression, &self.instance.clone().into())?
-                }
+                ExpressionKind::SeedHolons => seed_holons(&self.instance.clone().into())?,
                 ExpressionKind::Expand => {
-                    // Every step is checked, not just the root: a predicate
-                    // attached to a chained successor must be refused too.
-                    reject_attached_predicate(
-                        &expression,
-                        QueryRelationshipTypeName::ExpansionPredicate,
-                    )?;
                     // Root: the caller's collection. Non-root: the predecessor's
                     // result, linked when this record was created.
                     let input = HolonCollectionReference(exactly_one(
@@ -401,12 +399,9 @@ impl ExpressionKind {
 ///
 /// This is a thin wrapper: it supplies the focal space and `Owns`, and otherwise
 /// shares [`expand_one`] with `Expand`. A `SeedPredicate` selects filtered
-/// expansion, which does not exist yet, so it is refused here.
-fn seed_holons(
-    root_expression: &HolonReference,
-    instance: &HolonReference,
-) -> Result<Vec<HolonReference>, HolonError> {
-    reject_attached_predicate(root_expression, QueryRelationshipTypeName::SeedPredicate)?;
+/// expansion, which does not exist yet; [`reject_attached_predicates`] refuses it
+/// before this runs.
+fn seed_holons(instance: &HolonReference) -> Result<Vec<HolonReference>, HolonError> {
     let focal_space = exactly_one(instance, QueryRelationshipTypeName::FocalSpace)?;
     let owns = CoreRelationshipTypeName::Owns.to_relationship_name();
     expand_one(&focal_space, &owns)
@@ -430,12 +425,24 @@ fn expand_one(
 /// Predicate evaluation is a later slice. Returning the unfiltered result would
 /// silently ignore a caller-supplied filter, so the operator fails and its
 /// execution records stay `Failed` with no `Result`.
+///
+/// Refusal is a property of the expression, not of its operator kind: both
+/// attachment points are checked whatever the kind, because a predicate on the
+/// "wrong" operator is ill-formed per schema but still constructible on a
+/// transient definition, and would otherwise pass through unfiltered.
+fn reject_attached_predicates(expression: &HolonReference) -> Result<(), HolonError> {
+    reject_attached_predicate(expression, QueryRelationshipTypeName::SeedPredicate)?;
+    reject_attached_predicate(expression, QueryRelationshipTypeName::ExpansionPredicate)
+}
+
+/// Tests presence rather than cardinality, so several attached predicates
+/// report the unimplemented feature instead of a `MultipleRelatedHolons`.
 fn reject_attached_predicate<T: ToRelationshipName + Clone>(
     expression: &HolonReference,
     predicate_relationship: T,
 ) -> Result<(), HolonError> {
     let relationship_name = predicate_relationship.clone().to_relationship_name().to_string();
-    if zero_or_one(expression, predicate_relationship)?.is_some() {
+    if !related_members(expression, predicate_relationship)?.is_empty() {
         return Err(HolonError::NotImplemented(format!(
             "predicate evaluation ({relationship_name})"
         )));
@@ -1294,6 +1301,73 @@ mod tests {
         )
         .unwrap()
         .is_empty());
+    }
+
+    #[test]
+    fn predicate_on_the_wrong_operator_is_not_implemented() {
+        let fixture = build_fixture();
+        // Ill-formed per schema (`SeedPredicate` belongs to `SeedHolons`), but
+        // constructible on a transient definition. A kind-keyed check would read
+        // only `ExpansionPredicate` here and return an unfiltered result.
+        let mut expand = fixture.expand("expand", "AuthoredBy");
+        let predicate = fixture.described("predicate", "QueryPredicate");
+        expand
+            .add_related_holons(QueryRelationshipTypeName::SeedPredicate, vec![predicate.into()])
+            .unwrap();
+        let query = fixture.query_with_root(&expand);
+        let input = fixture.collection_of("expand-input", &[20]);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance = execution.instance().clone();
+        let root_execution = execution.root_execution().clone();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::NotImplemented(detail) if detail.contains("SeedPredicate")),
+            "a predicate on either attachment point is refused, whatever the kind: {error:?}"
+        );
+        assert_eq!(status_of(&instance), "Failed");
+        assert_eq!(status_of(&root_execution), "Failed");
+        assert!(related_members(
+            &HolonReference::from(root_execution),
+            QueryRelationshipTypeName::Result
+        )
+        .unwrap()
+        .is_empty());
+        assert!(related_members(
+            &HolonReference::from(instance),
+            QueryRelationshipTypeName::ExecutionResult
+        )
+        .unwrap()
+        .is_empty());
+    }
+
+    #[test]
+    fn two_attached_predicates_are_not_implemented() {
+        let fixture = build_fixture();
+        let mut seed = fixture.described("seed", SEED_HOLONS_TYPE_NAME);
+        let first = fixture.described("predicate-1", "QueryPredicate");
+        let second = fixture.described("predicate-2", "QueryPredicate");
+        seed.add_related_holons(
+            QueryRelationshipTypeName::SeedPredicate,
+            vec![first.into(), second.into()],
+        )
+        .unwrap();
+        let query = fixture.query_with_root(&seed);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), None, Vec::new())
+            .unwrap();
+        let instance = execution.instance().clone();
+
+        let error = execution.run().unwrap_err();
+        assert!(
+            matches!(&error, HolonError::NotImplemented(detail) if detail.contains("SeedPredicate")),
+            "the refusal names the unimplemented feature, not the count: {error:?}"
+        );
+        assert_eq!(status_of(&instance), "Failed");
     }
 
     #[test]

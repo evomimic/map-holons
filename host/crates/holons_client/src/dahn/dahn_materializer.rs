@@ -149,7 +149,7 @@ impl DahnMaterializer {
             "PathInspector.RootedNavigationVisualizer" => "path-inspector.js",
             "HolonInspector.NodeVisualizer" => "holon-inspector.js",
             "GenericActions.ActionVisualizer" => "actions.js",
-            "GenericProperties.PropertiesVisualizer" => "properties.js",
+            "DefaultPropertyMapVisualizer.PropertyMapVisualizer" => "properties.js",
             "GenericProperty.PropertyVisualizer" => "property.js",
             "StringValue.ValueVisualizer"
             | "IntegerValue.ValueVisualizer"

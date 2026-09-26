@@ -434,6 +434,21 @@
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
+            },
+            {
+              "$ref": "DanceType.HolonType"
+            },
+            {
+              "$ref": "DanceResponseType.HolonType"
+            },
+            {
+              "$ref": "CommandType.HolonType"
+            },
+            {
+              "$ref": "OperatorType.HolonType"
+            },
+            {
+              "$ref": "Visualizer.HolonType"
             }
           ]
         },
@@ -509,7 +524,7 @@
           "name": "HasSlot",
           "target": [
             {
-              "$ref": "HolonInspector.PropertyViewerSlot"
+              "$ref": "HolonInspector.PropertyMapSlot"
             },
             {
               "$ref": "HolonInspector.ActionsSlot"
@@ -533,7 +548,7 @@
       ]
     },
     {
-      "key": "HolonInspector.PropertyViewerSlot",
+      "key": "HolonInspector.PropertyMapSlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {},
       "relationships": [
@@ -541,7 +556,7 @@
           "name": "AcceptsVisualizerType",
           "target": [
             {
-              "$ref": "PropertiesVisualizer.HolonType"
+              "$ref": "PropertyMapVisualizer.HolonType"
             }
           ]
         }
@@ -602,6 +617,21 @@
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
+            },
+            {
+              "$ref": "DanceType.HolonType"
+            },
+            {
+              "$ref": "DanceResponseType.HolonType"
+            },
+            {
+              "$ref": "CommandType.HolonType"
+            },
+            {
+              "$ref": "OperatorType.HolonType"
+            },
+            {
+              "$ref": "Visualizer.HolonType"
             }
           ]
         },
@@ -672,7 +702,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:9e64a917222f25a24ba5677da1d2cafa7ac28a9bc8cb4372faea5d608714600a",
+        "VisualizerArtifactDigest": "sha256:eaef65ae1873743d8a857dc0cf4bad437dffd618f1fd7b24d5024fe2958b7d34",
         "VisualizerImplementationKey": "dahn.holon-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -857,7 +887,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:16483d1985be0734ad8f86d9d134232f4600a228f9d9f6e03e569c2584e10d67",
+        "VisualizerArtifactDigest": "sha256:e0bfcedabb22df08436b11af10d72bfbb779bb87c1f9eaa3a0aaa8716549a250",
         "VisualizerImplementationKey": "dahn.path-inspector",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -893,13 +923,13 @@
       ]
     },
     {
-      "key": "PropertiesVisualizer.HolonType",
+      "key": "PropertyMapVisualizer.HolonType",
       "type": "MetaVisualizerType.MetaHolonType",
       "properties": {
-        "TypeName": "PropertiesVisualizer",
-        "TypeNamePlural": "PropertiesVisualizers",
-        "DisplayName": "Properties Visualizer",
-        "DisplayNamePlural": "Properties Visualizers",
+        "TypeName": "PropertyMapVisualizer",
+        "TypeNamePlural": "PropertyMapVisualizers",
+        "DisplayName": "Property Map Visualizer",
+        "DisplayNamePlural": "Property Map Visualizers",
         "Description": "Concrete Visualizer Holon Type for visualizers that represent a set of Properties within one presentation strategy."
       },
       "relationships": [
@@ -951,8 +981,8 @@
       ]
     },
     {
-      "key": "GenericProperties.PropertiesVisualizer",
-      "type": "PropertiesVisualizer.HolonType",
+      "key": "DefaultPropertyMapVisualizer.PropertyMapVisualizer",
+      "type": "PropertyMapVisualizer.HolonType",
       "properties": {},
       "relationships": [
         {
@@ -960,6 +990,21 @@
           "target": [
             {
               "$ref": "HolonType.TypeDescriptor"
+            },
+            {
+              "$ref": "DanceType.HolonType"
+            },
+            {
+              "$ref": "DanceResponseType.HolonType"
+            },
+            {
+              "$ref": "CommandType.HolonType"
+            },
+            {
+              "$ref": "OperatorType.HolonType"
+            },
+            {
+              "$ref": "Visualizer.HolonType"
             }
           ]
         },
@@ -1017,7 +1062,7 @@
           "name": "HasSlot",
           "target": [
             {
-              "$ref": "GenericProperties.PropertySlot"
+              "$ref": "DefaultPropertyMapVisualizer.PropertySlot"
             }
           ]
         },
@@ -1025,14 +1070,14 @@
           "name": "ImplementedBy",
           "target": [
             {
-              "$ref": "GenericPropertiesTypeScript.VisualizerImplementation"
+              "$ref": "DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation"
             }
           ]
         }
       ]
     },
     {
-      "key": "GenericProperties.PropertySlot",
+      "key": "DefaultPropertyMapVisualizer.PropertySlot",
       "type": "VisualizerSlot.HolonType",
       "properties": {},
       "relationships": [
@@ -1047,11 +1092,11 @@
       ]
     },
     {
-      "key": "GenericPropertiesTypeScript.VisualizerImplementation",
+      "key": "DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation",
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:2c90d2a0dc283ce669d8903db8c8976d6f0968d5ae48bbef33e37c41b863f094",
+        "VisualizerArtifactDigest": "sha256:0ca41ed2c94534e3bef6a04060148baaa34656cc3fa3cece146a818eea4ee30f",
         "VisualizerImplementationKey": "dahn.properties",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1122,7 +1167,7 @@
       "type": "VisualizerImplementation.HolonType",
       "properties": {
         "Entrypoint": "default",
-        "VisualizerArtifactDigest": "sha256:52456174ac948bde699623c2cd363f2296b36414ccf2d3289b7f5d37352ceb28",
+        "VisualizerArtifactDigest": "sha256:e15c296b0d2ee5d37155feae5ccadf2f28d8409099d98001b23f8e4b2fab2893",
         "VisualizerImplementationKey": "dahn.property",
         "VisualizerImplementationRuntime": "TypeScript",
         "VisualizerModuleFormat": "ESModule"
@@ -1236,6 +1281,9 @@
           "target": [
             {
               "$ref": "EnumValueType.ValueType"
+            },
+            {
+              "$ref": "MapEnumValueType.EnumValueType"
             }
           ]
         },
@@ -1826,6 +1874,7 @@
         "DisplayName": "AcceptsVisualizerType Relationship",
         "DisplayNamePlural": "AcceptsVisualizerType Relationships",
         "Description": "Declares one or more Visualizer Holon Type roles accepted by a semantic Slot. Its cardinality applies to accepted role declarations, not runtime occupancy; the selected Visualizer is bound through a VisualizerUsage.",
+        "IsDefinitional": true,
         "DeletionSemantic": "Allow"
       },
       "relationships": [
