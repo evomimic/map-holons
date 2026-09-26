@@ -12,8 +12,8 @@ const SEED_HOLONS_DESCRIPTOR_KEY: &str = "SeedHolons.HolonType";
 const EXPAND_DESCRIPTOR_KEY: &str = "Expand.HolonType";
 
 const SEED_EXPRESSION_KEY: &str = "SeedHolons.Qry2Seed";
-const CHAINED_SEED_EXPRESSION_KEY: &str = "SeedHolons.Qry2Chained";
 const CHAINED_EXPAND_EXPRESSION_KEY: &str = "Expand.Qry2ChainedAuthoredBy";
+const CHAINED_INVERSE_EXPRESSION_KEY: &str = "Expand.Qry2ChainedAuthorOf";
 const AUTHORED_BY_EXPRESSION_KEY: &str = "Expand.Qry2AuthoredBy";
 const AUTHOR_OF_EXPRESSION_KEY: &str = "Expand.Qry2AuthorOf";
 const BOGUS_EXPRESSION_KEY: &str = "Expand.Qry2Bogus";
@@ -41,16 +41,16 @@ const PERSON_2_KEY: &str = "Qry2.Person.2";
 ///    bounded key lookup (proves the bootstrap carries the QRY2 schema; no
 ///    `GetAllHolons`), then stage, describe, and commit:
 ///    - `SeedHolons.Qry2Seed` and `Query.Qry2Seed` rooted at it;
-///    - `SeedHolons.Qry2Chained -Next-> Expand.Qry2ChainedAuthoredBy` and
-///      `Query.Qry2Chain` rooted at the seed.
+///    - `Expand.Qry2ChainedAuthoredBy -Next-> Expand.Qry2ChainedAuthorOf` and
+///      `Query.Qry2Chain` rooted at the first.
 /// 2. In a fresh transaction, resolve the committed definitions by key (the
 ///    caller-side lookup outside QueryCore) and execute, on both routes:
 ///    - `Query.Qry2Seed` with no input: `Complete`, result = the focal space's
 ///      `Owns` targets in storage order, including the committed definitions;
 ///    - `Query.Qry2Seed` with an input collection: the contract error
 ///      (`InvalidParameter`), not an ignored operand;
-///    - `Query.Qry2Chain` with no input: `NotImplemented` — a root carrying
-///      `Next` is refused rather than truncated to its root;
+///    - `Query.Qry2Chain` over `[Book.A]`: the declared step's result is the
+///      inverse step's input, giving `[Book.A, Book.B, Book.A]`;
 ///    - `Query.Qry2Expand` (declared `AuthoredBy`) over `[A, B, C]`: authors in
 ///      source order then storage order, duplicates kept, C contributing none;
 ///    - `Query.Qry2Expand` with no input: the transform-root contract error;
@@ -180,6 +180,21 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         seed_expression,
     )?;
 
+    // Declared -> inverse composition: books' authors, then those authors' books.
+    // The chain is rooted at `Expand` rather than `SeedHolons` deliberately: a
+    // source root over a real space yields every owned holon, and the next
+    // `Expand` would then fail on the first member whose type does not license
+    // the requested name. Constraining a seeded collection is what the
+    // predicate/operator track is for.
+    let chained_inverse = stage_described(
+        &mut test_case,
+        &fixture_context,
+        &mut fixture_holons,
+        CHAINED_INVERSE_EXPRESSION_KEY,
+        expansion_properties(PERSON_TO_BOOK_RELATIONSHIP),
+        &expand_type,
+        "Expand",
+    )?;
     let chained_expand = stage_described(
         &mut test_case,
         &fixture_context,
@@ -189,22 +204,13 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         &expand_type,
         "Expand",
     )?;
-    let chained_seed = stage_described(
-        &mut test_case,
-        &fixture_context,
+    let chained_expand = test_case.add_add_related_holons_step(
         &mut fixture_holons,
-        CHAINED_SEED_EXPRESSION_KEY,
-        PropertyMap::new(),
-        &seed_type,
-        "SeedHolons",
-    )?;
-    let chained_seed = test_case.add_add_related_holons_step(
-        &mut fixture_holons,
-        chained_seed,
+        chained_expand,
         RelationshipName(MapString("Next".to_string())),
-        vec![chained_expand],
+        vec![chained_inverse],
         None,
-        Some("Relate chained seed --Next--> Expand (chaining is refused in QRY2)".to_string()),
+        Some("Relate Expand(AuthoredBy) --Next--> Expand(AuthorOf)".to_string()),
     )?;
     stage_query(
         &mut test_case,
@@ -213,7 +219,7 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
         CHAIN_QUERY_KEY,
         "QRY2 chained query",
         &query_type,
-        chained_seed,
+        chained_expand,
     )?;
 
     for (expression_key, query_key, relationship_name, query_name) in [
@@ -316,12 +322,18 @@ pub fn query_qry2_seed_expand_fixture() -> Result<DancesTestCase, HolonError> {
             QueryExpectation::Error(HolonErrorKind::InvalidParameter),
             Some(format!("SeedHolons via {route:?} with a supplied input is a contract error")),
         )?;
+        // Chain: [Book.A] -AuthoredBy-> [Person.1, Person.2] -AuthorOf->
+        // Person.1's books [A, B] then Person.2's [A].
         test_case.add_execute_query_step(
             saved_chain_query.clone(),
-            QueryInputSpec::None,
+            QueryInputSpec::Collection(vec![saved_book_a.clone()]),
             route,
-            QueryExpectation::Error(HolonErrorKind::NotImplemented),
-            Some(format!("Root with Next via {route:?} is refused with NotImplemented")),
+            QueryExpectation::Members(vec![
+                saved_book_a.clone(),
+                saved_book_b.clone(),
+                saved_book_a.clone(),
+            ]),
+            Some(format!("Next chain via {route:?} threads each result into its successor")),
         )?;
 
         // Declared name: source order then storage order, duplicate Person.1
