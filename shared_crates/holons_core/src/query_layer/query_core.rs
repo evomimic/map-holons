@@ -177,6 +177,7 @@ impl QueryReference {
         Ok(QueryExecution {
             instance,
             executions: vec![root_execution],
+            active_step: None,
             root_expression,
             root_kind,
         })
@@ -211,6 +212,10 @@ pub struct QueryExecution {
     /// One record per executed step, in chain order. The root is `executions[0]`;
     /// later entries are created as the `Next` walk reaches them.
     executions: Vec<TransientReference>,
+    /// Index of the step currently executing, cleared once it completes. A
+    /// failure is charged to this step only; an error raised between steps
+    /// (reading `Next`, the cycle check) fails the instance alone.
+    active_step: Option<usize>,
     root_expression: HolonReference,
     root_kind: ExpressionKind,
 }
@@ -238,10 +243,12 @@ impl QueryExecution {
     /// linked as that step's `Result`, the step becomes `Complete`, and the
     /// holon becomes the next step's `Input` by identity. The final step's
     /// result is also linked as `ExecutionInstance.ExecutionResult` and
-    /// returned. On any failure the failing step and the instance become
-    /// `Failed`, no `Result` is written for that step, no `ExecutionResult` is
-    /// recorded, later steps are never created, and the error propagates
-    /// unchanged.
+    /// returned. On any failure the instance becomes `Failed`, no
+    /// `ExecutionResult` is recorded, later steps are never created, and the
+    /// error propagates unchanged. A step that was executing when the error
+    /// occurred becomes `Failed` with no `Result`; a step that already completed
+    /// keeps `Complete` and its `Result`, even when the error comes from
+    /// continuing past it (an unreadable `Next`, a cycle).
     pub fn run(mut self) -> Result<HolonCollectionReference, HolonError> {
         set_status(&mut self.instance, ExecutionStatus::Running)?;
 
@@ -251,10 +258,10 @@ impl QueryExecution {
                 Ok(result)
             }
             Err(error) => {
-                // The failing step is the last one created; earlier steps keep
+                // Only the step that was executing fails; completed steps keep
                 // the `Complete` they legitimately reached.
-                if let Some(step) = self.executions.last_mut() {
-                    set_status(step, ExecutionStatus::Failed)?;
+                if let Some(step) = self.active_step {
+                    set_status(&mut self.executions[step], ExecutionStatus::Failed)?;
                 }
                 set_status(&mut self.instance, ExecutionStatus::Failed)?;
                 Err(error)
@@ -265,7 +272,6 @@ impl QueryExecution {
     fn execute_chain(&mut self) -> Result<HolonCollectionReference, HolonError> {
         let context = self.instance.bound_context();
         let mut expression = self.root_expression.clone();
-        let mut kind = self.root_kind.clone();
         // `Next` cardinality permits a cycle (`A -Next-> B -Next-> A` satisfies
         // both `Next` and `Previous` as ZeroOrOne), which no schema or commit
         // check rejects. Terminate on the repeated expression rather than
@@ -276,7 +282,16 @@ impl QueryExecution {
 
         loop {
             let step = self.executions.len() - 1;
+            self.active_step = Some(step);
             set_status(&mut self.executions[step], ExecutionStatus::Running)?;
+            // The root was classified by `begin_execution`. A successor is
+            // classified only once its own record exists, so a failure here is
+            // charged to it rather than to its completed predecessor.
+            let kind = if step == 0 {
+                self.root_kind.clone()
+            } else {
+                ExpressionKind::classify(&expression)?
+            };
 
             // Position is a contract violation independent of any predicate, so
             // it is reported first.
@@ -315,7 +330,10 @@ impl QueryExecution {
                 vec![result_reference.clone()],
             )?;
             set_status(&mut self.executions[step], ExecutionStatus::Complete)?;
+            self.active_step = None;
 
+            // Continuation errors from here to the next iteration concern the
+            // expression graph, not an operator: they fail the instance only.
             let Some(next) = zero_or_one(&expression, QueryRelationshipTypeName::Next)? else {
                 self.instance.add_related_holons(
                     QueryRelationshipTypeName::ExecutionResult,
@@ -330,7 +348,6 @@ impl QueryExecution {
                 )));
             }
 
-            kind = ExpressionKind::classify(&next)?;
             let mut record = new_runtime_record(
                 &context,
                 &format!("{QUERY_EXPRESSION_EXECUTION_KEY}-{}", step + 1),
@@ -1254,14 +1271,79 @@ mod tests {
         let execution = query
             .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
             .unwrap();
-        let instance = execution.instance().clone();
+        let instance: HolonReference = execution.instance().clone().into();
 
         let error = execution.run().unwrap_err();
         assert!(
             matches!(&error, HolonError::InvalidParameter(message) if message.contains("cyclic")),
             "unexpected error: {error:?}"
         );
-        assert_eq!(status_of(&instance), "Failed");
+        assert_eq!(
+            instance.property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+        );
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
+
+        // Both steps ran to completion before the walk found B -> A. The cycle is
+        // a fault of the expression graph, not of either step, so neither is
+        // retroactively failed and each keeps the Result it produced.
+        let records =
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        assert_eq!(records.len(), 2, "no record is created for the revisited expression");
+        for record in &records {
+            assert_eq!(
+                record.property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+                Some(BaseValue::EnumValue(ExecutionStatus::Complete.as_enum_value()))
+            );
+            assert_eq!(
+                related_members(record, QueryRelationshipTypeName::Result).unwrap().len(),
+                1
+            );
+        }
+    }
+
+    #[test]
+    fn successor_classification_failure_fails_the_successor_not_its_predecessor() {
+        let fixture = build_fixture();
+        // The successor has no descriptor, so it cannot be classified. That is a
+        // fault of the successor: it gets a record, and that record fails.
+        let mut first = fixture.expand("first", "AuthoredBy");
+        let undescribed = new_test_holon(&fixture.context, "undescribed").unwrap();
+        chain(&mut first, &undescribed);
+        let query = fixture.query_with_root(&first);
+        let input = fixture.collection_of("chain-input", &[20]);
+
+        let execution = query
+            .begin_execution(&fixture.context, fixture.focal_space(), Some(input), Vec::new())
+            .unwrap();
+        let instance: HolonReference = execution.instance().clone().into();
+
+        execution.run().unwrap_err();
+
+        let records =
+            related_members(&instance, QueryRelationshipTypeName::ExpressionExecutions).unwrap();
+        assert_eq!(records.len(), 2, "the successor's record exists before it is classified");
+        assert_eq!(
+            records[0].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Complete.as_enum_value())),
+            "the predecessor completed and is not blamed"
+        );
+        assert_eq!(
+            related_members(&records[0], QueryRelationshipTypeName::Result).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            records[1].property_value(QueryPropertyTypeName::ExecutionStatus).unwrap(),
+            Some(BaseValue::EnumValue(ExecutionStatus::Failed.as_enum_value()))
+        );
+        assert!(related_members(&records[1], QueryRelationshipTypeName::Result)
+            .unwrap()
+            .is_empty());
+        assert!(related_members(&instance, QueryRelationshipTypeName::ExecutionResult)
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
