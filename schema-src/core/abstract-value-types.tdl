@@ -116,6 +116,7 @@ abstract value ValueType.TypeDescriptor {
 abstract value StringValueType.ValueType {
   type MetaStringValueType.MetaValueType
   extends ValueType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor family for string-based value types. It does not directly describe runtime values; every concrete descendant inherits its string classification and core Equals and LessThan operator affordances additively. A specialization retains those affordances and may add its own operators."
     display_name: "String Value Type"
@@ -134,6 +135,7 @@ abstract value StringValueType.ValueType {
 abstract value IntegerValueType.ValueType {
   type MetaIntegerValueType.MetaValueType
   extends ValueType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor family for integer-based value types. It does not directly describe runtime values; every concrete descendant inherits its integer classification and core Equals and LessThan operator affordances additively. A specialization retains those affordances and may add its own operators."
     display_name: "Integer Value Type"
@@ -152,6 +154,7 @@ abstract value IntegerValueType.ValueType {
 abstract value BooleanValueType.ValueType {
   type MetaValueType.MetaTypeDescriptor
   extends ValueType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor family for Boolean value types. It does not directly describe runtime values; every concrete descendant inherits its Boolean classification and core Equals operator affordance additively. A specialization retains that affordance and may add its own operators."
     display_name: "Boolean Value Type"
@@ -167,6 +170,7 @@ abstract value BooleanValueType.ValueType {
 abstract value BytesValueType.ValueType {
   type MetaBytesValueType.MetaValueType
   extends ValueType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor family for byte-sequence value types. It does not directly describe runtime values; concrete descendants inherit its bytes classification without implying operator affordances that bytes value types may not share."
     display_name: "Bytes Value Type"
@@ -181,6 +185,7 @@ abstract value BytesValueType.ValueType {
 abstract enum EnumValueType.ValueType {
   type MetaEnumValueType.MetaValueType
   extends ValueType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor family for enum value types. It does not directly describe runtime values; every concrete enum descendant inherits the enum classification and core Equals operator affordance additively, without requiring each enum definition to author it locally. A specialization retains that affordance and may add its own operators."
     display_name: "Enum Value Type"
@@ -196,6 +201,7 @@ abstract enum EnumValueType.ValueType {
 abstract enum MapEnumValueType.EnumValueType {
   type MetaEnumValueType.MetaValueType
   extends EnumValueType.ValueType
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract MAP enum lineage anchor for concrete enum value-type descriptors. It is not a generic runtime enum value; concrete enum definitions extend it to share the generic enum semantics inherited from EnumValueType while retaining their own variants and domain-specific metadata."
     display_name: "MapEnumValueType"
@@ -207,6 +213,7 @@ abstract enum MapEnumValueType.EnumValueType {
 abstract variant EnumVariantValueType.ValueType {
   type MetaValueType.MetaTypeDescriptor
   extends ValueType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor family for symbolic values owned by enum value types. It does not directly describe runtime values; concrete variant descriptors inherit this classification while their owning enum supplies the permitted member set."
     display_name: "Enum Variant Value Type"
@@ -218,6 +225,7 @@ abstract variant EnumVariantValueType.ValueType {
 abstract variant MapEnumVariantValueType.EnumVariantValueType {
   type MetaValueType.MetaTypeDescriptor
   extends EnumVariantValueType.ValueType
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract MAP enum-variant lineage anchor for concrete enum-member descriptors. It is not a generic runtime variant; concrete variants extend it to share the enum-variant classification while remaining owner-qualified members of a particular enum definition."
     display_name: "MapEnumVariant Value Type"
@@ -229,6 +237,7 @@ abstract variant MapEnumVariantValueType.EnumVariantValueType {
 abstract value ValueArrayValueType.ValueType {
   type MetaValueArrayValueType.MetaValueType
   extends ValueType.TypeDescriptor
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract descriptor family for array value types. It does not directly describe runtime values; concrete descendants inherit the array classification and supply the element value type and any applicable array constraints."
     display_name: "Value Array Type"
@@ -240,6 +249,7 @@ abstract value ValueArrayValueType.ValueType {
 abstract value MapValueArrayType.ValueArrayValueType {
   type MetaValueArrayValueType.MetaValueType
   extends ValueArrayValueType.ValueType
+  DefinesInstanceTypeKind true
   header {
     description: "Abstract MAP array lineage anchor for concrete array value-type descriptors. It is not a generic runtime array value; concrete descendants extend it to share array semantics while supplying their own element value type and applicable constraints."
     display_name: "MapValueArrayType"

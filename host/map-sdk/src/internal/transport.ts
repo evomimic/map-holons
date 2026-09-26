@@ -34,7 +34,8 @@ export async function invokeMapCommand(
   request: MapIpcRequest,
 ): Promise<MapIpcResponse> {
   let response: unknown;
-  const profiling = performance.getEntriesByName('map.startup.active', 'mark').length > 0;
+  const navigation = performance.getEntriesByName('map.navigation.active', 'mark').at(-1) as PerformanceMark | undefined;
+  const profiling = navigation !== undefined || performance.getEntriesByName('map.startup.active', 'mark').length > 0;
   const started = profiling ? performance.now() : 0;
 
   try {
@@ -43,10 +44,10 @@ export async function invokeMapCommand(
     throw new TransportError('Failed to invoke dispatch_map_command', cause);
   } finally {
     if (profiling) {
-      performance.measure('map.ipc', {
+      performance.measure(navigation ? 'map.navigation.ipc' : 'map.ipc', {
         start: started,
         end: performance.now(),
-        detail: commandProfileLabel(request.command),
+        detail: navigation ? { run: navigation.detail, requestId: request.request_id, command: commandProfileLabel(request.command) } : commandProfileLabel(request.command),
       });
     }
   }

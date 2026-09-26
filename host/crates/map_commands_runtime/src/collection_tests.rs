@@ -269,3 +269,42 @@ async fn reads_actual_values_without_validation_and_preserves_absence() {
         matches!(read(&context, 3, ReadableHolonAction::GetInstanceProperties).await.unwrap(), MapResult::Collection(properties) if properties.get_members().len() == 1)
     );
 }
+
+#[tokio::test]
+async fn reads_ordering_policy_and_rejects_missing_or_invalid_flags() {
+    let mut graph = Graph::default();
+    graph.property(1, "IsOrdered", BaseValue::BooleanValue(true.into()));
+    graph.property(2, "IsOrdered", BaseValue::BooleanValue(false.into()));
+    graph.property(3, "IsOrdered", BaseValue::StringValue("true".into()));
+    let context = graph.context();
+    for (id, expected) in [(1, true), (2, false)] {
+        assert!(matches!(
+            read(&context, id, ReadableHolonAction::GetRelationshipIsOrdered).await.unwrap(),
+            MapResult::Value(BaseValue::BooleanValue(value)) if value.0 == expected
+        ));
+    }
+    for id in [3, 4] {
+        assert!(read(&context, id, ReadableHolonAction::GetRelationshipIsOrdered).await.is_err());
+    }
+}
+
+#[tokio::test]
+async fn resolves_inherited_instance_key_policy_in_rust() {
+    let mut graph = Graph::default();
+    graph.edge(1, "Extends", &[2]);
+    graph.edge(2, "InstanceKeyRule", &[3]);
+    graph.edge(3, "Extends", &[4]);
+    graph.property(3, "TypeName", BaseValue::StringValue("TypeNameRule".into()));
+    graph.property(4, "TypeName", BaseValue::StringValue("KeyRuleType".into()));
+    graph.edge(5, "InstanceKeyRule", &[6]);
+    graph.edge(6, "Extends", &[4]);
+    graph.property(6, "TypeName", BaseValue::StringValue("NoneRule".into()));
+    let context = graph.context();
+    for (id, expected) in [(1, true), (5, false)] {
+        assert!(matches!(
+            read(&context, id, ReadableHolonAction::GetHasInstanceKey).await.unwrap(),
+            MapResult::Value(BaseValue::BooleanValue(value)) if value.0 == expected
+        ));
+    }
+    assert!(read(&context, 7, ReadableHolonAction::GetHasInstanceKey).await.is_err());
+}

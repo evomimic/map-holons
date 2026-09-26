@@ -42,7 +42,7 @@ function isVisualizerSelectionWire(value: unknown): value is VisualizerSelection
       value['requested_kind'] === 'Node' ||
       value['requested_kind'] === 'RootedNavigation' ||
       value['requested_kind'] === 'Collection' ||
-      value['requested_kind'] === 'Properties' ||
+      value['requested_kind'] === 'PropertyMap' ||
       value['requested_kind'] === 'Property' ||
       value['requested_kind'] === 'Value' ||
       value['requested_kind'] === 'Action') &&

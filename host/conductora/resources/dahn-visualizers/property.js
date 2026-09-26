@@ -1,4 +1,5 @@
 export default class PropertyVisualizerElement extends HTMLElement {
+  static compositionSlots = { value: 'GenericProperty.ValueSlot' };
   setContext(context) {
     this.dataset.dahnProperty = 'true';
     this.style.display = 'grid';

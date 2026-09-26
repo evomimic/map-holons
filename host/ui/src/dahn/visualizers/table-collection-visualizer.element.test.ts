@@ -97,7 +97,7 @@ describe('TableCollectionVisualizerElement', () => {
       ],
     }));
 
-    expect(Array.from(element.querySelectorAll('th'), (header) => header.textContent)).toEqual([
+    expect(Array.from(element.querySelectorAll('th'), (header) => header.querySelector('[data-sort-toggle]')?.textContent ?? header.textContent)).toEqual([
       'Family name',
       'Active',
     ]);
@@ -196,9 +196,9 @@ it('retains actual handles, suppresses repeated Enter, and ignores late collecti
     setInspectHolonHandler(handler: ((reference: unknown) => void) | null): void;
   };
   const inspect = vi.fn(); element.setInspectHolonHandler(inspect);
-  const member = { propertyValue: vi.fn(async () => ({ StringValue: 'same' })) };
+  const member = { holonDescriptor: async () => ({ hasInstanceKey: async () => false }), propertyValue: vi.fn(async () => ({ StringValue: 'same' })) };
   const properties = [{ isArray: async () => false, propertyName: async () => 'Key', displayName: async () => 'Key', valueKind: async () => 'StringValue' }];
-  const collection = { elementType: { instanceProperties: async () => properties }, [Symbol.iterator]: function* () { yield member; } };
+  const collection = { elementType: { hasInstanceKey: async () => false, instanceProperties: async () => properties }, [Symbol.iterator]: function* () { yield member; } };
   await element.setCollection(collection, 'Current'); document.body.append(element);
   const row = element.querySelector<HTMLTableRowElement>('tbody tr')!;
   row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -206,7 +206,8 @@ it('retains actual handles, suppresses repeated Enter, and ignores late collecti
   expect(inspect).toHaveBeenCalledExactlyOnceWith(member);
   expect(member.propertyValue).toHaveBeenCalledTimes(1);
   let finish!: (value: typeof properties) => void;
-  const pending = element.setCollection({ ...collection, elementType: { instanceProperties: () => new Promise(resolve => { finish = resolve; }) } }, 'Obsolete');
+  const pending = element.setCollection({ ...collection, elementType: { hasInstanceKey: async () => false, instanceProperties: () => new Promise(resolve => { finish = resolve; }) } }, 'Obsolete');
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
   await element.setCollection(collection, 'Replacement');
   finish(properties); await pending;
   expect(element.querySelector('table')?.getAttribute('aria-label')).toBe('Replacement');
@@ -229,4 +230,83 @@ it('suppresses native repeated-click text selection while preserving ordinary te
   expect(press(2)).toBe(true);
   expect(press(3)).toBe(true);
   expect(press(2, 2)).toBe(false);
+});
+
+type SortableTable = TableCollectionVisualizerElement & {
+  getCollectionViewState(): unknown;
+  restoreCollectionViewState(state: unknown): void;
+};
+const rowOrder = (element: HTMLElement) => [...element.querySelectorAll<HTMLElement>('tbody tr')].map(row => row.dataset.rowId);
+const sortColumn = (element: HTMLElement, id: string) => element.querySelector<HTMLButtonElement>(`th[data-column-id="${id}"] button`)!.click();
+
+it('sorts typed values stably, keeps null last both ways, and preserves row selection and input', () => {
+  const element = createTableCollectionVisualizer();
+  const presentation: TablePresentation = { kind: 'holon-property-map', displayName: 'Numbers', rowIds: ['ten', 'two-a', 'missing', 'two-b'], columns: [
+    { id: 'Number', displayName: 'Number', valueType: 'IntegerValue', values: [{ IntegerValue: 10 }, { IntegerValue: 2 }, null, { IntegerValue: 2 }] },
+    { id: 'Name', displayName: 'Name', valueType: 'StringValue', values: ['ten', 'two-a', 'missing', 'two-b'].map(StringValue => ({ StringValue })) },
+  ] };
+  const original = structuredClone(presentation);
+  element.setContext(context(presentation)); document.body.append(element);
+  const selected = element.querySelector<HTMLElement>('[data-row-id="two-b"]')!;
+  selected.click(); selected.focus();
+  sortColumn(element, 'Number');
+  expect(rowOrder(element)).toEqual(['two-a', 'two-b', 'ten', 'missing']);
+  expect(document.activeElement).toBe(selected);
+  expect(selected.getAttribute('aria-selected')).toBe('true');
+  expect(element.querySelector('th')?.getAttribute('aria-sort')).toBe('ascending');
+  sortColumn(element, 'Number');
+  expect(rowOrder(element)).toEqual(['ten', 'two-a', 'two-b', 'missing']);
+  expect(element.querySelector('th')?.getAttribute('aria-sort')).toBe('descending');
+  expect([...element.querySelectorAll('td[data-column-id="Name"]')].map(cell => cell.textContent)).toEqual(['ten', 'two-a', 'two-b', 'missing']);
+  expect(presentation).toEqual(original);
+});
+
+it('uses case-sensitive string and boolean ordering and excludes unsupported kinds', () => {
+  const element = createTableCollectionVisualizer();
+  element.setContext(context({ kind: 'holon-property-map', displayName: 'Values', rowIds: ['a', 'B', 'A'], columns: [
+    { id: 'Text', displayName: 'Text', valueType: 'StringValue', values: ['a', 'B', 'A'].map(StringValue => ({ StringValue })) },
+    { id: 'Flag', displayName: 'Flag', valueType: 'BooleanValue', values: [true, false, true].map(BooleanValue => ({ BooleanValue })) },
+    { id: 'Mixed', displayName: 'Mixed', valueType: 'AnyBaseValue', values: [null, { IntegerValue: 2 }, { StringValue: 'a' }] },
+  ] }));
+  sortColumn(element, 'Text'); expect(rowOrder(element)).toEqual(['A', 'B', 'a']);
+  sortColumn(element, 'Flag'); expect(rowOrder(element)).toEqual(['B', 'a', 'A']);
+  expect(element.querySelector('th[data-column-id="Text"]')?.hasAttribute('aria-sort')).toBe(false);
+  expect(element.querySelector('th[data-column-id="Mixed"] button')).toBeNull();
+});
+
+it('restores a saved sort, falls back to the table default, and keeps the indicator outside fitted columns', () => {
+  const element = createTableCollectionVisualizer() as SortableTable;
+  const presentation: TablePresentation = { kind: 'holon-property-map', displayName: 'Keys', defaultSortColumnId: 'Key', rowIds: ['b', 'a'], columns: [{ id: 'Key', displayName: 'Key', valueType: 'StringValue', values: [{ StringValue: 'b' }, { StringValue: 'a' }] }] };
+  element.setContext(context(presentation)); expect(rowOrder(element)).toEqual(['a', 'b']);
+  sortColumn(element, 'Key'); const saved = element.getCollectionViewState();
+  expect(rowOrder(element)).toEqual(['b', 'a']);
+  element.setContext(context(presentation)); element.restoreCollectionViewState(saved);
+  expect(rowOrder(element)).toEqual(['b', 'a']);
+  element.querySelector('th')!.hidden = true;
+  expect(element.querySelector('[data-table-collection="sort-status"]')?.textContent).toBe('Sorted by Key, descending');
+  element.restoreCollectionViewState({ kind: 'table-sort-v1', sort: { columnId: 'Removed', direction: 'ascending' } });
+  expect(rowOrder(element)).toEqual(['a', 'b']);
+  element.setContext(context({ ...presentation, defaultSortColumnId: undefined }));
+  element.restoreCollectionViewState({ kind: 'table-sort-v1', sort: { columnId: 'Key', direction: 'invalid' } });
+  expect(rowOrder(element)).toEqual(['b', 'a']);
+});
+
+it.each([0, 1])('sorts a %i-row scalar table without activation', count => {
+  const element = createTableCollectionVisualizer();
+  element.setContext(context({ kind: 'scalar', displayName: 'Values', rowIds: count ? ['one'] : [], columns: [{ id: 'Value', displayName: 'Value', valueType: 'IntegerValue', values: count ? [{ IntegerValue: 1 }] : [] }] }));
+  sortColumn(element, 'Value'); sortColumn(element, 'Value');
+  expect(rowOrder(element)).toEqual(count ? ['one'] : []);
+  expect(element.querySelector('[aria-selected="true"]')).toBeNull();
+});
+
+it('shows explicit ascending and descending choices on sortable property columns', () => {
+  const element = createTableCollectionVisualizer();
+  element.setContext(context({ kind: 'scalar', displayName: 'Numbers', rowIds: ['two', 'one'], columns: [{ id: 'Value', displayName: 'Value', valueType: 'IntegerValue', values: [{ IntegerValue: 2 }, { IntegerValue: 1 }] }] }));
+  const ascending = element.querySelector<HTMLButtonElement>('button[aria-label="Sort Value ascending"]');
+  const descending = element.querySelector<HTMLButtonElement>('button[aria-label="Sort Value descending"]');
+  expect(ascending).not.toBeNull(); expect(descending).not.toBeNull();
+  ascending!.click(); expect(rowOrder(element)).toEqual(['one', 'two']);
+  descending!.click(); expect(rowOrder(element)).toEqual(['two', 'one']);
+  expect(descending!.getAttribute('aria-pressed')).toBe('true');
+  expect(ascending!.getAttribute('aria-pressed')).toBe('false');
 });

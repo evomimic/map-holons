@@ -68,7 +68,7 @@ describe('Holon Inspector visualizer artifact', () => {
     class PropertiesTestHolonInspector extends HolonInspector {}
     customElements.define(tagName, PropertiesTestHolonInspector);
     const properties = document.createElement('section');
-    properties.dataset.selectedPropertiesVisualizer = 'true';
+    properties.dataset.selectedPropertyMapVisualizer = 'true';
     const element = document.createElement(tagName) as HolonInspectorElement;
 
     element.setContext({ childVisualizers: new Map([['properties', properties]]) });

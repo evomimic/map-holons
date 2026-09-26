@@ -67,6 +67,9 @@ pub enum ReadableHolonActionWire {
     GetAvailableRelationships,
     GetEffectiveCardinality,
     GetPropertyIsArray,
+    /// Whether the target HolonType defines a non-keyless effective instance key rule.
+    GetHasInstanceKey,
+    GetRelationshipIsOrdered,
     GetAvailableDances,
     GetDescribedRelatedHolons {
         name: RelationshipName,
@@ -158,6 +161,10 @@ impl ReadableHolonActionWire {
                 ReadableHolonAction::GetEffectiveCardinality
             }
             ReadableHolonActionWire::GetPropertyIsArray => ReadableHolonAction::GetPropertyIsArray,
+            ReadableHolonActionWire::GetHasInstanceKey => ReadableHolonAction::GetHasInstanceKey,
+            ReadableHolonActionWire::GetRelationshipIsOrdered => {
+                ReadableHolonAction::GetRelationshipIsOrdered
+            }
             ReadableHolonActionWire::GetAvailableDances => ReadableHolonAction::GetAvailableDances,
             ReadableHolonActionWire::GetAvailableRelationships => {
                 ReadableHolonAction::GetAvailableRelationships

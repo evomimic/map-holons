@@ -1,4 +1,5 @@
 export default class HolonInspectorElement extends HTMLElement {
+  static compositionSlots = { propertyMap: 'HolonInspector.PropertyMapSlot', action: 'HolonInspector.ActionsSlot' };
   setSingularNavigationState(state) {
     for (const [affordance, button] of this.singularControls ?? []) {
       button.setAttribute('aria-pressed', String(state.active === affordance));

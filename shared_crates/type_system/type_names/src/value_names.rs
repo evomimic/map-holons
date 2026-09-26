@@ -5,6 +5,13 @@ use strum_macros::VariantNames;
 #[derive(Debug, Clone, VariantNames)]
 pub enum CoreValueTypeName {
     DanceDiagnosticSeverity,
+    ValueType,
+    BooleanValueType,
+    BytesValueType,
+    EnumValueType,
+    EnumVariantValueType,
+    MapEnumVariantValueType,
+    ValueArrayValueType,
     IntegerValueType,
     InvocationSource,
     RequiredExecutionContext,

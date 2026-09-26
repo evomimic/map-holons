@@ -15,17 +15,17 @@ const artifacts = Object.fromEntries(await Promise.all(
   ['holon-inspector', 'path-inspector', 'table-collection', 'properties', 'property', 'scalar-value', 'actions']
     .map(async name => [name, await readFile(resolve(process.cwd(), `conductora/resources/dahn-visualizers/${name}.js`), 'utf8')]),
 ));
-const selected = (key: string) => ({ key: async () => key }) as HolonReference;
-const visualizers = { node: selected('holon-inspector'), properties: selected('properties'), action: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
+const selected = (key: string) => ({ key: async () => key, relatedHolons: async () => ['HolonInspector.PropertyMapSlot', 'HolonInspector.ActionsSlot', 'DefaultPropertyMapVisualizer.PropertySlot', 'GenericProperty.ValueSlot', 'PathInspector.RootNodeSlot'].map(key => ({ key: async () => key })) }) as HolonReference;
+const visualizers = { node: selected('holon-inspector'), propertyMap: selected('properties'), action: selected('actions'), property: selected('property'), value: selected('scalar-value'), collection: selected('table-collection') };
 const property = { propertyName: async () => 'Name', displayName: async () => 'Name', isArray: async () => false, valueKind: async () => 'StringValue' };
-const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
+const relationship = (name: string, maximum: number | null = null) => ({ direction: 'declared', descriptor: { isOrdered: async () => false, description: async () => 'Relationship description', relationshipName: async () => name, displayName: async () => name, effectiveCardinality: async () => ({ minimum: 0, maximum }) } });
 function subject(name: string) {
   return {
     holonId: async () => ({ Local: [...name].map(char => char.charCodeAt(0)) }),
     key: async () => name,
     versionedKey: async () => name,
     propertyValue: vi.fn(async () => ({ StringValue: name })),
-    holonDescriptor: async () => ({ displayName: async () => 'Example' }),
+    holonDescriptor: async () => ({ hasInstanceKey: async () => false, displayName: async () => 'Example' }),
     availableProperties: async () => [property],
     availableRelationships: async () => [relationship('Members'), relationship('Other'), relationship('First', 1), relationship('Second', 1), relationship('Third', 1)],
     availableDances: async () => [],
@@ -34,7 +34,7 @@ function subject(name: string) {
   };
 }
 function collection(members: ReturnType<typeof subject>[]) {
-  return { length: members.length, elementType: { instanceProperties: async () => [property] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
+  return { length: members.length, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -48,7 +48,7 @@ async function fixture() {
     ref.describedRelatedHolons.mockResolvedValue(collection([a, b, rootSubject]));
     ref.relatedHolons.mockImplementation(async name => collection([name === 'First' ? a : name === 'Second' ? b : rootSubject]));
   }
-  const selectVisualizer = vi.fn(async (request: { requestedKind: 'node' | 'properties' | 'action' }) => ({ selected: visualizers[request.requestedKind] }));
+  const selectVisualizer = vi.fn(async (request: { requestedKind: 'node' | 'propertyMap' | 'action' }) => ({ selected: visualizers[request.requestedKind] }));
   const transaction = {
     selectVisualizer,
     selectPropertyVisualizer: vi.fn(async () => ({ selected: visualizers.property })),
@@ -61,7 +61,7 @@ async function fixture() {
   const realize = vi.fn((ref: HolonReference, selected: HolonReference) => realizeNode(transaction, runtime, ref, selected, {} as never, {} as never));
   const root = await realize(rootSubject as never, visualizers.node);
   const parent = selected('path-inspector');
-  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, realize);
+  const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), realize);
   let occurrences: readonly PathOccurrence[] = [];
   navigation.subscribe(path => { occurrences = [...path]; });
   const Path = (await importer(artifacts['path-inspector'])).default;
@@ -129,7 +129,7 @@ describe('vertical traversal through selected artifacts', () => {
     rows[0].click(); expect(nodeSelections(f)).toHaveLength(0);
     activate(rows[0]);
     await vi.waitFor(() => expect(f.path()).toHaveLength(2));
-    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', parentVisualizer: f.parent });
+    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), parentVisualizer: f.parent });
     const child = f.path()[1];
     expect(child.subject).toBe(f.a); expect(child.id).not.toBe(f.path()[0].id);
     expect(child.selectedVisualizer).toBe(visualizers.node);
@@ -384,7 +384,7 @@ describe('singular traversal through selected artifacts', () => {
     expect(a.rowId).toBe(root.rowId); expect(a.column).toBe(2);
     expect(a.provenance).toMatchObject({ kind: 'singular-relationship', parentOccurrenceId: root.id, affordance: { label: 'First' } });
     expect(a.provenance).not.toHaveProperty('collectionOccurrenceId');
-    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', parentVisualizer: f.parent });
+    expect(nodeSelections(f)[0][0]).toEqual({ subject: f.a, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), parentVisualizer: f.parent });
     expect(rail(root.element).getAttribute('aria-pressed')).toBe('true');
     const calls = nodeSelections(f).length;
     await right(f, root);
@@ -585,7 +585,7 @@ describe('recursive horizontal navigation', () => {
         expect(f.element.querySelector(`[data-lineage-child="${item.id}"]`)?.getAttribute('data-lineage-parent')).toBe(chain[index - 1].id);
       }
     }
-    expect(nodeSelections(f).map(([request]) => request)).toEqual([f.a, f.b, c].map(subject => ({ subject, requestedKind: 'node', parentVisualizer: f.parent })));
+    expect(nodeSelections(f).map(([request]) => request)).toEqual([f.a, f.b, c].map(subject => ({ subject, requestedKind: 'node', slot: expect.objectContaining({ key: expect.any(Function) }), parentVisualizer: f.parent })));
     expect(f.a.relatedHolons).toHaveBeenCalledWith('First');
     expect(f.b.relatedHolons).toHaveBeenCalledWith('First');
     expect(c.relatedHolons).not.toHaveBeenCalled();
@@ -704,4 +704,23 @@ it('shows horizontal opening feedback in the destination slot without publishing
   expect(f.element.querySelector('[data-path-pending-source]')).toBeNull();
   expect(b.element.isConnected).toBe(true);
   expect(a.message).toContain('no target');
+});
+
+it('retains the real table sort through traversal, two-axis allocation and restoration', async () => {
+  const f = await fixture(); const root = f.path()[0];
+  await openCollection(root.element);
+  const sort = root.element.querySelector<HTMLButtonElement>('th[data-column-id="Name"] button')!;
+  sort.click(); sort.click();
+  const table = root.element.querySelector('table');
+  const ids = [...table!.querySelectorAll<HTMLElement>('tbody tr')].map(row => row.dataset.rowId);
+  const horizontal = await right(f, root);
+  const rows = await openCollection(horizontal.element); activate(rows[1]);
+  await vi.waitFor(() => expect(f.path()).toHaveLength(3));
+  const retained = f.path().map(item => ({ id: item.id, provenance: item.provenance }));
+  f.navigation.restore(root.id);
+  expect(f.path().map(item => ({ id: item.id, provenance: item.provenance }))).toEqual(retained);
+  expect(root.element.querySelector('table')).toBe(table);
+  expect(root.element.querySelector('th')?.getAttribute('aria-sort')).toBe('descending');
+  expect([...table!.querySelectorAll<HTMLElement>('tbody tr')].map(row => row.dataset.rowId)).toEqual(ids);
+  expect(root.element.querySelector('[data-table-collection="sort-status"]')?.textContent).toBe('Sorted by Name, descending');
 });

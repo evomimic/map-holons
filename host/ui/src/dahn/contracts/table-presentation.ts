@@ -37,6 +37,10 @@ export interface TableColumn {
 }
 
 interface TablePresentationBase {
+  /** Descriptor-authorized table default; absent means supplied order. */
+  defaultSortColumnId?: TableColumnId;
+  /** Ordered relationship whose occurrence positions are not yet available. */
+  manualOrderUnavailable?: boolean;
   displayName: MapString;
   rowIds: readonly TableRowId[];
   columns: readonly TableColumn[];

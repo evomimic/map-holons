@@ -55,6 +55,21 @@ describe('invokeMapCommand', () => {
     expect(invokeMock).toHaveBeenCalledWith('dispatch_map_command', { request });
   });
 
+  it('correlates navigation IPC timings without mixing startup measures', async () => {
+    performance.mark('map.navigation.active', { detail: 'test-run' });
+    invokeMock.mockResolvedValue(okResponse);
+    try {
+      await invokeMapCommand(request);
+      const entries = performance.getEntriesByName('map.navigation.ipc', 'measure');
+      expect((entries.at(-1) as PerformanceMeasure).detail).toEqual({
+        run: 'test-run', requestId: 17, command: 'Space.BeginTransaction',
+      });
+    } finally {
+      performance.clearMarks('map.navigation.active');
+      performance.clearMeasures('map.navigation.ipc');
+    }
+  });
+
   it('throws TransportError when the Tauri invoke call rejects', async () => {
     const cause = new Error('plugin unavailable');
     invokeMock.mockRejectedValue(cause);
