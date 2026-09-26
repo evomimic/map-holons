@@ -10,7 +10,7 @@ export async function classifyNodeAffordances(holon: HolonViewAccess): Promise<N
   const collections: CollectionAffordance[] = [];
   const singularRelationships: RelationshipAffordance[] = [];
   const actions: ActionNode[] = [];
-  // These reads share a bound transaction; preserve the command serialization seam.
+  // Preserve descriptor order here; runtime population is discovered independently.
   for (const property of await holon.availableProperties()) {
     if (await property.isArray()) collections.push({ kind: 'property', label: await property.propertyName(), property });
     else scalarProperties.push(property);

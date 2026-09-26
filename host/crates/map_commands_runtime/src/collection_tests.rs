@@ -18,6 +18,7 @@ use std::{any::Any, collections::HashMap, sync::Arc};
 struct Graph {
     edges: HashMap<(u8, String), Vec<u8>>,
     properties: HashMap<u8, PropertyMap>,
+    overlap: Option<Arc<ReadOverlap>>,
 }
 impl Graph {
     fn edge(&mut self, source: u8, name: &str, targets: &[u8]) {
@@ -96,6 +97,9 @@ impl HolonServiceApi for Graph {
         id: &HolonId,
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
+        if let Some(overlap) = &self.overlap {
+            overlap.arrive(name);
+        }
         let mut result = HolonCollection::new_transient();
         result.add_references(
             self.edges
@@ -307,4 +311,85 @@ async fn resolves_inherited_instance_key_policy_in_rust() {
         ));
     }
     assert!(read(&context, 7, ReadableHolonAction::GetHasInstanceKey).await.is_err());
+}
+
+/// Forces two real command-handler reads to overlap on one bound transaction.
+/// Timeouts turn accidental serialization into a failure instead of a hung test.
+#[derive(Debug, Default)]
+struct ReadOverlap {
+    state: std::sync::Mutex<(bool, bool)>,
+    changed: std::sync::Condvar,
+}
+impl ReadOverlap {
+    fn arrive(&self, name: &RelationshipName) {
+        let mut state = self.state.lock().unwrap();
+        if name.to_string() == "Slow" {
+            state.0 = true;
+            self.changed.notify_all();
+            let (state, timeout) = self
+                .changed
+                .wait_timeout_while(state, std::time::Duration::from_secs(5), |state| !state.1)
+                .unwrap();
+            assert!(
+                !timeout.timed_out() && state.1,
+                "second read must finish while first is pending"
+            );
+        }
+    }
+}
+
+#[test]
+fn concurrent_membership_commands_share_context_without_serializing_or_mutating_it() {
+    let overlap = Arc::new(ReadOverlap::default());
+    let mut graph = Graph { overlap: Some(overlap.clone()), ..Graph::default() };
+    graph.edge(1, "Slow", &[2]);
+    graph.edge(1, "Fast", &[3, 4]);
+    let context = graph.context();
+    let staged_before = context.lookup().staged_count().unwrap();
+    let transient_before = context.lookup().transient_count().unwrap();
+    let execute = |name: &str| {
+        let runtime = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        let result = runtime
+            .block_on(read(
+                &context,
+                1,
+                ReadableHolonAction::GetRelatedHolons {
+                    name: RelationshipName(name.into()),
+                    hint: holons_core::RelationshipReadHint::RequireFresh,
+                },
+            ))
+            .unwrap();
+        let MapResult::Collection(collection) = result else {
+            panic!("expected membership");
+        };
+        collection
+            .get_members()
+            .iter()
+            .map(|member| member.holon_id().unwrap().local_id().0[0])
+            .collect::<Vec<_>>()
+    };
+    std::thread::scope(|scope| {
+        let slow = scope.spawn(|| execute("Slow"));
+        let (state, timeout) = overlap
+            .changed
+            .wait_timeout_while(
+                overlap.state.lock().unwrap(),
+                std::time::Duration::from_secs(5),
+                |state| !state.0,
+            )
+            .unwrap();
+        assert!(!timeout.timed_out() && state.0, "first read must reach the service");
+        drop(state);
+        let fast = scope.spawn(|| {
+            let members = execute("Fast");
+            overlap.state.lock().unwrap().1 = true;
+            overlap.changed.notify_all();
+            members
+        });
+        assert_eq!(fast.join().unwrap(), vec![3, 4]);
+        assert_eq!(slow.join().unwrap(), vec![2]);
+    });
+    assert_eq!(context.lookup().staged_count().unwrap(), staged_before);
+    assert_eq!(context.lookup().transient_count().unwrap(), transient_before);
+    assert_eq!(execute("Fast"), vec![3, 4]);
 }

@@ -79,7 +79,7 @@ it('expands only the bounded vertical rail and recomputes its visible prefix on 
 
 it('activates overflow relationship tabs and preserves keyboard access after selection', async () => {
   const node = await artifact('holon-inspector');
-  const activate = vi.fn(); const dispose = vi.fn();
+  const activate = vi.fn((_item, _slot, publish) => publish({ state: 'loading' })); const dispose = vi.fn();
   const tabs = ['One', 'Two', 'Three'].map(label => ({ kind: 'relationship', label, relationship: { direction: 'declared' } }));
   node.setContext({ collectionActivation: { activate, dispose }, nodeAffordances: { collections: tabs } });
   const row = node.querySelector<HTMLElement>('[data-overflow-row]')!;

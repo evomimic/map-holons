@@ -1,3 +1,4 @@
+import { NodeRelationshipDiscovery } from './relationship-discovery';
 import type { RelationshipAffordance } from '../contracts/affordances';
 import { NodeCollectionActivation } from './collection-activation';
 import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
@@ -15,10 +16,11 @@ export interface RealizedNode {
   element: HTMLElement;
   collectionActivation: NodeCollectionActivation;
   singularRelationships: readonly RelationshipAffordance[];
+  relationshipDiscovery?: NodeRelationshipDiscovery;
 }
 
 /** Composes any already-selected Node, including the startup-selected root.
- * The caller serializes this work with other operations on the transaction.
+ * Population discovery starts after initial presentation, independently of realization.
  */
 export async function realizeNode(
   transaction: MapTransaction,
@@ -71,9 +73,7 @@ export async function realizeNode(
         onStage?.('property: resolve name');
         propertyName = await propertyDescriptor.propertyName();
         return renderVisualizerRegion(propertyName, async () => {
-          // Each command shares one transaction-bound execution surface. Keep
-          // descriptor selection and the value read serialized so request
-          // handling cannot interleave their reference-bound work.
+          // Resolve this property through the selected descriptor and value contracts.
           onStage?.(`property ${propertyName}: select Property`);
           const propertySelection = await transaction.selectPropertyVisualizer(
             propertyDescriptor,
@@ -176,10 +176,15 @@ export async function realizeNode(
   };
   const typeDisplayName = await (await subject.holonDescriptor()).displayName();
   const holonKey = (await subject.key()) ?? await subject.versionedKey();
-  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized);
+  const relationshipDiscovery = new NodeRelationshipDiscovery(transaction, subject, [
+    ...affordances.singularRelationships,
+    ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
+  ]);
+  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery);
   try {
     element.setContext({
       collectionActivation,
+      relationshipDiscovery,
       activateRelationship: affordance => {
         if (element.isConnected) element.dispatchEvent(new CustomEvent<TraverseRelationshipIntent>(TRAVERSE_RELATIONSHIP_EVENT, {
           bubbles: true, composed: true, detail: { source: element, affordance },
@@ -199,5 +204,6 @@ export async function realizeNode(
     collectionActivation.dispose();
     throw error;
   }
-  return { element, collectionActivation, singularRelationships: affordances.singularRelationships };
+  relationshipDiscovery.startAfterDisplay(element);
+  return { element, collectionActivation, relationshipDiscovery, singularRelationships: affordances.singularRelationships };
 }

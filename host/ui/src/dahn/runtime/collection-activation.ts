@@ -1,13 +1,16 @@
-import { serializeTransaction } from './transaction-queue';
+import { destinationPaint } from './destination-paint';
+import { semanticWork } from './semantic-work';
+import type { NodeRelationshipDiscovery } from './relationship-discovery';
 import { INSPECT_HOLON_EVENT, type CollectionInteractionElement, type InspectHolonIntent } from '../contracts/visualizers';
 import type { CollectionAffordance } from '../contracts/affordances';
 import type { DescribedHolonCollection, HolonReference, MapTransaction } from '../deps';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import type { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime';
 
-export type CollectionState = 'unresolved' | 'loading' | 'loaded-empty' | 'loaded' | 'error';
+export type CollectionState = 'unresolved' | 'checking' | 'empty' | 'loading' | 'loaded-empty' | 'loaded' | 'error';
 export interface CollectionUpdate {
   state: CollectionState;
+  placement?: 'source' | 'destination';
   content?: HTMLElement;
   message?: string;
   retry?: () => void;
@@ -26,8 +29,14 @@ export class NodeCollectionActivation implements CollectionActivation {
   private content?: CollectionElement;
   private readonly viewStates = new Map<CollectionAffordance, unknown>();
   private generation = 0;
+  // An unverified intent must not invalidate the destination already opening.
+  private requestGeneration = 0;
+  private activeRequest = 0;
   private disposed = false;
+  private pendingUpdate?: (update: CollectionUpdate) => void;
+  private readonly unsubscribeInvalidation: () => void;
   private selected: CollectionAffordance | undefined;
+  private requested?: CollectionAffordance;
 
   private beforeChange?: () => boolean;
 
@@ -44,77 +53,144 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly owner: HolonReference,
     private readonly parentVisualizer: HolonReference,
     private readonly materialized: MaterializedVisualizerRuntime,
-  ) {}
+    private readonly discovery?: NodeRelationshipDiscovery,
+  ) {
+    this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
+      ++this.generation; ++this.requestGeneration;
+      this.pendingUpdate?.({ state: 'error', message: 'Semantic context changed. Select the collection again after editing.' });
+      this.pendingUpdate = undefined;
+      if (this.selected && this.content?.getCollectionViewState) {
+        this.viewStates.set(this.selected, this.content.getCollectionViewState());
+      }
+      this.content?.setInspectHolonHandler(null);
+      this.content = undefined;
+      this.selected = undefined;
+    });
+  }
 
   activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): boolean {
-    if (this.disposed || affordance.kind !== 'relationship') return false;
-    if (this.selected === affordance) return true;
-    if (this.beforeChange?.() === false) return false;
-    if (this.selected && this.content?.getCollectionViewState) {
-      this.viewStates.set(this.selected, this.content.getCollectionViewState());
-    }
-    this.selected = affordance;
+    if (this.disposed || semanticWork(this.transaction).paused || affordance.kind !== 'relationship') return false;
+    if (this.selected === affordance && this.requested === affordance) return true;
+    ++this.requestGeneration;
+    this.requested = affordance;
+    if (this.selected === affordance && this.content) return true;
     this.load(affordance, slotKey, publish);
     return true;
   }
 
-  private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotKey: string, publish: (update: CollectionUpdate) => void): void {
-    this.content?.setInspectHolonHandler(null);
-    this.content = undefined;
-    const generation = ++this.generation;
-    const current = () => !this.disposed && generation === this.generation;
-    publish({ state: 'loading' });
-    void serializeTransaction(this.transaction, async () => {
-      if (!current()) return;
+  private load(affordance: Extract<CollectionAffordance, { kind: 'relationship' }>, slotKey: string, publish: (update: CollectionUpdate) => void, retry = false): void {
+    const request = ++this.requestGeneration;
+    const work = semanticWork(this.transaction);
+    const revision = work.revision;
+    let allocated = false;
+    const current = () => !this.disposed && request === (allocated ? this.activeRequest : this.requestGeneration) && revision === work.revision;
+    let bindingGeneration = this.generation;
+    const allocate = () => {
+      if (!current() || this.beforeChange?.() === false) return false;
+      if (this.selected && this.content?.getCollectionViewState) {
+        this.viewStates.set(this.selected, this.content.getCollectionViewState());
+      }
+      this.content?.setInspectHolonHandler(null);
+      this.content = undefined;
+      this.selected = affordance;
+      bindingGeneration = ++this.generation;
+      allocated = true;
+      this.activeRequest = request;
+      this.pendingUpdate = publish;
+      publish({ state: 'loading', placement: 'destination', message: `Opening ${affordance.label}…` });
+      return true;
+    };
+    const population = retry && this.selected === affordance ? { state: 'populated' } : this.discovery?.population(affordance);
+    if (population?.state === 'empty') {
+      publish({ state: 'empty', placement: 'source', message: `${affordance.label}: No targets.` });
+      return;
+    }
+    // Current discovery evidence allows immediate spatial feedback even if an
+    // older host operation must drain before realization can begin.
+    if (population?.state === 'populated' && !allocate()) return;
+    const painted = allocated ? destinationPaint() : undefined;
+    if (!allocated) publish({ state: 'checking', placement: 'source', message: `Checking ${affordance.label}…` });
+    void (async () => {
       let stage = 'Membership retrieval';
       try {
-        const name = await affordance.relationship.descriptor.relationshipName();
+        if (!allocated) {
+          const count = await work.run(async () => {
+            if (!current()) return undefined;
+            const name = await affordance.relationship.descriptor.relationshipName();
+            if (!current()) return undefined;
+            return (await this.owner.relatedHolons(name, { requireFresh: true })).length;
+          });
+          if (!current() || count === undefined) return;
+          this.discovery?.record(affordance, count);
+          if (!count) {
+            publish({ state: 'empty', placement: 'source', message: `${affordance.label}: No targets.` });
+            return;
+          }
+          if (!allocate()) return;
+          await destinationPaint();
+        } else await painted;
         if (!current()) return;
-        const collection = await this.owner.describedRelatedHolons(name);
-        if (!current()) return;
-        stage = 'Visualizer selection';
-        const slot = await this.transaction.getSavedHolonByBaseKey(slotKey);
-        if (slot === null) throw new Error('The requested Collections slot is unavailable');
-        const selection = await this.transaction.selectCollectionVisualizer(collection, this.parentVisualizer, slot);
-        if (!current()) return;
-        stage = 'Artifact materialization';
-        const implementation = await this.materialized.realize(selection.selected);
-        if (!current()) return;
-        if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
-          throw new Error('Selected Collection implementation is not an HTMLElement constructor');
-        }
-        const tag = defineCustomElementOnce('map-selected-collection', implementation as CustomElementConstructor);
-        const element = document.createElement(tag) as CollectionElement;
-        if (typeof element.setCollection !== 'function') throw new Error('Selected implementation has no described-collection input');
-        stage = 'Property retrieval / presentation';
-        const isOrdered = await affordance.relationship.descriptor.isOrdered();
-        if (!current()) return;
-        await element.setCollection(collection, affordance.label, { isOrdered });
-        if (!current()) return;
-        element.restoreCollectionViewState?.(this.viewStates.get(affordance));
-        if (!current()) return;
-        if (typeof element.setInspectHolonHandler !== 'function') throw new Error('Selected implementation has no collection interaction binding');
-        element.setInspectHolonHandler(reference => {
-          if (!current() || !element.isConnected) return;
-          element.dispatchEvent(new CustomEvent<InspectHolonIntent>(INSPECT_HOLON_EVENT, {
-            bubbles: true, composed: true, detail: { reference, source: element },
-          }));
+        await work.realize(async () => {
+          if (!current()) return;
+          const name = await affordance.relationship.descriptor.relationshipName();
+          if (!current()) return;
+          const collection = await this.owner.describedRelatedHolons(name);
+          if (!current()) return;
+          this.discovery?.record(affordance, collection.length);
+          if (!collection.length) {
+            this.pendingUpdate = undefined;
+            publish({ state: 'loaded-empty', placement: 'destination', message: `${affordance.label}: No targets remain.`, retry: () => { if (current()) this.load(affordance, slotKey, publish, true); } });
+            return;
+          }
+          stage = 'Visualizer selection';
+          const slot = await this.transaction.getSavedHolonByBaseKey(slotKey);
+          if (slot === null) throw new Error('The requested Collections slot is unavailable');
+          const selection = await this.transaction.selectCollectionVisualizer(collection, this.parentVisualizer, slot);
+          if (!current()) return;
+          stage = 'Artifact materialization';
+          const implementation = await this.materialized.realize(selection.selected);
+          if (!current()) return;
+          if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
+            throw new Error('Selected Collection implementation is not an HTMLElement constructor');
+          }
+          const tag = defineCustomElementOnce('map-selected-collection', implementation as CustomElementConstructor);
+          const element = document.createElement(tag) as CollectionElement;
+          if (typeof element.setCollection !== 'function') throw new Error('Selected implementation has no described-collection input');
+          stage = 'Property retrieval / presentation';
+          const isOrdered = await affordance.relationship.descriptor.isOrdered();
+          if (!current()) return;
+          await element.setCollection(collection, affordance.label, { isOrdered });
+          if (!current()) return;
+          element.restoreCollectionViewState?.(this.viewStates.get(affordance));
+          if (!current()) return;
+          if (typeof element.setInspectHolonHandler !== 'function') throw new Error('Selected implementation has no collection interaction binding');
+          element.setInspectHolonHandler(reference => {
+            if (this.disposed || bindingGeneration !== this.generation || revision !== work.revision || !element.isConnected) return;
+            element.dispatchEvent(new CustomEvent<InspectHolonIntent>(INSPECT_HOLON_EVENT, {
+              bubbles: true, composed: true, detail: { reference, source: element },
+            }));
+          });
+          this.content = element;
+          this.pendingUpdate = undefined;
+          publish({ state: 'loaded', content: element });
         });
-        this.content = element;
-        publish({ state: collection.length === 0 ? 'loaded-empty' : 'loaded', content: element });
       } catch (error) {
         if (!current()) return;
+        if (allocated) this.pendingUpdate = undefined;
         publish({
-          state: 'error',
+          state: 'error', placement: allocated ? 'destination' : 'source',
           message: `${stage}: ${error instanceof Error ? error.message : String(error)}`,
-          retry: () => { if (current()) this.load(affordance, slotKey, publish); },
+          retry: () => { if (current()) this.load(affordance, slotKey, publish, true); },
         });
       }
-    });
+    })();
   }
 
   dispose(): void {
-    this.disposed = true; ++this.generation;
+    this.disposed = true; ++this.generation; ++this.requestGeneration;
+    this.pendingUpdate = undefined;
+    this.unsubscribeInvalidation();
+    this.discovery?.dispose();
     this.beforeChange = undefined;
     this.viewStates.clear();
     this.content?.setInspectHolonHandler(null);
