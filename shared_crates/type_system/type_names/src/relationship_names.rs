@@ -223,6 +223,7 @@ pub enum QueryRelationshipTypeName {
     ExecutesExpression,
     ExecutesQuery,
     ExecutionResult,
+    ExpansionPredicate,
     ExpressionExecutions,
     FocalSpace,
     Input,
