@@ -58,6 +58,8 @@ export default class HolonInspectorElement extends HTMLElement {
     this.scheduleLayout();
   }
   disconnectedCallback() {
+    this.unsubscribeDiscovery?.();
+    this.unsubscribeDiscovery = undefined;
     this.collectionActivation?.dispose();
     this.observer?.disconnect();
     if (this.frame != null) cancelAnimationFrame(this.frame);
@@ -70,6 +72,7 @@ export default class HolonInspectorElement extends HTMLElement {
   }
   navigationControl(item, tab = false) {
     const button = document.createElement('button');
+    if (item.relationship) this.relationshipControls.set(item, { button, tab });
     button.type = 'button';
     Object.assign(button.style, { font: 'inherit', border: '0', color: 'var(--dahn-canvas-text-color)', background: 'transparent', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', borderRadius: 'var(--dahn-action-corner-radius)' });
     Object.assign(button.style, {
@@ -88,6 +91,7 @@ export default class HolonInspectorElement extends HTMLElement {
       button.id = `dahn-collection-tab-${++nextOverflowId}`;
       button.setAttribute('aria-controls', this.collectionPanelId);
       const activate = () => {
+        if (!this.canNavigateRelationship(item)) return;
         if (this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => this.updateCollection(update)) === false) return;
         this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
         this.collectionViewer.setAttribute('aria-labelledby', button.id);
@@ -109,12 +113,52 @@ export default class HolonInspectorElement extends HTMLElement {
       button.dataset.singularRelationship = 'true';
       button.dataset.singularState = 'unresolved';
       button.setAttribute('aria-pressed', 'false');
-      button.addEventListener('click', () => this.activateRelationship(item));
+      button.addEventListener('click', () => { if (this.canNavigateRelationship(item)) this.activateRelationship(item); });
       this.singularControls.set(item, button);
     }
     button.title = item.description?.trim() || (button.disabled ? 'Navigation activation is not available yet' : item.label);
     if (item.relationship) button.dataset.relationshipDirection = item.relationship.direction;
     return button;
+  }
+
+  canNavigateRelationship(item) {
+    if (!item.relationship || !this.discovery) return true;
+    const population = this.discovery.population(item);
+    if (population.state === 'populated') return true;
+    this.discoveryStatus.textContent = population.state === 'empty'
+      ? `${item.label}: No targets.` : `${item.label}: Relationship population is not available yet.`;
+    return false;
+  }
+
+  updateRelationships() {
+    if (!this.discovery || !this.discoveryStatus) return;
+    let outstanding = 0;
+    const failures = [];
+    for (const [item, { button }] of this.relationshipControls) {
+      const population = this.discovery.population(item);
+      const visible = population.state === 'populated' || (this.showEmpty && population.state === 'empty');
+      button.dataset.population = population.state;
+      button.dataset.discoveryHidden = String(!visible);
+      button.style.display = visible ? '' : 'none';
+      button.inert = !visible;
+      button.setAttribute('aria-hidden', String(!visible));
+      button.textContent = item.label + (population.count !== undefined ? ` (${population.count})` : '');
+      if (!visible && document.activeElement === button) this.titleControl.focus();
+      if (population.state === 'unknown' || population.state === 'pending') ++outstanding;
+      if (population.state === 'failed') failures.push([item, population.message]);
+    }
+    this.discoveryStatus.replaceChildren();
+    if (outstanding) this.discoveryStatus.append(`Inspecting relationships (${outstanding} remaining)… `);
+    for (const [item, message] of failures) {
+      const retry = document.createElement('button');
+      retry.type = 'button'; retry.textContent = `Retry ${item.label}`;
+      retry.title = message;
+      retry.addEventListener('click', () => this.discovery.retry(item));
+      this.discoveryStatus.append(`${item.label}: inspection failed. `, retry);
+    }
+    // Keep the same controls and descriptor order, including selection and overflow bindings.
+    this.layouts?.forEach(layout => layout.fit());
+    this.scheduleLayout();
   }
 
   updateCollection(update) {
@@ -145,6 +189,9 @@ export default class HolonInspectorElement extends HTMLElement {
     this.disconnectedCallback();
     this.collectionActivation = context.collectionActivation;
     this.collectionControls = [];
+    this.relationshipControls = new Map();
+    this.discovery = context.relationshipDiscovery;
+    this.showEmpty = false;
     this.singularControls = new Map();
     this.activateRelationship = context.activateRelationship;
     this.collectionPanelId = `dahn-collection-panel-${++nextOverflowId}`;
@@ -188,6 +235,18 @@ export default class HolonInspectorElement extends HTMLElement {
     const actions = context.childVisualizers?.get('actions');
     if (actions) actionBar.append(actions);
     else actionBar.textContent = 'No actions';
+    if (this.discovery) {
+      const label = document.createElement('label');
+      const toggle = document.createElement('input');
+      toggle.type = 'checkbox'; toggle.dataset.showEmptyRelationships = 'true';
+      toggle.addEventListener('change', () => { this.showEmpty = toggle.checked; this.updateRelationships(); });
+      label.append(toggle, ' Show Empty Relationships');
+      const status = document.createElement('div');
+      status.dataset.relationshipDiscoveryStatus = 'true';
+      status.setAttribute('role', 'status');
+      this.discoveryStatus = status;
+      actionBar.append(label, status);
+    }
 
     const propertyViewer = document.createElement('section');
     this.propertyViewer = propertyViewer;
@@ -277,6 +336,7 @@ export default class HolonInspectorElement extends HTMLElement {
       [data-dahn-holon-inspector] button:focus-visible { outline: var(--dahn-focus-ring-width) solid var(--dahn-focus-ring-color); outline-offset: calc(-1 * var(--dahn-focus-ring-width)); }`;
     this.replaceChildren(style, title, body, collectionRegion);
     this.adaptBudget();
+    if (this.discovery) this.unsubscribeDiscovery = this.discovery.subscribe(() => this.updateRelationships());
     if (this.isConnected) this.connectedCallback();
   }
 }
@@ -367,9 +427,10 @@ function horizontalOverflow(host, controls, label) {
     element.inert = !visible; element.setAttribute('aria-hidden', String(!visible));
   };
   const fit = () => {
+    const eligible = controls.filter(control => control.dataset.discoveryHidden !== 'true');
     const width = row.clientWidth;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-    const widths = controls.map(control => control.getBoundingClientRect().width);
+    const widths = eligible.map(control => control.getBoundingClientRect().width);
     const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, widths.length - 1) * gap;
     const overflow = total > width;
     const setMoreLabel = selected => {
@@ -392,15 +453,15 @@ function horizontalOverflow(host, controls, label) {
     // changing its label cannot repeatedly hide and reveal the selected tab.
     setMoreLabel(null);
     let count = fittingCount();
-    const selected = controls.slice(count).find(control => control.getAttribute('aria-selected') === 'true');
+    const selected = eligible.slice(count).find(control => control.getAttribute('aria-selected') === 'true');
     if (selected) {
       setMoreLabel(selected);
       count = Math.min(count, fittingCount());
     }
-    hidden = controls.slice(count);
-    controls.forEach((control, index) => show(control, index < count));
+    hidden = eligible.slice(count);
+    eligible.forEach((control, index) => show(control, index < count));
     // A hidden selection must not remove the visible tab strip from keyboard navigation.
-    const tabs = controls.filter(control => control.getAttribute('role') === 'tab' && !control.disabled);
+    const tabs = eligible.filter(control => control.getAttribute('role') === 'tab' && !control.disabled);
     const visibleTabs = tabs.filter(control => !control.inert);
     const tabStop = visibleTabs.find(control => control.getAttribute('aria-selected') === 'true') ?? visibleTabs[0];
     tabs.forEach(control => { control.tabIndex = control === tabStop ? 0 : -1; });
@@ -430,17 +491,18 @@ function verticalOverflow(host, controls) {
   Object.assign(more.style, { font: 'inherit', cursor: 'pointer', border: '0', padding: 'var(--dahn-action-padding-block) var(--dahn-action-padding-inline)', color: 'var(--dahn-action-text-color)', background: 'var(--dahn-action-surface-background)', borderRadius: 'var(--dahn-action-corner-radius)' });
   let expanded = false;
   const fit = () => {
+    const eligible = controls.filter(control => control.dataset.discoveryHidden !== 'true');
     const style = getComputedStyle(host);
     const available = Math.max(0, host.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0));
     const gap = parseFloat(getComputedStyle(rows).rowGap) || 0;
-    const heights = controls.map(control => control.getBoundingClientRect().height);
+    const heights = eligible.map(control => control.getBoundingClientRect().height);
     const total = heights.reduce((a, b) => a + b, 0) + Math.max(0, heights.length - 1) * gap;
     const overflowing = total > available;
     if (!overflowing) expanded = false;
     const budget = overflowing ? Math.max(0, available - more.getBoundingClientRect().height - (parseFloat(style.rowGap) || 0)) : available;
     let count = 0, used = 0;
     for (const height of heights) { const next = used + (count ? gap : 0) + height; if (next > budget) break; used = next; count++; }
-    controls.forEach((control, index) => {
+    eligible.forEach((control, index) => {
       const visible = expanded || index < count;
       control.style.visibility = visible ? 'visible' : 'hidden';
       control.inert = !visible; control.setAttribute('aria-hidden', String(!visible));

@@ -1,3 +1,4 @@
+import type { RelationshipDiscovery } from './relationship-discovery';
 import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
 import type { NodeAffordances, RelationshipAffordance } from './affordances';
@@ -103,6 +104,8 @@ export interface VisualizerContext {
   nodeAffordances?: NodeAffordances;
   /** Occurrence-local collection orchestration supplied by the composition owner. */
   collectionActivation?: CollectionActivation;
+  /** Progressive population evidence; descriptors remain available independently. */
+  relationshipDiscovery?: RelationshipDiscovery;
   theme: DahnTheme;
   canvas: CanvasApi;
   /**

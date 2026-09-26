@@ -1,4 +1,5 @@
-import { serializeTransaction } from './transaction-queue';
+import { semanticWork } from './semantic-work';
+import type { NodeRelationshipDiscovery } from './relationship-discovery';
 import { INSPECT_HOLON_EVENT, type CollectionInteractionElement, type InspectHolonIntent } from '../contracts/visualizers';
 import type { CollectionAffordance } from '../contracts/affordances';
 import type { DescribedHolonCollection, HolonReference, MapTransaction } from '../deps';
@@ -27,6 +28,8 @@ export class NodeCollectionActivation implements CollectionActivation {
   private readonly viewStates = new Map<CollectionAffordance, unknown>();
   private generation = 0;
   private disposed = false;
+  private pendingUpdate?: (update: CollectionUpdate) => void;
+  private readonly unsubscribeInvalidation: () => void;
   private selected: CollectionAffordance | undefined;
 
   private beforeChange?: () => boolean;
@@ -44,10 +47,23 @@ export class NodeCollectionActivation implements CollectionActivation {
     private readonly owner: HolonReference,
     private readonly parentVisualizer: HolonReference,
     private readonly materialized: MaterializedVisualizerRuntime,
-  ) {}
+    private readonly discovery?: NodeRelationshipDiscovery,
+  ) {
+    this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
+      ++this.generation;
+      this.pendingUpdate?.({ state: 'error', message: 'Semantic context changed. Select the collection again after editing.' });
+      this.pendingUpdate = undefined;
+      if (this.selected && this.content?.getCollectionViewState) {
+        this.viewStates.set(this.selected, this.content.getCollectionViewState());
+      }
+      this.content?.setInspectHolonHandler(null);
+      this.content = undefined;
+      this.selected = undefined;
+    });
+  }
 
   activate(affordance: CollectionAffordance, slotKey: string, publish: (update: CollectionUpdate) => void): boolean {
-    if (this.disposed || affordance.kind !== 'relationship') return false;
+    if (this.disposed || semanticWork(this.transaction).paused || affordance.kind !== 'relationship') return false;
     if (this.selected === affordance) return true;
     if (this.beforeChange?.() === false) return false;
     if (this.selected && this.content?.getCollectionViewState) {
@@ -62,9 +78,12 @@ export class NodeCollectionActivation implements CollectionActivation {
     this.content?.setInspectHolonHandler(null);
     this.content = undefined;
     const generation = ++this.generation;
-    const current = () => !this.disposed && generation === this.generation;
+    const work = semanticWork(this.transaction);
+    const revision = work.revision;
+    const current = () => !this.disposed && generation === this.generation && revision === work.revision;
+    this.pendingUpdate = publish;
     publish({ state: 'loading' });
-    void serializeTransaction(this.transaction, async () => {
+    void work.realize(async () => {
       if (!current()) return;
       let stage = 'Membership retrieval';
       try {
@@ -72,6 +91,7 @@ export class NodeCollectionActivation implements CollectionActivation {
         if (!current()) return;
         const collection = await this.owner.describedRelatedHolons(name);
         if (!current()) return;
+        this.discovery?.record(affordance, collection.length);
         stage = 'Visualizer selection';
         const slot = await this.transaction.getSavedHolonByBaseKey(slotKey);
         if (slot === null) throw new Error('The requested Collections slot is unavailable');
@@ -101,9 +121,11 @@ export class NodeCollectionActivation implements CollectionActivation {
           }));
         });
         this.content = element;
+        this.pendingUpdate = undefined;
         publish({ state: collection.length === 0 ? 'loaded-empty' : 'loaded', content: element });
       } catch (error) {
         if (!current()) return;
+        this.pendingUpdate = undefined;
         publish({
           state: 'error',
           message: `${stage}: ${error instanceof Error ? error.message : String(error)}`,
@@ -115,6 +137,9 @@ export class NodeCollectionActivation implements CollectionActivation {
 
   dispose(): void {
     this.disposed = true; ++this.generation;
+    this.pendingUpdate = undefined;
+    this.unsubscribeInvalidation();
+    this.discovery?.dispose();
     this.beforeChange = undefined;
     this.viewStates.clear();
     this.content?.setInspectHolonHandler(null);

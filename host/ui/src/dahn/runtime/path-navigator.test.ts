@@ -58,7 +58,14 @@ async function fixture() {
   } as unknown as MapTransaction;
   const materialize = vi.fn(async (ref: HolonReference) => ({ source: artifacts[(await ref.key())!], format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
-  const realize = vi.fn((ref: HolonReference, selected: HolonReference) => realizeNode(transaction, runtime, ref, selected, {} as never, {} as never));
+  const realize = vi.fn(async (ref: HolonReference, selected: HolonReference) => {
+    const node = await realizeNode(transaction, runtime, ref, selected, {} as never, {} as never);
+    // These topology fixtures start after discovery; deferred population is covered separately.
+    for (const affordance of node.singularRelationships) node.relationshipDiscovery?.record(affordance, 1);
+    const element = node.element as typeof node.element & { relationshipControls: Map<any, unknown> };
+    for (const affordance of element.relationshipControls.keys()) node.relationshipDiscovery?.record(affordance, 1);
+    return node;
+  });
   const root = await realize(rootSubject as never, visualizers.node);
   const parent = selected('path-inspector');
   const navigation = new PathNavigator(transaction, parent, root, rootSubject as never, visualizers.node, selected('PathInspector.RootNodeSlot'), realize);
@@ -139,7 +146,7 @@ describe('vertical traversal through selected artifacts', () => {
     expect(child.element.querySelector('[data-dahn-scalar-value]')?.textContent).toBe('A');
     expect(f.root.element.querySelector('table')).toBe(table);
     expect(rows[0].getAttribute('aria-selected')).toBe('true');
-    expect(f.root.element.querySelector('[aria-selected=true][role=tab]')?.textContent).toBe('Members');
+    expect(f.root.element.querySelector('[aria-selected=true][role=tab]')?.textContent).toBe('Members (3)');
     expect(f.element.querySelector('[data-path-inspector-root-node]')?.firstChild).toBe(f.root.element);
     const nextRows = await openCollection(child.element);
     activate(nextRows[2]);
@@ -456,7 +463,7 @@ describe('singular traversal through selected artifacts', () => {
     expect(f.path().every(item => item.element.isConnected)).toBe(true);
   });
 
-  it('keeps empty and inconsistent singular relationships on the rail without destroying the active child', async () => {
+  it('suppresses verified empty singular relationships and preserves cardinality errors without destroying the active child', async () => {
     const f = await fixture(); const root = f.path()[0]; const a = await right(f, root);
     f.rootSubject.relatedHolons.mockResolvedValueOnce(collection([]));
     await right(f, root, 1);
@@ -464,6 +471,9 @@ describe('singular traversal through selected artifacts', () => {
     expect(root.message).toContain('Second: no target');
     expect(rail(root.element, 1).dataset.singularState).toBe('loaded-empty');
     expect(rail(root.element).getAttribute('aria-pressed')).toBe('true');
+    expect(rail(root.element, 1).style.display).toBe('none');
+    // A subsequent semantic refresh finds targets again; classification stays singular.
+    f.root.relationshipDiscovery!.record(f.root.singularRelationships[1], 2);
     f.rootSubject.relatedHolons.mockResolvedValueOnce(collection([f.a, f.b]));
     await right(f, root, 1);
     expect(root.message).toContain('Expected at most one target');

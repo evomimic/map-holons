@@ -4,7 +4,7 @@ import type { PathFocus, PathNavigation, PathOccurrence, VerticalProvenance, Tra
 import type { CollectionAffordance } from '../contracts/affordances';
 import type { HolonReference, MapTransaction } from '../deps';
 import type { RealizedNode } from './realize-node';
-import { serializeTransaction } from './transaction-queue';
+import { semanticWork } from './semantic-work';
 
 interface Occurrence extends PathOccurrence {
   node: RealizedNode;
@@ -31,6 +31,7 @@ export class PathNavigator implements PathNavigation {
   private readonly listeners = new Set<(occurrences: readonly PathOccurrence[], focus: PathFocus) => void>();
   private focus: PathFocus;
   private disposed = false;
+  private readonly unsubscribeInvalidation: () => void;
 
   constructor(
     private readonly transaction: MapTransaction,
@@ -43,6 +44,16 @@ export class PathNavigator implements PathNavigation {
   ) {
     this.root = this.occurrence(root, subject, selectedVisualizer, 0, 1);
     this.focus = { occurrenceId: this.root.id, mode: 'restore' };
+    this.unsubscribeInvalidation = semanticWork(transaction).onInvalidate(() => {
+      for (const occurrence of this.path()) {
+        ++occurrence.generation;
+        occurrence.pending = false;
+        occurrence.message = undefined;
+        occurrence.retry = undefined;
+        this.singularState(occurrence, { state: 'unresolved', active: occurrence.singular.active });
+      }
+      this.publish();
+    });
   }
 
   subscribe(render: (occurrences: readonly PathOccurrence[], focus: PathFocus) => void): () => void {
@@ -130,7 +141,7 @@ export class PathNavigator implements PathNavigation {
 
   /** Accepts only a live source owned by this Path Inspector. */
   inspect(intent: InspectHolonIntent): void {
-    if (this.disposed || !intent.source.isConnected) return;
+    if (this.disposed || semanticWork(this.transaction).paused || !intent.source.isConnected) return;
     const path = this.path();
     const owner = path.find(item => item.node.collectionActivation.sourceAffordance(intent.source));
     if (!owner || path.some(item => item.pending)) return;
@@ -143,14 +154,16 @@ export class PathNavigator implements PathNavigation {
     }
     const provenance: VerticalProvenance = { kind: 'collection-member', parentOccurrenceId: owner.id, collectionOccurrenceId, affordance };
     const generation = ++owner.generation;
-    const current = () => !this.disposed && owner.generation === generation && intent.source.isConnected
+    const work = semanticWork(this.transaction);
+    const revision = work.revision;
+    const current = () => !this.disposed && revision === work.revision && owner.generation === generation && intent.source.isConnected
       && owner.node.collectionActivation.sourceAffordance(intent.source) === affordance;
     owner.pending = true;
     owner.requestAxis = 'vertical';
     owner.message = 'Opening selected holon…';
     owner.retry = undefined;
     this.publish();
-    void serializeTransaction(this.transaction, async () => {
+    void work.realize(async () => {
       if (!current()) return;
       let candidate: RealizedNode | undefined;
       try {
@@ -220,13 +233,15 @@ export class PathNavigator implements PathNavigation {
 
   /** Follows only descriptor-classified affordances of a live owned Node. */
   traverseRelationship(intent: TraverseRelationshipIntent): void {
-    if (this.disposed || !intent.source.isConnected) return;
+    if (this.disposed || semanticWork(this.transaction).paused || !intent.source.isConnected) return;
     const path = this.path();
     const owner = path.find(item => item.element === intent.source);
     if (!owner || !owner.node.singularRelationships.includes(intent.affordance) || path.some(item => item.pending)) return;
     const { affordance } = intent;
     const generation = ++owner.generation;
-    const current = () => !this.disposed && owner.generation === generation && intent.source.isConnected;
+    const work = semanticWork(this.transaction);
+    const revision = work.revision;
+    const current = () => !this.disposed && revision === work.revision && owner.generation === generation && intent.source.isConnected;
     owner.pending = true;
     owner.requestAxis = 'horizontal';
     owner.message = `Opening ${affordance.label}…`;
@@ -235,7 +250,7 @@ export class PathNavigator implements PathNavigation {
     this.publish();
     const profile = NavigationProfile.start();
     let outcome = 'cancelled';
-    void serializeTransaction(this.transaction, async () => {
+    void work.realize(async () => {
       if (!current()) { profile?.finish('cancelled'); return; }
       profile?.begin();
       let candidate: RealizedNode | undefined;
@@ -245,6 +260,7 @@ export class PathNavigator implements PathNavigation {
         profile?.next('target retrieval');
         const members = await owner.subject.relatedHolons(name);
         if (!current()) return;
+        owner.node.relationshipDiscovery?.record(affordance, members.length);
         if (members.length > 1) throw new Error(`Expected at most one target, received ${members.length}`);
         if (members.length === 0) {
           outcome = 'empty';
@@ -299,6 +315,7 @@ export class PathNavigator implements PathNavigation {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.unsubscribeInvalidation();
     this.release(this.root);
     this.listeners.clear();
   }

@@ -63,7 +63,7 @@ describe('selected collection activation', () => {
     second.activate(a, 'slot', vi.fn()); await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(4));
   });
 
-  it('serializes rapid switching and suppresses superseded/disposed completion', async () => {
+  it('isolates realization from superseded work until transaction pool round-trips are concurrency-safe', async () => {
     const f = fixture(); let finish!: (value: ReturnType<typeof collection>) => void;
     f.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     const updates: CollectionUpdate[] = [];
