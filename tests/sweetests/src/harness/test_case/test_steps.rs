@@ -76,15 +76,34 @@ pub struct ExpectedRejectedHolon {
     pub findings: Vec<ExpectedValidationFinding>,
 }
 
-/// How an `ExecuteQueryScaffold` step reaches the QRY1 direct Query seam.
+/// How an `ExecuteQuery` step reaches the direct Query seam.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum QueryScaffoldRoute {
+pub enum QueryRoute {
     /// Peer Rust call: `QueryReference::begin_execution` then `run`.
     Direct,
     /// Descriptor-bound `QueryDance` invocation through `TransactionAction::DanceV2`.
     QueryDance,
-    /// `QueryDance` invocation whose request omits `InitialInput` (contract-error case).
-    QueryDanceWithoutInitialInput,
+}
+
+/// The collection operand an `ExecuteQuery` step supplies to the root expression.
+#[derive(Clone, Debug)]
+pub enum QueryInputSpec {
+    /// No `Input` / `InitialInput` at all (a source root such as `SeedHolons`).
+    None,
+    /// An explicit `HolonCollection` holon whose members are these fixture references.
+    Collection(Vec<TestReference>),
+}
+
+/// What an `ExecuteQuery` step asserts after the run.
+#[derive(Clone, Debug)]
+pub enum QueryExpectation {
+    /// Success; the result members are exactly these fixture references, in order.
+    Members(Vec<TestReference>),
+    /// Success; the result members are the focal space's `Owns` targets in storage
+    /// order and include every listed fixture reference.
+    OwnsOfFocalSpace { must_include: Vec<TestReference> },
+    /// The run (or `begin_execution`) fails with this error kind; no result is recorded.
+    Error(HolonErrorKind),
 }
 
 /// Internal step representation used by executors at runtime.
@@ -170,11 +189,11 @@ pub enum DanceTestStep {
     LoadQueryTestSchema {
         description: String,
     },
-    ExecuteQueryScaffold {
+    ExecuteQuery {
         query: TestReference,
-        input_members: Vec<TestReference>,
-        route: QueryScaffoldRoute,
-        expected_error: Option<HolonErrorKind>,
+        input: QueryInputSpec,
+        route: QueryRoute,
+        expectation: QueryExpectation,
         description: String,
     },
     LoadInverseOrientedBookPersonInstancesExpectFailure {
@@ -371,7 +390,7 @@ impl core::fmt::Display for DanceTestStep {
             DanceTestStep::LoadQueryTestSchema { description } => {
                 write!(f, "{description}")
             }
-            DanceTestStep::ExecuteQueryScaffold { description, .. } => {
+            DanceTestStep::ExecuteQuery { description, .. } => {
                 write!(f, "{description}")
             }
             DanceTestStep::LoadInverseOrientedBookPersonInstancesExpectFailure { description } => {

@@ -17,7 +17,7 @@ holon QueryDanceRequest.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
   header {
-    description: "Dance ingress request selecting a Query and providing its initial collection and parameter bindings."
+    description: "Dance ingress request selecting a Query and providing its optional initial collection and parameter bindings. The focal HolonSpace comes from the invocation's AffordingHolon, not from this request."
     display_name: "Query Dance Request"
     display_plural: "Query Dance Requests"
     plural: "QueryDanceRequests"
@@ -101,7 +101,7 @@ inverse relationship (Query.HolonType)-[QueryRequestedBy]->(QueryDanceRequest.Ho
 def relationship (QueryDanceRequest.HolonType)-[InitialInput]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
-    Constraints -> ExactlyOne.CardinalityConstraint
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> InitialInputForQueryDanceRequest
   }
   extends DeclaredRelationshipType.RelationshipType
@@ -109,7 +109,7 @@ def relationship (QueryDanceRequest.HolonType)-[InitialInput]->(HolonCollection.
   target HolonCollection.HolonType
   deletion_semantic Block
   header {
-    description: "Supplies the initial collection for a Dance-mediated Query invocation."
+    description: "Supplies the initial collection for a Dance-mediated Query invocation. Optional at this boundary: a source-root Query (SeedHolons) takes none; a transform-root Query (Expand) requires exactly one."
     display_name: "Initial Input"
     display_plural: "Initial Inputs"
     plural: "InitialInputs"

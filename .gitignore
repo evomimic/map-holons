@@ -40,6 +40,7 @@ workspaces/**/target/**/
 .venv/
 .vscode/
 .notes/
+.claude/
 .running
 settings.json
 
