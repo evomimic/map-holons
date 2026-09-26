@@ -49,8 +49,9 @@ impl ResolvedDanceV2Invocation {
 ///
 /// `QueryDance` is the one static exception to implementation selection: it
 /// declares no `DanceImplementation` and is routed, after ordinary binding and
-/// contract validation, to the internal direct Query seam. In QRY1 that route
-/// is scaffold-only: it always yields an error and never creates a response.
+/// contract validation, to the internal direct Query seam. Its result
+/// collection holon becomes the `QueryDanceResponse` body through the same
+/// response construction every other Dance uses.
 #[tracing::instrument(target = "map_profile", level = "debug", name = "dance.execute", skip_all)]
 pub async fn execute_dance_v2(
     context: &Arc<TransactionContext>,

@@ -52,20 +52,38 @@ pub async fn execute_query(
     // SmartReference under the token's expected snapshot.
     let query_reference =
         state.resolve_execution_reference(&context, ResolveBy::Expected, &query).unwrap();
-    let input_members = match &input {
-        QueryInputSpec::None => None,
-        QueryInputSpec::Collection(members) => Some(
+    let resolved_input = match &input {
+        QueryInputSpec::None => ResolvedInput::None,
+        QueryInputSpec::Collection(members) => ResolvedInput::Collection(
             state.resolve_execution_references(&context, ResolveBy::Expected, members).unwrap(),
+        ),
+        QueryInputSpec::SingleHolon(member) => ResolvedInput::SingleHolon(
+            state.resolve_execution_reference(&context, ResolveBy::Expected, member).unwrap(),
         ),
     };
     let expected = ResolvedExpectation::resolve(state, &context, expectation);
 
     match route {
-        QueryRoute::Direct => execute_direct(&context, query_reference, input_members, expected),
+        QueryRoute::Direct => execute_direct(&context, query_reference, resolved_input, expected),
         QueryRoute::QueryDance => {
-            execute_query_dance(state, &context, query_reference, input_members, expected).await
+            let members = match resolved_input {
+                ResolvedInput::None => None,
+                ResolvedInput::Collection(members) => Some(members),
+                ResolvedInput::SingleHolon(_) => panic!(
+                    "the single-holon convenience is direct-only; the Dance contract is \
+                     collection-shaped"
+                ),
+            };
+            execute_query_dance(state, &context, query_reference, members, expected).await
         }
     }
+}
+
+/// The step's collection operand with fixture tokens resolved to references.
+enum ResolvedInput {
+    None,
+    Collection(Vec<HolonReference>),
+    SingleHolon(HolonReference),
 }
 
 /// The step expectation with fixture tokens resolved to references.
@@ -108,7 +126,7 @@ impl ResolvedExpectation {
 fn execute_direct(
     context: &Arc<TransactionContext>,
     query_reference: HolonReference,
-    input_members: Option<Vec<HolonReference>>,
+    input: ResolvedInput,
     expected: ResolvedExpectation,
 ) {
     let query = QueryReference::new(query_reference.clone())
@@ -119,19 +137,37 @@ fn execute_direct(
     let focal_space = FocalSpaceReference::new(space.clone())
         .expect("the transaction's space holon should wrap as a FocalSpaceReference");
 
-    let input_collection: Option<HolonReference> = input_members.map(|members| {
-        let count = members.len();
-        let collection: HolonReference = build_input_collection(context, members).into();
-        assert_related_count(&collection, CoreRelationshipTypeName::CollectionMembers, count);
-        collection
-    });
-    let input = input_collection.clone().map(|collection| {
+    // The harness builds the collection holon for explicit inputs (the
+    // caller-side boundary); the convenience builds its own singleton inside
+    // QueryCore, so there is no harness-held holon to compare by identity there.
+    let single_source = match &input {
+        ResolvedInput::SingleHolon(source) => Some(source.clone()),
+        _ => None,
+    };
+    // `SingleHolon` also yields no harness-held collection, so absence of one
+    // does not by itself mean the execution records no `Input`. Only a genuine
+    // `None` (a source root) must record none at all.
+    let expects_absent_input = matches!(input, ResolvedInput::None);
+    let input_collection: Option<HolonReference> = match input {
+        ResolvedInput::None | ResolvedInput::SingleHolon(_) => None,
+        ResolvedInput::Collection(members) => {
+            let count = members.len();
+            let collection: HolonReference = build_input_collection(context, members).into();
+            assert_related_count(&collection, CoreRelationshipTypeName::CollectionMembers, count);
+            Some(collection)
+        }
+    };
+    let collection_input = input_collection.clone().map(|collection| {
         HolonCollectionReference::new(collection)
             .expect("harness collection holon should wrap as a HolonCollectionReference")
     });
 
     // begin_execution enforces the root input contract before any record exists.
-    let execution = match query.begin_execution(context, focal_space, input, Vec::new()) {
+    let begun = match single_source.clone() {
+        Some(source) => query.begin_execution_for_holon(context, focal_space, source, Vec::new()),
+        None => query.begin_execution(context, focal_space, collection_input, Vec::new()),
+    };
+    let execution = match begun {
         Ok(execution) => execution,
         Err(error) => {
             let actual = HolonErrorKind::from(&error);
@@ -146,7 +182,17 @@ fn execute_direct(
             return;
         }
     };
-    assert_shape(&execution, &query_reference, &root_expression, &space, input_collection.as_ref());
+    assert_shape(
+        &execution,
+        &query_reference,
+        &root_expression,
+        &space,
+        input_collection.as_ref(),
+        expects_absent_input,
+    );
+    if let Some(source) = &single_source {
+        assert_singleton_input(&execution, source);
+    }
     assert_status(execution.instance().clone().into(), "Pending");
     assert_status(execution.root_execution().clone().into(), "Pending");
 
@@ -185,6 +231,7 @@ fn assert_shape(
     root_expression: &HolonReference,
     space: &HolonReference,
     input_collection: Option<&HolonReference>,
+    expects_absent_input: bool,
 ) {
     let instance: HolonReference = execution.instance().clone().into();
     let root_execution: HolonReference = execution.root_execution().clone().into();
@@ -210,14 +257,35 @@ fn assert_shape(
         "QueryExpressionExecution.ExecutesExpression",
     );
 
-    // Identity: Input is the caller's collection holon, not a copy of it — or absent.
-    match input_collection {
-        Some(collection) => {
-            let input = single_related(&root_execution, QueryRelationshipTypeName::Input);
-            assert_same_holon(&input, collection, "QueryExpressionExecution.Input");
-        }
-        None => assert_related_count(&root_execution, QueryRelationshipTypeName::Input, 0),
+    // Identity: Input is the caller's collection holon, not a copy of it — or,
+    // for a source root, absent entirely. The single-holon convenience is
+    // neither: it builds its own singleton inside QueryCore, which
+    // `assert_singleton_input` checks separately.
+    if let Some(collection) = input_collection {
+        let input = single_related(&root_execution, QueryRelationshipTypeName::Input);
+        assert_same_holon(&input, collection, "QueryExpressionExecution.Input");
+    } else if expects_absent_input {
+        assert_related_count(&root_execution, QueryRelationshipTypeName::Input, 0);
     }
+}
+
+/// The single-holon convenience must record a one-member collection holon as
+/// `Input` — never the source holon itself.
+fn assert_singleton_input(execution: &QueryExecution, source: &HolonReference) {
+    let root_execution: HolonReference = execution.root_execution().clone().into();
+    let input = single_related(&root_execution, QueryRelationshipTypeName::Input);
+    assert_ne!(
+        input.reference_id_string(),
+        source.reference_id_string(),
+        "Input must be a collection holon, not the source holon"
+    );
+    assert_eq!(
+        input.holon_descriptor().unwrap().header().type_name().unwrap().0,
+        "HolonCollection",
+        "the convenience wraps its source in a HolonCollection holon"
+    );
+    let members = related_members(&input, CoreRelationshipTypeName::CollectionMembers);
+    assert_eq!(ids_of(&members), ids_of(&[source.clone()]), "singleton member is the source");
 }
 
 // ---------------------------------------------------------------------------
