@@ -1,7 +1,8 @@
 use holons_prelude::prelude::*;
 use holons_test::{DancesTestCase, TestCaseInit};
 
-const OPERATIONAL_EXTENSION_DESCRIPTOR_KEYS: [&str; 6] = [
+const OPERATIONAL_EXTENSION_KEYS: [&str; 7] = [
+    "MAP Validation Schema-v0.1.0",
     "CommandValidationRule.HolonType",
     "MetaDanceType.MetaHolonType",
     "CommandType.HolonType",
@@ -27,13 +28,12 @@ pub fn bootstrap_operational_schema_fixture() -> Result<DancesTestCase, HolonErr
     test_case.add_verify_validation_bindings_descriptor_contract_step(None)?;
     test_case.add_verify_schema_validation_conformance_step(None)?;
 
-    for descriptor_key in OPERATIONAL_EXTENSION_DESCRIPTOR_KEYS {
-        let stub =
-            fixture_context.mutation().new_holon(Some(MapString(descriptor_key.to_string())))?;
+    for key in OPERATIONAL_EXTENSION_KEYS {
+        let stub = fixture_context.mutation().new_holon(Some(MapString(key.to_string())))?;
         test_case.add_lookup_saved_holon_by_key_step(
             &mut fixture_holons,
             stub,
-            MapString(descriptor_key.to_string()),
+            MapString(key.to_string()),
             None,
             None,
         )?;

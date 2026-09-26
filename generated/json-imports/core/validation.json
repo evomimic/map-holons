@@ -1490,7 +1490,7 @@
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-CONSTRAINT-001",
         "ValidationLevel": "Holon",
-        "ValidationRuleDescription": "A ValueType subtype must not relax a value constraint inherited through its Extends lineage."
+        "ValidationRuleDescription": "A descriptor subtype must retain every applicable inherited constraint in its combined effective constraint set; local constraints may add further obligations."
       },
       "relationships": [
         {
@@ -1810,7 +1810,7 @@
         "DeterminismClass": "Deterministic",
         "SemanticAuthority": "DS-PROP-003",
         "ValidationLevel": "Holon",
-        "ValidationRuleDescription": "Every unbound property must be permitted by the effective additional-property policy."
+        "ValidationRuleDescription": "An unbound instance property is invalid; a populated property must be declared by the effective property contract."
       },
       "relationships": [
         {

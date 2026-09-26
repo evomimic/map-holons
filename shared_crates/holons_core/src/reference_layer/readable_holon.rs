@@ -241,6 +241,16 @@ pub trait ReadableHolon: ReadableHolonImpl {
             .into_iter()
             .map(|property| property.property_name())
             .collect::<Result<HashSet<_>, _>>()?;
+        self.undescribed_property_names_in_contract(&described)
+    }
+
+    /// Compares populated names against an already resolved effective contract.
+    /// Commit assessment supplies names from its prospective reader, so a saved
+    /// describer cannot silently replace the staged definition's contract.
+    fn undescribed_property_names_in_contract(
+        &self,
+        described: &HashSet<PropertyName>,
+    ) -> Result<Vec<PropertyName>, HolonError> {
         Ok(self.property_map_impl()?.into_keys().filter(|name| !described.contains(name)).collect())
     }
 

@@ -32,3 +32,18 @@ pub struct ValueValidationSubject<'a> {
     /// Immutable diagnostic provenance, with no property or holon handle.
     pub path: &'a ValidationSubjectPath,
 }
+
+/// Read-only inputs prepared through the Commit assessment's prospective reader.
+/// Keeping the facts here lets the existing handlers evaluate both entry paths.
+pub enum PreparedRuleSubject {
+    /// Populated names absent from the selected effective contract.
+    Holon { undescribed_properties: Vec<core_types::PropertyName> },
+    /// A missing property whose minimum and requiredness have already been resolved.
+    Property { missing_required: bool, name: String, descriptor_identity: String },
+    /// The selected value type's native representation and the populated value kind.
+    Value {
+        expected: holons_core::ValueDescriptorKind,
+        actual: core_types::BaseValueKind,
+        descriptor_identity: String,
+    },
+}

@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use crate::descriptors::inheritance::equals_or_extends;
 use crate::descriptors::value_descriptor_subtypes::helpers::{
     supported_operators as collect_supported_operators,
     supports_operator as descriptor_supports_operator,
@@ -177,16 +176,27 @@ impl ValueDescriptor {
         &self,
         roots: &super::ResolvedValueTypeRoots,
     ) -> Result<ValueDescriptorKind, HolonError> {
-        super::resolved_descriptor_roots::assert_descriptor_reference_compatible(
+        self.value_kind_with_reader(roots, &super::CurrentDescriptorReader)
+    }
+
+    /// Resolves native kind using the assessment's selected lineage content.
+    pub fn value_kind_with_reader<R: super::DescriptorReader>(
+        &self,
+        roots: &super::ResolvedValueTypeRoots,
+        reader: &R,
+    ) -> Result<ValueDescriptorKind, R::Error> {
+        crate::reference_layer::assert_reference_transaction_compatible(
             &self.holon,
             &roots.context,
         )?;
         for (root, kind) in &roots.families {
-            if equals_or_extends(&self.holon, root)? {
+            if super::equals_or_extends_with_reader(&self.holon, root, reader)? {
                 return Ok(kind.clone());
             }
         }
-        Ok(ValueDescriptorKind::Unsupported(self.header().type_name()?.to_string()))
+        Ok(ValueDescriptorKind::Unsupported(
+            TypeHeader::new(&reader.select(&self.holon)?).type_name()?.to_string(),
+        ))
     }
 
     /// Classifies the declared representation without inspecting an instance value.
@@ -372,6 +382,7 @@ mod tests {
                 "CustomType",
                 "Value",
             )?;
+            child.with_property_value("DefinesInstanceTypeKind", false)?;
             child.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.into()])?;
             let descriptor = ValueDescriptor::from_holon(child.clone().into());
             assert_eq!(descriptor.is_array()?, name.contains("Array"));
@@ -391,6 +402,7 @@ mod tests {
             "ValueArrayValueType",
             "Value",
         )?;
+        value.with_property_value("DefinesInstanceTypeKind", false)?;
         let descriptor = ValueDescriptor::from_holon(value.clone().into());
         assert!(matches!(descriptor.is_array(), Err(HolonError::WrongDescriptorKind { .. })));
         value.with_property_value("DefinesInstanceTypeKind", "true")?;

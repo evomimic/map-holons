@@ -120,10 +120,12 @@ pub enum CoreRelationshipTypeName {
     AffordsDanceInvocation,
     AffordsOperator,
     AffordsTransactionModel,
+    ApplicableToDescriptorTypes,
     BundleMembers,
     CollectionMembers,
     CommandAffordedBy,
     ComponentOf,
+    Components,
     Constraints,
     Contains,
     DanceAffordedBy,
@@ -140,6 +142,7 @@ pub enum CoreRelationshipTypeName {
     HasInverse,
     HasImplementation,
     HasLoadError,
+    HasValidationFinding,
     HasRelationshipReference,
     InstanceKeyRule,
     InstanceProperties,
@@ -171,6 +174,7 @@ pub enum CoreRelationshipTypeName {
     TransactionModelAffordedBy,
     ValidationRuleAffordedBy,
     ValidationBindings,
+    ValidationFindingOf,
     ValidationBindingFor,
     ValueType,
     ValueTypeAffordedBy,
@@ -258,6 +262,16 @@ impl QueryDanceRelationshipTypeName {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capability_two_variants_convert_to_expected_strings() {
+        for (name, expected) in [
+            (CoreRelationshipTypeName::ApplicableToDescriptorTypes, "ApplicableToDescriptorTypes"),
+            (CoreRelationshipTypeName::Components, "Components"),
+        ] {
+            assert_eq!(name.as_relationship_name().to_string(), expected);
+        }
+    }
 
     #[test]
     fn test_variant_string_conversion() {

@@ -664,6 +664,51 @@ mod tests {
     }
 
     #[test]
+    fn two_updates_from_one_source_share_identity() -> Result<(), HolonError> {
+        let source_id = LocalId(vec![1, 2, 3]);
+        let original_id = LocalId(vec![4, 5, 6]);
+        let key = MapString("same-key".into());
+        let source = SavedHolon::new(
+            source_id.clone(),
+            PropertyMap::from([(
+                CorePropertyTypeName::Key.as_property_name(),
+                BaseValue::StringValue(key.clone()),
+            )]),
+            Some(original_id.clone()),
+            MapInteger(2),
+        );
+        let context = stage_version_test_context(source_id.clone(), source, None, true);
+        let saved = SmartReference::new_from_id(
+            context.space_read_handle(),
+            HolonId::Local(source_id.clone()),
+        );
+        let first = context.mutation().stage_new_version(saved.clone())?;
+        let second = context.mutation().stage_new_version(saved.clone())?;
+        assert_ne!(first.temporary_id(), second.temporary_id());
+        assert!(first.is_live_validation_candidate()?);
+        assert!(second.is_live_validation_candidate()?);
+        let identity = crate::ProspectiveIdentity::for_reference(&saved.into(), &context)?;
+        assert_ne!(identity, crate::ProspectiveIdentity::Saved(HolonId::Local(original_id)));
+        for update in [first, second] {
+            assert_eq!(update.versioned_source_id()?, Some(source_id.clone()));
+            assert_eq!(
+                crate::ProspectiveIdentity::for_reference(&update.into(), &context)?,
+                identity
+            );
+        }
+
+        // A matching base key does not establish replacement ancestry.
+        let transient = context.mutation().new_holon(Some(key))?;
+        let create = context.mutation().stage_new_holon(transient)?;
+        assert_eq!(create.versioned_source_id()?, None);
+        let create_identity =
+            crate::ProspectiveIdentity::for_reference(&create.clone().into(), &context)?;
+        assert_eq!(create_identity, crate::ProspectiveIdentity::Staged(create.temporary_id()));
+        assert_ne!(create_identity, identity);
+        Ok(())
+    }
+
+    #[test]
     fn stage_new_version_enters_update_lifecycle_without_predecessor_edge() -> Result<(), HolonError>
     {
         let source_id = LocalId(vec![1, 2, 3]);
@@ -689,6 +734,11 @@ mod tests {
 
         let staged_reference = context.mutation().stage_new_version(current_version)?;
 
+        assert_eq!(staged_reference.versioned_source_id()?, Some(source_id.clone()));
+        assert_eq!(
+            crate::ProspectiveIdentity::for_reference(&staged_reference.clone().into(), &context)?,
+            crate::ProspectiveIdentity::Saved(HolonId::Local(source_id.clone())),
+        );
         assert!(staged_reference.is_in_state(&context, StagedState::ForUpdate)?);
         assert!(staged_reference.predecessor()?.is_none());
 

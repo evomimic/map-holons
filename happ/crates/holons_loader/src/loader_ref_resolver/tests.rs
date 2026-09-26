@@ -5,10 +5,6 @@ fn node(context: &Arc<TransactionContext>, key: &str) -> StagedReference {
     let mut transient = context.mutation().new_holon(Some(key.into())).unwrap();
     transient.with_property_value(CorePropertyTypeName::TypeName, key).unwrap();
     transient.with_property_value(CorePropertyTypeName::IsAbstractType, false).unwrap();
-    transient.with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false).unwrap();
-    transient
-        .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)
-        .unwrap();
     context.mutation().stage_new_holon(transient).unwrap()
 }
 

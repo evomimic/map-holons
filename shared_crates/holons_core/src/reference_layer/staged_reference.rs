@@ -28,8 +28,8 @@ use crate::{
 };
 use base_types::{BaseValue, MapString};
 use core_types::{
-    CommitValidationViolation, HolonError, HolonId, HolonNodeModel, PropertyMap, PropertyName,
-    PropertyValue, RelationshipName, TemporaryId,
+    CommitValidationViolation, HolonError, HolonId, HolonNodeModel, LocalId, PropertyMap,
+    PropertyName, PropertyValue, RelationshipName, TemporaryId,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -354,6 +354,23 @@ impl StagedReference {
     /// Returns the temporary id for this staged holon.
     pub fn temporary_id(&self) -> TemporaryId {
         self.id.clone()
+    }
+
+    /// Returns the persisted version explicitly staged for replacement, if any.
+    /// Creates have no source identity, even when they share a key with a saved holon.
+    pub fn versioned_source_id(&self) -> Result<Option<LocalId>, HolonError> {
+        let rc_holon = self.get_rc_holon()?;
+        let holon = rc_holon.read().map_err(|error| {
+            HolonError::FailedToAcquireLock(format!(
+                "Failed to acquire read lock on nursery: {error}"
+            ))
+        })?;
+        match &*holon {
+            Holon::Staged(staged) => Ok(staged.versioned_source_id_ref().cloned()),
+            _ => {
+                Err(HolonError::InvalidType("StagedReference should point to a StagedHolon".into()))
+            }
+        }
     }
 
     /// Returns the transaction id this reference is bound to.
