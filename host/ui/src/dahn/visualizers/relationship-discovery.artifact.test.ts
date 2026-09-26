@@ -28,7 +28,7 @@ it('reveals population in descriptor order, shows exact counts and preserves mou
   const node = document.createElement(defineCustomElementOnce('test-discovered-node', Node)) as any;
   const properties = document.createElement('input'); properties.value = 'staged edit retained';
   const content = document.createElement('div'); content.textContent = 'existing collection';
-  const activate = vi.fn(), singular = vi.fn();
+  const activate = vi.fn((_item, _slot, publish) => publish({ state: 'loaded', content })), singular = vi.fn();
   node.setContext({ title: 'Identity', relationshipDiscovery: discovery,
     collectionActivation: { activate, dispose: () => discovery.dispose() }, activateRelationship: singular,
     nodeAffordances: { singularRelationships: [parent], collections: [friends, orders, { kind: 'property', label: 'Array' }] },

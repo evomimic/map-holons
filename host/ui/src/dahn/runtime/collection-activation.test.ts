@@ -1,3 +1,4 @@
+import { destinationPaint } from './destination-paint';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,8 @@ import { MaterializedVisualizerRuntime } from './materialized-visualizer-runtime
 import { MaterializedVisualizerCache } from './materialized-visualizer-cache';
 import { defineCustomElementOnce } from '../visualizers/define-custom-element-once';
 import type { CollectionAffordance } from '../contracts/affordances';
+
+vi.mock('./destination-paint', () => ({ destinationPaint: vi.fn(async () => {}) }));
 
 const tableSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/table-collection.js'), 'utf8');
 const nodeSource = await readFile(resolve(process.cwd(), 'conductora/resources/dahn-visualizers/holon-inspector.js'), 'utf8');
@@ -17,15 +20,15 @@ function collection(count: number) {
   return { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [property('Name'), property('Key'), property('Tags', 'StringValue', true)] }, [Symbol.iterator]: () => members[Symbol.iterator]() };
 }
 const tab = (name: string, direction = 'declared'): CollectionAffordance => ({ kind: 'relationship', label: name, relationship: { direction, descriptor: { isOrdered: async () => false, relationshipName: async () => name } } } as CollectionAffordance);
-function fixture() {
-  const owner = { describedRelatedHolons: vi.fn(async () => collection(2)) };
+function fixture(populated = false) {
+  const owner = { relatedHolons: vi.fn(async () => collection(2)), describedRelatedHolons: vi.fn(async () => collection(2)) };
   const selected = { key: async () => 'table' };
   const slot = {};
   const parent = {};
   const transaction = { getSavedHolonByBaseKey: vi.fn(async () => slot), selectCollectionVisualizer: vi.fn(async () => ({ selected })) };
   const materialize = vi.fn(async () => ({ source: tableSource, format: 'ESModule' as const, entrypoint: 'default' }));
   const runtime = new MaterializedVisualizerRuntime(new MaterializedVisualizerCache({ materialize }), importer);
-  const activation = new NodeCollectionActivation(transaction as never, owner as never, parent as never, runtime);
+  const activation = new NodeCollectionActivation(transaction as never, owner as never, parent as never, runtime, populated ? { population: () => ({ state: 'populated', count: 2 }), record: vi.fn(), dispose: vi.fn() } as never : undefined);
   return { activation, owner, transaction, runtime, materialize, slot, parent };
 }
 beforeEach(() => {
@@ -36,12 +39,12 @@ beforeEach(() => {
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals(); });
 
 describe('selected collection activation', () => {
-  it.each([0, 1, 3, 800])('lazily materializes the real table for %i members, including inverse outbound navigation', async count => {
+  it.each([1, 3, 800])('lazily materializes the real table for %i members, including inverse outbound navigation', async count => {
     const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(collection(count));
     expect(f.owner.describedRelatedHolons).not.toHaveBeenCalled();
     const updates: CollectionUpdate[] = [];
     f.activation.activate(tab('InverseName', 'inverse'), 'slot', update => updates.push(update));
-    expect(updates[0].state).toBe('loading');
+    expect(updates[0].state).toBe('checking');
     await vi.waitFor(() => expect(updates.at(-1)?.content).toBeDefined());
     expect(f.owner.describedRelatedHolons).toHaveBeenCalledWith('InverseName');
     expect(f.transaction.selectCollectionVisualizer).toHaveBeenCalledWith(expect.objectContaining({ length: count }), f.parent, f.slot);
@@ -64,7 +67,7 @@ describe('selected collection activation', () => {
   });
 
   it('isolates realization from superseded work until transaction pool round-trips are concurrency-safe', async () => {
-    const f = fixture(); let finish!: (value: ReturnType<typeof collection>) => void;
+    const f = fixture(true); let finish!: (value: ReturnType<typeof collection>) => void;
     f.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     const updates: CollectionUpdate[] = [];
     f.activation.activate(tab('A'), 'slot', update => updates.push(update)); await wait();
@@ -77,7 +80,7 @@ describe('selected collection activation', () => {
     disposed.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { end = resolve; }));
     const publish = vi.fn(); disposed.activation.activate(tab('C'), 'slot', publish); await wait();
     disposed.activation.dispose(); end(collection(1)); await wait();
-    expect(publish).toHaveBeenCalledTimes(1); expect(disposed.materialize).not.toHaveBeenCalled();
+    expect(publish).toHaveBeenCalledTimes(2); expect(disposed.materialize).not.toHaveBeenCalled();
   });
 
   it.each(['membership', 'selection', 'materialization', 'property'])('contains %s failures and retries without false empty success', async stage => {
@@ -159,6 +162,7 @@ it('delivers one member intent to Path Inspector, isolates occurrences, and revo
 
   other.remove();
   tabs[1].click();
+  await wait();
   // Even reattaching superseded content must not restore its owner binding.
   node.append(source); rows[1].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
   expect(inspect).toHaveBeenCalledTimes(2); source.remove();
@@ -189,7 +193,7 @@ it.each(['InstanceProperties', 'InstanceRelationships'])('keeps %s members visib
   expect(inspect.mock.calls[0][0].detail.reference).toBe(members[0]);
 });
 
-it.each([0, 1])('renders the identity-only projection for %i members, including an unkeyed holon', async count => {
+it.each([1])('renders the identity-only projection for %i members, including an unkeyed holon', async count => {
   const member = { holonDescriptor: async () => ({ hasInstanceKey: async () => false }), key: vi.fn(async () => null), versionedKey: vi.fn(async () => 'unkeyed-reference@1') };
   const described = { length: count, elementType: { hasInstanceKey: async () => false, instanceProperties: async () => [] }, [Symbol.iterator]: () => (count ? [member] : [])[Symbol.iterator]() };
   const f = fixture(); f.owner.describedRelatedHolons.mockResolvedValue(described as never);
@@ -309,4 +313,62 @@ it.each(['declared-malformed', 'concrete-missing'])('does not hide a %s key-poli
   const publish = vi.fn(); f.activation.activate(tab('InstanceRelationships'), 'slot', publish);
   await vi.waitFor(() => expect(publish.mock.lastCall?.[0].state).toBe('error'));
   expect(publish.mock.lastCall![0].message).toContain(failure === 'declared-malformed' ? 'Malformed declared key rule' : 'Missing concrete key rule');
+});
+
+it.each(['empty', 'failed'])('keeps the live collection and member binding during %s preflight', async outcome => {
+  const f = fixture(); const a = tab('A'), b = tab('B');
+  const updates: CollectionUpdate[] = [];
+  f.activation.activate(a, 'slot', update => updates.push(update));
+  await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded'));
+  const content = updates.at(-1)!.content!; document.body.append(content);
+  const beforeChange = vi.fn(() => true); f.activation.setBeforeChange(beforeChange);
+  let finish!: (value: ReturnType<typeof collection>) => void;
+  let fail!: (error: Error) => void;
+  f.owner.relatedHolons.mockImplementationOnce(() => new Promise((resolve, reject) => { finish = resolve; fail = reject; }));
+  const attempted: CollectionUpdate[] = [];
+  f.activation.activate(b, 'slot', update => attempted.push(update));
+  await wait();
+  expect(f.activation.sourceAffordance(content)).toBe(a);
+  expect(beforeChange).not.toHaveBeenCalled();
+  if (outcome === 'empty') finish(collection(0)); else fail(new Error('membership unavailable'));
+  await vi.waitFor(() => expect(attempted.at(-1)?.state).toBe(outcome === 'empty' ? 'empty' : 'error'));
+  expect(attempted.every(update => update.placement === 'source')).toBe(true);
+  expect(f.activation.sourceAffordance(content)).toBe(a);
+  expect(f.owner.describedRelatedHolons).toHaveBeenCalledTimes(1);
+  const intent = vi.fn(); content.addEventListener('dahn-inspect-holon', intent);
+  content.querySelector('tbody tr')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  expect(intent).toHaveBeenCalledOnce();
+  expect(beforeChange).not.toHaveBeenCalled();
+});
+
+it('paints the named collection destination before immediate selection and handles later disappearance there', async () => {
+  const f = fixture();
+  let paint!: () => void;
+  vi.mocked(destinationPaint).mockImplementationOnce(() => new Promise(resolve => { paint = resolve; }));
+  f.owner.describedRelatedHolons.mockResolvedValue(collection(0));
+  const updates: CollectionUpdate[] = [];
+  f.activation.activate(tab('Gone'), 'slot', update => updates.push(update));
+  await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loading'));
+  expect(updates.at(-1)?.message).toBe('Opening Gone…');
+  expect(f.owner.describedRelatedHolons).not.toHaveBeenCalled();
+  expect(f.transaction.selectCollectionVisualizer).not.toHaveBeenCalled();
+  paint();
+  await vi.waitFor(() => expect(updates.at(-1)?.state).toBe('loaded-empty'));
+  expect(updates.at(-1)?.placement).toBe('destination');
+  expect(updates.at(-1)?.message).toContain('No targets remain');
+  expect(f.materialize).not.toHaveBeenCalled();
+});
+
+it('does not strand an opening collection when a newer attempt proves empty', async () => {
+  const f = fixture(); let finish!: (value: ReturnType<typeof collection>) => void;
+  f.owner.describedRelatedHolons.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const a: CollectionUpdate[] = [], b: CollectionUpdate[] = [];
+  f.activation.activate(tab('A'), 'slot', update => a.push(update));
+  await vi.waitFor(() => expect(f.owner.describedRelatedHolons).toHaveBeenCalled());
+  f.owner.relatedHolons.mockResolvedValueOnce(collection(0));
+  f.activation.activate(tab('B'), 'slot', update => b.push(update));
+  finish(collection(2));
+  await vi.waitFor(() => expect(b.at(-1)?.state).toBe('empty'));
+  expect(a.at(-1)?.state).toBe('loaded');
+  expect(b.every(update => update.placement === 'source')).toBe(true);
 });

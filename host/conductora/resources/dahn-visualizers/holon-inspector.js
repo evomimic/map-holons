@@ -92,9 +92,13 @@ export default class HolonInspectorElement extends HTMLElement {
       button.setAttribute('aria-controls', this.collectionPanelId);
       const activate = () => {
         if (!this.canNavigateRelationship(item)) return;
-        if (this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => this.updateCollection(update)) === false) return;
-        this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
-        this.collectionViewer.setAttribute('aria-labelledby', button.id);
+        this.collectionActivation.activate(item, 'HolonInspector.CollectionsSlot', update => {
+          if (update.placement !== 'source') {
+            this.collectionControls.forEach(control => { control.setAttribute('aria-selected', String(control === button)); control.tabIndex = control === button ? 0 : -1; });
+            this.collectionViewer.setAttribute('aria-labelledby', button.id);
+          }
+          this.updateCollection(update);
+        });
       };
       button.addEventListener('click', activate);
       button.addEventListener('keydown', event => {
@@ -162,6 +166,16 @@ export default class HolonInspectorElement extends HTMLElement {
   }
 
   updateCollection(update) {
+    if (update.placement === 'source') {
+      this.collectionStatus.hidden = false;
+      this.collectionStatus.textContent = update.message ?? '';
+      if (update.retry) {
+        const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry';
+        retry.addEventListener('click', update.retry); this.collectionStatus.append(retry);
+      }
+      return;
+    }
+    this.collectionStatus.hidden = true;
     const viewer = this.collectionViewer;
     viewer.dataset.collectionState = update.state;
     viewer.hidden = update.state === 'unresolved';
@@ -306,7 +320,11 @@ export default class HolonInspectorElement extends HTMLElement {
       Object.assign(collectionViewer.style, { display: 'flex', flexDirection: 'column', flex: '1 1 0', minHeight: '0', overflow: 'auto', padding: 'var(--dahn-control-gap)', borderRadius: 'var(--dahn-panel-corner-radius)', border: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', borderTop: '0' });
       this.adaptBudget();
     }
-    collectionRegion.append(collectionTabBar, collectionViewer);
+    this.collectionStatus = document.createElement('div');
+    this.collectionStatus.dataset.collectionStatus = 'true';
+    this.collectionStatus.setAttribute('role', 'status');
+    this.collectionStatus.hidden = true;
+    collectionRegion.append(collectionTabBar, this.collectionStatus, collectionViewer);
     Object.assign(collectionTabBar.style, { borderBottom: 'var(--dahn-slot-border-width) var(--dahn-slot-border-style) var(--dahn-slot-border-color)', paddingTop: 'var(--dahn-action-padding-block)', flexShrink: '0' });
 
     const body = document.createElement('div');
