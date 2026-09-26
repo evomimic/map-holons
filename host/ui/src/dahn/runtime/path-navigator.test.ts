@@ -896,6 +896,36 @@ it('localizes a target disappearing during identity resolution and refreshes dis
   expect(f.element.querySelector('[data-lineage-child]')).toBeNull();
 });
 
+it.each(['empty', 'failure', 'invalid'])('restores destination recovery when a deferred retry is superseded by a newer %s check', async outcome => {
+  const f = await fixture(); const root = f.path()[0];
+  f.selectVisualizer.mockRejectedValueOnce(new Error('selection unavailable'));
+  await right(f, root);
+  const destination = f.destination()!;
+  const message = destination.message;
+  const gate = deferred<ReturnType<typeof collection>>();
+  f.rootSubject.relatedHolons.mockImplementationOnce(() => gate.promise);
+  destination.retry!();
+  await vi.waitFor(() => expect(f.rootSubject.relatedHolons).toHaveBeenCalledTimes(2));
+  if (outcome === 'failure') f.rootSubject.relatedHolons.mockRejectedValueOnce(new Error('offline'));
+  else f.rootSubject.relatedHolons.mockResolvedValueOnce(collection(outcome === 'empty' ? [] : [f.a, f.b]));
+  await right(f, root, 1);
+  expect(f.destination()).toBe(destination);
+  expect(destination.pending).toBe(false);
+  expect(destination.message).toBe(message);
+  expect(destination.retry).toBeDefined();
+  gate.resolve(collection([f.a]));
+  for (let i = 0; i < 50; ++i) await Promise.resolve();
+  expect(destination.pending).toBe(false);
+  expect(destination.message).toBe(message);
+  expect(f.path()).toHaveLength(1);
+  destination.retry!();
+  await vi.waitFor(() => expect(f.path()).toHaveLength(2));
+  expect(f.destination()).toBeUndefined();
+  expect(f.path()[1].id).toBe(destination.id);
+  expect(f.path()[1].subject).toBe(f.a);
+  f.navigation.dispose();
+});
+
 it('discards a late horizontal candidate when a newer member navigation supersedes it', async () => {
   const f = await fixture(); const root = f.path()[0]; const rows = await openCollection(root.element);
   const gate = deferred<void>(); const original = f.realize.getMockImplementation()!;

@@ -33,7 +33,7 @@ export class PathNavigator implements PathNavigation {
   private focus: PathFocus;
   private disposed = false;
   private attempt?: { owner: Occurrence; axis: 'vertical' | 'horizontal'; reference?: HolonReference; affordance?: RelationshipAffordance };
-  private check?: { owner: Occurrence; affordance: RelationshipAffordance };
+  private check?: { owner: Occurrence; affordance: RelationshipAffordance; restoreDestination?: () => void };
   private reservation?: {
     destination: PathDestination;
     projections: Map<string, { row: number; rowId: string; column: number; occluded?: boolean }>;
@@ -133,6 +133,7 @@ export class PathNavigator implements PathNavigation {
   private cancelCheck(): void {
     if (!this.check) return;
     const { owner } = this.check;
+    this.check.restoreDestination?.();
     this.check = undefined;
     owner.pending = this.attempt?.owner === owner && !!this.reservation?.destination.pending;
     if (this.attempt?.owner !== owner) {
@@ -327,7 +328,7 @@ export class PathNavigator implements PathNavigation {
     if (this.check?.owner === owner && this.check.affordance === affordance && owner.pending) return;
     if (!retryDestination && this.attempt?.owner === owner && this.attempt.affordance === affordance && owner.pending) return;
     this.cancelCheck();
-    const check = { owner, affordance };
+    const check: NonNullable<PathNavigator['check']> = { owner, affordance };
     this.check = check;
     const work = semanticWork(this.transaction);
     const revision = work.revision;
@@ -341,6 +342,14 @@ export class PathNavigator implements PathNavigation {
     owner.retry = undefined;
     this.singularState(owner, { ...owner.singular, state: 'loading', attempted: affordance });
     if (retryDestination) {
+      // A retry still has to establish existence. Until accepted, supersession
+      // must restore its recovery controls rather than abandon a pending region.
+      const { pending, message, retry } = retryDestination;
+      check.restoreDestination = () => {
+        if (this.reservation?.destination === retryDestination) {
+          Object.assign(retryDestination, { pending, message, retry });
+        }
+      };
       retryDestination.pending = true; retryDestination.retry = undefined;
       retryDestination.message = `Opening ${affordance.label}…`;
     }
@@ -434,6 +443,7 @@ export class PathNavigator implements PathNavigation {
       } finally {
         profile?.next('publish and synchronous mount');
         if (current()) {
+          check.restoreDestination = undefined;
           owner.pending = this.attempt?.owner === owner && !!this.reservation?.destination.pending;
           this.publish();
         }
