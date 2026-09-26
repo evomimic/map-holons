@@ -1,6 +1,9 @@
 use holons_prelude::prelude::*;
 use holons_test::harness::helpers::UNIMPLEMENTED_QUERY_EXPRESSION_DESCRIPTOR_KEY;
-use holons_test::{DancesTestCase, ExpectedCommitStatus, QueryScaffoldRoute, TestCaseInit};
+use holons_test::{
+    DancesTestCase, ExpectedCommitStatus, QueryExpectation, QueryInputSpec, QueryRoute,
+    TestCaseInit,
+};
 
 const QUERY_DESCRIPTOR_KEY: &str = "Query.HolonType";
 const ROOT_EXPRESSION_KEY: &str = "UnimplementedQueryExpression.Qry1Root";
@@ -18,8 +21,8 @@ const QUERY_KEY: &str = "Query.Qry1Scaffold";
 ///    scaffold:
 ///    - directly, with the expression as the explicit input and again with an
 ///      empty input;
-///    - through `QueryDance`, and once more with a request missing
-///      `InitialInput` to prove the structured contract error survives.
+///    - through `QueryDance`, and once more with a request omitting the
+///      (optional) `InitialInput`, which still reaches the seam.
 pub fn query_qry1_scaffold_fixture() -> Result<DancesTestCase, HolonError> {
     let TestCaseInit { mut test_case, fixture_context, mut fixture_holons, .. } = TestCaseInit::new(
         "query_qry1_scaffold",
@@ -148,40 +151,43 @@ pub fn query_qry1_scaffold_fixture() -> Result<DancesTestCase, HolonError> {
         Some("Resolve a committed holon by key to use as explicit query input".to_string()),
     )?;
 
-    test_case.add_execute_query_scaffold_step(
+    test_case.add_execute_query_step(
         saved_query.clone(),
-        vec![saved_expression.clone()],
-        QueryScaffoldRoute::Direct,
-        Some(HolonErrorKind::NotImplemented),
+        QueryInputSpec::Collection(vec![saved_expression.clone()]),
+        QueryRoute::Direct,
+        QueryExpectation::Error(HolonErrorKind::NotImplemented),
         Some(
             "Direct seam with one explicit input member: Pending -> Failed, NotImplemented"
                 .to_string(),
         ),
     )?;
-    test_case.add_execute_query_scaffold_step(
+    test_case.add_execute_query_step(
         saved_query.clone(),
-        vec![],
-        QueryScaffoldRoute::Direct,
-        Some(HolonErrorKind::NotImplemented),
+        QueryInputSpec::Collection(vec![]),
+        QueryRoute::Direct,
+        QueryExpectation::Error(HolonErrorKind::NotImplemented),
         Some(
             "Direct seam with an empty explicit input is valid runtime input (no enumeration)"
                 .to_string(),
         ),
     )?;
-    test_case.add_execute_query_scaffold_step(
+    test_case.add_execute_query_step(
         saved_query.clone(),
-        vec![saved_expression],
-        QueryScaffoldRoute::QueryDance,
-        Some(HolonErrorKind::NotImplemented),
+        QueryInputSpec::Collection(vec![saved_expression]),
+        QueryRoute::QueryDance,
+        QueryExpectation::Error(HolonErrorKind::NotImplemented),
         Some("QueryDance routes to the same seam and propagates NotImplemented".to_string()),
     )?;
-    test_case.add_execute_query_scaffold_step(
+    // InitialInput is optional since QRY2 (source roots take none); an unknown
+    // concrete expression passes the absent operand through and still fails at
+    // the operator boundary rather than at the adapter.
+    test_case.add_execute_query_step(
         saved_query,
-        vec![],
-        QueryScaffoldRoute::QueryDanceWithoutInitialInput,
-        Some(HolonErrorKind::MissingRequiredRelationship),
+        QueryInputSpec::None,
+        QueryRoute::QueryDance,
+        QueryExpectation::Error(HolonErrorKind::NotImplemented),
         Some(
-            "QueryDance request without InitialInput fails with the structured contract error"
+            "QueryDance request without InitialInput reaches the seam and fails NotImplemented"
                 .to_string(),
         ),
     )?;

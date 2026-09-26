@@ -1,6 +1,7 @@
 let nextPropertiesId = 0;
 
-export default class PropertiesVisualizerElement extends HTMLElement {
+export default class PropertyMapVisualizerElement extends HTMLElement {
+  static compositionSlots = { property: 'DefaultPropertyMapVisualizer.PropertySlot' };
   expanded = false;
   frame = null;
 

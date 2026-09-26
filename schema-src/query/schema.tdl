@@ -57,6 +57,46 @@ holon QuerySubTree.HolonType {
   }
 }
 
+holon SeedHolons.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Root-only source expression. Expands the invocation's focal HolonSpace over its Owns relationship; accepts no input collection. SeedPredicate is an optional payload with no QRY2 evaluation."
+    display_name: "Seed Holons"
+    display_plural: "Seed Holons Expressions"
+    plural: "SeedHolonsExpressions"
+  }
+  relationships {
+    InstanceRelationships -> (SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonType)
+  }
+}
+
+holon Expand.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends QueryExpression.HolonType
+  header {
+    description: "Navigation expression. Expands each input member over the named outbound relationship resolved through the member's HolonDescriptor. ExpansionPredicate is an optional payload with no QRY2 evaluation."
+    display_name: "Expand"
+    display_plural: "Expand Expressions"
+    plural: "ExpandExpressions"
+  }
+  relationships {
+    InstanceProperties -> ExpansionRelationshipName.PropertyType
+    InstanceRelationships -> (Expand.HolonType)-[ExpansionPredicate]->(QueryPredicate.HolonType)
+  }
+}
+
+abstract holon QueryPredicate.HolonType {
+  type MetaHolonType.MetaTypeDescriptor
+  extends HolonType.TypeDescriptor
+  header {
+    description: "Abstract predicate attached to a query expression. Concrete predicate forms, operators, and evaluation are defined by later slices."
+    display_name: "Query Predicate"
+    display_plural: "Query Predicates"
+    plural: "QueryPredicates"
+  }
+}
+
 holon QueryParameterDeclaration.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
@@ -100,6 +140,7 @@ holon ExecutionInstance.HolonType {
     InstanceProperties -> ExecutionStatus.PropertyType
     InstanceRelationships -> [
       (ExecutionInstance.HolonType)-[ExecutesQuery]->(Query.HolonType),
+      (ExecutionInstance.HolonType)-[FocalSpace]->(HolonSpace.HolonType),
       (ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType),
       (ExecutionInstance.HolonType)-[ExecutionResult]->(HolonCollection.HolonType)
     ]
@@ -161,6 +202,19 @@ property ParameterName.PropertyType {
     display_name: "Parameter Name"
     display_plural: "Parameter Names"
     plural: "ParameterNames"
+  }
+}
+
+property ExpansionRelationshipName.PropertyType {
+  type MetaPropertyType.MetaTypeDescriptor
+  extends PropertyType.TypeDescriptor
+  value MapStringValueType.StringValueType
+  IsValueRequired true
+  header {
+    description: "Name of the outbound relationship an Expand expression navigates; resolved against each source member's HolonDescriptor at execution time."
+    display_name: "Expansion Relationship Name"
+    display_plural: "Expansion Relationship Names"
+    plural: "ExpansionRelationshipNames"
   }
 }
 
@@ -469,6 +523,41 @@ inverse relationship (Query.HolonType)-[ExecutedBy]->(ExecutionInstance.HolonTyp
   }
 }
 
+def relationship (ExecutionInstance.HolonType)-[FocalSpace]->(HolonSpace.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ExactlyOne.CardinalityConstraint
+    HasInverse -> FocalSpaceFor
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source ExecutionInstance.HolonType
+  target HolonSpace.HolonType
+  deletion_semantic Block
+  header {
+    description: "Identifies the focal HolonSpace supplied as invocation context for this transient execution. Never recorded on the reusable Query definition."
+    display_name: "Focal Space"
+    display_plural: "Focal Spaces"
+    plural: "FocalSpaces"
+  }
+}
+
+inverse relationship (HolonSpace.HolonType)-[FocalSpaceFor]->(ExecutionInstance.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source HolonSpace.HolonType
+  target ExecutionInstance.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of FocalSpace."
+    display_name: "Focal Space For"
+    display_plural: "Focal Space Fors"
+    plural: "FocalSpaceFors"
+  }
+}
+
 def relationship (ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
@@ -578,7 +667,7 @@ inverse relationship (QueryExpression.HolonType)-[ExpressionExecutedBy]->(QueryE
 def relationship (QueryExpressionExecution.HolonType)-[Input]->(HolonCollection.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
-    Constraints -> ExactlyOne.CardinalityConstraint
+    Constraints -> ZeroOrOne.CardinalityConstraint
     HasInverse -> InputFor
   }
   extends DeclaredRelationshipType.RelationshipType
@@ -586,7 +675,7 @@ def relationship (QueryExpressionExecution.HolonType)-[Input]->(HolonCollection.
   target HolonCollection.HolonType
   deletion_semantic Block
   header {
-    description: "Records the runtime input collection for one expression invocation."
+    description: "Records the runtime input collection for one expression invocation. Optional at this base boundary; the concrete root expression decides whether a collection operand is required, forbidden, or supplied by a predecessor."
     display_name: "Input"
     display_plural: "Inputs"
     plural: "Inputs"
@@ -642,6 +731,76 @@ inverse relationship (HolonCollection.HolonType)-[ResultOf]->(QueryExpressionExe
     display_name: "Result Of"
     display_plural: "Results Of"
     plural: "ResultsOf"
+  }
+}
+
+def relationship (SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> SeedPredicateFor
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source SeedHolons.HolonType
+  target QueryPredicate.HolonType
+  deletion_semantic Block
+  header {
+    description: "Optional predicate payload attached to a SeedHolons expression. Definition state only; QRY2 neither evaluates nor pushes it down."
+    display_name: "Seed Predicate"
+    display_plural: "Seed Predicates"
+    plural: "SeedPredicates"
+  }
+}
+
+inverse relationship (QueryPredicate.HolonType)-[SeedPredicateFor]->(SeedHolons.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryPredicate.HolonType
+  target SeedHolons.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of SeedPredicate."
+    display_name: "Seed Predicate For"
+    display_plural: "Seed Predicate Fors"
+    plural: "SeedPredicateFors"
+  }
+}
+
+def relationship (Expand.HolonType)-[ExpansionPredicate]->(QueryPredicate.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrOne.CardinalityConstraint
+    HasInverse -> ExpansionPredicateFor
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source Expand.HolonType
+  target QueryPredicate.HolonType
+  deletion_semantic Block
+  header {
+    description: "Optional predicate payload attached to an Expand expression. Definition state only; QRY2 neither evaluates nor pushes it down."
+    display_name: "Expansion Predicate"
+    display_plural: "Expansion Predicates"
+    plural: "ExpansionPredicates"
+  }
+}
+
+inverse relationship (QueryPredicate.HolonType)-[ExpansionPredicateFor]->(Expand.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source QueryPredicate.HolonType
+  target Expand.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of ExpansionPredicate."
+    display_name: "Expansion Predicate For"
+    display_plural: "Expansion Predicate Fors"
+    plural: "ExpansionPredicateFors"
   }
 }
 

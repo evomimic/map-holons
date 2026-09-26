@@ -199,16 +199,16 @@ instance HolonInspector.NodeVisualizer {
       SlotBorderWidth.DesignToken,
       SlotPadding.DesignToken,
     ]
-    ApplicableToType -> HolonType.TypeDescriptor
-    HasSlot -> [HolonInspector.PropertyViewerSlot, HolonInspector.ActionsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot]
+    ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
+    HasSlot -> [HolonInspector.PropertyMapSlot, HolonInspector.ActionsSlot, HolonInspector.CollectionsSlot, HolonInspector.SingleValueSlot]
     ImplementedBy -> HolonInspectorTypeScript.VisualizerImplementation
   }
 }
 
-instance HolonInspector.PropertyViewerSlot {
+instance HolonInspector.PropertyMapSlot {
   type VisualizerSlot.HolonType
   relationships {
-    AcceptsVisualizerType -> PropertiesVisualizer.HolonType
+    AcceptsVisualizerType -> PropertyMapVisualizer.HolonType
   }
 }
 
@@ -236,7 +236,7 @@ instance HolonInspector.SingleValueSlot {
 instance GenericActions.ActionVisualizer {
   type ActionVisualizer.HolonType
   relationships {
-    ApplicableToType -> HolonType.TypeDescriptor
+    ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
     ConsumesDesignToken -> [
       ActionCornerRadius.DesignToken,
       ActionPaddingBlock.DesignToken,
@@ -268,7 +268,7 @@ instance HolonInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.holon-inspector"
-  VisualizerArtifactDigest "sha256:9e64a917222f25a24ba5677da1d2cafa7ac28a9bc8cb4372faea5d608714600a"
+  VisualizerArtifactDigest "sha256:3e964e9f1bb66c5d6465d946827dd5c6e61f98faae2649723ec7c963460c044a"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -343,7 +343,7 @@ instance PathInspectorTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.path-inspector"
-  VisualizerArtifactDigest "sha256:16483d1985be0734ad8f86d9d134232f4600a228f9d9f6e03e569c2584e10d67"
+  VisualizerArtifactDigest "sha256:a3ab8f1e3a187e3eb176c45b29f46d75ba7129dc445700e46e65fce53af2ee24"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -359,14 +359,14 @@ holon CollectionVisualizer.HolonType {
   }
 }
 
-holon PropertiesVisualizer.HolonType {
+holon PropertyMapVisualizer.HolonType {
   type MetaVisualizerType.MetaHolonType
   extends Visualizer.HolonType
   header {
     description: "Concrete Visualizer Holon Type for visualizers that represent a set of Properties within one presentation strategy."
-    display_name: "Properties Visualizer"
-    display_plural: "Properties Visualizers"
-    plural: "PropertiesVisualizers"
+    display_name: "Property Map Visualizer"
+    display_plural: "Property Map Visualizers"
+    plural: "PropertyMapVisualizers"
   }
 }
 
@@ -384,8 +384,8 @@ holon PropertyVisualizer.HolonType {
 // The generic Properties presentation owns the property-set layout. It is
 // applicable to the ordinary HolonType lineage so every generic Node can bind
 // it through its Property Viewer slot without a bootstrap fallback.
-instance GenericProperties.PropertiesVisualizer {
-  type PropertiesVisualizer.HolonType
+instance DefaultPropertyMapVisualizer.PropertyMapVisualizer {
+  type PropertyMapVisualizer.HolonType
   relationships {
     ConsumesDesignToken -> [
       ActionCornerRadius.DesignToken,
@@ -404,30 +404,30 @@ instance GenericProperties.PropertiesVisualizer {
       SlotBorderStyle.DesignToken,
       SlotBorderWidth.DesignToken,
     ]
-    ApplicableToType -> HolonType.TypeDescriptor
-    HasSlot -> GenericProperties.PropertySlot
-    ImplementedBy -> GenericPropertiesTypeScript.VisualizerImplementation
+    ApplicableToType -> [HolonType.TypeDescriptor, DanceType.HolonType, DanceResponseType.HolonType, CommandType.HolonType, OperatorType.HolonType, Visualizer.HolonType]
+    HasSlot -> DefaultPropertyMapVisualizer.PropertySlot
+    ImplementedBy -> DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation
   }
 }
 
-instance GenericProperties.PropertySlot {
+instance DefaultPropertyMapVisualizer.PropertySlot {
   type VisualizerSlot.HolonType
   relationships {
     AcceptsVisualizerType -> PropertyVisualizer.HolonType
   }
 }
 
-instance GenericPropertiesTypeScript.VisualizerImplementation {
+instance DefaultPropertyMapVisualizerTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.properties"
-  VisualizerArtifactDigest "sha256:2c90d2a0dc283ce669d8903db8c8976d6f0968d5ae48bbef33e37c41b863f094"
+  VisualizerArtifactDigest "sha256:0ca41ed2c94534e3bef6a04060148baaa34656cc3fa3cece146a818eea4ee30f"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
 
 // The generic property presentation is selected for each PropertyDescriptor.
-// It is intentionally distinct from PropertiesVisualizer: it owns only one
+// It is intentionally distinct from PropertyMapVisualizer: it owns only one
 // name/value row and its Value slot, never set-level layout or spatial budget.
 instance GenericProperty.PropertyVisualizer {
   type PropertyVisualizer.HolonType
@@ -454,7 +454,7 @@ instance GenericPropertyTypeScript.VisualizerImplementation {
   type VisualizerImplementation.HolonType
   VisualizerImplementationRuntime TypeScript
   VisualizerImplementationKey "dahn.property"
-  VisualizerArtifactDigest "sha256:52456174ac948bde699623c2cd363f2296b36414ccf2d3289b7f5d37352ceb28"
+  VisualizerArtifactDigest "sha256:e15c296b0d2ee5d37155feae5ccadf2f28d8409099d98001b23f8e4b2fab2893"
   VisualizerModuleFormat "ESModule"
   Entrypoint "default"
 }
@@ -500,7 +500,7 @@ instance BooleanValue.ValueVisualizer {
 instance EnumValue.ValueVisualizer {
   type ValueVisualizer.HolonType
   relationships {
-    ApplicableToType -> EnumValueType.ValueType
+    ApplicableToType -> [EnumValueType.ValueType, MapEnumValueType.EnumValueType]
     ImplementedBy -> ScalarValueTypeScript.VisualizerImplementation
   }
 }
@@ -701,7 +701,7 @@ inverse relationship (VisualizerSlot.HolonType)-[SlotForVisualizer]->(Visualizer
   }
 }
 
-relationship (VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType) {
+def relationship (VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {
     Constraints -> OneOrMore.CardinalityConstraint

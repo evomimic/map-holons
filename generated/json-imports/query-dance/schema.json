@@ -45,7 +45,7 @@
         "TypeNamePlural": "QueryDanceRequests",
         "DisplayName": "Query Dance Request",
         "DisplayNamePlural": "Query Dance Requests",
-        "Description": "Dance ingress request selecting a Query and providing its initial collection and parameter bindings."
+        "Description": "Dance ingress request selecting a Query and providing its optional initial collection and parameter bindings. The focal HolonSpace comes from the invocation's AffordingHolon, not from this request."
       },
       "relationships": [
         {
@@ -297,7 +297,7 @@
         "TypeNamePlural": "InitialInputs",
         "DisplayName": "Initial Input",
         "DisplayNamePlural": "Initial Inputs",
-        "Description": "Supplies the initial collection for a Dance-mediated Query invocation.",
+        "Description": "Supplies the initial collection for a Dance-mediated Query invocation. Optional at this boundary: a source-root Query (SeedHolons) takes none; a transform-root Query (Expand) requires exactly one.",
         "IsDefinitional": true,
         "DeletionSemantic": "Block"
       },
@@ -346,7 +346,7 @@
           "name": "Constraints",
           "target": [
             {
-              "$ref": "ExactlyOne.CardinalityConstraint"
+              "$ref": "ZeroOrOne.CardinalityConstraint"
             }
           ]
         }

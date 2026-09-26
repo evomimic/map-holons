@@ -59,6 +59,10 @@ impl HolonAction {
                 "get_effective_cardinality"
             }
             HolonAction::Read(ReadableHolonAction::GetPropertyIsArray) => "get_property_is_array",
+            HolonAction::Read(ReadableHolonAction::GetHasInstanceKey) => "get_has_instance_key",
+            HolonAction::Read(ReadableHolonAction::GetRelationshipIsOrdered) => {
+                "get_relationship_is_ordered"
+            }
             HolonAction::Read(ReadableHolonAction::GetAvailableDances) => "get_available_dances",
             HolonAction::Read(ReadableHolonAction::GetDescribedRelatedHolons { .. }) => {
                 "get_described_related_holons"
@@ -118,6 +122,10 @@ pub enum ReadableHolonAction {
     GetEffectiveCardinality,
     /// Whether the target property descriptor declares an array ValueType.
     GetPropertyIsArray,
+    /// Whether the target HolonType defines a non-keyless effective instance key rule.
+    GetHasInstanceKey,
+    /// Whether the target relationship descriptor declares significant member order.
+    GetRelationshipIsOrdered,
     /// Effective afforded Dances of the target holon.
     GetAvailableDances,
     /// Collection membership together with its declared target type.

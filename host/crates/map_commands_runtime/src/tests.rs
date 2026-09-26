@@ -174,6 +174,7 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
             subject: subject.clone(),
             requested_kind: VisualizerKind::Node,
             parent_visualizer: None,
+            slot: subject.clone(),
         },
     );
     let through_command = runtime
@@ -182,6 +183,7 @@ async fn select_visualizer_command_delegates_to_dahn_selection() {
                 context,
                 action: TransactionAction::SelectVisualizer {
                     request: VisualizerSelectionRequest {
+                        slot: subject.clone(),
                         subject,
                         requested_kind: VisualizerKind::Node,
                         parent_visualizer: None,

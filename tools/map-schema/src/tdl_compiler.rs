@@ -2179,7 +2179,7 @@ holon Example.HolonType {
             ("StructureVisualizer.HolonType", "Visualizer.HolonType"),
             ("RootedNavigationVisualizer.HolonType", "StructureVisualizer.HolonType"),
             ("CollectionVisualizer.HolonType", "Visualizer.HolonType"),
-            ("PropertiesVisualizer.HolonType", "Visualizer.HolonType"),
+            ("PropertyMapVisualizer.HolonType", "Visualizer.HolonType"),
             ("ValueVisualizer.HolonType", "Visualizer.HolonType"),
             ("ActionVisualizer.HolonType", "Visualizer.HolonType"),
             ("GraphVisualizer.HolonType", "Visualizer.HolonType"),
@@ -2198,6 +2198,20 @@ holon Example.HolonType {
                 .context("Extends relationship")?;
             assert_eq!(extends["target"][0]["$ref"], parent);
         }
+
+        let acceptance = holons
+            .iter()
+            .find(|holon| {
+                holon["key"] ==
+            "(VisualizerSlot.HolonType)-[AcceptsVisualizerType]->(MetaVisualizerType.MetaHolonType)"
+            })
+            .context("slot acceptance descriptor")?;
+        assert_eq!(acceptance["properties"]["IsDefinitional"], true);
+        let property_map = holons
+            .iter()
+            .find(|holon| holon["key"] == "DefaultPropertyMapVisualizer.PropertyMapVisualizer")
+            .context("default property-map visualizer")?;
+        assert_eq!(property_map["type"], "PropertyMapVisualizer.HolonType");
 
         let holon_inspector = holons
             .iter()
@@ -2225,7 +2239,7 @@ holon Example.HolonType {
             .find(|relationship| relationship["name"].as_str() == Some("HasSlot"))
             .context("Holon Inspector composition slots")?;
         for key in [
-            "HolonInspector.PropertyViewerSlot",
+            "HolonInspector.PropertyMapSlot",
             "HolonInspector.ActionsSlot",
             "HolonInspector.CollectionsSlot",
             "HolonInspector.SingleValueSlot",

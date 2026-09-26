@@ -292,6 +292,14 @@ export function readDescriptorCardinality(reference: HolonReference) {
 export function readDescriptorIsArray(reference: HolonReference) {
   return internalHolon.readPropertyIsArray(txIdFor(reference), wireRefFor(reference));
 }
+/** Internal descriptor-handle bridge for Rust-owned relationship ordering. */
+export function readDescriptorIsOrdered(reference: HolonReference) {
+  return internalHolon.readRelationshipIsOrdered(txIdFor(reference), wireRefFor(reference));
+}
+/** Internal bridge for the effective HolonType instance key policy. */
+export function readDescriptorHasInstanceKey(reference: HolonReference) {
+  return internalHolon.readHasInstanceKey(txIdFor(reference), wireRefFor(reference));
+}
 
 /** Internal descriptor bridge; inheritance is resolved only in Rust. */
 export async function readInstanceProperties(reference: HolonReference) {

@@ -160,6 +160,118 @@
       ]
     },
     {
+      "key": "SeedHolons.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SeedHolons",
+        "TypeNamePlural": "SeedHolonsExpressions",
+        "DisplayName": "Seed Holons",
+        "DisplayNamePlural": "Seed Holons Expressions",
+        "Description": "Root-only source expression. Expands the invocation's focal HolonSpace over its Owns relationship; accepts no input collection. SeedPredicate is an optional payload with no QRY2 evaluation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Expand.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Expand",
+        "TypeNamePlural": "ExpandExpressions",
+        "DisplayName": "Expand",
+        "DisplayNamePlural": "Expand Expressions",
+        "Description": "Navigation expression. Expands each input member over the named outbound relationship resolved through the member's HolonDescriptor. ExpansionPredicate is an optional payload with no QRY2 evaluation."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "QueryExpression.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ExpansionRelationshipName.PropertyType"
+            }
+          ]
+        },
+        {
+          "name": "InstanceRelationships",
+          "target": [
+            {
+              "$ref": "(Expand.HolonType)-[ExpansionPredicate]->(QueryPredicate.HolonType)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "QueryPredicate.HolonType",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "QueryPredicate",
+        "TypeNamePlural": "QueryPredicates",
+        "DisplayName": "Query Predicate",
+        "DisplayNamePlural": "Query Predicates",
+        "Description": "Abstract predicate attached to a query expression. Concrete predicate forms, operators, and evaluation are defined by later slices.",
+        "IsAbstractType": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "HolonType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "QueryParameterDeclaration.HolonType",
       "type": "MetaHolonType.MetaTypeDescriptor",
       "properties": {
@@ -290,6 +402,9 @@
           "target": [
             {
               "$ref": "(ExecutionInstance.HolonType)-[ExecutesQuery]->(Query.HolonType)"
+            },
+            {
+              "$ref": "(ExecutionInstance.HolonType)-[FocalSpace]->(HolonSpace.HolonType)"
             },
             {
               "$ref": "(ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType)"
@@ -439,6 +554,44 @@
         "DisplayName": "Parameter Name",
         "DisplayNamePlural": "Parameter Names",
         "Description": "Stable name of a declared or runtime query parameter.",
+        "IsValueRequired": true
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ExpansionRelationshipName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ExpansionRelationshipName",
+        "TypeNamePlural": "ExpansionRelationshipNames",
+        "DisplayName": "Expansion Relationship Name",
+        "DisplayNamePlural": "Expansion Relationship Names",
+        "Description": "Name of the outbound relationship an Expand expression navigates; resolved against each source member's HolonDescriptor at execution time.",
         "IsValueRequired": true
       },
       "relationships": [
@@ -1482,6 +1635,123 @@
       ]
     },
     {
+      "key": "(ExecutionInstance.HolonType)-[FocalSpace]->(HolonSpace.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "FocalSpace",
+        "TypeNamePlural": "FocalSpaces",
+        "DisplayName": "Focal Space",
+        "DisplayNamePlural": "Focal Spaces",
+        "Description": "Identifies the focal HolonSpace supplied as invocation context for this transient execution. Never recorded on the reusable Query definition.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(HolonSpace.HolonType)-[FocalSpaceFor]->(ExecutionInstance.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ExactlyOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[FocalSpaceFor]->(ExecutionInstance.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "FocalSpaceFor",
+        "TypeNamePlural": "FocalSpaceFors",
+        "DisplayName": "Focal Space For",
+        "DisplayNamePlural": "Focal Space Fors",
+        "Description": "Inverse of FocalSpace.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "ExecutionInstance.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "(ExecutionInstance.HolonType)-[ExpressionExecutions]->(QueryExpressionExecution.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {
@@ -1841,7 +2111,7 @@
         "TypeNamePlural": "Inputs",
         "DisplayName": "Input",
         "DisplayNamePlural": "Inputs",
-        "Description": "Records the runtime input collection for one expression invocation.",
+        "Description": "Records the runtime input collection for one expression invocation. Optional at this base boundary; the concrete root expression decides whether a collection operand is required, forbidden, or supplied by a predecessor.",
         "IsDefinitional": true,
         "DeletionSemantic": "Block"
       },
@@ -1890,7 +2160,7 @@
           "name": "Constraints",
           "target": [
             {
-              "$ref": "ExactlyOne.CardinalityConstraint"
+              "$ref": "ZeroOrOne.CardinalityConstraint"
             }
           ]
         }
@@ -2054,6 +2324,240 @@
           "target": [
             {
               "$ref": "QueryExpressionExecution.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(SeedHolons.HolonType)-[SeedPredicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SeedPredicate",
+        "TypeNamePlural": "SeedPredicates",
+        "DisplayName": "Seed Predicate",
+        "DisplayNamePlural": "Seed Predicates",
+        "Description": "Optional predicate payload attached to a SeedHolons expression. Definition state only; QRY2 neither evaluates nor pushes it down.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "SeedHolons.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryPredicate.HolonType)-[SeedPredicateFor]->(SeedHolons.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[SeedPredicateFor]->(SeedHolons.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "SeedPredicateFor",
+        "TypeNamePlural": "SeedPredicateFors",
+        "DisplayName": "Seed Predicate For",
+        "DisplayNamePlural": "Seed Predicate Fors",
+        "Description": "Inverse of SeedPredicate.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "SeedHolons.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Expand.HolonType)-[ExpansionPredicate]->(QueryPredicate.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExpansionPredicate",
+        "TypeNamePlural": "ExpansionPredicates",
+        "DisplayName": "Expansion Predicate",
+        "DisplayNamePlural": "Expansion Predicates",
+        "Description": "Optional predicate payload attached to an Expand expression. Definition state only; QRY2 neither evaluates nor pushes it down.",
+        "IsDefinitional": true,
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Expand.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(QueryPredicate.HolonType)-[ExpansionPredicateFor]->(Expand.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(QueryPredicate.HolonType)-[ExpansionPredicateFor]->(Expand.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ExpansionPredicateFor",
+        "TypeNamePlural": "ExpansionPredicateFors",
+        "DisplayName": "Expansion Predicate For",
+        "DisplayNamePlural": "Expansion Predicate Fors",
+        "Description": "Inverse of ExpansionPredicate.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "QueryPredicate.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Expand.HolonType"
             }
           ]
         },

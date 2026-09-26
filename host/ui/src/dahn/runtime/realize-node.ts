@@ -1,3 +1,4 @@
+import { NodeRelationshipDiscovery } from './relationship-discovery';
 import type { RelationshipAffordance } from '../contracts/affordances';
 import { NodeCollectionActivation } from './collection-activation';
 import { classifyNodeAffordances } from '../map-adapter/classify-node-affordances';
@@ -15,10 +16,11 @@ export interface RealizedNode {
   element: HTMLElement;
   collectionActivation: NodeCollectionActivation;
   singularRelationships: readonly RelationshipAffordance[];
+  relationshipDiscovery?: NodeRelationshipDiscovery;
 }
 
 /** Composes any already-selected Node, including the startup-selected root.
- * The caller serializes this work with other operations on the transaction.
+ * Population discovery starts after initial presentation, independently of realization.
  */
 export async function realizeNode(
   transaction: MapTransaction,
@@ -48,7 +50,8 @@ export async function realizeNode(
     onStage?.('select and materialize Properties');
     const propertiesSelection = await transaction.selectVisualizer({
       subject,
-      requestedKind: 'properties',
+      requestedKind: 'propertyMap',
+      slot: await materialized.slot(selectedVisualizer, 'propertyMap'),
       parentVisualizer: selectedVisualizer,
     });
     const propertiesImplementation = await materialized.realize(propertiesSelection.selected);
@@ -67,15 +70,17 @@ export async function realizeNode(
     for (const propertyDescriptor of affordances.scalarProperties) {
       let propertyName = 'Property ' + (propertyVisualizers.size + 1);
       const propertyRegion = await renderVisualizerRegion('Property', async () => {
+        onStage?.('property: resolve name');
         propertyName = await propertyDescriptor.propertyName();
         return renderVisualizerRegion(propertyName, async () => {
-          // Each command shares one transaction-bound execution surface. Keep
-          // descriptor selection and the value read serialized so request
-          // handling cannot interleave their reference-bound work.
+          // Resolve this property through the selected descriptor and value contracts.
+          onStage?.(`property ${propertyName}: select Property`);
           const propertySelection = await transaction.selectPropertyVisualizer(
             propertyDescriptor,
             propertiesSelection.selected,
+            await materialized.slot(propertiesSelection.selected, 'property'),
           );
+          onStage?.(`property ${propertyName}: materialize Property`);
           const propertyImplementation = await materialized.realize(propertySelection.selected);
           if (
             typeof propertyImplementation !== 'function' ||
@@ -87,9 +92,12 @@ export async function realizeNode(
             'map-property-visualizer',
             propertyImplementation as CustomElementConstructor,
           );
+          onStage?.(`property ${propertyName}: read value`);
           const value = await subject.propertyValue(propertyName);
           const valueElement = await renderVisualizerRegion(propertyName, async () => {
-            const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected);
+            onStage?.(`property ${propertyName}: select Value`);
+            const valueSelection = await transaction.selectValueVisualizer(propertyDescriptor, propertySelection.selected, await materialized.slot(propertySelection.selected, 'value'));
+            onStage?.(`property ${propertyName}: materialize Value`);
             const valueImplementation = await materialized.realize(valueSelection.selected);
             if (typeof valueImplementation !== 'function' || !(valueImplementation.prototype instanceof HTMLElement)) {
               throw new Error('Selected Value implementation does not export an HTMLElement constructor.');
@@ -99,6 +107,7 @@ export async function realizeNode(
               valueImplementation as CustomElementConstructor,
             );
 
+            onStage?.(`property ${propertyName}: construct elements`);
             const renderedValue = document.createElement(valueTag) as HTMLElement & {
               setContext(context: VisualizerContext): void;
             };
@@ -150,6 +159,7 @@ export async function realizeNode(
   const actionsElement = await renderVisualizerRegion('Node actions', async () => {
     const selection = await transaction.selectVisualizer({
       subject, requestedKind: 'action', parentVisualizer: selectedVisualizer,
+      slot: await materialized.slot(selectedVisualizer, 'action'),
     });
     const implementation = await materialized.realize(selection.selected);
     if (typeof implementation !== 'function' || !(implementation.prototype instanceof HTMLElement)) {
@@ -166,10 +176,15 @@ export async function realizeNode(
   };
   const typeDisplayName = await (await subject.holonDescriptor()).displayName();
   const holonKey = (await subject.key()) ?? await subject.versionedKey();
-  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized);
+  const relationshipDiscovery = new NodeRelationshipDiscovery(transaction, subject, [
+    ...affordances.singularRelationships,
+    ...affordances.collections.filter((item): item is Extract<typeof item, { kind: 'relationship' }> => item.kind === 'relationship'),
+  ]);
+  const collectionActivation = new NodeCollectionActivation(transaction, subject, selectedVisualizer, materialized, relationshipDiscovery);
   try {
     element.setContext({
       collectionActivation,
+      relationshipDiscovery,
       activateRelationship: affordance => {
         if (element.isConnected) element.dispatchEvent(new CustomEvent<TraverseRelationshipIntent>(TRAVERSE_RELATIONSHIP_EVENT, {
           bubbles: true, composed: true, detail: { source: element, affordance },
@@ -189,5 +204,6 @@ export async function realizeNode(
     collectionActivation.dispose();
     throw error;
   }
-  return { element, collectionActivation, singularRelationships: affordances.singularRelationships };
+  relationshipDiscovery.startAfterDisplay(element);
+  return { element, collectionActivation, relationshipDiscovery, singularRelationships: affordances.singularRelationships };
 }

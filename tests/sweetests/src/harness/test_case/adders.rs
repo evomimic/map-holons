@@ -40,8 +40,8 @@
 use super::test_case::DancesTestCase;
 use crate::{
     harness::fixtures_support::TestReference, DanceTestStep, ExpectedCommitStatus,
-    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, QueryScaffoldRoute, SourceSnapshot,
-    TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
+    ExpectedLoadStatus, ExpectedSnapshot, FixtureHolons, QueryExpectation, QueryInputSpec,
+    QueryRoute, SourceSnapshot, TestHolonState, TestSessionState, SAVED_LOOKUP_STUB_MARKER,
 };
 use holons_boundary::SerializableHolonPool;
 use holons_core::core_shared_objects::transactions::TransactionContext;
@@ -253,34 +253,27 @@ impl DancesTestCase {
         Ok(())
     }
 
-    /// Drives the QRY1 Query runtime scaffold over an already committed Query.
-    ///
-    /// `query` must resolve to a holon described as `Query`; `input_members`
-    /// become the explicit runtime input collection (may be empty). QRY1 has no
-    /// success path, so `expected_error` must be `Some` (`NotImplemented` for the
-    /// scaffold boundary, or the contract error a malformed request produces).
-    /// The step creates no fixture holon: every runtime record it creates is
-    /// transient and asserted in place by the executor.
-    pub fn add_execute_query_scaffold_step(
+    /// Executes a committed `Query` through the direct QueryCore seam or the
+    /// `QueryDance` route, with the given collection operand, and asserts the
+    /// expectation (result members, or an error kind). The step creates no
+    /// fixture holon: every runtime record it creates is transient and asserted
+    /// in place by the executor.
+    pub fn add_execute_query_step(
         &mut self,
         query: TestReference,
-        input_members: Vec<TestReference>,
-        route: QueryScaffoldRoute,
-        expected_error: Option<HolonErrorKind>,
+        input: QueryInputSpec,
+        route: QueryRoute,
+        expectation: QueryExpectation,
         description: Option<String>,
     ) -> Result<(), HolonError> {
         self.ensure_not_finalized()?;
-        let description = description.unwrap_or_else(|| {
-            format!(
-                "Execute QRY1 query scaffold via {route:?} with {} input member(s)",
-                input_members.len()
-            )
-        });
-        self.steps.push(DanceTestStep::ExecuteQueryScaffold {
+        let description = description
+            .unwrap_or_else(|| format!("Execute query via {route:?} with input {input:?}"));
+        self.steps.push(DanceTestStep::ExecuteQuery {
             query,
-            input_members,
+            input,
             route,
-            expected_error,
+            expectation,
             description,
         });
 

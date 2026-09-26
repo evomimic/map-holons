@@ -1,3 +1,4 @@
+import type { RelationshipDiscovery } from './relationship-discovery';
 import type { PathNavigation } from './path-navigation';
 import type { CollectionActivation } from '../runtime/collection-activation';
 import type { NodeAffordances, RelationshipAffordance } from './affordances';
@@ -38,6 +39,10 @@ export const TRAVERSE_RELATIONSHIP_EVENT = 'dahn-traverse-relationship';
  * A null handler revokes delivery when their owning lifecycle is superseded.
  */
 export interface CollectionInteractionElement extends HTMLElement {
+  /** Opaque implementation-owned view state; never semantic membership or handles. */
+  getCollectionViewState?(): unknown;
+  /** Restore view state after fresh projection; implementations validate their own format. */
+  restoreCollectionViewState?(state: unknown): void;
   setInspectHolonHandler(handler: ((reference: HolonReference) => void) | null): void;
 }
 
@@ -99,6 +104,8 @@ export interface VisualizerContext {
   nodeAffordances?: NodeAffordances;
   /** Occurrence-local collection orchestration supplied by the composition owner. */
   collectionActivation?: CollectionActivation;
+  /** Progressive population evidence; descriptors remain available independently. */
+  relationshipDiscovery?: RelationshipDiscovery;
   theme: DahnTheme;
   canvas: CanvasApi;
   /**

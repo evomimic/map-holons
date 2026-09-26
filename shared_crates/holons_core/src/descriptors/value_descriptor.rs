@@ -13,7 +13,7 @@ use crate::descriptors::{
 use crate::reference_layer::HolonReference;
 use base_types::{BaseValue, BaseValueKind};
 use core_types::HolonError;
-use type_names::{CoreOperatorTypeName, ToOperatorName};
+use type_names::{CoreOperatorTypeName, CoreValueTypeName, ToOperatorName};
 
 /// Runtime wrapper for value-type descriptors.
 ///
@@ -201,11 +201,40 @@ impl ValueDescriptor {
 
     /// Classifies the declared representation without inspecting an instance value.
     pub fn is_array(&self) -> Result<bool, HolonError> {
-        match self.resolved_value_kind()? {
-            ValueDescriptorKind::ValueArray => Ok(true),
-            ValueDescriptorKind::Unsupported(found) => Err(self.wrong_value_kind(found)),
-            _ => Ok(false),
+        // Layout classification needs only the nearest local kind anchor. Do not
+        // resolve every native family or inspect an array's ElementValueType.
+        for ancestor in crate::descriptors::inheritance::walk_extends_chain(&self.holon) {
+            let ancestor = ancestor?;
+            let header = TypeHeader::new(&ancestor);
+            if !header.defines_instance_type_kind()? {
+                continue;
+            }
+            let name = header.type_name()?;
+            if [CoreValueTypeName::ValueArrayValueType, CoreValueTypeName::MapValueArrayType]
+                .iter()
+                .any(|kind| kind.as_value_name() == name)
+            {
+                return Ok(true);
+            }
+            if [
+                CoreValueTypeName::ValueType,
+                CoreValueTypeName::StringValueType,
+                CoreValueTypeName::IntegerValueType,
+                CoreValueTypeName::BooleanValueType,
+                CoreValueTypeName::BytesValueType,
+                CoreValueTypeName::EnumValueType,
+                CoreValueTypeName::MapEnumValueType,
+                CoreValueTypeName::EnumVariantValueType,
+                CoreValueTypeName::MapEnumVariantValueType,
+            ]
+            .iter()
+            .any(|kind| kind.as_value_name() == name)
+            {
+                return Ok(false);
+            }
+            return Err(self.wrong_value_kind(name.to_string()));
         }
+        Err(self.wrong_value_kind("No instance TypeKind anchor".into()))
     }
 
     /// Existing one-off operations resolve through their already-bound transaction.
@@ -336,6 +365,50 @@ mod tests {
     use core_types::HolonError;
     use std::sync::Arc;
     use type_names::CoreRelationshipTypeName;
+
+    #[test]
+    fn layout_classification_uses_nearest_local_anchor_without_root_lookups(
+    ) -> Result<(), HolonError> {
+        // This context cannot fetch saved holons: any canonical-root lookup fails.
+        let context = test_support::build_context();
+        for name in
+            ["StringValueType", "BooleanValueType", "ValueArrayValueType", "MapValueArrayType"]
+        {
+            let mut anchor = test_support::new_descriptor_holon(&context, name, name, "Value")?;
+            anchor.with_property_value("DefinesInstanceTypeKind", true)?;
+            let mut child = test_support::new_descriptor_holon(
+                &context,
+                &format!("child-{name}"),
+                "CustomType",
+                "Value",
+            )?;
+            child.with_property_value("DefinesInstanceTypeKind", false)?;
+            child.add_related_holons(CoreRelationshipTypeName::Extends, vec![anchor.into()])?;
+            let descriptor = ValueDescriptor::from_holon(child.clone().into());
+            assert_eq!(descriptor.is_array()?, name.contains("Array"));
+            // A nearer unknown anchor cannot silently inherit the parent's kind.
+            child.with_property_value("DefinesInstanceTypeKind", true)?;
+            assert!(matches!(descriptor.is_array(), Err(HolonError::WrongDescriptorKind { .. })));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn layout_classification_rejects_bad_flags_and_missing_anchors() -> Result<(), HolonError> {
+        let context = test_support::build_context();
+        let mut value = test_support::new_descriptor_holon(
+            &context,
+            "unanchored",
+            "ValueArrayValueType",
+            "Value",
+        )?;
+        value.with_property_value("DefinesInstanceTypeKind", false)?;
+        let descriptor = ValueDescriptor::from_holon(value.clone().into());
+        assert!(matches!(descriptor.is_array(), Err(HolonError::WrongDescriptorKind { .. })));
+        value.with_property_value("DefinesInstanceTypeKind", "true")?;
+        assert!(matches!(descriptor.is_array(), Err(HolonError::UnexpectedValueType(..))));
+        Ok(())
+    }
 
     // Existing dispatch fixtures now extend actual canonical identities. A matching
     // TypeName alone must no longer grant native representation semantics.

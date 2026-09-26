@@ -1,6 +1,6 @@
 import type { BaseValue, PropertyName, RelationshipName } from './types';
 import { extractString } from './types';
-import { readInstanceProperties, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, type HolonReference } from './references';
+import { readInstanceProperties, readPropertyValueKind, readDescriptorCardinality, readDescriptorIsArray, readDescriptorIsOrdered, readDescriptorHasInstanceKey, type HolonReference } from './references';
 import { CorePropertyName, CoreRelationshipName } from './core-names';
 
 const DESCRIPTOR_HANDLE_CONSTRUCTION = Symbol('DescriptorHandleConstruction');
@@ -8,6 +8,9 @@ const propertyDescriptorReferences = new WeakMap<PropertyDescriptorHandle, Holon
 
 /** Opaque SDK handle for a holon type descriptor. */
 export class HolonDescriptorHandle {
+  /** Whether the effective instance key rule defines keys, resolved by Rust. */
+  hasInstanceKey(): Promise<boolean> { return readDescriptorHasInstanceKey(this.#reference); }
+
   /** Effective instance properties, in runtime-provided order. */
   instanceProperties(): Promise<ReadonlyArray<PropertyDescriptorHandle>> { return readInstanceProperties(this.#reference); }
   #reference: HolonReference;
@@ -122,6 +125,11 @@ export class RelationshipDescriptorHandle {
     }
 
     this.#reference = reference;
+  }
+
+  /** Whether related members have schema-significant order, resolved by Rust. */
+  isOrdered(): Promise<boolean> {
+    return readDescriptorIsOrdered(this.#reference);
   }
 
   /** Inclusive bounds resolved from all effective directional constraints. */

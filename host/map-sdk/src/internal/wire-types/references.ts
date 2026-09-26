@@ -471,6 +471,8 @@ export type HolonErrorWire =
   | { DowncastFailure: string }
   | { DuplicateError: [string, string] }
   | { EmptyField: string }
+  | { NoEffectiveKeyRule: { descriptor: string } }
+  | { WrongDescriptorKind: { expected: string; found: string; descriptor: string } }
   | { FailedToBorrow: string }
   | { FailedToAcquireLock: string }
   | { HashConversion: [string, string] }
@@ -1121,6 +1123,10 @@ export function isHolonErrorWire(value: unknown): value is HolonErrorWire {
     isTaggedValue(value, 'DowncastFailure', isString) ||
     isTaggedValue(value, 'DuplicateError', isStringPair) ||
     isTaggedValue(value, 'EmptyField', isString) ||
+    isTaggedValue(value, 'NoEffectiveKeyRule', (candidate): candidate is { descriptor: string } =>
+      isRecord(candidate) && isString(candidate['descriptor'])) ||
+    isTaggedValue(value, 'WrongDescriptorKind', (candidate): candidate is { expected: string; found: string; descriptor: string } =>
+      isRecord(candidate) && isString(candidate['expected']) && isString(candidate['found']) && isString(candidate['descriptor'])) ||
     isTaggedValue(value, 'FailedToBorrow', isString) ||
     isTaggedValue(value, 'FailedToAcquireLock', isString) ||
     isTaggedValue(value, 'HashConversion', isStringPair) ||

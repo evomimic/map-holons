@@ -40,7 +40,9 @@ workspaces/**/target/**/
 .venv/
 .vscode/
 .notes/
+.claude/
 .running
+.claude/
 settings.json
 
 # Holochain local run files
