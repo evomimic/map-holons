@@ -52,6 +52,30 @@ pub trait HolonCacheAccess: Debug + Send + Sync {
         self.get_related_holons(context, source, name)
     }
 
+    /// Retains content through a bounded read assessment. Adapters must opt in explicitly.
+    fn retain_holon(
+        &self,
+        _context: &Arc<TransactionContext>,
+        _id: &HolonId,
+    ) -> Result<super::holon_cache::SavedHolonRetention, HolonError> {
+        Err(HolonError::NotImplemented(
+            "saved content retention unsupported by cache adapter".into(),
+        ))
+    }
+
+    /// Prepares explicit membership demand without discovering descriptor relationships.
+    fn prepare_relationships(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<(), HolonError> {
+        for name in names {
+            self.get_related_holons(context, source, name)?;
+        }
+        Ok(())
+    }
+
     /// Retrieves all relationships visible from a saved source.
     fn get_all_related_holons(
         &self,

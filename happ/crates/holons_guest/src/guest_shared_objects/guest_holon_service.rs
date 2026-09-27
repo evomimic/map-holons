@@ -517,6 +517,28 @@ impl HolonServiceApi for GuestHolonService {
         Ok(collection)
     }
 
+    fn fetch_relationship_set_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<Vec<(RelationshipName, HolonCollection)>, HolonError> {
+        let local = Self::ensure_id_is_local(source)?;
+        let buckets = crate::persistence_layer::smartlink::expand_relationship_set(&local, names)?;
+        names
+            .iter()
+            .zip(buckets)
+            .map(|(name, links)| {
+                let mut collection = HolonCollection::new_existing();
+                for link in links {
+                    let (key, reference) = self.reference_from_smartlink(context, &link)?;
+                    collection.add_reference_with_key(key.as_ref(), &reference)?;
+                }
+                Ok((name.clone(), collection))
+            })
+            .collect()
+    }
+
     fn get_all_holons_internal(
         &self,
         context: &Arc<TransactionContext>,

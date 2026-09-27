@@ -61,6 +61,18 @@ impl SmartReference {
         }
     }
 
+    /// Retains saved content for a read assessment through the bound cache owner.
+    pub fn retain_content(
+        &self,
+    ) -> Result<crate::core_shared_objects::holon_cache::SavedHolonRetention, HolonError> {
+        self.space_read_handle.retain_holon(&self.holon_id)
+    }
+
+    /// Prepares explicit saved membership demand using this reference's bound cache.
+    pub fn prepare_relationships(&self, names: &[RelationshipName]) -> Result<(), HolonError> {
+        self.space_read_handle.prepare_relationships(&self.holon_id, names)
+    }
+
     // *************** ACCESSORS ***************
 
     /// Returns the persistent holon id for this smart reference.

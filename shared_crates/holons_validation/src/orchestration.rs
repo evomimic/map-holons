@@ -261,6 +261,7 @@ pub(crate) mod subject_gate_tests {
                 reader,
                 &crate::assessment_support::path(&subject),
                 &mut collector,
+                None,
             );
             if let Some(bindings) = recover(result, &subject, &mut collector)? {
                 let result = crate::prospective_validation::assess_subject(

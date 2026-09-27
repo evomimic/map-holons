@@ -16,7 +16,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::Arc,
 };
-use type_names::{CorePropertyTypeName, CoreRelationshipTypeName, CoreValidationRuleName};
+use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 
 /// Prepared once per affected Schema; bound handlers never repeat graph traversal.
 #[derive(Default)]
@@ -109,6 +109,7 @@ pub(crate) fn dependency_cycles(
 }
 
 /// Cross-schema declarations are local edges. Transitive lookup never licenses an edge.
+#[cfg(test)]
 pub(crate) fn cross_schema_references(
     context: &Arc<TransactionContext>,
     reader: &ProspectiveDescriptorReader,
@@ -116,6 +117,18 @@ pub(crate) fn cross_schema_references(
     workset: &SchemaWorkset,
     products: &mut SchemaRuleProducts,
     collector: &mut ValidationCollector,
+) -> Result<(), HolonError> {
+    cross_schema_references_prepared(context, reader, view, workset, products, collector, None)
+}
+
+pub(crate) fn cross_schema_references_prepared(
+    context: &Arc<TransactionContext>,
+    reader: &ProspectiveDescriptorReader,
+    view: &ProspectiveSchema,
+    workset: &SchemaWorkset,
+    products: &mut SchemaRuleProducts,
+    collector: &mut ValidationCollector,
+    packages: Option<&crate::descriptor_package::DescriptorPackages>,
 ) -> Result<(), HolonError> {
     let Some(dependencies) =
         recover(schema_dependencies_with_reader(&view.schema, reader), &view.schema, collector)?
@@ -131,7 +144,14 @@ pub(crate) fn cross_schema_references(
     let mut ambiguous = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
     let mut missing_dependencies = HashMap::<ProspectiveIdentity, ReferenceGroup>::new();
     for source in view.components.iter().chain(&view.rules) {
-        let Some(edges) = recover(authored_targets(source, reader), &view.schema, collector)?
+        let Some(edges) = recover(
+            match packages {
+                Some(packages) => packages.authored(source, reader),
+                None => authored_targets(source, reader),
+            },
+            &view.schema,
+            collector,
+        )?
         else {
             continue;
         };
@@ -218,7 +238,7 @@ pub(crate) fn authored_targets(
     reader: &ProspectiveDescriptorReader,
 ) -> Result<Vec<(RelationshipName, HolonReference)>, AssessmentReadError> {
     let source = reader.select(source)?;
-    let declared = if matches!(source, HolonReference::Smart(_)) {
+    if let HolonReference::Smart(saved) = &source {
         let DescribingTypeResolution::Unique(descriptor) =
             resolve_describing_type_with_reader(&source, reader)?
         else {
@@ -226,29 +246,23 @@ pub(crate) fn authored_targets(
                 HolonError::MissingDescribedBy { holon: source.reference_id_string() }.into()
             );
         };
-        let contributions = ContractContributions::resolve_with_reader(&descriptor, reader)?;
-        Some(
-            contributions
-                .relationships
-                .iter()
-                .map(|member| {
-                    match member.member.property_value(CorePropertyTypeName::TypeName)? {
-                        Some(core_types::BaseValue::StringValue(name)) => Ok(name.to_string()),
-                        _ => Err(HolonError::EmptyField("TypeName".into())),
-                    }
-                })
-                .collect::<Result<HashSet<_>, HolonError>>()?,
-        )
-    } else {
-        None
-    };
+        let contract = ContractContributions::resolve_with_reader(&descriptor, reader)?;
+        let names = crate::descriptor_package::declared_names(&contract)?;
+        saved.prepare_relationships(&names)?;
+        let mut result = Vec::new();
+        for name in names {
+            let members = source.related_holons(&name)?;
+            let members =
+                members.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+            result
+                .extend(members.get_members().iter().cloned().map(|target| (name.clone(), target)));
+        }
+        return Ok(result);
+    }
     let mut edges = source.all_related_holons()?.iter();
     edges.sort_by_key(|(name, _)| name.to_string());
     let mut result = Vec::new();
     for (name, members) in edges {
-        if declared.as_ref().is_some_and(|names| !names.contains(&name.to_string())) {
-            continue;
-        }
         let members = members
             .read()
             .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?

@@ -274,7 +274,28 @@ pub fn commit(
 
     // Assessment must finish before any node, SmartLink, or ownership-index write.
     let validation_started_at = performance_timestamp_micros();
-    let report = holons_validation::validate_commit_candidates(context, &candidates)?;
+    let profile = tracing::enabled!(tracing::Level::INFO);
+    let mut phase = holons_validation::AssessmentPhase::Construction;
+    let mut phase_start = performance_timestamp_micros();
+    let mut reads = crate::persistence_layer::smartlink::relationship_read_metrics();
+    let mut observe = |next| {
+        if profile {
+            let current = crate::persistence_layer::smartlink::relationship_read_metrics();
+            let mut micros = 0;
+            record_elapsed_micros(phase_start, &mut micros);
+            info!("[commit-assessment] phase={:?} elapsed_ms={} backend_calls={} link_queries={} returned_links={}",
+                phase, micros / 1000, current.0 - reads.0, current.1 - reads.1, current.2 - reads.2);
+            reads = current;
+            phase_start = performance_timestamp_micros();
+            phase = next;
+        }
+    };
+    let report = holons_validation::validate_commit_candidates_with_observer(
+        context,
+        &candidates,
+        &mut observe,
+    )?;
+    observe(holons_validation::AssessmentPhase::Construction);
     record_elapsed_micros(validation_started_at, &mut performance_metrics.validation_micros);
     response_reference
         .with_property_value(ValidationViolationCount, report.violation_count() as i64)?;

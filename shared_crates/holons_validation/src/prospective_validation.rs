@@ -34,13 +34,18 @@ pub(crate) fn prepare_bindings(
     reader: &ProspectiveDescriptorReader,
     path: &ValidationSubjectPath,
     collector: &mut ValidationCollector,
+    packages: Option<&crate::descriptor_package::DescriptorPackages>,
 ) -> Result<Vec<PreparedBinding>, AssessmentReadError> {
     let mut result = Vec::new();
-    for contribution in effective_relationship_targets_with_reader(
-        descriptor,
-        CoreRelationshipTypeName::ValidationBindings,
-        reader,
-    )? {
+    let contributions = match packages {
+        Some(packages) => packages.effective(descriptor, true, reader)?,
+        None => effective_relationship_targets_with_reader(
+            descriptor,
+            CoreRelationshipTypeName::ValidationBindings,
+            reader,
+        )?,
+    };
+    for contribution in contributions {
         let binding = ResolvedValidationBinding::from(contribution);
         let key = ValidationRuleKey(required_key(&binding.rule)?);
         collector.observations.discovered_rule_keys.insert(key.0.clone());
@@ -173,12 +178,17 @@ fn subject_constraints(
     path: &ValidationSubjectPath,
     reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
+    packages: Option<&crate::descriptor_package::DescriptorPackages>,
 ) -> Result<(), AssessmentReadError> {
-    for contribution in effective_relationship_targets_with_reader(
-        descriptor,
-        CoreRelationshipTypeName::Constraints,
-        reader,
-    )? {
+    let contributions = match packages {
+        Some(packages) => packages.effective(descriptor, false, reader)?,
+        None => effective_relationship_targets_with_reader(
+            descriptor,
+            CoreRelationshipTypeName::Constraints,
+            reader,
+        )?,
+    };
+    for contribution in contributions {
         collector.observations.effective_constraint_count += 1;
         let constraint = ResolvedConstraint::with_reader(contribution, reader)?;
         let key = ConstraintTypeKey(required_key(constraint.constraint_type.holon())?);
@@ -204,6 +214,7 @@ fn subject_constraints(
 
 /// Conformance of H through D(H), never through the contract H defines for its instances.
 /// The caller has already diagnosed the governing structure and established readiness.
+#[cfg(test)]
 pub(crate) fn assess_subject(
     subject: &HolonReference,
     descriptor: &HolonReference,
@@ -214,10 +225,35 @@ pub(crate) fn assess_subject(
     collector: &mut ValidationCollector,
 ) -> Result<(), AssessmentReadError> {
     let contributions = ContractContributions::resolve_with_reader(descriptor, reader)?;
+    assess_prepared_subject(
+        subject,
+        descriptor,
+        &contributions,
+        bindings,
+        values,
+        universal,
+        reader,
+        collector,
+        None,
+    )
+}
+
+/// Consumes a constructed contract without rediscovering its effective member surface.
+pub(crate) fn assess_prepared_subject(
+    subject: &HolonReference,
+    descriptor: &HolonReference,
+    contributions: &ContractContributions,
+    bindings: &[PreparedBinding],
+    values: &ValueValidationContext,
+    universal: &UniversalDescriptorContract,
+    reader: &ProspectiveDescriptorReader,
+    collector: &mut ValidationCollector,
+    packages: Option<&crate::descriptor_package::DescriptorPackages>,
+) -> Result<(), AssessmentReadError> {
     let mut names = HashSet::new();
     let mut properties = Vec::new();
-    for member in contributions.properties {
-        let property = PropertyDescriptor::from_holon(member.member);
+    for member in &contributions.properties {
+        let property = PropertyDescriptor::from_holon(member.member.clone());
         let name = property.property_name()?;
         if names.insert(name.clone()) {
             properties.push((name, property));
@@ -228,9 +264,9 @@ pub(crate) fn assess_subject(
         undescribed_properties: subject.undescribed_property_names_in_contract(&names)?,
     };
     dispatch_subject(bindings, &prepared, &subject_path, collector)?;
-    subject_constraints(descriptor, &subject_path, reader, collector)?;
+    subject_constraints(descriptor, &subject_path, reader, collector, packages)?;
     let mut declared_names = HashSet::new();
-    for member in contributions.relationships {
+    for member in &contributions.relationships {
         match member.member.property_value(CorePropertyTypeName::TypeName)? {
             Some(core_types::BaseValue::StringValue(name)) => {
                 declared_names.insert(name.to_string());
@@ -246,8 +282,9 @@ pub(crate) fn assess_subject(
         }
     }
     for (name, property) in properties {
-        let result =
-            assess_property(subject, &name, &property, values, universal, reader, collector);
+        let result = assess_property(
+            subject, &name, &property, values, universal, reader, collector, packages,
+        );
         // A contested member does not suppress independent property checks.
         recover(result, subject, collector)?;
     }
@@ -262,6 +299,7 @@ fn assess_property(
     universal: &UniversalDescriptorContract,
     reader: &ProspectiveDescriptorReader,
     collector: &mut ValidationCollector,
+    packages: Option<&crate::descriptor_package::DescriptorPackages>,
 ) -> Result<(), AssessmentReadError> {
     let value = subject.property_value(name)?;
     let path = ValidationSubjectPath::Property {
@@ -275,6 +313,7 @@ fn assess_property(
         reader,
         &path,
         collector,
+        packages,
     )?;
     let missing_required = value.is_none()
         && universal.enforce_minimum_with_reader(subject, property.holon(), reader)?
@@ -285,7 +324,7 @@ fn assess_property(
         descriptor_identity: property.holon().reference_id_string(),
     };
     dispatch_subject(&bindings, &facts, &path, collector)?;
-    subject_constraints(property.holon(), &path, reader, collector)?;
+    subject_constraints(property.holon(), &path, reader, collector, packages)?;
     if let Some(value) = value {
         let targets = effective_relationship_targets_with_reader(
             property.holon(),
@@ -315,8 +354,9 @@ fn assess_property(
             reader,
             &path,
             collector,
+            packages,
         )?;
-        subject_constraints(descriptor.holon(), &path, reader, collector)?;
+        subject_constraints(descriptor.holon(), &path, reader, collector, packages)?;
         let facts = PreparedRuleSubject::Value {
             expected: descriptor.value_kind_with_reader(&values.roots, reader)?,
             actual: value.kind(),

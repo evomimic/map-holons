@@ -170,6 +170,35 @@ impl HolonCacheAccess for CacheRequestRouter {
         }
     }
 
+    fn retain_holon(
+        &self,
+        context: &Arc<TransactionContext>,
+        id: &HolonId,
+    ) -> Result<super::holon_cache::SavedHolonRetention, HolonError> {
+        match Self::get_request_route(id, &self.cache_routing_policy)? {
+            ServiceRoute::Local => self
+                .local_cache_manager
+                .read()
+                .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                .retain_holon(context, id),
+        }
+    }
+
+    fn prepare_relationships(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<(), HolonError> {
+        match Self::get_request_route(source, &self.cache_routing_policy)? {
+            ServiceRoute::Local => self
+                .local_cache_manager
+                .read()
+                .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+                .prepare_relationships(context, source, names),
+        }
+    }
+
     fn get_all_related_holons(
         &self,
         context: &Arc<TransactionContext>,
