@@ -196,9 +196,10 @@ fn execute_direct(
     assert_status(execution.instance().clone().into(), "Pending");
     assert_status(execution.root_execution().clone().into(), "Pending");
 
-    // Keep handles: `run` consumes the execution.
+    // Keep a handle: `run` consumes the execution. The per-step records are
+    // reached through the instance's `ExpressionExecutions`, since a chain
+    // creates them as it goes.
     let instance: HolonReference = execution.instance().clone().into();
-    let root_execution: HolonReference = execution.root_execution().clone().into();
 
     match (execution.run(), expected) {
         (Ok(result), ResolvedExpectation::Error(kind)) => panic!(
@@ -206,16 +207,10 @@ fn execute_direct(
             collection_members(result.as_holon_reference()).len()
         ),
         (Ok(result), expected) => {
-            assert_success(
-                context,
-                &instance,
-                &root_execution,
-                result.as_holon_reference(),
-                expected,
-            );
+            assert_success(context, &instance, result.as_holon_reference(), expected);
         }
         (Err(error), expected) => {
-            assert_failure(&instance, &root_execution, &error, expected.expected_error(), "direct");
+            assert_failure(&instance, &error, expected.expected_error(), "direct");
         }
     }
 
@@ -389,16 +384,34 @@ async fn execute_query_dance(
 fn assert_success(
     context: &Arc<TransactionContext>,
     instance: &HolonReference,
-    root_execution: &HolonReference,
     result: &HolonReference,
     expected: ResolvedExpectation,
 ) {
     assert_status(instance.clone(), "Complete");
-    assert_status(root_execution.clone(), "Complete");
+
+    // One record per executed step, in chain order (`ExpressionExecutions` is
+    // ordered). A single-step execution is just a chain of length one.
+    let steps = related_members(instance, QueryRelationshipTypeName::ExpressionExecutions);
+    assert!(!steps.is_empty(), "a successful execution records at least one step");
+    for step in &steps {
+        assert_status(step.clone(), "Complete");
+    }
+
+    // Each non-root step consumes its predecessor's Result holon by identity.
+    for pair in steps.windows(2) {
+        assert_same_holon(
+            &single_related(&pair[1], QueryRelationshipTypeName::Input),
+            &single_related(&pair[0], QueryRelationshipTypeName::Result),
+            "non-root QueryExpressionExecution.Input",
+        );
+    }
+
+    // The value returned is the final step's Result, and the instance records it.
+    let last_step = steps.last().expect("checked non-empty");
     assert_same_holon(
-        &single_related(root_execution, QueryRelationshipTypeName::Result),
+        &single_related(last_step, QueryRelationshipTypeName::Result),
         result,
-        "QueryExpressionExecution.Result",
+        "final QueryExpressionExecution.Result",
     );
     assert_same_holon(
         &single_related(instance, QueryRelationshipTypeName::ExecutionResult),
@@ -443,7 +456,6 @@ fn assert_result_members(
 
 fn assert_failure(
     instance: &HolonReference,
-    root_execution: &HolonReference,
     error: &HolonError,
     expected_kind: Option<HolonErrorKind>,
     route: &str,
@@ -451,9 +463,15 @@ fn assert_failure(
     let actual = HolonErrorKind::from(error);
     assert_eq!(Some(actual), expected_kind, "query ({route}): unexpected error {error:?}");
     assert_status(instance.clone(), "Failed");
-    assert_status(root_execution.clone(), "Failed");
     assert_related_count(instance, QueryRelationshipTypeName::ExecutionResult, 0);
-    assert_related_count(root_execution, QueryRelationshipTypeName::Result, 0);
+
+    // Only the step that failed is Failed; steps that legitimately completed
+    // earlier in the chain keep their Complete status.
+    let steps = related_members(instance, QueryRelationshipTypeName::ExpressionExecutions);
+    if let Some(failed_step) = steps.last() {
+        assert_status(failed_step.clone(), "Failed");
+        assert_related_count(failed_step, QueryRelationshipTypeName::Result, 0);
+    }
 }
 
 /// Creates the caller-side explicit input: a transient holon described by

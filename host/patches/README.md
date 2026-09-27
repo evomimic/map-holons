@@ -148,8 +148,7 @@ Filed 2026-07-27 as **https://github.com/holochain/holochain-wasmer/issues/192**
 > Apple Silicon. [BUG, MACOS]
 
 Note it belongs to `holochain/holochain-wasmer`, not `holochain/holochain` — that is where
-`module.rs` lives. The submitted text is kept at
-[`.notes/holochain-wasmer-sigsegv-issue.md`](../../.notes/holochain-wasmer-sigsegv-issue.md).
+`module.rs` lives.
 
 **Remove this patch once that issue is fixed and a release carrying the fix is pinned by the
 `holochain` version we depend on.**
