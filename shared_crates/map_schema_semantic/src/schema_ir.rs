@@ -216,8 +216,6 @@ pub struct Schema {
     pub literal_properties: LiteralObject,
     pub literal_relationships: Vec<LiteralRelationship>,
     pub header: Option<DescriptorHeader>,
-    pub allows_additional_properties: bool,
-    pub allows_additional_relationships: bool,
 }
 
 /// Semantic representation of a non-schema descriptor.
@@ -259,8 +257,6 @@ pub struct TypeDescriptor {
     pub deletion_semantic: Option<String>,
     pub is_ordered: bool,
     pub allows_duplicates: bool,
-    pub allows_additional_properties: bool,
-    pub allows_additional_relationships: bool,
 }
 
 impl TypeDescriptor {
@@ -301,8 +297,6 @@ impl TypeDescriptor {
             deletion_semantic: None,
             is_ordered: false,
             allows_duplicates: false,
-            allows_additional_properties: false,
-            allows_additional_relationships: false,
         }
     }
 
@@ -400,8 +394,6 @@ impl SemanticModel {
                 name: schema.name.clone(),
                 key: schema.key.clone(),
                 dependencies: comparable_refs(&schema.dependencies),
-                allows_additional_properties: schema.allows_additional_properties,
-                allows_additional_relationships: schema.allows_additional_relationships,
             })
             .collect::<Vec<_>>();
         schemas.sort();
@@ -423,8 +415,6 @@ impl SemanticModel {
                 deletion_semantic: descriptor.deletion_semantic.clone(),
                 is_ordered: descriptor.is_ordered,
                 allows_duplicates: descriptor.allows_duplicates,
-                allows_additional_properties: descriptor.allows_additional_properties,
-                allows_additional_relationships: descriptor.allows_additional_relationships,
             })
             .collect::<Vec<_>>();
         descriptors.sort();
@@ -452,8 +442,6 @@ pub struct ComparableSchema {
     pub name: String,
     pub key: String,
     pub dependencies: Vec<(ReferenceRole, String)>,
-    pub allows_additional_properties: bool,
-    pub allows_additional_relationships: bool,
 }
 
 /// Origin-insensitive descriptor representation for equivalence checks.
@@ -472,8 +460,6 @@ pub struct ComparableDescriptor {
     pub deletion_semantic: Option<String>,
     pub is_ordered: bool,
     pub allows_duplicates: bool,
-    pub allows_additional_properties: bool,
-    pub allows_additional_relationships: bool,
 }
 
 fn comparable_descriptor_refs(descriptor: &TypeDescriptor) -> Vec<(ReferenceRole, String)> {

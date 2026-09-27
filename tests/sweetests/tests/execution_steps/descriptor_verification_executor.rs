@@ -39,12 +39,6 @@ pub async fn execute_verify_core_schema_descriptors(state: &mut TestExecutionSta
         schema_type_descriptor.header().type_name().expect("Schema type_name"),
         MapString("Schema".to_string())
     );
-    assert!(!schema_type_descriptor
-        .allows_additional_properties()
-        .expect("Schema allows_additional_properties"));
-    assert!(!schema_type_descriptor
-        .allows_additional_relationships()
-        .expect("Schema allows_additional_relationships"));
 
     let holon_type = find_holon_by_key(&holons, HOLON_TYPE_KEY);
     let holon_type_descriptor = HolonDescriptor::from_holon(holon_type);
@@ -624,12 +618,6 @@ pub async fn execute_verify_book_person_descriptors(state: &mut TestExecutionSta
         book_descriptor.header().type_name().expect("Book type_name"),
         MapString("Book".to_string())
     );
-    assert!(!book_descriptor
-        .allows_additional_properties()
-        .expect("Book allows_additional_properties"));
-    assert!(!book_descriptor
-        .allows_additional_relationships()
-        .expect("Book allows_additional_relationships"));
 
     let instance_property_names = property_type_names(book_descriptor.instance_properties());
     assert_contains(&instance_property_names, "Key"); // inherited from HolonType.TypeDescriptor
@@ -854,13 +842,45 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
         ("BooleanValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBoolean),
         ("BytesValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesBytes),
         ("EnumValueType.ValueType", CoreValidationRuleName::BaseValueKindMatchesEnum),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AtMostOneDirectParent),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::AcyclicExtendsLineage),
+        (
+            "MetaTypeDescriptor.HolonType",
+            CoreValidationRuleName::ExtendsLineageTerminatesAtTypeDescriptor,
+        ),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::UniqueTypeDescriptorRoot),
+        (
+            "MetaTypeDescriptor.HolonType",
+            CoreValidationRuleName::LocalInstanceKindAnchorDesignation,
+        ),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::InstanceKindAnchorsAreAbstract),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::TypeDescriptorRootKindException),
+        ("HolonType.TypeDescriptor", CoreValidationRuleName::DescribingCategoryCompatibility),
+        ("HolonType.TypeDescriptor", CoreValidationRuleName::DescriptorMetaTypeCorrespondence),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::NoInheritedMemberRedeclaration),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::UniqueSemanticMemberNames),
+        (
+            "MetaTypeDescriptor.HolonType",
+            CoreValidationRuleName::WellFormedEffectiveMemberDefinitions,
+        ),
+        ("MetaTypeDescriptor.HolonType", CoreValidationRuleName::ContractMemberKindCompatibility),
+        (
+            "MetaTypeDescriptor.HolonType",
+            CoreValidationRuleName::InheritedValueConstraintNonRelaxation,
+        ),
+        ("Schema.HolonType", CoreValidationRuleName::SchemaDependenciesAcyclic),
+        ("Schema.HolonType", CoreValidationRuleName::CrossSchemaDependenciesDeclared),
     ];
+    let mut by_descriptor = std::collections::BTreeMap::<&str, Vec<&str>>::new();
     for (descriptor_key, rule_name) in expected_bindings {
         let rule_key = rule_name.as_str();
-        let descriptor = find_holon_by_key(&holons, descriptor_key);
+        by_descriptor.entry(descriptor_key).or_default().push(rule_key);
         let rule = find_holon_by_key(&holons, rule_key);
-        assert_exact_related_keys(&descriptor, "ValidationBindings", &[rule_key]);
         assert_exact_related_keys(&rule, "ValidationBindingFor", &[descriptor_key]);
+    }
+    for (descriptor_key, rules) in by_descriptor {
+        let descriptor = find_holon_by_key(&holons, descriptor_key);
+        assert_exact_related_keys(&descriptor, "ValidationBindings", &rules);
     }
     assert_exact_related_keys(
         &find_holon_by_key(&holons, "TypeDescriptor"),
@@ -872,7 +892,11 @@ pub async fn execute_verify_validation_bindings_descriptor_contract(
         .iter()
         .map(|holon| related_holon_members(holon, "ValidationBindings").len())
         .sum();
-    assert_eq!(occurrence_count, expected_bindings.len(), "expected only seven local bindings");
+    assert_eq!(
+        occurrence_count,
+        expected_bindings.len(),
+        "expected exactly the authored local bindings"
+    );
 }
 
 /// Verifies the persisted anchoring rules after the stage-new-version
@@ -1048,9 +1072,7 @@ fn new_descriptor_holon(
     let mut descriptor = context.mutation().new_holon(Some(MapString(key.to_string())))?;
     descriptor
         .with_property_value(CorePropertyTypeName::TypeName, type_name)?
-        .with_property_value(CorePropertyTypeName::IsAbstractType, false)?
-        .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
-        .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
+        .with_property_value(CorePropertyTypeName::IsAbstractType, false)?;
     Ok(descriptor)
 }
 

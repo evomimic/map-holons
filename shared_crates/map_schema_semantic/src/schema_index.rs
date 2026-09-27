@@ -380,8 +380,6 @@ mod tests {
             literal_properties: LiteralObject::new(),
             literal_relationships: Vec::new(),
             header: None,
-            allows_additional_properties: false,
-            allows_additional_relationships: false,
         }
     }
 

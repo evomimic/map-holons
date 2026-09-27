@@ -1,11 +1,11 @@
 use core_types::{CommitValidationViolationKind, HolonError, ValidationSubjectPath};
 use holons_core::{
-    equals_or_extends, Descriptor, HolonDescriptor, HolonReference, ReadableHolon, ValueDescriptor,
+    Descriptor, HolonDescriptor, HolonReference, ReadableHolon, ValueDescriptor,
     ValueDescriptorKind,
 };
 
 use crate::commitments::{declaring_identity, required_key};
-use crate::contexts::{BindingRoots, SubjectLevel};
+use crate::contexts::SubjectLevel;
 use crate::handlers::{finding, native_rule_kind, rule_violation};
 use crate::*;
 
@@ -34,16 +34,9 @@ pub(crate) fn resolve_holon_descriptor(
     let path = ValidationSubjectPath::Holon { holon_identity: subject.holon.reference_id_string() };
     let descriptor = match subject.holon.holon_descriptor() {
         Ok(descriptor) => descriptor,
-        Err(
-            error
-            @ (HolonError::MissingDescribedBy { .. } | HolonError::MultipleDescribedBy { .. }),
-        ) => {
-            // Stable error variant names keep the two bootstrap failures distinguishable
-            // without changing the already-published dependency-safe finding enum.
-            let reason = if matches!(error, HolonError::MissingDescribedBy { .. }) {
-                "MissingDescribedBy"
-            } else {
-                "MultipleDescribedBy"
+        Err(error) => {
+            let Some(reason) = described_by_failure(&error) else {
+                return Err(error);
             };
             finding(
                 collector,
@@ -55,9 +48,17 @@ pub(crate) fn resolve_holon_descriptor(
             );
             return Ok(None);
         }
-        Err(error) => return Err(error),
     };
     Ok(Some(descriptor))
+}
+
+/// Stable names distinguish malformed describing selections without changing the finding enum.
+fn described_by_failure(error: &HolonError) -> Option<&'static str> {
+    match error {
+        HolonError::MissingDescribedBy { .. } => Some("MissingDescribedBy"),
+        HolonError::MultipleDescribedBy { .. } => Some("MultipleDescribedBy"),
+        _ => None,
+    }
 }
 
 /// Assesses the conformance contract using the descriptor already resolved for this pass.
@@ -183,9 +184,36 @@ fn prepare_bindings(
         let binding = ResolvedValidationBinding::from(contribution);
         let key = ValidationRuleKey(required_key(&binding.rule)?);
         collector.observations.discovered_rule_keys.insert(key.0.clone());
-        if !compatible_binding(&binding, descriptor.holon(), level, &context.bindings, context)? {
+        let family = match binding.rule.holon_descriptor() {
+            Ok(family) => family,
+            Err(error) => {
+                let Some(reason) = described_by_failure(&error) else {
+                    return Err(error);
+                };
+                rule_violation(
+                    collector,
+                    &binding,
+                    path,
+                    "IncompatibleValidationBinding",
+                    format!(
+                        "{reason}: Rule {} must have exactly one describing type before dispatch: {error}",
+                        binding.rule.reference_id_string()
+                    ),
+                )?;
+                continue;
+            }
+        };
+        if !compatible_binding(&binding, &family, &key, descriptor.holon(), level, context)? {
             rule_violation(collector, &binding, path, "IncompatibleValidationBinding",
                 "The rule family, declaring descriptor, and subject kind must be compatible before dispatch.".into())?;
+            continue;
+        }
+        // Standalone subject validation dispatches only subject-level handlers.
+        // Commit prepares descriptor and Schema products through its prospective view.
+        if context.bindings.entries.iter().any(|root| {
+            root.name.as_str() == key.0
+                && root.route != crate::contexts::BindingDispatchRoute::Subject
+        }) {
             continue;
         }
         match StaticRuleRegistry::lookup(&key) {
@@ -205,41 +233,75 @@ fn prepare_bindings(
 
 fn compatible_binding(
     binding: &ResolvedValidationBinding,
+    family: &HolonDescriptor,
+    key: &ValidationRuleKey,
     governing: &HolonReference,
     level: SubjectLevel,
-    roots: &BindingRoots,
     context: &ValueValidationContext,
 ) -> Result<bool, HolonError> {
-    let family = binding.rule.holon_descriptor()?;
-    let key = required_key(&binding.rule)?;
-    if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key) {
+    compatible_binding_with_reader(
+        binding,
+        family,
+        key,
+        governing,
+        level,
+        context,
+        &holons_core::CurrentDescriptorReader,
+    )
+}
+
+pub(crate) fn compatible_binding_with_reader<R: holons_core::DescriptorReader>(
+    binding: &ResolvedValidationBinding,
+    family: &HolonDescriptor,
+    key: &ValidationRuleKey,
+    governing: &HolonReference,
+    level: SubjectLevel,
+    context: &ValueValidationContext,
+    reader: &R,
+) -> Result<bool, R::Error> {
+    use holons_core::descriptors::equals_or_extends_with_reader;
+    let roots = &context.bindings;
+    if let Some(root) = roots.entries.iter().find(|entry| entry.name.as_str() == key.0) {
         // A familiar key on another reference cannot impersonate a canonical rule.
-        if binding.rule.reference_id_string() != root.rule.reference_id_string()
-            || root.level != level
-            || !equals_or_extends(family.holon(), &root.family)?
-            || !equals_or_extends(binding.declaring_descriptor.holon(), &root.descriptor_family)?
+        if !holons_core::same_definition(
+            &reader.select(&binding.rule)?,
+            &reader.select(&root.rule)?,
+        ) || root.level != level
+            || !equals_or_extends_with_reader(family.holon(), &root.family, reader)?
+            || !equals_or_extends_with_reader(
+                binding.declaring_descriptor.holon(),
+                &root.descriptor_family,
+                reader,
+            )?
         {
             return Ok(false);
         }
         if let Some(expected) = native_rule_kind(root.name) {
-            return Ok(ValueDescriptor::from_holon(governing.clone())
-                .value_kind(&context.roots)?
+            return Ok(ValueDescriptor::from_holon(reader.select(governing)?)
+                .value_kind_with_reader(&context.roots, reader)?
                 == ValueDescriptorKind::BaseValue(expected));
         }
         return Ok(true);
     }
-    // Unknown commitments still fail closed. Where C1 knows their family, reject
-    // malformed placement explicitly before considering handler availability.
+    // A family may have roots at several declaring descriptors or subject levels.
+    // Inspect all matching roots so their registration order cannot change placement.
+    let mut matched_family = false;
+    let mut admitted = false;
     for root in &roots.entries {
-        if equals_or_extends(family.holon(), &root.family)? {
-            return Ok(root.level == level
-                && equals_or_extends(
+        if equals_or_extends_with_reader(family.holon(), &root.family, reader)? {
+            matched_family = true;
+            if root.level == level
+                && equals_or_extends_with_reader(
                     binding.declaring_descriptor.holon(),
                     &root.descriptor_family,
-                )?);
+                    reader,
+                )?
+            {
+                admitted = true;
+            }
         }
     }
-    Ok(true)
+    Ok(!matched_family || admitted)
 }
 
 fn mark_dispatched(
@@ -250,7 +312,7 @@ fn mark_dispatched(
     Ok(())
 }
 
-/// C1 has no configured evaluators. Reaching a constraint is a blocking finding,
+/// No configured evaluators are registered. Reaching a constraint is a blocking finding,
 /// independent of whether its type is one the future capability will support.
 fn assess_constraints(
     descriptor: &HolonDescriptor,
@@ -278,4 +340,32 @@ fn assess_constraints(
         }
     }
     Ok(())
+}
+
+/// Prospective binding checks use the selected rule's own describing edge.
+#[cfg(test)]
+pub(crate) fn compatible_binding_in_view(
+    binding: &ResolvedValidationBinding,
+    governing: &HolonReference,
+    level: SubjectLevel,
+    context: &ValueValidationContext,
+    reader: &holons_core::ProspectiveDescriptorReader,
+) -> Result<bool, holons_core::AssessmentReadError> {
+    use holons_core::{DescribingTypeResolution, DescriptorReader};
+    let rule = reader.select(&binding.rule)?;
+    let key = ValidationRuleKey(required_key(&rule)?);
+    let DescribingTypeResolution::Unique(family) =
+        holons_core::descriptors::resolve_describing_type_with_reader(&rule, reader)?
+    else {
+        return Ok(false);
+    };
+    compatible_binding_with_reader(
+        binding,
+        &HolonDescriptor::from_holon(family),
+        &key,
+        governing,
+        level,
+        context,
+        reader,
+    )
 }

@@ -10,8 +10,6 @@ schema "MAP Core Schema-v0.0.7" {
 holon LoaderHolon.HolonType {
   type MetaHolonType.MetaTypeDescriptor
   extends HolonType.TypeDescriptor
-  allows_additional_properties
-  allows_additional_relationships
   header {
     description: "Representation of a parsed holon from JSON input, including properties and unresolved references."
     display_name: "Loader Holon"
@@ -95,9 +93,7 @@ holon HolonLoadError.HolonError {
     InstanceProperties -> [
       Filename.PropertyType,
       StartUtf8ByteOffset.PropertyType,
-      LoaderHolonKey.PropertyType,
-      ErrorType.PropertyType,
-      ErrorMessage.PropertyType
+      LoaderHolonKey.PropertyType
     ]
   }
 }

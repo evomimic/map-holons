@@ -570,6 +570,20 @@ impl DancesTestCase {
         Ok(())
     }
 
+    /// Checks a client-visible aggregate finding for an unstaged Schema.
+    pub fn add_verify_commit_carrier_finding_step(
+        &mut self,
+        expected: crate::ExpectedCommitCarrierFinding,
+        description: Option<String>,
+    ) -> Result<(), HolonError> {
+        self.ensure_not_finalized()?;
+        self.steps.push(DanceTestStep::VerifyCommitCarrierFinding {
+            expected,
+            description: description.unwrap_or_else(|| "Verify Commit carrier finding".into()),
+        });
+        Ok(())
+    }
+
     // Special step that creates a new 'freshly minted' TransientReference,
     // i.e. the first snapshot for a FixtureHolon.
     pub fn add_new_holon_step(

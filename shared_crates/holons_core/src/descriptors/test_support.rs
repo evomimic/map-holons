@@ -51,10 +51,20 @@ impl HolonServiceApi for TestHolonService {
 
     fn fetch_all_related_holons_internal(
         &self,
-        _context: &Arc<TransactionContext>,
-        _source_id: &HolonId,
+        context: &Arc<TransactionContext>,
+        source_id: &HolonId,
     ) -> Result<RelationshipMap, HolonError> {
-        unreachable_in_descriptor_tests()
+        if !self.saved_holons.contains_key(source_id) {
+            return unreachable_in_descriptor_tests();
+        }
+        let mut result = RelationshipMap::new_empty();
+        for (source, name) in self.saved_relationships.keys() {
+            if source == source_id {
+                let collection = self.fetch_related_holons_internal(context, source_id, name)?;
+                result.insert(name.clone(), Arc::new(std::sync::RwLock::new(collection)));
+            }
+        }
+        Ok(result)
     }
 
     fn fetch_holon_internal(
@@ -197,17 +207,13 @@ pub(crate) fn new_descriptor_holon(
     Ok(descriptor)
 }
 
-/// Creates a holon-type descriptor with the required Phase B structural flags.
+/// Creates a holon-type descriptor with the shared descriptor header.
 pub(crate) fn new_holon_type_descriptor(
     context: &Arc<TransactionContext>,
     key: &str,
     type_name: &str,
 ) -> Result<TransientReference, HolonError> {
-    let mut descriptor = new_descriptor_holon(context, key, type_name, "Holon")?;
-    descriptor
-        .with_property_value(CorePropertyTypeName::AllowsAdditionalProperties, false)?
-        .with_property_value(CorePropertyTypeName::AllowsAdditionalRelationships, false)?;
-    Ok(descriptor)
+    new_descriptor_holon(context, key, type_name, "Holon")
 }
 
 /// Creates a property descriptor with structural fields and its value type edge.
@@ -274,4 +280,81 @@ pub(crate) fn new_declared_relationship_descriptor_holon(
         )?)?;
     descriptor.add_related_holons(CoreRelationshipTypeName::Extends, vec![declared_type.into()])?;
     Ok(descriptor)
+}
+
+/// Authors a direct describing edge, including self-description in meta-type fixtures.
+pub(crate) fn describe(
+    holon: &mut TransientReference,
+    descriptor: &HolonReference,
+) -> Result<(), HolonError> {
+    holon.add_related_holons(CoreRelationshipTypeName::DescribedBy, vec![descriptor.clone()])?;
+    Ok(())
+}
+
+/// Builds a local kind designation and optional lineage without inferring a category from names.
+pub(crate) fn new_kind_descriptor(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    parent: Option<&HolonReference>,
+    anchor: bool,
+) -> Result<TransientReference, HolonError> {
+    let mut holon = new_descriptor_holon(context, key, key, "")?;
+    holon.with_property_value(CorePropertyTypeName::DefinesInstanceTypeKind, anchor)?;
+    if let Some(parent) = parent {
+        holon.add_related_holons(CoreRelationshipTypeName::Extends, vec![parent.clone()])?;
+    }
+    Ok(holon)
+}
+
+/// Builds a typed Schema instance; membership remains authored on its owners.
+pub(crate) fn new_schema_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    schema_type: &HolonReference,
+) -> Result<TransientReference, HolonError> {
+    let mut holon = new_test_holon(context, key)?;
+    describe(&mut holon, schema_type)?;
+    Ok(holon)
+}
+
+/// Authors either ownership namespace without manufacturing inverse occurrences.
+pub(crate) fn own(
+    holon: &mut TransientReference,
+    owner: &HolonReference,
+    kind: super::SchemaOwnershipKind,
+) -> Result<(), HolonError> {
+    let relationship = match kind {
+        super::SchemaOwnershipKind::Component => CoreRelationshipTypeName::ComponentOf,
+        super::SchemaOwnershipKind::Rule => CoreRelationshipTypeName::RuleOf,
+    };
+    holon.add_related_holons(relationship, vec![owner.clone()])?;
+    Ok(())
+}
+
+/// Builds a configured constraint through its direct describing contract.
+pub(crate) fn new_constraint_holon(
+    context: &Arc<TransactionContext>,
+    key: &str,
+    constraint_type: &HolonReference,
+    owner: &HolonReference,
+) -> Result<TransientReference, HolonError> {
+    let mut holon = new_test_holon(context, key)?;
+    describe(&mut holon, constraint_type)?;
+    own(&mut holon, owner, super::SchemaOwnershipKind::Rule)?;
+    Ok(holon)
+}
+
+/// Restores an explicit update snapshot, allowing malformed semantic content in kernel tests.
+/// The normal staging path requires a complete describing contract before cloning saved state.
+pub(crate) fn stage_update_snapshot(
+    context: &Arc<TransactionContext>,
+    source: LocalId,
+    input: TransientReference,
+) -> Result<StagedReference, HolonError> {
+    use crate::core_shared_objects::holon::StagedHolon;
+    let model = input.raw_holon_clone_model()?;
+    let staged = context.mutation().stage_new_holon(input)?;
+    *staged.get_holon_to_commit(context)?.write().unwrap() =
+        Holon::Staged(StagedHolon::new_for_update_from_clone_model(model, source)?);
+    Ok(staged)
 }

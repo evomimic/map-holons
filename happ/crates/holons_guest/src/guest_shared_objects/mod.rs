@@ -1,4 +1,5 @@
 pub mod commit_functions;
+mod commit_validation_findings;
 pub mod guest_holon_service;
 pub mod holon_service;
 

@@ -11,8 +11,14 @@ pub struct ValidationObservations {
     pub discovered_rule_keys: BTreeSet<String>,
     /// Rule keys whose compatible handlers actually ran.
     pub dispatched_rule_keys: BTreeSet<String>,
-    /// Number of effective constraints reached at C1 subject levels.
+    /// Number of effective constraints reached during subject evaluation.
     pub effective_constraint_count: usize,
+    /// Effective attachments inspected by declaration assessment, including reused constraints.
+    pub constraint_attachment_count: usize,
+    /// Distinct configured constraints declaration-checked in the assessment's Schema scope.
+    pub constraint_declaration_count: usize,
+    /// Distinct affected Schemas assessed in this Commit attempt.
+    pub schema_assessment_count: usize,
 }
 
 /// Ordered aggregation owned by the caller, never by a parent holon.
@@ -33,8 +39,12 @@ impl ValidationCollector {
         &self.observations
     }
 
+    pub(crate) fn violations(&self) -> &[CommitValidationViolation] {
+        &self.violations
+    }
+
     /// Finishes a successfully completed pass; do not call after an operational error.
     pub fn into_report(self) -> CommitValidationReport {
-        CommitValidationReport { violations: self.violations }
+        CommitValidationReport::from_candidate(self.violations)
     }
 }

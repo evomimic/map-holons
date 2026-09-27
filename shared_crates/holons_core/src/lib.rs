@@ -22,17 +22,23 @@ pub use core_shared_objects::{
 };
 pub use core_types::HolonError;
 pub use descriptors::{
-    ancestors, classify_relationship_direction, effective_relationship_declaration,
-    effective_relationship_targets, equals_or_extends, resolve_core_descriptor, walk_extends_chain,
-    Descriptor, EffectiveRelationshipMember, ExtendsIter, HolonDescriptor, HolonSpaceDescriptor,
-    PropertyDescriptor, RelationshipDescriptor, RelationshipDirection, ResolvedValueTypeRoots,
-    TransactionDescriptor, TypeHeader, UniversalDescriptorContract, ValueDescriptor,
+    ancestors, applicable_descriptor_types, classify_relationship_direction, constraint_applies_to,
+    effective_relationship_declaration, effective_relationship_targets, equals_or_extends,
+    resolve_core_descriptor, resolve_describing_type, resolve_schema_ownership, same_definition,
+    schema_components, schema_dependencies, schema_rules, walk_extends_chain, AssessmentReadError,
+    ContractContributions, CurrentDescriptorReader, DescribingCompatibility,
+    DescribingTypeResolution, Descriptor, DescriptorKindRoots, DescriptorReader,
+    EffectiveRelationshipMember, ExtendsIter, ExtendsLineageDefect, ExtendsLineageDiagnosis,
+    HolonDescriptor, HolonSpaceDescriptor, PropertyDescriptor, ProspectiveDescriptorReader,
+    ProspectiveSelection, RelationshipDescriptor, RelationshipDirection, ResolvedValueTypeRoots,
+    SchemaOwnershipKind, SchemaOwnershipResolution, StructuralPrerequisites, TransactionDescriptor,
+    TypeHeader, UniversalDescriptorContract, ValidExtendsLineage, ValueDescriptor,
     ValueDescriptorKind,
 };
 pub use reference_layer::{
-    CompletionOutcome, Divergence, EquivalenceOutcome, EquivalenceResolver, HolonCollectionApi,
-    HolonReference, HolonServiceApi, HolonSpaceBehavior, HolonStagingBehavior, NoOpResolver,
-    NodeResolution, ReadableHolon, SmartReference, StagedReference, TransientHolonBehavior,
-    TransientReference, WritableHolon,
+    assert_reference_transaction_compatible, CompletionOutcome, Divergence, EquivalenceOutcome,
+    EquivalenceResolver, HolonCollectionApi, HolonReference, HolonServiceApi, HolonSpaceBehavior,
+    HolonStagingBehavior, NoOpResolver, NodeResolution, ProspectiveIdentity, ReadableHolon,
+    SmartReference, StagedReference, TransientHolonBehavior, TransientReference, WritableHolon,
 };
 // pub use utils::*;

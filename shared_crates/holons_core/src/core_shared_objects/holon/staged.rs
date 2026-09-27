@@ -943,4 +943,52 @@ mod tests {
 
         assert_eq!(filtered_names, vec![properties]);
     }
+
+    #[test]
+    fn empty_relationship_collections_stay_empty_under_both_commit_scopes() {
+        let untouched = RelationshipName(MapString("Untouched".into()));
+        let touched = RelationshipName(MapString("Touched".into()));
+        let mut relationships = BTreeMap::new();
+        for name in [&untouched, &touched] {
+            relationships
+                .insert(name.clone(), Arc::new(RwLock::new(HolonCollection::new_staged())));
+        }
+        let mut staged = StagedHolon::from_parts(
+            MapInteger(1),
+            HolonState::Mutable,
+            StagedState::ForUpdateGraphOnly,
+            ValidationState::ValidationRequired,
+            Vec::new(),
+            PropertyMap::new(),
+            StagedRelationshipMap { map: relationships },
+            None,
+            Some(LocalId(vec![1, 2, 3])),
+            BTreeSet::from([touched.clone()]),
+            RelationshipCommitScope::Full,
+            Vec::new(),
+        );
+
+        for (scope, expected_names) in [
+            (RelationshipCommitScope::Full, vec![touched.clone(), untouched]),
+            (RelationshipCommitScope::TouchedOnly, vec![touched]),
+        ] {
+            match scope {
+                RelationshipCommitScope::Full => {
+                    staged.prepare_full_relationship_commit_scope().unwrap()
+                }
+                RelationshipCommitScope::TouchedOnly => {
+                    staged.prepare_touched_relationship_commit_scope().unwrap()
+                }
+            }
+            let selected = staged.relationship_collections_for_commit().unwrap();
+            assert_eq!(
+                selected.iter().map(|(name, _)| name.clone()).collect::<Vec<_>>(),
+                expected_names
+            );
+            // Pass 2 can skip these without resolving a relationship descriptor.
+            assert!(selected
+                .iter()
+                .all(|(_, collection)| { collection.read().unwrap().get_members().is_empty() }));
+        }
+    }
 }

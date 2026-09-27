@@ -8,26 +8,42 @@
 //! complete supplied candidate set before replacing staged outcomes, preserving operational
 //! errors separately. No entry point invokes Commit or persists holons.
 
+mod assessment_support;
 mod collector;
 mod commitments;
+mod constraint_declarations;
 mod contexts;
+mod descriptor_rules;
 mod handlers;
 mod orchestration;
+mod prospective;
+mod prospective_validation;
+mod readiness;
 mod registries;
 mod report;
+mod schema_rules;
+mod schema_view;
 mod subjects;
 mod validators;
 
 pub use collector::{ValidationCollector, ValidationObservations};
 pub use commitments::{ResolvedConstraint, ResolvedValidationBinding};
+pub use constraint_declarations::{ConstraintDeclarationAssessment, ConstraintDeclarationRoots};
 pub use contexts::{HolonValidationContext, PropertyValidationContext, ValueValidationContext};
-pub use orchestration::validate_commit_candidates;
+pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
+pub use prospective::{
+    competing_replacement_findings, resolve_validation_anchor, resolve_validation_anchor_in_view,
+};
+pub use readiness::validate_commit_candidates;
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
     StaticRuleHandler, StaticRuleRegistry, ValidationInvocation, ValidationRuleKey,
 };
 pub use report::CommitValidationReport;
-pub use subjects::{HolonValidationSubject, PropertyValidationSubject, ValueValidationSubject};
+pub use schema_rules::SchemaRuleProducts;
+pub use subjects::{
+    HolonValidationSubject, PreparedRuleSubject, PropertyValidationSubject, ValueValidationSubject,
+};
 pub use validators::{validate_holon, validate_property, validate_value};
 
 #[cfg(test)]

@@ -21,6 +21,7 @@ pub async fn execute_verify_schema_validation_conformance(state: &mut TestExecut
     let mut remaining_descriptors = expected_descriptor_keys(&content_set);
     let descriptor_count = remaining_descriptors.len();
     let mut remaining_holons = BTreeMap::new();
+    let mut cardinality_attachment_count = 0_usize;
     for file in &content_set.files_to_load {
         let document: serde_json::Value = serde_json::from_str(&file.raw_contents)
             .unwrap_or_else(|error| panic!("invalid schema JSON in {}: {error}", file.filename));
@@ -30,9 +31,27 @@ pub async fn execute_verify_schema_validation_conformance(state: &mut TestExecut
                 remaining_holons.insert(key.to_owned(), file.filename.clone()).is_none(),
                 "duplicate canonical holon key: {key}"
             );
+            for relationship in holon["relationships"].as_array().into_iter().flatten() {
+                if relationship["name"] != "Constraints" {
+                    continue;
+                }
+                let targets = relationship["target"]
+                    .as_array()
+                    .map(Vec::as_slice)
+                    .unwrap_or_else(|| std::slice::from_ref(&relationship["target"]));
+                cardinality_attachment_count += targets
+                    .iter()
+                    .filter(|target| {
+                        target["$ref"]
+                            .as_str()
+                            .is_some_and(|key| key.ends_with(".CardinalityConstraint"))
+                    })
+                    .count();
+            }
         }
     }
     assert!(!remaining_holons.is_empty(), "conformance must assess canonical holons");
+    assert!(cardinality_attachment_count > 0, "canonical corpus retains cardinality declarations");
     let holon_count = remaining_holons.len();
     let (transaction, holons) = loaded_holons_with_context(state, step).await;
     // GetAllHolons excludes the current space, which is itself a manifest-selected input.
@@ -86,12 +105,16 @@ pub async fn execute_verify_schema_validation_conformance(state: &mut TestExecut
     assert_eq!(
         bound_rules,
         expected_rule_keys(),
-        "all seven effective bindings must be discovered"
+        "all authored effective bindings must be discovered"
     );
     let observations = collector.observations().clone();
     assert_eq!(
         observations.effective_constraint_count, 0,
-        "C1 holon/property/value traversal must reach no effective constraints"
+        "standalone subject traversal must reach no effective constraints"
+    );
+    assert_eq!(
+        observations.constraint_declaration_count, 0,
+        "declaration assessment is a separate Commit scope"
     );
     let report = collector.into_report();
     assert!(
@@ -135,15 +158,17 @@ pub async fn execute_verify_schema_validation_conformance(state: &mut TestExecut
 
     let corpus_rules: BTreeSet<_> =
         expected_rule_keys().into_iter().filter(|key| key != &bytes_rule).collect();
+    let subject_rules: BTreeSet<_> =
+        subject_rule_keys().into_iter().filter(|key| key != &bytes_rule).collect();
     assert!(
         corpus_rules.is_subset(&observations.discovered_rule_keys),
         "canonical traversal missed bindings: {:?}",
         corpus_rules.difference(&observations.discovered_rule_keys).collect::<Vec<_>>()
     );
     assert!(
-        corpus_rules.is_subset(&observations.dispatched_rule_keys),
+        subject_rules.is_subset(&observations.dispatched_rule_keys),
         "canonical traversal missed handlers: {:?}",
-        corpus_rules.difference(&observations.dispatched_rule_keys).collect::<Vec<_>>()
+        subject_rules.difference(&observations.dispatched_rule_keys).collect::<Vec<_>>()
     );
     assert_eq!(
         observations
@@ -159,16 +184,33 @@ pub async fn execute_verify_schema_validation_conformance(state: &mut TestExecut
             .union(&probe_observations.dispatched_rule_keys)
             .cloned()
             .collect::<BTreeSet<_>>(),
-        expected_rule_keys()
+        subject_rule_keys()
     );
 
     tracing::info!(
         holon_count,
         descriptor_count,
+        cardinality_attachment_count,
         ?observations,
         ?probe_observations,
-        "verified report-only canonical schema conformance and separate Bytes dispatch coverage"
+        "verified canonical subject-rule conformance, binding inventory, and Bytes coverage"
     );
+}
+
+fn subject_rule_keys() -> BTreeSet<String> {
+    use CoreValidationRuleName::*;
+    [
+        RequiredPropertyPresence,
+        NoUndescribedProperties,
+        BaseValueKindMatchesString,
+        BaseValueKindMatchesInteger,
+        BaseValueKindMatchesBoolean,
+        BaseValueKindMatchesBytes,
+        BaseValueKindMatchesEnum,
+    ]
+    .into_iter()
+    .map(|rule| rule.as_str().to_owned())
+    .collect()
 }
 
 fn expected_rule_keys() -> BTreeSet<String> {
@@ -181,6 +223,22 @@ fn expected_rule_keys() -> BTreeSet<String> {
         BaseValueKindMatchesBoolean,
         BaseValueKindMatchesBytes,
         BaseValueKindMatchesEnum,
+        AtMostOneDirectParent,
+        AcyclicExtendsLineage,
+        ExtendsLineageTerminatesAtTypeDescriptor,
+        UniqueTypeDescriptorRoot,
+        LocalInstanceKindAnchorDesignation,
+        InstanceKindAnchorsAreAbstract,
+        TypeDescriptorRootKindException,
+        DescribingCategoryCompatibility,
+        DescriptorMetaTypeCorrespondence,
+        NoInheritedMemberRedeclaration,
+        UniqueSemanticMemberNames,
+        WellFormedEffectiveMemberDefinitions,
+        ContractMemberKindCompatibility,
+        InheritedValueConstraintNonRelaxation,
+        SchemaDependenciesAcyclic,
+        CrossSchemaDependenciesDeclared,
     ]
     .into_iter()
     .map(|rule| rule.as_str().to_owned())

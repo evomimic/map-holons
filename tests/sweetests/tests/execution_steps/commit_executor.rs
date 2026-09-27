@@ -1,15 +1,67 @@
 use core_types::ValidationSubjectPath;
 use holons_core::core_shared_objects::holon::{StagedState, ValidationState};
 use holons_test::{
-    ExecutionHandle, ExecutionReference, ExpectedCommitStatus, ExpectedRejectedHolon,
-    ExpectedValidationSubject, ResolveBy, TestExecutionState, TestReference,
+    ExecutionHandle, ExecutionReference, ExpectedCommitCarrierFinding, ExpectedCommitStatus,
+    ExpectedRejectedHolon, ExpectedValidationSubject, ResolveBy, TestExecutionState, TestReference,
 };
 use integrity_core_types::HolonErrorKind;
 use map_commands_contract::{MapCommand, MapResult, TransactionAction, TransactionCommand};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use tracing::{debug, info, trace};
 
 use holons_prelude::prelude::*;
+
+type RelationshipSnapshot = HashMap<String, HashMap<HolonId, usize>>;
+type PersistenceSnapshot = (HashSet<HolonId>, HashMap<HolonId, RelationshipSnapshot>);
+
+/// The persisted nodes and saved relationship endpoints reachable from a rejected
+/// workset. A semantic rejection must leave both unchanged, including inverses.
+fn persistence_snapshot(
+    context: &std::sync::Arc<TransactionContext>,
+    candidates: &[&StagedReference],
+) -> Result<PersistenceSnapshot, HolonError> {
+    let nodes = context
+        .lookup()
+        .get_all_holons()?
+        .get_members()
+        .iter()
+        .map(|reference| reference.holon_id())
+        .collect::<Result<HashSet<_>, _>>()?;
+    let mut saved_endpoints = HashMap::new();
+    for candidate in candidates {
+        if let Some(source) = candidate.versioned_source_id()? {
+            let id = HolonId::Local(source);
+            saved_endpoints
+                .insert(id.clone(), HolonReference::smart_from_id(context.space_read_handle(), id));
+        }
+        for (_, members) in HolonReference::from(*candidate).all_related_holons()?.iter() {
+            let members = members
+                .read()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?;
+            for member in members.get_members() {
+                if let HolonReference::Smart(saved) = member {
+                    saved_endpoints.insert(saved.holon_id(), member.clone());
+                }
+            }
+        }
+    }
+    let mut relationships = HashMap::new();
+    for (id, saved) in saved_endpoints {
+        let mut edges = RelationshipSnapshot::new();
+        for (name, members) in saved.all_related_holons()?.iter() {
+            let mut targets = HashMap::new();
+            let members = members
+                .read()
+                .map_err(|error| HolonError::FailedToAcquireLock(error.to_string()))?;
+            for member in members.get_members() {
+                *targets.entry(member.holon_id()?).or_insert(0) += 1;
+            }
+            edges.insert(name.to_string(), targets);
+        }
+        relationships.insert(id, edges);
+    }
+    Ok((nodes, relationships))
+}
 
 /// Dispatches a `Commit` command through the Runtime and validates the result.
 ///
@@ -37,6 +89,8 @@ pub async fn execute_commit(
         .iter()
         .filter(|reference| reference.is_live_validation_candidate().unwrap())
         .collect();
+    let before_rejection = (expected_status == ExpectedCommitStatus::Rejected)
+        .then(|| persistence_snapshot(&context, &candidates).expect("pre-Commit persisted state"));
     let excluded: Vec<_> = staged
         .iter()
         .filter(|reference| !reference.is_live_validation_candidate().unwrap())
@@ -75,6 +129,32 @@ pub async fn execute_commit(
                 ),
                 Err(e) => panic!("commit: failed to read CommitRequestStatus: {:?}", e),
             };
+            // A status mismatch is the hardest failure in this suite to diagnose: the assertion
+            // compares two strings, while the findings that explain the status live on the staged
+            // handles and on the response carrier. Report both before asserting. These use
+            // `println!` rather than tracing so that no `RUST_LOG` filter can suppress the
+            // explanation of a failure.
+            if actual_status != expected_status.to_string() {
+                println!("---- commit status mismatch: expected {expected_status}, got {actual_status} ----");
+                for candidate in &candidates {
+                    println!(
+                        "candidate {} state={:?} findings={:#?}",
+                        candidate.reference_id_string(),
+                        candidate.validation_state().unwrap(),
+                        candidate.validation_findings().unwrap(),
+                    );
+                }
+                match commit_response_ref
+                    .related_holons(CoreRelationshipTypeName::HasValidationFinding)
+                {
+                    Ok(carriers) => println!(
+                        "unattached carrier findings: {:#?}",
+                        carriers.read().unwrap().get_members()
+                    ),
+                    Err(error) => println!("carrier findings unavailable: {error:?}"),
+                }
+                println!("---- end commit status mismatch ----");
+            }
             assert_eq!(
                 actual_status,
                 expected_status.to_string(),
@@ -94,11 +174,6 @@ pub async fn execute_commit(
                 assert_eq!(reference.validation_findings().unwrap(), *findings);
                 if *abandoned {
                     assert!(reference.is_in_state(&context, StagedState::Abandoned).unwrap());
-                    assert_eq!(
-                        *validation_state,
-                        ValidationState::ValidationRequired,
-                        "these abandoned fixtures were never assessed"
-                    );
                 }
             }
             if expected_status != ExpectedCommitStatus::Rejected {
@@ -117,6 +192,17 @@ pub async fn execute_commit(
                         .get_count()
                         .0,
                     0
+                );
+                assert_eq!(
+                    commit_response_ref
+                        .related_holons(CoreRelationshipTypeName::HasValidationFinding)
+                        .unwrap()
+                        .read()
+                        .unwrap()
+                        .get_count()
+                        .0,
+                    0,
+                    "accepted Commit has no unattached findings"
                 );
                 for candidate in &candidates {
                     assert_eq!(candidate.validation_state().unwrap(), ValidationState::Validated);
@@ -139,12 +225,28 @@ pub async fn execute_commit(
             if expected_status == ExpectedCommitStatus::Rejected {
                 assert_eq!(commit_count.0, 0, "rejection must not save holons");
                 assert!(context.is_open(), "rejection must leave the transaction open");
+                assert_eq!(
+                    Some(
+                        persistence_snapshot(&context, &candidates)
+                            .expect("post-Commit persisted state")
+                    ),
+                    before_rejection,
+                    "semantic rejection must not write nodes or SmartLinks"
+                );
                 let rejected = commit_response_ref
                     .related_holons(CoreRelationshipTypeName::RejectedHolons)
                     .expect("RejectedHolons relationship");
+                let rejected_count = rejected.read().unwrap().get_count().0;
+                let carrier_count = commit_response_ref
+                    .related_holons(CoreRelationshipTypeName::HasValidationFinding)
+                    .expect("HasValidationFinding relationship")
+                    .read()
+                    .unwrap()
+                    .get_count()
+                    .0;
                 assert!(
-                    rejected.read().unwrap().get_count().0 > 0,
-                    "rejection must identify finding-bearing candidates"
+                    rejected_count + carrier_count > 0,
+                    "rejection must expose at least one finding"
                 );
                 return;
             }
@@ -213,6 +315,34 @@ pub fn execute_verify_commit_rejection(
     );
     let rejected = response.related_holons(CoreRelationshipTypeName::RejectedHolons).unwrap();
     let members = rejected.read().unwrap().get_members().to_vec();
+    let mut finding_count = assert_rejected_holons(state, &members, rejected_holons);
+    let carriers = response.related_holons(CoreRelationshipTypeName::HasValidationFinding).unwrap();
+    let carrier_members = carriers.read().unwrap().get_members().to_vec();
+    for carrier in &carrier_members {
+        assert!(matches!(carrier, HolonReference::Transient(_)));
+        for field in [
+            CorePropertyTypeName::ViolationKind,
+            CorePropertyTypeName::Severity,
+            CorePropertyTypeName::SubjectKind,
+            CorePropertyTypeName::Message,
+        ] {
+            assert!(
+                carrier.property_value(field).unwrap().is_some(),
+                "finding carrier is incomplete"
+            );
+        }
+    }
+    finding_count += carrier_members.len() as i64;
+    assert_eq!(finding_count, expected_violation_count.0);
+}
+
+/// Checks both the rejected identities and each staged candidate's finding details.
+fn assert_rejected_holons(
+    state: &TestExecutionState,
+    members: &[HolonReference],
+    rejected_holons: Vec<ExpectedRejectedHolon>,
+) -> i64 {
+    let context = state.context();
     let mut actual_ids: Vec<_> =
         members.iter().map(|reference| reference.reference_id_string()).collect();
     let mut expected_ids = Vec::new();
@@ -243,6 +373,17 @@ pub fn execute_verify_commit_rejection(
                 ExpectedValidationSubject::Value(property) => {
                     ValidationSubjectPath::Value { holon_identity: identity.clone(), property }
                 }
+                ExpectedValidationSubject::Relationship { name, target } => {
+                    let target = state
+                        .resolve_execution_reference(&context, ResolveBy::Expected, &target)
+                        .expect("relationship finding target remains resolvable");
+                    ValidationSubjectPath::Relationship {
+                        source_identity: identity.clone(),
+                        name,
+                        target_identity: target.reference_id_string(),
+                    }
+                }
+                ExpectedValidationSubject::Transaction => ValidationSubjectPath::Transaction,
             };
             assert_eq!(actual.kind, expected.kind);
             assert_eq!(actual.rule_key, expected.rule_key);
@@ -255,5 +396,80 @@ pub fn execute_verify_commit_rejection(
         actual_ids, expected_ids,
         "RejectedHolons must identify exactly the expected staged candidates"
     );
-    assert_eq!(finding_count, expected_violation_count.0);
+    finding_count
+}
+
+/// Reads the transient carrier exactly as a client would after public Commit.
+pub fn execute_verify_commit_carrier_finding(
+    state: &TestExecutionState,
+    expected: ExpectedCommitCarrierFinding,
+) {
+    let context = state.context();
+    let schema = context
+        .lookup()
+        .get_saved_holon_by_key(&MapString(expected.schema_key.clone()))
+        .expect("expected saved Schema");
+    assert!(
+        context.staged_references().unwrap().iter().all(|candidate| {
+            candidate.key().unwrap() != Some(MapString(expected.schema_key.clone()))
+        }),
+        "aggregate finding must name an unstaged Schema"
+    );
+    let response = state.last_commit_response().expect("a preceding rejected Commit response");
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::CommitRequestStatus).unwrap(),
+        Some(BaseValue::StringValue(MapString("Rejected".into())))
+    );
+    let rejected = response
+        .related_holons(CoreRelationshipTypeName::RejectedHolons)
+        .expect("RejectedHolons relationship");
+    let rejected_members = rejected.read().unwrap().get_members().to_vec();
+    let staged_count =
+        assert_rejected_holons(state, &rejected_members, expected.expected_rejected_holons);
+    let carriers = response
+        .related_holons(CoreRelationshipTypeName::HasValidationFinding)
+        .expect("HasValidationFinding relationship");
+    let matches: Vec<_> = carriers
+        .read()
+        .unwrap()
+        .get_members()
+        .iter()
+        .filter(|carrier| {
+            carrier.property_value(CorePropertyTypeName::RuleCode).unwrap()
+                == Some(BaseValue::StringValue(MapString(expected.rule_code.clone())))
+                && carrier.property_value(CorePropertyTypeName::HolonIdentity).unwrap()
+                    == Some(BaseValue::StringValue(MapString(schema.reference_id_string())))
+        })
+        .cloned()
+        .collect();
+    assert_eq!(matches.len(), 1, "one carrier must identify the unstaged Schema and rule");
+    let carrier = &matches[0];
+    let declaring_descriptor = context
+        .lookup()
+        .get_saved_holon_by_key(&MapString("Schema.HolonType".into()))
+        .expect("saved Schema descriptor");
+    let declaring_identity = declaring_descriptor.reference_id_string();
+    for (field, value) in [
+        (CorePropertyTypeName::ViolationKind, "RuleViolation"),
+        (CorePropertyTypeName::RuleIdentity, expected.rule_key.as_str()),
+        (CorePropertyTypeName::SubjectKind, "Holon"),
+        (CorePropertyTypeName::Severity, "Error"),
+        (CorePropertyTypeName::DescriptorIdentity, declaring_identity.as_str()),
+    ] {
+        assert_eq!(
+            carrier.property_value(field).unwrap(),
+            Some(BaseValue::StringValue(MapString(value.into())))
+        );
+    }
+    let message = carrier.property_value(CorePropertyTypeName::Message).unwrap();
+    assert!(
+        matches!(message, Some(BaseValue::StringValue(MapString(ref value))) if !value.is_empty())
+    );
+    assert_eq!(
+        response.property_value(CorePropertyTypeName::ValidationViolationCount).unwrap(),
+        Some(BaseValue::IntegerValue(MapInteger(
+            staged_count + carriers.read().unwrap().get_count().0
+        ))),
+        "the transaction count includes staged and carrier findings"
+    );
 }

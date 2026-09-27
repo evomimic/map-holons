@@ -4,6 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use super::commit_validation_findings::make_finding_holons_best_effort;
 use crate::persistence_layer::{
     expand_from_source, expand_from_source_by_key, get_holon, persist_holon, put_smartlink_cached,
     SmartLinkWriteContext,
@@ -220,12 +221,13 @@ impl RelationshipCommitSource {
 /// - `CommitsAttempted`: the number of live candidates presented to validation.
 /// - `ValidationViolationCount`: the report's finding count, zero when accepted.
 /// - `RejectedHolons`: finding-bearing staged candidates on rejection.
+/// - `HasValidationFinding`: transient carriers for findings with no staged candidate.
 /// - `SavedHolons`: successfully committed holons, empty on rejection.
 ///
 /// Rejection refuses the entire candidate set before any persistence write. Replacement
 /// findings remain on the staged holons for correction and travel with the staged pool;
-/// the in-memory report is not serialized. Transaction lifecycle policy belongs to
-/// `TransactionContext`.
+/// aggregate findings are projected into transient response carriers. Transaction
+/// lifecycle policy belongs to `TransactionContext`.
 ///
 /// Pass 1 persists creates and new versions, and marks graph-only updates committed using
 /// their existing source ids. An unchanged `ForUpdate` candidate produces `NoAction`, so
@@ -277,6 +279,8 @@ pub fn commit(
     response_reference
         .with_property_value(ValidationViolationCount, report.violation_count() as i64)?;
     if !report.is_accepted() {
+        let unattached_findings =
+            make_finding_holons_best_effort(context, report.unattached_findings()?.into_iter())?;
         let mut rejected_holons = Vec::new();
         for candidate in &candidates {
             if !candidate.validation_findings()?.is_empty() {
@@ -284,8 +288,16 @@ pub fn commit(
             }
         }
         let rejected_count = rejected_holons.len();
+        // Every completed finding must have either a staged or response carrier.
+        ensure_rejected_diagnostics(rejected_count, unattached_findings.len())?;
         response_reference.with_property_value(CommitRequestStatus, "Rejected")?;
         response_reference.add_related_holons(RejectedHolons, rejected_holons)?;
+        if !unattached_findings.is_empty() {
+            response_reference.add_related_holons(
+                CoreRelationshipTypeName::HasValidationFinding,
+                unattached_findings,
+            )?;
+        }
         response_reference.add_related_holons(SavedHolons, Vec::new())?;
         log_commit_response("Rejected", attempted_count, &[], rejected_count, 0);
         return Ok(response_reference);
@@ -551,6 +563,18 @@ pub fn commit(
 
     // Done — return the CommitResponse holon reference
     Ok(response_reference)
+}
+
+fn ensure_rejected_diagnostics(
+    rejected_count: usize,
+    unattached_count: usize,
+) -> Result<(), HolonError> {
+    if rejected_count == 0 && unattached_count == 0 {
+        return Err(HolonError::CommitFailure(
+            "Rejected validation report has no client-visible findings".into(),
+        ));
+    }
+    Ok(())
 }
 
 /// Logs a one-line summary of the commit response, plus the saved ids behind `debug!`.
@@ -1244,5 +1268,12 @@ mod tests {
 
         assert_eq!(owns_key_index_occurrence_id(&alpha), owns_key_index_occurrence_id(&alpha));
         assert_ne!(owns_key_index_occurrence_id(&alpha), owns_key_index_occurrence_id(&beta));
+    }
+
+    #[test]
+    fn rejected_response_requires_at_least_one_diagnostic_carrier() {
+        assert!(matches!(ensure_rejected_diagnostics(0, 0), Err(HolonError::CommitFailure(_))));
+        assert!(ensure_rejected_diagnostics(1, 0).is_ok());
+        assert!(ensure_rejected_diagnostics(0, 1).is_ok());
     }
 }

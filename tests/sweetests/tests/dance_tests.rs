@@ -33,7 +33,9 @@ use execution_steps::abandon_staged_changes_executor::execute_abandon_staged_cha
 use execution_steps::add_related_holons_executor::execute_add_related_holons;
 use execution_steps::begin_transaction_executor::execute_begin_transaction;
 use execution_steps::command_affordance_verification_executor::execute_verify_core_schema_command_affordances;
-use execution_steps::commit_executor::{execute_commit, execute_verify_commit_rejection};
+use execution_steps::commit_executor::{
+    execute_commit, execute_verify_commit_carrier_finding, execute_verify_commit_rejection,
+};
 use execution_steps::delete_holon_executor::execute_delete_holon;
 use execution_steps::descriptor_verification_executor::{
     execute_verify_book_person_descriptors, execute_verify_book_person_instance_links,
@@ -68,6 +70,9 @@ use execution_steps::with_properties_executor::execute_with_properties;
 
 use fixture_cases::abandon_staged_changes_fixture::*;
 use fixture_cases::bootstrap_operational_schema_fixture::*;
+use fixture_cases::commit_competition_fixture::*;
+use fixture_cases::commit_schema_fixture::*;
+use fixture_cases::commit_strict_contract_fixture::*;
 use fixture_cases::commit_validation_fixture::*;
 use fixture_cases::delete_holon_fixture::*;
 use fixture_cases::ergonomic_add_remove_properties_fixture::*;
@@ -135,6 +140,12 @@ fn runtime_behavior_matrix_suite() -> DanceTestSuite {
             stage_new_version_fixture().unwrap(),
             simple_create_holon_fixture().unwrap(),
             commit_validation_fixture().unwrap(),
+            commit_competition_retry_fixture().unwrap(),
+            commit_graph_only_competition_fixture().unwrap(),
+            commit_branch_across_transactions_fixture().unwrap(),
+            commit_unstaged_schema_finding_fixture().unwrap(),
+            commit_schema_cycle_fixture().unwrap(),
+            commit_strict_contract_fixture().unwrap(),
             simple_abandon_staged_changes_fixture().unwrap(),
             simple_add_remove_properties_fixture().unwrap(),
             simple_add_remove_related_holons_fixture().unwrap(),
@@ -276,6 +287,9 @@ async fn run_dance_test_case(
                 rejected_holons,
                 expected_violation_count,
             ),
+            DanceTestStep::VerifyCommitCarrierFinding { expected, .. } => {
+                execute_verify_commit_carrier_finding(&test_execution_state, expected)
+            }
             DanceTestStep::EnsureDatabaseCount { expected_count, .. } => {
                 execute_ensure_database_count(&mut test_execution_state, expected_count).await
             }

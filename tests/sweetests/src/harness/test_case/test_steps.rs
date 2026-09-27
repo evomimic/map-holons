@@ -58,6 +58,8 @@ pub enum ExpectedValidationSubject {
     Holon,
     Property(String),
     Value(String),
+    Relationship { name: String, target: TestReference },
+    Transaction,
 }
 
 /// Stable finding expectations deliberately omit diagnostic message text.
@@ -74,6 +76,16 @@ pub struct ExpectedRejectedHolon {
     pub token: TestReference,
     pub validation_state: ValidationState,
     pub findings: Vec<ExpectedValidationFinding>,
+}
+
+/// An aggregate finding whose Schema subject was not staged by the caller.
+#[derive(Clone, Debug)]
+pub struct ExpectedCommitCarrierFinding {
+    pub schema_key: String,
+    pub rule_code: String,
+    pub rule_key: String,
+    /// Staged rejections that accompany the carrier, including their findings.
+    pub expected_rejected_holons: Vec<ExpectedRejectedHolon>,
 }
 
 /// How an `ExecuteQuery` step reaches the direct Query seam.
@@ -138,6 +150,10 @@ pub enum DanceTestStep {
     VerifyCommitRejection {
         rejected_holons: Vec<ExpectedRejectedHolon>,
         expected_violation_count: MapInteger,
+        description: String,
+    },
+    VerifyCommitCarrierFinding {
+        expected: ExpectedCommitCarrierFinding,
         description: String,
     },
     DeleteHolon {
@@ -334,6 +350,13 @@ impl core::fmt::Display for DanceTestStep {
                     "{description} [rejected_holons: {}, violations: {}]",
                     rejected_holons.len(),
                     expected_violation_count.0
+                )
+            }
+            DanceTestStep::VerifyCommitCarrierFinding { expected, description } => {
+                write!(
+                    f,
+                    "{description} [schema: {}, rule: {}]",
+                    expected.schema_key, expected.rule_code
                 )
             }
             DanceTestStep::EnsureDatabaseCount { expected_count, description } => {

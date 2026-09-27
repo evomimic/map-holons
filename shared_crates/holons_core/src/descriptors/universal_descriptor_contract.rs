@@ -4,11 +4,9 @@ use std::sync::Arc;
 use core_types::HolonError;
 
 use crate::core_shared_objects::transactions::TransactionContext;
-use crate::descriptors::resolved_descriptor_roots::{
-    assert_descriptor_reference_compatible, resolve_core_descriptor,
-};
+use crate::descriptors::resolved_descriptor_roots::resolve_core_descriptor;
 use crate::descriptors::{equals_or_extends, Descriptor, HolonDescriptor, TypeHeader};
-use crate::reference_layer::HolonReference;
+use crate::reference_layer::{assert_reference_transaction_compatible, HolonReference};
 
 /// Universal property and relationship identities for one validation pass.
 ///
@@ -19,7 +17,7 @@ use crate::reference_layer::HolonReference;
 #[derive(Clone, Debug)]
 pub struct UniversalDescriptorContract {
     descriptor_root: HolonReference,
-    member_ids: HashSet<String>,
+    member_ids: HashSet<crate::ProspectiveIdentity>,
     context: Arc<TransactionContext>,
 }
 
@@ -38,16 +36,61 @@ impl UniversalDescriptorContract {
         meta_type: &HolonDescriptor,
         descriptor_root: HolonReference,
     ) -> Result<Self, HolonError> {
-        assert_descriptor_reference_compatible(meta_type.holon(), context)?;
-        assert_descriptor_reference_compatible(&descriptor_root, context)?;
+        assert_reference_transaction_compatible(meta_type.holon(), context)?;
+        assert_reference_transaction_compatible(&descriptor_root, context)?;
         let mut member_ids = HashSet::new();
         for property in meta_type.instance_properties()? {
-            member_ids.insert(property.holon().reference_id_string());
+            member_ids
+                .insert(crate::ProspectiveIdentity::for_reference(property.holon(), context)?);
         }
         for relationship in meta_type.instance_relationships()? {
-            member_ids.insert(relationship.holon().reference_id_string());
+            member_ids
+                .insert(crate::ProspectiveIdentity::for_reference(relationship.holon(), context)?);
         }
         Ok(Self { descriptor_root, member_ids, context: Arc::clone(context) })
+    }
+
+    /// Resolves universal member identities from prospective content for Commit assessment.
+    pub fn resolve_with_reader<R: super::DescriptorReader>(
+        context: &Arc<TransactionContext>,
+        reader: &R,
+    ) -> Result<Self, R::Error> {
+        let meta_type = super::resolve_core_descriptor_with_reader(
+            context,
+            "MetaTypeDescriptor.HolonType",
+            reader,
+        )?;
+        let descriptor_root =
+            super::resolve_core_descriptor_with_reader(context, "TypeDescriptor", reader)?;
+        let contributions = super::ContractContributions::resolve_with_reader(&meta_type, reader)?;
+        let member_ids = contributions
+            .properties
+            .iter()
+            .chain(&contributions.relationships)
+            .map(|contribution| {
+                crate::ProspectiveIdentity::for_reference(&contribution.member, context)
+            })
+            .collect::<Result<_, HolonError>>()?;
+        Ok(Self { descriptor_root, member_ids, context: Arc::clone(context) })
+    }
+
+    /// Applies the same minimum policy to the selected subject and member definitions.
+    pub fn enforce_minimum_with_reader<R: super::DescriptorReader>(
+        &self,
+        holon: &HolonReference,
+        member: &HolonReference,
+        reader: &R,
+    ) -> Result<bool, R::Error> {
+        let holon = reader.select(holon)?;
+        let member = reader.select(member)?;
+        assert_reference_transaction_compatible(&holon, &self.context)?;
+        let is_abstract =
+            super::equals_or_extends_with_reader(&holon, &self.descriptor_root, reader)?
+                && TypeHeader::new(&holon).is_abstract_type()?;
+        Ok(!is_abstract
+            || self
+                .member_ids
+                .contains(&crate::ProspectiveIdentity::for_reference(&member, &self.context)?))
     }
 
     /// Implements `EnforceMinimum(H, M)` for a member of H's conformance contract.
@@ -60,11 +103,14 @@ impl UniversalDescriptorContract {
         holon: &HolonReference,
         member: &HolonReference,
     ) -> Result<bool, HolonError> {
-        assert_descriptor_reference_compatible(holon, &self.context)?;
-        assert_descriptor_reference_compatible(member, &self.context)?;
+        assert_reference_transaction_compatible(holon, &self.context)?;
+        assert_reference_transaction_compatible(member, &self.context)?;
         let is_abstract = equals_or_extends(holon, &self.descriptor_root)?
             && TypeHeader::new(holon).is_abstract_type()?;
-        Ok(!is_abstract || self.member_ids.contains(&member.reference_id_string()))
+        Ok(!is_abstract
+            || self
+                .member_ids
+                .contains(&crate::ProspectiveIdentity::for_reference(member, &self.context)?))
     }
 }
 

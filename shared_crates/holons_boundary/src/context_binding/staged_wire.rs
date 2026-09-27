@@ -92,7 +92,12 @@ mod tests {
     use super::*;
     use base_types::MapString;
     use core_types::RelationshipName;
+    use holons_core::core_shared_objects::holon::HolonCloneModel;
     use holons_core::core_shared_objects::WriteableHolonState;
+    use holons_core::core_shared_objects::{
+        space_manager::HolonSpaceManager, ServiceRoutingPolicy,
+    };
+    use holons_core::RelationshipMap;
 
     #[derive(Debug)]
     struct UnusedHolonService;
@@ -152,21 +157,36 @@ mod tests {
         }
     }
 
+    fn test_space() -> Arc<HolonSpaceManager> {
+        Arc::new(HolonSpaceManager::new_with_managers(
+            None,
+            Arc::new(UnusedHolonService),
+            None,
+            ServiceRoutingPolicy::BlockExternal,
+        ))
+    }
+
+    fn graph_only_update_with_touched_collection() -> Result<StagedHolon, HolonError> {
+        let model = HolonCloneModel::new(
+            MapInteger(1),
+            None,
+            PropertyMap::new(),
+            Some(RelationshipMap::new_empty()),
+        );
+        let mut staged =
+            StagedHolon::new_for_update_from_clone_model(model, LocalId(vec![1, 2, 3]))?;
+        staged.add_related_holons(RelationshipName(MapString("Touched".into())), Vec::new())?;
+        staged.note_relationship_mutation(false)?;
+        assert_eq!(staged.staged_state(), &StagedState::ForUpdateGraphOnly);
+        Ok(staged)
+    }
+
     #[test]
     fn validation_findings_round_trip_and_default_when_absent() -> Result<(), HolonError> {
         use core_types::{
             CommitValidationViolationKind, ValidationSeverity, ValidationSubjectPath,
         };
-        use holons_core::core_shared_objects::{
-            space_manager::HolonSpaceManager, ServiceRoutingPolicy,
-        };
-
-        let space = Arc::new(HolonSpaceManager::new_with_managers(
-            None,
-            Arc::new(UnusedHolonService),
-            None,
-            ServiceRoutingPolicy::BlockExternal,
-        ));
+        let space = test_space();
         let context =
             space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
         let mut staged = StagedHolon::new_for_create();
@@ -240,5 +260,87 @@ mod tests {
             json.get("relationship_commit_scope").is_some(),
             "StagedHolonWire must carry relationship_commit_scope so retry preserves its Pass-2 persistence decision"
         );
+    }
+
+    #[test]
+    fn relationship_commit_scope_and_touched_names_survive_bind_and_rebind(
+    ) -> Result<(), HolonError> {
+        let space = test_space();
+        let source_context =
+            space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
+        let destination_context =
+            space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
+        let touched = RelationshipName(MapString("Touched".into()));
+
+        for scope in [RelationshipCommitScope::Full, RelationshipCommitScope::TouchedOnly] {
+            let mut staged = graph_only_update_with_touched_collection()?;
+            match scope {
+                RelationshipCommitScope::Full => {
+                    staged.note_property_mutation()?;
+                    staged.prepare_full_relationship_commit_scope()?;
+                    assert_eq!(staged.staged_state(), &StagedState::ForUpdateNewVersion);
+                }
+                RelationshipCommitScope::TouchedOnly => {
+                    staged.prepare_touched_relationship_commit_scope()?
+                }
+            }
+
+            assert_eq!(staged.touched_relationship_names().len(), 1);
+            assert!(staged.touched_relationship_names().contains(&touched));
+
+            let projected = serde_json::to_value(StagedHolonWire::from(&staged)).unwrap();
+            let wire: StagedHolonWire = serde_json::from_value(projected).unwrap();
+            for restored in
+                [wire.clone().bind(&source_context)?, wire.rebind(&destination_context)?]
+            {
+                assert_eq!(restored.relationship_commit_scope(), scope);
+                assert_eq!(
+                    restored.touched_relationship_names(),
+                    staged.touched_relationship_names()
+                );
+                assert_eq!(restored, staged);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn committed_staged_holon_retains_relationship_scope_after_wire_restoration(
+    ) -> Result<(), HolonError> {
+        let space = test_space();
+        let source_context =
+            space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
+        let destination_context =
+            space.get_transaction_manager().open_public_transaction(Arc::clone(&space))?;
+        let mut staged = graph_only_update_with_touched_collection()?;
+        staged.prepare_touched_relationship_commit_scope()?;
+        let saved_id = LocalId(vec![1, 2, 3]);
+        staged.to_committed(saved_id.clone())?;
+
+        let projected = serde_json::to_value(StagedHolonWire::from(&staged)).unwrap();
+        let wire: StagedHolonWire = serde_json::from_value(projected).unwrap();
+        for restored in [wire.clone().bind(&source_context)?, wire.rebind(&destination_context)?] {
+            assert_eq!(restored.staged_state(), &StagedState::Committed(saved_id.clone()));
+            assert_eq!(restored.relationship_commit_scope(), RelationshipCommitScope::TouchedOnly);
+            assert_eq!(restored.touched_relationship_names(), staged.touched_relationship_names());
+            assert_eq!(restored, staged);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_relationship_commit_scope_values_are_rejected() {
+        let valid =
+            serde_json::to_value(StagedHolonWire::from(&StagedHolon::new_for_create())).unwrap();
+        for invalid in
+            [serde_json::json!("Touched"), serde_json::json!("full"), serde_json::Value::Null]
+        {
+            let mut candidate = valid.clone();
+            candidate["relationship_commit_scope"] = invalid.clone();
+            assert!(
+                serde_json::from_value::<StagedHolonWire>(candidate).is_err(),
+                "invalid relationship_commit_scope {invalid} must not decode"
+            );
+        }
     }
 }

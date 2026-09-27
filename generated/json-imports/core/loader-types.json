@@ -21,9 +21,7 @@
         "TypeNamePlural": "LoaderHolons",
         "DisplayName": "Loader Holon",
         "DisplayNamePlural": "Loader Holons",
-        "Description": "Representation of a parsed holon from JSON input, including properties and unresolved references.",
-        "AllowsAdditionalProperties": true,
-        "AllowsAdditionalRelationships": true
+        "Description": "Representation of a parsed holon from JSON input, including properties and unresolved references."
       },
       "relationships": [
         {
@@ -237,12 +235,6 @@
             },
             {
               "$ref": "LoaderHolonKey.PropertyType"
-            },
-            {
-              "$ref": "ErrorType.PropertyType"
-            },
-            {
-              "$ref": "ErrorMessage.PropertyType"
             }
           ]
         }

@@ -3327,6 +3327,523 @@
             },
             {
               "$ref": "(CommitResponse.Projection)-[RejectedHolons]->(HolonType.TypeDescriptor)"
+            },
+            {
+              "$ref": "(CommitResponse.Projection)-[HasValidationFinding]->(CommitValidationFinding.Projection)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "CommitValidationFinding.Projection",
+      "type": "MetaHolonType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "CommitValidationFinding",
+        "TypeNamePlural": "CommitValidationFindings",
+        "DisplayName": "Commit Validation Finding",
+        "DisplayNamePlural": "Commit Validation Findings",
+        "Description": "Transient projection of a Commit validation finding whose subject has no staged carrier."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "Projection.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "InstanceProperties",
+          "target": [
+            {
+              "$ref": "ViolationKind.PropertyType"
+            },
+            {
+              "$ref": "RuleIdentity.PropertyType"
+            },
+            {
+              "$ref": "RuleCode.PropertyType"
+            },
+            {
+              "$ref": "ConstraintIdentity.PropertyType"
+            },
+            {
+              "$ref": "ConstraintTypeIdentity.PropertyType"
+            },
+            {
+              "$ref": "Severity.PropertyType"
+            },
+            {
+              "$ref": "SubjectKind.PropertyType"
+            },
+            {
+              "$ref": "HolonIdentity.PropertyType"
+            },
+            {
+              "$ref": "MemberName.PropertyType"
+            },
+            {
+              "$ref": "TargetIdentity.PropertyType"
+            },
+            {
+              "$ref": "Message.PropertyType"
+            },
+            {
+              "$ref": "DescriptorIdentity.PropertyType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ViolationKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ViolationKind",
+        "TypeNamePlural": "ViolationKind",
+        "DisplayName": "ViolationKind",
+        "DisplayNamePlural": "ViolationKind",
+        "Description": "Projected ViolationKind field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RuleIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "RuleIdentity",
+        "TypeNamePlural": "RuleIdentity",
+        "DisplayName": "RuleIdentity",
+        "DisplayNamePlural": "RuleIdentity",
+        "Description": "Projected RuleIdentity field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "RuleCode.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "RuleCode",
+        "TypeNamePlural": "RuleCode",
+        "DisplayName": "RuleCode",
+        "DisplayNamePlural": "RuleCode",
+        "Description": "Projected RuleCode field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintIdentity",
+        "TypeNamePlural": "ConstraintIdentity",
+        "DisplayName": "ConstraintIdentity",
+        "DisplayNamePlural": "ConstraintIdentity",
+        "Description": "Projected ConstraintIdentity field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ConstraintTypeIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "ConstraintTypeIdentity",
+        "TypeNamePlural": "ConstraintTypeIdentity",
+        "DisplayName": "ConstraintTypeIdentity",
+        "DisplayNamePlural": "ConstraintTypeIdentity",
+        "Description": "Projected ConstraintTypeIdentity field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Severity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Severity",
+        "TypeNamePlural": "Severity",
+        "DisplayName": "Severity",
+        "DisplayNamePlural": "Severity",
+        "Description": "Projected Severity field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SubjectKind.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "SubjectKind",
+        "TypeNamePlural": "SubjectKind",
+        "DisplayName": "SubjectKind",
+        "DisplayNamePlural": "SubjectKind",
+        "Description": "Projected SubjectKind field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "HolonIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "HolonIdentity",
+        "TypeNamePlural": "HolonIdentity",
+        "DisplayName": "HolonIdentity",
+        "DisplayNamePlural": "HolonIdentity",
+        "Description": "Projected HolonIdentity field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "MemberName.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "MemberName",
+        "TypeNamePlural": "MemberName",
+        "DisplayName": "MemberName",
+        "DisplayNamePlural": "MemberName",
+        "Description": "Projected MemberName field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "TargetIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "TargetIdentity",
+        "TypeNamePlural": "TargetIdentity",
+        "DisplayName": "TargetIdentity",
+        "DisplayNamePlural": "TargetIdentity",
+        "Description": "Projected TargetIdentity field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "Message.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "Message",
+        "TypeNamePlural": "Message",
+        "DisplayName": "Message",
+        "DisplayNamePlural": "Message",
+        "Description": "Projected Message field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "DescriptorIdentity.PropertyType",
+      "type": "MetaPropertyType.MetaTypeDescriptor",
+      "properties": {
+        "TypeName": "DescriptorIdentity",
+        "TypeNamePlural": "DescriptorIdentity",
+        "DisplayName": "DescriptorIdentity",
+        "DisplayNamePlural": "DescriptorIdentity",
+        "Description": "Projected DescriptorIdentity field of a Commit validation finding."
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "PropertyType.TypeDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "ValueType",
+          "target": [
+            {
+              "$ref": "MapStringValueType.StringValueType"
             }
           ]
         }
@@ -3568,6 +4085,122 @@
           "target": [
             {
               "$ref": "CommitRequestStatus.MapEnumValueType"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(CommitResponse.Projection)-[HasValidationFinding]->(CommitValidationFinding.Projection)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "HasValidationFinding",
+        "TypeNamePlural": "HasValidationFindings",
+        "DisplayName": "HasValidationFinding",
+        "DisplayNamePlural": "HasValidationFindings",
+        "Description": "Findings without a staged candidate carrier returned by Commit.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "CommitResponse.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "CommitValidationFinding.Projection"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(CommitValidationFinding.Projection)-[ValidationFindingOf]->(CommitResponse.Projection)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(CommitValidationFinding.Projection)-[ValidationFindingOf]->(CommitResponse.Projection)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "ValidationFindingOf",
+        "TypeNamePlural": "ValidationFindingOf",
+        "DisplayName": "ValidationFindingOf",
+        "DisplayNamePlural": "ValidationFindingOf",
+        "Description": "Inverse link from a finding to its Commit response.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "CommitValidationFinding.Projection"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "CommitResponse.Projection"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrOne.CardinalityConstraint"
             }
           ]
         }

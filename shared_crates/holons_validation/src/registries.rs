@@ -3,9 +3,9 @@ use holons_core::HolonDescriptor;
 use type_names::CoreValidationRuleName;
 
 use crate::{
-    handlers, HolonValidationSubject, PropertyValidationContext, PropertyValidationSubject,
-    ResolvedConstraint, ResolvedValidationBinding, ValidationCollector, ValueValidationContext,
-    ValueValidationSubject,
+    descriptor_rules, handlers, HolonValidationSubject, PropertyValidationContext,
+    PropertyValidationSubject, ResolvedConstraint, ResolvedValidationBinding, ValidationCollector,
+    ValueValidationContext, ValueValidationSubject,
 };
 
 /// Canonical fully qualified schema key of a validation rule.
@@ -18,6 +18,18 @@ pub struct ConstraintTypeKey(pub String);
 
 /// Typed dispatch inputs preserve the downward-only dependency boundary.
 pub enum ValidationInvocation<'a> {
+    /// Selected prospective facts evaluated by the same subject handlers.
+    Prepared {
+        binding: &'a ResolvedValidationBinding,
+        path: &'a ValidationSubjectPath,
+        subject: &'a crate::PreparedRuleSubject,
+    },
+    /// Aggregate products computed once for a Schema, even when it is unstaged.
+    Schema {
+        binding: &'a ResolvedValidationBinding,
+        path: &'a ValidationSubjectPath,
+        products: &'a crate::schema_rules::SchemaRuleProducts,
+    },
     /// Whole-holon policy against its governing descriptor.
     Holon {
         /// Selected effective binding, including declaration provenance.
@@ -28,6 +40,12 @@ pub enum ValidationInvocation<'a> {
         descriptor: &'a HolonDescriptor,
         /// Identity-only diagnostic path.
         path: &'a ValidationSubjectPath,
+    },
+    /// Descriptor-kernel products prepared once for one subject assessment.
+    Descriptor {
+        binding: &'a ResolvedValidationBinding,
+        path: &'a ValidationSubjectPath,
+        products: &'a descriptor_rules::DescriptorRuleProducts,
     },
     /// Complete-contract property, even when its value is absent.
     Property {
@@ -62,7 +80,7 @@ pub enum RuleOutcome {
 pub type StaticRuleHandler =
     fn(ValidationInvocation<'_>, &mut ValidationCollector) -> Result<RuleOutcome, HolonError>;
 
-/// Internal configured-constraint evaluator contract; C1 registers no evaluators.
+/// Internal configured-constraint evaluator contract; no evaluators are registered.
 pub type StaticConstraintHandler = fn(
     &ResolvedConstraint,
     ValueValidationSubject<'_>,
@@ -74,10 +92,17 @@ pub type StaticConstraintHandler = fn(
 pub struct StaticRuleRegistry;
 
 impl StaticRuleRegistry {
-    /// Looks up exactly the initial seven canonical rule identities.
+    /// Looks up every implemented canonical rule; binding discovery is separate.
     pub fn lookup(key: &ValidationRuleKey) -> Option<StaticRuleHandler> {
         use CoreValidationRuleName::*;
         match CoreValidationRuleName::from_key(&key.0)? {
+            SchemaDependenciesAcyclic => Some(crate::schema_rules::schema_dependencies_acyclic),
+            CrossSchemaDependenciesDeclared => {
+                Some(crate::schema_rules::cross_schema_dependencies_declared)
+            }
+            InheritedValueConstraintNonRelaxation => {
+                Some(descriptor_rules::inherited_constraint_non_relaxation)
+            }
             RequiredPropertyPresence => Some(handlers::required_property_presence),
             NoUndescribedProperties => Some(handlers::no_undescribed_properties),
             BaseValueKindMatchesString
@@ -85,15 +110,46 @@ impl StaticRuleRegistry {
             | BaseValueKindMatchesBoolean
             | BaseValueKindMatchesBytes
             | BaseValueKindMatchesEnum => Some(handlers::base_value_kind_matches),
+            AtMostOneDirectParent => Some(descriptor_rules::at_most_one_direct_parent),
+            AcyclicExtendsLineage => Some(descriptor_rules::acyclic_extends_lineage),
+            ExtendsLineageTerminatesAtTypeDescriptor => {
+                Some(descriptor_rules::extends_lineage_terminates_at_type_descriptor)
+            }
+            UniqueTypeDescriptorRoot => Some(descriptor_rules::unique_type_descriptor_root),
+            LocalInstanceKindAnchorDesignation => {
+                Some(descriptor_rules::local_instance_kind_anchor_designation)
+            }
+            InstanceKindAnchorsAreAbstract => {
+                Some(descriptor_rules::instance_kind_anchors_are_abstract)
+            }
+            TypeDescriptorRootKindException => {
+                Some(descriptor_rules::type_descriptor_root_kind_exception)
+            }
+            DescribingCategoryCompatibility => {
+                Some(descriptor_rules::describing_category_compatibility)
+            }
+            DescriptorMetaTypeCorrespondence => {
+                Some(descriptor_rules::descriptor_meta_type_correspondence)
+            }
+            NoInheritedMemberRedeclaration => {
+                Some(descriptor_rules::no_inherited_member_redeclaration)
+            }
+            UniqueSemanticMemberNames => Some(descriptor_rules::unique_semantic_member_names),
+            WellFormedEffectiveMemberDefinitions => {
+                Some(descriptor_rules::well_formed_effective_member_definitions)
+            }
+            ContractMemberKindCompatibility => {
+                Some(descriptor_rules::contract_member_kind_compatibility)
+            }
         }
     }
 }
 
-/// Internal constraint dispatch; every reached constraint fails closed in C1.
+/// Internal constraint dispatch; every reached constraint fails closed during subject evaluation.
 pub struct StaticConstraintRegistry;
 
 impl StaticConstraintRegistry {
-    /// No configured value or cardinality evaluator belongs to this cohort.
+    /// No configured value or cardinality evaluator is registered.
     pub fn lookup(_key: &ConstraintTypeKey) -> Option<StaticConstraintHandler> {
         None
     }

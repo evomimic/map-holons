@@ -60,3 +60,41 @@ pub(crate) fn required_key(reference: &HolonReference) -> Result<String, HolonEr
 pub(crate) fn declaring_identity(binding: &ResolvedValidationBinding) -> String {
     binding.declaring_descriptor.holon().reference_id_string()
 }
+
+impl ResolvedConstraint {
+    /// Resolves configured parameters and their describing type from one prospective view.
+    /// This is declaration preparation, not instance constraint evaluation.
+    pub fn with_reader<R: holons_core::DescriptorReader>(
+        contribution: EffectiveRelationshipMember,
+        reader: &R,
+    ) -> Result<Self, R::Error> {
+        use holons_core::DescribingTypeResolution;
+        let constraint = reader.select(&contribution.member)?;
+        let constraint_type = match holons_core::descriptors::resolve_describing_type_with_reader(
+            &constraint,
+            reader,
+        )? {
+            DescribingTypeResolution::Unique(descriptor) => descriptor,
+            DescribingTypeResolution::Missing => {
+                return Err(HolonError::MissingDescribedBy {
+                    holon: constraint.reference_id_string(),
+                }
+                .into())
+            }
+            DescribingTypeResolution::Multiple(targets) => {
+                return Err(HolonError::MultipleDescribedBy {
+                    holon: constraint.reference_id_string(),
+                    count: targets.len(),
+                }
+                .into())
+            }
+        };
+        Ok(Self {
+            constraint,
+            constraint_type: HolonDescriptor::from_holon(constraint_type),
+            declaring_descriptor: HolonDescriptor::from_holon(
+                reader.select(&contribution.declared_on)?,
+            ),
+        })
+    }
+}

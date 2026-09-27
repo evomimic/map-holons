@@ -135,5 +135,11 @@ describe('source-aligned holon wire guards', () => {
     ).toBe(false);
     const { relationship_commit_scope: _scope, ...missingScope } = stagedHolon;
     expect(isStagedHolonWire(missingScope)).toBe(false);
+    for (const invalidScope of ['Touched', 'full', null]) {
+      expect(isStagedHolonWire({
+        ...stagedHolon,
+        relationship_commit_scope: invalidScope,
+      })).toBe(false);
+    }
   });
 });

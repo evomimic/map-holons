@@ -65,6 +65,7 @@ pub enum CoreHolonTypeName {
     Collection,
     CommandType,
     CommitResponseType,
+    CommitValidationFinding,
     Dance,
     DanceDiagnostic,
     DanceType,

@@ -125,6 +125,12 @@
           "target": [
             {
               "$ref": "NoUndescribedProperties.ValidationRule"
+            },
+            {
+              "$ref": "DescribingCategoryCompatibility.ValidationRule"
+            },
+            {
+              "$ref": "DescriptorMetaTypeCorrespondence.ValidationRule"
             }
           ]
         },
@@ -382,6 +388,47 @@
           ]
         },
         {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "AtMostOneDirectParent.ValidationRule"
+            },
+            {
+              "$ref": "AcyclicExtendsLineage.ValidationRule"
+            },
+            {
+              "$ref": "ExtendsLineageTerminatesAtTypeDescriptor.ValidationRule"
+            },
+            {
+              "$ref": "UniqueTypeDescriptorRoot.ValidationRule"
+            },
+            {
+              "$ref": "LocalInstanceKindAnchorDesignation.ValidationRule"
+            },
+            {
+              "$ref": "InstanceKindAnchorsAreAbstract.ValidationRule"
+            },
+            {
+              "$ref": "TypeDescriptorRootKindException.ValidationRule"
+            },
+            {
+              "$ref": "NoInheritedMemberRedeclaration.ValidationRule"
+            },
+            {
+              "$ref": "UniqueSemanticMemberNames.ValidationRule"
+            },
+            {
+              "$ref": "WellFormedEffectiveMemberDefinitions.ValidationRule"
+            },
+            {
+              "$ref": "ContractMemberKindCompatibility.ValidationRule"
+            },
+            {
+              "$ref": "InheritedValueConstraintNonRelaxation.ValidationRule"
+            }
+          ]
+        },
+        {
           "name": "OwnedBy",
           "target": [
             {
@@ -421,12 +468,6 @@
         {
           "name": "InstanceProperties",
           "target": [
-            {
-              "$ref": "AllowsAdditionalProperties.PropertyType"
-            },
-            {
-              "$ref": "AllowsAdditionalRelationships.PropertyType"
-            },
             {
               "$ref": "InstanceDeletionAllowed.PropertyType"
             }
@@ -725,6 +766,17 @@
           "target": [
             {
               "$ref": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "ValidationBindings",
+          "target": [
+            {
+              "$ref": "SchemaDependenciesAcyclic.ValidationRule"
+            },
+            {
+              "$ref": "CrossSchemaDependenciesDeclared.ValidationRule"
             }
           ]
         },

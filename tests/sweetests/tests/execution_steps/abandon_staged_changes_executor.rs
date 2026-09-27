@@ -21,12 +21,18 @@ pub async fn execute_abandon_staged_changes(
         HolonReference::Staged(staged_reference) => staged_reference,
         other => panic!("abandon_staged_changes: expected Staged reference, got {:?}", other),
     };
+    let prior_validation_state = staged_reference.validation_state().unwrap();
+    let prior_findings = staged_reference.validation_findings().unwrap();
 
     // 2. APPLY — direct local mutation on the staged holon
     match staged_reference.abandon_staged_changes(&context) {
         Ok(()) => {
             assert!(expected_error.is_none(), "abandon_staged_changes expected failure but got OK",);
             info!("Success! abandon_staged_changes completed");
+            // Abandoning a never-assessed candidate preserves ValidationRequired; abandoning
+            // a rejected candidate preserves its installed outcome and findings.
+            assert_eq!(staged_reference.validation_state().unwrap(), prior_validation_state);
+            assert_eq!(staged_reference.validation_findings().unwrap(), prior_findings);
 
             let mut holon_reference = HolonReference::Staged(staged_reference);
             let execution_handle = ExecutionHandle::from(holon_reference.clone());

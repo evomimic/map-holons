@@ -1,5 +1,8 @@
 pub mod abandon_staged_changes_fixture;
 pub mod bootstrap_operational_schema_fixture;
+pub mod commit_competition_fixture;
+pub mod commit_schema_fixture;
+pub mod commit_strict_contract_fixture;
 pub mod commit_validation_fixture;
 pub mod delete_holon_fixture;
 pub mod described_instances;
