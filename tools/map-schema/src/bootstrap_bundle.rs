@@ -2,7 +2,8 @@
 //!
 //! Canonical loader imports remain projections of TDL and must not be edited.
 //! This module derives a separate bootstrap bundle by adding the authored
-//! CoreSchemaSpace stewardship relationship to every selected Core holon.
+//! CoreSchemaSpace stewardship relationship to every selected Core holon and
+//! making the selected schemas available in that Space.
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,8 @@ struct RequiredHolon {
 /// The output has an `imports/` directory and a `manifest.json`. Every emitted
 /// holon declares `OwnedBy -> MAP.CoreSchemaSpace`; normal two-pass Commit is
 /// therefore responsible for materializing the inverse `Owns` facts.
+/// The bootstrap Space declares `AvailableSchemas` for the selected schema
+/// holons; Commit materializes their `AvailableInSpace` inverses.
 pub fn generate_core_schema_bootstrap_bundle(
     import_root: &Path,
     source_manifest_path: &Path,
@@ -124,6 +127,28 @@ pub fn generate_core_schema_bootstrap_bundle(
     source_files.retain(|path| path != &bootstrap_path);
     source_files.push(bootstrap_path);
 
+    let mut documents = Vec::with_capacity(source_files.len());
+    let mut schema_keys = std::collections::BTreeSet::new();
+    for source_path in source_files {
+        let source = fs::read_to_string(&source_path)
+            .with_context(|| format!("reading generated import {}", source_path.display()))?;
+        let document: Value = serde_json::from_str(&source)
+            .with_context(|| format!("parsing generated import {}", source_path.display()))?;
+        let holons = document.get("holons").and_then(Value::as_array).ok_or_else(|| {
+            anyhow!("generated import {} has no holons array", source_path.display())
+        })?;
+        for holon in holons {
+            if holon.get("type").and_then(Value::as_str) == Some("Schema.HolonType") {
+                schema_keys.insert(required_string(
+                    holon.as_object().unwrap(),
+                    "key",
+                    &source_path,
+                )?);
+            }
+        }
+        documents.push((source_path, document));
+    }
+
     let imports_dir = out_dir.join("imports");
     if imports_dir.exists() {
         fs::remove_dir_all(&imports_dir).with_context(|| {
@@ -133,15 +158,10 @@ pub fn generate_core_schema_bootstrap_bundle(
     fs::create_dir_all(&imports_dir)
         .with_context(|| format!("creating bundle import directory {}", imports_dir.display()))?;
 
-    let mut imports = Vec::with_capacity(source_files.len());
+    let mut imports = Vec::with_capacity(documents.len());
     let mut required_holons = Vec::new();
 
-    for source_path in source_files {
-        let source = fs::read_to_string(&source_path)
-            .with_context(|| format!("reading generated import {}", source_path.display()))?;
-        let mut document: Value = serde_json::from_str(&source)
-            .with_context(|| format!("parsing generated import {}", source_path.display()))?;
-
+    for (source_path, mut document) in documents {
         let holons = document.get_mut("holons").and_then(Value::as_array_mut).ok_or_else(|| {
             anyhow!("generated import {} has no holons array", source_path.display())
         })?;
@@ -153,6 +173,13 @@ pub fn generate_core_schema_bootstrap_bundle(
             let key = required_string(object, "key", &source_path)?;
             let descriptor_key = required_string(object, "type", &source_path)?;
             add_core_schema_ownership(object);
+            if key == source_manifest.core_schema_space_key {
+                let relationships = object["relationships"].as_array_mut().unwrap();
+                relationships.push(json!({
+                    "name": "AvailableSchemas",
+                    "target": schema_keys.iter().map(|key| json!({"$ref": key})).collect::<Vec<_>>(),
+                }));
+            }
             required_holons.push(RequiredHolon { key, descriptor_key });
         }
 
@@ -327,15 +354,25 @@ mod tests {
         fs::create_dir_all(&core_imports)?;
         fs::write(
             core_imports.join("root.json"),
-            r#"{"holons":[{"key":"MAP Core Schema-v0.0.7","type":"Schema.HolonType"}]}"#,
+            r#"{"holons":[{"key":"MAP Core Schema-v0.0.7","type":"Schema.HolonType"},{"key":"MAP Core Schema-v0.0.7","type":"Schema.HolonType"},{"key":"Example.HolonType","type":"MetaHolonType.MetaTypeDescriptor"}]}"#,
         )?;
         fs::write(
             core_imports.join(CORE_SCHEMA_BOOTSTRAP_FILE),
             r#"{"holons":[{"key":"MAP.CoreSchemaSpace","type":"HolonSpace.HolonType","relationships":[{"name":"OwnedBy","target":[{"$ref":"MAP.CoreSchemaSpace"}]}]}]}"#,
         )?;
+        fs::create_dir_all(imports.join("extension"))?;
+        fs::write(
+            imports.join("extension/schema.json"),
+            r#"{"holons":[{"key":"Extension Schema","type":"Schema.HolonType"}]}"#,
+        )?;
+        fs::create_dir_all(imports.join("unselected"))?;
+        fs::write(
+            imports.join("unselected/schema.json"),
+            r#"{"holons":[{"key":"Unselected Schema","type":"Schema.HolonType"}]}"#,
+        )?;
         fs::write(
             &source_manifest,
-            r#"{"release_identity":"MAP Core Schema-v0.0.7","core_schema_key":"MAP Core Schema-v0.0.7","core_schema_space_key":"MAP.CoreSchemaSpace","packages":[{"name":"core","import_directory":"core"}]}"#,
+            r#"{"release_identity":"MAP Core Schema-v0.0.7","core_schema_key":"MAP Core Schema-v0.0.7","core_schema_space_key":"MAP.CoreSchemaSpace","packages":[{"name":"core","import_directory":"core"},{"name":"extension","import_directory":"extension"}]}"#,
         )?;
 
         generate_core_schema_bootstrap_bundle(&imports, &source_manifest, &output)?;
@@ -343,13 +380,32 @@ mod tests {
         let manifest: Value = serde_json::from_slice(&fs::read(output.join("manifest.json"))?)?;
         assert_eq!(manifest["core_schema_space_key"], CORE_SCHEMA_SPACE_KEY);
         assert_eq!(manifest["packages"][0]["name"], "core");
-        assert_eq!(manifest["imports"].as_array().expect("imports").len(), 2);
+        assert_eq!(manifest["imports"].as_array().expect("imports").len(), 3);
         let root_import: Value =
             serde_json::from_slice(&fs::read(output.join("imports/core/root.json"))?)?;
         assert_eq!(
             root_import["holons"][0]["relationships"][0]["target"][0]["$ref"],
             CORE_SCHEMA_SPACE_KEY
         );
+        let space_import: Value = serde_json::from_slice(&fs::read(
+            output.join("imports/core").join(CORE_SCHEMA_BOOTSTRAP_FILE),
+        )?)?;
+        let availability = space_import["holons"][0]["relationships"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|relationship| relationship["name"] == "AvailableSchemas")
+            .expect("bootstrap Space must expose the selected schemas");
+        assert_eq!(
+            availability["target"],
+            json!([
+                { "$ref": "Extension Schema" }, { "$ref": "MAP Core Schema-v0.0.7" }
+            ])
+        );
+        // Availability belongs to the bootstrap projection, not canonical TDL imports.
+        let canonical_space: Value =
+            serde_json::from_slice(&fs::read(core_imports.join(CORE_SCHEMA_BOOTSTRAP_FILE))?)?;
+        assert_eq!(canonical_space["holons"][0]["relationships"].as_array().unwrap().len(), 1);
 
         fs::remove_dir_all(root)?;
         Ok(())

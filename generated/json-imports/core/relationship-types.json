@@ -1185,6 +1185,122 @@
       ]
     },
     {
+      "key": "(HolonSpace.HolonType)-[AvailableSchemas]->(Schema.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AvailableSchemas",
+        "TypeNamePlural": "AvailableSchemasRelationships",
+        "DisplayName": "Available Schemas",
+        "DisplayNamePlural": "Available Schemas Relationships",
+        "Description": "Identifies schemas whose semantic vocabulary is available for use within this Holon Space, independently of which Space stewards them. Availability may be established locally, through adoption, or through schema dependencies.",
+        "DeletionSemantic": "Allow"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "DeclaredRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "Schema.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "HasInverse",
+          "target": [
+            {
+              "$ref": "(Schema.HolonType)-[AvailableInSpace]->(HolonSpace.HolonType)"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "(Schema.HolonType)-[AvailableInSpace]->(HolonSpace.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType",
+      "properties": {
+        "TypeName": "AvailableInSpace",
+        "TypeNamePlural": "AvailableInSpaceRelationships",
+        "DisplayName": "Available In Space",
+        "DisplayNamePlural": "Available In Space Relationships",
+        "Description": "Inverse of AvailableSchemas, identifying Spaces where this schema's semantic vocabulary is available without implying that those Spaces steward the schema.",
+        "DeletionSemantic": "Block"
+      },
+      "relationships": [
+        {
+          "name": "Extends",
+          "target": [
+            {
+              "$ref": "InverseRelationshipType.RelationshipType"
+            }
+          ]
+        },
+        {
+          "name": "ComponentOf",
+          "target": [
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            }
+          ]
+        },
+        {
+          "name": "SourceType",
+          "target": [
+            {
+              "$ref": "Schema.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "TargetType",
+          "target": [
+            {
+              "$ref": "HolonSpace.HolonType"
+            }
+          ]
+        },
+        {
+          "name": "Constraints",
+          "target": [
+            {
+              "$ref": "ZeroOrMore.CardinalityConstraint"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "(Schema.HolonType)-[DependsOn]->(Schema.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType",
       "properties": {

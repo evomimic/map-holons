@@ -152,6 +152,18 @@ pub(crate) fn build_context() -> Arc<TransactionContext> {
     build_context_with_saved_holons(Vec::new(), HashMap::new())
 }
 
+/// Stages canonical key-rule identities for descriptor classification tests.
+pub(crate) fn build_key_rule_context() -> Result<Arc<TransactionContext>, HolonError> {
+    let context = build_context();
+    let mut root = new_descriptor_holon(&context, "KeyRuleType.HolonType", "KeyRuleType", "Holon")?;
+    root.with_property_value(CorePropertyTypeName::IsAbstractType, true)?;
+    let root = context.mutation().stage_new_holon(root)?;
+    let mut none = new_descriptor_holon(&context, "NoneRule.KeyRuleType", "NoneRule", "Holon")?;
+    none.add_related_holons(CoreRelationshipTypeName::Extends, vec![root.into()])?;
+    context.mutation().stage_new_holon(none)?;
+    Ok(context)
+}
+
 /// Supplies persisted snapshots through the service boundary for smart-reference tests.
 /// Production storage and reference-layer cache behavior remain outside this fixture.
 pub(crate) fn build_context_with_saved_holons(

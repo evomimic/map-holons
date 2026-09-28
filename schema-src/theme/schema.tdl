@@ -130,7 +130,7 @@ relationship (Theme.HolonType)-[HasThemeTokenAssignment]->(ThemeTokenAssignment.
   target ThemeTokenAssignment.HolonType
   deletion_semantic Allow
   header {
-    description: "Owns the ThemeTokenAssignments that provide this Theme's complete token values."
+    description: "Defines what Design Tokens implementers of this Theme need to assign values for."
     display_name: "Has Theme Token Assignment"
     display_plural: "Has Theme Token Assignment Relationships"
     plural: "HasThemeTokenAssignmentRelationships"

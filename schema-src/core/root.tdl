@@ -278,7 +278,8 @@ holon HolonSpace.HolonType {
       Description.PropertyType
     ]
     InstanceRelationships -> [
-      (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)
+      (HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType),
+      (HolonSpace.HolonType)-[AvailableSchemas]->(Schema.HolonType)
     ]
   }
 }
