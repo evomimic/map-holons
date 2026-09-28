@@ -122,6 +122,28 @@ impl HolonCacheAccess for HolonCacheManager {
         )
     }
 
+    fn retain_holon(
+        &self,
+        context: &Arc<TransactionContext>,
+        id: &HolonId,
+    ) -> Result<super::holon_cache::SavedHolonRetention, HolonError> {
+        self.cache.retain(id.clone(), self.get_rc_holon(context, id)?)
+    }
+
+    fn prepare_relationships(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<(), HolonError> {
+        let cache = self
+            .relationship_cache
+            .read()
+            .map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?
+            .clone();
+        cache.prepare(context, self.holon_service.as_ref(), source, names)
+    }
+
     fn get_all_related_holons(
         &self,
         context: &Arc<TransactionContext>,

@@ -80,6 +80,22 @@ pub trait HolonServiceApi: Debug + Any + Send + Sync {
         relationship_name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError>;
 
+    /// Fetches complete memberships for exactly the requested names, including empty sets.
+    /// Providers may consolidate transport without changing selection or freshness semantics.
+    fn fetch_relationship_set_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<Vec<(RelationshipName, HolonCollection)>, HolonError> {
+        names
+            .iter()
+            .map(|name| {
+                Ok((name.clone(), self.fetch_related_holons_internal(context, source, name)?))
+            })
+            .collect()
+    }
+
     /// Retrieves all persisted Holons, as a HolonCollection
     fn get_all_holons_internal(
         &self,

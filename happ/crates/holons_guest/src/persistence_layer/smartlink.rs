@@ -25,6 +25,23 @@ use integrity_core_types::{LocalId, RelationshipName};
 use pvl_validation::validate_smartlink_envelope;
 use std::collections::HashMap;
 
+thread_local! {
+    static READ_METRICS: std::cell::Cell<(u64, u64, u64)> = const { std::cell::Cell::new((0, 0, 0)) };
+}
+
+/// Request-thread counters: host calls, logical link queries, and returned links.
+/// Read only by controlled Commit profiling; no links/content are retained here.
+pub(crate) fn relationship_read_metrics() -> (u64, u64, u64) {
+    READ_METRICS.with(std::cell::Cell::get)
+}
+
+fn record_reads(queries: usize, links: usize) {
+    READ_METRICS.with(|metrics| {
+        let (calls, prior_queries, prior_links) = metrics.get();
+        metrics.set((calls + 1, prior_queries + queries as u64, prior_links + links as u64));
+    });
+}
+
 /// Commit-local cache for SmartLink identity checks.
 ///
 /// This is intentionally constructed by relationship commit orchestration rather than stored on a
@@ -184,6 +201,89 @@ pub fn expand_from_source(
         .map_err(holon_error_from_wasm_error)?
         .tag_prefix(prefix);
     decode_query(source_id, query)
+}
+
+/// Consolidates explicit multi-relationship demand when a cardinality probe shows a
+/// small source bucket. Sparse/high-fanout sources retain exact-prefix reads. A count
+/// is an optimization hint, never evidence of completeness or a synchronized snapshot.
+pub fn expand_relationship_set(
+    source_id: &LocalId,
+    names: &[RelationshipName],
+) -> Result<Vec<Vec<SmartLink>>, HolonError> {
+    if names.is_empty() {
+        return Ok(Vec::new());
+    }
+    let base = try_action_hash_from_local_id(source_id)?;
+    let prefixes = names
+        .iter()
+        .map(|name| smartlink_relationship_prefix(name).map_err(tag_error))
+        .collect::<Result<Vec<_>, _>>()?;
+    if names.len() >= 4 {
+        let query = LinkQuery::try_new(base.clone(), LinkTypes::SmartLink)
+            .map_err(holon_error_from_wasm_error)?;
+        record_reads(1, 0);
+        // A failed optional probe falls back to the requested narrow reads, so unrelated
+        // source state cannot introduce a new failure into the caller's requested set.
+        if use_consolidated_read(names.len(), count_links(query.clone()).ok()) {
+            let links =
+                get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+            record_reads(1, links.len());
+            return partition_requested_links(source_id, &prefixes, links);
+        }
+    }
+    let inputs = names
+        .iter()
+        .map(|name| {
+            let prefix = smartlink_relationship_prefix(name).map_err(tag_error)?;
+            let query = LinkQuery::try_new(base.clone(), LinkTypes::SmartLink)
+                .map_err(holon_error_from_wasm_error)?
+                .tag_prefix(LinkTag(prefix));
+            Ok(GetLinksInput::from_query(query, GetStrategy::default()))
+        })
+        .collect::<Result<Vec<_>, HolonError>>()?;
+    let results = hdk::hdk::HDK
+        .with(|h| h.borrow().get_links(inputs))
+        .map_err(holon_error_from_wasm_error)?;
+    record_reads(names.len(), results.iter().map(Vec::len).sum());
+    if results.len() != names.len() {
+        return Err(HolonError::InvalidState("Incomplete batched SmartLink response".into()));
+    }
+    results
+        .into_iter()
+        .map(|links| {
+            links.into_iter().map(|link| decode_link_to_smartlink(source_id, link)).collect()
+        })
+        .collect()
+}
+
+/// Avoid broad retrieval for sparse demand, large source buckets, or failed probes.
+fn use_consolidated_read(requested: usize, source_count: Option<usize>) -> bool {
+    requested >= 4 && source_count.is_some_and(|count| count <= 128)
+}
+
+/// Prefix filtering precedes full decoding: even a malformed unrelated target/tag
+/// must have the same invisibility it has under an exact-prefix backend query.
+fn partition_requested_links(
+    source_id: &LocalId,
+    prefixes: &[Vec<u8>],
+    links: Vec<Link>,
+) -> Result<Vec<Vec<SmartLink>>, HolonError> {
+    let mut buckets = vec![Vec::new(); prefixes.len()];
+    for link in links {
+        let matching: Vec<_> = prefixes
+            .iter()
+            .enumerate()
+            .filter_map(|(index, prefix)| link.tag.0.starts_with(prefix).then_some(index))
+            .collect();
+        if matching.is_empty() {
+            continue;
+        }
+        let decoded = decode_link_to_smartlink(source_id, link)?;
+        for index in matching {
+            buckets[index].push(decoded.clone());
+        }
+    }
+    Ok(buckets)
 }
 
 /// Returns live SmartLinks from `source_id` for a relationship, filtered by canonical
@@ -360,6 +460,7 @@ pub fn delete_smartlink(smartlink_id: &SmartLinkId) -> Result<DeleteSmartLinkOut
     let query = LinkQuery::try_new(base_address, LinkTypes::SmartLink)
         .map_err(holon_error_from_wasm_error)?;
     let links = get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+    record_reads(1, links.len());
     let live = links.iter().any(|link| link.create_link_hash == create_hash);
     if !live {
         return Ok(DeleteSmartLinkOutcome::AlreadyAbsent);
@@ -407,6 +508,7 @@ fn create_prepared_smartlink(
 /// Runs a prepared `LinkQuery` and decodes every live match into a `SmartLink`.
 fn decode_query(source_id: &LocalId, query: LinkQuery) -> Result<Vec<SmartLink>, HolonError> {
     let links = get_links(query, GetStrategy::default()).map_err(holon_error_from_wasm_error)?;
+    record_reads(1, links.len());
     let mut out = Vec::with_capacity(links.len());
     for link in links {
         out.push(decode_link_to_smartlink(source_id, link)?);
@@ -481,6 +583,62 @@ mod tests {
             relationship_property_values: PropertyMap::new(),
             target_property_values: PropertyMap::new(),
         }
+    }
+
+    #[test]
+    fn sparse_and_high_fanout_requests_keep_narrow_selection() {
+        assert!(!use_consolidated_read(1, Some(10)));
+        assert!(!use_consolidated_read(9, Some(10_000)));
+        assert!(!use_consolidated_read(9, None));
+        assert!(use_consolidated_read(9, Some(10)));
+    }
+
+    fn raw_link(tag: Vec<u8>) -> Link {
+        Link {
+            author: AgentPubKey::from_raw_36(vec![0; 36]),
+            base: ActionHash::from_raw_36(vec![1; 36]).into(),
+            target: ActionHash::from_raw_36(vec![2; 36]).into(),
+            timestamp: Timestamp::from_micros(0),
+            zome_index: ZomeIndex(0),
+            link_type: LinkType(0),
+            tag: LinkTag(tag),
+            create_link_hash: ActionHash::from_raw_36(vec![3; 36]),
+        }
+    }
+
+    #[test]
+    fn consolidated_reads_ignore_unrelated_malformed_links_and_retain_empty_buckets() {
+        let name = RelationshipName("Requested".into());
+        let prefix = smartlink_relationship_prefix(&name).unwrap();
+        let unrelated =
+            smartlink_relationship_prefix(&RelationshipName("Unrelated".into())).unwrap();
+        // The prefix alone is a malformed tag. It must never be decoded for another name.
+        let links = (0..1000).map(|_| raw_link(unrelated.clone())).collect();
+        let result = partition_requested_links(&local_id(1), &[prefix], links).unwrap();
+        assert_eq!(result.len(), 1);
+        assert!(result[0].is_empty());
+    }
+
+    #[test]
+    fn consolidated_reads_reject_malformed_matching_links() {
+        let prefix = smartlink_relationship_prefix(&RelationshipName("Requested".into())).unwrap();
+        let error =
+            partition_requested_links(&local_id(1), &[prefix.clone()], vec![raw_link(prefix)])
+                .unwrap_err();
+        assert!(matches!(error, HolonError::InvalidWireFormat { .. }));
+    }
+
+    #[test]
+    fn consolidated_reads_preserve_requested_members_and_known_empty_sets() {
+        let input = prepared("Requested");
+        let tag = encode_smartlink_tag(&input.to_tag_input()).unwrap();
+        let prefixes = ["Requested", "Empty"]
+            .map(|name| smartlink_relationship_prefix(&RelationshipName(name.into())).unwrap());
+        let buckets =
+            partition_requested_links(&local_id(1), &prefixes, vec![raw_link(tag)]).unwrap();
+        assert_eq!(buckets[0].len(), 1);
+        assert_eq!(buckets[0][0].relationship_name, input.relationship_name);
+        assert!(buckets[1].is_empty());
     }
 
     #[test]

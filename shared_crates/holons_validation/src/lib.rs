@@ -8,11 +8,15 @@
 //! complete supplied candidate set before replacing staged outcomes, preserving operational
 //! errors separately. No entry point invokes Commit or persists holons.
 
+mod assessment_phase;
 mod assessment_support;
+pub use assessment_phase::AssessmentPhase;
 mod collector;
 mod commitments;
 mod constraint_declarations;
 mod contexts;
+mod dependency_groups;
+mod descriptor_package;
 mod descriptor_rules;
 mod handlers;
 mod orchestration;
@@ -34,7 +38,7 @@ pub use descriptor_rules::{ContractKindRoots, DescriptorRuleProducts};
 pub use prospective::{
     competing_replacement_findings, resolve_validation_anchor, resolve_validation_anchor_in_view,
 };
-pub use readiness::validate_commit_candidates;
+pub use readiness::{validate_commit_candidates, validate_commit_candidates_with_observer};
 pub use registries::{
     ConstraintTypeKey, RuleOutcome, StaticConstraintHandler, StaticConstraintRegistry,
     StaticRuleHandler, StaticRuleRegistry, ValidationInvocation, ValidationRuleKey,

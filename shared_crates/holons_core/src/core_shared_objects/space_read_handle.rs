@@ -65,6 +65,29 @@ impl SpaceReadHandle {
         })
     }
 
+    pub(crate) fn retain_holon(
+        &self,
+        id: &HolonId,
+    ) -> Result<super::holon_cache::SavedHolonRetention, HolonError> {
+        self.with_cache_context(|context| {
+            context
+                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
+                .retain_holon(&context, id)
+        })
+    }
+
+    pub(crate) fn prepare_relationships(
+        &self,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<(), HolonError> {
+        self.with_cache_context(|context| {
+            context
+                .cache_access(crate::reference_layer::smart_reference::SmartRefAccessKey::new())
+                .prepare_relationships(&context, source, names)
+        })
+    }
+
     pub(crate) fn get_all_related_holons(
         &self,
         source_holon_id: &HolonId,

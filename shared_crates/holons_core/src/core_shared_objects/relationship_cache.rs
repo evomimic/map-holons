@@ -59,6 +59,64 @@ impl RelationshipCache {
         Self { cache: Arc::new(RwLock::new(HashMap::new())) }
     }
 
+    /// Prepares requested saved memberships through the existing retention policy.
+    /// A failed/incomplete provider response installs none of its new collections.
+    pub fn prepare(
+        &self,
+        context: &Arc<TransactionContext>,
+        service: &dyn HolonServiceApi,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<(), HolonError> {
+        let now = service.relationship_cache_time_millis();
+        let mut missing = Vec::new();
+        {
+            let cache =
+                self.cache.read().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+            for name in names {
+                let resident =
+                    cache.get(source).and_then(|entries| entries.get(name)).is_some_and(|entry| {
+                        entry
+                            .expires_at_millis
+                            .map_or(true, |expiry| now.is_some_and(|now| now < expiry))
+                    });
+                if !resident && !missing.contains(name) {
+                    missing.push(name.clone());
+                }
+            }
+        }
+        if missing.is_empty() {
+            return Ok(());
+        }
+        let fetched_at = service.relationship_cache_time_millis();
+        let mut fetched = service.fetch_relationship_set_internal(context, source, &missing)?;
+        if fetched.len() != missing.len()
+            || missing
+                .iter()
+                .any(|name| fetched.iter().filter(|(actual, _)| actual == name).count() != 1)
+        {
+            return Err(HolonError::InvalidState("Incomplete requested relationship set".into()));
+        }
+        let mut prepared = Vec::new();
+        for (name, collection) in fetched.drain(..) {
+            let collection = Arc::new(RwLock::new(seal_saved_collection(collection)?));
+            let retention = match service.relationship_cache_policy(context, source, &name)? {
+                RelationshipCachePolicy::Reuse => Some(None),
+                RelationshipCachePolicy::MaxAgeMillis(age) if age > 0 => {
+                    fetched_at.and_then(|start| start.checked_add(age)).map(Some)
+                }
+                _ => None,
+            };
+            if let Some(expires_at_millis) = retention {
+                prepared.push((name, CachedMembership { collection, expires_at_millis }));
+            }
+        }
+        let mut cache =
+            self.cache.write().map_err(|e| HolonError::FailedToAcquireLock(e.to_string()))?;
+        cache.entry(source.clone()).or_default().extend(prepared);
+        Ok(())
+    }
+
     /// Retrieves the `HolonCollection` containing references to all holons that are related
     /// to the specified `source_holon_id` via the specified `relationship_name` Note
     /// that the `HolonCollection` could be empty.

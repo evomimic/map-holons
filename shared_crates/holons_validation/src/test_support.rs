@@ -21,8 +21,18 @@ use type_names::{CoreRelationshipTypeName, CoreValidationRuleName};
 struct FixtureStorage {
     holons: HashMap<HolonId, holons_core::core_shared_objects::holon::SavedHolon>,
     relationships: HashMap<(HolonId, RelationshipName), Vec<HolonId>>,
+    reads: std::sync::atomic::AtomicUsize,
 }
 impl HolonServiceApi for FixtureStorage {
+    fn relationship_cache_policy(
+        &self,
+        _: &Arc<TransactionContext>,
+        _: &HolonId,
+        _: &RelationshipName,
+    ) -> Result<holons_core::RelationshipCachePolicy, HolonError> {
+        Ok(holons_core::RelationshipCachePolicy::Reuse)
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -67,6 +77,7 @@ impl HolonServiceApi for FixtureStorage {
         source: &HolonId,
         name: &RelationshipName,
     ) -> Result<HolonCollection, HolonError> {
+        self.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         assert!(self.holons.contains_key(source), "unexpected storage relationship read");
         let mut collection = HolonCollection::new_transient();
         if let Some(targets) = self.relationships.get(&(source.clone(), name.clone())) {
@@ -280,6 +291,12 @@ impl Fixture {
 }
 
 impl Fixture {
+    pub fn backend_relationship_reads(&self) -> usize {
+        self.saved_storage
+            .as_ref()
+            .map_or(0, |storage| storage.reads.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
     /// Saves the fixture graph as service snapshots and opens a fresh empty Nursery.
     /// All relationship endpoints are rebound as saved references on read.
     pub fn saved_snapshot(&self) -> Result<Self, HolonError> {

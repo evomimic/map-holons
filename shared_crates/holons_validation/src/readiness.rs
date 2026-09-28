@@ -96,6 +96,17 @@ pub fn validate_commit_candidates(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
 ) -> Result<CommitValidationReport, HolonError> {
+    validate_commit_candidates_with_observer(context, candidates, |_| {})
+}
+
+/// Reports phase boundaries to optional profiling/test instrumentation. The observer
+/// cannot provide schema inputs or alter the assessment's acceptance policy.
+pub fn validate_commit_candidates_with_observer(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+    mut observer: impl FnMut(crate::AssessmentPhase),
+) -> Result<CommitValidationReport, HolonError> {
+    observer(crate::AssessmentPhase::Construction);
     if candidates.is_empty() {
         return Ok(CommitValidationReport::default());
     }
@@ -118,20 +129,29 @@ pub fn validate_commit_candidates(
         return PreparedAssessment::from_scope(candidates, collector.into_report())?
             .install_outcomes();
     };
-    assess_with_roots(context, candidates, &reader, &roots, collector)
+    let constructed = construct_assessment(context, candidates, &reader, &roots, collector)?;
+    assess_constructed_observed(context, candidates, &reader, &roots, constructed, &mut observer)
 }
 
 fn classify(governing: &holons_core::ValidExtendsLineage<'_>, root: &HolonReference) -> bool {
     governing.members().iter().any(|member| holons_core::same_definition(member, root))
 }
 
-pub(crate) fn assess_with_roots(
+/// Immutable prepared inputs and their cache leases live until outcome installation finishes.
+pub(crate) struct ConstructedAssessment {
+    prepared: Vec<SubjectPreparation>,
+    workset: SchemaWorkset,
+    packages: crate::descriptor_package::DescriptorPackages,
+    collector: ValidationCollector,
+}
+
+pub(crate) fn construct_assessment(
     context: &Arc<TransactionContext>,
     candidates: &[StagedReference],
     reader: &ProspectiveDescriptorReader,
     roots: &ReadinessContext,
     mut collector: ValidationCollector,
-) -> Result<CommitValidationReport, HolonError> {
+) -> Result<ConstructedAssessment, HolonError> {
     let kinds = roots.kinds.clone().with_reader(reader);
     let mut prepared = Vec::new();
     let mut owned = Vec::new();
@@ -252,6 +272,46 @@ pub(crate) fn assess_with_roots(
     }
     let workset =
         SchemaWorkset::prepare(context, reader, &roots.schema, &schemas, &owned, &mut collector)?;
+    let package_roots: Vec<_> = prepared
+        .iter()
+        .filter_map(|subject| match &subject.prerequisites.describing_type {
+            DescribingTypeResolution::Unique(root) => Some(root.clone()),
+            _ => None,
+        })
+        .collect();
+    let package_subjects: Vec<_> = prepared.iter().map(|subject| subject.subject.clone()).collect();
+    let packages = crate::descriptor_package::DescriptorPackages::construct(
+        context,
+        reader,
+        &package_roots,
+        &package_subjects,
+        &workset,
+    )?;
+    Ok(ConstructedAssessment { prepared, workset, packages, collector })
+}
+
+#[cfg(test)]
+pub(crate) fn assess_constructed(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+    reader: &ProspectiveDescriptorReader,
+    roots: &ReadinessContext,
+    constructed: ConstructedAssessment,
+) -> Result<CommitValidationReport, HolonError> {
+    assess_constructed_observed(context, candidates, reader, roots, constructed, &mut |_| {})
+}
+
+fn assess_constructed_observed(
+    context: &Arc<TransactionContext>,
+    candidates: &[StagedReference],
+    reader: &ProspectiveDescriptorReader,
+    roots: &ReadinessContext,
+    constructed: ConstructedAssessment,
+    observer: &mut impl FnMut(crate::AssessmentPhase),
+) -> Result<CommitValidationReport, HolonError> {
+    observer(crate::AssessmentPhase::PackageValidation);
+    let ConstructedAssessment { mut prepared, workset, mut packages, mut collector } = constructed;
+    let kinds = roots.kinds.clone().with_reader(reader);
     let mut prepared_index = HashMap::new();
     for (index, subject) in prepared.iter().enumerate() {
         prepared_index
@@ -411,6 +471,7 @@ pub(crate) fn assess_with_roots(
                 reader,
                 &path(&subject.subject),
                 &mut collector,
+                Some(&packages),
             );
             subject.bindings =
                 recover(result, &subject.subject, &mut collector)?.unwrap_or_default();
@@ -431,13 +492,14 @@ pub(crate) fn assess_with_roots(
         if let Some(Some(witness)) = cycles.get(&id) {
             products.record(CoreValidationRuleName::SchemaDependenciesAcyclic, format!("Schema {} reaches a versioned DependsOn cycle containing {}; remove the cyclic dependency.", view.schema.reference_id_string(), witness.reference_id_string()));
         }
-        schema_rules::cross_schema_references(
+        schema_rules::cross_schema_references_prepared(
             context,
             reader,
             view,
             &workset,
             &mut products,
             &mut collector,
+            Some(&packages),
         )?;
         if products.has_findings() {
             invalid.insert(id.clone());
@@ -461,6 +523,7 @@ pub(crate) fn assess_with_roots(
                 reader,
                 &path(&view.schema),
                 &mut collector,
+                Some(&packages),
             );
             if let Some(bindings) = recover(result, &view.schema, &mut collector)? {
                 prospective_validation::dispatch_schema(
@@ -480,30 +543,45 @@ pub(crate) fn assess_with_roots(
         readiness.invalidate(identity);
     }
     readiness.observe(&collector);
-    for index in order {
-        let subject = &prepared[index];
-        let id = ProspectiveIdentity::for_reference(&subject.subject, context)?;
-        if let Some(dependency) = readiness.blocking_dependency(&id) {
-            blocked(&mut collector, &subject.subject, format!(
-                "Required prospective commitment {dependency} is invalid; correct its reported findings before retrying."));
-        } else if let Some(governing) = subject
-            .prerequisites
-            .governing_lineage
-            .as_ref()
-            .and_then(|lineage| lineage.valid_lineage())
-        {
-            let result = prospective_validation::assess_subject(
-                &subject.subject,
-                governing.subject(),
-                &subject.bindings,
-                &roots.values,
-                &roots.universal,
+    let is_definition = |subject: &SubjectPreparation| {
+        subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema
+    };
+    // Each strongly connected group establishes conformance before ordinary consumers run.
+    for group in &order {
+        for &index in group {
+            let subject = &prepared[index];
+            if !is_definition(subject) {
+                continue;
+            }
+            assess_prepared(
+                context,
+                subject,
                 reader,
+                roots,
+                &packages,
+                &mut readiness,
                 &mut collector,
-            );
-            recover(result, &subject.subject, &mut collector)?;
+            )?;
         }
-        readiness.observe(&collector);
+    }
+    packages.finish(&readiness.invalid);
+    observer(crate::AssessmentPhase::InstanceValidation);
+    for group in &order {
+        for &index in group {
+            let subject = &prepared[index];
+            if is_definition(subject) {
+                continue;
+            }
+            assess_prepared(
+                context,
+                subject,
+                reader,
+                roots,
+                &packages,
+                &mut readiness,
+                &mut collector,
+            )?;
+        }
     }
     // Mutually describing commitments are legal. If a later conformance check
     // invalidates an earlier dependent, expose that blocking result without re-evaluation.
@@ -518,6 +596,53 @@ pub(crate) fn assess_with_roots(
         }
     }
     PreparedAssessment::from_scope(candidates, collector.into_report())?.install_outcomes()
+}
+
+/// Definition groups use constructed peer contracts provisionally. Ordinary instances
+/// reach this operation only after package readiness has been established.
+fn assess_prepared(
+    context: &Arc<TransactionContext>,
+    subject: &SubjectPreparation,
+    reader: &ProspectiveDescriptorReader,
+    roots: &ReadinessContext,
+    packages: &crate::descriptor_package::DescriptorPackages,
+    readiness: &mut ReadinessPropagation,
+    collector: &mut ValidationCollector,
+) -> Result<(), HolonError> {
+    let id = ProspectiveIdentity::for_reference(&subject.subject, context)?;
+    if let Some(dependency) = readiness.blocking_dependency(&id) {
+        blocked(collector, &subject.subject, format!("Required prospective commitment {dependency} is invalid; correct its reported findings before retrying."));
+    } else if let Some(governing) =
+        subject.prerequisites.governing_lineage.as_ref().and_then(|lineage| lineage.valid_lineage())
+    {
+        let package = packages.get(context, governing.subject())?;
+        let definition =
+            subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema;
+        if !definition && package.state != crate::descriptor_package::PackageState::Validated {
+            blocked(
+                collector,
+                &subject.subject,
+                "Required descriptor package did not establish readiness.".into(),
+            );
+        } else if let Some(contract) =
+            recover(package.contract.clone(), &subject.subject, collector)?
+        {
+            let result = prospective_validation::assess_prepared_subject(
+                &subject.subject,
+                &package.root,
+                &contract,
+                &subject.bindings,
+                &roots.values,
+                &roots.universal,
+                reader,
+                collector,
+                Some(packages),
+            );
+            recover(result, &subject.subject, collector)?;
+        }
+    }
+    readiness.observe(collector);
+    Ok(())
 }
 
 fn assess_configured_rule(
@@ -595,7 +720,7 @@ fn commitment_order(
     subjects: &[SubjectPreparation],
     workset: &SchemaWorkset,
     collector: &mut ValidationCollector,
-) -> Result<(Vec<usize>, ReadinessPropagation), HolonError> {
+) -> Result<(Vec<Vec<usize>>, ReadinessPropagation), HolonError> {
     let mut dependencies = HashMap::new();
     let mut indices = HashMap::new();
     let mut names = HashMap::new();
@@ -649,38 +774,14 @@ fn commitment_order(
             reverse.entry(target.clone()).or_default().push(subject.clone());
         }
     }
-    let mut seen = HashSet::new();
-    let mut order = Vec::new();
-    let starts = subjects
+    let starts: Vec<_> = subjects
         .iter()
-        .filter(|subject| {
-            subject.is_descriptor || subject.is_rule || subject.is_constraint || subject.is_schema
-        })
-        .chain(subjects.iter().filter(|subject| {
-            !subject.is_descriptor
-                && !subject.is_rule
-                && !subject.is_constraint
-                && !subject.is_schema
-        }));
-    for subject in starts {
-        let mut stack =
-            vec![(ProspectiveIdentity::for_reference(&subject.subject, context)?, false)];
-        while let Some((id, leaving)) = stack.pop() {
-            if leaving {
-                if let Some(index) = indices.get(&id) {
-                    order.push(*index);
-                }
-                continue;
-            }
-            if !seen.insert(id.clone()) {
-                continue;
-            }
-            stack.push((id.clone(), true));
-            stack.extend(
-                dependencies.get(&id).into_iter().flatten().rev().cloned().map(|id| (id, false)),
-            );
-        }
-    }
+        .map(|subject| ProspectiveIdentity::for_reference(&subject.subject, context))
+        .collect::<Result<_, _>>()?;
+    let order = crate::dependency_groups::dependency_groups(&starts, &dependencies)
+        .into_iter()
+        .map(|group| group.into_iter().filter_map(|id| indices.get(&id).copied()).collect())
+        .collect();
     Ok((
         order,
         ReadinessPropagation {

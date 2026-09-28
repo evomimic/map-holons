@@ -1000,3 +1000,77 @@ fn scoped_installation_uses_the_same_distinct_candidate_check_as_commit() -> Res
     assert_eq!(candidate.validation_state()?, ValidationState::ValidationRequired);
     Ok(())
 }
+
+#[test]
+fn constructed_saved_packages_validate_without_schema_backend_reads() -> Result<(), HolonError> {
+    let fixture = readiness_fixture()?.saved_snapshot()?;
+    let mut subject = fixture.staged_subject("prepared-instance")?;
+    subject.with_property_value("Title", "ready")?;
+    let candidates = vec![subject];
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    let roots = crate::readiness::ReadinessContext::resolve(&fixture.context, &reader)
+        .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
+    let constructed = crate::readiness::construct_assessment(
+        &fixture.context,
+        &candidates,
+        &reader,
+        &roots,
+        ValidationCollector::default(),
+    )?;
+    let before = fixture.backend_relationship_reads();
+    let report = crate::readiness::assess_constructed(
+        &fixture.context,
+        &candidates,
+        &reader,
+        &roots,
+        constructed,
+    )?;
+    assert!(report.is_accepted(), "{:?}", report);
+    assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
+    Ok(())
+}
+
+#[test]
+fn affected_saved_schema_and_mixed_candidates_need_no_reads_after_construction(
+) -> Result<(), HolonError> {
+    let mut fixture = readiness_fixture()?;
+    fixture.node("Owner")?;
+    fixture.link(
+        "Schema.HolonType",
+        CoreRelationshipTypeName::Extends,
+        "HolonType.TypeDescriptor",
+    )?;
+    fixture.link("Owner", CoreRelationshipTypeName::DescribedBy, "Schema.HolonType")?;
+    fixture.link("Contract", CoreRelationshipTypeName::ComponentOf, "Owner")?;
+    fixture.link(
+        "Contract",
+        CoreRelationshipTypeName::DescribedBy,
+        "MetaHolonType.MetaTypeDescriptor",
+    )?;
+    let fixture = fixture.saved_snapshot()?;
+    let descriptor = fixture.replacement("Contract")?;
+    let mut subject = fixture.staged_subject("mixed-instance")?;
+    subject.with_property_value("Title", "ready")?;
+    let candidates = vec![descriptor, subject];
+    let reader = ProspectiveDescriptorReader::new(&fixture.context, &candidates)?;
+    let roots = crate::readiness::ReadinessContext::resolve(&fixture.context, &reader)
+        .map_err(|e| HolonError::CommitFailure(e.to_string()))?;
+    let constructed = crate::readiness::construct_assessment(
+        &fixture.context,
+        &candidates,
+        &reader,
+        &roots,
+        ValidationCollector::default(),
+    )?;
+    let before = fixture.backend_relationship_reads();
+    let report = crate::readiness::assess_constructed(
+        &fixture.context,
+        &candidates,
+        &reader,
+        &roots,
+        constructed,
+    )?;
+    assert!(!report.is_accepted(), "fixture's incomplete descriptor must retain its findings");
+    assert_eq!(before, fixture.backend_relationship_reads(), "schema query after construction");
+    Ok(())
+}

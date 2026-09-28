@@ -14,6 +14,9 @@ struct CountingService {
     edges: RwLock<HashMap<(u8, String), Vec<u8>>>,
     calls: RwLock<HashMap<(u8, String), usize>>,
     bulk_calls: AtomicUsize,
+    set_calls: AtomicUsize,
+    incomplete_set: std::sync::atomic::AtomicBool,
+    content_reads: AtomicUsize,
     clock: AtomicU64,
 }
 
@@ -44,6 +47,9 @@ impl CountingService {
             edges: RwLock::new(edges),
             calls: RwLock::new(HashMap::new()),
             bulk_calls: AtomicUsize::new(0),
+            set_calls: AtomicUsize::new(0),
+            incomplete_set: std::sync::atomic::AtomicBool::new(false),
+            content_reads: AtomicUsize::new(0),
             clock: AtomicU64::new(0),
         }
     }
@@ -72,17 +78,36 @@ impl HolonServiceApi for CountingService {
         _: &HolonId,
         name: &RelationshipName,
     ) -> Result<RelationshipCachePolicy, HolonError> {
-        Ok(if self.reuse_frozen && name.to_string() == "Frozen" {
+        Ok(if self.reuse_frozen && name.to_string().starts_with("Frozen") {
             RelationshipCachePolicy::Reuse
         } else {
             RelationshipCachePolicy::Fresh
         })
+    }
+    fn fetch_relationship_set_internal(
+        &self,
+        context: &Arc<TransactionContext>,
+        source: &HolonId,
+        names: &[RelationshipName],
+    ) -> Result<Vec<(RelationshipName, HolonCollection)>, HolonError> {
+        self.set_calls.fetch_add(1, Ordering::Relaxed);
+        let mut result = names
+            .iter()
+            .map(|name| {
+                Ok((name.clone(), self.fetch_related_holons_internal(context, source, name)?))
+            })
+            .collect::<Result<Vec<_>, HolonError>>()?;
+        if self.incomplete_set.load(Ordering::Relaxed) {
+            result.pop();
+        }
+        Ok(result)
     }
     fn fetch_holon_internal(
         &self,
         _: &Arc<TransactionContext>,
         id: &HolonId,
     ) -> Result<Holon, HolonError> {
+        self.content_reads.fetch_add(1, Ordering::Relaxed);
         let number = id.local_id().0[0];
         let name = match number {
             3 => "DeclaredRelationshipType",
@@ -538,5 +563,75 @@ fn guest_reuses_all_membership_without_descriptors_and_honors_explicit_fresh(
             .is_empty());
         assert_eq!(service.0.count(name), 3, "the next guest request starts empty");
     }
+    Ok(())
+}
+
+#[test]
+fn requested_memberships_reuse_empty_results_without_unrelated_reads_or_hydration(
+) -> Result<(), HolonError> {
+    let service = Arc::new(CountingService::new(true));
+    let manager = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
+    let reference = CountingService::reference(&context, 1);
+    let HolonReference::Smart(saved) = &reference else { unreachable!() };
+    let names = vec!["Frozen".to_relationship_name(), "FrozenEmpty".to_relationship_name()];
+    saved.prepare_relationships(&names)?;
+    saved.prepare_relationships(&names)?;
+    assert_eq!(service.set_calls.load(Ordering::Relaxed), 1);
+    assert_eq!(service.content_reads.load(Ordering::Relaxed), 0);
+    assert!(reference.related_holons("FrozenEmpty")?.read().unwrap().get_members().is_empty());
+    assert_eq!(service.count("FrozenEmpty"), 1);
+    assert_eq!(service.count("Moving"), 0);
+    Ok(())
+}
+
+#[test]
+fn incomplete_requested_set_does_not_install_partial_memberships() -> Result<(), HolonError> {
+    let service = Arc::new(CountingService::new(true));
+    let manager = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = manager.get_transaction_manager().open_public_transaction(manager.clone())?;
+    let HolonReference::Smart(saved) = CountingService::reference(&context, 1) else {
+        unreachable!()
+    };
+    let names = vec!["Frozen".to_relationship_name(), "FrozenEmpty".to_relationship_name()];
+    service.incomplete_set.store(true, Ordering::Relaxed);
+    assert!(saved.prepare_relationships(&names).is_err());
+    service.incomplete_set.store(false, Ordering::Relaxed);
+    saved.prepare_relationships(&names)?;
+    assert_eq!(service.count("Frozen"), 2);
+    assert_eq!(service.count("FrozenEmpty"), 2);
+    Ok(())
+}
+
+#[test]
+fn retained_content_survives_eviction_pressure_until_last_lease_drops() -> Result<(), HolonError> {
+    let service = Arc::new(CountingService::new(true));
+    let space = Arc::new(HolonSpaceManager::new_with_managers(
+        None,
+        service.clone(),
+        None,
+        ServiceRoutingPolicy::BlockExternal,
+    ));
+    let context = space.get_transaction_manager().open_public_transaction(space.clone())?;
+    let mut manager = HolonCacheManager::new(service.clone());
+    manager.cache = HolonCache::new_with_capacity(1);
+    let id = HolonId::Local(LocalId(vec![1]));
+    let first = manager.retain_holon(&context, &id)?;
+    let second = manager.retain_holon(&context, &id)?;
+    manager.cache.clear();
+    drop(first);
+    assert!(manager.get_cached_rc_holon(&id)?.is_some());
+    drop(second);
+    assert!(manager.get_cached_rc_holon(&id)?.is_none());
     Ok(())
 }
