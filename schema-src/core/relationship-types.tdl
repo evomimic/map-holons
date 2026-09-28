@@ -360,6 +360,41 @@ inverse relationship (EnumVariantValueType.ValueType)-[VariantOf]->(EnumValueTyp
   }
 }
 
+relationship (HolonSpace.HolonType)-[AvailableSchemas]->(Schema.HolonType) {
+  type MetaDeclaredRelationshipType.MetaRelationshipType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+    HasInverse -> AvailableInSpace
+  }
+  extends DeclaredRelationshipType.RelationshipType
+  source HolonSpace.HolonType
+  target Schema.HolonType
+  deletion_semantic Allow
+  header {
+    description: "Identifies schemas whose semantic vocabulary is available for use within this Holon Space, independently of which Space stewards them. Availability may be established locally, through adoption, or through schema dependencies."
+    display_name: "Available Schemas"
+    display_plural: "Available Schemas Relationships"
+    plural: "AvailableSchemasRelationships"
+  }
+}
+
+inverse relationship (Schema.HolonType)-[AvailableInSpace]->(HolonSpace.HolonType) {
+  type MetaInverseRelationshipType.MetaRelationshipType
+  extends InverseRelationshipType.RelationshipType
+  source Schema.HolonType
+  target HolonSpace.HolonType
+  relationships {
+    Constraints -> ZeroOrMore.CardinalityConstraint
+  }
+  deletion_semantic Block
+  header {
+    description: "Inverse of AvailableSchemas, identifying Spaces where this schema's semantic vocabulary is available without implying that those Spaces steward the schema."
+    display_name: "Available In Space"
+    display_plural: "Available In Space Relationships"
+    plural: "AvailableInSpaceRelationships"
+  }
+}
+
 def relationship (Schema.HolonType)-[DependsOn]->(Schema.HolonType) {
   type MetaDeclaredRelationshipType.MetaRelationshipType
   relationships {

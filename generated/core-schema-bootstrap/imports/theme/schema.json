@@ -444,7 +444,7 @@
         "TypeNamePlural": "HasThemeTokenAssignmentRelationships",
         "DisplayName": "Has Theme Token Assignment",
         "DisplayNamePlural": "Has Theme Token Assignment Relationships",
-        "Description": "Owns the ThemeTokenAssignments that provide this Theme's complete token values.",
+        "Description": "Defines what Design Tokens implementers of this Theme need to assign values for.",
         "DeletionSemantic": "Allow"
       },
       "relationships": [

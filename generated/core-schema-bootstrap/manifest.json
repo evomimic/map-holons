@@ -75,11 +75,11 @@
     },
     {
       "path": "imports/core/relationship-types.json",
-      "sha256": "ddfb2ce736a2bdd45449d01459620cad1eeffdcd0ef3cbaf3a66ebf9cdcb048b"
+      "sha256": "a0d2159c42231d80fe7f19af6c8f7c9250b092ca0ef41868e8c00048b0d6b977"
     },
     {
       "path": "imports/core/root.json",
-      "sha256": "6973708aa772a0ff61c37c6473c8840110119b2745d6e5366c0a0cb60cef7d52"
+      "sha256": "e666816f399b6278216c5bb4d7768bcc7f085654675371f03da5f941487d6b0b"
     },
     {
       "path": "imports/core/validation.json",
@@ -123,7 +123,7 @@
     },
     {
       "path": "imports/theme/schema.json",
-      "sha256": "20b700d08fa867846133573a8e39af09b06e322b1b6f68c9b85d2f83c87ff5fa"
+      "sha256": "2b02526e3f30419a9b7da53c560d1e4469cf87cb95ed11dc2d42c907a4318a0e"
     },
     {
       "path": "imports/dahn/schema.json",
@@ -131,7 +131,7 @@
     },
     {
       "path": "imports/core/core-schema-bootstrap.json",
-      "sha256": "fdead3ba40104df85f57f3e01ac0d1b02283ff62180b2f24a559f60b252d30c7"
+      "sha256": "772ea1ee9e7949c863dfe302efd073071ceb5692cac3ce2ea7bcdf0de7aec66c"
     }
   ],
   "required_holons": [
@@ -345,6 +345,10 @@
     },
     {
       "key": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)",
+      "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(HolonSpace.HolonType)-[AvailableSchemas]->(Schema.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
     },
     {
@@ -642,6 +646,10 @@
     {
       "key": "(Rule.HolonType)-[RuleOf]->(Schema.HolonType)",
       "type": "MetaDeclaredRelationshipType.MetaRelationshipType"
+    },
+    {
+      "key": "(Schema.HolonType)-[AvailableInSpace]->(HolonSpace.HolonType)",
+      "type": "MetaInverseRelationshipType.MetaRelationshipType"
     },
     {
       "key": "(Schema.HolonType)-[Components]->(TypeDescriptor)",

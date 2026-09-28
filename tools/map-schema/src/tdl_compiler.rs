@@ -2591,6 +2591,70 @@ holon Example.HolonType {
     }
 
     #[test]
+    fn core_schema_declares_space_schema_availability_pair() -> Result<()> {
+        let out_dir = temp_out_dir();
+        compile_inputs(&[fixture_dir()], &out_dir)?;
+        let relationships: Value =
+            serde_json::from_slice(&fs::read(out_dir.join("core/relationship-types.json"))?)?;
+        let root: Value = serde_json::from_slice(&fs::read(out_dir.join("core/root.json"))?)?;
+        let holon = |document: &Value, key: &str| -> Value {
+            document["holons"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|holon| holon["key"] == key)
+                .unwrap()
+                .clone()
+        };
+        let targets = |holon: &Value, name: &str| -> Value {
+            holon["relationships"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|relationship| relationship["name"] == name)
+                .unwrap()["target"]
+                .clone()
+        };
+        let declared_key = "(HolonSpace.HolonType)-[AvailableSchemas]->(Schema.HolonType)";
+        let inverse_key = "(Schema.HolonType)-[AvailableInSpace]->(HolonSpace.HolonType)";
+        let declared = holon(&relationships, declared_key);
+        let inverse = holon(&relationships, inverse_key);
+        assert_eq!(declared["type"], "MetaDeclaredRelationshipType.MetaRelationshipType");
+        assert_eq!(inverse["type"], "MetaInverseRelationshipType.MetaRelationshipType");
+        assert_eq!(targets(&declared, "HasInverse"), serde_json::json!([{ "$ref": inverse_key }]));
+        for (descriptor, source, target) in [
+            (&declared, "HolonSpace.HolonType", "Schema.HolonType"),
+            (&inverse, "Schema.HolonType", "HolonSpace.HolonType"),
+        ] {
+            assert_eq!(targets(descriptor, "SourceType"), serde_json::json!([{ "$ref": source }]));
+            assert_eq!(targets(descriptor, "TargetType"), serde_json::json!([{ "$ref": target }]));
+            assert_eq!(
+                targets(descriptor, "Constraints"),
+                serde_json::json!([{ "$ref": "ZeroOrMore.CardinalityConstraint" }])
+            );
+            assert_eq!(
+                targets(descriptor, "ComponentOf"),
+                serde_json::json!([{ "$ref": "MAP Core Schema-v0.0.7" }])
+            );
+        }
+        assert_eq!(declared["properties"]["DeletionSemantic"], "Allow");
+        assert_eq!(inverse["properties"]["DeletionSemantic"], "Block");
+        let space_contract =
+            targets(&holon(&root, "HolonSpace.HolonType"), "InstanceRelationships");
+        assert!(space_contract
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!({ "$ref": declared_key })));
+        let schema_contract = targets(&holon(&root, "Schema.HolonType"), "InstanceRelationships");
+        assert!(!schema_contract
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|target| { target["$ref"] == declared_key || target["$ref"] == inverse_key }));
+        Ok(())
+    }
+
+    #[test]
     fn core_schema_emits_one_normalized_has_inverse_target() -> Result<()> {
         let out_dir = temp_out_dir();
         compile_inputs(&[fixture_dir()], &out_dir)?;

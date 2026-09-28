@@ -69,6 +69,8 @@ impl HolonServiceApi for Graph {
             "EnumValueType.ValueType" => 34,
             "BaseValueValueType.ValueType" => 35,
             "ValueArrayValueType.ValueType" => 36,
+            "KeyRuleType.HolonType" => 4,
+            "NoneRule.KeyRuleType" => 37,
             _ => return Err(HolonError::InvalidParameter(format!("Unknown fixture key {key}"))),
         };
         match Self::reference(context, id) {
@@ -299,10 +301,12 @@ async fn resolves_inherited_instance_key_policy_in_rust() {
     graph.edge(2, "InstanceKeyRule", &[3]);
     graph.edge(3, "Extends", &[4]);
     graph.property(3, "TypeName", BaseValue::StringValue("TypeNameRule".into()));
+    graph.property(3, "IsAbstractType", BaseValue::BooleanValue(false.into()));
     graph.property(4, "TypeName", BaseValue::StringValue("KeyRuleType".into()));
-    graph.edge(5, "InstanceKeyRule", &[6]);
-    graph.edge(6, "Extends", &[4]);
-    graph.property(6, "TypeName", BaseValue::StringValue("NoneRule".into()));
+    graph.edge(5, "InstanceKeyRule", &[37]);
+    graph.edge(37, "Extends", &[4]);
+    graph.property(37, "TypeName", BaseValue::StringValue("NoneRule".into()));
+    graph.property(37, "IsAbstractType", BaseValue::BooleanValue(false.into()));
     let context = graph.context();
     for (id, expected) in [(1, true), (5, false)] {
         assert!(matches!(
@@ -311,6 +315,34 @@ async fn resolves_inherited_instance_key_policy_in_rust() {
         ));
     }
     assert!(read(&context, 7, ReadableHolonAction::GetHasInstanceKey).await.is_err());
+}
+
+#[tokio::test]
+async fn reads_key_presence_for_configured_key_rule_instances() {
+    let mut graph = Graph::default();
+    graph.property(4, "TypeName", BaseValue::StringValue("KeyRuleType".into()));
+    graph.property(37, "TypeName", BaseValue::StringValue("NoneRule".into()));
+    graph.property(37, "IsAbstractType", BaseValue::BooleanValue(false.into()));
+    graph.edge(37, "Extends", &[4]);
+    for (owner, instance, strategy, owner_name, rule_name) in [
+        (1, 2, 3, "ThemeTokenAssignment", "RelationshipPairRule"),
+        (5, 6, 7, "HolonSpace", "FormatRule"),
+        (8, 9, 10, "DanceImplementation", "FormatRule"),
+    ] {
+        graph.property(owner, "TypeName", BaseValue::StringValue(owner_name.into()));
+        graph.edge(owner, "InstanceKeyRule", &[instance]);
+        graph.edge(instance, "DescribedBy", &[strategy]);
+        graph.property(strategy, "TypeName", BaseValue::StringValue(rule_name.into()));
+        graph.property(strategy, "IsAbstractType", BaseValue::BooleanValue(false.into()));
+        graph.edge(strategy, "Extends", &[4]);
+    }
+    let context = graph.context();
+    for id in [1, 5, 8] {
+        assert!(matches!(
+            read(&context, id, ReadableHolonAction::GetHasInstanceKey).await.unwrap(),
+            MapResult::Value(BaseValue::BooleanValue(value)) if value.0
+        ));
+    }
 }
 
 /// Forces two real command-handler reads to overlap on one bound transaction.

@@ -16,6 +16,44 @@
               "$ref": "MAP.CoreSchemaSpace"
             }
           ]
+        },
+        {
+          "name": "AvailableSchemas",
+          "target": [
+            {
+              "$ref": "MAP Commands Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Core Schema-v0.0.7"
+            },
+            {
+              "$ref": "MAP DAHN Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Dance Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Dancer Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Design Tokens Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Meta Design System Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Query Dance Adapter Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Query Schema-v0.0.2"
+            },
+            {
+              "$ref": "MAP Theme Schema-v0.1.0"
+            },
+            {
+              "$ref": "MAP Validation Schema-v0.1.0"
+            }
+          ]
         }
       ]
     }

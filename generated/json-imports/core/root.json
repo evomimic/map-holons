@@ -731,6 +731,9 @@
           "target": [
             {
               "$ref": "(HolonSpace.HolonType)-[AffordsTransactionModel]->(Transaction.HolonType)"
+            },
+            {
+              "$ref": "(HolonSpace.HolonType)-[AvailableSchemas]->(Schema.HolonType)"
             }
           ]
         }
