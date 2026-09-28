@@ -1,4 +1,7 @@
 use crate::diagnostics::{format_diagnostics, Diagnostic};
+use crate::source_provenance::{
+    ParseProvenance, SourceDiagnostic, SourceEvent, SourcePosition, SourceRange,
+};
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -7,6 +10,10 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+
+mod source_analysis;
+use source_analysis::descriptor_source_kind;
+pub use source_analysis::{analyze_sources, SourceAnalysis};
 
 type TdlLiteralObject = BTreeMap<String, TdlLiteralValue>;
 
@@ -90,6 +97,7 @@ struct ParsedTdlFile {
 
 #[derive(Debug, Clone)]
 struct TdlSchema {
+    source_id: usize,
     name: String,
     dependencies: Vec<String>,
     literal_properties: TdlLiteralObject,
@@ -99,6 +107,7 @@ struct TdlSchema {
 
 #[derive(Debug, Clone)]
 struct TdlDescriptor {
+    source_id: usize,
     kind: DescriptorKind,
     name: String,
     header: Option<DescriptorHeader>,
@@ -922,6 +931,9 @@ struct Parser<'a> {
     index: usize,
     relative_path: PathBuf,
     pending_descriptors: Vec<TdlDescriptor>,
+    provenance: ParseProvenance,
+    recover: bool,
+    top_level_start: usize,
 }
 
 impl<'a> Parser<'a> {
@@ -931,6 +943,9 @@ impl<'a> Parser<'a> {
             index: 0,
             relative_path: relative_path.to_path_buf(),
             pending_descriptors: Vec::new(),
+            provenance: ParseProvenance::default(),
+            recover: false,
+            top_level_start: 0,
         }
     }
 
@@ -941,30 +956,61 @@ impl<'a> Parser<'a> {
         let mut descriptors = Vec::new();
 
         while self.skip_blank_lines() {
+            let start = self.index;
+            self.top_level_start = start;
+            let pending_start = self.pending_descriptors.len();
             let line = self.peek_trimmed().unwrap().to_string();
-            if line == "meta {" {
-                self.consume_trimmed();
-                let (properties, references) = self.parse_properties_block()?;
-                if !meta.is_empty() || !references.is_empty() {
-                    return Err(anyhow!("invalid meta declaration in {}", file_path.display()));
+            let result = (|| -> Result<()> {
+                if line == "meta {" {
+                    self.consume_trimmed();
+                    let (properties, references) = self.parse_properties_block()?;
+                    if !meta.is_empty() || !references.is_empty() {
+                        return Err(anyhow!("invalid meta declaration in {}", file_path.display()));
+                    }
+                    meta = properties;
+                } else if line.starts_with("schema ") {
+                    if schema.is_some() {
+                        return Err(anyhow!(
+                            "multiple schema declarations in {}",
+                            file_path.display()
+                        ));
+                    }
+                    schema = Some(self.parse_schema_decl()?);
+                } else if is_descriptor_line(&line) {
+                    descriptors.push(self.parse_descriptor_decl(None)?);
+                    descriptors.append(&mut self.pending_descriptors);
+                } else {
+                    return Err(anyhow!(
+                        "unrecognized top-level declaration in {}: {}",
+                        file_path.display(),
+                        line
+                    ));
                 }
-                meta = properties;
-            } else if line.starts_with("schema ") {
-                if schema.is_some() {
-                    return Err(anyhow!("multiple schema declarations in {}", file_path.display()));
+                Ok(())
+            })();
+            if let Err(error) = result {
+                if !self.recover {
+                    return Err(error);
                 }
-                schema = Some(self.parse_schema_decl()?);
-            } else if is_descriptor_line(&line) {
-                descriptors.push(self.parse_descriptor_decl(None)?);
-                descriptors.append(&mut self.pending_descriptors);
-            } else if line == "}" {
-                return Err(anyhow!("unexpected closing brace in {}", file_path.display()));
-            } else {
-                return Err(anyhow!(
-                    "unrecognized top-level declaration in {}: {}",
-                    file_path.display(),
-                    line
-                ));
+                self.provenance.diagnostics.push(SourceDiagnostic {
+                    message: error.to_string(),
+                    code: "TDL_SYNTAX".into(),
+                    range: self.line_range(self.index.min(self.lines.len().saturating_sub(1))),
+                });
+                self.pending_descriptors.truncate(pending_start);
+                // Resume only at a declaration boundary at or outside the failed declaration's indentation.
+                let indent = self.lines[start].len() - self.lines[start].trim_start().len();
+                self.index = self.index.max(start + 1);
+                while self.index < self.lines.len() {
+                    let raw = self.lines[self.index];
+                    let line = raw.trim();
+                    if raw.len() - raw.trim_start().len() <= indent
+                        && (line.starts_with("schema ") || is_descriptor_line(line))
+                    {
+                        break;
+                    }
+                    self.index += 1;
+                }
             }
         }
 
@@ -977,21 +1023,24 @@ impl<'a> Parser<'a> {
         let line = self.consume_trimmed().unwrap();
         let header = parse_inline_header(&line, "schema")?;
         let name = header.name;
+        let source_id = self.begin_declaration("schema", &name, header.name_range);
         let mut dependencies = Vec::new();
         let mut literal_properties = TdlLiteralObject::new();
         let mut literal_relationships = Vec::new();
         let mut block_header: Option<DescriptorHeader> = None;
 
         if header.has_block || self.try_consume_open_brace()? {
-            while self.skip_blank_lines() {
+            while self.block_line()? {
                 let current = self.peek_trimmed().unwrap().to_string();
+                self.record_clause();
                 if current == "}" {
                     self.consume_trimmed();
                     break;
                 }
                 if current.starts_with("depends_on ") {
-                    dependencies
-                        .push(parse_reference_token(current["depends_on ".len()..].trim())?);
+                    dependencies.push(
+                        self.parse_reference(current["depends_on ".len()..].trim(), "DependsOn")?,
+                    );
                     self.consume_trimmed();
                 } else if current == "properties {" {
                     self.consume_trimmed();
@@ -1000,13 +1049,7 @@ impl<'a> Parser<'a> {
                         .extend(properties.iter().map(|(key, value)| (key.clone(), value.clone())));
                 } else if current == "relationships {" {
                     self.consume_trimmed();
-                    for line in self.parse_reference_block()? {
-                        if let Some(relationship) = parse_literal_relationship_line(&line)? {
-                            literal_relationships.push(relationship);
-                        } else {
-                            return Err(anyhow!("unexpected schema relationship line: {}", line));
-                        }
-                    }
+                    literal_relationships.extend(self.parse_relationship_map()?);
                 } else if current.starts_with("header") {
                     block_header = Some(self.parse_header_block()?);
                 } else {
@@ -1016,6 +1059,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(TdlSchema {
+            source_id,
             name,
             dependencies,
             literal_properties,
@@ -1028,9 +1072,18 @@ impl<'a> Parser<'a> {
         let line = self.consume_trimmed().unwrap();
         let parsed = parse_descriptor_header(&line)?;
         let declaration_name = parsed.name.clone();
+        let source_id = self.begin_declaration(
+            descriptor_source_kind(&parsed),
+            &parsed.name,
+            parsed.name_range,
+        );
+        if let Some(target) = &parsed.extends {
+            self.record_reference_at(self.index - 1, target, "Extends")?;
+        }
         let mut clauses = DescriptorClauseTracker::default();
         clauses.mark_if_present("extends", &declaration_name, parsed.extends.is_some())?;
         let mut descriptor = TdlDescriptor {
+            source_id,
             kind: parsed.kind,
             name: parsed.name,
             header: None,
@@ -1061,8 +1114,9 @@ impl<'a> Parser<'a> {
         };
 
         if parsed.has_block || self.try_consume_open_brace()? {
-            while self.skip_blank_lines() {
+            while self.block_line()? {
                 let current = self.peek_trimmed().unwrap().to_string();
+                self.record_clause();
                 if current == "}" {
                     self.consume_trimmed();
                     break;
@@ -1075,36 +1129,37 @@ impl<'a> Parser<'a> {
                     s if s.starts_with("extends ") => {
                         clauses.mark("extends", &declaration_name)?;
                         descriptor.extends =
-                            Some(parse_reference_token(s["extends ".len()..].trim())?);
+                            Some(self.parse_reference(s["extends ".len()..].trim(), "Extends")?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("type ") => {
                         clauses.mark("type", &declaration_name)?;
                         descriptor.descriptor_type =
-                            Some(parse_reference_token(s["type ".len()..].trim())?);
+                            Some(self.parse_reference(s["type ".len()..].trim(), "DescribedBy")?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("value ") => {
                         clauses.mark("value", &declaration_name)?;
                         descriptor.value_type =
-                            Some(parse_reference_token(s["value ".len()..].trim())?);
+                            Some(self.parse_reference(s["value ".len()..].trim(), "ValueType")?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("source ") => {
                         clauses.mark("source", &declaration_name)?;
                         descriptor.source_type =
-                            Some(parse_reference_token(s["source ".len()..].trim())?);
+                            Some(self.parse_reference(s["source ".len()..].trim(), "SourceType")?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("target ") => {
                         clauses.mark("target", &declaration_name)?;
                         descriptor.target_type =
-                            Some(parse_reference_token(s["target ".len()..].trim())?);
+                            Some(self.parse_reference(s["target ".len()..].trim(), "TargetType")?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("inverse ") => {
                         clauses.mark("inverse", &declaration_name)?;
-                        let inverse_name = s["inverse ".len()..].trim().to_string();
+                        let inverse_name =
+                            self.parse_reference(s["inverse ".len()..].trim(), "HasInverse")?;
                         if descriptor.relationship_flavor == Some(RelationshipFlavor::Inverse) {
                             descriptor.inverse_of = Some(inverse_name);
                         } else {
@@ -1115,23 +1170,28 @@ impl<'a> Parser<'a> {
                     s if s.starts_with("rule_of ") => {
                         clauses.mark("rule_of", &declaration_name)?;
                         descriptor.rule_of =
-                            Some(parse_reference_token(s["rule_of ".len()..].trim())?);
+                            Some(self.parse_reference(s["rule_of ".len()..].trim(), "RuleOf")?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("instance_keyrule ") => {
                         clauses.mark("keyrule", &declaration_name)?;
-                        descriptor.key_rule =
-                            Some(parse_reference_token(s["instance_keyrule ".len()..].trim())?);
+                        descriptor.key_rule = Some(self.parse_reference(
+                            s["instance_keyrule ".len()..].trim(),
+                            "InstanceKeyRule",
+                        )?);
                         self.consume_trimmed();
                     }
                     s if s.starts_with("keyrule ") => {
                         clauses.mark("keyrule", &declaration_name)?;
-                        descriptor.key_rule =
-                            Some(parse_reference_token(s["keyrule ".len()..].trim())?);
+                        descriptor.key_rule = Some(
+                            self.parse_reference(s["keyrule ".len()..].trim(), "InstanceKeyRule")?,
+                        );
                         self.consume_trimmed();
                     }
                     s if s.starts_with("cardinality ") => {
                         clauses.mark("cardinality", &declaration_name)?;
+                        self.record_property("Minimum");
+                        self.record_property("Maximum");
                         let range = s["cardinality ".len()..].trim();
                         let (min, max) = range
                             .split_once("..")
@@ -1143,16 +1203,19 @@ impl<'a> Parser<'a> {
                     }
                     "ordered" => {
                         clauses.mark("ordered", &declaration_name)?;
+                        self.record_property("IsOrdered");
                         descriptor.is_ordered = true;
                         self.consume_trimmed();
                     }
                     "duplicates" => {
                         clauses.mark("duplicates", &declaration_name)?;
+                        self.record_property("AllowsDuplicates");
                         descriptor.allows_duplicates = true;
                         self.consume_trimmed();
                     }
                     s if s.starts_with("deletion_semantic ") => {
                         clauses.mark("deletion_semantic", &declaration_name)?;
+                        self.record_property("DeletionSemantic");
                         descriptor.deletion_semantic =
                             Some(s["deletion_semantic ".len()..].trim().to_string());
                         self.consume_trimmed();
@@ -1182,6 +1245,8 @@ impl<'a> Parser<'a> {
                         self.consume_trimmed();
                         for variant in self.parse_variant_block(&descriptor.name)? {
                             let variant_key = variant_key(&descriptor.name, &variant.name);
+                            self.provenance.current = source_id;
+                            self.record_variant_membership(&variant, &variant_key);
                             self.pending_descriptors.push(variant.clone());
                             descriptor.variants.push(variant_key);
                         }
@@ -1193,12 +1258,15 @@ impl<'a> Parser<'a> {
                             // outside a nested variants block.
                             let variant = self.parse_variant_decl(Some(descriptor.name.clone()))?;
                             let variant_key = variant_key(&descriptor.name, &variant.name);
+                            self.provenance.current = source_id;
+                            self.record_variant_membership(&variant, &variant_key);
                             self.pending_descriptors.push(variant);
                             descriptor.variants.push(variant_key);
                         } else {
                             let Some((name, value)) = parse_fixed_property_clause(other)? else {
                                 return Err(anyhow!("unexpected descriptor clause: {}", other));
                             };
+                            self.record_property(&name);
                             descriptor.literal_properties.insert(name, value);
                             self.consume_trimmed();
                         }
@@ -1210,6 +1278,7 @@ impl<'a> Parser<'a> {
         apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
         normalize_relationship_pair_targets(&mut descriptor);
+        self.provenance.events[source_id].key = Some(descriptor_key_r6(&descriptor)?);
         Ok(descriptor)
     }
 
@@ -1220,9 +1289,18 @@ impl<'a> Parser<'a> {
             return Err(anyhow!("expected variant declaration, found {}", line));
         }
         let declaration_name = parsed.name.clone();
+        let source_id = self.begin_declaration(
+            descriptor_source_kind(&parsed),
+            &parsed.name,
+            parsed.name_range,
+        );
+        if let Some(target) = &parsed.extends {
+            self.record_reference_at(self.index - 1, target, "Extends")?;
+        }
         let mut clauses = DescriptorClauseTracker::default();
         clauses.mark_if_present("extends", &declaration_name, parsed.extends.is_some())?;
         let mut descriptor = TdlDescriptor {
+            source_id,
             kind: DescriptorKind::EnumVariant,
             name: parsed.name,
             header: None,
@@ -1253,8 +1331,9 @@ impl<'a> Parser<'a> {
         };
 
         if parsed.has_block || self.try_consume_open_brace()? {
-            while self.skip_blank_lines() {
+            while self.block_line()? {
                 let current = self.peek_trimmed().unwrap().to_string();
+                self.record_clause();
                 if current == "}" {
                     self.consume_trimmed();
                     break;
@@ -1276,12 +1355,12 @@ impl<'a> Parser<'a> {
                 } else if current.starts_with("type ") {
                     clauses.mark("type", &declaration_name)?;
                     descriptor.descriptor_type =
-                        Some(parse_reference_token(current["type ".len()..].trim())?);
+                        Some(self.parse_reference(current["type ".len()..].trim(), "DescribedBy")?);
                     self.consume_trimmed();
                 } else if current.starts_with("extends ") {
                     clauses.mark("extends", &declaration_name)?;
                     descriptor.extends =
-                        Some(parse_reference_token(current["extends ".len()..].trim())?);
+                        Some(self.parse_reference(current["extends ".len()..].trim(), "Extends")?);
                     self.consume_trimmed();
                 } else {
                     return Err(anyhow!("unexpected variant clause: {}", current));
@@ -1292,13 +1371,15 @@ impl<'a> Parser<'a> {
         apply_literal_properties_to_tdl_descriptor(&mut descriptor)?;
         apply_literal_relationships_to_tdl_descriptor(&mut descriptor);
         normalize_relationship_pair_targets(&mut descriptor);
+        self.provenance.events[source_id].key = Some(descriptor_key_r6(&descriptor)?);
         Ok(descriptor)
     }
 
     fn parse_variant_block(&mut self, enum_name: &str) -> Result<Vec<TdlDescriptor>> {
         let mut variants = Vec::new();
-        while self.skip_blank_lines() {
+        while self.block_line()? {
             let current = self.peek_trimmed().unwrap().to_string();
+            self.record_clause();
             if current == "}" {
                 self.consume_trimmed();
                 break;
@@ -1325,8 +1406,9 @@ impl<'a> Parser<'a> {
         let mut display_name_plural = None;
         let mut type_name_plural = None;
 
-        while self.skip_blank_lines() {
+        while self.block_line()? {
             let current = self.peek_trimmed().unwrap().to_string();
+            self.record_clause();
             if current == "}" {
                 self.consume_trimmed();
                 break;
@@ -1335,6 +1417,13 @@ impl<'a> Parser<'a> {
                 .split_once(':')
                 .ok_or_else(|| anyhow!("invalid header field '{}'", current))?;
             let value = parse_string_literal(value.trim())?;
+            self.record_property(match field.trim() {
+                "description" => "Description",
+                "display_name" => "DisplayName",
+                "display_plural" => "DisplayNamePlural",
+                "plural" => "TypeNamePlural",
+                other => other,
+            });
             match field.trim() {
                 "description" => description = Some(value),
                 "display_name" => display_name = Some(value),
@@ -1348,23 +1437,9 @@ impl<'a> Parser<'a> {
         Ok(DescriptorHeader { description, display_name, display_name_plural, type_name_plural })
     }
 
-    fn parse_reference_block(&mut self) -> Result<Vec<String>> {
-        let mut refs = Vec::new();
-        while self.skip_blank_lines() {
-            let current = self.peek_trimmed().unwrap().to_string();
-            if current == "}" {
-                self.consume_trimmed();
-                break;
-            }
-            refs.push(current);
-            self.consume_trimmed();
-        }
-        Ok(refs)
-    }
-
     fn parse_relationship_map(&mut self) -> Result<Vec<LiteralRelationship>> {
         let mut relationships = Vec::new();
-        while self.skip_blank_lines() {
+        while self.block_line()? {
             let current = self.peek_trimmed().unwrap().trim_end_matches(',').trim().to_string();
             if current == "}" {
                 self.consume_trimmed();
@@ -1376,14 +1451,23 @@ impl<'a> Parser<'a> {
                 .ok_or_else(|| anyhow!("invalid relationship map entry '{}'", current))?;
             let name = name.trim().to_string();
             let raw_targets = raw_targets.trim();
-            self.consume_trimmed();
-
+            self.record_named_reference(&name);
             let targets = if raw_targets == "[" {
-                self.parse_relationship_target_list()?
+                self.consume_trimmed();
+                self.parse_relationship_target_list(&name)?
             } else if raw_targets.starts_with('[') {
-                parse_inline_target_list(raw_targets)?
+                let targets = parse_inline_target_list(raw_targets)?;
+                let base = self.lines[self.index].find(raw_targets).unwrap_or(0) + 1;
+                for (offset, token) in split_target_tokens(&raw_targets[1..raw_targets.len() - 1])?
+                {
+                    self.record_reference_span(self.index, base + offset, token, &name)?;
+                }
+                self.consume_trimmed();
+                targets
             } else {
-                vec![parse_reference_token(raw_targets)?]
+                let target = self.parse_reference(raw_targets, &name)?;
+                self.consume_trimmed();
+                vec![target]
             };
 
             relationships.push(LiteralRelationship { name, targets });
@@ -1391,15 +1475,15 @@ impl<'a> Parser<'a> {
         Ok(relationships)
     }
 
-    fn parse_relationship_target_list(&mut self) -> Result<Vec<String>> {
+    fn parse_relationship_target_list(&mut self, name: &str) -> Result<Vec<String>> {
         let mut targets = Vec::new();
-        while self.skip_blank_lines() {
+        while self.block_line()? {
             let current = self.peek_trimmed().unwrap().trim().to_string();
             if current == "]" || current == "]," {
                 self.consume_trimmed();
                 break;
             }
-            targets.push(parse_reference_token(&current)?);
+            targets.push(self.parse_reference(&current, name)?);
             self.consume_trimmed();
         }
         Ok(targets)
@@ -1408,16 +1492,18 @@ impl<'a> Parser<'a> {
     fn parse_properties_block(&mut self) -> Result<(TdlLiteralObject, Vec<String>)> {
         let mut properties = TdlLiteralObject::new();
         let mut refs = Vec::new();
-        while self.skip_blank_lines() {
+        while self.block_line()? {
             let current = self.peek_trimmed().unwrap().to_string();
+            self.record_clause();
             if current == "}" {
                 self.consume_trimmed();
                 break;
             }
             if let Some((name, value)) = parse_literal_property_line(&current)? {
+                self.record_property(&name);
                 properties.insert(name, value);
             } else {
-                refs.push(current);
+                refs.push(self.parse_reference(&current, "InstanceProperties")?);
             }
             self.consume_trimmed();
         }
@@ -1475,6 +1561,7 @@ impl<'a> Parser<'a> {
 
 #[derive(Debug, Clone)]
 struct ParsedHead {
+    name_range: (usize, usize),
     kind: DescriptorKind,
     name: String,
     is_abstract: bool,
@@ -1498,10 +1585,17 @@ fn parse_inline_header(line: &str, keyword: &str) -> Result<InlineHeader> {
     if remainder.is_empty() {
         return Err(anyhow!("missing {} name", keyword));
     }
-    Ok(InlineHeader { name: parse_reference_token(remainder)?, header: None, has_block })
+    let start = remainder.as_ptr() as usize - line.as_ptr() as usize;
+    Ok(InlineHeader {
+        name_range: (start, start + remainder.len()),
+        name: parse_reference_token(remainder)?,
+        header: None,
+        has_block,
+    })
 }
 
 struct InlineHeader {
+    name_range: (usize, usize),
     name: String,
     header: Option<DescriptorHeader>,
     has_block: bool,
@@ -1624,7 +1718,9 @@ fn parse_descriptor_header(line: &str) -> Result<ParsedHead> {
         None
     };
 
+    let start = after_kind.as_ptr() as usize - line.as_ptr() as usize;
     Ok(ParsedHead {
+        name_range: (start, start + after_kind.len()),
         kind,
         name,
         is_abstract,
@@ -1659,6 +1755,9 @@ fn parse_string_literal(raw: &str) -> Result<String> {
 
 fn parse_reference_token(raw: &str) -> Result<String> {
     let token = raw.trim().trim_end_matches(',').trim();
+    if token.is_empty() {
+        return Err(anyhow!("missing reference key"));
+    }
     if token.starts_with('"') {
         Ok(serde_json::from_str(token)?)
     } else {
@@ -1671,12 +1770,41 @@ fn parse_inline_target_list(raw: &str) -> Result<Vec<String>> {
     let Some(inner) = trimmed.strip_prefix('[').and_then(|value| value.strip_suffix(']')) else {
         return Err(anyhow!("invalid inline target list '{}'", raw));
     };
-    inner
-        .split(',')
-        .map(str::trim)
-        .filter(|target| !target.is_empty())
-        .map(parse_reference_token)
-        .collect()
+    split_target_tokens(inner)?.into_iter().map(|(_, token)| parse_reference_token(token)).collect()
+}
+
+/// Split authored reference collections without treating commas inside quoted keys as separators.
+fn split_target_tokens(inner: &str) -> Result<Vec<(usize, &str)>> {
+    let mut tokens = Vec::new();
+    let (mut quoted, mut escaped, mut start) = (false, false, 0);
+    for (offset, ch) in inner.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if quoted && ch == '\\' {
+            escaped = true;
+            continue;
+        }
+        if ch == '"' {
+            quoted = !quoted;
+        }
+        if ch == ',' && !quoted {
+            let token = &inner[start..offset];
+            if !token.trim().is_empty() {
+                tokens.push((start + token.len() - token.trim_start().len(), token.trim()));
+            }
+            start = offset + 1;
+        }
+    }
+    if quoted {
+        return Err(anyhow!("unterminated quoted reference"));
+    }
+    let token = &inner[start..];
+    if !token.trim().is_empty() {
+        tokens.push((start + token.len() - token.trim_start().len(), token.trim()));
+    }
+    Ok(tokens)
 }
 
 fn parse_fixed_property_clause(line: &str) -> Result<Option<(String, TdlLiteralValue)>> {
@@ -1698,32 +1826,6 @@ fn parse_fixed_property_clause(line: &str) -> Result<Option<(String, TdlLiteralV
         json!(parse_reference_token(raw_value)?)
     };
     Ok(Some((name.to_string(), json_value_to_tdl_literal(&value))))
-}
-
-fn parse_literal_relationship_line(line: &str) -> Result<Option<LiteralRelationship>> {
-    if line.starts_with('(') {
-        return Ok(None);
-    }
-
-    let Some((name, raw_targets)) = line.split_once("->") else {
-        return Ok(None);
-    };
-
-    let name = name.trim();
-    let raw_targets = raw_targets.trim();
-    if name.is_empty() || raw_targets.is_empty() {
-        return Ok(None);
-    }
-
-    let targets = if raw_targets.starts_with('[') {
-        serde_json::from_str::<Vec<String>>(raw_targets)?
-    } else if raw_targets.starts_with('"') {
-        vec![serde_json::from_str::<String>(raw_targets)?]
-    } else {
-        vec![raw_targets.to_string()]
-    };
-
-    Ok(Some(LiteralRelationship { name: name.to_string(), targets }))
 }
 
 fn parse_literal_property_line(line: &str) -> Result<Option<(String, TdlLiteralValue)>> {
