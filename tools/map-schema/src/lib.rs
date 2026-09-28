@@ -12,6 +12,10 @@ pub mod diagnostics;
 pub mod editor_service;
 /// JSON-RPC/LSP transport for the source-only editor service.
 pub mod lsp;
+/// Read-only authored relationship graph for source tooling.
+pub mod relationship_graph;
+/// Compiler-owned source locations joined to canonical loader facts.
+pub mod source_provenance;
 /// TDL parser, checker, and compiler entry points.
 pub mod tdl_compiler;
 
@@ -1082,15 +1086,6 @@ mod tests {
             .join("json-imports")
     }
 
-    fn sweettests_import_fixture_dir() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("..")
-            .join("tests")
-            .join("sweetests")
-            .join("import_files")
-    }
-
     fn temp_out_dir() -> PathBuf {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
         env::temp_dir().join(format!("map-schema-decompile-{nanos}"))
@@ -1142,11 +1137,10 @@ mod tests {
     #[test]
     fn decompiles_schema_depends_on_relationships_into_tdl_dependencies() -> Result<()> {
         let out_dir = temp_out_dir();
-        let source_file =
-            sweettests_import_fixture_dir().join("map-test-schema-book-person-inverse.json");
+        let source_file = generated_fixture_dir().join("test/book-person-inverse.json");
         decompile_inputs(&[source_file], &out_dir)?;
 
-        let tdl = fs::read_to_string(out_dir.join("map-test-schema-book-person-inverse.tdl"))?;
+        let tdl = fs::read_to_string(out_dir.join("book-person-inverse.tdl"))?;
 
         assert!(tdl.contains(
             "schema \"BookAuthorInverseSchema\" {\n  depends_on \"MAP Core Schema-v0.0.7\""
