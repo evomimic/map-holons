@@ -446,6 +446,49 @@ mod tests {
         std::fs::remove_dir_all(directory).unwrap();
     }
     #[test]
+    fn closing_saved_document_keeps_current_disk_facts() {
+        let directory =
+            std::env::temp_dir().join(format!("tdl saved close {}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("schema.tdl");
+        let original = "schema S\nholon Old {\n type T\n}\n";
+        let saved = "schema S\nholon New {\n type U\n}\n";
+        std::fs::write(&path, original).unwrap();
+        let uri = crate::editor_service::file_uri(&path);
+        let mut server = TdlLanguageServer::default();
+        server.handle(json!({"id":0,"method":"initialize","params":{"initializationOptions":{"sourceRoots":[crate::editor_service::file_uri(&directory)]}}}));
+        server.handle(json!({"method":"textDocument/didOpen","params":{"textDocument":{"uri":uri,"text":original}}}));
+        server.handle(json!({"method":"textDocument/didChange","params":{"textDocument":{"uri":uri},"contentChanges":[{"text":saved}]}}));
+        std::fs::write(&path, saved).unwrap();
+        server.handle(
+            json!({"method":"textDocument/didClose","params":{"textDocument":{"uri":uri}}}),
+        );
+        let symbols = server.handle(json!({"id":1,"method":"workspace/symbol"}));
+        let names: Vec<_> = symbols[0]["result"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["name"].as_str().unwrap())
+            .collect();
+        assert!(names.contains(&"New"));
+        assert!(!names.contains(&"Old"));
+        let graph = server.workspace.relationship_graph();
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.source == "New" && e.name == "DescribedBy" && e.target == "U"));
+        assert!(!graph.nodes.iter().any(|n| n.key == "Old"));
+        // A removed file must not reappear from a stale startup snapshot either.
+        std::fs::remove_file(&path).unwrap();
+        server.handle(json!({"method":"textDocument/didOpen","params":{"textDocument":{"uri":uri,"text":saved}}}));
+        server.handle(
+            json!({"method":"textDocument/didClose","params":{"textDocument":{"uri":uri}}}),
+        );
+        assert!(server.workspace.document(&uri).is_none());
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
     fn definition_at_selected_relationship_key_end_finds_the_corpus_declaration() {
         let mut server = TdlLanguageServer::default();
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").canonicalize().unwrap();

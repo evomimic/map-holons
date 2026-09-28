@@ -7,7 +7,11 @@ use crate::{
     LoaderFactProjection,
 };
 use serde::Serialize;
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -100,7 +104,7 @@ impl EditorDocument {
 pub struct EditorWorkspace {
     sources: BTreeMap<String, String>,
     documents: BTreeMap<String, EditorDocument>,
-    disk_sources: BTreeMap<String, String>,
+    disk_paths: BTreeMap<String, PathBuf>,
 }
 
 /// Compiler-owned declaration events also provide outlines for incomplete buffers.
@@ -117,8 +121,10 @@ impl EditorWorkspace {
     }
 
     pub fn close_document(&mut self, uri: &str) {
-        if let Some(source) = self.disk_sources.get(uri) {
-            self.sources.insert(uri.into(), source.clone());
+        // Closing ends buffer ownership; the saved file may have changed since initialization.
+        let saved_source = self.disk_paths.get(uri).and_then(|path| fs::read_to_string(path).ok());
+        if let Some(source) = saved_source {
+            self.sources.insert(uri.into(), source);
         } else {
             self.sources.remove(uri);
         }
@@ -157,7 +163,7 @@ impl EditorWorkspace {
             } else if path.extension().and_then(|s| s.to_str()) == Some("tdl") {
                 let source = fs::read_to_string(&path)?;
                 let uri = file_uri(&path);
-                self.disk_sources.insert(uri.clone(), source.clone());
+                self.disk_paths.insert(uri.clone(), path);
                 self.sources.entry(uri).or_insert(source);
             }
         }

@@ -40,7 +40,8 @@ Supported standard requests are `textDocument/documentSymbol`, `workspace/symbol
 `textDocument/definition`, `textDocument/references`, and `textDocument/hover`.
 `references` honors `context.includeDeclaration`. Full-buffer `didOpen`/`didChange`
 rebuild an immutable workspace index and publish updated compiler diagnostics.
-`didClose` restores the indexed disk source, or removes a buffer outside source roots.
+`didClose` rereads the current file for a document indexed from source roots, or removes
+the document if the file is no longer readable. Buffers outside source roots are removed.
 
 Initialize with `initializationOptions.sourceRoots`, an array of absolute `file://`
 URIs for TDL directories. If omitted, the server uses `schema-src` under each
